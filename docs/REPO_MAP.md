@@ -184,10 +184,7 @@
 
 | Directory | Contents |
 |-----------|----------|
-| `audit/runners/` | Domain audit scripts (Kimi/Qwen): `audit_payment.py`, `audit_orders.py`, etc. |
-| `audit/prompts/` | Prompt templates for each audit domain |
 | `audit/hooks/` | Claude-powered composable audit hooks with auto-fix |
-| `audit/common.py` | Shared utilities: API calls, file bundling, report saving |
 | `audit/collect_files.py` | Project file collector with extension/dir filters |
 | `audit/doc_crawler.py` | External documentation crawler with disk cache |
 | `audit/run_hooks.py` | CLI entrypoint for Claude audit hooks |

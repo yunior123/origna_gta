@@ -20,7 +20,7 @@ from typing import Optional
 
 from .config import (
     OUTPUT_DIR, PROJECT_ROOT, CRITICAL, HIGH, MEDIUM, SEVERITY_ORDER,
-    ANTHROPIC_MODEL, DEEPSEEK_MODEL
+    ANTHROPIC_MODEL
 )
 from .base import (
     BaseHook, HookResult, Finding,
@@ -39,13 +39,12 @@ class HookRunner:
         staged_only: bool = False,
         parallel: bool = True,
         max_workers: int = 3,
-        provider: str = "claude",
     ):
         self.changed_only = changed_only
         self.staged_only = staged_only
         self.parallel = parallel
         self.max_workers = max_workers
-        self.provider = provider
+        self.max_workers = max_workers
         self.results: list[HookResult] = []
 
         # Resolve which hooks to run
@@ -78,9 +77,9 @@ class HookRunner:
                 print(f"   ... and {len(changed_files) - 20} more")
 
         # Instantiate hooks
-        hook_instances = [cls(provider=self.provider) for cls in self.hook_classes]
+        hook_instances = [cls() for cls in self.hook_classes]
 
-        model_name = ANTHROPIC_MODEL if self.provider == "anthropic" else DEEPSEEK_MODEL
+        model_name = ANTHROPIC_MODEL
         print(f"\n{'='*60}")
         print(f"🪝 Running {len(hook_instances)} audit hook(s)")
         print(f"   Model: {model_name}")
@@ -191,7 +190,6 @@ class HookRunner:
         json_path = OUTPUT_DIR / f"hooks_report_{timestamp}.json"
         json_data = {
             "timestamp": datetime.now().isoformat(),
-            "provider": self.provider,
             "mode": "changed_only" if self.changed_only else "full",
             "results": [r.to_dict() for r in self.results],
         }
@@ -219,7 +217,6 @@ class HookRunner:
         lines = [
             "# 🪝 Audit Hooks Report\n",
             f"**Generated:** {datetime.now().isoformat()}",
-            f"**Provider:** {self.provider}",
             f"**Mode:** {'Changed files only' if self.changed_only else 'Full codebase'}\n",
             "---\n",
         ]
@@ -271,7 +268,6 @@ class HookRunner:
             min_severity=min_severity,
             dry_run=dry_run,
             validate=validate,
-            provider=self.provider,
         )
         return fixer.fix_results(self.results)
 

@@ -1,4 +1,3 @@
-```markdown
 ---
 name: accessibility-matrix
 description: >
@@ -223,4 +222,3 @@ grep -n "Color(0x\|Colors\." <file> | grep -v "DesignTokens"
 grep -n "TextField\|TextFormField" <file> | grep -v "labelText\|label:"
 ```
 
-```

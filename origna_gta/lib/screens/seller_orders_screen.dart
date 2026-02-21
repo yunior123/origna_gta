@@ -12,7 +12,19 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+
+// Streams the total count of unanswered product questions for a seller (U-03)
+final _sellerUnansweredQaProvider = StreamProvider.autoDispose.family<int, String>((ref, sellerId) {
+  return FirebaseFirestore.instance
+      .collection(Collections.productQuestions)
+      .where(Fields.sellerId, isEqualTo: sellerId)
+      .where(Fields.isAnswered, isEqualTo: false)
+      .snapshots()
+      .map((snap) => snap.docs.length);
+});
 
 class SellerOrdersScreen extends ConsumerWidget {
   const SellerOrdersScreen({super.key});
@@ -74,6 +86,7 @@ class SellerOrdersScreen extends ConsumerWidget {
         appBar: AppBarFactory.custom(
           title: 'seller.manage_orders'.tr(),
           actions: [
+            _UnansweredQaBadge(sellerId: user.uid),
             Tooltip(
               message: 'Integration Guide',
               child: IconButton(
@@ -124,6 +137,52 @@ class SellerOrdersScreen extends ConsumerWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+
+// U-03: Badge widget showing unanswered Q&A count for the seller
+class _UnansweredQaBadge extends ConsumerWidget {
+  final String sellerId;
+  const _UnansweredQaBadge({required this.sellerId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final countAsync = ref.watch(_sellerUnansweredQaProvider(sellerId));
+    final count = countAsync.valueOrNull ?? 0;
+
+    return Tooltip(
+      message: count > 0 ? '$count unanswered question${count == 1 ? '' : 's'}' : 'No pending questions',
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.forum_outlined),
+            onPressed: () {}, // Navigate to Q&A management when that screen exists
+          ),
+          if (count > 0)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: DesignTokens.error,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: Center(
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -357,15 +416,15 @@ class _SellerOrderCard extends ConsumerWidget {
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: Colors.deepPurple.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)),
+                decoration: BoxDecoration(color: DesignTokens.digital.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.download_outlined, size: 10, color: Colors.deepPurple),
+                    const Icon(Icons.download_outlined, size: 10, color: DesignTokens.digital),
                     const SizedBox(width: 3),
                     const Text(
                       'Digital',
-                      style: TextStyle(fontSize: 10, color: Colors.deepPurple, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 10, color: DesignTokens.digital, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),

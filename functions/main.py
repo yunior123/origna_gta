@@ -70,6 +70,7 @@ from handlers.admin import (  # noqa: E402
 from handlers.chat import (  # noqa: E402
     get_or_create_chat,
     mark_messages_read,
+    send_message,
 )
 
 # ===============================================
@@ -90,6 +91,7 @@ from handlers.cron_jobs import (  # noqa: E402
     retry_failed_algolia_syncs,
     revalidate_digital_product_urls,
     send_abandoned_cart_emails,
+    sync_expired_subscriptions,
 )
 from handlers.digital import (  # noqa: E402
     activate_license,
@@ -137,7 +139,9 @@ from handlers.products import (  # noqa: E402
     admin_approve_product,
     admin_reject_product,
     answer_product_question,
+    answer_review,
     ask_product_question,
+    bulk_update_products,
     configure_algolia,
     create_warehouse,
     delete_product,
@@ -156,6 +160,11 @@ from handlers.products import (  # noqa: E402
     update_warehouse,
     upload_product_images,
     upload_review_images,
+    vote_review_helpful,
+)
+from handlers.coupons import (  # noqa: E402
+    admin_create_coupon,
+    apply_coupon,
 )
 from handlers.subscriptions import (  # noqa: E402
     cancel_subscription,
@@ -226,6 +235,7 @@ __all__ = [
     # Chat (premium feature)
     "get_or_create_chat",
     "mark_messages_read",
+    "send_message",
     # Dispute handlers
     "process_charge_refunded",
     "process_dispute_created",
@@ -253,6 +263,15 @@ __all__ = [
     "ask_product_question",
     "answer_product_question",
     "get_product_questions",
+    # Seller review reply (N-03)
+    "answer_review",
+    # Review helpfulness voting (N-04)
+    "vote_review_helpful",
+    # Bulk seller operations (N-08)
+    "bulk_update_products",
+    # Coupon / promo codes (N-07)
+    "apply_coupon",
+    "admin_create_coupon",
     # Warehouses
     "create_warehouse",
     "update_warehouse",
@@ -308,6 +327,7 @@ __all__ = [
     "compute_seller_metrics",
     # Trending products
     "compute_trending_products",
+    "sync_expired_subscriptions",
     # Shipping
     "calculate_shipping_cost",
     # Digital products

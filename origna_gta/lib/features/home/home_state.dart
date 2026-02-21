@@ -14,6 +14,7 @@ class HomeState {
   final DocumentSnapshot? lastDocument;
   final String searchQuery;
   final int? selectedCategoryId;
+  final String? selectedSubcategory;
   final String? errorMessage;
 
   HomeState({
@@ -24,6 +25,7 @@ class HomeState {
     this.lastDocument,
     this.searchQuery = '',
     this.selectedCategoryId,
+    this.selectedSubcategory,
     this.errorMessage,
   });
 
@@ -35,6 +37,7 @@ class HomeState {
     Object? lastDocument = const _Sentinel(),
     String? searchQuery,
     Object? selectedCategoryId = const _Sentinel(),
+    Object? selectedSubcategory = const _Sentinel(),
     Object? errorMessage = const _Sentinel(),
   }) {
     return HomeState(
@@ -49,6 +52,9 @@ class HomeState {
       selectedCategoryId: selectedCategoryId is _Sentinel
           ? this.selectedCategoryId
           : selectedCategoryId as int?,
+      selectedSubcategory: selectedSubcategory is _Sentinel
+          ? this.selectedSubcategory
+          : selectedSubcategory as String?,
       errorMessage: errorMessage is _Sentinel
           ? this.errorMessage
           : errorMessage as String?,

@@ -1,4 +1,3 @@
-```markdown
 ---
 name: animation-choreography
 description: >
@@ -177,4 +176,3 @@ Timeline:
 - ❌ Animation duration > 600ms → feels sluggish
 - ❌ Animation on EVERY scroll pixel → use `NotificationListener` with throttle
 
-```

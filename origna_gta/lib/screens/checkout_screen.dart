@@ -256,6 +256,8 @@ class _CheckoutContent extends ConsumerWidget {
                       const SizedBox(height: 28),
                       _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
                       const SizedBox(height: 28),
+                      _CouponSection(subtotalCents: (subtotal * 100).round()),
+                      const SizedBox(height: 28),
                       _OrderSummary(items: items, subtotal: subtotal, state: digitalProvince),
                       const SizedBox(height: 40),
                     ],
@@ -273,10 +275,13 @@ class _CheckoutContent extends ConsumerWidget {
       return _NoAddressView(onRefreshShipping: onRefreshShipping);
     }
 
+    final couponDiscountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
+    final discount = couponDiscountCents / 100.0;
+    final effectiveSubtotal = (subtotal - discount).clamp(0.0, double.infinity);
     final taxRate = getTaxRate(address.state);
-    final taxableAmount = subtotal + shippingCost; // GST/HST applies to shipping in Canada
+    final taxableAmount = effectiveSubtotal + shippingCost; // GST/HST applies to shipping in Canada
     final tax = taxableAmount * taxRate;
-    final totalWithTax = subtotal + tax + shippingCost;
+    final totalWithTax = effectiveSubtotal + tax + shippingCost;
 
     return Container(
       decoration: BoxDecoration(
@@ -317,6 +322,8 @@ class _CheckoutContent extends ConsumerWidget {
                     const SizedBox(height: 28),
                   ],
                   _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
+                  const SizedBox(height: 28),
+                  _CouponSection(subtotalCents: (subtotal * 100).round()),
                   const SizedBox(height: 28),
                   _OrderSummary(items: items, subtotal: subtotal, state: address.state),
                   const SizedBox(height: 40),
@@ -678,6 +685,7 @@ class _OrderSummary extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 8),
+              _buildCouponDiscountRow(ref),
               ..._buildTaxBreakdown(state, subtotal + shippingCost),
               const SizedBox(height: 8),
               Row(
@@ -706,11 +714,16 @@ class _OrderSummary extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('checkout.estimated_total'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text(
-                    // GST/HST applies to shipping in Canada — match _buildTaxBreakdown base
-                    '\$${(subtotal + (getTaxRate(state) * (subtotal + shippingCost)) + shippingCost).toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: DesignTokens.primary),
-                  ),
+                  Builder(builder: (context) {
+                    final discountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
+                    final discount = discountCents / 100.0;
+                    final effective = (subtotal - discount).clamp(0.0, double.infinity);
+                    final total = effective + (getTaxRate(state) * (effective + shippingCost)) + shippingCost;
+                    return Text(
+                      '\$${total.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: DesignTokens.primary),
+                    );
+                  }),
                 ],
               ),
               const SizedBox(height: 8),
@@ -722,6 +735,28 @@ class _OrderSummary extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCouponDiscountRow(WidgetRef ref) {
+    final discountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
+    final couponCode = ref.watch(checkoutStateProvider.select((s) => s.couponCode));
+    if (discountCents <= 0 || couponCode == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_offer_rounded, size: 14, color: DesignTokens.success),
+              const SizedBox(width: 4),
+              Text('Coupon ($couponCode)', style: const TextStyle(fontSize: 14, color: DesignTokens.success)),
+            ],
+          ),
+          Text('-\$${(discountCents / 100.0).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: DesignTokens.success, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 
@@ -747,6 +782,92 @@ class _OrderSummary extends ConsumerWidget {
     });
 
     return widgets;
+  }
+}
+
+// ============================================================================
+// COUPON SECTION (N-07)
+// ============================================================================
+
+class _CouponSection extends ConsumerStatefulWidget {
+  final int subtotalCents;
+
+  const _CouponSection({required this.subtotalCents});
+
+  @override
+  ConsumerState<_CouponSection> createState() => _CouponSectionState();
+}
+
+class _CouponSectionState extends ConsumerState<_CouponSection> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final couponCode = ref.watch(checkoutStateProvider.select((s) => s.couponCode));
+    final isLoading = ref.watch(checkoutStateProvider.select((s) => s.isCouponLoading));
+    final couponError = ref.watch(checkoutStateProvider.select((s) => s.couponError));
+    final notifier = ref.read(checkoutStateProvider.notifier);
+    final applied = couponCode != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Promo Code', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                enabled: !applied && !isLoading,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  hintText: 'Enter promo code',
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
+                  errorText: couponError,
+                  prefixIcon: const Icon(Icons.local_offer_outlined, size: 20),
+                  suffixIcon: applied
+                      ? Icon(Icons.check_circle, color: DesignTokens.success, size: 20)
+                      : null,
+                ),
+                onSubmitted: (_) => _apply(notifier),
+              ),
+            ),
+            const SizedBox(width: 10),
+            applied
+                ? TextButton(
+                    onPressed: () {
+                      _controller.clear();
+                      notifier.removeCoupon();
+                    },
+                    child: const Text('Remove', style: TextStyle(color: DesignTokens.error)),
+                  )
+                : ElevatedButton(
+                    key: const Key('checkout_apply_coupon_button'),
+                    onPressed: isLoading ? null : () => _apply(notifier),
+                    style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: isLoading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Apply'),
+                  ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _apply(CheckoutNotifier notifier) {
+    final code = _controller.text.trim();
+    if (code.isEmpty) return;
+    notifier.applyCoupon(code, widget.subtotalCents);
   }
 }
 

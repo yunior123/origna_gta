@@ -1,4 +1,3 @@
-```markdown
 ---
 name: glassmorphism-toolkit
 description: >
@@ -165,4 +164,3 @@ GlassContainer(
 )
 ```
 
-```

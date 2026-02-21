@@ -1,3 +1,8 @@
+---
+name: e2e-debugging
+description: Comprehensive guide for debugging Playwright E2E tests against Firebase Emulators + Stripe CLI. Load before investigating any E2E test failure.
+---
+
 # Skill: E2E Debugging Methodology
 
 > Comprehensive guide for debugging Playwright E2E tests against Firebase Emulators + Stripe CLI.

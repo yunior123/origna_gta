@@ -9,7 +9,6 @@ Usage:
   python audit/run_hooks.py --hook payment,auth       # Run multiple hooks
   python audit/run_hooks.py --pre-commit              # Pre-commit mode (fast)
   python audit/run_hooks.py --list                    # List all available hooks
-  python audit/run_hooks.py --provider kimi           # Use Kimi instead of Claude
   python audit/run_hooks.py --sequential              # Disable parallel execution
   python audit/run_hooks.py --hook schema-sync --no-llm  # Fast local-only check
 
@@ -108,41 +107,35 @@ Available hooks:
         help="List all available hooks and exit",
     )
     parser.add_argument(
-        "--provider", "-p",
-        choices=["anthropic", "deepseek"],
-        default="anthropic",
-        help="LLM provider (anthropic: Claude Opus 4, deepseek: DeepSeek Chat)",
+        "--no-validate",
+        action="store_true",
+        help="Skip validation after applying fixes",
     )
     parser.add_argument(
-        "--sequential", "-s",
+        "--sequential",
         action="store_true",
-        help="Run hooks sequentially instead of in parallel",
+        help="Disable parallel execution",
     )
     parser.add_argument(
         "--no-report",
         action="store_true",
-        help="Don't save reports to disk",
+        help="Do not save reports to disk",
     )
     parser.add_argument(
-        "--fix", "-f",
+        "--fix",
         action="store_true",
-        help="Auto-fix findings after audit using Claude CLI",
+        help="Automatically apply fixes for findings",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Preview auto-fixes without modifying files (requires --fix)",
+        help="Preview fixes without writing to files",
     )
     parser.add_argument(
         "--min-severity",
-        choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"],
-        default="MEDIUM",
-        help="Minimum severity to auto-fix (default: MEDIUM)",
-    )
-    parser.add_argument(
-        "--no-validate",
-        action="store_true",
-        help="Skip validation after applying fixes",
+        choices=["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+        default="LOW",
+        help="Minimum severity level to fix",
     )
 
     args = parser.parse_args()
@@ -175,7 +168,6 @@ Available hooks:
         changed_only=args.changed or args.staged,
         staged_only=args.staged,
         parallel=not args.sequential,
-        provider=args.provider,
     )
 
     results = runner.run()

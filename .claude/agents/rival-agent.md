@@ -1,6 +1,6 @@
 ---
 name: rival-agent
-description: Competitive intelligence agent. Fetches known features, patterns, and UX flows from Amazon, AliExpress, Shopify, eBay, Etsy, Walmart, Temu, Shein, Mercado Libre, Wish, Rakuten, and Flipkart — then compares against our app to suggest critical fixes and high-value features.
+description: Competitive intelligence agent. Fetches known features, patterns, and UX flows from Amazon, AliExpress, Shopify, eBay, Etsy, Walmart, Temu, Shein, Mercado Libre, Wish, Rakuten, Instacart and Flipkart — then compares against our app to suggest critical fixes and high-value features.
 tools: Read, Grep, Glob, Bash, WebSearch
 model: opus
 memory: project

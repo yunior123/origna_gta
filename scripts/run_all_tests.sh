@@ -121,7 +121,7 @@ echo ""
 
 echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║          ALL TESTS PASSED ✓                  ║${NC}"
-echo -e "${GREEN}║   Production Ready - Kimi 2.5 Audit Ready    ║${NC}"
+echo -e "${GREEN}║   Production Ready - Audit Ready             ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 

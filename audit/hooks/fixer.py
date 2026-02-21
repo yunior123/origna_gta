@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Optional
 
 from .config import (
-    PROJECT_ROOT, ANTHROPIC_MODEL, DEEPSEEK_MODEL, DEEPSEEK_URL,
+    PROJECT_ROOT, ANTHROPIC_MODEL,
     MAX_OUTPUT_TOKENS_FIX, CRITICAL, HIGH, MEDIUM, load_api_key
 )
 from .base import Finding, HookResult
@@ -270,13 +270,8 @@ class AutoFixer:
 Return the COMPLETE file with all issues fixed. Raw content only, no wrapping."""
 
     def _call_fixer(self, prompt: str) -> str:
-        """Call LLM via chosen provider to fix a file."""
-        if self.provider == "anthropic":
-            return self._call_fixer_anthropic(prompt)
-        elif self.provider == "deepseek":
-            return self._call_fixer_deepseek(prompt)
-        else:
-            raise ValueError(f"Unsupported provider: {self.provider}")
+        """Call LLM via Anthropic provider to fix a file."""
+        return self._call_fixer_anthropic(prompt)
 
     def _call_fixer_anthropic(self, prompt: str) -> str:
         """Call Claude Opus 4 via Anthropic API to fix a file."""
@@ -302,44 +297,6 @@ Return the COMPLETE file with all issues fixed. Raw content only, no wrapping.""
         print(f"     ✅ {len(output):,} chars | {used_in:,}+{used_out:,} tokens | ${actual_cost:.4f}")
         return output
 
-    def _call_fixer_deepseek(self, prompt: str) -> str:
-        """Call DeepSeek API to fix a file."""
-        api_key = load_api_key("deepseek")
-
-        print(f"     📡 Calling {DEEPSEEK_MODEL} for fix...")
-
-        # Clamp max_tokens for DeepSeek
-        max_out = min(MAX_OUTPUT_TOKENS_FIX, 4096)
-
-        payload = {
-            "model": DEEPSEEK_MODEL,
-            "messages": [
-                {"role": "system", "content": "You are a senior developer and security auditor. Your task is to fix specific issues in the provided code while maintaining strict functional correctness and style consistency."},
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0.1,  # Very low temp for code fixes
-            "max_tokens": max_out,
-            "stream": False,
-        }
-
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-
-        res = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=(30, 300))
-        if res.status_code != 200:
-            print(f"     ❌ DeepSeek Fix API Error ({res.status_code}): {res.text}")
-            res.raise_for_status()
-
-        data = res.json()
-        output = data["choices"][0]["message"]["content"]
-        
-        used_in = data.get("usage", {}).get("prompt_tokens", 0)
-        used_out = data.get("usage", {}).get("completion_tokens", 0)
-
-        print(f"     ✅ {len(output):,} chars | {used_in:,}+{used_out:,} tokens")
-        return output
 
     def _extract_code_block(self, response: str, rel_path: str) -> str:
         """

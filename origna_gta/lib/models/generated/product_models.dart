@@ -78,6 +78,9 @@ abstract class InventoryConfig with _$InventoryConfig {
     /// Alert threshold for low stock
     @Default(5) int lowStockThreshold,
 
+    /// When the last low-stock alert was sent
+    DateTime? lastLowStockAlertAt,
+
     /// How long to hold inventory during checkout (minutes)
     @Default(30) int reservationHoldMinutes,
   }) = _InventoryConfig;
@@ -176,6 +179,20 @@ abstract class Product with _$Product {
     @Default(0) int purchaseCount,
     @Default(false) bool isTrending,
     DateTime? trendingAt,
+
+    // === N-09: Product Variants ===
+    /// Whether this product has variants (size, color, etc.)
+    @Default(false) bool hasVariants,
+
+    /// List of variant objects: {variantId, optionValues, price?, stockQuantity, sku?, isActive}
+    @Default([]) List<Map<String, dynamic>> variants,
+
+    /// Variant option definitions: [{name: 'Size', values: ['S','M','L']}, ...]
+    @Default([]) List<Map<String, dynamic>> variantOptions,
+
+    // === N-11: Subcategories ===
+    /// Optional subcategory within the main category
+    @Default(null) String? subcategory,
   }) = _Product;
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
@@ -251,6 +268,14 @@ abstract class ProductCreate with _$ProductCreate {
     String? shipFromProvince,
     String? shipFromCountry,
     @Default(null) List<String>? shipFromCountries,
+
+    // === N-09: Product Variants ===
+    @Default(false) bool hasVariants,
+    @Default([]) List<Map<String, dynamic>> variants,
+    @Default([]) List<Map<String, dynamic>> variantOptions,
+
+    // === N-11: Subcategories ===
+    @Default(null) String? subcategory,
   }) = _ProductCreate;
 
   factory ProductCreate.fromJson(Map<String, dynamic> json) => _$ProductCreateFromJson(json);

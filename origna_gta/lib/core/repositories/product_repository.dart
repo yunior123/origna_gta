@@ -221,6 +221,7 @@ class FirebaseProductRepository implements ProductRepository {
   Future<ProductQueryResult> fetchProducts({
     String? searchQuery,
     int? categoryId,
+    String? subcategory,
     DocumentSnapshot? lastDocument,
     int pageSize = 20,
   }) async {
@@ -237,6 +238,10 @@ class FirebaseProductRepository implements ProductRepository {
 
     if (categoryId != null) {
       query = query.where(Fields.categoryId, isEqualTo: categoryId);
+    }
+
+    if (subcategory != null && subcategory.isNotEmpty) {
+      query = query.where(Fields.subcategory, isEqualTo: subcategory);
     }
 
     query = query.orderBy(Fields.createdAt, descending: true).limit(pageSize);
@@ -301,9 +306,8 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<String?> getUploadUrl(String fileName) async {
-    // BUG: 'get_r2_presigned_url' endpoint not found in backend - verify correct endpoint name
     final result = await _functions
-        .httpsCallable(CloudFunctionEndpoints.getR2PresignedUrl)
+        .httpsCallable(CloudFunctionEndpoints.uploadProductImages)
         .call({Fields.fileName: fileName});
     return result.data[Fields.uploadUrl];
   }
@@ -525,6 +529,7 @@ abstract class ProductRepository {
   Future<ProductQueryResult> fetchProducts({
     String? searchQuery,
     int? categoryId,
+    String? subcategory,
     DocumentSnapshot? lastDocument,
     int pageSize = 20,
   });

@@ -167,6 +167,29 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
+  /// Apply a coupon code — validates server-side and stores discount in state.
+  Future<void> applyCoupon(String code, int subtotalCents) async {
+    final trimmed = code.trim().toUpperCase();
+    if (trimmed.isEmpty) return;
+    state = state.copyWith(isCouponLoading: true, clearCouponError: true);
+    try {
+      final functions = _ref.read(firebaseFunctionsProvider);
+      final result = await functions.httpsCallable(CloudFunctionEndpoints.applyCoupon).call({
+        Fields.couponCode: trimmed,
+        'cartSubtotalCents': subtotalCents,
+      });
+      final data = (result.data as Map<Object?, Object?>).cast<String, dynamic>();
+      final discountCents = (data['discountAmountCents'] as num?)?.toInt() ?? 0;
+      state = state.copyWith(couponCode: trimmed, couponDiscountCents: discountCents, isCouponLoading: false);
+    } on FirebaseFunctionsException catch (e) {
+      state = state.copyWith(isCouponLoading: false, couponError: e.message ?? 'Invalid coupon code');
+    } catch (_) {
+      state = state.copyWith(isCouponLoading: false, couponError: 'Unable to apply coupon. Please try again.');
+    }
+  }
+
+  void removeCoupon() => state = state.copyWith(clearCoupon: true, clearCouponError: true);
+
   void setPaymentProvider(String provider) {
     if (provider == PaymentProviderValues.stripe) {
       state = state.copyWith(paymentProvider: provider);
@@ -250,6 +273,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         Fields.deliveryInstructions: deliveryInstructions,
         // Idempotency key — prevents double-charges on retry/race
         ApiKeys.idempotencyKey: idempotencyKey,
+        // Coupon code — backend validates and applies discount
+        if (state.couponCode != null) Fields.couponCode: state.couponCode,
       };
 
       // Use circuit breaker for Stripe checkout calls

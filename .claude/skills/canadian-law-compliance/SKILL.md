@@ -1,3 +1,8 @@
+---
+name: canadian-law-compliance
+description: Complete Canadian law compliance reference for OrignaGTA. Covers federal and provincial laws (PIPEDA, CASL, CDSA, etc.). Load before editing legal pages, email templates, checkout flows, or consent mechanisms.
+---
+
 # Skill: Canadian Law Compliance
 
 ## Description

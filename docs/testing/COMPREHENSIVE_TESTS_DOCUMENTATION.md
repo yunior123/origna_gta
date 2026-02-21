@@ -348,7 +348,7 @@ jobs:
 
 ---
 
-## 🎁 Résultats Audit Kimi 2.5
+## 🎁 Résultats Audit
 
 **Prêt pour audit** avec:
 - ✅ **122 tests** (87 backend + 35 frontend)
@@ -363,5 +363,5 @@ jobs:
 ---
 
 **Date:** 03 Février 2026  
-**Statut:** ✅ Complet - Prêt pour audit Kimi 2.5  
+**Statut:** ✅ Complet - Prêt pour audit  
 **Score:** 10/10 - Bullet-proof 🛡️

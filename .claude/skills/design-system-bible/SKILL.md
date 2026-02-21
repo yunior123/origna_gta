@@ -1,4 +1,3 @@
-```markdown
 ---
 name: design-system-bible
 description: >
@@ -90,4 +89,3 @@ ModernButton(text: 'Cancel', onPressed: _cancel, isOutline: true)
 | Active/Selected | `DesignTokens.primary` | `Icons.check_circle` |
 | Neutral/Disabled | `DesignTokens.outline` | `Icons.remove_circle_outline` |
 
-```

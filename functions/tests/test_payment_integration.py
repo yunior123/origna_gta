@@ -49,7 +49,8 @@ class TestPaymentFlow(unittest.TestCase):
         mock_get_rate_limiter.return_value = mock_rate_limiter
 
         mock_stripe.PaymentIntent.retrieve.return_value = Mock(status="requires_capture", amount=5000)
-        mock_stripe.PaymentIntent.capture = MagicMock()
+        mock_stripe.PaymentIntent.capture = MagicMock(return_value=Mock(status="succeeded", latest_charge="ch_test_123"))
+        mock_stripe.Charge.retrieve.return_value = Mock(dispute=None)
 
         req = MagicMock()
         req.auth.uid = "buyer_123"

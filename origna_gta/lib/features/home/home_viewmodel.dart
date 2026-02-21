@@ -57,6 +57,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       final result = await repository.fetchProducts(
         searchQuery: state.searchQuery,
         categoryId: state.selectedCategoryId,
+        subcategory: state.selectedSubcategory,
         lastDocument: state.lastDocument,
       );
 
@@ -101,6 +102,21 @@ class HomeViewModel extends StateNotifier<HomeState> {
     if (!mounted) return;
     state = state.copyWith(
       selectedCategoryId: categoryId,
+      selectedSubcategory: null, // Reset subcategory when category changes
+      products: [],
+      lastDocument: null,
+      hasMore: true,
+      isLoading: false,
+      isLoadingMore: false,
+      errorMessage: null,
+    );
+    loadProducts();
+  }
+
+  void onSubcategorySelected(String? subcategory) {
+    if (!mounted) return;
+    state = state.copyWith(
+      selectedSubcategory: subcategory,
       products: [],
       lastDocument: null,
       hasMore: true,

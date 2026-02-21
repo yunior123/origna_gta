@@ -48,6 +48,10 @@ class CheckoutState {
   final String? idempotencyKey;
   final String? checkoutError;
   final String paymentProvider;
+  final String? couponCode;
+  final int couponDiscountCents;
+  final bool isCouponLoading;
+  final String? couponError;
 
   const CheckoutState({
     this.address,
@@ -62,6 +66,10 @@ class CheckoutState {
     this.idempotencyKey,
     this.checkoutError,
     this.paymentProvider = PaymentProviderValues.stripe,
+    this.couponCode,
+    this.couponDiscountCents = 0,
+    this.isCouponLoading = false,
+    this.couponError,
   });
 
   /// Total shipping cost including delivery speed surcharge
@@ -88,9 +96,15 @@ class CheckoutState {
     String? idempotencyKey,
     String? checkoutError,
     String? paymentProvider,
+    String? couponCode,
+    int? couponDiscountCents,
+    bool? isCouponLoading,
+    String? couponError,
     bool clearShippingError = false,
     bool clearCheckoutError = false,
     bool clearIdempotencyKey = false,
+    bool clearCoupon = false,
+    bool clearCouponError = false,
   }) {
     return CheckoutState(
       address: address ?? this.address,
@@ -105,6 +119,10 @@ class CheckoutState {
       idempotencyKey: clearIdempotencyKey ? null : (idempotencyKey ?? this.idempotencyKey),
       checkoutError: clearCheckoutError ? null : (checkoutError ?? this.checkoutError),
       paymentProvider: paymentProvider ?? this.paymentProvider,
+      couponCode: clearCoupon ? null : (couponCode ?? this.couponCode),
+      couponDiscountCents: clearCoupon ? 0 : (couponDiscountCents ?? this.couponDiscountCents),
+      isCouponLoading: isCouponLoading ?? this.isCouponLoading,
+      couponError: clearCouponError ? null : (couponError ?? this.couponError),
     );
   }
 }

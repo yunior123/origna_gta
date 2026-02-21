@@ -1,4 +1,3 @@
-```skill
 ---
 name: infra-verification
 description: Production readiness verification agent — validates Firestore rules, indexes, Cloud Functions, Stripe webhooks, API keys, and all infrastructure matches between project files and live APIs. Uses gcloud CLI, firebase CLI, and stripe CLI to compare local vs deployed state.
@@ -254,4 +253,3 @@ python audit/scripts/verify_infra.py --domain functions
 | Cron | `functions/handlers/cron_jobs.py` | `gcloud scheduler jobs list` |
 | Hosting | `firebase.json` | `firebase hosting:channel:list` |
 
-```

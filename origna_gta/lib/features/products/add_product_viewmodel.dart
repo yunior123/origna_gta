@@ -53,6 +53,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     models.InventoryConfig? inventory,
     // Product status
     String? status,
+    // Subcategory (N-11)
+    String? subcategory,
   }) async {
     // Bug #27: Prevent double-submit
     if (state.isLoading) return;
@@ -280,8 +282,12 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         inventory: inventory,
         status: status ?? ProductStatusValues.active,
         sellerSku: state.sellerSku,
+        subcategory: subcategory,
         warehouseIds: useWarehouses ? state.selectedWarehouseIds : null,
         warehouseStock: useWarehouses && state.warehouseStockMap.isNotEmpty ? state.warehouseStockMap : null,
+        hasVariants: state.hasVariants,
+        variants: state.hasVariants ? state.variants : const [],
+        variantOptions: state.hasVariants ? state.variantOptions : const [],
       );
 
       await productRepository.addProductWithId(tempProductId, product);
@@ -390,6 +396,85 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       // Restore previously saved express/same-day state
       state = state.copyWith(freeShipping: false, expressEnabled: state.savedExpressEnabled, sameDayEnabled: state.savedSameDayEnabled);
     }
+  }
+
+  void toggleHasVariants(bool value) {
+    if (value) {
+      state = state.copyWith(hasVariants: true);
+    } else {
+      state = state.copyWith(hasVariants: false, variantOptions: [], variants: []);
+    }
+  }
+
+  void addVariantOption(String name, List<String> values) {
+    final options = List<Map<String, dynamic>>.from(state.variantOptions);
+    options.add({'name': name, 'values': values});
+    state = state.copyWith(variantOptions: options);
+    _regenerateVariants();
+  }
+
+  void removeVariantOption(int index) {
+    final options = List<Map<String, dynamic>>.from(state.variantOptions);
+    options.removeAt(index);
+    state = state.copyWith(variantOptions: options);
+    _regenerateVariants();
+  }
+
+  void updateVariantOption(int index, String name, List<String> values) {
+    final options = List<Map<String, dynamic>>.from(state.variantOptions);
+    options[index] = {'name': name, 'values': values};
+    state = state.copyWith(variantOptions: options);
+    _regenerateVariants();
+  }
+
+  void updateVariantField(int index, String field, dynamic value) {
+    final variants = List<Map<String, dynamic>>.from(state.variants);
+    variants[index] = Map<String, dynamic>.from(variants[index])..[field] = value;
+    state = state.copyWith(variants: variants);
+  }
+
+  /// Auto-generates all variant combinations from variantOptions.
+  /// Preserves price/stock/sku from existing variants where optionValues match.
+  void _regenerateVariants() {
+    final options = state.variantOptions;
+    if (options.isEmpty) {
+      state = state.copyWith(variants: []);
+      return;
+    }
+    // Generate cartesian product of all option values
+    List<Map<String, String>> combos = [{}];
+    for (final opt in options) {
+      final name = opt['name'] as String;
+      final values = (opt['values'] as List).cast<String>();
+      final newCombos = <Map<String, String>>[];
+      for (final combo in combos) {
+        for (final val in values) {
+          newCombos.add({...combo, name: val});
+        }
+      }
+      combos = newCombos;
+    }
+
+    // Map existing variants by their optionValues for preservation
+    final existingByKey = <String, Map<String, dynamic>>{};
+    for (final v in state.variants) {
+      final ov = v['optionValues'] as Map<String, dynamic>? ?? {};
+      existingByKey[ov.entries.map((e) => '${e.key}=${e.value}').join('|')] = v;
+    }
+
+    final newVariants = combos.map((combo) {
+      final key = combo.entries.map((e) => '${e.key}=${e.value}').join('|');
+      final existing = existingByKey[key];
+      return <String, dynamic>{
+        'optionValues': combo,
+        'price': existing?['price'],
+        'stockQuantity': existing?['stockQuantity'] ?? 0,
+        'sku': existing?['sku'],
+        'isActive': existing?['isActive'] ?? true,
+      };
+    }).toList();
+
+    state = state.copyWith(variants: newVariants);
   }
 
   void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);

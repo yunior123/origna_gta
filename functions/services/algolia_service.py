@@ -108,6 +108,15 @@ def format_product_for_algolia(product_id: str, product_data: dict | Product) ->
         else:
             algolia_object[Fields.SELLER_ADDRESS] = seller_address
 
+    # shipFrom* fields for warehouse products
+    for field in [Fields.SHIP_FROM_CITY, Fields.SHIP_FROM_PROVINCE, Fields.SHIP_FROM_COUNTRY]:
+        val = data.get(field)
+        if val:
+            algolia_object[field] = val
+    countries = data.get(Fields.SHIP_FROM_COUNTRIES)
+    if countries:
+        algolia_object[Fields.SHIP_FROM_COUNTRIES] = countries
+
     # Optional fields
     optional_fields = [
         Fields.WEIGHT_KG,
@@ -118,6 +127,11 @@ def format_product_for_algolia(product_id: str, product_data: dict | Product) ->
         Fields.DELIVERY_OPTIONS,
         Fields.ESTIMATED_SHIP_DAYS,
         Fields.MINIMUM_ORDER_QUANTITY,
+        # N-11: Subcategory for faceted search
+        Fields.SUBCATEGORY,
+        # N-09: Variant metadata (for display, not stock)
+        Fields.HAS_VARIANTS,
+        Fields.VARIANT_OPTIONS,
     ]
     for field in optional_fields:
         if field in data:
@@ -195,6 +209,50 @@ def index_product(product_id: str, product_data: dict, max_retries: int = AppCon
 
     # All retries exhausted — log to dead letter queue
     _log_sync_failure(product_id, "index", str(last_error), max_retries)
+    return False
+
+
+def partial_update_product(product_id: str, fields: dict, max_retries: int = AppConfig.ALGOLIA_MAX_RETRIES) -> bool:
+    """
+    Partially update specific fields in Algolia without replacing the full record.
+    Use for stock/status-only changes to avoid sending all 20+ fields.
+
+    Args:
+        product_id: Firestore document ID (used as objectID in Algolia)
+        fields: Dict of field names to new values (e.g., {"stockQuantity": 5})
+        max_retries: Number of retry attempts
+
+    Returns:
+        True if successful, False otherwise
+    """
+    import time
+
+    if not products_index:
+        logger.warning("⚠️  Algolia not configured - skipping partial update")
+        return False
+
+    body = {"objectID": product_id, **fields}
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            _run_async(
+                products_index.partial_update_object(
+                    index_name=_get_index_name(),
+                    object_id=product_id,
+                    attributes_to_update=body,
+                )
+            )
+            logger.info(f"  ✅ Partially updated product {product_id} in Algolia: {list(fields.keys())}")
+            return True
+        except Exception as e:
+            last_error = e
+            wait = 2**attempt
+            logger.warning(f"  ⚠️  Algolia partial update attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(wait)
+
+    _log_sync_failure(product_id, "partial_update", str(last_error), max_retries)
     return False
 
 
@@ -319,6 +377,8 @@ def configure_algolia_index():
                         Fields.IS_ACTIVE,
                         Fields.FREE_SHIPPING,
                         Fields.IS_PERISHABLE,
+                        f"filterOnly({Fields.SHIP_FROM_COUNTRY})",
+                        f"filterOnly({Fields.SHIP_FROM_COUNTRIES})",
                     ],
                     "customRanking": [
                         f"desc({Fields.RATING})",  # Sort by rating first
@@ -350,6 +410,10 @@ def configure_algolia_index():
                         Fields.IS_PERISHABLE,
                         Fields.MINIMUM_ORDER_QUANTITY,
                         Fields.FREE_SHIPPING,
+                        Fields.SHIP_FROM_CITY,
+                        Fields.SHIP_FROM_PROVINCE,
+                        Fields.SHIP_FROM_COUNTRY,
+                        Fields.SHIP_FROM_COUNTRIES,
                     ],
                     "highlightPreTag": "<mark>",
                     "highlightPostTag": "</mark>",

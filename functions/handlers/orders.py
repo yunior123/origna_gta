@@ -672,13 +672,21 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not order_data.get(Fields.STOCK_RESTORED, False):
         for item in order_data[Fields.ITEMS]:
             product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-            cancel_batch.update(
-                product_ref,
-                {
-                    Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                },
-            )
+            stock_patch: dict = {
+                Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
+                Fields.UPDATED_AT: get_server_timestamp(),
+            }
+            # Restore per-warehouse stock to keep warehouseStock map in sync
+            fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
+            if fulfillment_wh:
+                stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(item[Fields.QUANTITY])
+                # Also restore inventoryLevels subcollection
+                inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+                cancel_batch.set(inv_ref, {
+                    Fields.AVAILABLE_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
+                    Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                }, merge=True)
+            cancel_batch.update(product_ref, stock_patch)
 
     cancel_batch.update(
         order_ref,

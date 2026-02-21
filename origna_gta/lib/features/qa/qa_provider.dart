@@ -8,7 +8,7 @@ final qaControllerProvider = StateNotifierProvider<QAController, AsyncValue<void
   return QAController(ref.watch(qaRepositoryProvider), ref);
 });
 
-final qaListProvider = StreamProvider.family<List<QAModel>, String>((ref, productId) {
+final qaListProvider = StreamProvider.autoDispose.family<List<QAModel>, String>((ref, productId) {
   final repo = ref.watch(qaRepositoryProvider);
   return repo.watchQA(productId);
 });

@@ -19,7 +19,9 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:origna_gta/widgets/rating_histogram.dart';
 
 class ProductDetailScreen extends ConsumerWidget {
   final String productId;
@@ -182,6 +184,13 @@ class ProductDetailScreen extends ConsumerWidget {
                                   ],
                                 ),
                               ),
+                              if (product.ratingCount > 0) ...[
+                                const SizedBox(width: 8),
+                                Text(
+                                  '(${product.ratingCount})',
+                                  style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary),
+                                ),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 20),
@@ -234,9 +243,9 @@ class ProductDetailScreen extends ConsumerWidget {
                           ),
                           if (product.isDigital) ...[const SizedBox(height: 12), _DigitalProductInfo(product: product)],
                           const SizedBox(height: 28),
-                          _QuantitySelector(viewModel: viewModel),
-                          const SizedBox(height: 24),
-                          _AddToCartButton(productId: productId, sellerId: product.sellerId, stockQuantity: product.stockQuantity),
+                          _VariantAndCartSection(product: product, viewModel: viewModel),
+                          const SizedBox(height: 32),
+                          _ReviewsSection(productId: productId, ratingCount: product.ratingCount, averageRating: product.rating),
                           const SizedBox(height: 32),
                           _QASection(productId: productId, sellerId: product.sellerId),
                           const SizedBox(height: 40),
@@ -327,6 +336,122 @@ class ProductDetailScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ============================================================================
+// VARIANT SELECTOR + CART SECTION (N-09)
+// ============================================================================
+
+class _VariantAndCartSection extends StatefulWidget {
+  final Product product;
+  final ProductDetailViewModel viewModel;
+
+  const _VariantAndCartSection({required this.product, required this.viewModel});
+
+  @override
+  State<_VariantAndCartSection> createState() => _VariantAndCartSectionState();
+}
+
+class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
+  /// Selected option per option type name. e.g. {"Size": "M", "Color": "Red"}
+  Map<String, String> _selectedOptions = {};
+
+  List<Map<String, dynamic>> get _variantOptions =>
+      (widget.product.variantOptions).whereType<Map<String, dynamic>>().toList();
+
+  List<Map<String, dynamic>> get _variants =>
+      (widget.product.variants).whereType<Map<String, dynamic>>().toList();
+
+  /// Find the variant that matches currently selected options.
+  Map<String, dynamic>? get _matchedVariant {
+    if (_variants.isEmpty || _selectedOptions.isEmpty) return null;
+    for (final v in _variants) {
+      bool match = true;
+      for (final entry in _selectedOptions.entries) {
+        final optName = entry.key.toLowerCase();
+        final optVal = entry.value;
+        // Variant stores options as lowercase keys
+        if (v[optName] != optVal) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return v;
+    }
+    return null;
+  }
+
+  bool get _allOptionsSelected {
+    if (_variantOptions.isEmpty) return true;
+    return _variantOptions.every((opt) {
+      final name = opt['name'] as String? ?? '';
+      return _selectedOptions.containsKey(name);
+    });
+  }
+
+  int get _effectiveStock {
+    if (!widget.product.hasVariants) return widget.product.stockQuantity;
+    final matched = _matchedVariant;
+    if (matched == null) return 0;
+    return (matched['stockQuantity'] as num?)?.toInt() ?? 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasVariants = widget.product.hasVariants && _variantOptions.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasVariants) ...[
+          ..._variantOptions.map((opt) {
+            final optName = opt['name'] as String? ?? '';
+            final values = (opt['values'] as List?)?.whereType<String>().toList() ?? <String>[];
+            final selected = _selectedOptions[optName];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(optName, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: values.map((val) {
+                      final isSelected = selected == val;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedOptions = {..._selectedOptions, optName: val}),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? DesignTokens.primary : (isDark ? Colors.grey.shade800 : Colors.white),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.4), width: isSelected ? 2 : 1),
+                          ),
+                          child: Text(val, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isSelected ? Colors.white : (isDark ? Colors.white : DesignTokens.textPrimary))),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (!_allOptionsSelected)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text('Please select all options', style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic)),
+            ),
+        ],
+        _QuantitySelector(viewModel: widget.viewModel),
+        const SizedBox(height: 24),
+        _AddToCartButton(productId: widget.product.productId, sellerId: widget.product.sellerId, stockQuantity: _effectiveStock),
+      ],
     );
   }
 }
@@ -603,20 +728,20 @@ class _DigitalProductInfo extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.deepPurple.withValues(alpha: 0.06),
+        color: DesignTokens.digital.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.deepPurple.withValues(alpha: 0.2)),
+        border: Border.all(color: DesignTokens.digital.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.download_outlined, size: 16, color: Colors.deepPurple),
+              const Icon(Icons.download_outlined, size: 16, color: DesignTokens.digital),
               const SizedBox(width: 6),
               Text(
                 product.digitalType == DigitalTypeValues.software ? 'Desktop Software' : 'Digital Book',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                style: const TextStyle(fontWeight: FontWeight.bold, color: DesignTokens.digital),
               ),
             ],
           ),
@@ -672,6 +797,305 @@ class _ImageDots extends ConsumerWidget {
     );
   }
 }
+
+// ============================================================================
+// REVIEWS — Provider + Section + Card (N-02, N-03, N-04)
+// ============================================================================
+
+/// Stream of up to 10 most recent product ratings, ordered by createdAt desc.
+final _productRatingsProvider = StreamProvider.autoDispose.family<List<Map<String, dynamic>>, String>(
+  (ref, productId) => FirebaseFirestore.instance
+      .collection(Collections.productRatings)
+      .where(Fields.productId, isEqualTo: productId)
+      .orderBy(Fields.createdAt, descending: true)
+      .limit(10)
+      .snapshots()
+      .map((snap) => snap.docs.map((d) => {...d.data(), Fields.ratingId: d.id}).toList()),
+);
+
+class _ReviewsSection extends ConsumerWidget {
+  final String productId;
+  final int ratingCount;
+  final double averageRating;
+
+  const _ReviewsSection({
+    required this.productId,
+    required this.ratingCount,
+    required this.averageRating,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ratingsAsync = ref.watch(_productRatingsProvider(productId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Reviews',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white : DesignTokens.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ratingsAsync.when(
+          data: (ratings) {
+            if (ratingCount == 0 && ratings.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: DesignTokens.outlineVariant),
+                ),
+                child: Center(
+                  child: Text(
+                    'No reviews yet. Be the first to rate this product.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: DesignTokens.textSecondary),
+                  ),
+                ),
+              );
+            }
+
+            // Build star counts from loaded ratings
+            final counts = List<int>.filled(5, 0);
+            for (final r in ratings) {
+              final star = (r[Fields.rating] as num?)?.toInt() ?? 0;
+              if (star >= 1 && star <= 5) counts[5 - star]++;
+            }
+            final total = ratingCount > 0 ? ratingCount : ratings.length;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Histogram
+                if (ratingCount > 0 || ratings.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: RatingHistogram(counts: counts, total: total),
+                  ),
+
+                // Review cards
+                ...ratings.map((review) => _ReviewCard(
+                      review: review,
+                      productId: productId,
+                    )),
+
+                if (ratings.isEmpty && ratingCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      "$ratingCount rating${ratingCount == 1 ? '' : 's'} (no text reviews yet)",
+                      style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                    ),
+                  ),
+              ],
+            );
+          },
+          loading: () => const Center(child: ModernLoadingIndicator()),
+          error: (e, _) => Text(
+            'Could not load reviews.',
+            style: TextStyle(color: DesignTokens.error, fontSize: 13),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReviewCard extends ConsumerStatefulWidget {
+  final Map<String, dynamic> review;
+  final String productId;
+
+  const _ReviewCard({required this.review, required this.productId});
+
+  @override
+  ConsumerState<_ReviewCard> createState() => _ReviewCardState();
+}
+
+class _ReviewCardState extends ConsumerState<_ReviewCard> {
+  bool _votingHelpful = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final review = widget.review;
+    final ratingId = review[Fields.ratingId] as String? ?? '';
+    final comment = review[Fields.review] as String? ?? '';
+    final starValue = (review[Fields.rating] as num?)?.toInt() ?? 0;
+    final helpfulCount = (review[Fields.helpfulCount] as num?)?.toInt() ?? 0;
+    final sellerReply = review[Fields.sellerReply] as String?;
+    final userId = review[Fields.userId] as String? ?? '';
+    final reviewer = userId.length > 8 ? userId.substring(0, 8) : userId;
+    final reviewerLabel = reviewer.isNotEmpty ? 'User ${reviewer.toUpperCase()}' : 'Anonymous';
+    final createdAt = (review[Fields.createdAt] as Timestamp?)?.toDate();
+
+    if (comment.isEmpty && sellerReply == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade900 : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: DesignTokens.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row: reviewer + stars + date
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: DesignTokens.primary.withValues(alpha: 0.15),
+                child: Text(
+                  reviewerLabel.isNotEmpty ? reviewerLabel[0].toUpperCase() : '?',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: DesignTokens.primary),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(reviewerLabel, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    if (createdAt != null)
+                      Text(
+                        DateFormat.yMMMd().format(createdAt),
+                        style: const TextStyle(fontSize: 11, color: DesignTokens.textDisabled),
+                      ),
+                  ],
+                ),
+              ),
+              // Star display
+              Row(
+                children: List.generate(5, (i) => Icon(
+                  i < starValue ? Icons.star_rounded : Icons.star_border_rounded,
+                  size: 14,
+                  color: DesignTokens.warning,
+                )),
+              ),
+            ],
+          ),
+
+          // Review text
+          if (comment.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(comment, style: const TextStyle(fontSize: 14, height: 1.5)),
+          ],
+
+          // N-03: Seller reply
+          if (sellerReply != null && sellerReply.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.black.withValues(alpha: 0.3) : DesignTokens.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: DesignTokens.digital.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Seller Response',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: DesignTokens.digital,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(sellerReply, style: const TextStyle(fontSize: 13, height: 1.4)),
+                ],
+              ),
+            ),
+          ],
+
+          // N-04: Helpfulness voting
+          if (ratingId.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(
+                  'Helpful?',
+                  style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                ),
+                const SizedBox(width: 6),
+                _votingHelpful
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: ModernLoadingIndicator(size: 14, strokeWidth: 2, color: DesignTokens.primary, centered: false),
+                      )
+                    : TextButton(
+                        style: TextButton.styleFrom(
+                          minimumSize: Size.zero,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () => _voteHelpful(ratingId, true),
+                        child: Text(
+                          'Yes ($helpfulCount)',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _voteHelpful(String ratingId, bool helpful) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) {
+      if (mounted) showLoginPrompt(context);
+      return;
+    }
+    setState(() => _votingHelpful = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final functions = ref.read(firebaseFunctionsProvider);
+      await functions
+          .httpsCallable(CloudFunctionEndpoints.voteReviewHelpful)
+          .call({
+        Fields.ratingId: ratingId,
+        Fields.productId: widget.productId,
+        'helpful': helpful,
+      });
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text('Thanks for your feedback!'),
+            backgroundColor: DesignTokens.success,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Could not record vote. Please try again.'),
+            backgroundColor: DesignTokens.error,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _votingHelpful = false);
+    }
+  }
+}
+
 
 class _QACard extends ConsumerWidget {
   final QAModel qa;
@@ -887,7 +1311,7 @@ class _QASectionState extends ConsumerState<_QASection> {
               ],
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(child: ModernLoadingIndicator()),
           error: (e, _) => Text('Error loading Q&A: $e', style: const TextStyle(color: DesignTokens.error)),
         ),
       ],

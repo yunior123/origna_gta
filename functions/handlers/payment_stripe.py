@@ -71,11 +71,8 @@ logger = logging.getLogger(__name__)
 
 def _check_premium_from_sub(uid: str) -> bool:
     """P-03 FIX: Check premium status from authoritative subscriptions doc, not cached user field."""
-    sub_snap = get_db().collection(Collections.SUBSCRIPTIONS).document(uid).get()
-    if not sub_snap.exists:
-        return False
-    status = (sub_snap.to_dict() or {}).get(Fields.STATUS, "")
-    return status in SubscriptionStatusValues.PREMIUM_ACTIVE
+    from utils.premium_check import is_premium_authoritative
+    return is_premium_authoritative(uid, db=get_db())
 
 
 def get_tax_code_for_category(category_id):
@@ -224,6 +221,12 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
                                 break
                             restore = min(qty, remaining)
                             patch[f"{Fields.WAREHOUSE_STOCK}.{wh_id}"] = wh_stock + restore
+                            # Also restore inventoryLevels subcollection
+                            inv_ref = ref.collection(Collections.INVENTORY_LEVELS).document(wh_id)
+                            transaction.set(inv_ref, {
+                                Fields.AVAILABLE_QUANTITY: wh_stock + restore,
+                                Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                            }, merge=True)
                             remaining -= restore
 
                     transaction.update(ref, patch)
@@ -620,6 +623,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     actual_subtotal = 0
     sellers = set()
     seller_cache = {}  # Cache seller docs to avoid N+1 reads
+    warehouse_cache: dict[str, dict] = {}  # key: "sellerId:warehouseId" → warehouse data
 
     for item in items:
         # Check quantity limits
@@ -722,17 +726,54 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         if not isinstance(image_urls, list):
             image_urls = [str(image_urls)]
 
-        # Bug #3: Use product's sellerAddress FIRST (set at product creation),
-        # then fall back to seller profile businessAddress, then user address
-        raw_seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
-        if (
-            not raw_seller_address
-            or not isinstance(raw_seller_address, dict)
-            or not raw_seller_address.get(Fields.STREET)
-        ):
-            raw_seller_address = seller_profile.get(Fields.BUSINESS_ADDRESS, {})
+        # Address waterfall: warehouse → sellerAddress → businessAddress → user address → placeholder
+        raw_seller_address = None
+
+        # Step 1: Warehouse address (if product uses warehouses)
+        p_warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
+        p_warehouse_stock = product_data.get(Fields.WAREHOUSE_STOCK) or {}
+        if p_warehouse_ids and p_warehouse_stock:
+            # Pick primary warehouse (most stock)
+            primary_wh_id = max(p_warehouse_stock, key=lambda k: p_warehouse_stock.get(k, 0), default=None)
+            if primary_wh_id:
+                cache_key = f"{seller_id}:{primary_wh_id}"
+                if cache_key not in warehouse_cache:
+                    try:
+                        wh_doc = (
+                            get_db()
+                            .collection(Collections.USERS)
+                            .document(seller_id)
+                            .collection(Collections.WAREHOUSES)
+                            .document(primary_wh_id)
+                            .get()
+                        )
+                        warehouse_cache[cache_key] = wh_doc.to_dict() if wh_doc.exists else {}
+                    except Exception:
+                        warehouse_cache[cache_key] = {}
+                wh_data = warehouse_cache[cache_key]
+                wh_addr = wh_data.get("address") or {} if wh_data else {}
+                if wh_addr.get(Fields.CITY):
+                    raw_seller_address = wh_addr
+
+        # Step 2: Product's sellerAddress
         if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
-            raw_seller_address = seller_data.get(Fields.ADDRESS, {})
+            candidate = product_data.get(Fields.SELLER_ADDRESS, {})
+            if isinstance(candidate, dict) and candidate.get(Fields.STREET):
+                raw_seller_address = candidate
+
+        # Step 3: Seller profile businessAddress
+        if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
+            candidate = seller_profile.get(Fields.BUSINESS_ADDRESS, {})
+            if isinstance(candidate, dict) and candidate.get(Fields.STREET):
+                raw_seller_address = candidate
+
+        # Step 4: Seller user address
+        if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
+            candidate = seller_data.get(Fields.ADDRESS, {})
+            if isinstance(candidate, dict) and candidate.get(Fields.STREET):
+                raw_seller_address = candidate
+
+        # Step 5: Placeholder (last resort)
         if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
             raw_seller_address = {
                 Fields.STREET: PlaceholderAddressValues.UNKNOWN_TEXT,
@@ -914,19 +955,60 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # "Attempted read after write in a transaction" errors
     fulfillment_warehouse_ids: list[str | None] = [None] * len(validated_items)  # TASK 02: track per-item
 
+    # Pre-query inventoryLevels candidates per product (outside transaction for efficiency)
+    inventory_candidates: dict[str, list[tuple[str, int]]] = {}
+    for item in validated_items:
+        p_id = item[Fields.PRODUCT_ID]
+        if p_id not in inventory_candidates:
+            try:
+                inv_docs = (
+                    get_db()
+                    .collection(Collections.PRODUCTS)
+                    .document(p_id)
+                    .collection(Collections.INVENTORY_LEVELS)
+                    .order_by(Fields.AVAILABLE_QUANTITY, direction="DESCENDING")
+                    .limit(50)
+                    .get()
+                )
+                inventory_candidates[p_id] = [
+                    (d.id, (d.to_dict() or {}).get(Fields.AVAILABLE_QUANTITY, 0))
+                    for d in inv_docs
+                    if d.exists
+                ]
+            except Exception:
+                inventory_candidates[p_id] = []  # Fallback to warehouseStock map inside tx
+
     @get_transactional()
     def reserve_stock_transaction(transaction):
-        # Phase 1: Read ALL product snapshots first
+        # Phase 1: Read ALL product snapshots + inventoryLevel docs first
         product_refs = []
         product_snapshots = []
+        inv_refs_per_product: dict[str, list] = {}
+        inv_snaps_per_product: dict[str, list] = {}
+
         for item in validated_items:
-            product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+            p_id = item[Fields.PRODUCT_ID]
+            product_ref = get_db().collection(Collections.PRODUCTS).document(p_id)
             product_snapshot = product_ref.get(transaction=transaction)
             product_refs.append(product_ref)
             product_snapshots.append(product_snapshot)
 
+            # Read inventoryLevel docs inside transaction for consistency
+            if p_id not in inv_refs_per_product:
+                candidates = inventory_candidates.get(p_id, [])
+                refs = []
+                snaps = []
+                for wh_id, _ in candidates:
+                    inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(wh_id)
+                    inv_snap = inv_ref.get(transaction=transaction)
+                    refs.append(inv_ref)
+                    snaps.append(inv_snap)
+                inv_refs_per_product[p_id] = refs
+                inv_snaps_per_product[p_id] = snaps
+
         # Phase 2: Validate ALL stock levels and compute warehouse decrements
         updates = []
+        inv_level_writes: list[list[tuple]] = []  # per-item: [(inv_ref, new_qty), ...]
         for i, item in enumerate(validated_items):
             snapshot = product_snapshots[i]
             if not snapshot.exists:
@@ -936,7 +1018,30 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
             allow_backorder = product_data.get(Fields.INVENTORY, {}).get(Fields.ALLOW_BACKORDER, False)
 
-            if current_stock < item[Fields.QUANTITY] and not allow_backorder:
+            # N-09: Variant stock checking
+            variant_id = item.get(Fields.VARIANT_ID)
+            if product_data.get(Fields.HAS_VARIANTS, False):
+                if not variant_id:
+                    raise https_fn.HttpsError(
+                        "invalid-argument",
+                        f"Product {product_data[Fields.NAME]} has variants — you must select a variant before adding to cart",
+                    )
+                variants = product_data.get(Fields.VARIANTS, [])
+                variant = next((v for v in variants if v.get(Fields.VARIANT_ID) == variant_id), None)
+                if variant is None:
+                    raise https_fn.HttpsError("not-found", f"Variant {variant_id} not found")
+                if not variant.get("isActive", True):
+                    raise https_fn.HttpsError("failed-precondition", f"Selected variant is no longer available")
+                variant_stock = variant.get(Fields.STOCK_QUANTITY, 0)
+                if variant_stock < item[Fields.QUANTITY] and not allow_backorder:
+                    raise https_fn.HttpsError(
+                        "resource-exhausted",
+                        f"Stock changed: {product_data[Fields.NAME]} variant now has {variant_stock} available",
+                    )
+                item[Fields.VARIANT_ID] = variant_id
+                if Fields.VARIANT_OPTIONS in variant:
+                    item[Fields.VARIANT_OPTIONS] = variant[Fields.OPTION_VALUES]
+            elif current_stock < item[Fields.QUANTITY] and not allow_backorder:
                 raise https_fn.HttpsError(
                     "resource-exhausted",
                     f"Stock changed: {product_data[Fields.NAME]} now has {current_stock} available",
@@ -944,35 +1049,93 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
             qty = item[Fields.QUANTITY]
             new_total_stock = current_stock - qty
+            p_id = item[Fields.PRODUCT_ID]
 
-            # BUG-2 FIX: Also decrement warehouseStock to keep it in sync with stockQuantity.
-            # Strategy: drain from the warehouse with the most stock first (greedy).
-            warehouse_stock: dict = product_data.get(Fields.WAREHOUSE_STOCK) or {}
+            # Drain warehouse stock — use inventoryLevels if available, fallback to warehouseStock map
             warehouse_patches: dict = {}
-            if warehouse_stock:
-                sorted_warehouses = sorted(warehouse_stock.items(), key=lambda kv: kv[1], reverse=True)
+            item_inv_writes: list[tuple] = []
+
+            inv_snaps = inv_snaps_per_product.get(p_id, [])
+            inv_refs = inv_refs_per_product.get(p_id, [])
+
+            if inv_snaps:
+                # Use inventoryLevels subcollection (authoritative)
+                sorted_wh = [
+                    (inv_refs[j], inv_refs[j].id, (inv_snaps[j].to_dict() or {}).get(Fields.AVAILABLE_QUANTITY, 0))
+                    for j in range(len(inv_snaps))
+                    if inv_snaps[j].exists
+                ]
+                sorted_wh.sort(key=lambda kv: kv[2], reverse=True)
                 remaining = qty
-                for wh_id, wh_stock in sorted_warehouses:
+                for inv_ref, wh_id, wh_avail in sorted_wh:
                     if remaining <= 0:
                         break
-                    drain = min(wh_stock, remaining)
-                    warehouse_patches[f"{Fields.WAREHOUSE_STOCK}.{wh_id}"] = wh_stock - drain
+                    drain = min(wh_avail, remaining)
+                    new_avail = wh_avail - drain
+                    warehouse_patches[f"{Fields.WAREHOUSE_STOCK}.{wh_id}"] = new_avail
+                    item_inv_writes.append((inv_ref, new_avail))
                     if fulfillment_warehouse_ids[i] is None:
-                        fulfillment_warehouse_ids[i] = wh_id  # TASK 02: first warehouse drained = primary
+                        fulfillment_warehouse_ids[i] = wh_id
                     remaining -= drain
-                # If backorder active and demand exceeded all warehouse stock, allow last to go negative
-                if remaining > 0 and sorted_warehouses:
-                    last_wh_id = sorted_warehouses[-1][0]
+                if remaining > 0 and sorted_wh:
+                    # Backorder: last warehouse goes negative
+                    last_ref, last_wh_id, _ = sorted_wh[-1]
                     key = f"{Fields.WAREHOUSE_STOCK}.{last_wh_id}"
-                    warehouse_patches[key] = warehouse_patches.get(key, sorted_warehouses[-1][1]) - remaining
+                    new_val = warehouse_patches.get(key, 0) - remaining
+                    warehouse_patches[key] = new_val
+                    # Update the last inv_write entry
+                    item_inv_writes = [(r, q) for r, q in item_inv_writes if r.id != last_wh_id]
+                    item_inv_writes.append((last_ref, new_val))
+            else:
+                # Fallback: warehouseStock map on product doc
+                warehouse_stock: dict = product_data.get(Fields.WAREHOUSE_STOCK) or {}
+                if warehouse_stock:
+                    sorted_warehouses = sorted(warehouse_stock.items(), key=lambda kv: kv[1], reverse=True)
+                    remaining = qty
+                    for wh_id, wh_stock in sorted_warehouses:
+                        if remaining <= 0:
+                            break
+                        drain = min(wh_stock, remaining)
+                        warehouse_patches[f"{Fields.WAREHOUSE_STOCK}.{wh_id}"] = wh_stock - drain
+                        if fulfillment_warehouse_ids[i] is None:
+                            fulfillment_warehouse_ids[i] = wh_id
+                        remaining -= drain
+                    if remaining > 0 and sorted_warehouses:
+                        last_wh_id = sorted_warehouses[-1][0]
+                        key = f"{Fields.WAREHOUSE_STOCK}.{last_wh_id}"
+                        warehouse_patches[key] = warehouse_patches.get(key, sorted_warehouses[-1][1]) - remaining
 
             updates.append((product_refs[i], new_total_stock, warehouse_patches))
+            inv_level_writes.append(item_inv_writes)
 
         # Phase 3: Write ALL updates after all reads are done
-        for ref, new_stock, warehouse_patches in updates:
+        for i, (ref, new_stock, warehouse_patches) in enumerate(updates):
+            item = validated_items[i]
+            variant_id = item.get(Fields.VARIANT_ID)
             patch = {Fields.STOCK_QUANTITY: new_stock}
             patch.update(warehouse_patches)
+
+            # N-09: For variant products, also decrement the variant's stockQuantity in the array
+            if variant_id:
+                product_snapshot = product_snapshots[i]
+                variants = list(product_snapshot.to_dict().get(Fields.VARIANTS, []))
+                variant_idx = next((idx for idx, v in enumerate(variants) if v.get(Fields.VARIANT_ID) == variant_id), None)
+                if variant_idx is not None:
+                    variants[variant_idx][Fields.STOCK_QUANTITY] -= item[Fields.QUANTITY]
+                    patch[Fields.VARIANTS] = variants
+
             transaction.update(ref, patch)
+
+            # Write inventoryLevels subcollection docs
+            for inv_ref, new_avail in inv_level_writes[i]:
+                transaction.set(
+                    inv_ref,
+                    {
+                        Fields.AVAILABLE_QUANTITY: new_avail,
+                        Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                    },
+                    merge=True,
+                )
 
     transaction = get_db().transaction()
     try:
@@ -1804,7 +1967,20 @@ def _add_stock_restore_to_batch(batch, order_data: dict) -> None:
 
     for item in order_data.get(Fields.ITEMS, []):
         product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-        batch.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(item[Fields.QUANTITY])})
+        qty = item[Fields.QUANTITY]
+        patch = {Fields.STOCK_QUANTITY: _firestore.Increment(qty)}
+
+        fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
+        if fulfillment_wh:
+            patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = _firestore.Increment(qty)
+            # Also restore inventoryLevels subcollection (safe if doc doesn't exist yet — merge=True)
+            inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+            batch.set(inv_ref, {
+                Fields.AVAILABLE_QUANTITY: _firestore.Increment(qty),
+                Fields.LAST_SYNCED_AT: get_server_timestamp(),
+            }, merge=True)
+
+        batch.update(product_ref, patch)
 
 
 def _restore_stock_for_order(order_data: dict) -> None:

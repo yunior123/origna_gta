@@ -127,10 +127,15 @@ class MockAlgoliaService extends _i1.Mock implements _i9.AlgoliaService {
   );
 
   @override
-  void search(String? searchQuery, {int? categoryId}) => super.noSuchMethod(
-    Invocation.method(#search, [searchQuery], {#categoryId: categoryId}),
-    returnValueForMissingStub: null,
-  );
+  void search(String? searchQuery, {int? categoryId, String? subcategory}) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #search,
+          [searchQuery],
+          {#categoryId: categoryId, #subcategory: subcategory},
+        ),
+        returnValueForMissingStub: null,
+      );
 }
 
 /// A class which mocks [FirebaseFirestore].

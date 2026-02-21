@@ -1,4 +1,3 @@
-```markdown
 ---
 name: responsive-blueprint
 description: >
@@ -163,4 +162,3 @@ Image.network(
 - ❌ Desktop layout identical to mobile → waste of space
 - ❌ Text too wide on desktop → constrain to ~680px max
 
-```

@@ -256,7 +256,7 @@ service cloud.firestore {
           request.resource.data.label is string &&
           request.resource.data.label.size() >= 1 &&
           request.resource.data.type in ['warehouse', 'personal'];
-        allow delete: if isOwner(userId) || isAdmin();
+        allow delete: if isAdmin();  // Sellers use delete_warehouse callable (enforces stock check)
       }
     }
     
@@ -355,6 +355,12 @@ service cloud.firestore {
       // Only product owner or admin can delete
       allow delete: if isAuthenticated() &&
         (isAdmin() || (resource.data.sellerId == request.auth.uid && isSellerApproved()));
+
+      // Inventory levels subcollection — backend-only writes (checkout, triggers, cancel)
+      match /inventoryLevels/{warehouseId} {
+        allow read: if true;
+        allow write: if false;  // Backend-only via Admin SDK
+      }
     }
     
     // ================================================================
@@ -484,7 +490,12 @@ service cloud.firestore {
     // ================================================================
     match /product_ratings/{ratingId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if false;
+      allow create, delete: if false;
+      // N-03: Seller may update ONLY sellerReply + sellerReplyAt on their own product's rating
+      allow update: if request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sellerReply', 'sellerReplyAt']) &&
+        get(/databases/$(database)/documents/products/$(resource.data.productId)).data.sellerId == request.auth.uid;
+      // N-04: helpfulCount and helpfulVoterIds are backend-only (handled via Cloud Function)
     }
     
     match /refunds/{refundId} {
@@ -562,10 +573,11 @@ service cloud.firestore {
           get(/databases/$(database)/documents/chats/$(chatId)).data.sellerId == request.auth.uid ||
           isAdmin()
         );
-        // Only participants can send messages; premium check enforced by backend
-        allow create: if isAuthenticated() && (
-          get(/databases/$(database)/documents/chats/$(chatId)).data.buyerId == request.auth.uid ||
-          get(/databases/$(database)/documents/chats/$(chatId)).data.sellerId == request.auth.uid
+        // Only participants can send messages; buyers must be premium to send
+        allow create: if request.auth != null && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.sellerId == request.auth.uid ||
+          (get(/databases/$(database)/documents/chats/$(chatId)).data.buyerId == request.auth.uid && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isPremium == true)
         ) && request.resource.data.keys().hasOnly(['senderId','text','createdAt','read']) &&
           request.resource.data.senderId == request.auth.uid &&
           request.resource.data.text is string &&
@@ -591,6 +603,16 @@ service cloud.firestore {
     match /_mail_logs/{logId} {
       allow read: if true;
       allow create, update, delete: if false;
+    }
+
+    // ================================================================
+    // COUPONS COLLECTION (N-07)
+    // Any authenticated user can read (to validate a code).
+    // All writes are backend-only via Cloud Functions.
+    // ================================================================
+    match /coupons/{couponId} {
+      allow read: if request.auth != null;
+      allow write: if false;
     }
 
     // ================================================================

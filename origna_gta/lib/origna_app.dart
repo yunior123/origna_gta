@@ -16,6 +16,7 @@ import 'package:origna_gta/screens/addproduct_screen.dart' deferred as add_produ
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/screens/authwrapper_screen.dart';
 import 'package:origna_gta/screens/cart_screen.dart';
+import 'package:origna_gta/screens/chat_screen.dart';
 import 'package:origna_gta/screens/checkout_screen.dart' deferred as checkout;
 import 'package:origna_gta/screens/common_screens.dart';
 import 'package:origna_gta/screens/editaddress_screen.dart';
@@ -28,14 +29,15 @@ import 'package:origna_gta/screens/payment_screens.dart';
 import 'package:origna_gta/screens/privacy_policy_screen.dart' deferred as privacy;
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
+import 'package:origna_gta/screens/seller/seller_warehouses_screen.dart' deferred as seller_warehouses;
 import 'package:origna_gta/screens/seller_integration_screen.dart' deferred as seller_integration;
 import 'package:origna_gta/screens/seller_orders_screen.dart' deferred as seller_orders;
+import 'package:origna_gta/screens/seller_products_screen.dart' deferred as seller_products;
 import 'package:origna_gta/screens/seller_registration_screen.dart' deferred as seller_reg;
 import 'package:origna_gta/screens/seller_setup_screen.dart';
 import 'package:origna_gta/screens/shipping_approval_screen.dart' deferred as shipping_approval;
-import 'package:origna_gta/screens/chat_screen.dart';
-import 'package:origna_gta/screens/subscription_screen.dart';
 import 'package:origna_gta/screens/subscription_cancel_screen.dart';
+import 'package:origna_gta/screens/subscription_screen.dart';
 import 'package:origna_gta/screens/subscription_success_screen.dart';
 import 'package:origna_gta/screens/terms_of_service_screen.dart' deferred as terms;
 import 'package:origna_gta/services/notification_service.dart';
@@ -343,6 +345,26 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
       settings: settings,
       builder: (_) => AuthRequiredGate(
         child: DeferredWidget(loader: seller_orders.loadLibrary, builder: () => seller_orders.SellerOrdersScreen()),
+      ),
+    );
+  }
+
+  // Seller Products screen
+  if (uri.path == AppRoutes.sellerProducts) {
+    return MaterialPageRoute(
+      settings: settings,
+      builder: (_) => AuthRequiredGate(
+        child: DeferredWidget(loader: seller_products.loadLibrary, builder: () => seller_products.SellerProductsScreen()),
+      ),
+    );
+  }
+
+  // Seller Warehouses screen
+  if (uri.path == AppRoutes.sellerWarehouses) {
+    return MaterialPageRoute(
+      settings: settings,
+      builder: (_) => AuthRequiredGate(
+        child: DeferredWidget(loader: seller_warehouses.loadLibrary, builder: () => seller_warehouses.SellerWarehousesScreen()),
       ),
     );
   }

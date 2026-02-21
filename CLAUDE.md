@@ -2,23 +2,23 @@
 
 ## RULES
 
-0. **Logic first** — 50+ adversarial scenarios before shipping. Think: malicious seller, buyer, race conditions.
-1. **No subagents without consent** — ask first
-2. **Save tokens** — show only actions and results
+0. **Logic first** — 50+ adversarial scenarios, predict and architect like Magnus Carlsen. Think: malicious seller, buyer, race conditions.
+1. **Future proof app** — app schema design has to be future proof and scale to 100M+ users. The schema has to be designed to support scale and prevent having to update app schema in the future, so it has to be bullet proof and conceived by the best architect and masterminds like Magnus Carlsen. We need to build an app that will not require migrations in the future. We can use the rival agent to have an idea on how the big e-commerce companies have structured their apps, not just the schema, the whole architecture is important. No backward compatibility needed since the production database is empty, the app has not launched yet. Now is the time to do preventing fixes to avoid having to migrate in the future.
+2. **Save tokens** — show only actions and results, save Yunior's money as much as possible, he is your friend and a nice person that does not want to go bankrupt.
 3. **"save"/"remember"** → persist to `.claude/LEARNED.md`
 4. **Match Yunior's language** — respond in whichever language he uses
 5. **No new markdown files** unless asked
-6. **Cross-stack check** after every edit — Python ↔ Dart ↔ Schema
+6. **Cross-stack check and traslations on new created texts** after every edit — Python ↔ Dart ↔ Schema 
 7. **No magic strings** — use constants from schema_constants. No hardcoded values.
 8. **Changing one line → update EVERY file that line impacts** (Tests, Rules, Indexes, Schema)
-
+9. **Bonus fixes are appreciated, suggetions can be added to state.md, claude.md must be updated on every session initialization** 
 ---
 
 ## PROJECT
 
 **OrignaGta** — E-commerce marketplace, Canadian buyers, worldwide sellers. 100M+ users/year. Launch: March 2026. Solo founder-developer (Yunior) — action over discussion, short/direct, fix silently.
 
-**Tech:** Flutter/Riverpod + Python Cloud Functions/Pydantic + Firestore + Stripe Connect Express + Algolia + R2/Cloudflare + Sentry + Mailjet
+**Tech:** Flutter/Riverpod + Python Cloud Functions/Pydantic + Firestore + Stripe Connect Express + Algolia + R2/Cloudflare + Sentry + Mailjet + Geoapify
 
 ---
 
@@ -76,17 +76,7 @@
 
 ## KEY GOTCHAS (from `.claude/LEARNED.md`)
 
-- `get_server_timestamp()` CANNOT be nested in arrays/ArrayUnion → use `datetime.now(timezone.utc)`
-- `_capture_payment_impl` (undecorated) for internal calls, NOT `capture_payment` (has @on_call wrapper)
-- `paymentStatus` always `'captured'` (auto-capture mode), never `'authorized'`
-- Sellers CANNOT mark delivered — admin/cron only
-- Multi-seller orders → must use `update_item_status`, not `update_order_status`
-- `signIn()` returns `{idToken}` not `{token}`
-- Stock field: `stockQuantity` not `stock`
-- Project ID: `orignagta` (no hyphen)
-- `source_transaction` MUST be charge ID (`ch_xxx`), NOT PaymentIntent (`pi_xxx`)
-- Auth Emulator starts with 0 users — MUST seed before tests
-- `patchDoc()` needs `updateMask.fieldPaths` or it replaces entire doc
+
 
 **Full history:** `.claude/LEARNED.md`
 

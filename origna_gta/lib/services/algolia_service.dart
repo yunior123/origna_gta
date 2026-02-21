@@ -13,12 +13,10 @@ class AlgoliaService {
   /// Whether Algolia is usable (credentials present & non-empty).
   final bool isAvailable;
 
-  AlgoliaService._({HitsSearcher? hitsSearcher, required this.isAvailable})
-    : _hitsSearcher = hitsSearcher;
+  AlgoliaService._({HitsSearcher? hitsSearcher, required this.isAvailable}) : _hitsSearcher = hitsSearcher;
 
   /// Stream of search responses (empty stream when unavailable)
-  Stream<SearchResponse> get responses =>
-      _hitsSearcher?.responses ?? const Stream.empty();
+  Stream<SearchResponse> get responses => _hitsSearcher?.responses ?? const Stream.empty();
 
   /// Dispose resources
   void dispose() {
@@ -26,19 +24,20 @@ class AlgoliaService {
   }
 
   /// Set search with optional category filter (facet)
-  void search(String searchQuery, {int? categoryId}) {
+  void search(String searchQuery, {int? categoryId, String? subcategory}) {
     if (_hitsSearcher == null) return;
     _hitsSearcher.applyState((state) {
       var newState = state.copyWith(query: searchQuery, page: 0);
-      // Apply category as facet filter when provided
+      // Apply category and subcategory as facet filters when provided
+      final filters = <FilterFacet>{};
       if (categoryId != null) {
-        newState = newState.copyWith(
-          filterGroups: {
-            FilterGroup.facet(
-              filters: {Filter.facet(Fields.categoryId, categoryId)},
-            ),
-          },
-        );
+        filters.add(Filter.facet(Fields.categoryId, categoryId));
+      }
+      if (subcategory != null && subcategory.isNotEmpty) {
+        filters.add(Filter.facet(Fields.subcategory, subcategory));
+      }
+      if (filters.isNotEmpty) {
+        newState = newState.copyWith(filterGroups: {FilterGroup.facet(filters: filters)});
       } else {
         newState = newState.copyWith(filterGroups: {});
       }
@@ -48,15 +47,10 @@ class AlgoliaService {
 
   /// Initialize Algolia service with credentials from env.
   /// Returns a disabled instance (isAvailable=false) when keys are empty.
-  static AlgoliaService create({
-    required String appId,
-    required String searchApiKey,
-  }) {
+  static AlgoliaService create({required String appId, required String searchApiKey}) {
     if (appId.isEmpty || searchApiKey.isEmpty) {
       if (kDebugMode) {
-        debugPrint(
-          '⚠️  Algolia credentials empty → search disabled, using Firestore only',
-        );
+        debugPrint('⚠️  Algolia credentials empty → search disabled, using Firestore only');
       }
       return AlgoliaService._(isAvailable: false);
     }
@@ -64,11 +58,7 @@ class AlgoliaService {
     final indexName = EnvConfig().algoliaIndexName;
     if (kDebugMode) debugPrint('✅ Algolia initialized: index=$indexName');
 
-    final searcher = HitsSearcher(
-      applicationID: appId,
-      apiKey: searchApiKey,
-      indexName: indexName,
-    );
+    final searcher = HitsSearcher(applicationID: appId, apiKey: searchApiKey, indexName: indexName);
     return AlgoliaService._(hitsSearcher: searcher, isAvailable: true);
   }
 
@@ -82,8 +72,7 @@ class AlgoliaService {
       Fields.description: hit[Fields.description] ?? '',
       Fields.categoryId: hit[Fields.categoryId],
       Fields.sellerId: hit[Fields.sellerId] ?? '',
-      Fields.createdAt:
-          hit[Fields.createdAt] ?? DateTime.now().toIso8601String(),
+      Fields.createdAt: hit[Fields.createdAt] ?? DateTime.now().toIso8601String(),
       Fields.stockQuantity: hit[Fields.stockQuantity] ?? 0,
       Fields.rating: hit[Fields.rating] ?? 0.0,
       Fields.ratingCount: hit[Fields.ratingCount] ?? 0,

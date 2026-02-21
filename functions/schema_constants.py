@@ -60,6 +60,8 @@ class Collections:
     STOCK_NOTIFICATIONS = "stock_notifications"  # TASK 07: back-in-stock
     PRODUCT_QUESTIONS = "product_questions"  # TASK 09: product Q&A
     SELLER_METRICS = "seller_metrics"  # TASK 11: seller health metrics
+    COUPONS = "coupons"  # N-07: coupon/promo code system
+    INVENTORY_LEVELS = "inventoryLevels"  # products/{productId}/inventoryLevels/{warehouseId}
 
     # Premium & Chat
     SUBSCRIPTIONS = "subscriptions"  # top-level: subscriptions/{userId}
@@ -174,6 +176,7 @@ class Fields:
     """
 
     # === COMMON TIMESTAMPS (used across multiple collections) ===
+    SAVED_AT = "savedAt"  # N-05: Save for Later timestamp
     CREATED_AT = "createdAt"
     UPDATED_AT = "updatedAt"
     DELETED_AT = "deletedAt"
@@ -231,6 +234,7 @@ class Fields:
     PRODUCT_ID = "productId"
     PRICE = "price"
     COMPARE_AT_PRICE = "compareAtPrice"  # Original/crossed-out price for sale display
+    COMPARE_AT_PRICE_HISTORY = "compareAtPriceHistory"
     DESCRIPTION = "description"
     IMAGE_URLS = "imageUrls"
     SELLER_ID = "sellerId"
@@ -243,6 +247,7 @@ class Fields:
     SHIP_FROM_PROVINCE = "shipFromProvince"
     SHIP_FROM_COUNTRY = "shipFromCountry"
     SHIP_FROM_COUNTRIES = "shipFromCountries"
+    PRIMARY_WAREHOUSE_ID = "primaryWarehouseId"
     CATEGORY_ID = "categoryId"
     STOCK_QUANTITY = "stockQuantity"
     RATING = "rating"
@@ -352,6 +357,10 @@ class Fields:
     LOW_STOCK_THRESHOLD = "lowStockThreshold"
     TRACK_QUANTITY = "trackQuantity"
     RESERVATION_HOLD_MINUTES = "reservationHoldMinutes"
+    # === INVENTORY LEVELS SUBCOLLECTION FIELDS ===
+    AVAILABLE_QUANTITY = "availableQuantity"
+    RESERVED_QUANTITY = "reservedQuantity"
+    LAST_SYNCED_AT = "lastSyncedAt"
     STATUS = "status"
     DELIVERY_SPEED = "deliverySpeed"
 
@@ -375,6 +384,8 @@ class Fields:
     STRIPE_SESSION_ID = "stripeSessionId"
     STRIPE_PAYMENT_INTENT_ID = "stripePaymentIntentId"
     CAPTURE_ATTEMPTS = "captureAttempts"
+    FRAUD_SCORE = "fraudScore"
+    SELLER_CAPTURES = "sellerCaptures"
     LAST_CAPTURE_ERROR = "lastCaptureError"
     CAPTURED_AT = "capturedAt"
     EXPIRES_AT = "expiresAt"
@@ -589,6 +600,42 @@ class Fields:
 
     # === REVIEW/RATING FIELDS ===
     COMMENT = "comment"
+    SUBSCRIPTION_STATUS = "subscriptionStatus"
+    PRODUCT_IDS = "productIds"
+
+
+    # === N-09: Product variants ===
+    HAS_VARIANTS = "hasVariants"
+    VARIANTS = "variants"
+    VARIANT_ID = "variantId"
+    VARIANT_OPTIONS = "variantOptions"
+    OPTION_VALUES = "optionValues"
+
+    # === N-11: Subcategories ===
+    SUBCATEGORY = "subcategory"
+
+    # === N-03: Seller reply to reviews ===
+    SELLER_REPLY = "sellerReply"
+    SELLER_REPLY_AT = "sellerReplyAt"
+
+    # === N-03/N-04: Product ratings ===
+    RATING_ID = "ratingId"
+
+    # === N-04: Review helpfulness voting ===
+    HELPFUL_COUNT = "helpfulCount"
+    HELPFUL_VOTER_IDS = "helpfulVoterIds"
+
+    # === N-06: Price history ===
+    PRICE_HISTORY = "priceHistory"
+
+    # === N-07: Coupon/promo code system ===
+    COUPON_CODE = "couponCode"
+    DISCOUNT_AMOUNT_CENTS = "discountAmountCents"
+    MIN_ORDER_CENTS = "minOrderCents"
+    MAX_USES_TOTAL = "maxUsesTotal"
+    MAX_USES_PER_USER = "maxUsesPerUser"
+    USED_COUNT = "usedCount"
+    USED_BY_UIDS = "usedByUids"
 
     # === API REQUEST/RESPONSE FIELDS ===
     FILE_NAME = "fileName"
@@ -689,6 +736,7 @@ class PaymentStatusValues:
     CAPTURED = "captured"
     CANCELLED = "cancelled"
     AUTHORIZATION_EXPIRED = "authorization_expired"
+    DISPUTED = "disputed"
     # Transitional states (internal use, not stored long-term)
     CAPTURING = "capturing"
     CANCELLING = "cancelling"
@@ -706,6 +754,7 @@ class PaymentStatusValues:
             CAPTURED,
             CANCELLED,
             AUTHORIZATION_EXPIRED,
+            DISPUTED,
             CAPTURING,
             CANCELLING,
             EXPIRING,
@@ -854,6 +903,15 @@ class DiscountTypeValues:
     FLAT_RATE = "flat_rate"
 
     ALL: frozenset[str] = frozenset({PERCENT, FIXED, FLAT_RATE})
+
+
+class CouponDiscountTypeValues:
+    """Valid values for coupon discount types (N-07)"""
+
+    PERCENT = "percent"
+    FIXED_CENTS = "fixed_cents"
+
+    ALL: frozenset[str] = frozenset({PERCENT, FIXED_CENTS})
 
 
 class PaymentProviderValues:
@@ -1336,3 +1394,27 @@ class SubscriptionStatusValues:
     ALL = [ACTIVE, CANCELED, PAST_DUE, INCOMPLETE, INCOMPLETE_EXPIRED, TRIALING, UNPAID]
     # Statuses that grant premium access
     PREMIUM_ACTIVE = frozenset({ACTIVE, TRIALING})
+
+
+# =============================================================================
+# N-11: SUBCATEGORIES - Hierarchical subcategories per main category
+# =============================================================================
+
+
+class Subcategories:
+    """Maps category name to list of subcategories. (N-11)"""
+
+    MAP: dict[str, list[str]] = {
+        "Fashion": ["Men's Clothing", "Women's Clothing", "Kids' Clothing", "Shoes", "Accessories", "Bags", "Jewelry"],
+        "Electronics": ["Smartphones", "Laptops", "Tablets", "Cameras", "Audio", "Gaming", "Smart Home", "Wearables"],
+        "Home & Garden": ["Furniture", "Decor", "Kitchen", "Bedding", "Lighting", "Garden & Outdoor", "Storage"],
+        "Beauty & Personal Care": ["Skincare", "Haircare", "Makeup", "Fragrance", "Men's Grooming"],
+        "Sports & Outdoors": ["Fitness", "Outdoor Recreation", "Team Sports", "Water Sports", "Winter Sports"],
+        "Toys & Games": ["Puzzles & Board Games", "Building Toys", "Dolls & Playsets", "Video Games", "Outdoor Play"],
+        "Food & Grocery": ["Snacks", "Beverages", "Health Foods", "Specialty Foods", "Baking"],
+        "Books & Media": ["Books", "Music", "Movies & TV", "Magazines"],
+        "Automotive": ["Car Accessories", "Motorcycle", "Tools & Equipment"],
+        "Health": ["Vitamins & Supplements", "Medical Devices", "Personal Care"],
+        "Art & Crafts": ["Drawing & Painting", "Yarn & Fiber Arts", "Paper Crafts", "Photography"],
+        "Baby": ["Baby Clothing", "Feeding", "Nursery", "Strollers", "Toys"],
+    }

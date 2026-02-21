@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/config/supplier_config.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
-import 'package:origna_gta/screens/seller/seller_warehouses_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -76,6 +76,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   bool _allowBackorder = false;
   bool _lowStockAlertEnabled = false;
   bool _hasAttemptedSubmit = false;
+
+  String? _selectedSubcategory;
 
   // Active section for stepper
   int _activeStep = 0;
@@ -338,6 +340,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     const SizedBox(height: 16),
                                     _buildCategorySelector(viewModel),
                                     const SizedBox(height: 12),
+                                    _buildSubcategorySelector(),
+                                    const SizedBox(height: 12),
                                     _buildGlassTextField(
                                       controller: _taxCodeController,
                                       label: 'product.tax_code_label'.tr(),
@@ -367,6 +371,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                   ],
                                 ),
                                 const SizedBox(height: 16),
+
+                                // SECTION: Variant Builder (N-09)
+                                _buildVariantBuilderSection(state, viewModel),
+                                if (state.hasVariants) const SizedBox(height: 16),
 
                                 // SECTION 2: Product Images
                                 _buildSectionCard(
@@ -894,7 +902,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             ),
           )
           .toList(),
-      onChanged: (v) => _categoryController.text = v ?? '',
+      onChanged: (v) {
+        _categoryController.text = v ?? '';
+        setState(() => _selectedSubcategory = null);
+      },
       validator: (v) => v == null ? 'Required' : null,
     );
   }
@@ -1591,6 +1602,46 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
+  Widget _buildSubcategorySelector() {
+    final catId = int.tryParse(_categoryController.text) ?? 0;
+    final subcategories = SubcategoryConstants.forCategoryId(catId);
+    if (subcategories.isEmpty) return const SizedBox.shrink();
+    return DropdownButtonFormField<String>(
+      key: Key('addproduct_subcategory_$catId'),
+      initialValue: _selectedSubcategory,
+      decoration: InputDecoration(
+        labelText: 'Subcategory (optional)',
+        prefixIcon: const Icon(Icons.subdirectory_arrow_right_rounded, size: 20),
+        filled: true,
+        fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.5)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+      ),
+      hint: Text('Select subcategory', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+      items: subcategories
+          .map(
+            (s) => DropdownMenuItem(
+              value: s,
+              child: Text(s, style: const TextStyle(fontSize: 14)),
+            ),
+          )
+          .toList(),
+      onChanged: (v) => setState(() => _selectedSubcategory = v),
+    );
+  }
+
   Widget _buildSubmitButton(AddProductState state, AddProductViewModel viewModel) {
     return Semantics(
       button: true,
@@ -1675,6 +1726,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                           compareAtPrice: _compareAtPriceController.text.trim().isEmpty ? null : double.tryParse(_compareAtPriceController.text.trim()),
                           stock: int.tryParse(_stockController.text.trim()) ?? 0,
                           categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
+                          subcategory: _selectedSubcategory,
                           street: _streetController.text.trim(),
                           apartment: _apartmentController.text.trim(),
                           city: _cityController.text.trim(),
@@ -1816,6 +1868,69 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
+  // ─── N-09: VARIANT BUILDER ──────────────────────────────────────────
+  Widget _buildVariantBuilderSection(AddProductState state, AddProductViewModel viewModel) {
+    return _buildCollapsibleSection(
+      key: const Key('addproduct_section_variants'),
+      index: 5,
+      icon: Icons.style_rounded,
+      title: 'product.variant_builder'.tr(),
+      subtitle: 'product.variant_builder_desc'.tr(),
+      children: [
+        _buildGlassToggle(
+          key: const Key('addproduct_has_variants_toggle'),
+          label: 'product.has_variants'.tr(),
+          subtitle: 'product.has_variants_desc'.tr(),
+          icon: Icons.tune_rounded,
+          value: state.hasVariants,
+          onChanged: viewModel.toggleHasVariants,
+        ),
+        if (state.hasVariants) ...[
+          const SizedBox(height: 16),
+          // Existing option types
+          ...List.generate(state.variantOptions.length, (i) {
+            final opt = state.variantOptions[i];
+            final name = opt['name'] as String;
+            final values = (opt['values'] as List).cast<String>();
+            return _VariantOptionCard(
+              key: Key('variant_option_$i'),
+              name: name,
+              values: values,
+              onRemove: () => viewModel.removeVariantOption(i),
+              onUpdate: (newName, newValues) => viewModel.updateVariantOption(i, newName, newValues),
+            );
+          }),
+          const SizedBox(height: 8),
+          // Add new option type
+          if (state.variantOptions.length < 3) // Max 3 option types (e.g. Size, Color, Material)
+            _AddVariantOptionButton(existingNames: state.variantOptions.map((o) => o['name'] as String).toList(), onAdd: viewModel.addVariantOption),
+          // Generated variants table
+          if (state.variants.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _buildSubSectionHeader('product.variant_combinations'.tr(namedArgs: {'count': state.variants.length.toString()}), Icons.grid_view_rounded),
+            const SizedBox(height: 8),
+            _buildInfoBanner('product.variant_combinations_info'.tr(), Icons.info_outline_rounded, DesignTokens.info),
+            const SizedBox(height: 8),
+            ...List.generate(state.variants.length, (i) {
+              final variant = state.variants[i];
+              final optionValues = (variant['optionValues'] as Map).cast<String, String>();
+              return _VariantRow(
+                key: Key('variant_row_$i'),
+                optionValues: optionValues,
+                price: variant['price'] as double?,
+                stockQuantity: variant['stockQuantity'] as int? ?? 0,
+                sku: variant['sku'] as String?,
+                onPriceChanged: (v) => viewModel.updateVariantField(i, 'price', v),
+                onStockChanged: (v) => viewModel.updateVariantField(i, 'stockQuantity', v),
+                onSkuChanged: (v) => viewModel.updateVariantField(i, 'sku', v),
+              );
+            }),
+          ],
+        ],
+      ],
+    );
+  }
+
   /// Warehouse selector — the primary shipping location system.
   /// Shows seller's warehouses as checkboxes with per-warehouse stock input.
   /// Falls back to manual address form when seller has no warehouses yet.
@@ -1840,7 +1955,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 key: const Key('addproduct_manage_warehouses_button'),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SellerWarehousesScreen())),
+                onPressed: () => Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
                 icon: const Icon(Icons.add_location_alt_rounded, size: 18),
                 label: const Text('Add Warehouse / Address'),
                 style: OutlinedButton.styleFrom(foregroundColor: DesignTokens.primary),
@@ -1937,7 +2052,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 const Spacer(),
                 TextButton.icon(
                   key: const Key('addproduct_manage_warehouses_button'),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SellerWarehousesScreen())),
+                  onPressed: () => Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
                   icon: const Icon(Icons.settings_rounded, size: 14),
                   label: const Text('Manage', style: TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(foregroundColor: DesignTokens.primary),
@@ -2180,6 +2295,108 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 }
 
+/// Button to add a new option type (Size, Color, Material, or Custom).
+class _AddVariantOptionButton extends StatelessWidget {
+  final List<String> existingNames;
+  final void Function(String name, List<String> values) onAdd;
+
+  const _AddVariantOptionButton({required this.existingNames, required this.onAdd});
+
+  Map<String, List<String>> get _presets => {
+    'product.preset_size'.tr(): 'product.preset_size_values'.tr().split(', '),
+    'product.preset_color'.tr(): 'product.preset_color_values'.tr().split(', '),
+    'product.preset_material'.tr(): 'product.preset_material_values'.tr().split(', '),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      key: const Key('addproduct_add_variant_option_button'),
+      onPressed: () => _showAddDialog(context),
+      icon: const Icon(Icons.add_rounded, size: 18),
+      label: Text('product.add_variant_option_btn'.tr()),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: DesignTokens.secondary,
+        side: BorderSide(color: DesignTokens.secondary.withValues(alpha: 0.4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _showAddDialog(BuildContext context) {
+    final available = _presets.keys.where((k) => !existingNames.contains(k)).toList();
+    final nameCtrl = TextEditingController();
+    final valuesCtrl = TextEditingController();
+    String? selectedPreset;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('product.add_variant_option'.tr()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (available.isNotEmpty) ...[
+                Text('product.quick_add'.tr(), style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  children: available.map((preset) {
+                    final isSelected = selectedPreset == preset;
+                    return ChoiceChip(
+                      label: Text(preset),
+                      selected: isSelected,
+                      onSelected: (v) {
+                        setDialogState(() {
+                          selectedPreset = v ? preset : null;
+                          if (v) {
+                            nameCtrl.text = preset;
+                            valuesCtrl.text = _presets[preset]!.join(', ');
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const Divider(height: 20),
+              ],
+              TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(labelText: 'product.option_name'.tr(), hintText: 'product.eg_size'.tr()),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: valuesCtrl,
+                decoration: InputDecoration(labelText: 'product.option_values_hint'.tr(), hintText: 'product.eg_size_values'.tr()),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+            FilledButton(
+              onPressed: () {
+                final name = nameCtrl.text.trim();
+                final values = valuesCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                if (name.isNotEmpty && values.isNotEmpty) {
+                  onAdd(name, values);
+                }
+                Navigator.pop(ctx);
+              },
+              child: Text('common.add'.tr()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// N-09: Variant Builder Helper Widgets
+// ═══════════════════════════════════════════════════════════════════════════════
+
 class _DigitalTypeCard extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -2210,6 +2427,193 @@ class _DigitalTypeCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Card displaying a single option type (e.g. "Size" with values "S, M, L").
+class _VariantOptionCard extends StatelessWidget {
+  final String name;
+  final List<String> values;
+  final VoidCallback onRemove;
+  final void Function(String name, List<String> values) onUpdate;
+
+  const _VariantOptionCard({super.key, required this.name, required this.values, required this.onRemove, required this.onUpdate});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: DesignTokens.surfaceVariant.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.label_rounded, size: 16, color: DesignTokens.secondary),
+              const SizedBox(width: 6),
+              Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _showEditDialog(context),
+                child: Icon(Icons.edit_rounded, size: 16, color: DesignTokens.primary),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onRemove,
+                child: Icon(Icons.close_rounded, size: 16, color: DesignTokens.error),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: values
+                .map(
+                  (v) => Chip(
+                    label: Text(v, style: const TextStyle(fontSize: 12)),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: DesignTokens.surface,
+                    side: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3)),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context) {
+    final nameCtrl = TextEditingController(text: name);
+    final valuesCtrl = TextEditingController(text: values.join(', '));
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('product.edit_option'.tr()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: InputDecoration(labelText: 'product.option_name'.tr()),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: valuesCtrl,
+              decoration: InputDecoration(labelText: 'product.option_values_hint'.tr()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          FilledButton(
+            onPressed: () {
+              final newName = nameCtrl.text.trim();
+              final newValues = valuesCtrl.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+              if (newName.isNotEmpty && newValues.isNotEmpty) {
+                onUpdate(newName, newValues);
+              }
+              Navigator.pop(ctx);
+            },
+            child: Text('common.save'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Single row in the variants table showing option values + price/stock/sku inputs.
+class _VariantRow extends StatelessWidget {
+  final Map<String, String> optionValues;
+  final double? price;
+  final int stockQuantity;
+  final String? sku;
+  final void Function(double?) onPriceChanged;
+  final void Function(int) onStockChanged;
+  final void Function(String?) onSkuChanged;
+
+  const _VariantRow({
+    super.key,
+    required this.optionValues,
+    required this.price,
+    required this.stockQuantity,
+    required this.sku,
+    required this.onPriceChanged,
+    required this.onStockChanged,
+    required this.onSkuChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = optionValues.values.join(' / ');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  initialValue: price?.toStringAsFixed(2),
+                  decoration: InputDecoration(
+                    labelText: 'product.price_dollar'.tr(),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  ),
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (v) => onPriceChanged(double.tryParse(v)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextFormField(
+                  initialValue: stockQuantity.toString(),
+                  decoration: InputDecoration(
+                    labelText: 'product.stock'.tr(),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  ),
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (v) => onStockChanged(int.tryParse(v) ?? 0),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextFormField(
+                  initialValue: sku,
+                  decoration: InputDecoration(
+                    labelText: 'product.sku'.tr(),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (v) => onSkuChanged(v.trim().isEmpty ? null : v.trim()),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

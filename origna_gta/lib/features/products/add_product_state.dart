@@ -36,6 +36,10 @@ class AddProductState {
   final String? sellerSku;
   final List<String> selectedWarehouseIds;
   final Map<String, int> warehouseStockMap; // warehouseId → stock qty
+  // N-09: Variant builder fields
+  final bool hasVariants;
+  final List<Map<String, dynamic>> variantOptions; // [{name: 'Size', values: ['S','M','L']}, ...]
+  final List<Map<String, dynamic>> variants; // [{optionValues: {Size: 'S', Color: 'Red'}, price: 29.99, stockQuantity: 10, sku: '...'}, ...]
 
   AddProductState({
     this.isLoading = false,
@@ -68,6 +72,9 @@ class AddProductState {
     this.sellerSku,
     this.selectedWarehouseIds = const [],
     this.warehouseStockMap = const {},
+    this.hasVariants = false,
+    this.variantOptions = const [],
+    this.variants = const [],
   });
 
   /// Use `clearError()` to explicitly set errorMessage to null.
@@ -103,6 +110,9 @@ class AddProductState {
     Object? sellerSku = _sentinel,
     List<String>? selectedWarehouseIds,
     Map<String, int>? warehouseStockMap,
+    bool? hasVariants,
+    List<Map<String, dynamic>>? variantOptions,
+    List<Map<String, dynamic>>? variants,
   }) {
     return AddProductState(
       isLoading: isLoading ?? this.isLoading,
@@ -135,6 +145,9 @@ class AddProductState {
       sellerSku: sellerSku == _sentinel ? this.sellerSku : sellerSku as String?,
       selectedWarehouseIds: selectedWarehouseIds ?? this.selectedWarehouseIds,
       warehouseStockMap: warehouseStockMap ?? this.warehouseStockMap,
+      hasVariants: hasVariants ?? this.hasVariants,
+      variantOptions: variantOptions ?? this.variantOptions,
+      variants: variants ?? this.variants,
     );
   }
 }

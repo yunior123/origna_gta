@@ -143,6 +143,24 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                       ),
                     ),
                   ),
+                  // N-10: Trending badge
+                  if (widget.product.isTrending)
+                    Positioned(
+                      top: isCompact ? 4 : 8,
+                      left: isCompact ? 4 : 8,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: isCompact ? 5 : 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.primary,
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 6, offset: Offset(0, 2))],
+                        ),
+                        child: Text(
+                          'Trending',
+                          style: TextStyle(fontSize: isCompact ? 9 : 11, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: isCompact ? 4 : 8,
                     right: isCompact ? 4 : 8,
@@ -207,17 +225,17 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                         margin: const EdgeInsets.only(bottom: 4),
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.deepPurple.withValues(alpha: 0.12),
+                          color: DesignTokens.digital.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.download_outlined, size: 10, color: Colors.deepPurple),
+                            const Icon(Icons.download_outlined, size: 10, color: DesignTokens.digital),
                             const SizedBox(width: 3),
                             Text(
                               widget.product.digitalType == DigitalTypeValues.software ? 'Software' : 'Book',
-                              style: const TextStyle(fontSize: 10, color: Colors.deepPurple, fontWeight: FontWeight.w600),
+                              style: const TextStyle(fontSize: 10, color: DesignTokens.digital, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),

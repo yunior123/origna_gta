@@ -1401,7 +1401,7 @@ class _BookDownloadButtonState extends ConsumerState<_BookDownloadButton> {
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
       icon: _loading
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(width: 16, height: 16, child: ModernLoadingIndicator.small())
           : const Icon(Icons.download_outlined, size: 16),
       label: const Text('Download Book'),
       onPressed: _loading ? null : _download,

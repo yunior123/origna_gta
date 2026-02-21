@@ -9,6 +9,7 @@ import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/home/home_viewmodel.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/mascot/mascot_provider.dart';
@@ -329,6 +330,86 @@ class _CategoryChips extends ConsumerWidget {
   }
 }
 
+class _SubcategoryChips extends ConsumerWidget {
+  final HomeViewModel homeNotifier;
+
+  const _SubcategoryChips({required this.homeNotifier});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedCategoryId = ref.watch(
+      homeViewModelProvider.select((state) => state.selectedCategoryId),
+    );
+    final selectedSubcategory = ref.watch(
+      homeViewModelProvider.select((state) => state.selectedSubcategory),
+    );
+
+    if (selectedCategoryId == null) return const SizedBox.shrink();
+
+    final subcategories = SubcategoryConstants.forCategoryId(selectedCategoryId);
+    if (subcategories.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: SizedBox(
+        height: 38,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: subcategories.length + 1, // +1 for "All"
+          itemBuilder: (context, index) {
+            final isAll = index == 0;
+            final subcategory = isAll ? null : subcategories[index - 1];
+            final isSelected = isAll
+                ? selectedSubcategory == null
+                : selectedSubcategory == subcategory;
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: AnimatedContainer(
+                duration: DesignTokens.durationFast,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? DesignTokens.secondary.withValues(alpha: 0.15)
+                      : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                  border: Border.all(
+                    color: isSelected
+                        ? DesignTokens.secondary
+                        : DesignTokens.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                    onTap: () => homeNotifier.onSubcategorySelected(
+                      isAll ? null : subcategory,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      child: Text(
+                        isAll ? 'All' : subcategory!,
+                        style: TextStyle(
+                          color: isSelected
+                              ? DesignTokens.secondary
+                              : DesignTokens.textSecondary,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -392,6 +473,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // Category Chips
                 SliverToBoxAdapter(
                   child: _CategoryChips(homeNotifier: homeNotifier),
+                ),
+
+                // Subcategory Chips (shown when a category is selected)
+                SliverToBoxAdapter(
+                  child: _SubcategoryChips(homeNotifier: homeNotifier),
                 ),
 
                 const SliverToBoxAdapter(

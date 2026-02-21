@@ -32,38 +32,6 @@
 ## E2E Testing Infrastructure (Feb 2026)
 
 - **Solo developer** — AI agents are the QA team
-- **279 E2E tests** (9 Playwright files) + 288 backend pytest tests
-- **`e2e/api-helpers.ts`** — canonical shared module (40+ exports). Never duplicate helpers.
-  - `signIn()` — fail-fast, throws if no idToken. Returns `{idToken, localId, ...}` NOT `.token`
-  - `ensureSeedData()` — validates emulators have seeded data
-  - `fillStripeCheckout()` — handles Stripe Link popup + 3DS iframe
-  - `callOk()` throws on error; `callExpectError()` normalizes gRPC codes
-  - `patchDoc()` — auto-uses `updateMask.fieldPaths` (prevents full-doc replace)
-  - `normalizeErrorCode()` — maps PERMISSION_DENIED → permission-denied, etc.
-- **Auth Emulator starts with 0 users** — MUST run `npx ts-node mega-seed.ts` before tests
-- **mega-seed.ts** — seeds 76 users, 30 products, cart items, 8 pre-seeded orders
-- **Rate limiter bypass** — 100x multiplier when `FUNCTIONS_EMULATOR=true`
-- **Firestore REST PATCH** — MUST use `updateMask.fieldPaths` or it replaces entire doc
-- **`Bearer owner`** — bypasses all Firestore security rules in emulator
-- **seed-uid-map.json** — maps email → UID, must be regenerated when switching seed scripts
-
-### E2E Results (Feb 2026 — Final)
-- 266 passed / 0 failed / 1 flaky / 12 intentionally skipped (20.7 min)
-- 7 progressive runs: 200 → 243 → 252 → 258 → 262 → 264 → 266
-
-### 12 Root Causes Fixed
-1. SERVER_TIMESTAMP in arrays (8 locations) → use `datetime.now(timezone.utc)`
-2. Auto-capture paymentStatus always 'captured', never 'authorized'
-3. Sellers CANNOT mark delivered — admin/cron only
-4. Multi-seller orders block `update_order_status` → use `update_item_status`
-5. `_capture_payment_impl` extraction (avoid CallableRequest mismatch)
-6. Yahoo product missing isActive boolean
-7. signIn returns `{idToken}` not `{token}`
-8. Missing payout records in auto-capture idempotent path
-9. Rating test pollution (clean existing ratings before test)
-10. Webhook URL project ID: `orignagta` (no hyphen)
-11. Stock field: `stockQuantity` not `stock`
-12. Auto-promote to SHIPPED when all items shipped
 
 ---
 
@@ -107,6 +75,7 @@
 - **cart**: `btn-info-service-fee`, `btn-info-tax-estimate`; button: 'Proceed to Checkout'
 - **checkout**: `btn-edit-address`, `btn-place-order`, `chk-terms-accepted`
 - **orders**: `btn-confirm-receipt`, `btn-rate`, `btn-pending-approvals`
+- etc
 
 ---
 
@@ -135,32 +104,14 @@
 
 ## .claude/ Infrastructure Summary
 
-- 5 agents, 7 rules, 20 skills, 5 hooks, 15+ commands
-- Quality tools: ruff, dart analyze, universal-ctags
+- 7+ agents, 7+ rules, 20+ skills, 5+ hooks, 15+ commands
+- Quality tools: ruff, dart analyze, etc
 - Symbol Map: `docs/SYMBOL_MAP.md` via `scripts/generate-symbol-map.sh`
 
 ---
 
-## Logic Failures Fixed (E2E)
-
-- D.2: No `add_product` callable — products via Firestore write + trigger
-- G.3: `update_user_role` → `update_user_roles` with `{add, remove, reason}`
-- G.4: `delete_user_data` → `delete_account`
-- F.1: `callExpectError` didn't normalize gRPC codes
-- A.3: `order.subtotal` → `order.subtotalCents` (Firestore stores cents)
-- B.4: `mark_shipped` — tolerant assertions for multi-seller shipping gate
-- E.2: Double cancel — stock restoration uses `STOCK_RESTORED` flag
-
 ---
 
-## Flutter Integration Tests — Key Patterns (Mar 2026)
-
-### Test Infrastructure
-- **Entry point**: `integration_test/all_tests.dart` — single build, imports all test files
-- **Command**: `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/all_tests.dart -d chrome --dart-define=ENVIRONMENT=dev --dart-define=USE_EMULATORS=false`
-- **Dev Firebase project**: `orignagta-dev` (project 245187519087), separate from prod `orignagta` (935641055788)
-- **Test users**: buyer=`yuniorrodriguezo4601@yahoo.com`/`REDACTED_TEST_PASSWORD` (uid: eVxwL5SfEATPnw1zhWYaUdGx8MD2), seller/admin=`yr62813@gmail.com`/`REDACTED_TEST_PASSWORD` (uid: RU9MI8vYFkQCakMrJfG8iGTuc012)
-- **Default role on user creation**: `roles: ['buyer']` (auth_repository.dart line 384) — MUST manually add `seller`/`admin` in Firestore for seller tests to work
 
 ### Key() Naming Convention — App Screens
 | Screen | Keys |
@@ -272,33 +223,6 @@ sysctl vm.swapusage && vm_stat | grep "Pages free"
 
 ---
 
-## Deployment & Infrastructure (Feb 2026 — Session 2)
-
-### firebase-functions 0.4.x `authtype` KeyError (CRITICAL)
-- `on_document_updated` and other Firestore triggers crash with `KeyError: 'authtype'`
-- `firebase_functions/firestore_fn.py` line 137: `event_attributes["authtype"]` fails when CloudEvent from service account doesn't include `authtype` attribute
-- Affects ALL versions through 0.5.0 — upstream hasn't fixed the dict access
-- **Fix**: Monkey-patch `CloudEvent._get_attributes()` in `main.py` to inject `authtype='SERVICE'` and `authid=''`
-- **Impact**: ALL email notifications for order status changes were silently failing
-
-### `.env` overrides Secret Manager in Cloud Run
-- Firebase Gen2 functions (Cloud Run) bundle `.env` at deploy time
-- `.env` values become environment variables that SHADOW `params.SecretParam().value`
-- **Rule**: Put production/dev secrets in `.env`, override locally with `.env.local`
-- `.env.local` is NOT deployed (gitignored)
-
-### Stripe Webhook Lifecycle
-- Old `stripe listen` secrets from local dev DON'T work in production
-- Must create webhook endpoint via `stripe webhook_endpoints create`
-- Webhook endpoint ID format: `we_XXXX`
-- Signing secret: `STRIPE_WEBHOOK_SECRET_REDACTED`
-- Dev endpoint: `we_1T2ESaPPD6r8xGIzV45SJGbm`
-
-### Firestore Composite Index Requirement
-- `create_checkout_session` idempotency query needs: `userId ASC + orderStatus ASC + paymentStatus ASC + createdAt DESC`
-- Missing index gives 400 error, not a helpful message
-- Added to `firestore.indexes.json`
-
 ### Playwright E2E Against Dev Firebase
 - Products with `sellerId: "test-seller-uid"` → filter to known UIDs only (admin + seller)
 - Auth token caching (50-min TTL) avoids QUOTA_EXCEEDED
@@ -307,39 +231,6 @@ sysctl vm.swapusage && vm_stat | grep "Pages free"
 - Workers must be 1 (sequential) to avoid rate limits + auth quota
 - Real Canadian addresses set for buyer (Toronto), admin (Montreal), seller (Vancouver)
 
-## Critical Audit Fixes (Feb 2026 — Session 3)
-
-### Platform Fee Calculation (CRITICAL — Financial)
-- Platform fee rate = `platformFeeTotalCents / subtotalCents` (NOT totalAmountCents)
-- `PLATFORM_FEE_TOTAL_CENTS` ("platformFeeTotalCents") = order-level total fee
-- `PLATFORM_FEE_CENTS` ("platformFeeCents") = per-seller payout-level fee
-- Bug: All 3 capture paths used `TOTAL_AMOUNT_CENTS` as divisor → fee rate was ~2.1% instead of 2.5%
-- Fixed in: `payment_stripe.py` (2 paths), `cron_jobs.py` (1 path)
-
-### Stock Restore Race Conditions (CRITICAL — Data Integrity)
-- `process_session_expired`, `process_payment_intent_failed`, `process_payment_intent_canceled`
-- All had non-atomic read-check-restore: `STOCK_RESTORED` guard was not transactional
-- Two concurrent webhooks could both see `STOCK_RESTORED=False` and double-restore stock
-- **Fix**: All three now use `@get_transactional()` with `transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(qty)})` inside the transaction
-
-### SeverityLevels Class (Bug — Runtime Crash)
-- Only has: LOW, MEDIUM, HIGH, CRITICAL (NO `INFO` level)
-- `SeverityLevels.INFO` at line 2330 would cause `AttributeError` when dispute funds reinstated
-- Fixed to `SeverityLevels.LOW`
-
-### Cross-Stack Key Mismatch (CRITICAL — Item Status Updates Broken)
-- Dart `updateItemStatus` sent `Fields.status` ("status") but backend expected `ApiKeys.NEW_STATUS` ("newStatus")
-- Backend always read `None` for the new status → all item status updates silently failed
-- Fixed in `order_repository.dart` line 53: `Fields.status` → `ApiKeys.newStatus`
-
-### Webhook Cleanup Cron (Bug — Stale Events Never Cleaned)
-- Webhook events store `Fields.TIMESTAMP` ("timestamp")
-- Cron cleanup queried `Fields.CREATED_AT` ("createdAt") → no matches → nothing cleaned up
-- Fixed to query `Fields.TIMESTAMP`
-
-### Schema Sync: `DISPUTE_STATUS` Missing
-- Backend used `Fields.DISPUTE_STATUS` in dispute update handler but constant didn't exist
-- Added to both `schema_constants.py` and `schema_constants.dart`
 
 ## GitHub Actions Secrets Required (CI)
 - FIREBASE_SERVICE_ACCOUNT_DEV — JSON service account key for orignagta-dev

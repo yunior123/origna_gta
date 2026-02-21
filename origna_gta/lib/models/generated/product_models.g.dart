@@ -12,6 +12,9 @@ _InventoryConfig _$InventoryConfigFromJson(Map<String, dynamic> json) =>
       trackQuantity: json['trackQuantity'] as bool? ?? true,
       allowBackorder: json['allowBackorder'] as bool? ?? false,
       lowStockThreshold: (json['lowStockThreshold'] as num?)?.toInt() ?? 5,
+      lastLowStockAlertAt: json['lastLowStockAlertAt'] == null
+          ? null
+          : DateTime.parse(json['lastLowStockAlertAt'] as String),
       reservationHoldMinutes:
           (json['reservationHoldMinutes'] as num?)?.toInt() ?? 30,
     );
@@ -22,6 +25,7 @@ Map<String, dynamic> _$InventoryConfigToJson(_InventoryConfig instance) =>
       'trackQuantity': instance.trackQuantity,
       'allowBackorder': instance.allowBackorder,
       'lowStockThreshold': instance.lowStockThreshold,
+      'lastLowStockAlertAt': instance.lastLowStockAlertAt?.toIso8601String(),
       'reservationHoldMinutes': instance.reservationHoldMinutes,
     };
 
@@ -111,6 +115,18 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   trendingAt: json['trendingAt'] == null
       ? null
       : DateTime.parse(json['trendingAt'] as String),
+  hasVariants: json['hasVariants'] as bool? ?? false,
+  variants:
+      (json['variants'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList() ??
+      const [],
+  variantOptions:
+      (json['variantOptions'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList() ??
+      const [],
+  subcategory: json['subcategory'] as String? ?? null,
 );
 
 Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
@@ -165,6 +181,10 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'purchaseCount': instance.purchaseCount,
   'isTrending': instance.isTrending,
   'trendingAt': instance.trendingAt?.toIso8601String(),
+  'hasVariants': instance.hasVariants,
+  'variants': instance.variants,
+  'variantOptions': instance.variantOptions,
+  'subcategory': instance.subcategory,
 };
 
 _ProductCreate _$ProductCreateFromJson(
@@ -241,6 +261,18 @@ _ProductCreate _$ProductCreateFromJson(
           ?.map((e) => e as String)
           .toList() ??
       null,
+  hasVariants: json['hasVariants'] as bool? ?? false,
+  variants:
+      (json['variants'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList() ??
+      const [],
+  variantOptions:
+      (json['variantOptions'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList() ??
+      const [],
+  subcategory: json['subcategory'] as String? ?? null,
 );
 
 Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
@@ -286,6 +318,10 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'shipFromProvince': instance.shipFromProvince,
       'shipFromCountry': instance.shipFromCountry,
       'shipFromCountries': instance.shipFromCountries,
+      'hasVariants': instance.hasVariants,
+      'variants': instance.variants,
+      'variantOptions': instance.variantOptions,
+      'subcategory': instance.subcategory,
     };
 
 _SellerDeliveryOption _$SellerDeliveryOptionFromJson(

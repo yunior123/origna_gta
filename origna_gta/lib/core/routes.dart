@@ -27,6 +27,8 @@ class AppRoutes {
   static const String sellerRegistration = '/seller/register';
   static const String sellerSetup = '/seller/setup';
   static const String sellerOrders = '/seller/orders';
+  static const String sellerProducts = '/seller/products';
+  static const String sellerWarehouses = '/seller/warehouses';
   static const String sellerIntegration = '/seller/integration';
   static const String favorites = '/favorites';
   static const String adminPanel = '/admin';

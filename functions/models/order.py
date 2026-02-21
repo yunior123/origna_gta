@@ -10,11 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from schema_constants import (
     BusinessRules,
+    DeliveryStatusValues,
     Fields,
     PayoutStatusValues,
 )
 
-from .base import Address, DeliveryStatusEnum, OrderStatusEnum, PaymentStatusEnum, ShippingApprovalStatusEnum
+from .base import Address, OrderStatusEnum, PaymentStatusEnum, ShippingApprovalStatusEnum
 from .product import SellerDeliveryOption
 
 
@@ -51,15 +52,24 @@ class OrderItem(BaseModel):
     imageUrls: list[str] = Field(..., min_length=1, description="Product image URLs")
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address | None = Field(default=None)
-    deliveryStatus: DeliveryStatusEnum = Field(
-        default=DeliveryStatusEnum.PENDING, deprecated=True, description="Deprecated: use 'status' field instead"
+    fulfillmentWarehouseId: str | None = Field(
+        default=None, description="Warehouse from which this item was fulfilled (TASK 02)"
     )
     trackingNumber: str | None = Field(default=None, max_length=100)
     carrier: str | None = Field(default=None, max_length=100)
     confirmedByBuyer: bool = Field(default=False)
 
-    # Per-item status (newer field, supersedes deliveryStatus)
-    status: str = Field(default="pending", description="Item status: pending, shipped, delivered, refunded")
+    # Per-item status
+    status: str = Field(
+        default=DeliveryStatusValues.PENDING, description="Item status: pending, shipped, delivered, refunded"
+    )
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        if v not in DeliveryStatusValues.ALL:
+            raise ValueError(f"Invalid status: {v}. Must be one of: {DeliveryStatusValues.ALL}")
+        return v
 
     # Timestamps
     shippedAt: datetime | None = Field(default=None)
@@ -268,6 +278,10 @@ class Order(BaseModel):
     # Refund tracking
     refundAmountCents: int = Field(default=0, ge=0)
     refundedAt: datetime | None = Field(default=None)
+
+    # Coupon / promo code (N-07)
+    couponCode: str | None = Field(default=None, max_length=20)
+    discountAmountCents: int = Field(default=0, ge=0)
 
     # Manual review
     requiresManualReview: bool = Field(default=False)

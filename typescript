@@ -1,484 +1,0 @@
-Script started on Sat Feb 14 13:33:54 2026
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jyuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jyuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  python3 scripts/setup_test_seller [K..py[?2004l
-Traceback (most recent call last):
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/urllib/request.py", line 1348, in do_open
-    h.request(req.get_method(), req.selector, req.data, headers,
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1282, in request
-    self._send_request(method, url, body, headers, encode_chunked)
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1328, in _send_request
-    self.endheaders(body, encode_chunked=encode_chunked)
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1277, in endheaders
-    self._send_output(message_body, encode_chunked=encode_chunked)
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1037, in _send_output
-    self.send(msg)
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 975, in send
-    self.connect()
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1454, in connect
-    self.sock = self._context.wrap_socket(self.sock,
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 517, in wrap_socket
-    return self.sslsocket_class._create(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1075, in _create
-    self.do_handshake()
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1346, in do_handshake
-    self._sslobj.do_handshake()
-ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/scripts/setup_test_seller.py", line 47, in <module>
-    with urllib.request.urlopen(req) as resp:
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/urllib/request.py", line 216, in urlopen
-    return opener.open(url, data, timeout)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/urllib/request.py", line 519, in open
-    response = self._open(req, data)
-               ^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/urllib/request.py", line 536, in _open
-    result = self._call_chain(self.handle_open, protocol, protocol +
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/urllib/request.py", line 496, in _call_chain
-    result = func(*args)
-             ^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/urllib/request.py", line 1391, in https_open
-    return self.do_open(http.client.HTTPSConnection, req,
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/urllib/request.py", line 1351, in do_open
-    raise URLError(err)
-urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)>
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jyuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[Jyuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  source functions/venv/bin/activat [Kee && python3 scripts/setup_test_seller.py[?2004l
-SUCCESS - roles: ['buyer', 'seller', 'admin']
-chargesEnabled: {'booleanValue': True}
-payoutsEnabled: {'booleanValue': True}
-onboardingCompleted: {'booleanValue': True}
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  python3 -c "[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hiimport json, subprocess, urllib.request, ssl, certifi[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hUUSER_UID = 'eVxwL5SfEATPnw1zhWYaUdGx8MD2'[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hPPROJECT = 'orignagta-dev'[?2004l
-[0m[27m[24m[Jdquote> [K[?2004httoken = subprocess.check_output(['gcloud', 'auth', 'print-access-token'] [K)).decode().strip()[?2004l
-[0m[27m[24m[Jdquote> [K[?2004huurl = f'https://firestore.googleapis.com/v1/projects/{PROJECT}/databases [K//(default)/documents/users/{USER_UID}'[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h## Check if exists[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hrreq = urllib.request.Request(url)[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hrreq.add_header('Authorization', f'Bearer {token}')[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hcctx = ssl.create_default_context(cafile=certifi.where())[?2004l
-[0m[27m[24m[Jdquote> [K[?2004httry:[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h     with urllib.request.urlopen(req, context=ctx) as resp:[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h         doc = json.loads(resp.read())[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h         roles = [v['stringValue'] for v in doc['fields'].get('roles',{}) [K..get('arrayValue',{}).get('values',[])][?2004l
-[0m[27m[24m[Jdquote> [K[?2004h         print(f'Buyer user exists - roles: {roles}')[?2004l
-[0m[27m[24m[Jdquote> [K[?2004heexcept Exception as e:[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h     print(f'Buyer user not found, creating...')[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h     body = json.dumps({'fields': {[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h         'uid': {'stringValue': USER_UID},[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h         'email': {'stringValue': 'yuniorrodriguezo4601@yahoo.com'},[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h         'name': {'stringValue': 'Test Buyimport json,  [?2004l
-[0m[27m[24m[Jdquote> [K[?2004hUUSER_UID = 'eVxwL5SfEATPnw1zhWYaUdGx8MD2'[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hPPROJECT ='buPROJECT = 'orignagta-dev'[?2004l
-[0m[27m[24m[Jdquote> [K[?2004httoken = subproVatoken = subprocess.checkonurl = f'https://firestore.goog [Klleapis.com/v1/projects/{PROJECT}/databases/(default)/documeti[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h## Check if exists[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hrreq = urllib.request.Request(url)[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hrreq.add_header('Authorization', f'Bearer {token}')[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hcctx ='},req = urllib.reqtMreq.add_header('Authorization', },ctx = ssl.cr [Keeate_default_context(cafile=certifi.w: try:[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h     with urllib.request.urlopen(req, context=ctx)                doc = j [Ksson.loads(resp.read())[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h         roles = [v[ac        roles = [v['stringValue'] fo0'        print [K((f'Buyer user exists - roles: {roles}')[?2004l
-[0m[27m[24m[Jdquote> [K[?2004heexcept Exception as e:[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h     print(f'Buyer user not found,  'except Exception as e:[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h     print(f'Buyer user not fZ'    print(f'Buyer use      body = json.dum [Kpps({'fields': {[?2004l
-[0m[27m[24m[Jdquote> [K[?2004h         'uime        'uid': {'stringValue': US('        'email': {'strin [KggValue': 'yunioreq        'name': {'stringValue': 'Test Buyimport json,  [?2004l
-[0m[27m[24m[Jdquote> [K[?2004hUUSER_UID =eqUSER_UID = 'eVxwL5SfEATPnw1zhWYaUdGx8MD2'[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hPPROJECT ='bu jPROJECT ='buPROJECT = 'orignagta-dev'[?2004l
-[0m[27m[24m[Jdquote> [K[?2004httov[token = subproVatoken = subprocess.c][# Check if exists[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hrreq = urllib.request.Request(url)[?2004l
-[0m[27m[24m[Jdquote> [K[?2004hrreq.add_header('Authorization'[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  python3 /Users/yuniorrodri [Kgguezosorio/Documents/GitHub/origna_gta/scripts/setup_test_seller.py[?2004l
-SUCCESS yr62813@gmail.com - roles: ['buyer', 'seller', 'admin']
-SUCCESS yuniorrodriguezo4601@yahoo.com - roles: ['buyer']
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  firebase use orignagta 2>& [K11 | tail -1[?2004l
-Now using project orignagta
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  wc -l /Users/yuniorrodrigu [Keezosorio/Documents/GitHub/origna_gta/origna_gta/lib/screens/checkout_screen.dart [K[K[?2004l
-    1258 /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/lib/screens/checkout_screen.dart
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  mv /Users/yuniorrodriguezo [Kssorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.d [Kaart.new /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/inte [Kggration_test/payment_e2e_test.dart[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  grep -n 'find\.text\|find\ [K..textContaining\|find\.widgetWithText\|find\.byTooltip' /Users/yuniorrodriguezos [Koorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.da [Krrt | wc -l && grep -n 'find\.text\|find\.textContaining\|find\.widgetWithText\|f [Kiind\.byTooltip' /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_ [Kggta/integration_test/payment_e2e_test.dart[?2004l
-       0
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  grep -c 'find\.text\|find\ [K..textContaining\|find\.widgetWithText\|find\.byTooltip' /Users/yuniorrodriguezos [Koorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.da [Krrt[?2004l
-0
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  for f in critical_flows_te [Ksst.dart human_workflows_test.dart product_creation_test.dart shipping_product_e2 [Kee_test.dart payment_e2e_test.dart checkout_flow_test.dart app_test.dart database [K__reactivity_test.dart; do echo -n "$f: "; grep -cE 'find\.text\(|find\.textConta [Kiining\(|find\.widgetWithText\(|find\.byTooltip\(' /Users/yuniorrodriguezosorio/D [Koocuments/GitHub/origna_gta/origna_gta/integration_test/$f 2>/dev/null || echo "N [K//A"; done[?2004l
-critical_flows_test.dart: 0
-N/A
-human_workflows_test.dart: 0
-N/A
-product_creation_test.dart: 0
-N/A
-shipping_product_e2e_test.dart: 0
-N/A
-payment_e2e_test.dart: 0
-N/A
-checkout_flow_test.dart: 0
-N/A
-app_test.dart: 0
-N/A
-database_reactivity_test.dart: 0
-N/A
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  firebase use 2>&1 | head - [K5[?2004l
-(node:3508) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
-(Use `node --trace-deprecation ...` to show where the warning was created)
-orignagta
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-roles: [{'stringValue': 'buyer'}, {'stringValue': 'seller'}, {'stringValue': 'admin'}]
-chargesEnabled: True
-payoutsEnabled: True
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-Found: 0
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-Total users: 0
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  TOKEN=$(gcloud auth print- [Kaaccess-token 2>/dev/null) && curl -s "https://identitytoolkit.googleapis.com/v1/ [Kpprojects/orignagta-dev/accounts:batchGet?maxResults=20" -H "Authorization: Beare [Krr $TOKEN" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); use [Krrs=d.get('users',[]); print(f'Total: {len(users)}'); [print(f'  {u.get(\"localId [K\\",\"?\")}: {u.get(\"email\",\"?\")}') for u in users]" 2>&1[?2004l
-Total: 0
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  firebase auth:export --pro [Kjject orignagta-dev /tmp/auth_users.json --format json 2>&1 | tail -5[?2004l
-(node:3702) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
-(Use `node --trace-deprecation ...` to show where the warning was created)
-Exporting accounts to /tmp/auth_users.json
-✔  Exported 2 account(s) successfully.
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  python3 -c "import json; d [K==json.load(open('/tmp/auth_users.json')); [print(f'{u[\"localId\"]}: {u.get(\"em [Kaail\",\"?\")} pwd={\"passwordHash\" in u}') for u in d.get('users',[])]"[?2004l
-RU9MI8vYFkQCakMrJfG8iGTuc012: yr62813@gmail.com pwd=True
-eVxwL5SfEATPnw1zhWYaUdGx8MD2: yuniorrodriguezo4601@yahoo.com pwd=True
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  grep -rn 'seller@origna' / [KUUsers/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_t [Keest/ 2>/dev/null[?2004l
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/product_creation_test.dart:24:      await tester.enterText(find.byKey(const Key('login_email_field')), 'seller@origna.ca');
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/product_creation_test.dart:380:      await tester.enterText(emailFields.first, 'seller@origna.ca');
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/product_creation_test.dart:410:      await tester.enterText(emailFields.first, 'seller@origna.ca');
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/marketplace_flows_test.dart:34:  static const String existingSellerEmail = 'seller@origna.ca';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/README.md:59:- Un compte vendeur de test doit exister : `seller@origna.ca` avec mot de passe `Test123456!`
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/README.md:216:- [ ] Compte vendeur de test créé (`seller@origna.ca`)
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/complete_workflows_test.dart:167:        'seller@origna.ca'
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  grep -rn 'yr62813\|yuniorr [Koodriguezo4601\|sellerEmail\|buyerEmail\|TestPass123' /Users/yuniorrodriguezosori [Koo/Documents/GitHub/origna_gta/origna_gta/integration_test/*.dart 2>/dev/null | g [Krrep -v 'README\|complete_workflows\|marketplace_flows'[?2004l
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:22:  const String buyerEmail = 'yuniorrodriguezo4601@yahoo.com';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:23:  const String buyerPassword = 'REDACTED_TEST_PASSWORD';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:118:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:133:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:160:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:174:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:186:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:207:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:221:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:236:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:258:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:282:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:301:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:314:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:334:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:348:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:361:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:379:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:392:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:404:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:423:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:444:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:458:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:476:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:490:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:509:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:521:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:533:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:551:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:563:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/checkout_critical_test.dart:578:      await login(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/critical_flows_test.dart:83:    await tester.enterText(emailField, 'yuniorrodriguezo4601@yahoo.com');
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/critical_flows_test.dart:85:    await tester.enterText(passwordField, 'REDACTED_TEST_PASSWORD');
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:196:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:357:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:376:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:408:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:427:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:443:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:457:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:479:      await performLogin(tester, sellerEmail, sellerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:491:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:662:const String buyerEmail = 'yuniorrodriguezo4601@yahoo.com';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:663:const String buyerPassword = 'REDACTED_TEST_PASSWORD';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/full_e2e_test.dart:665:const String sellerEmail = 'yr62813@gmail.com';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:118:    await loginWith(tester, email: _buyerEmail, password: _buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:190:const _buyerEmail = 'yuniorrodriguezo4601@yahoo.com';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:191:const _buyerPassword = 'REDACTED_TEST_PASSWORD';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:192:const _sellerEmail = 'yr62813@gmail.com';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:193:const _sellerPassword = 'REDACTED_TEST_PASSWORD';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:194:const _adminEmail = 'yr62813@gmail.com';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:195:const _adminPassword = 'REDACTED_TEST_PASSWORD';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:210:      debugPrint('Workflow 1: Starting login for $_buyerEmail');
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:211:      await loginWith(tester, email: _buyerEmail, password: _buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:247:      await tester.enterText(find.byKey(const Key('login_password_field')), 'REDACTED_TEST_PASSWORD');
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:284:        await loginWith(tester, email: _buyerEmail, password: _buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:373:        await loginWith(tester, email: _buyerEmail, password: _buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:420:        await loginWith(tester, email: _buyerEmail, password: _buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:472:        await loginWith(tester, email: _buyerEmail, password: _buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:508:        await loginWith(tester, email: _buyerEmail, password: _buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:551:        await loginWith(tester, email: _sellerEmail, password: _sellerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/human_workflows_test.dart:592:        await loginWith(tester, email: _sellerEmail, password: _sellerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:22:  const buyerEmail = 'yuniorrodriguezo4601@yahoo.com';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:23:  const buyerPassword = 'REDACTED_TEST_PASSWORD';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:24:  const sellerEmail = 'yr62813@gmail.com';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:25:  const sellerPassword = 'REDACTED_TEST_PASSWORD';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:119:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:133:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:145:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:160:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:171:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:208:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:230:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:250:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:270:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:289:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:315:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:333:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:352:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:378:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:397:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:415:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:441:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:461:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:481:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:510:      await performLogin(tester, sellerEmail, sellerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:524:      await performLogin(tester, sellerEmail, sellerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:535:      await performLogin(tester, sellerEmail, sellerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:557:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:571:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:589:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:616:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:638:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:658:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:674:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:687:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:707:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:727:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:765:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:798:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:818:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/payment_e2e_test.dart:830:      await performLogin(tester, buyerEmail, buyerPassword);
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/shipping_product_e2e_test.dart:23:const _adminEmail = 'yr62813@gmail.com';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/shipping_product_e2e_test.dart:24:const _adminPassword = 'REDACTED_TEST_PASSWORD';
-/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test/shipping_product_e2e_test.dart:234:      debugPrint('  Ensure yr62813@gmail.com has roles: [seller] or [admin] in Firestore.');
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro origna_gta % [K[?2004h  cd /Users/yuniorrodriguezo [Kssorio/Documents/GitHub/origna_gta/origna_gta/integration_test && grep -n 'find\. [Kttext(' *.dart | grep -v '//' | head -100[?2004l
-complete_workflows_test.dart:261:        expect(find.text('Product created'), findsOneWidget);
-complete_workflows_test.dart:374:      expect(find.text('Invalid email format'), findsOneWidget);
-full_e2e_test.dart:137:        expect(find.text('test@example.com'), findsWidgets);
-full_e2e_test.dart:166:      final createAccount = find.text('Create Account');
-full_e2e_test.dart:167:      final signUp = find.text('Sign Up');
-marketplace_flows_test.dart:358:  final anyText = find.text(text);
-minimal_test.dart:11:    expect(find.text('Hello'), findsOneWidget);
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h  grep -n 'find\.text\ [K||find\.textContaining\|find\.byTooltip\|find\.widgetWithText\|find\.byType(Text' [K  *.dart | grep -v '^\s*//' | head -150[?2004l
-app_test.dart:37:    final textFields = find.byType(TextField);
-app_test.dart:42:    final textButtons = find.byType(TextButton);
-checkout_critical_test.dart:124:        final addressSection = find.textContaining('Address');
-checkout_critical_test.dart:125:        final noAddress = find.textContaining('Add');
-checkout_critical_test.dart:165:        final deliveryAddress = find.textContaining('Delivery Address');
-checkout_critical_test.dart:166:        final addressRequired = find.textContaining('required');
-checkout_critical_test.dart:191:        final homeLabel = find.textContaining('Home');
-checkout_critical_test.dart:192:        final workLabel = find.textContaining('Work');
-checkout_critical_test.dart:211:        final shippingText = find.textContaining('Shipping');
-checkout_critical_test.dart:212:        final freeShipping = find.textContaining('Free');
-checkout_critical_test.dart:213:        final shippingCost = find.textContaining('\$');
-checkout_critical_test.dart:225:        final standardDelivery = find.textContaining('Standard');
-checkout_critical_test.dart:226:        final expressDelivery = find.textContaining('Express');
-checkout_critical_test.dart:227:        final localDelivery = find.textContaining('Local');
-checkout_critical_test.dart:262:        final taxText = find.textContaining('Tax');
-checkout_critical_test.dart:263:        final hstText = find.textContaining('HST');
-checkout_critical_test.dart:264:        final gstText = find.textContaining('GST');
-checkout_critical_test.dart:265:        final pstText = find.textContaining('PST');
-checkout_critical_test.dart:266:        final qstText = find.textContaining('QST');
-checkout_critical_test.dart:286:        final totalText = find.textContaining('Total');
-checkout_critical_test.dart:287:        final grandTotal = find.textContaining('Grand Total');
-checkout_critical_test.dart:305:        final stripeText = find.textContaining('Stripe');
-checkout_critical_test.dart:306:        final paymentSection = find.textContaining('Payment');
-checkout_critical_test.dart:338:        final itemsSection = find.textContaining('Items');
-checkout_critical_test.dart:339:        final summarySection = find.textContaining('Summary');
-checkout_critical_test.dart:352:        final subtotalText = find.textContaining('Subtotal');
-checkout_critical_test.dart:353:        final subTotal = find.textContaining('Sub-total');
-checkout_critical_test.dart:428:        final verifyEmail = find.textContaining('verify');
-checkout_critical_test.dart:429:        final emailText = find.textContaining('email');
-checkout_critical_test.dart:448:        final digitalDelivery = find.textContaining('Digital');
-checkout_critical_test.dart:449:        final noShipping = find.textContaining('no shipping');
-checkout_critical_test.dart:480:        final secureText = find.textContaining('Secure');
-checkout_critical_test.dart:481:        final encryptedText = find.textContaining('encrypted');
-checkout_critical_test.dart:494:        final termsText = find.textContaining('Terms');
-checkout_critical_test.dart:495:        final policyText = find.textContaining('Policy');
-checkout_critical_test.dart:568:        final errorText = find.textContaining('Error');
-checkout_critical_test.dart:569:        final failedText = find.textContaining('Failed');
-complete_workflows_test.dart:261:        expect(find.text('Product created'), findsOneWidget);
-complete_workflows_test.dart:331:      // await tester.tap(find.text('Analytics'));
-complete_workflows_test.dart:335:      // expect(find.text('Total Revenue'), findsOneWidget);
-complete_workflows_test.dart:336:      // expect(find.text('Active Users'), findsOneWidget);
-complete_workflows_test.dart:337:      // expect(find.text('Orders Today'), findsOneWidget);
-complete_workflows_test.dart:340:      // await tester.tap(find.text('Moderation'));
-complete_workflows_test.dart:344:      // expect(find.text('Flagged Products'), findsOneWidget);
-complete_workflows_test.dart:352:      //   await tester.tap(find.text('Approve'));
-complete_workflows_test.dart:374:      expect(find.text('Invalid email format'), findsOneWidget);
-complete_workflows_test.dart:383:      expect(find.textContaining('required'), findsWidgets);
-complete_workflows_test.dart:393:      expect(find.textContaining('at least'), findsOneWidget);
-complete_workflows_test.dart:444:      // await tester.tap(find.text('Browse'));
-full_e2e_test.dart:126:      final textFields = find.byType(TextField);
-full_e2e_test.dart:133:      final textFields = find.byType(TextField);
-full_e2e_test.dart:137:        expect(find.text('test@example.com'), findsWidgets);
-full_e2e_test.dart:144:      final textFields = find.byType(TextField);
-full_e2e_test.dart:157:      final signInText = find.widgetWithText(ElevatedButton, 'Sign In');
-full_e2e_test.dart:166:      final createAccount = find.text('Create Account');
-full_e2e_test.dart:167:      final signUp = find.text('Sign Up');
-full_e2e_test.dart:168:      final register = find.textContaining('account');
-full_e2e_test.dart:178:      final textFields = find.byType(TextField);
-full_e2e_test.dart:312:      final dollarSign = find.textContaining('\$');
-full_e2e_test.dart:313:      final pricePattern = find.textContaining(RegExp(r'\d+\.\d{2}'));
-full_e2e_test.dart:384:        final emptyText = find.textContaining('empty');
-full_e2e_test.dart:395:      final cartAdd = find.textContaining('Add to Cart');
-full_e2e_test.dart:437:      final emailText = find.textContaining('@');
-full_e2e_test.dart:451:      final ordersText = find.textContaining('Order');
-full_e2e_test.dart:465:      final logoutText = find.textContaining('Log');
-full_e2e_test.dart:466:      final signOutText = find.textContaining('Sign Out');
-full_e2e_test.dart:501:      final sellerText = find.textContaining('Seller');
-full_e2e_test.dart:502:      final sellText = find.textContaining('Sell');
-full_e2e_test.dart:530:      final textFields = find.byType(TextField);
-full_e2e_test.dart:592:      final textFields = find.byType(TextField);
-marketplace_flows_test.dart:159:    final fields = find.byType(TextField).evaluate().isNotEmpty ? find.byType(TextField) : find.byType(TextFormField);
-marketplace_flows_test.dart:176:    final signInButton = find.widgetWithText(ElevatedButton, 'Sign In');
-marketplace_flows_test.dart:202:  final createAccountButton = find.textContaining('Create Account');
-marketplace_flows_test.dart:203:  final signUpButton = find.textContaining('Sign Up');
-marketplace_flows_test.dart:204:  final registerText = find.textContaining('Register');
-marketplace_flows_test.dart:220:  final textFields = find.byType(TextField);
-marketplace_flows_test.dart:221:  final formFields = find.byType(TextFormField);
-marketplace_flows_test.dart:253:  final submitButton = find.widgetWithText(ElevatedButton, 'Sign Up');
-marketplace_flows_test.dart:254:  final createButton = find.widgetWithText(ElevatedButton, 'Create Account');
-marketplace_flows_test.dart:255:  final registerButton = find.widgetWithText(ElevatedButton, 'Register');
-marketplace_flows_test.dart:307:  final confirmButton = find.textContaining('Yes');
-marketplace_flows_test.dart:308:  final confirmLogout = find.textContaining('Confirm');
-marketplace_flows_test.dart:334:  final elevatedButton = find.widgetWithText(ElevatedButton, text);
-marketplace_flows_test.dart:342:  final outlinedButton = find.widgetWithText(OutlinedButton, text);
-marketplace_flows_test.dart:350:  final textButton = find.widgetWithText(TextButton, text);
-marketplace_flows_test.dart:358:  final anyText = find.text(text);
-marketplace_flows_test.dart:377:  final becomeSellerButton = find.textContaining('Become a Seller');
-marketplace_flows_test.dart:378:  final sellButton = find.textContaining('Start Selling');
-marketplace_flows_test.dart:379:  final sellerButton = find.textContaining('Sell with us');
-marketplace_flows_test.dart:414:  final stripeOption = find.textContaining('Stripe');
-marketplace_flows_test.dart:428:  final continueButton = find.textContaining('Continue');
-marketplace_flows_test.dart:429:  final startButton = find.textContaining('Start');
-marketplace_flows_test.dart:430:  final connectButton = find.textContaining('Connect');
-marketplace_flows_test.dart:444:  final successMessage = find.textContaining('success');
-marketplace_flows_test.dart:445:  final sellerDashboard = find.textContaining('Seller Dashboard');
-marketplace_flows_test.dart:446:  final productsSection = find.textContaining('Products');
-marketplace_flows_test.dart:465:  final addTextButton = find.textContaining('Add Product');
-marketplace_flows_test.dart:481:  final textFields = find.byType(TextFormField);
-marketplace_flows_test.dart:502:  final categoryDropdown = find.textContaining('Category');
-marketplace_flows_test.dart:507:    final categoryOption = find.textContaining(product.category);
-marketplace_flows_test.dart:526:  final submitButton = find.widgetWithText(ElevatedButton, 'Create Product');
-marketplace_flows_test.dart:527:  final saveButton = find.widgetWithText(ElevatedButton, 'Save');
-marketplace_flows_test.dart:528:  final publishButton = find.widgetWithText(ElevatedButton, 'Publish');
-marketplace_flows_test.dart:541:  final successMessage = find.textContaining('created');
-marketplace_flows_test.dart:542:  final productCreated = find.textContaining('Product');
-marketplace_flows_test.dart:569:  final addToCartButton = find.widgetWithText(ElevatedButton, 'Add to Cart');
-marketplace_flows_test.dart:609:  final streetField = find.textContaining('Street');
-marketplace_flows_test.dart:620:  final stripeOption = find.textContaining('Stripe');
-marketplace_flows_test.dart:621:  final creditCardOption = find.textContaining('Credit Card');
-marketplace_flows_test.dart:657:    final oldPlaceOrderButton = find.widgetWithText(ElevatedButton, 'Place Order');
-marketplace_flows_test.dart:669:  final successMessage = find.textContaining('Order Confirmed');
-marketplace_flows_test.dart:670:  final orderSuccess = find.textContaining('Success');
-marketplace_flows_test.dart:671:  final orderNumber = find.textContaining('Order #');
-marketplace_flows_test.dart:672:  final thankYou = find.textContaining('Thank you');
-marketplace_flows_test.dart:697:  final ordersButton = find.textContaining('Orders');
-marketplace_flows_test.dart:698:  final myOrdersButton = find.textContaining('My Orders');
-marketplace_flows_test.dart:716:  final confirmDeliveryButton = find.textContaining('Confirm Delivery');
-marketplace_flows_test.dart:717:  final receivedButton = find.textContaining('Received');
-marketplace_flows_test.dart:718:  final confirmButton = find.textContaining('Confirm Receipt');
-marketplace_flows_test.dart:731:  final yesButton = find.textContaining('Yes');
-marketplace_flows_test.dart:750:  final ordersTab = find.textContaining('Orders');
-marketplace_flows_test.dart:751:  final salesTab = find.textContaining('Sales');
-marketplace_flows_test.dart:762:  final pendingOrders = find.textContaining('Pending');
-marketplace_flows_test.dart:769:  final shipButton = find.textContaining('Ship');
-marketplace_flows_test.dart:770:  final markShippedButton = find.textContaining('Mark as Shipped');
-marketplace_flows_test.dart:781:  final trackingField = find.textContaining('Tracking');
-marketplace_flows_test.dart:783:    final trackingInputs = find.byType(TextField);
-marketplace_flows_test.dart:791:  final confirmButton = find.widgetWithText(ElevatedButton, 'Confirm');
-marketplace_flows_test.dart:792:  final updateButton = find.widgetWithText(ElevatedButton, 'Update');
-marketplace_flows_test.dart:818:  final productsText = find.textContaining('Products');
-marketplace_flows_test.dart:819:  final ordersText = find.textContaining('Orders');
-marketplace_flows_test.dart:849:    final searchField = find.byType(TextField);
-marketplace_flows_test.dart:857:  final productFound = find.textContaining(productName);
-marketplace_flows_test.dart:882:  final ordersButton = find.textContaining('Orders');
-marketplace_flows_test.dart:891:  final orderNumber = find.textContaining('Order #');
-marketplace_flows_test.dart:910:  final statusText = find.textContaining(expectedStatus);
-marketplace_flows_test.dart:1152:      final ordersButton = find.textContaining('Orders');
-marketplace_flows_test.dart:1302:      final hasEarningsInfo = find.textContaining('Earnings').evaluate().isNotEmpty ||
-marketplace_flows_test.dart:1303:                              find.textContaining('Revenue').evaluate().isNotEmpty ||
-marketplace_flows_test.dart:1304:                              find.textContaining('Payment').evaluate().isNotEmpty ||
-marketplace_flows_test.dart:1305:                              find.textContaining('Balance').evaluate().isNotEmpty;
-marketplace_flows_test.dart:1333:      final hasEmptyState = find.textContaining('empty').evaluate().isNotEmpty ||
-marketplace_flows_test.dart:1334:                            find.widgetWithText(ElevatedButton, 'Checkout').evaluate().isEmpty;
-marketplace_flows_test.dart:1351:      final hasErrorMessage = find.textContaining('error').evaluate().isNotEmpty ||
-marketplace_flows_test.dart:1352:                              find.textContaining('invalid').evaluate().isNotEmpty ||
-marketplace_flows_test.dart:1353:                              find.textContaining('incorrect').evaluate().isNotEmpty;
-minimal_test.dart:11:    expect(find.text('Hello'), findsOneWidget);
-payment_e2e_test.dart:68:      final emailFields = find.byType(TextField);
-payment_e2e_test.dart:784:      final tryAgainButton = find.byType(TextButton);
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h  cd /Users/yuniorrodr [Kiiguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test && for f in  [Kaapp_test.dart critical_flows_test.dart checkout_flow_test.dart shipping_product_ [Kee2e_test.dart human_workflows_test.dart payment_e2e_test.dart product_creation_t [Keest.dart database_reactivity_test.dart; do echo "=== $f ==="; grep -n 'find\.tex [Ktt\b\|find\.textContaining\|find\.widgetWithText\|find\.byWidgetPredicate.*text'  [K""$f" 2>/dev/null || echo "(none)"; done[?2004l
-=== app_test.dart ===
-(none)
-=== critical_flows_test.dart ===
-(none)
-=== checkout_flow_test.dart ===
-(none)
-=== shipping_product_e2e_test.dart ===
-(none)
-=== human_workflows_test.dart ===
-(none)
-=== payment_e2e_test.dart ===
-(none)
-=== product_creation_test.dart ===
-(none)
-=== database_reactivity_test.dart ===
-(none)
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h  cd /Users/yuniorrodr [Kiiguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test && for f in  [Kaapp_test.dart critical_flows_test.dart checkout_flow_test.dart shipping_product_ [Kee2e_test.dart human_workflows_test.dart payment_e2e_test.dart product_creation_t [Keest.dart database_reactivity_test.dart; do echo "=== $f ==="; grep -n 'find\.byT [Kyype(Text\|find\.byType(ElevatedButton\|find\.byType(TextButton\|find\.byType(Out [KllinedButton' "$f" 2>/dev/null || echo "(none)"; done[?2004l
-=== app_test.dart ===
-37:    final textFields = find.byType(TextField);
-41:    final elevatedButtons = find.byType(ElevatedButton);
-42:    final textButtons = find.byType(TextButton);
-=== critical_flows_test.dart ===
-(none)
-=== checkout_flow_test.dart ===
-(none)
-=== shipping_product_e2e_test.dart ===
-(none)
-=== human_workflows_test.dart ===
-(none)
-=== payment_e2e_test.dart ===
-68:      final emailFields = find.byType(TextField);
-783:      final retryButton = find.byType(ElevatedButton);
-784:      final tryAgainButton = find.byType(TextButton);
-=== product_creation_test.dart ===
-(none)
-=== database_reactivity_test.dart ===
-(none)
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h  cd /Users/yuniorrodr [Kiiguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test && grep -n ' [Kffind\.\(text\|textContaining\|widgetWithText\|byWidgetPredicate\)' app_test.dart [K  critical_flows_test.dart checkout_flow_test.dart shipping_product_e2e_test.dart [K  human_workflows_test.dart payment_e2e_test.dart product_creation_test.dart data [Kbbase_reactivity_test.dart 2>/dev/null; echo "EXIT: $?"[?2004l
-EXIT: 1
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h[?2004l
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h  cd /Users/yuniorrodr [Kiiguezosorio/Documents/GitHub/origna_gta/origna_gta/integration_test && grep -n ' [Kffind\.byType(TextField\|find\.byType(TextFormField' app_test.dart critical_flows [K__test.dart checkout_flow_test.dart shipping_product_e2e_test.dart human_workflow [Kss_test.dart payment_e2e_test.dart product_creation_test.dart database_reactivity [K__test.dart 2>/dev/null[?2004l
-app_test.dart:37:    final textFields = find.byType(TextField);
-[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(venv) yuniorrodriguezosorio@MacBookPro integration_test % [K[?2004h

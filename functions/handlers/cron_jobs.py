@@ -34,6 +34,7 @@ from schema_constants import (
     ProductApprovalStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
+    SubscriptionStatusValues,
 )
 from utils.function_options import CRON_OPTIONS
 
@@ -1316,12 +1317,15 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
         if not cart_items:
             continue
 
-        # Verify at least one cart item is still active
+        # Verify at least one cart item is still active — batch fetch all product docs
         active_product_names: list[str] = []
-        for cart_doc in cart_items:
-            cart_data = cart_doc.to_dict() or {}
-            product_id = cart_data.get(Fields.PRODUCT_ID) or cart_doc.id
-            product_doc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
+        product_ids = [
+            (cart_doc.to_dict() or {}).get(Fields.PRODUCT_ID) or cart_doc.id
+            for cart_doc in cart_items
+        ]
+        product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_ids]
+        product_docs = get_db().get_all(product_refs)
+        for product_doc in product_docs:
             if product_doc.exists:
                 pd = product_doc.to_dict() or {}
                 if pd.get(Fields.IS_ACTIVE) and pd.get(Fields.STOCK_QUANTITY, 0) > 0:
@@ -1654,3 +1658,54 @@ def _notify_trending_products(db, top_products: list[tuple]) -> None:
         logger.info(f"Trending FCM sent: {response.success_count} ok, {response.failure_count} failed")
     except Exception as e:
         logger.error(f"Failed to send trending FCM: {e}")
+
+
+@scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
+def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
+    """Hourly: detect and fix subscription-user cache mismatches. Catches missed webhooks."""
+    import stripe as stripe_lib
+    from handlers.subscriptions import _sync_subscription
+
+    stripe_lib.api_key = get_stripe_secret_key()
+    db = get_db()
+    now = datetime.now(UTC)
+    synced_count = 0
+    error_count = 0
+
+    # Fix subscriptions that should be expired but user.isPremium is still True
+    expired_query = (
+        db.collection(Collections.SUBSCRIPTIONS)
+        .where(Fields.CURRENT_PERIOD_END, "<", now)
+        .where(Fields.STATUS, "in", list(SubscriptionStatusValues.PREMIUM_ACTIVE))
+        .limit(50)
+        .stream()
+    )
+    for sub_doc in expired_query:
+        uid = sub_doc.id
+        sub_data = sub_doc.to_dict() or {}
+        stripe_sub_id = sub_data.get(Fields.STRIPE_SUBSCRIPTION_ID)
+        if not stripe_sub_id:
+            continue
+        try:
+            stripe_sub = stripe_lib.Subscription.retrieve(stripe_sub_id)
+            _sync_subscription(stripe_sub)
+            synced_count += 1
+        except Exception as e:
+            logger.error(f"sync_expired_subscriptions: failed for {uid}: {e}")
+            error_count += 1
+
+    # Fix orphaned isPremium=True with no subscription doc
+    for user_doc in db.collection(Collections.USERS).where(Fields.IS_PREMIUM, "==", True).limit(100).stream():
+        uid = user_doc.id
+        sub_snap = db.collection(Collections.SUBSCRIPTIONS).document(uid).get()
+        if not sub_snap.exists:
+            logger.warning(f"Clearing orphaned isPremium for user {uid}")
+            db.collection(Collections.USERS).document(uid).update({
+                Fields.IS_PREMIUM: False,
+                Fields.PREMIUM_EXPIRES_AT: None,
+                Fields.STRIPE_SUBSCRIPTION_ID: None,
+                Fields.UPDATED_AT: now,
+            })
+            synced_count += 1
+
+    logger.info(f"sync_expired_subscriptions: {synced_count} fixed, {error_count} errors")

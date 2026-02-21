@@ -12,6 +12,7 @@ class DesignTokens {
   static const Color secondary = Color(0xFF764BA2); // Deep Violet
   static const Color tertiary = Color(0xFFFF6B6B); // Coral
   static const Color accent = Color(0xFF5CE1E6); // Cyan (Matches web splash)
+  static const Color digital = Color(0xFF7C3AED); // Digital product badge purple
 
   // Gradient Definition (Matches index.html splash)
   static const Color gradientStart = Color(0xFF1F235A);

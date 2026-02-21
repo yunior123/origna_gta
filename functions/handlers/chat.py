@@ -8,6 +8,7 @@ The backend provides:
 """
 
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -47,11 +48,17 @@ def _get_server_timestamp():
 
 def _is_premium(uid: str) -> bool:
     """Check if user has active premium subscription (reads authoritative subscriptions doc)."""
-    sub_snap = _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).get()
-    if not sub_snap.exists:
-        return False
-    status = (sub_snap.to_dict() or {}).get(Fields.STATUS, "")
-    return status in SubscriptionStatusValues.PREMIUM_ACTIVE
+    from utils.premium_check import is_premium_authoritative
+    return is_premium_authoritative(uid, db=_get_db())
+
+def _sanitize_text(text: str) -> str:
+    """Strip HTML/script injection from user text."""
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'javascript:', '', text, flags=re.IGNORECASE)
+    return text.strip()
+
+
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -180,3 +187,78 @@ def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
         batch.commit()
 
     return {"success": True, "count": count}
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Send a message in a chat thread — sanitizes text server-side before Firestore write.
+    Buyers must be premium; sellers can reply without premium.
+
+    Request data: { chatId: str, text: str }
+    Returns: { success: bool, messageId: str }
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Authentication required.")
+
+    uid = req.auth.uid
+    chat_id = (req.data.get(Fields.CHAT_ID) or "").strip()
+    raw_text = req.data.get(Fields.MESSAGE_TEXT, "")
+
+    if not chat_id:
+        raise https_fn.HttpsError("invalid-argument", "chatId is required.")
+    if not raw_text or not isinstance(raw_text, str):
+        raise https_fn.HttpsError("invalid-argument", "text is required.")
+
+    # Sanitize before any Firestore write
+    text = _sanitize_text(raw_text)
+    if not text:
+        raise https_fn.HttpsError("invalid-argument", "Message text is empty after sanitization.")
+    if len(text) > 2000:
+        raise https_fn.HttpsError("invalid-argument", "Message text exceeds 2000 characters.")
+
+    db = _get_db()
+    chat_snap = db.collection(Collections.CHATS).document(chat_id).get()
+    if not chat_snap.exists:
+        raise https_fn.HttpsError("not-found", "Chat thread not found.")
+
+    chat_data = chat_snap.to_dict() or {}
+    buyer_id = chat_data.get(Fields.BUYER_ID)
+    seller_id = chat_data.get(Fields.SELLER_ID)
+
+    if uid not in (buyer_id, seller_id):
+        raise https_fn.HttpsError("permission-denied", "Access denied.")
+
+    # Buyers must be premium to send messages
+    if uid == buyer_id and not _is_premium(uid):
+        raise https_fn.HttpsError(
+            "permission-denied",
+            "Premium subscription required to send messages.",
+        )
+
+    now = datetime.now(UTC)
+    msg_ref = (
+        db.collection(Collections.CHATS)
+        .document(chat_id)
+        .collection(Collections.CHAT_MESSAGES)
+        .document()
+    )
+    msg_ref.set(
+        {
+            Fields.SENDER_ID: uid,
+            Fields.MESSAGE_TEXT: text,
+            Fields.CREATED_AT: now,
+            Fields.IS_READ: False,
+        }
+    )
+
+    # Update thread denormalized last message
+    db.collection(Collections.CHATS).document(chat_id).update(
+        {
+            Fields.LAST_MESSAGE: text[:100],
+            Fields.LAST_MESSAGE_AT: now,
+            Fields.UPDATED_AT: now,
+        }
+    )
+
+    logger.info(f"Message sent in chat {chat_id} by user {uid}")
+    return {"success": True, "messageId": msg_ref.id}

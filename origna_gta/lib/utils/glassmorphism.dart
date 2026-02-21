@@ -163,48 +163,6 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-/// Glass container with blur effect
-class GlassContainer extends StatelessWidget {
-  final Widget child;
-  final double blurIntensity;
-  final Color backgroundColor;
-  final double borderRadius;
-  final EdgeInsets padding;
-  final Border? border;
-  final List<BoxShadow>? shadows;
-
-  const GlassContainer({
-    super.key,
-    required this.child,
-    this.blurIntensity = 10.0,
-    this.backgroundColor = const Color(0xFFFFFFFF),
-    this.borderRadius = 12.0,
-    this.padding = const EdgeInsets.all(16),
-    this.border,
-    this.shadows,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: blurIntensity, sigmaY: blurIntensity),
-        child: Container(
-          decoration: BoxDecoration(
-            color: backgroundColor.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: border ?? Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
-            boxShadow: shadows ?? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 4))],
-          ),
-          padding: padding,
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
 /// Glassmorphic floating action button
 class GlassFloatingActionButton extends StatefulWidget {
   final VoidCallback onPressed;

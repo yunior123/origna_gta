@@ -181,6 +181,7 @@ class InventoryConfig(BaseModel):
     trackQuantity: bool = Field(default=True, description="Track stock quantity (false = unlimited)")
     allowBackorder: bool = Field(default=False, description="Allow orders when out of stock")
     lowStockThreshold: int = Field(default=5, ge=0, le=1000, description="Alert threshold for low stock")
+    lastLowStockAlertAt: datetime | None = Field(default=None, description="When the last low-stock alert was sent")
     reservationHoldMinutes: int = Field(
         default=30, ge=5, le=120, description="How long to hold inventory during checkout"
     )
@@ -202,6 +203,24 @@ class SellerWarehouse(BaseModel):
         if v not in WarehouseTypeValues.ALL:
             raise ValueError(f"type must be one of: {WarehouseTypeValues.ALL}")
         return v
+
+
+class VariantOption(BaseModel):
+    """Option for a product variant (e.g., Size, Color)"""
+
+    name: str = Field(..., min_length=1, max_length=50, description="Option name (e.g., 'Size')")
+    values: list[str] = Field(..., min_length=1, max_length=50, description="Available values (e.g., ['S', 'M', 'L'])")
+
+
+class ProductVariant(BaseModel):
+    """Specific variant combination for a product"""
+
+    variantId: str = Field(..., min_length=1, max_length=100, description="Unique variant identifier")
+    optionValues: dict[str, str] = Field(..., description="Selected options: { 'Size': 'M', 'Color': 'Red' }")
+    price: float | None = Field(default=None, gt=0, le=100000, description="Override price for this variant")
+    stockQuantity: int = Field(..., ge=0, description="Available stock for this variant")
+    sku: str | None = Field(default=None, max_length=100, description="Variant SKU")
+    isActive: bool = Field(default=True, description="Whether variant is active")
 
 
 class Product(BaseModel):
@@ -355,6 +374,16 @@ class Product(BaseModel):
     isTrending: bool = Field(default=False, description="Whether product is currently in trending list")
     trendingAt: datetime | None = Field(default=None, description="When product last entered trending")
 
+    # === N-09: Product Variants ===
+    hasVariants: bool = Field(default=False, description="Whether this product has variants (size, color, etc.)")
+    variants: list[ProductVariant] = Field(default_factory=list, description="List of variant objects")
+    variantOptions: list[VariantOption] = Field(default_factory=list, description="Variant option definitions")
+
+    # === N-11: Subcategories ===
+    subcategory: str | None = Field(
+        default=None, max_length=100, description="Optional subcategory within the main category"
+    )
+
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
@@ -496,6 +525,12 @@ class ProductCreate(BaseModel):
     shipFromProvince: str | None = Field(default=None, max_length=10)
     shipFromCountry: str | None = Field(default=None, max_length=100)
     shipFromCountries: list[str] | None = Field(default=None)
+    # === N-09: Product Variants ===
+    hasVariants: bool = Field(default=False)
+    variants: list[ProductVariant] = Field(default_factory=list)
+    variantOptions: list[VariantOption] = Field(default_factory=list)
+    # === N-11: Subcategories ===
+    subcategory: str | None = Field(default=None, max_length=100)
     # NEW: Structured objects
     supplier: SupplierInfo | None = Field(default=None)
     inventory: InventoryConfig | None = Field(default=None)

@@ -664,9 +664,10 @@ class TestCapturePayment:
     """Test capture_payment endpoint"""
 
     @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe.Charge.retrieve")
     @patch("handlers.payment_stripe.stripe.PaymentIntent.capture")
     @patch("handlers.payment_stripe.stripe.PaymentIntent.retrieve")
-    def test_successful_payment_capture(self, mock_retrieve, mock_capture, mock_get_db):
+    def test_successful_payment_capture(self, mock_retrieve, mock_capture, mock_charge_retrieve, mock_get_db):
         """Test successful payment capture after receipt confirmation"""
         from handlers.payment_stripe import capture_payment
 
@@ -695,7 +696,9 @@ class TestCapturePayment:
 
         # Mock PI retrieve to return requires_capture status with matching amount
         mock_retrieve.return_value = Mock(status="requires_capture", amount=10000)
-        mock_capture.return_value = Mock(status="succeeded")
+        mock_capture.return_value = Mock(status="succeeded", latest_charge="ch_test_123")
+        # Mock Charge.retrieve — dispute=None means no active dispute
+        mock_charge_retrieve.return_value = Mock(dispute=None)
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")

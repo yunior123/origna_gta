@@ -930,6 +930,49 @@
           "type": "timestamp",
           "nullable": true,
           "description": "When product last entered trending"
+        },
+        "hasVariants": {
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Whether this product has variants (size, color, etc.). N-09."
+        },
+        "variants": {
+          "type": "array<map>",
+          "required": false,
+          "default": [],
+          "description": "List of variant objects: {variantId, optionValues, price?, stockQuantity, sku?, isActive}. N-09."
+        },
+        "variantOptions": {
+          "type": "array<map>",
+          "required": false,
+          "default": [],
+          "description": "Variant option definitions: [{name: 'Size', values: ['S','M','L']}, ...]. N-09."
+        },
+        "subcategory": {
+          "type": "string",
+          "required": false,
+          "nullable": true,
+          "maxLength": 100,
+          "description": "Optional subcategory within the main category. N-11."
+        }
+      },
+      "subcollections": {
+        "inventoryLevels": {
+          "description": "Stock levels per warehouse for fast transaction processing.",
+          "documentId": "{warehouseId}",
+          "fields": {
+            "availableQuantity": {
+              "type": "number",
+              "required": true,
+              "description": "Current available stock for this warehouse"
+            },
+            "lastSyncedAt": {
+              "type": "timestamp",
+              "required": true,
+              "description": "When this inventory level was synced"
+            }
+          }
         }
       },
       "indexes": [
@@ -1287,6 +1330,16 @@
             "taxCents": "integer",
             "taxRate": "number"
           }
+        },
+        "couponCode": {
+          "type": "string",
+          "required": false,
+          "description": "N-07: Promo/coupon code applied to this order"
+        },
+        "discountAmountCents": {
+          "type": "number",
+          "default": 0,
+          "description": "N-07: Discount applied in cents (from coupon)"
         }
       },
       "indexes": [
@@ -1938,6 +1991,103 @@
           "type": "timestamp",
           "required": true,
           "description": "Rating timestamp"
+        },
+        "helpfulCount": {
+          "type": "number",
+          "default": 0,
+          "description": "N-04: Number of users who found this review helpful"
+        },
+        "helpfulVoterIds": {
+          "type": "array<string>",
+          "default": [],
+          "description": "N-04: UIDs of users who voted this review helpful (prevents duplicate votes)"
+        },
+        "sellerReply": {
+          "type": "string",
+          "required": false,
+          "maxLength": 500,
+          "description": "N-03: Seller reply to this review"
+        },
+        "sellerReplyAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "N-03: When the seller replied"
+        }
+      }
+    },
+    "coupons": {
+      "description": "N-07: Coupon/promo code system. Document ID = coupon code (uppercase)",
+      "documentId": "{couponCode — uppercase alphanumeric 4-20 chars}",
+      "fields": {
+        "couponCode": {
+          "type": "string",
+          "required": true,
+          "description": "Coupon code (document ID, uppercase, 4-20 alphanumeric chars)"
+        },
+        "discountType": {
+          "type": "string",
+          "required": true,
+          "description": "Discount type",
+          "values": [
+            "percent",
+            "fixed_cents"
+          ]
+        },
+        "discountValue": {
+          "type": "number",
+          "required": true,
+          "description": "Discount magnitude: percent 1-100, fixed_cents min 100"
+        },
+        "minOrderCents": {
+          "type": "number",
+          "required": false,
+          "description": "Minimum cart subtotal in cents required to use this coupon"
+        },
+        "maxUsesTotal": {
+          "type": "number",
+          "required": false,
+          "description": "Maximum total uses across all users (null = unlimited)"
+        },
+        "maxUsesPerUser": {
+          "type": "number",
+          "required": false,
+          "default": 1,
+          "description": "Maximum uses per individual user (default 1)"
+        },
+        "usedCount": {
+          "type": "number",
+          "default": 0,
+          "description": "Total number of times this coupon has been redeemed"
+        },
+        "usedByUids": {
+          "type": "array<string>",
+          "default": [],
+          "description": "UIDs of users who redeemed this coupon (may contain duplicates for multi-use coupons)"
+        },
+        "expiresAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Expiry date/time (null = never expires)"
+        },
+        "isActive": {
+          "type": "boolean",
+          "required": true,
+          "description": "Whether the coupon is currently active"
+        },
+        "sellerId": {
+          "type": "string",
+          "required": false,
+          "description": "Seller ID if this is a seller-specific coupon (null = platform-wide)"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "When the coupon was created"
+        },
+        "createdByAdminId": {
+          "type": "string",
+          "required": true,
+          "description": "Admin UID who created this coupon"
         }
       }
     },

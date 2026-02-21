@@ -30,7 +30,7 @@ from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-TRASH_DIR = Path.home() / "Desktop" / "trash"
+TRASH_DIR = Path.home() / "Desktop" / "OrignaGta_Trash"
 
 # Directories to skip when scanning source files
 SKIP_DIRS = {

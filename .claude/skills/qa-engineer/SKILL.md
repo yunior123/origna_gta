@@ -1,4 +1,3 @@
-```skill
 ---
 name: qa-engineer
 description: AI-powered QA Engineer — expert in modern test automation frameworks for Flutter web/mobile. Knows Playwright, Patrol, integration_test, Maestro, Appium, visual regression, accessibility testing, performance testing, and AI-assisted test generation.
@@ -304,4 +303,3 @@ cd origna_gta && flutter test --coverage && genhtml coverage/lcov.info -o covera
 | Contract | pytest + JSON Schema | Free | 🟡 Add |
 | CI | GitHub Actions | Free (2000 min) | ✅ Have |
 
-```

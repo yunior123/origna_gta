@@ -47,6 +47,12 @@ class User(BaseModel):
     payoutsEnabled: bool = Field(default=False, description="Whether seller can receive payouts")
     chargesEnabled: bool = Field(default=False, description="Whether seller can accept charges")
     onboardingCompleted: bool = Field(default=False, description="Whether Stripe Connect onboarding is complete")
+    commissionRate: float | None = Field(default=None, ge=0, le=1, description="Custom commission rate override (0.0-1.0). None = platform default 2.5%")
+    verified: bool = Field(default=False, description="Whether seller identity is verified")
+    verificationStatus: str | None = Field(default=None, description="Verification status: pending, verified, rejected")
+    platform: str | None = Field(default=None, description="Seller platform/source: aliexpress, alibaba, 1688, dhgate, temu, local, custom")
+    businessName: str | None = Field(default=None, max_length=120, description="Seller business name")
+    payoutHoldDays: int | None = Field(default=None, ge=0, le=30, description="Days to hold payouts after delivery (overrides platform default)")
 
     # Account status
     suspended: bool = Field(default=False, description="Whether account is suspended")

@@ -115,7 +115,7 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
             metadata={"uid": uid},
             subscription_data={"metadata": {"uid": uid}},
             # Use 5-minute window idempotency to allow retry after session expiry
-            idempotency_key=f"premium_sub_{uid}_{int(now.timestamp()) // 300}",
+            idempotency_key=f"premium_sub_{uid}_{datetime.now(UTC).strftime('%Y%m%d%H%M')}",
         )
         return {"success": True, "checkoutUrl": session.url, "sessionId": session.id}
     except stripe.StripeError as e:
@@ -272,8 +272,11 @@ def _sync_subscription(sub: dict | stripe.Subscription) -> None:
     now = datetime.now(UTC)
 
     db = _get_db()
+    batch = db.batch()
 
-    db.collection(Collections.SUBSCRIPTIONS).document(uid).set(
+    sub_ref = db.collection(Collections.SUBSCRIPTIONS).document(uid)
+    batch.set(
+        sub_ref,
         {
             Fields.UID: uid,
             Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
@@ -303,7 +306,9 @@ def _sync_subscription(sub: dict | stripe.Subscription) -> None:
     elif not is_premium:
         user_update[Fields.PREMIUM_EXPIRES_AT] = period_end
 
-    db.collection(Collections.USERS).document(uid).update(user_update)
+    user_ref = db.collection(Collections.USERS).document(uid)
+    batch.update(user_ref, user_update)
+    batch.commit()
     logger.info(f"Subscription synced for user {uid}: status={status}, isPremium={is_premium}")
 
 

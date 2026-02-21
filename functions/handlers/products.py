@@ -41,7 +41,7 @@ from schema_constants import (
     WarehouseTypeValues,
 )
 from services.algolia_service import delete_product as algolia_delete_product
-from services.algolia_service import index_product
+from services.algolia_service import index_product, partial_update_product as algolia_partial_update
 from utils.function_options import DEFAULT_OPTIONS, FIRESTORE_TRIGGER_OPTIONS
 from utils.helpers import create_success_response
 
@@ -707,6 +707,142 @@ def _verify_address_with_geoapify(
         return False, f"Address verification error: {type(e).__name__}"
 
 
+def _geocode_warehouse_address(address: dict) -> dict:
+    """Forward-geocode a warehouse address via Geoapify, injecting lat/lon into the dict.
+    Fail-open: logs warning, returns original address on failure.
+    """
+    geo_key = get_geoapify_api_key()
+    if not geo_key:
+        logger.warning("Geoapify key not configured — skipping warehouse geocoding")
+        return address
+
+    parts = [
+        address.get(Fields.STREET, ""),
+        address.get(Fields.CITY, ""),
+        address.get(Fields.POSTAL_CODE, ""),
+        address.get(Fields.COUNTRY, ""),
+    ]
+    query = ", ".join(p for p in parts if p).strip()
+    if not query:
+        return address
+
+    try:
+        url = f"https://api.geoapify.com/v1/geocode/search?text={query}&apiKey={geo_key}&limit=1"
+        response = requests.get(url, timeout=AppConfig.GEOAPIFY_TIMEOUT_SECONDS)
+        if response.status_code != 200:
+            logger.warning(f"Warehouse geocode HTTP {response.status_code} for: {query}")
+            return address
+
+        data = response.json()
+        features = data.get("features", [])
+        if not features:
+            logger.warning(f"Warehouse geocode no results for: {query}")
+            return address
+
+        coords = features[0].get("geometry", {}).get("coordinates", [])
+        if len(coords) >= 2:
+            address[Fields.LONGITUDE] = coords[0]
+            address[Fields.LATITUDE] = coords[1]
+            logger.info(f"Warehouse geocoded: {query} → ({coords[1]}, {coords[0]})")
+        return address
+    except requests.Timeout:
+        logger.warning(f"Warehouse geocode timeout for: {query}")
+        return address
+    except Exception as e:
+        logger.warning(f"Warehouse geocode error: {type(e).__name__}: {e}")
+        return address
+
+
+def _derive_ship_from_fields(seller_id: str, product_data: dict) -> dict:
+    """Derive shipFrom* fields from warehouse addresses or seller address.
+    Returns dict with shipFromCity, shipFromProvince, shipFromCountry, shipFromCountries.
+    """
+    if product_data.get(Fields.IS_DIGITAL, False):
+        return {}
+
+    warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
+    if not warehouse_ids:
+        # Individual seller — use sellerAddress
+        addr = product_data.get(Fields.SELLER_ADDRESS) or {}
+        result = {}
+        if addr.get(Fields.CITY):
+            result[Fields.SHIP_FROM_CITY] = addr[Fields.CITY]
+        if addr.get(Fields.STATE):
+            result[Fields.SHIP_FROM_PROVINCE] = addr[Fields.STATE]
+        if addr.get(Fields.COUNTRY):
+            result[Fields.SHIP_FROM_COUNTRY] = addr[Fields.COUNTRY]
+            result[Fields.SHIP_FROM_COUNTRIES] = [addr[Fields.COUNTRY]]
+        return result
+
+    # Warehouse seller — batch-read warehouse docs
+    wh_refs = [
+        get_db()
+        .collection(Collections.USERS)
+        .document(seller_id)
+        .collection(Collections.WAREHOUSES)
+        .document(wh_id)
+        for wh_id in warehouse_ids[:20]  # Cap reads
+    ]
+    wh_docs = get_db().get_all(wh_refs)
+
+    countries = set()
+    primary_addr = None
+    for doc in wh_docs:
+        if not doc.exists:
+            continue
+        wh_data = doc.to_dict() or {}
+        addr = wh_data.get("address") or {}
+        country = addr.get(Fields.COUNTRY)
+        if country:
+            countries.add(country)
+        # Use default warehouse as primary, otherwise first
+        if wh_data.get("isDefault", False) or primary_addr is None:
+            primary_addr = addr
+
+    result = {}
+    if primary_addr:
+        if primary_addr.get(Fields.CITY):
+            result[Fields.SHIP_FROM_CITY] = primary_addr[Fields.CITY]
+        if primary_addr.get(Fields.STATE):
+            result[Fields.SHIP_FROM_PROVINCE] = primary_addr[Fields.STATE]
+        if primary_addr.get(Fields.COUNTRY):
+            result[Fields.SHIP_FROM_COUNTRY] = primary_addr[Fields.COUNTRY]
+    if countries:
+        result[Fields.SHIP_FROM_COUNTRIES] = sorted(countries)
+    return result
+
+
+def _sync_inventory_levels(product_id: str, warehouse_stock: dict) -> None:
+    """Sync warehouseStock map to inventoryLevels subcollection (batch writes, 499 limit)."""
+    if not warehouse_stock:
+        return
+    batch = get_db().batch()
+    count = 0
+    for wh_id, qty in warehouse_stock.items():
+        inv_ref = (
+            get_db()
+            .collection(Collections.PRODUCTS)
+            .document(product_id)
+            .collection(Collections.INVENTORY_LEVELS)
+            .document(wh_id)
+        )
+        batch.set(
+            inv_ref,
+            {
+                Fields.AVAILABLE_QUANTITY: int(qty),
+                Fields.LAST_SYNCED_AT: get_server_timestamp(),
+            },
+            merge=True,
+        )
+        count += 1
+        if count == 499:
+            batch.commit()
+            batch = get_db().batch()
+            count = 0
+    if count > 0:
+        batch.commit()
+
+
 @firestore_fn.on_document_created(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_product_created(event: firestore_fn.Event) -> None:
     """
@@ -943,6 +1079,17 @@ def on_product_created(event: firestore_fn.Event) -> None:
         patches[Fields.DELIVERY_OPTIONS] = [standard_option]
         logger.info(f"FIX: Product {product_id} has no delivery options → adding standard")
 
+    # Derive shipFrom* fields from warehouse addresses or seller address
+    seller_id = product_data.get(Fields.SELLER_ID)
+    warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
+    if seller_id and (warehouse_ids or product_data.get(Fields.SELLER_ADDRESS)):
+        try:
+            ship_from = _derive_ship_from_fields(seller_id, product_data)
+            if ship_from:
+                patches.update(ship_from)
+        except Exception as e:
+            logger.error(f"Failed to derive shipFrom fields for {product_id}: {e}")
+
     # Apply patches if any
     if patches:
         try:
@@ -952,6 +1099,14 @@ def on_product_created(event: firestore_fn.Event) -> None:
             product_data.update(patches)
         except Exception as e:
             logger.error(f"WARNING: Failed to apply patches to product {product_id}: {str(e)}")
+
+    # Sync warehouseStock → inventoryLevels subcollection
+    warehouse_stock = product_data.get(Fields.WAREHOUSE_STOCK) or {}
+    if warehouse_stock:
+        try:
+            _sync_inventory_levels(product_id, warehouse_stock)
+        except Exception as e:
+            logger.error(f"Failed to sync inventoryLevels for {product_id}: {e}")
 
     # FOOD SAFETY: Perishable products should have local delivery or same-day option
     is_perishable = product_data.get(Fields.IS_PERISHABLE, False)
@@ -1414,6 +1569,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     # deactivate products that were already validated at creation time.
     _SKIP_VALIDATION_FIELDS = {
         Fields.STOCK_QUANTITY,
+        Fields.WAREHOUSE_STOCK,  # warehouse stock changes are non-security
         Fields.UPDATED_AT,
         Fields.STOCK_RESTORED,
         Fields.IS_ACTIVE,
@@ -1479,7 +1635,14 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             if correct_is_active:
                 try:
                     product_data["id"] = product_id
-                    index_product(product_id, product_data)
+                    # Use partial update for stock/status-only changes to avoid rewriting all fields
+                    stock_only_fields = {Fields.STOCK_QUANTITY, Fields.IS_ACTIVE, Fields.UPDATED_AT, Fields.WAREHOUSE_STOCK}
+                    if changed_fields.issubset(stock_only_fields):
+                        partial_fields = {k: product_data[k] for k in changed_fields if k in product_data and k != Fields.UPDATED_AT}
+                        if partial_fields:
+                            algolia_partial_update(product_id, partial_fields)
+                    else:
+                        index_product(product_id, product_data)
                 except Exception as e:
                     logger.error(f"Failed to index product {product_id} after metadata update: {str(e)}")
 
@@ -1488,6 +1651,21 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 _fire_back_in_stock_notifications(product_id, before_data, product_data)
             except Exception as e:
                 logger.error(f"Back-in-stock notification error for {product_id}: {e}")
+
+            # N-06: Track price history even on metadata-only updates
+            try:
+                _track_price_history(product_id, before_data, product_data)
+            except Exception as e:
+                logger.error(f"Price history tracking error for {product_id}: {e}")
+
+            # Sync warehouseStock → inventoryLevels on stock-only updates
+            if Fields.WAREHOUSE_STOCK in changed_fields:
+                wh_stock = product_data.get(Fields.WAREHOUSE_STOCK) or {}
+                if wh_stock:
+                    try:
+                        _sync_inventory_levels(product_id, wh_stock)
+                    except Exception as e:
+                        logger.error(f"Failed to sync inventoryLevels on update for {product_id}: {e}")
 
             return
         # Track whether address changed — skip geocoding if it didn't
@@ -1537,32 +1715,31 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         )
         return
 
-    # Seller address validation — verify address exists via Geoapify geocoding
-    seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
-    country = seller_address.get(Fields.COUNTRY) or ""
-    if not country:
-        logger.info(f"SECURITY: Product {product_id} updated with empty seller country — deactivating")
-        get_db().collection(Collections.PRODUCTS).document(product_id).update(
-            {
-                Fields.IS_ACTIVE: False,
-                Fields.STATUS: ProductStatusValues.PAUSED,
-            }
-        )
-        return
+    # Seller address validation — skip for warehouse products and digital products
+    warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
+    is_digital = product_data.get(Fields.IS_DIGITAL, False)
 
-    # SECURITY: Validate address coordinates on updates — only if address actually changed
-    # Skip geocoding re-validation if the sellerAddress is unchanged from the previous version.
-    # Products are fully validated at creation time; re-validating on every stock/metadata update
-    # is wasteful and can deactivate products due to transient geocoding API failures.
-    if _address_changed:
-        seller_lat = seller_address.get(Fields.LATITUDE)
-        seller_lon = seller_address.get(Fields.LONGITUDE)
-        seller_street = seller_address.get(Fields.STREET, "")
-        seller_city = seller_address.get(Fields.CITY, "")
-        seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
-        is_digital = product_data.get(Fields.IS_DIGITAL, False)
+    if not is_digital and not warehouse_ids:
+        seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
+        country = seller_address.get(Fields.COUNTRY) or ""
+        if not country:
+            logger.info(f"SECURITY: Product {product_id} updated with empty seller country — deactivating")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.IS_ACTIVE: False,
+                    Fields.STATUS: ProductStatusValues.PAUSED,
+                }
+            )
+            return
 
-        if not is_digital:
+        # SECURITY: Validate address coordinates on updates — only if address actually changed
+        if _address_changed:
+            seller_lat = seller_address.get(Fields.LATITUDE)
+            seller_lon = seller_address.get(Fields.LONGITUDE)
+            seller_street = seller_address.get(Fields.STREET, "")
+            seller_city = seller_address.get(Fields.CITY, "")
+            seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
+
             if seller_lat is None or seller_lon is None:
                 logger.info(f"SECURITY: Product {product_id} updated with missing coordinates — REJECTING")
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
@@ -1607,6 +1784,31 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     if xss_patches:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(xss_patches)
         product_data.update(xss_patches)
+
+    # Re-derive shipFrom* fields when warehouseIds changed or shipFromCountry missing (backfill)
+    update_wh_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
+    update_seller_id = product_data.get(Fields.SELLER_ID)
+    ship_from_needed = (
+        before_data
+        and (
+            before_data.get(Fields.WAREHOUSE_IDS) != update_wh_ids
+            or not product_data.get(Fields.SHIP_FROM_COUNTRY)
+        )
+    )
+    if ship_from_needed and update_seller_id:
+        try:
+            ship_from = _derive_ship_from_fields(update_seller_id, product_data)
+            if ship_from:
+                get_db().collection(Collections.PRODUCTS).document(product_id).update(ship_from)
+                product_data.update(ship_from)
+        except Exception as e:
+            logger.error(f"Failed to derive shipFrom fields on update for {product_id}: {e}")
+
+    # N-06: Track price history on full-validation path
+    try:
+        _track_price_history(product_id, before_data, product_data)
+    except Exception as e:
+        logger.error(f"Price history tracking error for {product_id}: {e}")
 
     try:
         product_data["id"] = product_id
@@ -2073,6 +2275,9 @@ def create_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
         if not isinstance(address, dict) or not address.get(Fields.CITY):
             raise https_fn.HttpsError("invalid-argument", "address must include at least a city")
 
+        # Geocode warehouse address to get lat/lon
+        address = _geocode_warehouse_address(address)
+
         is_default = bool(data.get("isDefault", False))
 
         # If setting as default, clear any existing default
@@ -2143,7 +2348,7 @@ def update_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
         if "address" in data:
             if not isinstance(data["address"], dict) or not data["address"].get(Fields.CITY):
                 raise https_fn.HttpsError("invalid-argument", "address must include at least a city")
-            patches["address"] = data["address"]
+            patches["address"] = _geocode_warehouse_address(data["address"])
 
         if "isDefault" in data:
             patches["isDefault"] = bool(data["isDefault"])
@@ -2166,7 +2371,8 @@ def update_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
-    """Delete a warehouse. Products referencing it will retain the ID but lose that location."""
+    """Delete a warehouse. Blocked if any product still has stock in this warehouse
+    or if in-flight orders reference it."""
     try:
         if not req.auth:
             raise https_fn.HttpsError("unauthenticated", "Authentication required")
@@ -2188,8 +2394,92 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
         if not wh_ref.get().exists:
             raise https_fn.HttpsError("not-found", "Warehouse not found")
 
+        # GUARD 1: Block if any product has stock > 0 in this warehouse
+        products_with_wh = (
+            get_db()
+            .collection(Collections.PRODUCTS)
+            .where(Fields.SELLER_ID, "==", seller_id)
+            .where(Fields.WAREHOUSE_IDS, "array_contains", warehouse_id)
+            .limit(50)
+            .get()
+        )
+        for pdoc in products_with_wh:
+            pdata = pdoc.to_dict() or {}
+            wh_stock = (pdata.get(Fields.WAREHOUSE_STOCK) or {}).get(warehouse_id, 0)
+            if wh_stock > 0:
+                raise https_fn.HttpsError(
+                    "failed-precondition",
+                    f"Cannot delete warehouse: product '{pdata.get(Fields.NAME, pdoc.id)}' still has {wh_stock} units in stock. Move or sell stock first.",
+                )
+
+        # GUARD 2: Block if in-flight orders reference this warehouse
+        active_statuses = [
+            OrderStatusValues.PENDING,
+            OrderStatusValues.CONFIRMED,
+            OrderStatusValues.PROCESSING,
+            OrderStatusValues.SHIPPED,
+        ]
+        recent_orders = (
+            get_db()
+            .collection(Collections.ORDERS)
+            .where(Fields.SELLER_IDS, "array_contains", seller_id)
+            .where(Fields.ORDER_STATUS, "in", active_statuses)
+            .limit(100)
+            .get()
+        )
+        for odoc in recent_orders:
+            odata = odoc.to_dict() or {}
+            for oitem in odata.get(Fields.ITEMS, []):
+                if oitem.get(Fields.FULFILLMENT_WAREHOUSE_ID) == warehouse_id:
+                    raise https_fn.HttpsError(
+                        "failed-precondition",
+                        f"Cannot delete warehouse: order {odoc.id} has an in-flight item fulfilled from this warehouse.",
+                    )
+
+        # Delete the warehouse doc
         wh_ref.delete()
-        logger.info(f"Warehouse {warehouse_id} deleted for seller {seller_id}")
+
+        # Cleanup: remove warehouse reference from products + delete inventoryLevels subdoc
+        cleanup_batch = get_db().batch()
+        count = 0
+        for pdoc in products_with_wh:
+            pdata = pdoc.to_dict() or {}
+            p_ref = get_db().collection(Collections.PRODUCTS).document(pdoc.id)
+            current_wh_ids = list(pdata.get(Fields.WAREHOUSE_IDS) or [])
+            if warehouse_id in current_wh_ids:
+                current_wh_ids.remove(warehouse_id)
+            from firebase_admin import firestore as _fs_mod
+
+            product_patch = {
+                Fields.WAREHOUSE_IDS: current_wh_ids,
+                f"{Fields.WAREHOUSE_STOCK}.{warehouse_id}": _fs_mod.DELETE_FIELD,
+            }
+            cleanup_batch.update(p_ref, product_patch)
+
+            # Delete inventoryLevels/{warehouseId} subdoc
+            inv_ref = p_ref.collection(Collections.INVENTORY_LEVELS).document(warehouse_id)
+            cleanup_batch.delete(inv_ref)
+
+            count += 1
+            if count >= 450:
+                cleanup_batch.commit()
+                cleanup_batch = get_db().batch()
+                count = 0
+
+        if count > 0:
+            cleanup_batch.commit()
+
+        # Re-derive shipFrom* fields for affected products
+        for pdoc in products_with_wh:
+            try:
+                pdata = pdoc.to_dict() or {}
+                ship_from = _derive_ship_from_fields(seller_id, pdata)
+                if ship_from:
+                    get_db().collection(Collections.PRODUCTS).document(pdoc.id).update(ship_from)
+            except Exception as e:
+                logger.error(f"Failed to re-derive shipFrom for {pdoc.id}: {e}")
+
+        logger.info(f"Warehouse {warehouse_id} deleted for seller {seller_id} (cleaned {len(products_with_wh)} products)")
         return create_success_response({"warehouseId": warehouse_id})
 
     except https_fn.HttpsError:
@@ -2433,6 +2723,20 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
 
+    # Rate limit: max 5 questions per user per hour (Firestore count verification)
+    from datetime import datetime, timezone, timedelta
+    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    recent_questions = (
+        get_db().collection(Collections.PRODUCT_QUESTIONS)
+        .where(Fields.ASKER_ID, "==", req.auth.uid)
+        .where(Fields.CREATED_AT, ">=", one_hour_ago)
+        .count()
+        .get()
+    )
+    count = recent_questions[0][0].value
+    if count >= 5:
+        raise https_fn.HttpsError("resource-exhausted", "Rate limit: max 5 questions per hour.")
+
     from utils.helpers import sanitized_text
 
     user_id = req.auth.uid
@@ -2636,3 +2940,325 @@ def get_product_questions(req: https_fn.CallableRequest) -> dict[str, Any]:
         )
 
     return create_success_response({"questions": questions, "total": len(questions)})
+
+
+# =============================================================================
+# N-03: SELLER REPLY TO REVIEWS
+# =============================================================================
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def answer_review(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    N-03: Seller replies to a product rating.
+
+    Request data:
+        ratingId: str — product_ratings document ID
+        productId: str — product document ID (used for seller verification)
+        reply: str — seller reply text (max 500 chars)
+
+    Rules:
+        - Only the seller of the product may reply.
+        - Reply cannot be empty.
+        - Seller can only reply once (sellerReply must not already exist).
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    from utils.helpers import sanitized_text
+
+    user_id = req.auth.uid
+    data = req.data
+    rating_id = data.get(Fields.RATING_ID)
+    product_id = data.get(Fields.PRODUCT_ID)
+    reply_raw = data.get(Fields.SELLER_REPLY, "")
+
+    if not rating_id or not product_id:
+        raise https_fn.HttpsError("invalid-argument", "ratingId and productId required")
+    if not reply_raw or not reply_raw.strip():
+        raise https_fn.HttpsError("invalid-argument", "reply cannot be empty")
+
+    reply = sanitized_text(reply_raw.strip())[:500]
+    if len(reply) < 1:
+        raise https_fn.HttpsError("invalid-argument", "reply cannot be empty after sanitization")
+    if len(reply) > 500:
+        raise https_fn.HttpsError("invalid-argument", "reply must be at most 500 characters")
+
+    # Verify product exists and caller is its seller
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    product_doc = product_ref.get()
+    if not product_doc.exists:
+        raise https_fn.HttpsError("not-found", "Product not found")
+    product_data = product_doc.to_dict() or {}
+    if product_data.get(Fields.SELLER_ID) != user_id:
+        raise https_fn.HttpsError("permission-denied", "Only the product seller can reply to reviews")
+
+    # Fetch the rating document
+    rating_ref = get_db().collection(Collections.PRODUCT_RATINGS).document(rating_id)
+    rating_doc = rating_ref.get()
+    if not rating_doc.exists:
+        raise https_fn.HttpsError("not-found", "Rating not found")
+    rating_data = rating_doc.to_dict() or {}
+
+    # Verify this rating belongs to this product
+    if rating_data.get(Fields.PRODUCT_ID) != product_id:
+        raise https_fn.HttpsError("invalid-argument", "Rating does not belong to the specified product")
+
+    # Seller can only reply once
+    if rating_data.get(Fields.SELLER_REPLY):
+        raise https_fn.HttpsError("already-exists", "Seller has already replied to this review")
+
+    rating_ref.update({
+        Fields.SELLER_REPLY: reply,
+        Fields.SELLER_REPLY_AT: datetime.now(UTC),
+    })
+
+    return create_success_response({"replied": True})
+
+
+# =============================================================================
+# N-04: REVIEW HELPFULNESS VOTING
+# =============================================================================
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def vote_review_helpful(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    N-04: Vote a review as helpful (or remove vote).
+
+    Request data:
+        ratingId: str — product_ratings document ID
+        productId: str — product document ID
+        helpful: bool — True = upvote, False = remove vote/downvote
+
+    Rules:
+        - User cannot vote on their own review.
+        - User can only vote once per review.
+        - helpful=False removes the vote (decrements helpfulCount, removes uid from helpfulVoterIds).
+        - helpfulCount never goes below 0.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    rating_id = data.get(Fields.RATING_ID)
+    product_id = data.get(Fields.PRODUCT_ID)
+    helpful = data.get("helpful")
+
+    if not rating_id or not product_id:
+        raise https_fn.HttpsError("invalid-argument", "ratingId and productId required")
+    if not isinstance(helpful, bool):
+        raise https_fn.HttpsError("invalid-argument", "helpful must be a boolean")
+
+    db = get_db()
+    rating_ref = db.collection(Collections.PRODUCT_RATINGS).document(rating_id)
+
+    # Capture helpful and user_id in closure via nonlocal workaround (mutable container)
+    _result: dict = {}
+    _error: dict = {}
+
+    @_firestore.transactional
+    def _vote_txn(transaction):
+        rating_snap = rating_ref.get(transaction=transaction)
+        if not rating_snap.exists:
+            _error["err"] = https_fn.HttpsError("not-found", "Rating not found")
+            return
+
+        rating_data = rating_snap.to_dict() or {}
+
+        # Verify rating belongs to specified product
+        if rating_data.get(Fields.PRODUCT_ID) != product_id:
+            _error["err"] = https_fn.HttpsError("invalid-argument", "Rating does not belong to the specified product")
+            return
+
+        # Prevent self-voting
+        reviewer_uid = rating_data.get(Fields.USER_ID) or rating_data.get("userId")
+        if reviewer_uid == user_id:
+            _error["err"] = https_fn.HttpsError("permission-denied", "Users cannot vote on their own reviews")
+            return
+
+        voter_ids: list = list(rating_data.get(Fields.HELPFUL_VOTER_IDS, []))
+        current_count: int = int(rating_data.get(Fields.HELPFUL_COUNT, 0))
+
+        already_voted = user_id in voter_ids
+
+        if helpful:
+            # Upvote
+            if already_voted:
+                _error["err"] = https_fn.HttpsError("already-exists", "already-voted")
+                return
+            voter_ids.append(user_id)
+            new_count = current_count + 1
+        else:
+            # Remove vote
+            if not already_voted:
+                _error["err"] = https_fn.HttpsError("failed-precondition", "No vote to remove")
+                return
+            voter_ids = [uid for uid in voter_ids if uid != user_id]
+            new_count = max(0, current_count - 1)
+
+        transaction.update(rating_ref, {
+            Fields.HELPFUL_COUNT: new_count,
+            Fields.HELPFUL_VOTER_IDS: voter_ids,
+        })
+        _result["helpfulCount"] = new_count
+
+    try:
+        txn = db.transaction()
+        _vote_txn(txn)
+    except Exception as e:
+        logger.error(f"vote_review_helpful transaction failed for {rating_id}: {e}")
+        raise https_fn.HttpsError("internal", "Failed to record vote") from e
+
+    if "err" in _error:
+        raise _error["err"]
+
+    return create_success_response({"helpfulCount": _result.get("helpfulCount", 0)})
+
+
+# =============================================================================
+# N-06: PRICE HISTORY — INTERNAL HELPER
+# =============================================================================
+
+def _track_price_history(product_id: str, before_data: dict, after_data: dict) -> None:
+    """
+    N-06: Append a price history entry when price or compareAtPrice changes.
+    Keeps the last 30 entries — trims the oldest if the array grows beyond that.
+
+    NOTE: Uses datetime.now(UTC).isoformat() — NOT get_server_timestamp() —
+    because server timestamps CANNOT be nested inside ArrayUnion payloads.
+    """
+    from firebase_admin.firestore import ArrayUnion
+
+    before_price = before_data.get(Fields.PRICE)
+    after_price = after_data.get(Fields.PRICE)
+    before_compare = before_data.get(Fields.COMPARE_AT_PRICE)
+    after_compare = after_data.get(Fields.COMPARE_AT_PRICE)
+
+    if before_price == after_price and before_compare == after_compare:
+        return  # No price change — nothing to record
+
+    new_entry = {
+        Fields.PRICE: after_price,
+        Fields.COMPARE_AT_PRICE: after_compare,
+        "changedAt": datetime.now(UTC).isoformat(),
+    }
+
+    # Fetch current priceHistory to enforce 30-entry limit
+    prod_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    prod_snap = prod_ref.get()
+    if not prod_snap.exists:
+        return
+
+    existing: list = list((prod_snap.to_dict() or {}).get(Fields.PRICE_HISTORY, []))
+    existing.append(new_entry)
+
+    if len(existing) > 30:
+        # Trim oldest entries, keep last 30
+        existing = existing[-30:]
+        prod_ref.update({Fields.PRICE_HISTORY: existing})
+    else:
+        prod_ref.update({Fields.PRICE_HISTORY: ArrayUnion([new_entry])})
+
+    logger.info(f"Price history recorded for product {product_id}: {before_price} -> {after_price}")
+
+
+# =============================================================================
+# N-08: BULK SELLER OPERATIONS
+# =============================================================================
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    N-08: Bulk update product status for a seller.
+
+    Request data:
+        productIds: list[str] — up to 50 product IDs
+        action: str — one of "pause", "activate", "archive"
+
+    Returns:
+        {updated: N, skipped: M}
+
+    Rules:
+        - Caller must own ALL products (ownership verified per-product).
+        - Non-owned products are skipped (not an error).
+        - "activate" only succeeds if approvalStatus == "approved".
+        - Enforces max 50 products per call.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    product_ids = data.get("productIds", [])
+    action = data.get(Fields.ACTION, "")
+
+    if not isinstance(product_ids, list) or len(product_ids) == 0:
+        raise https_fn.HttpsError("invalid-argument", "productIds must be a non-empty list")
+    if len(product_ids) > 50:
+        raise https_fn.HttpsError("invalid-argument", "Maximum 50 products per bulk operation")
+
+    VALID_ACTIONS = {"pause", "activate", "archive"}
+    if action not in VALID_ACTIONS:
+        raise https_fn.HttpsError("invalid-argument", f"action must be one of: {sorted(VALID_ACTIONS)}")
+
+    # Deduplicate IDs (prevent duplicate operations in batch)
+    product_ids = list(dict.fromkeys(product_ids))
+
+    db = get_db()
+    batch = db.batch()
+    updated = 0
+    skipped = 0
+
+    for pid in product_ids:
+        if not isinstance(pid, str) or not pid.strip():
+            skipped += 1
+            continue
+
+        prod_ref = db.collection(Collections.PRODUCTS).document(pid)
+        prod_snap = prod_ref.get()
+
+        if not prod_snap.exists:
+            skipped += 1
+            continue
+
+        prod_data = prod_snap.to_dict() or {}
+
+        # Skip products not owned by caller
+        if prod_data.get(Fields.SELLER_ID) != user_id:
+            skipped += 1
+            continue
+
+        if action == "pause":
+            batch.update(prod_ref, {
+                Fields.STATUS: ProductStatusValues.PAUSED,
+                Fields.IS_ACTIVE: False,
+                Fields.UPDATED_AT: datetime.now(UTC),
+            })
+            updated += 1
+
+        elif action == "activate":
+            # Only activate if product is approved
+            approval = prod_data.get(Fields.APPROVAL_STATUS, ProductApprovalStatusValues.UNDER_REVIEW)
+            if approval != ProductApprovalStatusValues.APPROVED:
+                skipped += 1
+                continue
+            batch.update(prod_ref, {
+                Fields.STATUS: ProductStatusValues.ACTIVE,
+                Fields.IS_ACTIVE: True,
+                Fields.UPDATED_AT: datetime.now(UTC),
+            })
+            updated += 1
+
+        elif action == "archive":
+            batch.update(prod_ref, {
+                Fields.STATUS: ProductStatusValues.ARCHIVED,
+                Fields.IS_ACTIVE: False,
+                Fields.UPDATED_AT: datetime.now(UTC),
+            })
+            updated += 1
+
+    if updated > 0:
+        batch.commit()
+        logger.info(f"bulk_update_products: user={user_id} action={action} updated={updated} skipped={skipped}")
+
+    return create_success_response({"updated": updated, "skipped": skipped})

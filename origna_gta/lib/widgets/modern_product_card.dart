@@ -20,6 +20,9 @@ class ModernProductCard extends StatefulWidget {
   /// Original/crossed-out price shown next to the sale price (null = no active sale)
   final double? compareAtPrice;
 
+  /// When true, show a Trending badge on the image corner
+  final bool isTrending;
+
   const ModernProductCard({
     super.key,
     required this.productName,
@@ -35,6 +38,7 @@ class ModernProductCard extends StatefulWidget {
     this.shipFromCountry,
     this.shipFromCountries,
     this.compareAtPrice,
+    this.isTrending = false,
   });
 
   @override
@@ -116,19 +120,24 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                 )
                               : const Icon(Icons.image_not_supported_outlined, color: DesignTokens.textSecondary, size: 48),
                         ),
-                        // Badge (optional)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing8, vertical: DesignTokens.spacing4),
-                            decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(DesignTokens.radius8)),
-                            child: const Text(
-                              'New',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
+                        // N-10: isTrending badge
+                        if (widget.isTrending)
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: DesignTokens.primary,
+                                borderRadius: BorderRadius.circular(4),
+                                boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 6, offset: Offset(0, 2))],
+                              ),
+                              child: const Text(
+                                'Trending',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                     // Content

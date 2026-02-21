@@ -123,11 +123,9 @@ abstract final class ApiKeys {
 /// Business rule constants
 abstract final class BusinessRules {
   static const platformFeePercent = 2.5;
-  static const autoConfirmDays =
-      5; // Must be < authorizationExpiryDays (2-day safety margin)
+  static const autoConfirmDays = 5; // Must be < authorizationExpiryDays (2-day safety margin)
   static const authorizationExpiryDays = 7;
-  static const returnWindowDays =
-      7; // No returns/refunds after 7 days post-delivery
+  static const returnWindowDays = 7; // No returns/refunds after 7 days post-delivery
   static const maxCaptureAttempts = 3;
   static const defaultCurrency = 'cad';
   static const allowedShippingCountries = {'Canada', 'CA'};
@@ -202,9 +200,11 @@ abstract final class CloudFunctionEndpoints {
 
   // === PRODUCT ENDPOINTS ===
   static const deleteProduct = 'delete_product';
-  static const getR2PresignedUrl = 'get_r2_presigned_url';
+  static const uploadProductImages = 'upload_product_images';
   static const uploadReviewImages = 'upload_review_images';
   static const submitProductRating = 'submit_product_rating';
+  // Review helpfulness (N-04)
+  static const voteReviewHelpful = 'vote_review_helpful';
   // Back-in-stock (TASK 07)
   static const subscribeStockNotification = 'subscribe_stock_notification';
   static const unsubscribeStockNotification = 'unsubscribe_stock_notification';
@@ -212,6 +212,9 @@ abstract final class CloudFunctionEndpoints {
   static const askProductQuestion = 'ask_product_question';
   static const answerProductQuestion = 'answer_product_question';
   static const getProductQuestions = 'get_product_questions';
+
+  // === BULK OPERATIONS ===
+  static const bulkUpdateProducts = 'bulk_update_products';
 
   // === WAREHOUSE ENDPOINTS ===
   static const createWarehouse = 'create_warehouse';
@@ -247,6 +250,11 @@ abstract final class CloudFunctionEndpoints {
   // === CHAT ENDPOINTS ===
   static const getOrCreateChat = 'get_or_create_chat';
   static const markMessagesRead = 'mark_messages_read';
+  static const sendMessage = 'send_message';
+
+  // === COUPON ENDPOINTS (N-07) ===
+  static const applyCoupon = 'apply_coupon';
+  static const adminCreateCoupon = 'admin_create_coupon';
 }
 
 /// Firestore collection names
@@ -271,18 +279,17 @@ abstract final class Collections {
   static const cart = 'cart'; // users/{userId}/cart
   static const favorites = 'favorites'; // users/{userId}/favorites
   static const notifications = 'notifications'; // users/{uid}/notifications
-  static const productQuestions =
-      'product_questions'; // products/{productId}/product_questions
+  static const productQuestions = 'product_questions'; // products/{productId}/product_questions
   static const addresses = 'addresses'; // users/{userId}/addresses
   static const stockNotifications = 'stock_notifications'; // Tasks 07
   static const sellerMetrics = 'seller_metrics'; // Tasks 11
+  static const coupons = 'coupons'; // N-07: coupon/promo code system
+  static const inventoryLevels = 'inventoryLevels'; // products/{productId}/inventoryLevels/{warehouseId}
 
   // Digital Products Collections
   static const licenses = 'licenses'; // users/{userId}/licenses
-  static const bookAccessTokens =
-      'book_access_tokens'; // users/{userId}/book_access_tokens
-  static const softwareAccessTokens =
-      'software_access_tokens'; // users/{userId}/software_access_tokens
+  static const bookAccessTokens = 'book_access_tokens'; // users/{userId}/book_access_tokens
+  static const softwareAccessTokens = 'software_access_tokens'; // users/{userId}/software_access_tokens
 
   // Premium & Chat collections
   static const subscriptions = 'subscriptions'; // subscriptions/{userId}
@@ -312,6 +319,14 @@ abstract final class CountryValues {
   static const canadaCode = 'CA';
 
   static const all = {canada, canadaCode};
+}
+
+/// Valid values for coupon discount types (N-07)
+abstract final class CouponDiscountTypeValues {
+  static const percent = 'percent';
+  static const fixedCents = 'fixed_cents';
+
+  static const all = {percent, fixedCents};
 }
 
 abstract final class CronLockStatusValues {
@@ -385,15 +400,13 @@ abstract final class Documents {
 abstract final class EmailConfig {
   static const supportEmail = 'support@orignaventures.ca';
   static const senderName = 'Origna GTA';
-  static const copyrightText =
-      '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
+  static const copyrightText = '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
   static const appTagline = "Canada's Modern Marketplace";
   static const prodUrl = 'https://orignagta.ca';
 
   // === CASL COMPLIANCE ===
   /// Physical mailing address — REQUIRED by CASL in every commercial email
-  static const physicalAddress =
-      'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
+  static const physicalAddress = 'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
 
   /// GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
   static const gstHstNumber = '708286364RC0001';
@@ -424,6 +437,7 @@ abstract final class Fields {
   // === COMMON TIMESTAMPS (used across multiple collections) ===
   static const createdAt = 'createdAt';
   static const updatedAt = 'updatedAt';
+  static const savedAt = 'savedAt'; // N-05: Save for Later timestamp
   static const String deletedAt = 'deletedAt';
   static const String deletedBy = 'deletedBy';
   static const String deleted = 'deleted';
@@ -491,6 +505,7 @@ abstract final class Fields {
 
   /// Original/crossed-out price for sale display (null = no active sale)
   static const compareAtPrice = 'compareAtPrice';
+  static const compareAtPriceHistory = 'compareAtPriceHistory';
   static const description = 'description';
   static const imageUrls = 'imageUrls';
   static const sellerId = 'sellerId';
@@ -498,12 +513,12 @@ abstract final class Fields {
   static const sellerSku = 'sellerSku';
   static const warehouseIds = 'warehouseIds';
   static const warehouseStock = 'warehouseStock';
-  static const fulfillmentWarehouseId =
-      'fulfillmentWarehouseId'; // TASK 02: warehouse used to fulfill order item
+  static const fulfillmentWarehouseId = 'fulfillmentWarehouseId'; // TASK 02: warehouse used to fulfill order item
   static const shipFromCity = 'shipFromCity';
   static const shipFromProvince = 'shipFromProvince';
   static const shipFromCountry = 'shipFromCountry';
   static const shipFromCountries = 'shipFromCountries';
+  static const primaryWarehouseId = 'primaryWarehouseId';
   static const categoryId = 'categoryId';
   static const stockQuantity = 'stockQuantity';
   static const rating = 'rating';
@@ -526,8 +541,7 @@ abstract final class Fields {
   static const deviceId = 'deviceId';
   static const lastVerifiedAt = 'lastVerifiedAt';
   static const accessToken = 'accessToken';
-  static const productName =
-      'productName'; // stored in license doc; denormalized from product
+  static const productName = 'productName'; // stored in license doc; denormalized from product
   static const weightKg = 'weightKg';
   static const lengthCm = 'lengthCm';
   static const widthCm = 'widthCm';
@@ -548,6 +562,10 @@ abstract final class Fields {
   static const lowStockThreshold = 'lowStockThreshold';
   static const trackQuantity = 'trackQuantity';
   static const reservationHoldMinutes = 'reservationHoldMinutes';
+  // Inventory levels subcollection fields
+  static const availableQuantity = 'availableQuantity';
+  static const reservedQuantity = 'reservedQuantity';
+  static const lastSyncedAt = 'lastSyncedAt';
   static const status = 'status';
   static const deliverySpeed = 'deliverySpeed';
 
@@ -569,6 +587,8 @@ abstract final class Fields {
   static const stripeSessionId = 'stripeSessionId';
   static const stripePaymentIntentId = 'stripePaymentIntentId';
   static const captureAttempts = 'captureAttempts';
+  static const fraudScore = 'fraudScore';
+  static const sellerCaptures = 'sellerCaptures';
   static const capturedAt = 'capturedAt';
   static const expiresAt = 'expiresAt';
   static const confirmedByClient = 'confirmedByClient';
@@ -616,6 +636,7 @@ abstract final class Fields {
   static const requestedBy = 'requestedBy';
   static const requestedAt = 'requestedAt';
   static const action = 'action';
+  static const productIds = 'productIds';
   static const customerName = 'customerName';
   static const searchKeywords = 'searchKeywords';
   static const deactivationReason = 'deactivationReason';
@@ -775,6 +796,8 @@ abstract final class Fields {
   static const notifiedAt = 'notifiedAt';
   static const subscribedAt = 'subscribedAt';
   static const questionText = 'question';
+  static const bookAccessToken = 'bookAccessToken';
+  static const bookSourceUrl = 'bookSourceUrl';
   static const answerText = 'answer';
   static const answeredAt = 'answeredAt';
   static const answeredBy = 'answeredBy';
@@ -880,6 +903,39 @@ abstract final class Fields {
   static const fileName = 'fileName';
   static const uploadUrl = 'uploadUrl';
   static const confirmation = 'confirmation';
+
+  // === N-03/N-04: Product ratings ===
+  static const ratingId = 'ratingId';
+
+  // === N-03: Seller reply to reviews ===
+  static const sellerReply = 'sellerReply';
+  static const sellerReplyAt = 'sellerReplyAt';
+
+  // === N-04: Review helpfulness voting ===
+  static const helpfulCount = 'helpfulCount';
+  static const helpfulVoterIds = 'helpfulVoterIds';
+
+  // === N-06: Price history ===
+  static const priceHistory = 'priceHistory';
+
+  // === N-07: Coupon/promo code system ===
+  static const couponCode = 'couponCode';
+  static const discountAmountCents = 'discountAmountCents';
+  static const minOrderCents = 'minOrderCents';
+  static const maxUsesTotal = 'maxUsesTotal';
+  static const maxUsesPerUser = 'maxUsesPerUser';
+  static const usedCount = 'usedCount';
+  static const usedByUids = 'usedByUids';
+
+  // === N-09: Product variants ===
+  static const hasVariants = 'hasVariants';
+  static const variants = 'variants';
+  static const variantId = 'variantId';
+  static const variantOptions = 'variantOptions';
+  static const optionValues = 'optionValues';
+
+  // === N-11: Subcategories ===
+  static const subcategory = 'subcategory';
 }
 
 /// Filter sentinel values — special values used in query filters to mean "no filter"
@@ -888,14 +944,14 @@ abstract final class FilterValues {
   static const all = 'all';
 }
 
+// =============================================================================
+// EMAIL & COMPLIANCE CONFIGURATION
+// =============================================================================
+
 /// Geographic constants
 abstract final class GeoValues {
   static const countryCanada = 'Canada';
 }
-
-// =============================================================================
-// EMAIL & COMPLIANCE CONFIGURATION
-// =============================================================================
 
 /// Language preference defaults (ISO 639-1 codes)
 abstract final class LanguageValues {
@@ -911,6 +967,10 @@ abstract final class LicenseStatusValues {
   LicenseStatusValues._();
 }
 
+// =============================================================================
+// BUSINESS CONSTANTS
+// =============================================================================
+
 /// Special values for itemId parameter in updateItemStatus.
 /// Convention: 'all' means apply the status change to the entire order (all items).
 abstract final class OrderItemIdValues {
@@ -919,7 +979,7 @@ abstract final class OrderItemIdValues {
 }
 
 // =============================================================================
-// BUSINESS CONSTANTS
+// CATEGORY IDS
 // =============================================================================
 
 /// Valid values for orderStatus field
@@ -937,20 +997,7 @@ abstract final class OrderStatusValues {
   static const partiallyRefunded = 'partially_refunded';
   static const disputed = 'disputed';
 
-  static const all = {
-    pending,
-    confirmed,
-    processing,
-    shipped,
-    inTransit,
-    delivered,
-    cancelled,
-    failed,
-    expired,
-    refunded,
-    partiallyRefunded,
-    disputed,
-  };
+  static const all = {pending, confirmed, processing, shipped, inTransit, delivered, cancelled, failed, expired, refunded, partiallyRefunded, disputed};
 
   /// Centralized state machine — single source of truth for order transitions.
   /// Must match schema_constants.py OrderStatusValues.VALID_TRANSITIONS.
@@ -974,7 +1021,7 @@ abstract final class OrderStatusValues {
 }
 
 // =============================================================================
-// CATEGORY IDS
+// API KEYS - Cloud Function request/response parameter names
 // =============================================================================
 
 /// Valid values for payment provider
@@ -985,7 +1032,7 @@ abstract final class PaymentProviderValues {
 }
 
 // =============================================================================
-// API KEYS - Cloud Function request/response parameter names
+// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
 // =============================================================================
 
 /// Valid values for paymentStatus field
@@ -1000,6 +1047,7 @@ abstract final class PaymentStatusValues {
   static const captured = 'captured';
   static const cancelled = 'cancelled';
   static const authorizationExpired = 'authorization_expired';
+  static const disputed = 'disputed';
   // Transitional states (internal use, not stored long-term)
   static const capturing = 'capturing';
   static const cancelling = 'cancelling';
@@ -1016,15 +1064,12 @@ abstract final class PaymentStatusValues {
     captured,
     cancelled,
     authorizationExpired,
+    disputed,
     capturing,
     cancelling,
     expiring,
   };
 }
-
-// =============================================================================
-// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
-// =============================================================================
 
 /// Valid values for payoutStatus field
 abstract final class PayoutStatusValues {
@@ -1037,16 +1082,7 @@ abstract final class PayoutStatusValues {
   static const partiallyReversed = 'partially_reversed';
   static const reversedDispute = 'reversed_dispute';
 
-  static const all = {
-    pending,
-    processing,
-    completed,
-    partial,
-    failed,
-    reversed,
-    partiallyReversed,
-    reversedDispute,
-  };
+  static const all = {pending, processing, completed, partial, failed, reversed, partiallyReversed, reversedDispute};
 }
 
 // =============================================================================
@@ -1165,6 +1201,49 @@ abstract final class ShippingSourceValues {
   static const domestic = 'domestic';
 }
 
+/// Subcategory constants — maps category display name to subcategory list.
+/// Used by add/edit product screens to show subcategory dropdowns. (N-11)
+abstract final class SubcategoryConstants {
+  static const Map<String, List<String>> map = {
+    'Fashion': ["Men's Clothing", "Women's Clothing", "Kids' Clothing", 'Shoes', 'Accessories', 'Bags', 'Jewelry'],
+    'Electronics': ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'],
+    'Home & Garden': ['Furniture', 'Decor', 'Kitchen', 'Bedding', 'Lighting', 'Garden & Outdoor', 'Storage'],
+    'Beauty & Personal Care': ['Skincare', 'Haircare', 'Makeup', 'Fragrance', "Men's Grooming"],
+    'Sports & Outdoors': ['Fitness', 'Outdoor Recreation', 'Team Sports', 'Water Sports', 'Winter Sports'],
+    'Toys & Games': ['Puzzles & Board Games', 'Building Toys', 'Dolls & Playsets', 'Video Games', 'Outdoor Play'],
+    'Food & Grocery': ['Snacks', 'Beverages', 'Health Foods', 'Specialty Foods', 'Baking'],
+    'Books & Media': ['Books', 'Music', 'Movies & TV', 'Magazines'],
+    'Automotive': ['Car Accessories', 'Motorcycle', 'Tools & Equipment'],
+    'Health': ['Vitamins & Supplements', 'Medical Devices', 'Personal Care'],
+    'Art & Crafts': ['Drawing & Painting', 'Yarn & Fiber Arts', 'Paper Crafts', 'Photography'],
+    'Baby': ['Baby Clothing', 'Feeding', 'Nursery', 'Strollers', 'Toys'],
+  };
+
+  /// Lookup subcategories by category ID (matches productCategories list in utils.dart).
+  static const Map<int, List<String>> _byId = {
+    1: ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'], // Electronics
+    4: ['Furniture', 'Decor', 'Kitchen', 'Bedding', 'Lighting', 'Garden & Outdoor', 'Storage'], // Home & Garden
+    5: ["Men's Clothing", "Women's Clothing", "Kids' Clothing", 'Shoes', 'Accessories', 'Bags', 'Jewelry'], // Fashion
+    8: ['Skincare', 'Haircare', 'Makeup', 'Fragrance', "Men's Grooming"], // Beauty & Personal Care
+    9: ['Vitamins & Supplements', 'Medical Devices', 'Personal Care'], // Health & Wellness
+    10: ['Fitness', 'Outdoor Recreation', 'Team Sports', 'Water Sports', 'Winter Sports'], // Sports & Fitness
+    11: ['Puzzles & Board Games', 'Building Toys', 'Dolls & Playsets', 'Video Games', 'Outdoor Play'], // Toys & Games
+    12: ['Snacks', 'Beverages', 'Health Foods', 'Specialty Foods', 'Baking'], // Food & Grocery
+    13: ['Books', 'Music', 'Movies & TV', 'Magazines'], // Books & Media
+    14: ['Car Accessories', 'Motorcycle', 'Tools & Equipment'], // Automotive
+    15: ['Drawing & Painting', 'Yarn & Fiber Arts', 'Paper Crafts', 'Photography'], // Art & Crafts
+    16: ['Baby Clothing', 'Feeding', 'Nursery', 'Strollers', 'Toys'], // Baby
+  };
+
+  /// Lookup subcategories by category display name (localized key → english key mapping).
+  /// Returns empty list if no subcategories defined for the category.
+  static List<String> forCategory(String categoryName) {
+    return map[categoryName] ?? const [];
+  }
+
+  static List<String> forCategoryId(int id) => _byId[id] ?? const [];
+}
+
 abstract final class SubscriptionStatusValues {
   static const active = 'active';
   static const canceled = 'canceled';
@@ -1195,22 +1274,7 @@ abstract final class SupplierCurrencyValues {
   static const twd = 'TWD';
 
   static const defaultCurrency = 'USD';
-  static const all = {
-    cad,
-    usd,
-    eur,
-    gbp,
-    cny,
-    jpy,
-    krw,
-    inr,
-    aud,
-    mxn,
-    brl,
-    hkd,
-    sgd,
-    twd,
-  };
+  static const all = {cad, usd, eur, gbp, cny, jpy, krw, inr, aud, mxn, brl, hkd, sgd, twd};
 }
 
 /// Valid values for supplier platform types
@@ -1218,39 +1282,21 @@ abstract final class SupplierTypeValues {
   static const aliexpress = 'aliexpress';
   static const dhgate = 'dhgate';
   static const alibaba = 'alibaba';
-  static const s1688 =
-      '1688'; // Can't start with number, so use 's1688' as const name
+  static const s1688 = '1688'; // Can't start with number, so use 's1688' as const name
   static const temu = 'temu';
   static const cjdropshipping = 'cjdropshipping';
   static const local = 'local';
   static const other = 'other';
 
-  static const all = {
-    aliexpress,
-    dhgate,
-    alibaba,
-    s1688,
-    temu,
-    cjdropshipping,
-    local,
-    other,
-  };
+  static const all = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping, local, other};
 
   /// International suppliers (non-local)
-  static const international = {
-    aliexpress,
-    dhgate,
-    alibaba,
-    s1688,
-    temu,
-    cjdropshipping,
-  };
+  static const international = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping};
 }
 
 /// User-facing UI messages
 abstract final class UIMessages {
-  static const sessionExpired =
-      'Session expired due to inactivity. Please login again.';
+  static const sessionExpired = 'Session expired due to inactivity. Please login again.';
   static const sessionExpiredTitle = 'Session Expired';
 }
 
@@ -1275,6 +1321,10 @@ abstract final class WebhookResponseStatus {
   static const ignored = 'ignored';
   static const error = 'error';
 }
+
+// =============================================================================
+// N-11: SUBCATEGORIES — Maps categoryId to list of subcategory names
+// =============================================================================
 
 /// Valid values for webhook processing status
 abstract final class WebhookStatusValues {
