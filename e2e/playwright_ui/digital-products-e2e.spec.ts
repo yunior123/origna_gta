@@ -466,7 +466,7 @@ test.describe('F. Seller UX — Digital Product Creation', () => {
       expect(p.digitalType, `${label}: digitalType must be set`).toBeTruthy();
       expect(['software', 'book']).toContain(p.digitalType);
       expect(p.estimatedShipDays, `${label}: estimatedShipDays=0`).toBe(0);
-      expect(p.isActive, `${label}: product must be active`).toBe(true);
+      expect(p.lifecycleStatus, `${label}: product must be active`).toBe('active');
     }
   });
 

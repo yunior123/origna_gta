@@ -751,7 +751,7 @@ interface DiscoveredProduct {
   price: number;
   sellerId: string;
   stockQuantity: number;
-  isActive: boolean;
+  lifecycleStatus: string;
 }
 
 let _cachedProducts: DiscoveredProduct[] | null = null;
@@ -792,11 +792,11 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
         price: fields.price || 0,
         sellerId: fields.sellerId || '',
         stockQuantity: fields.stockQuantity || 0,
-        isActive: fields.isActive === true,
+        lifecycleStatus: fields.lifecycleStatus || 'draft',
       } as DiscoveredProduct;
     })
     .filter((p: DiscoveredProduct | null): p is DiscoveredProduct =>
-      p !== null && p.price > 0 && p.stockQuantity > 0 && p.isActive && knownSellers.has(p.sellerId)
+      p !== null && p.price > 0 && p.stockQuantity > 0 && p.lifecycleStatus === 'active' && knownSellers.has(p.sellerId)
     )
     // Sort by stock descending — prefer products with the most stock
     .sort((a: DiscoveredProduct, b: DiscoveredProduct) => b.stockQuantity - a.stockQuantity);
@@ -885,7 +885,7 @@ export async function createDummyProduct(sellerUid: string, prefix: string): Pro
     name: `Dummy Test Product ${prefix}`,
     description: `A high-quality test product created for E2E testing purposes.`,
     price: 15.99,
-    isActive: true,
+    lifecycleStatus: 'active',
     stockQuantity: 100,
     categoryId: 1,
     imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
@@ -910,7 +910,7 @@ export async function createDummyProduct(sellerUid: string, prefix: string): Pro
     price: productData.price,
     sellerId: productData.sellerId,
     stockQuantity: productData.stockQuantity,
-    isActive: productData.isActive,
+    lifecycleStatus: productData.lifecycleStatus,
   };
 }
 

@@ -81,7 +81,7 @@ test.describe('Shipping Calculation', () => {
       sellerSku: `SHIP-TEST-${Date.now()}`,
       name: 'Shipping Test Product',
       price: 10.00,
-      isActive: true,
+      lifecycleStatus: 'active',
       stockQuantity: 50, // Guaranteed >= 3
       categoryId: 1,
       imageUrls: [],

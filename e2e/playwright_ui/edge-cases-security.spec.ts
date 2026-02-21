@@ -105,7 +105,7 @@ test.describe('2. Quantity Validation', () => {
       sellerSku: `STOCK-TEST-${Date.now()}`,
       name: 'Stock Limited Product',
       price: 10.00,
-      isActive: true,
+      lifecycleStatus: 'active',
       stockQuantity: liveStock,
       categoryId: 1,
       imageUrls: [],

@@ -18,6 +18,7 @@ import {
   writeDoc,
   deleteDoc,
   toFirestoreFields,
+  parseDoc,
   TEST_ACCOUNTS,
   DEFAULT_PASS,
 } from './api-helpers';
@@ -112,7 +113,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // ────────────────────────────────────────────────────────────────────────────
   // T3: sellerSku uniqueness — on_product_created trigger deactivates duplicate
   //     When two products share the same sellerId+sellerSku, the second one
-  //     gets isActive=false immediately (reactive safety net).
+  //     gets lifecycleStatus='draft' immediately (reactive safety net).
   // ────────────────────────────────────────────────────────────────────────────
   test('T3: duplicate sellerSku products cannot coexist — one is blocked on write', async ({ request }) => {
 
@@ -124,7 +125,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
       sellerSku: skuValue,
       name: 'SKU Test Product',
       price: 9.99,
-      isActive: true,
+      lifecycleStatus: 'active',
       stockQuantity: 5,
       categoryId: 1,
       imageUrls: [],
@@ -147,7 +148,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
 
     const doc2 = await readDoc(`products/${prodId2}`);
     // The sellerSku and sellerId are persisted (Firestore direct write),
-    // but the on_product_created trigger will fire and set isActive=false on the duplicate.
+    // but the on_product_created trigger will fire and set lifecycleStatus='draft' on the duplicate.
     // In emulator unit tests this is verified by the trigger logic — here we verify
     // the data integrity: two docs with same sellerId+sellerSku can be queried,
     // confirming the product_repository pre-write check is the primary guard.
@@ -187,7 +188,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
       sellerId: uid,
       name: 'Calgary Maple Syrup',
       price: 12.99,
-      isActive: true,
+      lifecycleStatus: 'active',
       stockQuantity: 10,
       categoryId: 1,
       imageUrls: [],
@@ -209,9 +210,10 @@ test.describe('Warehouse: multi-location seller flow', () => {
   });
 
   // ────────────────────────────────────────────────────────────────────────────
-  // T5: warehouseStock map is stored correctly; stockQuantity = sum of all warehouses
+  // T5: inventoryLevels subcollection is the single truth for warehouse stock
+  //     stockQuantity on the product doc = sum across all inventoryLevels docs
   // ────────────────────────────────────────────────────────────────────────────
-  test('T5: warehouseStock map stored on product; stockQuantity equals sum across warehouses', async ({ request }) => {
+  test('T5: inventoryLevels subcollection stores per-warehouse stock; stockQuantity equals sum', async ({ request }) => {
 
     const { token, uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
@@ -228,33 +230,40 @@ test.describe('Warehouse: multi-location seller flow', () => {
     const stock2 = 20;
     const totalStock = stock1 + stock2;
 
-    // Write product doc with warehouseStock map (mirrors what product_repository.dart writes)
+    // Write product doc (warehouseStock map is gone — stockQuantity is the only product-level field)
     const productId = `test_wh_stock_${Date.now()}`;
     await writeDoc(`products/${productId}`, toFirestoreFields({
       sellerId: uid,
       name: 'Multi-Warehouse Widget',
       price: 19.99,
-      isActive: true,
+      lifecycleStatus: 'active',
       stockQuantity: totalStock,
       categoryId: 1,
       imageUrls: [],
       keywords: [],
       rating: 0,
       warehouseIds: [wId1, wId2],
-      warehouseStock: { [wId1]: stock1, [wId2]: stock2 },
       shipFromCity: 'Winnipeg',
       shipFromProvince: 'MB',
     }));
 
+    // Write inventoryLevels subcollection docs (one per warehouse)
+    await Promise.all([
+      writeDoc(`products/${productId}/inventoryLevels/${wId1}`, toFirestoreFields({ availableQuantity: stock1, warehouseId: wId1 })),
+      writeDoc(`products/${productId}/inventoryLevels/${wId2}`, toFirestoreFields({ availableQuantity: stock2, warehouseId: wId2 })),
+    ]);
+
     const doc = await readDoc(`products/${productId}`);
     expect(doc.stockQuantity).toBe(totalStock);
-    expect(doc.warehouseStock?.[wId1]).toBe(stock1);
-    expect(doc.warehouseStock?.[wId2]).toBe(stock2);
+    // warehouseStock map must NOT exist on product doc
+    expect(doc.warehouseStock).toBeUndefined();
 
-    // Verify stockQuantity === sum
-    const sum = Object.values(doc.warehouseStock as Record<string, number>)
-      .reduce((a, b) => a + b, 0);
-    expect(sum).toBe(doc.stockQuantity);
+    // Verify each inventoryLevels subdoc has correct quantity
+    const inv1 = parseDoc(await readDoc(`products/${productId}/inventoryLevels/${wId1}`));
+    const inv2 = parseDoc(await readDoc(`products/${productId}/inventoryLevels/${wId2}`));
+    expect(inv1.availableQuantity).toBe(stock1);
+    expect(inv2.availableQuantity).toBe(stock2);
+    expect(inv1.availableQuantity + inv2.availableQuantity).toBe(doc.stockQuantity);
 
     // Cleanup
     await deleteDoc(`products/${productId}`);
