@@ -284,7 +284,6 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         sellerSku: state.sellerSku,
         subcategory: subcategory,
         warehouseIds: useWarehouses ? state.selectedWarehouseIds : null,
-        warehouseStock: useWarehouses && state.warehouseStockMap.isNotEmpty ? state.warehouseStockMap : null,
         hasVariants: state.hasVariants,
         variants: state.hasVariants ? state.variants : const [],
         variantOptions: state.hasVariants ? state.variantOptions : const [],

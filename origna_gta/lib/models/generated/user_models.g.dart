@@ -23,10 +23,7 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
   lastCheckoutTimestamp: json['lastCheckoutTimestamp'] == null
       ? null
       : DateTime.parse(json['lastCheckoutTimestamp'] as String),
-  stripeAccountId: json['stripeAccountId'] as String?,
-  payoutsEnabled: json['payoutsEnabled'] as bool? ?? false,
-  chargesEnabled: json['chargesEnabled'] as bool? ?? false,
-  onboardingCompleted: json['onboardingCompleted'] as bool? ?? false,
+  isSeller: json['isSeller'] as bool? ?? false,
   suspended: json['suspended'] as bool? ?? false,
   suspendedAt: json['suspendedAt'] == null
       ? null
@@ -40,13 +37,11 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
       : DateTime.parse(json['unsuspendedAt'] as String),
   suspendedBy: json['suspendedBy'] as String?,
   suspensionReason: json['suspensionReason'] as String?,
-  commissionRate: (json['commissionRate'] as num?)?.toDouble(),
-  verified: json['verified'] as bool? ?? false,
-  verificationStatus: json['verificationStatus'] as String?,
-  platform: json['platform'] as String?,
-  businessName: json['businessName'] as String?,
-  payoutHoldDays: (json['payoutHoldDays'] as num?)?.toInt(),
   taxExemption: json['taxExemption'] as Map<String, dynamic>?,
+  mfaEnabled: json['mfaEnabled'] as bool? ?? false,
+  mfaEnrolledAt: json['mfaEnrolledAt'] == null
+      ? null
+      : DateTime.parse(json['mfaEnrolledAt'] as String),
   emailConsent: json['emailConsent'] as bool? ?? true,
   marketingOptIn: json['marketingOptIn'] as bool? ?? false,
   consentTimestamp: json['consentTimestamp'] == null
@@ -89,10 +84,7 @@ Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'lastCheckoutSession': instance.lastCheckoutSession,
   'lastOrderId': instance.lastOrderId,
   'lastCheckoutTimestamp': instance.lastCheckoutTimestamp?.toIso8601String(),
-  'stripeAccountId': instance.stripeAccountId,
-  'payoutsEnabled': instance.payoutsEnabled,
-  'chargesEnabled': instance.chargesEnabled,
-  'onboardingCompleted': instance.onboardingCompleted,
+  'isSeller': instance.isSeller,
   'suspended': instance.suspended,
   'suspendedAt': instance.suspendedAt?.toIso8601String(),
   'updatedAt': instance.updatedAt?.toIso8601String(),
@@ -100,13 +92,9 @@ Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'unsuspendedAt': instance.unsuspendedAt?.toIso8601String(),
   'suspendedBy': instance.suspendedBy,
   'suspensionReason': instance.suspensionReason,
-  'commissionRate': instance.commissionRate,
-  'verified': instance.verified,
-  'verificationStatus': instance.verificationStatus,
-  'platform': instance.platform,
-  'businessName': instance.businessName,
-  'payoutHoldDays': instance.payoutHoldDays,
   'taxExemption': instance.taxExemption,
+  'mfaEnabled': instance.mfaEnabled,
+  'mfaEnrolledAt': instance.mfaEnrolledAt?.toIso8601String(),
   'emailConsent': instance.emailConsent,
   'marketingOptIn': instance.marketingOptIn,
   'consentTimestamp': instance.consentTimestamp?.toIso8601String(),

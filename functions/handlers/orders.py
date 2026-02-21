@@ -21,12 +21,14 @@ from schema_constants import (
     DeliveryItemStatusTransitions,
     DeliveryStatusValues,
     Fields,
+    OrderEventTypes,
     OrderStatusValues,
     PaymentStatusValues,
     PayoutStatusValues,
     ShippingApprovalStatusValues,
     UserRoleValues,
 )
+from models.order_event import OrderEvent
 from services.email_service import (
     _t as _email_t,
 )
@@ -286,6 +288,13 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_ref.update(update_data)
 
+    # Record order event
+    OrderEvent.write(
+        get_db(), order_id, OrderEventTypes.STATUS_CHANGED,
+        actor=user_id, actor_type="seller" if user_role == UserRoleValues.SELLER else "admin",
+        from_status=old_status, to_status=new_status,
+    )
+
     return create_success_response({ApiKeys.NEW_STATUS: new_status})
 
 
@@ -479,6 +488,18 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         return all_delivered, all_shipped
 
     all_items_delivered, all_items_shipped = update_item_atomically(txn)
+
+    # Record item status change event
+    event_type = {
+        DeliveryStatusValues.SHIPPED: OrderEventTypes.ITEM_SHIPPED,
+        DeliveryStatusValues.DELIVERED: OrderEventTypes.ITEM_DELIVERED,
+    }.get(new_status, OrderEventTypes.STATUS_CHANGED)
+    OrderEvent.write(
+        get_db(), order_id, event_type,
+        actor=user_id, actor_type="seller",
+        from_status=current_item_status, to_status=new_status,
+        metadata={"productId": product_id, "itemIndex": item_index},
+    )
 
     return create_success_response(
         {
@@ -701,6 +722,14 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         },
     )
     cancel_batch.commit()
+
+    # Record cancellation event
+    OrderEvent.write(
+        get_db(), order_id, OrderEventTypes.CANCELLATION_CONFIRMED,
+        actor=user_id, actor_type="buyer" if user_id == order_data.get(Fields.USER_ID) else "admin",
+        from_status=current_status, to_status=OrderStatusValues.CANCELLED,
+        metadata={"reason": reason, "refunded": refunded},
+    )
 
     return create_success_response({"refunded": refunded})
 
@@ -1010,6 +1039,13 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                 logger.error(f"Transfer reversal failed for {seller_id}: {str(e)}")
 
     # Order items already updated atomically in _apply_refund_atomically transaction
+
+    # Record refund event
+    OrderEvent.write(
+        get_db(), order_id, OrderEventTypes.REFUND_ISSUED,
+        actor=user_id, actor_type="admin",
+        metadata={"productId": product_id, "refundAmountCents": refund_amount_cents, "refundId": refund.id},
+    )
 
     return create_success_response(
         {
@@ -1467,6 +1503,37 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     return create_success_response({ApiKeys.APPROVAL_REQUIRED: approval_required})
 
 
+def _handle_payment_status_email(order_id: str, after_data: dict, payment_status: str, buyer_email: str | None = None) -> None:
+    """Send refund notification emails when paymentStatus changes."""
+    if payment_status not in (PaymentStatusValues.REFUNDED, PaymentStatusValues.PARTIALLY_REFUNDED):
+        return
+    user_id = after_data.get(Fields.USER_ID)
+    if not buyer_email:
+        try:
+            from firebase_admin import firestore as _fs
+            _db = _fs.client()
+            buyer_doc = _db.collection(Collections.USERS).document(user_id).get()
+            if buyer_doc.exists:
+                buyer_email = buyer_doc.to_dict().get(Fields.EMAIL)
+        except Exception as e:
+            logger.error(f"Failed to fetch buyer email for order {order_id}: {str(e)}")
+    if not buyer_email:
+        return
+    lang = after_data.get(Fields.PREFERRED_LANGUAGE, "en")
+    oid_short = order_id[:8]
+    try:
+        if payment_status == PaymentStatusValues.REFUNDED:
+            refund_amount = after_data.get(Fields.CUMULATIVE_REFUNDED_CENTS, 0)
+            refunded_html = get_order_refunded_email(after_data, order_id, refund_amount, lang=lang)
+            send_email(to_email=buyer_email, subject=_email_t("sub.refunded", lang).replace("{oid}", oid_short), html_content=refunded_html)
+        elif payment_status == PaymentStatusValues.PARTIALLY_REFUNDED:
+            refund_amount = after_data.get(Fields.PARTIAL_REFUND_AMOUNT_CENTS, 0)
+            partial_html = get_order_partially_refunded_email(after_data, order_id, refund_amount, lang=lang)
+            send_email(to_email=buyer_email, subject=_email_t("sub.partial", lang).replace("{oid}", oid_short), html_content=partial_html)
+    except Exception as e:
+        logger.error(f"🚨 Failed to send refund email for order {order_id}: {str(e)}")
+
+
 @firestore_fn.on_document_updated(document="orders/{orderId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_order_status_changed(event: firestore_fn.Event) -> None:
     """
@@ -1483,6 +1550,11 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
     new_status = after_data.get(Fields.ORDER_STATUS)
 
     if old_status == new_status:
+        # Check if paymentStatus changed (for refund emails)
+        old_payment_status = before_data.get(Fields.PAYMENT_STATUS)
+        new_payment_status = after_data.get(Fields.PAYMENT_STATUS)
+        if old_payment_status != new_payment_status:
+            _handle_payment_status_email(order_id, after_data, new_payment_status, buyer_email=None)
         return
 
     # Send notification emails based on status change

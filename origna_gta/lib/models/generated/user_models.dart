@@ -42,36 +42,28 @@ abstract class User with _$User {
     required List<UserRole> roles,
     Address? address,
     required DateTime createdAt,
-    // Stripe information
+    // Stripe buyer information
     String? customerId,
     String? lastCheckoutSession,
     String? lastOrderId,
     DateTime? lastCheckoutTimestamp,
-    // Seller information (Stripe Connect)
-    String? stripeAccountId,
-    @Default(false) bool payoutsEnabled,
-    @Default(false) bool chargesEnabled,
-    @Default(false) bool onboardingCompleted,
+    // Seller flag (details in seller_profiles/{uid})
+    @Default(false) bool isSeller,
     // Account status
     @Default(false) bool suspended,
     DateTime? suspendedAt,
     DateTime? updatedAt,
-    // === AUDIT FIX: 13 missing fields synced from Python/Firestore ===
     // Payment provider
     String? paymentProvider,
     // Suspension details
     DateTime? unsuspendedAt,
     String? suspendedBy,
     String? suspensionReason,
-    // Seller verification & commission
-    double? commissionRate,
-    @Default(false) bool verified,
-    String? verificationStatus,
-    String? platform,
-    String? businessName,
-    int? payoutHoldDays,
     // Tax exemption for businesses
     Map<String, dynamic>? taxExemption,
+    // MFA status (secrets live in user_security — backend only)
+    @Default(false) bool mfaEnabled,
+    DateTime? mfaEnrolledAt,
     // === CONSENT & COMPLIANCE (CASL + PIPEDA + Quebec Law 25) ===
     @Default(true) bool emailConsent,
     @Default(false) bool marketingOptIn,
@@ -111,25 +103,18 @@ abstract class User with _$User {
       lastCheckoutSession: data[Fields.lastCheckoutSession],
       lastOrderId: data[Fields.lastOrderId],
       lastCheckoutTimestamp: _parseDateTime(data[Fields.lastCheckoutTimestamp]),
-      stripeAccountId: data[Fields.stripeAccountId],
-      payoutsEnabled: data[Fields.payoutsEnabled] ?? false,
-      chargesEnabled: data[Fields.chargesEnabled] ?? false,
-      onboardingCompleted: data[Fields.onboardingCompleted] ?? false,
+      isSeller: (data[Fields.roles] as List<dynamic>? ?? []).contains('seller'),
       suspended: data[Fields.suspended] ?? false,
       suspendedAt: _parseDateTime(data[Fields.suspendedAt]),
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
-      // === AUDIT FIX: Parse 13 missing fields ===
       paymentProvider: data[Fields.paymentProvider] as String?,
       unsuspendedAt: _parseDateTime(data[Fields.unsuspendedAt]),
       suspendedBy: data[Fields.suspendedBy] as String?,
       suspensionReason: data[Fields.suspensionReason] as String?,
-      commissionRate: data[Fields.commissionRate] != null ? (data[Fields.commissionRate] as num).toDouble() : null,
-      verified: data[Fields.verified] ?? false,
-      verificationStatus: data[Fields.verificationStatus] as String?,
-      platform: data[Fields.platform] as String?,
-      businessName: data[Fields.businessName] as String?,
-      payoutHoldDays: data[Fields.payoutHoldDays] != null ? (data[Fields.payoutHoldDays] as num).toInt() : null,
       taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
+      // MFA status (secrets live in user_security — backend only)
+      mfaEnabled: data[Fields.mfaEnabled] ?? false,
+      mfaEnrolledAt: _parseDateTime(data[Fields.mfaEnrolledAt]),
       // === CONSENT & COMPLIANCE ===
       emailConsent: data[Fields.emailConsent] ?? true,
       marketingOptIn: data[Fields.marketingOptIn] ?? false,
@@ -156,14 +141,11 @@ abstract class User with _$User {
 
   const User._();
 
-  /// Check if user can sell products (seller/admin + onboarding + payouts/charges enabled)
-  bool get canSell => (isAdmin || isSeller) && onboardingCompleted && chargesEnabled && payoutsEnabled && !suspended;
+  /// Check if user can sell products (seller/admin + not suspended). Full check requires seller_profiles doc.
+  bool get canSell => (isAdmin || isSeller) && !suspended;
 
   /// Check if user has admin role
   bool get isAdmin => roles.contains(UserRole.admin);
-
-  /// Check if user has seller role
-  bool get isSeller => roles.contains(UserRole.seller);
 }
 
 // ============================================================================

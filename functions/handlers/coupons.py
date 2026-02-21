@@ -143,10 +143,11 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     if max_uses_total is not None and used_count >= int(max_uses_total):
         raise https_fn.HttpsError("resource-exhausted", "Coupon has reached its maximum usage limit")
 
-    # --- Per-user max uses check ---
+    # --- Per-user max uses check (using coupon_uses subcollection) ---
     max_uses_per_user = int(coupon.get(Fields.MAX_USES_PER_USER, 1))
-    used_by_uids: list = coupon.get(Fields.USED_BY_UIDS, [])
-    user_usage_count = used_by_uids.count(user_id)
+    coupon_ref = db.collection(Collections.COUPONS).document(code)
+    user_uses = coupon_ref.collection(Collections.COUPON_USES).document(user_id).get()
+    user_usage_count = int(user_uses.to_dict().get("useCount", 0)) if user_uses.exists else 0
     if user_usage_count >= max_uses_per_user:
         raise https_fn.HttpsError("resource-exhausted", "You have already used this coupon the maximum number of times")
 
@@ -176,7 +177,7 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 def redeem_coupon(code: str, user_id: str) -> None:
     """
-    N-07: Internal — atomically increment usedCount and append uid to usedByUids.
+    N-07: Internal — atomically increment usedCount and record usage in coupon_uses subcollection.
     Called from payment_stripe.py after payment succeeds.
 
     Silently no-ops if coupon no longer exists (defensive).
@@ -188,6 +189,7 @@ def redeem_coupon(code: str, user_id: str) -> None:
     db = get_db()
     fs = get_firestore()
     coupon_ref = db.collection(Collections.COUPONS).document(code)
+    use_ref = coupon_ref.collection(Collections.COUPON_USES).document(user_id)
 
     @fs.transactional
     def _redeem_txn(transaction):
@@ -195,14 +197,22 @@ def redeem_coupon(code: str, user_id: str) -> None:
         if not snap.exists:
             logger.warning(f"redeem_coupon: coupon {code} not found — skipping")
             return
+
         data = snap.to_dict() or {}
         used_count = int(data.get(Fields.USED_COUNT, 0))
-        used_by_uids = list(data.get(Fields.USED_BY_UIDS, []))
-        used_by_uids.append(user_id)
+
+        # Increment global counter
         transaction.update(coupon_ref, {
             Fields.USED_COUNT: used_count + 1,
-            Fields.USED_BY_UIDS: used_by_uids,
         })
+
+        # Record per-user usage in subcollection
+        use_snap = use_ref.get(transaction=transaction)
+        if use_snap.exists:
+            prev_count = int(use_snap.to_dict().get("useCount", 0))
+            transaction.update(use_ref, {"useCount": prev_count + 1, "lastUsedAt": fs.SERVER_TIMESTAMP})
+        else:
+            transaction.set(use_ref, {"useCount": 1, "usedAt": fs.SERVER_TIMESTAMP, "lastUsedAt": fs.SERVER_TIMESTAMP})
 
     try:
         txn = db.transaction()
@@ -314,7 +324,7 @@ def admin_create_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.MAX_USES_TOTAL: max_uses_total,
         Fields.MAX_USES_PER_USER: max_uses_per_user,
         Fields.USED_COUNT: 0,
-        Fields.USED_BY_UIDS: [],
+        # usedByUids DEPRECATED — per-user tracking moved to coupon_uses subcollection
         Fields.EXPIRES_AT: expires_at,
         Fields.IS_ACTIVE: is_active,
         Fields.SELLER_ID: seller_id,

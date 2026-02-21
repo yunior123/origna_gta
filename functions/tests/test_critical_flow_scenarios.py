@@ -142,11 +142,9 @@ class TestOrderStateMachine:
             ("shipped", "in_transit"),
             ("shipped", "delivered"),
             ("in_transit", "delivered"),
-            ("delivered", "refunded"),
-            ("delivered", "partially_refunded"),
+            ("delivered", "disputed"),
             ("failed", "pending"),
             ("expired", "pending"),
-            ("partially_refunded", "refunded"),
         ]
 
         for current, new in valid_cases:
@@ -159,13 +157,12 @@ class TestOrderStateMachine:
         invalid_cases = [
             ("cancelled", "pending"),  # Terminal state
             ("cancelled", "confirmed"),  # Terminal state
-            ("refunded", "pending"),  # Terminal state
-            ("refunded", "cancelled"),  # Terminal state
             ("delivered", "shipped"),  # Can't go backwards
             ("shipped", "cancelled"),  # Shipped items can't be cancelled (use refund after delivery)
             ("pending", "delivered"),  # Can't skip states
             ("confirmed", "delivered"),  # Can't skip shipped
-            ("pending", "refunded"),  # Can't refund un-delivered
+            ("pending", "refunded"),  # Refunded is now payment-only dimension
+            ("delivered", "refunded"),  # Refunded moved to paymentStatus
         ]
 
         for current, new in invalid_cases:

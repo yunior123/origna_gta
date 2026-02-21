@@ -15,6 +15,7 @@ from schema_constants import (
     ProductApprovalStatusValues,
     ProductStatusValues,
     SupplierCurrencyValues,
+    SupplierTypeValues,
     WarehouseTypeValues,
 )
 
@@ -148,6 +149,14 @@ class SupplierInfo(BaseModel):
     hasTracking: bool = Field(default=False, description="Whether supplier provides tracking")
     notes: str | None = Field(default=None, max_length=500, description="Internal notes about supplier")
 
+    @field_validator("type")
+    @classmethod
+    def validate_supplier_type(cls, v: str) -> str:
+        """Validate supplier type against allowed values."""
+        if v not in SupplierTypeValues.ALL:
+            raise ValueError(f"Invalid supplier type: {v}. Must be one of: {SupplierTypeValues.ALL}")
+        return v
+
     @field_validator("currency")
     @classmethod
     def validate_supplier_currency(cls, v: str) -> str:
@@ -259,6 +268,7 @@ class Product(BaseModel):
     )
     name: str = Field(..., min_length=1, max_length=120, description="Product name")
     price: float = Field(..., gt=0, le=100000, description="Price in CAD")
+    priceCents: int | None = Field(default=None, ge=0, description="Price in integer cents — derived from price at write time")
     compareAtPrice: float | None = Field(
         default=None, gt=0, le=100000, description="Original/crossed-out price for sale display (must be > price)"
     )
@@ -328,9 +338,6 @@ class Product(BaseModel):
         description="Seller's unique product identifier — enforced unique per seller at write time",
     )
     warehouseIds: list[str] | None = Field(default=None, description="IDs of seller warehouses this product ships from")
-    warehouseStock: dict[str, int] | None = Field(
-        default=None, description="Stock per warehouse: {warehouseId: quantity}"
-    )
     # Denormalized for O(1) card rendering — set from default/primary warehouse on write
     shipFromCity: str | None = Field(
         default=None, max_length=100, description="City of primary shipping warehouse (denormalized)"
@@ -383,6 +390,14 @@ class Product(BaseModel):
     subcategory: str | None = Field(
         default=None, max_length=100, description="Optional subcategory within the main category"
     )
+    condition: str | None = Field(default=None, description="Product condition: new|like_new|good|fair|for_parts")
+
+    @model_validator(mode="after")
+    def derive_price_cents(self) -> "Product":
+        """Auto-derive priceCents from price if not explicitly set."""
+        if self.price is not None and self.priceCents is None:
+            object.__setattr__(self, "priceCents", round(self.price * 100))
+        return self
 
     @field_validator("status")
     @classmethod
@@ -520,7 +535,6 @@ class ProductCreate(BaseModel):
     # Multi-warehouse support
     sellerSku: str | None = Field(default=None, max_length=100)
     warehouseIds: list[str] | None = Field(default=None)
-    warehouseStock: dict[str, int] | None = Field(default=None)
     shipFromCity: str | None = Field(default=None, max_length=100)
     shipFromProvince: str | None = Field(default=None, max_length=10)
     shipFromCountry: str | None = Field(default=None, max_length=100)

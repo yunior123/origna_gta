@@ -454,26 +454,25 @@ def test_user_helper_methods():
     assert not buyer.is_admin()
     assert not buyer.can_sell()
 
-    # Seller (onboarding incomplete)
+    # Seller (not suspended)
     seller_incomplete = User(
         uid="user_123",
         email="seller@example.com",
         name="John Seller",
         roles=[UserRole.SELLER],
         createdAt=datetime.now(),
-        onboardingCompleted=False,
+        suspended=True,
     )
     assert seller_incomplete.is_seller()
-    assert not seller_incomplete.can_sell()  # Onboarding not complete
+    assert not seller_incomplete.can_sell()  # Suspended
 
-    # Seller (onboarding complete)
+    # Seller (active)
     seller_complete = User(
         uid="user_123",
         email="seller@example.com",
         name="John Seller",
         roles=[UserRole.SELLER],
         createdAt=datetime.now(),
-        onboardingCompleted=True,
     )
     assert seller_complete.is_seller()
     assert seller_complete.can_sell()

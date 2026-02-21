@@ -34,6 +34,7 @@ from schema_constants import (  # noqa: E402
     BusinessRules,
     CategoryIds,
     Collections,
+    DeliveryStatusValues,
     Fields,
     OrderStatusValues,
     PaymentStatusValues,
@@ -193,8 +194,7 @@ def _seed_order(db: firestore.Client, *, user_uid: str, user_email: str, product
         Fields.SELLER_ID: product.get(Fields.SELLER_ID) or user_uid,
         Fields.SELLER_ADDRESS: seller_address,
         # Keep both fields written for compatibility.
-        Fields.STATUS: "pending",
-        Fields.DELIVERY_STATUS: "pending",
+        Fields.STATUS: DeliveryStatusValues.PENDING,
     }
 
     shipping_address = {

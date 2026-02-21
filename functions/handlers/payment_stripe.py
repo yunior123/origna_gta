@@ -45,6 +45,7 @@ from schema_constants import (
     ErrorCodeValues,
     Fields,
     LicenseStatusValues,
+    OrderEventTypes,
     OrderStatusValues,
     PaymentProviderValues,
     PaymentStatusValues,
@@ -57,6 +58,7 @@ from schema_constants import (
     ValidationLimits,
     WebhookStatusValues,
 )
+from models.order_event import OrderEvent
 from services.email_service import _t as _email_t
 from services.email_service import get_order_confirmation_email, get_seller_notification_email, send_email
 from services.pdf_invoice_service import generate_invoice_pdf
@@ -1829,6 +1831,18 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
     order_ref.update(update_data)
 
+    # Record payment event
+    payment_event_type = OrderEventTypes.PAYMENT_CAPTURED if update_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED else OrderEventTypes.PAYMENT_AUTHORIZED
+    try:
+        OrderEvent.write(
+            db, order_id, payment_event_type,
+            actor="stripe_webhook", actor_type="system",
+            to_status=update_data.get(Fields.PAYMENT_STATUS),
+            metadata={"paymentIntentId": pi_id or ""},
+        )
+    except Exception as e:
+        logger.warning(f"Failed to write order event for {order_id}: {e}")
+
     # Send confirmation emails
     try:
         # Get buyer email from order data or user document
@@ -1921,6 +1935,15 @@ def process_async_payment_succeeded(session: dict) -> str | None:
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_ref.update({Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED, Fields.UPDATED_AT: get_server_timestamp()})
 
+    try:
+        OrderEvent.write(
+            get_db(), order_id, OrderEventTypes.PAYMENT_CAPTURED,
+            actor="stripe_webhook", actor_type="system",
+            to_status=PaymentStatusValues.CAPTURED,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to write order event for {order_id}: {e}")
+
     return f"Order {order_id} payment captured"
 
 
@@ -1953,6 +1976,15 @@ def process_async_payment_failed(session: dict) -> str | None:
             },
         )
         batch.commit()
+
+        try:
+            OrderEvent.write(
+                get_db(), order_id, OrderEventTypes.PAYMENT_FAILED,
+                actor="stripe_webhook", actor_type="system",
+                to_status=PaymentStatusValues.PAYMENT_FAILED,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to write order event for {order_id}: {e}")
 
     return f"Order {order_id} cancelled due to payment failure"
 
@@ -2230,7 +2262,7 @@ def process_payment_intent_canceled(payment_intent: dict) -> str | None:
 
         # Skip if already in terminal state
         current_status = order_data.get(Fields.ORDER_STATUS)
-        terminal_states = {OrderStatusValues.CANCELLED, OrderStatusValues.REFUNDED, OrderStatusValues.EXPIRED}
+        terminal_states = {OrderStatusValues.CANCELLED, OrderStatusValues.EXPIRED}
         if current_status in terminal_states:
             return f"already_terminal:{current_status}"
 
@@ -2452,7 +2484,6 @@ def process_charge_refunded(charge: dict) -> str | None:
         if is_full_refund:
             order_ref.update(
                 {
-                    Fields.ORDER_STATUS: OrderStatusValues.REFUNDED,
                     Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED,
                     Fields.TRANSFERS_REVERSED: reversed_count,
                     Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
@@ -2464,8 +2495,7 @@ def process_charge_refunded(charge: dict) -> str | None:
         else:
             order_ref.update(
                 {
-                    Fields.ORDER_STATUS: OrderStatusValues.PARTIALLY_REFUNDED,
-                    Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,  # Keep CAPTURED — only partially refunded
+                    Fields.PAYMENT_STATUS: PaymentStatusValues.PARTIALLY_REFUNDED,
                     Fields.PARTIAL_REFUND_AMOUNT_CENTS: amount_refunded,
                     Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
                     Fields.TRANSFERS_REVERSED: reversed_count,

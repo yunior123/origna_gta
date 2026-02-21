@@ -623,6 +623,23 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // USER_SECURITY — Backend-only MFA secrets (TOTP, backup codes)
+    // NEVER readable by any client — Admin SDK only.
+    // ================================================================
+    match /user_security/{userId} {
+      allow read, write: if false;
+    }
+
+    // ================================================================
+    // SELLER_PROFILES — Seller-specific data split from users doc.
+    // Owner and admins can read/write. Buyers never need this.
+    // ================================================================
+    match /seller_profiles/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    // ================================================================
     // CATCH-ALL: Deny access to any unmatched collections
     // This prevents accidental data exposure if new collections are
     // added without explicit rules. Defense-in-depth.

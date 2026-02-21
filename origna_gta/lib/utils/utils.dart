@@ -179,11 +179,10 @@ Future<bool> addToCart({
     return false;
   }
 
-  final cartItemRef = FirebaseFirestore.instance
+  final cartRef = FirebaseFirestore.instance
       .collection(Collections.users)
       .doc(user.uid)
-      .collection(Collections.cart)
-      .doc(productId);
+      .collection(Collections.cart);
 
   try {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -198,9 +197,10 @@ Future<bool> addToCart({
       final productData = productSnapshot.data()!;
       final stockQuantity = productData[Fields.stockQuantity] as int? ?? 0;
 
-      final snapshot = await transaction.get(cartItemRef);
-      final currentQty = snapshot.exists
-          ? (snapshot.data()?[Fields.quantity] ?? 0) as int
+      // Query for existing productId in cart
+      final existing = await cartRef.where(Fields.productId, isEqualTo: productId).get();
+      final currentQty = existing.docs.isNotEmpty
+          ? (existing.docs.first.data()[Fields.quantity] as num?)?.toInt() ?? 0
           : 0;
       final newTotalQty = currentQty + quantity;
 
@@ -212,11 +212,12 @@ Future<bool> addToCart({
         );
       }
 
-      if (snapshot.exists) {
-        transaction.update(cartItemRef, {Fields.quantity: newTotalQty});
+      if (existing.docs.isNotEmpty) {
+        transaction.update(existing.docs.first.reference, {Fields.quantity: newTotalQty});
       } else {
+        final newDocRef = cartRef.doc(); // Auto-generated ID
         transaction.set(
-          cartItemRef,
+          newDocRef,
           CartModel(
             productId: productId,
             quantity: quantity,
@@ -440,7 +441,7 @@ Stream<List<CartItemModel>> getCartStream(String userId) {
       .snapshots()
       .map((snapshot) {
         return snapshot.docs
-            .map((doc) => CartItemModel.fromMap(doc.data()))
+            .map((doc) => CartItemModel.fromMap(doc.data(), docId: doc.id))
             .toList();
       });
 }

@@ -438,7 +438,7 @@ def create_mock_order_doc(order_id="order_123", payment_status="paid", status="p
                 "sellerId": "seller_123",
                 "quantity": 2,
                 "price": 50.00,
-                "deliveryStatus": "pending",
+                "status": "pending",
             }
         ],
         "totalAmountCents": 10000,
@@ -507,7 +507,7 @@ def mock_order_doc():
                 "sellerId": "seller_123",
                 "quantity": 2,
                 "price": 50.00,
-                "deliveryStatus": "pending",
+                "status": "pending",
             }
         ],
         "totalAmountCents": 10000,
@@ -899,7 +899,7 @@ class FirestoreMockBuilder:
                         "sellerId": "seller_123",
                         "quantity": 2,
                         "price": 50.00,
-                        "deliveryStatus": "pending",
+                        "status": "pending",
                     }
                 ],
                 "totalAmountCents": 10000,

@@ -812,35 +812,6 @@ def _derive_ship_from_fields(seller_id: str, product_data: dict) -> dict:
     return result
 
 
-def _sync_inventory_levels(product_id: str, warehouse_stock: dict) -> None:
-    """Sync warehouseStock map to inventoryLevels subcollection (batch writes, 499 limit)."""
-    if not warehouse_stock:
-        return
-    batch = get_db().batch()
-    count = 0
-    for wh_id, qty in warehouse_stock.items():
-        inv_ref = (
-            get_db()
-            .collection(Collections.PRODUCTS)
-            .document(product_id)
-            .collection(Collections.INVENTORY_LEVELS)
-            .document(wh_id)
-        )
-        batch.set(
-            inv_ref,
-            {
-                Fields.AVAILABLE_QUANTITY: int(qty),
-                Fields.LAST_SYNCED_AT: get_server_timestamp(),
-            },
-            merge=True,
-        )
-        count += 1
-        if count == 499:
-            batch.commit()
-            batch = get_db().batch()
-            count = 0
-    if count > 0:
-        batch.commit()
 
 
 @firestore_fn.on_document_created(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
@@ -1099,14 +1070,6 @@ def on_product_created(event: firestore_fn.Event) -> None:
             product_data.update(patches)
         except Exception as e:
             logger.error(f"WARNING: Failed to apply patches to product {product_id}: {str(e)}")
-
-    # Sync warehouseStock → inventoryLevels subcollection
-    warehouse_stock = product_data.get(Fields.WAREHOUSE_STOCK) or {}
-    if warehouse_stock:
-        try:
-            _sync_inventory_levels(product_id, warehouse_stock)
-        except Exception as e:
-            logger.error(f"Failed to sync inventoryLevels for {product_id}: {e}")
 
     # FOOD SAFETY: Perishable products should have local delivery or same-day option
     is_perishable = product_data.get(Fields.IS_PERISHABLE, False)
@@ -1569,7 +1532,6 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     # deactivate products that were already validated at creation time.
     _SKIP_VALIDATION_FIELDS = {
         Fields.STOCK_QUANTITY,
-        Fields.WAREHOUSE_STOCK,  # warehouse stock changes are non-security
         Fields.UPDATED_AT,
         Fields.STOCK_RESTORED,
         Fields.IS_ACTIVE,
@@ -1636,7 +1598,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 try:
                     product_data["id"] = product_id
                     # Use partial update for stock/status-only changes to avoid rewriting all fields
-                    stock_only_fields = {Fields.STOCK_QUANTITY, Fields.IS_ACTIVE, Fields.UPDATED_AT, Fields.WAREHOUSE_STOCK}
+                    stock_only_fields = {Fields.STOCK_QUANTITY, Fields.IS_ACTIVE, Fields.UPDATED_AT}
                     if changed_fields.issubset(stock_only_fields):
                         partial_fields = {k: product_data[k] for k in changed_fields if k in product_data and k != Fields.UPDATED_AT}
                         if partial_fields:
@@ -1657,15 +1619,6 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 _track_price_history(product_id, before_data, product_data)
             except Exception as e:
                 logger.error(f"Price history tracking error for {product_id}: {e}")
-
-            # Sync warehouseStock → inventoryLevels on stock-only updates
-            if Fields.WAREHOUSE_STOCK in changed_fields:
-                wh_stock = product_data.get(Fields.WAREHOUSE_STOCK) or {}
-                if wh_stock:
-                    try:
-                        _sync_inventory_levels(product_id, wh_stock)
-                    except Exception as e:
-                        logger.error(f"Failed to sync inventoryLevels on update for {product_id}: {e}")
 
             return
         # Track whether address changed — skip geocoding if it didn't
@@ -2405,7 +2358,16 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
         )
         for pdoc in products_with_wh:
             pdata = pdoc.to_dict() or {}
-            wh_stock = (pdata.get(Fields.WAREHOUSE_STOCK) or {}).get(warehouse_id, 0)
+            # Check inventoryLevels subcollection for stock
+            inv_doc = (
+                get_db()
+                .collection(Collections.PRODUCTS)
+                .document(pdoc.id)
+                .collection(Collections.INVENTORY_LEVELS)
+                .document(warehouse_id)
+                .get()
+            )
+            wh_stock = inv_doc.to_dict().get(Fields.AVAILABLE_QUANTITY, 0) if inv_doc.exists else 0
             if wh_stock > 0:
                 raise https_fn.HttpsError(
                     "failed-precondition",
@@ -2448,11 +2410,9 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
             current_wh_ids = list(pdata.get(Fields.WAREHOUSE_IDS) or [])
             if warehouse_id in current_wh_ids:
                 current_wh_ids.remove(warehouse_id)
-            from firebase_admin import firestore as _fs_mod
 
             product_patch = {
                 Fields.WAREHOUSE_IDS: current_wh_ids,
-                f"{Fields.WAREHOUSE_STOCK}.{warehouse_id}": _fs_mod.DELETE_FIELD,
             }
             cleanup_batch.update(p_ref, product_patch)
 

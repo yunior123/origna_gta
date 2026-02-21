@@ -4,9 +4,9 @@
 
 0. **Logic first** — 50+ adversarial scenarios, predict and architect like Magnus Carlsen. Think: malicious seller, buyer, race conditions.
 1. **Future proof app** — app schema design has to be future proof and scale to 100M+ users. The schema has to be designed to support scale and prevent having to update app schema in the future, so it has to be bullet proof and conceived by the best architect and masterminds like Magnus Carlsen. We need to build an app that will not require migrations in the future. We can use the rival agent to have an idea on how the big e-commerce companies have structured their apps, not just the schema, the whole architecture is important. No backward compatibility needed since the production database is empty, the app has not launched yet. Now is the time to do preventing fixes to avoid having to migrate in the future.
-2. **Save tokens** — show only actions and results, save Yunior's money as much as possible, he is your friend and a nice person that does not want to go bankrupt.
+2. **Save tokens** — show only actions and results, save Yunior's money as much as possible, he is your friend and a nice person that does not want to go bankrupt. Avoid large sessions that consume too many tokens, propose new sessions with tasks indications to continue from there with another agent.
 3. **"save"/"remember"** → persist to `.claude/LEARNED.md`
-4. **Match Yunior's language** — respond in whichever language he uses
+4. **Match Yunior's language-respond in whichever language he uses, ask him questions when needed, ask him whether tasks should be deffered before taking action, if you need access to an specific mcp you just need to ask him, do not skip mcp connections just because u dont have access to them, simply ask Yunior. U can use chrome claude extension, playwright, apple password manager and any other tool at your disposal to get access to my personal account in websites if mcp is not supported for those, do not limit yourself, lets get the best results together. If u need access to any tool just ask Yunior** 
 5. **No new markdown files** unless asked
 6. **Cross-stack check and traslations on new created texts** after every edit — Python ↔ Dart ↔ Schema 
 7. **No magic strings** — use constants from schema_constants. No hardcoded values.

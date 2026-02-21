@@ -753,14 +753,16 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
     if existing_mfa:
         raise https_fn.HttpsError("failed-precondition", "MFA is already enabled. Disable it first to re-enroll.")
 
-    # Save to Firestore (temporary, until verified)
-    user_ref.update(
+    # Save MFA secrets to user_security/{uid} (backend-only collection)
+    security_ref = get_db().collection(Collections.USER_SECURITY).document(user_id)
+    security_ref.set(
         {
             Fields.MFA_SECRET_TEMP: encrypted_secret,
             Fields.MFA_BACKUP_CODES_TEMP: hashed_backup_codes,
             Fields.MFA_BACKUP_CODES_SALT: backup_codes_salt,
             Fields.UPDATED_AT: get_server_timestamp(),
-        }
+        },
+        merge=True,
     )
 
     # Generate QR code URL
@@ -805,7 +807,13 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("not-found", "User not found")
 
     user_data = user_doc.to_dict()
-    raw_secret = user_data.get(Fields.MFA_SECRET_TEMP) or user_data.get(Fields.MFA_SECRET)
+
+    # Read MFA secrets from user_security/{uid} (backend-only collection)
+    security_ref = get_db().collection(Collections.USER_SECURITY).document(user_id)
+    security_doc = security_ref.get()
+    security_data = security_doc.to_dict() if security_doc.exists else {}
+
+    raw_secret = security_data.get(Fields.MFA_SECRET_TEMP) or security_data.get(Fields.MFA_SECRET)
 
     if not raw_secret:
         raise https_fn.HttpsError("failed-precondition", "MFA not enrolled. Call admin_mfa_enroll first.")
@@ -816,8 +824,8 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
     secret = decrypt_mfa_secret(raw_secret, associated_data=user_id)
 
     # SECURITY: Check MFA attempt limiting (max 5 attempts per 15 min)
-    mfa_attempts = user_data.get(Fields.MFA_FAILED_ATTEMPTS, 0)
-    mfa_lockout_until = user_data.get(Fields.MFA_LOCKOUT_UNTIL)
+    mfa_attempts = security_data.get(Fields.MFA_FAILED_ATTEMPTS, 0)
+    mfa_lockout_until = security_data.get(Fields.MFA_LOCKOUT_UNTIL)
     if mfa_lockout_until:
         # Ensure timezone-aware comparison (Firestore timestamps are UTC)
         if hasattr(mfa_lockout_until, "tzinfo") and mfa_lockout_until.tzinfo is None:
@@ -847,35 +855,42 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             attempt_update[Fields.MFA_FAILED_ATTEMPTS] = 0
             logger.info(f"SECURITY: MFA lockout triggered for user {user_id}")
-        user_ref.update(attempt_update)
+        security_ref.update(attempt_update)
         raise https_fn.HttpsError("unauthenticated", "Invalid MFA code")
 
     # Reset failed attempts on success
     if mfa_attempts > 0:
-        user_ref.update({Fields.MFA_FAILED_ATTEMPTS: 0})
+        security_ref.update({Fields.MFA_FAILED_ATTEMPTS: 0})
 
     # Enable MFA — AUDIT FIX: re-encrypt secret for permanent storage with user AAD
-    update_data = {
+    # Write MFA flag to users doc (OK for client to see)
+    user_ref.update({
         Fields.MFA_ENABLED: True,
+        Fields.LAST_MFA_VERIFY: get_server_timestamp(),
+        Fields.UPDATED_AT: get_server_timestamp(),
+    })
+
+    # Write MFA secrets to user_security (backend-only)
+    security_update = {
         Fields.MFA_SECRET: encrypt_mfa_secret(secret, associated_data=user_id),
         Fields.LAST_MFA_VERIFY: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
     }
 
     # Persist backup codes from temp storage
-    temp_backup_codes = user_data.get(Fields.MFA_BACKUP_CODES_TEMP)
-    backup_codes_salt = user_data.get(Fields.MFA_BACKUP_CODES_SALT)
+    temp_backup_codes = security_data.get(Fields.MFA_BACKUP_CODES_TEMP)
+    backup_codes_salt = security_data.get(Fields.MFA_BACKUP_CODES_SALT)
     if temp_backup_codes:
-        update_data[Fields.MFA_BACKUP_CODES] = temp_backup_codes
-        update_data[Fields.MFA_BACKUP_CODES_TEMP] = get_delete_field()
+        security_update[Fields.MFA_BACKUP_CODES] = temp_backup_codes
+        security_update[Fields.MFA_BACKUP_CODES_TEMP] = get_delete_field()
         if backup_codes_salt:
-            update_data[Fields.MFA_BACKUP_CODES_SALT] = backup_codes_salt
+            security_update[Fields.MFA_BACKUP_CODES_SALT] = backup_codes_salt
 
     # Remove temporary secret
-    if Fields.MFA_SECRET_TEMP in user_data:
-        update_data[Fields.MFA_SECRET_TEMP] = get_delete_field()
+    if Fields.MFA_SECRET_TEMP in security_data:
+        security_update[Fields.MFA_SECRET_TEMP] = get_delete_field()
 
-    user_ref.update(update_data)
+    security_ref.set(security_update, merge=True)
 
     return create_success_response({Fields.MFA_ENABLED: True})
 
@@ -920,7 +935,12 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
     if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError("permission-denied", "Admin role required")
 
-    raw_secret = user_data.get(Fields.MFA_SECRET)
+    # Read MFA secret from user_security
+    security_ref = get_db().collection(Collections.USER_SECURITY).document(user_id)
+    security_doc = security_ref.get()
+    security_data = security_doc.to_dict() if security_doc.exists else {}
+
+    raw_secret = security_data.get(Fields.MFA_SECRET)
 
     if not raw_secret:
         raise https_fn.HttpsError("failed-precondition", "MFA not enabled")
@@ -945,15 +965,17 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not code_valid:
         raise https_fn.HttpsError("unauthenticated", "Invalid MFA code")
 
-    # Disable MFA
+    # Disable MFA — update users doc (flag) and delete security secrets
     user_ref.update(
         {
             Fields.MFA_ENABLED: False,
-            Fields.MFA_SECRET: get_delete_field(),
             Fields.LAST_MFA_VERIFY: get_delete_field(),
             Fields.UPDATED_AT: get_server_timestamp(),
         }
     )
+    # Delete all MFA secrets from user_security
+    if security_doc.exists:
+        security_ref.delete()
 
     return create_success_response({Fields.MFA_ENABLED: False})
 
@@ -999,9 +1021,13 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not user_data.get(Fields.MFA_ENABLED, False):
         raise https_fn.HttpsError("failed-precondition", "MFA not enabled")
 
-    # Get stored backup codes and salt
-    stored_hashed_codes = user_data.get(Fields.MFA_BACKUP_CODES, [])
-    backup_codes_salt = user_data.get(Fields.MFA_BACKUP_CODES_SALT, "")
+    # Get stored backup codes and salt from user_security
+    security_ref = get_db().collection(Collections.USER_SECURITY).document(user_id)
+    security_doc = security_ref.get()
+    security_data = security_doc.to_dict() if security_doc.exists else {}
+
+    stored_hashed_codes = security_data.get(Fields.MFA_BACKUP_CODES, [])
+    backup_codes_salt = security_data.get(Fields.MFA_BACKUP_CODES_SALT, "")
 
     if not stored_hashed_codes:
         raise https_fn.HttpsError("failed-precondition", "No backup codes available")
@@ -1023,10 +1049,16 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Remove used code (one-time use)
     remaining_codes = [c for c in stored_hashed_codes if not hmac.compare_digest(c, hashed_input)]
 
-    # Update last MFA verify time
+    # Update last MFA verify time on users doc
     user_ref.update(
         {
             Fields.LAST_MFA_VERIFY: get_server_timestamp(),
+            Fields.UPDATED_AT: get_server_timestamp(),
+        }
+    )
+    # Update remaining backup codes in user_security
+    security_ref.update(
+        {
             Fields.MFA_BACKUP_CODES: remaining_codes,
             Fields.UPDATED_AT: get_server_timestamp(),
         }
@@ -1202,6 +1234,11 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.DELETED_AT: get_server_timestamp(),
         }
     )
+
+    # Delete user_security doc (MFA secrets)
+    security_ref = get_db().collection(Collections.USER_SECURITY).document(user_id)
+    if security_ref.get().exists:
+        security_ref.delete()
 
     # GDPR FIX: Anonymize orders collection (unlink from user but keep for accounting)
     # Create anonymized identifier that can't be reversed

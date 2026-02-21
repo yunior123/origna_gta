@@ -33,6 +33,7 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   productId: json['productId'] as String,
   name: json['name'] as String,
   price: (json['price'] as num).toDouble(),
+  priceCents: (json['priceCents'] as num?)?.toInt(),
   compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble(),
   description: json['description'] as String,
   imageUrls: (json['imageUrls'] as List<dynamic>)
@@ -91,9 +92,6 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   warehouseIds: (json['warehouseIds'] as List<dynamic>?)
       ?.map((e) => e as String)
       .toList(),
-  warehouseStock: (json['warehouseStock'] as Map<String, dynamic>?)?.map(
-    (k, e) => MapEntry(k, (e as num).toInt()),
-  ),
   shipFromCity: json['shipFromCity'] as String?,
   shipFromProvince: json['shipFromProvince'] as String?,
   shipFromCountry: json['shipFromCountry'] as String?,
@@ -119,12 +117,14 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
           .toList() ??
       const [],
   subcategory: json['subcategory'] as String?,
+  condition: json['condition'] as String?,
 );
 
 Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'productId': instance.productId,
   'name': instance.name,
   'price': instance.price,
+  'priceCents': instance.priceCents,
   'compareAtPrice': instance.compareAtPrice,
   'description': instance.description,
   'imageUrls': instance.imageUrls,
@@ -163,7 +163,6 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'status': instance.status,
   'sellerSku': instance.sellerSku,
   'warehouseIds': instance.warehouseIds,
-  'warehouseStock': instance.warehouseStock,
   'shipFromCity': instance.shipFromCity,
   'shipFromProvince': instance.shipFromProvince,
   'shipFromCountry': instance.shipFromCountry,
@@ -177,6 +176,7 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'variants': instance.variants,
   'variantOptions': instance.variantOptions,
   'subcategory': instance.subcategory,
+  'condition': instance.condition,
 };
 
 _ProductCreate _$ProductCreateFromJson(
@@ -236,9 +236,6 @@ _ProductCreate _$ProductCreateFromJson(
   warehouseIds: (json['warehouseIds'] as List<dynamic>?)
       ?.map((e) => e as String)
       .toList(),
-  warehouseStock: (json['warehouseStock'] as Map<String, dynamic>?)?.map(
-    (k, e) => MapEntry(k, (e as num).toInt()),
-  ),
   shipFromCity: json['shipFromCity'] as String?,
   shipFromProvince: json['shipFromProvince'] as String?,
   shipFromCountry: json['shipFromCountry'] as String?,
@@ -297,7 +294,6 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'status': instance.status,
       'sellerSku': instance.sellerSku,
       'warehouseIds': instance.warehouseIds,
-      'warehouseStock': instance.warehouseStock,
       'shipFromCity': instance.shipFromCity,
       'shipFromProvince': instance.shipFromProvince,
       'shipFromCountry': instance.shipFromCountry,

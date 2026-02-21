@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from schema_constants import (
     BusinessRules,
+    CarrierValues,
     DeliveryStatusValues,
     Fields,
     PayoutStatusValues,
@@ -39,7 +40,7 @@ class OrderItem(BaseModel):
                     Fields.POSTAL_CODE: "M5V 3A8",
                     Fields.COUNTRY: "Canada",
                 },
-                Fields.DELIVERY_STATUS: "pending",  # Deprecated — use 'status' instead
+                Fields.STATUS: "pending",
             }
         }
     )
@@ -57,7 +58,16 @@ class OrderItem(BaseModel):
     )
     trackingNumber: str | None = Field(default=None, max_length=100)
     carrier: str | None = Field(default=None, max_length=100)
+    carrierNote: str | None = Field(default=None, max_length=500, description="Free-text override when carrier='other'")
+    sellerSku: str | None = Field(default=None, max_length=100, description="Seller's SKU snapshotted at purchase time")
+    sellerName: str | None = Field(default=None, max_length=200, description="Seller display name snapshotted at purchase time")
     confirmedByBuyer: bool = Field(default=False)
+
+    # Variant tracking (immutable snapshot at order creation — Medusa/Saleor/Shopify pattern)
+    variantId: str | None = Field(default=None, description="Variant ID at time of purchase")
+    variantTitle: str | None = Field(default=None, max_length=255, description="Human-readable variant label e.g. 'Size: M / Color: Blue'")
+    variantOptions: dict[str, str] | None = Field(default=None, description="Variant option key-value map e.g. {'Size': 'M', 'Color': 'Blue'}")
+    variantSku: str | None = Field(default=None, max_length=100, description="Variant SKU snapshotted at purchase time")
 
     # Per-item status
     status: str = Field(
@@ -69,6 +79,13 @@ class OrderItem(BaseModel):
     def validate_status(cls, v: str) -> str:
         if v not in DeliveryStatusValues.ALL:
             raise ValueError(f"Invalid status: {v}. Must be one of: {DeliveryStatusValues.ALL}")
+        return v
+
+    @field_validator("carrier")
+    @classmethod
+    def validate_carrier(cls, v: str | None) -> str | None:
+        if v is not None and v not in CarrierValues.ALL:
+            raise ValueError(f"carrier must be one of {CarrierValues.ALL}")
         return v
 
     # Timestamps
@@ -215,6 +232,8 @@ class Order(BaseModel):
 
     orderId: str = Field(..., min_length=1)
     userId: str = Field(..., min_length=1)
+    version: int = Field(default=1, ge=1, description="Optimistic concurrency version — increment on every state mutation")
+    schemaVersion: int = Field(default=1, ge=1, description="Schema layout version for migration tracking")
 
     # Optional identity fields (can be fetched from user doc)
     customerId: str | None = Field(default=None, min_length=1)

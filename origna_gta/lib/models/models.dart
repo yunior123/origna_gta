@@ -160,7 +160,7 @@ class CartItemDetailModel {
   final Timestamp createdAt;
   final Address sellerAddress;
   final String sellerId;
-  final String deliveryStatus;
+  final String status;
   final String? trackingNumber;
   final bool confirmedByBuyer; // Buyer confirmed receipt of this item
   final double? weightKg;
@@ -186,7 +186,7 @@ class CartItemDetailModel {
     required this.createdAt,
     required this.sellerAddress,
     required this.sellerId,
-    required this.deliveryStatus,
+    this.status = DeliveryStatusValues.pending,
     this.trackingNumber,
     this.confirmedByBuyer = false,
     this.weightKg,
@@ -215,7 +215,7 @@ class CartItemDetailModel {
       createdAt: _parseTimestamp(map[Fields.createdAt]),
       sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
       sellerId: map[Fields.sellerId] ?? '',
-      deliveryStatus: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
+      status: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
       trackingNumber: map[Fields.trackingNumber],
       confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
       weightKg: map[Fields.weightKg] != null ? (map[Fields.weightKg] as num).toDouble() : null,
@@ -251,9 +251,7 @@ class CartItemDetailModel {
       Fields.createdAt: createdAt,
       Fields.sellerAddress: sellerAddress.toMap(),
       Fields.sellerId: sellerId,
-      // Both status fields are written for consistency
-      Fields.status: deliveryStatus,
-      Fields.deliveryStatus: deliveryStatus,
+      Fields.status: status,
       Fields.trackingNumber: trackingNumber,
       Fields.confirmedByBuyer: confirmedByBuyer,
       Fields.weightKg: weightKg,
@@ -273,14 +271,27 @@ class CartItemDetailModel {
 }
 
 class CartItemModel {
+  final String cartItemId; // Auto-generated Firestore doc ID
   final int quantity;
   final String productId;
   final Timestamp createdAt;
   final String? buyerNote;
+  final String? variantId;
+  final String? variantTitle;
+  final Map<String, String>? variantOptions;
 
-  CartItemModel({required this.quantity, required this.productId, required this.createdAt, this.buyerNote});
+  CartItemModel({
+    required this.cartItemId,
+    required this.quantity,
+    required this.productId,
+    required this.createdAt,
+    this.buyerNote,
+    this.variantId,
+    this.variantTitle,
+    this.variantOptions,
+  });
 
-  factory CartItemModel.fromMap(Map<String, dynamic> map) {
+  factory CartItemModel.fromMap(Map<String, dynamic> map, {String? docId}) {
     final raw = map[Fields.createdAt];
     Timestamp ts;
     if (raw is Timestamp) {
@@ -293,30 +304,55 @@ class CartItemModel {
       ts = Timestamp.now();
     }
     return CartItemModel(
+      cartItemId: docId ?? (map[Fields.cartItemId] as String? ?? ''),
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
       productId: map[Fields.productId] ?? '',
       createdAt: ts,
       buyerNote: map[Fields.buyerNote] as String?,
+      variantId: map[Fields.variantId] as String?,
+      variantTitle: map[Fields.variantTitle] as String?,
+      variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
     );
   }
 
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{Fields.quantity: quantity, Fields.productId: productId, Fields.createdAt: createdAt};
-    if (buyerNote != null) {
-      map[Fields.buyerNote] = buyerNote;
-    }
+    final map = <String, dynamic>{
+      Fields.quantity: quantity,
+      Fields.productId: productId,
+      Fields.createdAt: createdAt,
+    };
+    if (buyerNote != null) map[Fields.buyerNote] = buyerNote;
+    if (variantId != null) map[Fields.variantId] = variantId;
+    if (variantTitle != null) map[Fields.variantTitle] = variantTitle;
+    if (variantOptions != null) map[Fields.variantOptions] = variantOptions;
     return map;
   }
 }
 
 class CartModel {
+  final String cartItemId; // Auto-generated Firestore doc ID
   final String productId;
   final int quantity;
   final DateTime createdAt;
+  final String? variantId;
+  final String? variantTitle;
+  final Map<String, String>? variantOptions;
+  final String? variantSku;
+  final int? priceSnapshot; // Price in cents at time of cart addition
 
-  CartModel({required this.productId, this.quantity = 1, required this.createdAt});
+  CartModel({
+    this.cartItemId = '',
+    required this.productId,
+    this.quantity = 1,
+    required this.createdAt,
+    this.variantId,
+    this.variantTitle,
+    this.variantOptions,
+    this.variantSku,
+    this.priceSnapshot,
+  });
 
-  factory CartModel.fromMap(Map<String, dynamic> map) {
+  factory CartModel.fromMap(Map<String, dynamic> map, {String? docId}) {
     // Handle both Timestamp and null cases safely
     DateTime parsedDate;
     final rawDate = map[Fields.createdAt];
@@ -328,11 +364,31 @@ class CartModel {
       parsedDate = DateTime.now();
     }
 
-    return CartModel(productId: map[Fields.productId] ?? '', quantity: (map[Fields.quantity] as num?)?.toInt() ?? 1, createdAt: parsedDate);
+    return CartModel(
+      cartItemId: docId ?? (map[Fields.cartItemId] as String? ?? ''),
+      productId: map[Fields.productId] ?? '',
+      quantity: (map[Fields.quantity] as num?)?.toInt() ?? 1,
+      createdAt: parsedDate,
+      variantId: map[Fields.variantId] as String?,
+      variantTitle: map[Fields.variantTitle] as String?,
+      variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
+      variantSku: map[Fields.variantSku] as String?,
+      priceSnapshot: (map[Fields.priceSnapshot] as num?)?.toInt(),
+    );
   }
 
   Map<String, dynamic> toMap() {
-    return {Fields.productId: productId, Fields.quantity: quantity, Fields.createdAt: Timestamp.fromDate(createdAt)};
+    final map = <String, dynamic>{
+      Fields.productId: productId,
+      Fields.quantity: quantity,
+      Fields.createdAt: Timestamp.fromDate(createdAt),
+    };
+    if (variantId != null) map[Fields.variantId] = variantId;
+    if (variantTitle != null) map[Fields.variantTitle] = variantTitle;
+    if (variantOptions != null) map[Fields.variantOptions] = variantOptions;
+    if (variantSku != null) map[Fields.variantSku] = variantSku;
+    if (priceSnapshot != null) map[Fields.priceSnapshot] = priceSnapshot;
+    return map;
   }
 }
 
@@ -437,7 +493,7 @@ class OrderModel {
         createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
-        deliveryStatus: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
+        status: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
         isDigital: map[Fields.isDigital] ?? false,
@@ -507,7 +563,7 @@ class OrderModel {
         createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
-        deliveryStatus: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
+        status: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
         isDigital: map[Fields.isDigital] ?? false,
@@ -565,7 +621,7 @@ class OrderModel {
 
   /// Check if all delivered items have been confirmed by buyer
   bool get allItemsConfirmed {
-    final deliveredItems = items.where((i) => i.deliveryStatus == DeliveryStatus.delivered.value);
+    final deliveredItems = items.where((i) => i.status == DeliveryStatus.delivered.value);
     return deliveredItems.isNotEmpty && deliveredItems.every((i) => i.confirmedByBuyer);
   }
 

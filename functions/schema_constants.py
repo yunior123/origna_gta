@@ -62,6 +62,12 @@ class Collections:
     SELLER_METRICS = "seller_metrics"  # TASK 11: seller health metrics
     COUPONS = "coupons"  # N-07: coupon/promo code system
     INVENTORY_LEVELS = "inventoryLevels"  # products/{productId}/inventoryLevels/{warehouseId}
+    ORDER_EVENTS = "events"  # Subcollection under orders/{orderId}/events/{eventId}
+    COUPON_USES = "coupon_uses"  # Subcollection under coupons/{couponId} — replaces usedByUids array
+
+    # Security (backend-only)
+    USER_SECURITY = "user_security"  # Backend-only MFA secrets — allow read: if false
+    SELLER_PROFILES = "seller_profiles"  # Seller-only profile data — buyers never have this doc
 
     # Premium & Chat
     SUBSCRIPTIONS = "subscriptions"  # top-level: subscriptions/{userId}
@@ -179,6 +185,7 @@ class Fields:
     SAVED_AT = "savedAt"  # N-05: Save for Later timestamp
     CREATED_AT = "createdAt"
     UPDATED_AT = "updatedAt"
+    VERSION = "version"  # Optimistic concurrency version, starts at 1
     DELETED_AT = "deletedAt"
     DELETED_BY = "deletedBy"
     DELETED = "deleted"
@@ -209,7 +216,8 @@ class Fields:
     UNSUSPENDED_BY = "unsuspendedBy"
     SUSPENDED_BY = "suspendedBy"
     SUSPENSION_REASON = "suspensionReason"
-    COMMISSION_RATE = "commissionRate"
+    COMMISSION_RATE = "commissionRate"  # DEPRECATED: use COMMISSION_RATE_BPS
+    COMMISSION_RATE_BPS = "commissionRateBps"  # 250 = 2.50% (basis points — avoids float precision)
     VERIFIED = "verified"
     VERIFICATION_STATUS = "verificationStatus"
     PLATFORM = "platform"
@@ -226,6 +234,7 @@ class Fields:
     MFA_BACKUP_CODES_SALT = "mfaBackupCodesSalt"
     MFA_FAILED_ATTEMPTS = "mfaFailedAttempts"
     MFA_LOCKOUT_UNTIL = "mfaLockoutUntil"
+    MFA_ENROLLED_AT = "mfaEnrolledAt"
     LAST_MFA_VERIFY = "lastMfaVerify"
     LAST_ROLE_UPDATE = "lastRoleUpdate"
     LAST_ROLE_UPDATE_BY = "lastRoleUpdateBy"
@@ -438,15 +447,18 @@ class Fields:
     # === ORDER ITEM FIELDS ===
     QUANTITY = "quantity"
     BUYER_NOTE = "buyerNote"
+    CART_ITEM_ID = "cartItemId"
+    PRICE_SNAPSHOT = "priceSnapshot"
     TRACKING_NUMBER = "trackingNumber"
     CARRIER = "carrier"
+    CARRIER_NOTE = "carrierNote"  # Free-text override when carrier='other'
     SHIPPED_AT = "shippedAt"
     DELIVERED_AT = "deliveredAt"
     REFUND_REASON = "refundReason"
     REFUND_AMOUNT_CENTS = "refundAmountCents"
     REFUND_ID = "refundId"
     CONFIRMED_BY_BUYER = "confirmedByBuyer"
-    DELIVERY_STATUS = "deliveryStatus"  # Parallel status field (both STATUS and DELIVERY_STATUS are written)
+    DELIVERY_STATUS = "deliveryStatus"  # DEPRECATED — kept for reading legacy documents only. Write 'status' field.
 
     # === STRIPE METADATA KEYS (used in transfer/alert metadata) ===
     SNAPSHOT_ACCOUNT_ID = "snapshotAccountId"
@@ -475,6 +487,10 @@ class Fields:
     # === WEBHOOK FIELDS ===
     EVENT_ID = "eventId"
     EVENT_TYPE = "eventType"
+    ACTOR = "actor"
+    ACTOR_TYPE = "actorType"
+    FROM_STATUS = "fromStatus"
+    TO_STATUS = "toStatus"
     PAYLOAD_SIZE = "payloadSize"
     SIGNATURE_VERIFIED = "signatureVerified"
     PROCESSING_STATUS = "processingStatus"
@@ -609,10 +625,13 @@ class Fields:
     VARIANTS = "variants"
     VARIANT_ID = "variantId"
     VARIANT_OPTIONS = "variantOptions"
+    VARIANT_TITLE = "variantTitle"
+    VARIANT_SKU = "variantSku"
     OPTION_VALUES = "optionValues"
 
     # === N-11: Subcategories ===
     SUBCATEGORY = "subcategory"
+    CONDITION = "condition"  # Product condition: new|like_new|good|fair|for_parts
 
     # === N-03: Seller reply to reviews ===
     SELLER_REPLY = "sellerReply"
@@ -635,7 +654,10 @@ class Fields:
     MAX_USES_TOTAL = "maxUsesTotal"
     MAX_USES_PER_USER = "maxUsesPerUser"
     USED_COUNT = "usedCount"
-    USED_BY_UIDS = "usedByUids"
+    USED_BY_UIDS = "usedByUids"  # DEPRECATED — use coupon_uses subcollection
+    PRICE_CENTS = "priceCents"  # Integer cents derived from price (9.99 → 999) — use for arithmetic
+    SCHEMA_VERSION = "schemaVersion"  # Schema layout version for migration tracking
+    SELLER_NAME = "sellerName"  # Seller display name snapshotted at purchase time
 
     # === API REQUEST/RESPONSE FIELDS ===
     FILE_NAME = "fileName"
@@ -660,6 +682,7 @@ class OrderStatusValues:
     CANCELLED = "cancelled"
     FAILED = "failed"
     EXPIRED = "expired"
+    # DEPRECATED: REFUNDED / PARTIALLY_REFUNDED moved to PaymentStatusValues — kept for legacy reads
     REFUNDED = "refunded"
     PARTIALLY_REFUNDED = "partially_refunded"
     DISPUTED = "disputed"
@@ -675,8 +698,6 @@ class OrderStatusValues:
             CANCELLED,
             FAILED,
             EXPIRED,
-            REFUNDED,
-            PARTIALLY_REFUNDED,
             DISPUTED,
         }
     )
@@ -692,20 +713,17 @@ class OrderStatusValues:
         "processing": ["shipped", "cancelled"],
         "shipped": ["in_transit", "delivered"],
         "in_transit": ["delivered", "cancelled"],
-        "delivered": ["refunded", "partially_refunded", "disputed"],
+        "delivered": ["disputed"],
         "cancelled": [],  # Terminal
         "failed": ["pending"],  # Retry
         "expired": ["pending"],  # Retry
-        "refunded": [],  # Terminal
-        "partially_refunded": ["refunded"],
-        "disputed": ["refunded"],  # After dispute resolution
+        "disputed": [],  # Resolved via paymentStatus
     }
 
     # Terminal states — no further transitions allowed
     TERMINAL_STATES: frozenset[str] = frozenset(
         {
             "cancelled",
-            "refunded",
         }
     )
 
@@ -731,6 +749,7 @@ class PaymentStatusValues:
     PAID = "paid"
     PAYMENT_FAILED = "payment_failed"
     REFUNDED = "refunded"
+    PARTIALLY_REFUNDED = "partially_refunded"
     SESSION_EXPIRED = "session_expired"
     AUTHORIZED = "authorized"
     CAPTURED = "captured"
@@ -749,6 +768,7 @@ class PaymentStatusValues:
             PAID,
             PAYMENT_FAILED,
             REFUNDED,
+            PARTIALLY_REFUNDED,
             SESSION_EXPIRED,
             AUTHORIZED,
             CAPTURED,
@@ -987,6 +1007,48 @@ class ShippingSourceValues:
     INTERNATIONAL_SUPPLIER = "international_supplier"
     INTERNATIONAL_GENERIC = "international_generic"
     DOMESTIC = "domestic"
+
+
+class ProductConditionValues:
+    """Valid product condition values (marketplace-style listings)."""
+
+    NEW = "new"
+    LIKE_NEW = "like_new"
+    GOOD = "good"
+    FAIR = "fair"
+    FOR_PARTS = "for_parts"
+
+    ALL: frozenset[str] = frozenset({NEW, LIKE_NEW, GOOD, FAIR, FOR_PARTS})
+
+
+class CarrierValues:
+    """Normalized shipping carrier identifiers."""
+
+    UPS = "ups"
+    FEDEX = "fedex"
+    CANADA_POST = "canada_post"
+    PUROLATOR = "purolator"
+    DHL = "dhl"
+    USPS = "usps"
+    OTHER = "other"
+
+    ALL: frozenset[str] = frozenset({UPS, FEDEX, CANADA_POST, PUROLATOR, DHL, USPS, OTHER})
+
+
+class SupplierTypeValues:
+    """Valid values for supplier type — mirrors Dart SupplierTypeValues"""
+
+    ALIEXPRESS = "aliexpress"
+    DHGATE = "dhgate"
+    ALIBABA = "alibaba"
+    S1688 = "1688"
+    TEMU = "temu"
+    CJDROPSHIPPING = "cjdropshipping"
+    LOCAL = "local"
+    OTHER = "other"
+    ALL: frozenset[str] = frozenset(
+        {ALIEXPRESS, DHGATE, ALIBABA, S1688, TEMU, CJDROPSHIPPING, LOCAL, OTHER}
+    )
 
 
 # =============================================================================
@@ -1418,3 +1480,26 @@ class Subcategories:
         "Art & Crafts": ["Drawing & Painting", "Yarn & Fiber Arts", "Paper Crafts", "Photography"],
         "Baby": ["Baby Clothing", "Feeding", "Nursery", "Strollers", "Toys"],
     }
+
+
+# =============================================================================
+# ORDER EVENT TYPES — tracks every status transition
+# =============================================================================
+
+
+class OrderEventTypes:
+    """Valid event types for orders/{orderId}/events/{eventId}"""
+
+    STATUS_CHANGED = "status_changed"
+    PAYMENT_AUTHORIZED = "payment_authorized"
+    PAYMENT_CAPTURED = "payment_captured"
+    PAYMENT_FAILED = "payment_failed"
+    REFUND_ISSUED = "refund_issued"
+    ITEM_SHIPPED = "item_shipped"
+    ITEM_DELIVERED = "item_delivered"
+    CANCELLATION_CONFIRMED = "cancellation_confirmed"
+    NOTE_ADDED = "note_added"
+    ALL: frozenset = frozenset({
+        "status_changed", "payment_authorized", "payment_captured", "payment_failed",
+        "refund_issued", "item_shipped", "item_delivered", "cancellation_confirmed", "note_added",
+    })

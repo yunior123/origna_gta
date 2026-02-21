@@ -11,6 +11,22 @@ from schema_constants import Fields, PaymentProviderValues
 from .base import Address, UserRole
 
 
+class UserSecurity(BaseModel):
+    """
+    Backend-only MFA secrets — stored in user_security/{uid}.
+    Never readable by client (Firestore rules: allow read: if false).
+    """
+
+    mfaSecret: str | None = Field(default=None, description="TOTP secret (encrypted, server-only)")
+    mfaSecretTemp: str | None = Field(default=None, description="Temp TOTP secret during enrollment")
+    mfaBackupCodes: list[str] | None = Field(default=None, description="Hashed MFA backup codes (SHA-256)")
+    mfaBackupCodesTemp: list[str] | None = Field(default=None, description="Temp hashed backup codes during enrollment")
+    mfaBackupCodesSalt: str | None = Field(default=None, description="Salt for hashing backup codes")
+    mfaFailedAttempts: int = Field(default=0, ge=0, description="Consecutive failed MFA attempts")
+    mfaLockoutUntil: datetime | None = Field(default=None, description="Lockout expiry after max failed attempts")
+    lastMfaVerify: datetime | None = Field(default=None, description="Last successful MFA verification")
+
+
 class User(BaseModel):
     """
     Complete user model
@@ -36,23 +52,14 @@ class User(BaseModel):
     address: Address | None = Field(default=None, description="User's default address")
     createdAt: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Account creation timestamp")
 
-    # Stripe information
+    # Stripe buyer information
     customerId: str | None = Field(default=None, description="Stripe Customer ID for payments")
     lastCheckoutSession: str | None = Field(default=None, description="Last Stripe Checkout Session ID")
     lastOrderId: str | None = Field(default=None, description="Last created order ID")
     lastCheckoutTimestamp: datetime | None = Field(default=None, description="Timestamp of last checkout")
 
-    # Seller information (Stripe Connect)
-    stripeAccountId: str | None = Field(default=None, description="Stripe Connect account ID (for sellers)")
-    payoutsEnabled: bool = Field(default=False, description="Whether seller can receive payouts")
-    chargesEnabled: bool = Field(default=False, description="Whether seller can accept charges")
-    onboardingCompleted: bool = Field(default=False, description="Whether Stripe Connect onboarding is complete")
-    commissionRate: float | None = Field(default=None, ge=0, le=1, description="Custom commission rate override (0.0-1.0). None = platform default 2.5%")
-    verified: bool = Field(default=False, description="Whether seller identity is verified")
-    verificationStatus: str | None = Field(default=None, description="Verification status: pending, verified, rejected")
-    platform: str | None = Field(default=None, description="Seller platform/source: aliexpress, alibaba, 1688, dhgate, temu, local, custom")
-    businessName: str | None = Field(default=None, max_length=120, description="Seller business name")
-    payoutHoldDays: int | None = Field(default=None, ge=0, le=30, description="Days to hold payouts after delivery (overrides platform default)")
+    # Seller flag (details in seller_profiles/{uid})
+    isSeller: bool = Field(default=False, description="Quick flag — seller details live in seller_profiles collection")
 
     # Account status
     suspended: bool = Field(default=False, description="Whether account is suspended")
@@ -61,9 +68,8 @@ class User(BaseModel):
         default=PaymentProviderValues.STRIPE, description="Payment provider for seller payouts"
     )
     mfaEnabled: bool = Field(default=False, description="Whether admin MFA is enabled")
-    mfaSecret: str | None = Field(default=None, description="Admin TOTP secret (server-only)")
+    mfaEnrolledAt: datetime | None = Field(default=None, description="When MFA was first enrolled (OK for display)")
     lastMfaVerify: datetime | None = Field(default=None, description="Last successful admin MFA verification")
-    mfaBackupCodes: list[str] | None = Field(default=None, description="One-time admin MFA backup codes (hashed)")
     updatedAt: datetime | None = Field(default=None, description="Last update timestamp")
 
     # Tax exemption for businesses (GST/HST number)
@@ -149,8 +155,8 @@ class User(BaseModel):
         return UserRole.ADMIN in self.roles
 
     def can_sell(self) -> bool:
-        """Check if user can sell products (seller + onboarding complete)"""
-        return self.is_seller() and self.onboardingCompleted and not self.suspended
+        """Check if user can sell products (seller flag + not suspended). Full check requires seller_profiles doc."""
+        return self.is_seller() and not self.suspended
 
 
 class UserCreate(BaseModel):

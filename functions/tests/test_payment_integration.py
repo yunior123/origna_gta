@@ -79,7 +79,7 @@ class TestPaymentFlow(unittest.TestCase):
             "stripePaymentIntentId": "pi_3test_123",
             "totalAmountCents": 5000,
             "items": [
-                {"sellerId": "seller_1", "deliveryStatus": DeliveryStatus.PENDING, "price": 50.00, "quantity": 1}
+                {"sellerId": "seller_1", "status": DeliveryStatus.PENDING, "price": 50.00, "quantity": 1}
             ],
         }
 
@@ -352,7 +352,7 @@ class TestPaymentFlow(unittest.TestCase):
             "userId": "buyer_1",
             "paymentStatus": PaymentStatus.PAID,
             "orderStatus": "delivered",
-            "items": [{"productId": "prod_1", "deliveryStatus": DeliveryStatus.DELIVERED}],
+            "items": [{"productId": "prod_1", "status": DeliveryStatus.DELIVERED}],
             "ratings": {},
         }
 

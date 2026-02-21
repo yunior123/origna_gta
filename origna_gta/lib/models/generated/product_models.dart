@@ -98,6 +98,7 @@ abstract class Product with _$Product {
     required String productId,
     required String name,
     required double price,
+    int? priceCents,
 
     /// Original/crossed-out price for discount display (null = no sale, must be > price)
     double? compareAtPrice,
@@ -158,9 +159,6 @@ abstract class Product with _$Product {
     /// IDs of seller warehouses this product ships from
     List<String>? warehouseIds,
 
-    /// Stock per warehouse: {warehouseId: quantity}
-    Map<String, int>? warehouseStock,
-
     /// City of primary shipping warehouse (denormalized for O(1) card rendering)
     String? shipFromCity,
 
@@ -192,6 +190,9 @@ abstract class Product with _$Product {
     // === N-11: Subcategories ===
     /// Optional subcategory within the main category
     String? subcategory,
+
+    /// Product condition: new, like_new, good, fair, for_parts
+    String? condition,
   }) = _Product;
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
@@ -262,7 +263,6 @@ abstract class ProductCreate with _$ProductCreate {
     // Multi-warehouse support
     String? sellerSku,
     List<String>? warehouseIds,
-    Map<String, int>? warehouseStock,
     String? shipFromCity,
     String? shipFromProvince,
     String? shipFromCountry,

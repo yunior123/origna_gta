@@ -285,6 +285,8 @@ abstract final class Collections {
   static const sellerMetrics = 'seller_metrics'; // Tasks 11
   static const coupons = 'coupons'; // N-07: coupon/promo code system
   static const inventoryLevels = 'inventoryLevels'; // products/{productId}/inventoryLevels/{warehouseId}
+  static const orderEvents = 'events'; // orders/{orderId}/events/{eventId}
+  static const couponUses = 'coupon_uses'; // coupons/{couponId}/coupon_uses/{userId}
 
   // Digital Products Collections
   static const licenses = 'licenses'; // users/{userId}/licenses
@@ -295,6 +297,10 @@ abstract final class Collections {
   static const subscriptions = 'subscriptions'; // subscriptions/{userId}
   static const chats = 'chats'; // chats/{chatId}
   static const chatMessages = 'messages'; // chats/{chatId}/messages/{msgId}
+
+  // Security (backend-only)
+  static const userSecurity = 'user_security'; // Backend-only MFA secrets — allow read: if false
+  static const sellerProfiles = 'seller_profiles'; // Seller-only profile data
 }
 
 /// Confirmation values for sensitive operations requiring explicit confirmation
@@ -437,6 +443,8 @@ abstract final class Fields {
   // === COMMON TIMESTAMPS (used across multiple collections) ===
   static const createdAt = 'createdAt';
   static const updatedAt = 'updatedAt';
+  static const version = 'version'; // Optimistic concurrency version, starts at 1
+  static const schemaVersion = 'schemaVersion'; // Schema layout version for migration tracking
   static const savedAt = 'savedAt'; // N-05: Save for Later timestamp
   static const String deletedAt = 'deletedAt';
   static const String deletedBy = 'deletedBy';
@@ -472,7 +480,8 @@ abstract final class Fields {
   static const unsuspendedBy = 'unsuspendedBy';
   static const suspendedBy = 'suspendedBy';
   static const suspensionReason = 'suspensionReason';
-  static const commissionRate = 'commissionRate';
+  static const commissionRate = 'commissionRate'; // DEPRECATED: use commissionRateBps
+  static const commissionRateBps = 'commissionRateBps'; // 250 = 2.50% (basis points)
   static const verified = 'verified';
   static const verificationStatus = 'verificationStatus';
   static const platform = 'platform';
@@ -489,6 +498,7 @@ abstract final class Fields {
   static const mfaBackupCodes = 'mfaBackupCodes';
   static const mfaBackupCodesTemp = 'mfaBackupCodesTemp';
   static const mfaBackupCodesSalt = 'mfaBackupCodesSalt';
+  static const mfaEnrolledAt = 'mfaEnrolledAt';
   static const lastRoleUpdate = 'lastRoleUpdate';
   static const lastRoleUpdateBy = 'lastRoleUpdateBy';
 
@@ -502,6 +512,7 @@ abstract final class Fields {
   // === PRODUCT FIELDS ===
   static const productId = 'productId';
   static const price = 'price';
+  static const priceCents = 'priceCents'; // Integer cents derived from price — use for arithmetic
 
   /// Original/crossed-out price for sale display (null = no active sale)
   static const compareAtPrice = 'compareAtPrice';
@@ -511,6 +522,7 @@ abstract final class Fields {
   static const sellerId = 'sellerId';
   static const sellerAddress = 'sellerAddress';
   static const sellerSku = 'sellerSku';
+  static const sellerName = 'sellerName'; // Seller display name snapshotted at purchase time
   static const warehouseIds = 'warehouseIds';
   static const warehouseStock = 'warehouseStock';
   static const fulfillmentWarehouseId = 'fulfillmentWarehouseId'; // TASK 02: warehouse used to fulfill order item
@@ -698,6 +710,8 @@ abstract final class Fields {
 
   // === CART / ORDER ITEM NOTE ===
   static const buyerNote = 'buyerNote';
+  static const cartItemId = 'cartItemId';
+  static const priceSnapshot = 'priceSnapshot';
 
   // === FIELDS missing from Dart (present in Python) ===
   static const archived = 'archived';
@@ -706,6 +720,7 @@ abstract final class Fields {
   static const quantity = 'quantity';
   static const trackingNumber = 'trackingNumber';
   static const carrier = 'carrier';
+  static const carrierNote = 'carrierNote'; // Free-text override when carrier='other'
   static const shippedAt = 'shippedAt';
   static const deliveredAt = 'deliveredAt';
   static const refundReason = 'refundReason';
@@ -723,7 +738,7 @@ abstract final class Fields {
   static const discountValue = 'discountValue';
   static const minQuantity = 'minQuantity';
 
-  /// Parallel status field alongside [status] (both are written for consistency)
+  /// DEPRECATED — kept for reading legacy documents only. Use [status] field.
   static const deliveryStatus = 'deliveryStatus';
 
   // === PAYOUT FIELDS ===
@@ -753,6 +768,10 @@ abstract final class Fields {
   // === WEBHOOK FIELDS ===
   static const eventId = 'eventId';
   static const eventType = 'eventType';
+  static const actor = 'actor';
+  static const actorType = 'actorType';
+  static const fromStatus = 'fromStatus';
+  static const toStatus = 'toStatus';
   static const payloadSize = 'payloadSize';
   static const signatureVerified = 'signatureVerified';
   static const processingStatus = 'processingStatus';
@@ -925,17 +944,20 @@ abstract final class Fields {
   static const maxUsesTotal = 'maxUsesTotal';
   static const maxUsesPerUser = 'maxUsesPerUser';
   static const usedCount = 'usedCount';
-  static const usedByUids = 'usedByUids';
+  static const usedByUids = 'usedByUids'; // DEPRECATED — use coupon_uses subcollection
 
   // === N-09: Product variants ===
   static const hasVariants = 'hasVariants';
   static const variants = 'variants';
   static const variantId = 'variantId';
   static const variantOptions = 'variantOptions';
+  static const variantTitle = 'variantTitle';
+  static const variantSku = 'variantSku';
   static const optionValues = 'optionValues';
 
   // === N-11: Subcategories ===
   static const subcategory = 'subcategory';
+  static const condition = 'condition'; // Product condition: new|like_new|good|fair|for_parts
 }
 
 /// Filter sentinel values — special values used in query filters to mean "no filter"
@@ -993,11 +1015,12 @@ abstract final class OrderStatusValues {
   static const cancelled = 'cancelled';
   static const failed = 'failed';
   static const expired = 'expired';
+  // DEPRECATED: refunded/partiallyRefunded moved to PaymentStatusValues — kept for legacy reads
   static const refunded = 'refunded';
   static const partiallyRefunded = 'partially_refunded';
   static const disputed = 'disputed';
 
-  static const all = {pending, confirmed, processing, shipped, inTransit, delivered, cancelled, failed, expired, refunded, partiallyRefunded, disputed};
+  static const all = {pending, confirmed, processing, shipped, inTransit, delivered, cancelled, failed, expired, disputed};
 
   /// Centralized state machine — single source of truth for order transitions.
   /// Must match schema_constants.py OrderStatusValues.VALID_TRANSITIONS.
@@ -1007,17 +1030,15 @@ abstract final class OrderStatusValues {
     processing: [shipped, cancelled],
     shipped: [inTransit, delivered],
     inTransit: [delivered, cancelled],
-    delivered: [refunded, partiallyRefunded, disputed],
+    delivered: [disputed],
     cancelled: [], // Terminal
     failed: [pending], // Retry
     expired: [pending], // Retry
-    refunded: [], // Terminal
-    partiallyRefunded: [refunded],
-    disputed: [refunded], // After dispute resolution
+    disputed: [], // Resolved via paymentStatus
   };
 
   /// Terminal states — no further transitions allowed.
-  static const terminalStates = {cancelled, refunded};
+  static const terminalStates = {cancelled};
 }
 
 // =============================================================================
@@ -1042,6 +1063,7 @@ abstract final class PaymentStatusValues {
   static const paid = 'paid';
   static const paymentFailed = 'payment_failed';
   static const refunded = 'refunded';
+  static const partiallyRefunded = 'partially_refunded';
   static const sessionExpired = 'session_expired';
   static const authorized = 'authorized';
   static const captured = 'captured';
@@ -1059,6 +1081,7 @@ abstract final class PaymentStatusValues {
     paid,
     paymentFailed,
     refunded,
+    partiallyRefunded,
     sessionExpired,
     authorized,
     captured,
@@ -1120,6 +1143,30 @@ abstract final class ProductStatusValues {
   static const outOfStock = 'out_of_stock';
 
   static const all = {draft, active, paused, archived, outOfStock};
+}
+
+/// Product condition values for marketplace-style listings
+abstract final class ProductConditionValues {
+  static const newCondition = 'new';
+  static const likeNew = 'like_new';
+  static const good = 'good';
+  static const fair = 'fair';
+  static const forParts = 'for_parts';
+
+  static const all = {newCondition, likeNew, good, fair, forParts};
+}
+
+/// Normalized shipping carrier identifiers
+abstract final class CarrierValues {
+  static const ups = 'ups';
+  static const fedex = 'fedex';
+  static const canadaPost = 'canada_post';
+  static const purolator = 'purolator';
+  static const dhl = 'dhl';
+  static const usps = 'usps';
+  static const other = 'other';
+
+  static const all = {ups, fedex, canadaPost, purolator, dhl, usps, other};
 }
 
 /// Canadian province code values
@@ -1333,4 +1380,20 @@ abstract final class WebhookStatusValues {
   static const failed = 'failed';
 
   static const all = {processing, completed, failed};
+}
+
+// =============================================================================
+// ORDER EVENT TYPES — tracks every status transition
+// =============================================================================
+
+abstract final class OrderEventTypes {
+  static const statusChanged = 'status_changed';
+  static const paymentAuthorized = 'payment_authorized';
+  static const paymentCaptured = 'payment_captured';
+  static const paymentFailed = 'payment_failed';
+  static const refundIssued = 'refund_issued';
+  static const itemShipped = 'item_shipped';
+  static const itemDelivered = 'item_delivered';
+  static const cancellationConfirmed = 'cancellation_confirmed';
+  static const noteAdded = 'note_added';
 }

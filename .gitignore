@@ -99,3 +99,4 @@ telegram_bot.py
 
 # --- IDE ---
 # .vscode/ is kept for shared tasks/settings
+.worktrees/

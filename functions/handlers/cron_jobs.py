@@ -663,7 +663,7 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
         .where(
             Fields.ORDER_STATUS,
             "in",
-            [OrderStatusValues.DELIVERED, OrderStatusValues.CANCELLED, OrderStatusValues.REFUNDED],
+            [OrderStatusValues.DELIVERED, OrderStatusValues.CANCELLED],
         )
         .where(Fields.UPDATED_AT, "<=", cutoff_date)
         .limit(200)

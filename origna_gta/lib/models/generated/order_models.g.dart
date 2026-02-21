@@ -9,6 +9,8 @@ part of 'order_models.dart';
 _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   orderId: json['orderId'] as String,
   userId: json['userId'] as String,
+  version: (json['version'] as num?)?.toInt() ?? 1,
+  schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
   customerId: json['customerId'] as String,
   customerEmail: json['customerEmail'] as String,
   items: (json['items'] as List<dynamic>)
@@ -106,6 +108,8 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
 Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
   'orderId': instance.orderId,
   'userId': instance.userId,
+  'version': instance.version,
+  'schemaVersion': instance.schemaVersion,
   'customerId': instance.customerId,
   'customerEmail': instance.customerEmail,
   'items': instance.items,
@@ -236,11 +240,11 @@ _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
     json['sellerAddress'] as Map<String, dynamic>,
   ),
   status: json['status'] as String? ?? DeliveryStatusValues.pending,
-  deliveryStatus:
-      $enumDecodeNullable(_$DeliveryStatusEnumMap, json['deliveryStatus']) ??
-      DeliveryStatus.pending,
   trackingNumber: json['trackingNumber'] as String?,
   carrier: json['carrier'] as String?,
+  carrierNote: json['carrierNote'] as String?,
+  sellerSku: json['sellerSku'] as String?,
+  sellerName: json['sellerName'] as String?,
   shippedAt: json['shippedAt'] == null
       ? null
       : DateTime.parse(json['shippedAt'] as String),
@@ -254,6 +258,12 @@ _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
   refundAmountCents: (json['refundAmountCents'] as num?)?.toInt(),
   refundId: json['refundId'] as String?,
   confirmedByBuyer: json['confirmedByBuyer'] as bool? ?? false,
+  variantId: json['variantId'] as String?,
+  variantTitle: json['variantTitle'] as String?,
+  variantOptions: (json['variantOptions'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, e as String),
+  ),
+  variantSku: json['variantSku'] as String?,
   weightKg: (json['weightKg'] as num?)?.toDouble(),
   lengthCm: (json['lengthCm'] as num?)?.toDouble(),
   widthCm: (json['widthCm'] as num?)?.toDouble(),
@@ -291,9 +301,11 @@ Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
       'sellerId': instance.sellerId,
       'sellerAddress': instance.sellerAddress,
       'status': instance.status,
-      'deliveryStatus': _$DeliveryStatusEnumMap[instance.deliveryStatus]!,
       'trackingNumber': instance.trackingNumber,
       'carrier': instance.carrier,
+      'carrierNote': instance.carrierNote,
+      'sellerSku': instance.sellerSku,
+      'sellerName': instance.sellerName,
       'shippedAt': instance.shippedAt?.toIso8601String(),
       'deliveredAt': instance.deliveredAt?.toIso8601String(),
       'refundedAt': instance.refundedAt?.toIso8601String(),
@@ -301,6 +313,10 @@ Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
       'refundAmountCents': instance.refundAmountCents,
       'refundId': instance.refundId,
       'confirmedByBuyer': instance.confirmedByBuyer,
+      'variantId': instance.variantId,
+      'variantTitle': instance.variantTitle,
+      'variantOptions': instance.variantOptions,
+      'variantSku': instance.variantSku,
       'weightKg': instance.weightKg,
       'lengthCm': instance.lengthCm,
       'widthCm': instance.widthCm,
@@ -320,13 +336,6 @@ Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
       'buyerNote': instance.buyerNote,
       'fulfillmentWarehouseId': instance.fulfillmentWarehouseId,
     };
-
-const _$DeliveryStatusEnumMap = {
-  DeliveryStatus.pending: 'pending',
-  DeliveryStatus.shipped: 'shipped',
-  DeliveryStatus.delivered: 'delivered',
-  DeliveryStatus.refunded: 'refunded',
-};
 
 _Ratings _$RatingsFromJson(Map<String, dynamic> json) => _Ratings(
   productId: json['productId'] as String,

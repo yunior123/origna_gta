@@ -72,26 +72,6 @@
           "required": false,
           "description": "Last time an abandoned-cart recovery email was sent to this user (TASK 10)"
         },
-        "stripeAccountId": {
-          "type": "string",
-          "required": false,
-          "description": "Stripe Connect account ID (for sellers)"
-        },
-        "payoutsEnabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Whether seller can receive payouts"
-        },
-        "chargesEnabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Whether seller can accept charges"
-        },
-        "onboardingCompleted": {
-          "type": "boolean",
-          "default": false,
-          "description": "Whether Stripe Connect onboarding is complete"
-        },
         "pendingRequirements": {
           "type": "array<string>",
           "default": [],
@@ -121,48 +101,10 @@
           "required": false,
           "description": "When the account was unsuspended"
         },
-        "commissionRate": {
-          "type": "number",
-          "required": false,
-          "default": 0.025,
-          "description": "Per-seller commission rate (e.g., 0.025 = 2.5%)"
-        },
-        "verified": {
-          "type": "boolean",
-          "required": false,
-          "default": false,
-          "description": "Manual verification flag (admin-managed)"
-        },
-        "verificationStatus": {
-          "type": "string",
-          "required": false,
-          "description": "Verification workflow status (admin-managed)",
-          "values": [
-            "pending",
-            "approved",
-            "rejected"
-          ]
-        },
-        "platform": {
-          "type": "string",
-          "required": false,
-          "description": "Seller platform/source (e.g., aliexpress, alibaba, 1688, dhgate, temu, local, custom)"
-        },
         "country": {
           "type": "string",
           "required": false,
           "description": "Seller country code (e.g., CA, CN)"
-        },
-        "businessName": {
-          "type": "string",
-          "required": false,
-          "description": "Business name for business sellers"
-        },
-        "payoutHoldDays": {
-          "type": "integer",
-          "required": false,
-          "default": 7,
-          "description": "Custom hold period before payout (in days)"
         },
         "updatedAt": {
           "type": "timestamp",
@@ -184,16 +126,6 @@
           "default": false,
           "description": "Whether MFA is enabled (admin only)"
         },
-        "mfaSecret": {
-          "type": "string",
-          "required": false,
-          "description": "TOTP MFA secret (admin only, encrypted)"
-        },
-        "mfaSecretTemp": {
-          "type": "string",
-          "required": false,
-          "description": "Temporary MFA secret during enrollment"
-        },
         "lastMfaVerify": {
           "type": "timestamp",
           "required": false,
@@ -208,31 +140,6 @@
           "type": "string",
           "required": false,
           "description": "Admin UID who last changed roles"
-        },
-        "mfaBackupCodes": {
-          "type": "array",
-          "required": false,
-          "description": "Hashed MFA backup codes (admin only, SHA-256)"
-        },
-        "mfaBackupCodesTemp": {
-          "type": "array",
-          "required": false,
-          "description": "Temporary hashed backup codes during MFA enrollment"
-        },
-        "mfaBackupCodesSalt": {
-          "type": "string",
-          "required": false,
-          "description": "Salt used for hashing MFA backup codes"
-        },
-        "mfaFailedAttempts": {
-          "type": "number",
-          "default": 0,
-          "description": "Count of consecutive failed MFA attempts"
-        },
-        "mfaLockoutUntil": {
-          "type": "timestamp",
-          "required": false,
-          "description": "MFA lockout expiry after too many failed attempts"
         },
         "emailConsent": {
           "type": "boolean",
@@ -308,7 +215,7 @@
         "isPremium": {
           "type": "boolean",
           "default": false,
-          "description": "Cached premium status \u2014 authoritative: subscriptions/{uid}"
+          "description": "Cached premium status — authoritative: subscriptions/{uid}"
         },
         "premiumSince": {
           "type": "timestamp",
@@ -344,6 +251,16 @@
           "type": "timestamp",
           "nullable": true,
           "description": "Last FCM token update"
+        },
+        "mfaEnrolledAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When MFA was first enrolled (OK for display)"
+        },
+        "isSeller": {
+          "type": "boolean",
+          "default": false,
+          "description": "Quick flag — seller details live in seller_profiles collection"
         }
       },
       "subcollections": {
@@ -416,7 +333,7 @@
         },
         "cart": {
           "description": "User's shopping cart items",
-          "documentId": "{productId}",
+          "documentId": "{cartItemId} (auto-generated)",
           "fields": {
             "productId": {
               "type": "string",
@@ -432,6 +349,36 @@
               "type": "timestamp",
               "required": true,
               "description": "When item was added to cart"
+            },
+            "variantId": {
+              "type": "string",
+              "required": false,
+              "description": "Variant ID if product has variants"
+            },
+            "variantTitle": {
+              "type": "string",
+              "required": false,
+              "description": "Human-readable variant label"
+            },
+            "variantOptions": {
+              "type": "object",
+              "required": false,
+              "description": "Variant option key-value map"
+            },
+            "variantSku": {
+              "type": "string",
+              "required": false,
+              "description": "Variant SKU"
+            },
+            "priceSnapshot": {
+              "type": "integer",
+              "required": false,
+              "description": "Price in cents at time of cart addition"
+            },
+            "buyerNote": {
+              "type": "string",
+              "required": false,
+              "description": "Optional note from buyer"
             }
           }
         },
@@ -512,7 +459,7 @@
           ],
           "notes": [
             "Only sellers have warehouses. Security rules allow read/write only to the owner (sellerId == request.auth.uid).",
-            "A seller may have 1\u2013N warehouses across different cities or countries.",
+            "A seller may have 1–N warehouses across different cities or countries.",
             "Products reference warehouse IDs via the warehouseIds array field."
           ]
         }
@@ -573,13 +520,13 @@
         "sellerSku": {
           "type": "string",
           "required": false,
-          "description": "Seller-defined SKU. Unique per seller (sellerId + sellerSku). Used for deduplication \u2014 a product is rejected (isActive=false) if a duplicate sellerId+sellerSku already exists.",
+          "description": "Seller-defined SKU. Unique per seller (sellerId + sellerSku). Used for deduplication — a product is rejected (isActive=false) if a duplicate sellerId+sellerSku already exists.",
           "maxLength": 100
         },
         "sellerAddress": {
           "type": "map",
           "required": false,
-          "description": "Seller's manual shipping address. Mutually exclusive with warehouseIds \u2014 physical products must have either sellerAddress OR warehouseIds, not both.",
+          "description": "Seller's manual shipping address. Mutually exclusive with warehouseIds — physical products must have either sellerAddress OR warehouseIds, not both.",
           "schema": "$ref:Address"
         },
         "warehouseIds": {
@@ -587,11 +534,6 @@
           "required": false,
           "description": "IDs of warehouses (from users/{sellerId}/warehouses) this product ships from. When set, overrides sellerAddress. Stock is tracked per-warehouse via warehouseStock.",
           "maxItems": 50
-        },
-        "warehouseStock": {
-          "type": "map<string, number>",
-          "required": false,
-          "description": "Per-warehouse stock quantities. Keys are warehouseId strings; values are integer stock counts. stockQuantity field equals the sum of all values. E.g. {\"wh_abc\": 10, \"wh_xyz\": 5} \u2192 stockQuantity=15."
         },
         "shipFromCity": {
           "type": "string",
@@ -611,7 +553,7 @@
         "shipFromCountries": {
           "type": "array<string>",
           "required": false,
-          "description": "Deduplicated list of all countries across all warehouseIds. Powers smart multi-country display on product cards: 1 country\u2192'Ships from: City, Province, Country'; 2\u20133\u2192'Ships from: Canada \u00b7 Germany'; 4+\u2192'Ships from: N locations worldwide'."
+          "description": "Deduplicated list of all countries across all warehouseIds. Powers smart multi-country display on product cards: 1 country→'Ships from: City, Province, Country'; 2–3→'Ships from: Canada · Germany'; 4+→'Ships from: N locations worldwide'."
         },
         "categoryId": {
           "type": "number",
@@ -909,7 +851,7 @@
         "trendingScore": {
           "type": "integer",
           "default": 0,
-          "description": "Computed trending score (views + purchases\u00d73 + favorites\u00d72 in last 48h)"
+          "description": "Computed trending score (views + purchases×3 + favorites×2 in last 48h)"
         },
         "viewCount": {
           "type": "integer",
@@ -955,6 +897,18 @@
           "nullable": true,
           "maxLength": 100,
           "description": "Optional subcategory within the main category. N-11."
+        },
+        "condition": {
+          "type": "string",
+          "required": false,
+          "description": "Product condition: new, like_new, good, fair, for_parts"
+        },
+        "priceCents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Price in integer cents — derived from price field at write time, used for all arithmetic (9.99 → 999)"
         }
       },
       "subcollections": {
@@ -1017,6 +971,12 @@
           "required": true,
           "description": "Buyer's user ID"
         },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Optimistic concurrency version (Medusa/Commercetools pattern)"
+        },
         "customerEmail": {
           "type": "string",
           "required": false,
@@ -1066,7 +1026,7 @@
         "currency": {
           "type": "string",
           "default": "cad",
-          "description": "Currency code (always 'cad' \u2014 all transactions in CAD)"
+          "description": "Currency code (always 'cad' — all transactions in CAD)"
         },
         "orderStatus": {
           "type": "string",
@@ -1340,6 +1300,11 @@
           "type": "number",
           "default": 0,
           "description": "N-07: Discount applied in cents (from coupon)"
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "default": 1,
+          "description": "Schema layout version for migration tracking"
         }
       },
       "indexes": [
@@ -1384,7 +1349,7 @@
         {
           "fields": [
             "paymentStatus",
-            "authorizationExpiresAt"
+            "expiresAt"
           ],
           "description": "For expired authorization job"
         },
@@ -1414,7 +1379,50 @@
           ],
           "description": "For checkout completion"
         }
-      ]
+      ],
+      "subcollections": {
+        "events": {
+          "description": "Immutable event log for order lifecycle transitions",
+          "documentId": "{eventId} (auto-generated)",
+          "fields": {
+            "eventType": {
+              "type": "string",
+              "required": true,
+              "description": "One of OrderEventTypes.*"
+            },
+            "fromStatus": {
+              "type": "string",
+              "required": false,
+              "description": "Previous status before transition"
+            },
+            "toStatus": {
+              "type": "string",
+              "required": false,
+              "description": "New status after transition"
+            },
+            "actor": {
+              "type": "string",
+              "required": true,
+              "description": "UID or 'system' or 'stripe_webhook'"
+            },
+            "actorType": {
+              "type": "string",
+              "required": true,
+              "description": "'seller'|'buyer'|'admin'|'system'"
+            },
+            "metadata": {
+              "type": "object",
+              "required": false,
+              "description": "Additional context (e.g. refund amount, tracking number)"
+            },
+            "createdAt": {
+              "type": "timestamp",
+              "required": true,
+              "description": "When the event occurred"
+            }
+          }
+        }
+      }
     },
     "payouts": {
       "description": "Seller payout records (Stripe Transfers)",
@@ -1788,6 +1796,11 @@
           "required": false,
           "description": "Alert reason"
         },
+        "idempotencyKey": {
+          "type": "string",
+          "required": false,
+          "description": "Client-generated idempotency key to prevent duplicate order creation"
+        },
         "paymentIntentId": {
           "type": "string",
           "required": false,
@@ -2062,7 +2075,8 @@
         "usedByUids": {
           "type": "array<string>",
           "default": [],
-          "description": "UIDs of users who redeemed this coupon (may contain duplicates for multi-use coupons)"
+          "description": "DEPRECATED — use coupon_uses subcollection instead. Kept for reading legacy docs.",
+          "deprecated": true
         },
         "expiresAt": {
           "type": "timestamp",
@@ -2088,6 +2102,29 @@
           "type": "string",
           "required": true,
           "description": "Admin UID who created this coupon"
+        }
+      },
+      "subcollections": {
+        "coupon_uses": {
+          "description": "Per-user coupon usage tracking. Document ID = userId. Replaces unbounded usedByUids array.",
+          "documentId": "{userId}",
+          "fields": {
+            "useCount": {
+              "type": "integer",
+              "default": 1,
+              "description": "Number of times this user has redeemed the coupon"
+            },
+            "usedAt": {
+              "type": "timestamp",
+              "required": true,
+              "description": "First usage timestamp"
+            },
+            "lastUsedAt": {
+              "type": "timestamp",
+              "required": true,
+              "description": "Most recent usage timestamp"
+            }
+          }
         }
       }
     },
@@ -2200,22 +2237,22 @@
         "disputeRate": {
           "type": "number",
           "required": true,
-          "description": "Dispute rate (0.0\u20131.0) over last 30 days"
+          "description": "Dispute rate (0.0–1.0) over last 30 days"
         },
         "refundRate": {
           "type": "number",
           "required": true,
-          "description": "Refund rate (0.0\u20131.0) over last 30 days"
+          "description": "Refund rate (0.0–1.0) over last 30 days"
         },
         "cancellationRate": {
           "type": "number",
           "required": true,
-          "description": "Cancellation rate (0.0\u20131.0) over last 30 days"
+          "description": "Cancellation rate (0.0–1.0) over last 30 days"
         },
         "lateShipmentRate": {
           "type": "number",
           "required": true,
-          "description": "Late shipment rate (0.0\u20131.0) over last 30 days"
+          "description": "Late shipment rate (0.0–1.0) over last 30 days"
         },
         "avgResponseTimeHours": {
           "type": "number",
@@ -2320,7 +2357,7 @@
       }
     },
     "subscriptions": {
-      "description": "Premium subscription records \u2014 one per user. Authoritative source for isPremium status. Written by backend on Stripe webhook.",
+      "description": "Premium subscription records — one per user. Authoritative source for isPremium status. Written by backend on Stripe webhook.",
       "docIdPattern": "{userId}",
       "fields": {
         "userId": {
@@ -2383,7 +2420,7 @@
       "security": "User reads own. Backend-only writes (Stripe webhooks)."
     },
     "chats": {
-      "description": "Product-scoped buyer\u2194seller chat threads. Premium buyers only. One thread per buyer+product combination.",
+      "description": "Product-scoped buyer↔seller chat threads. Premium buyers only. One thread per buyer+product combination.",
       "docIdPattern": "{chatId} (auto-generated)",
       "fields": {
         "chatId": {
@@ -2481,6 +2518,167 @@
         }
       ],
       "security": "Buyer and seller of the thread can read/write. Backend creates threads."
+    },
+    "user_security": {
+      "description": "Backend-only MFA secrets — Firestore rules: allow read, write: if false. Only accessible via Admin SDK.",
+      "fields": {
+        "mfaSecret": {
+          "type": "string",
+          "required": false,
+          "description": "TOTP MFA secret (encrypted)"
+        },
+        "mfaSecretTemp": {
+          "type": "string",
+          "required": false,
+          "description": "Temporary MFA secret during enrollment"
+        },
+        "mfaBackupCodes": {
+          "type": "array",
+          "required": false,
+          "description": "Hashed MFA backup codes (SHA-256)"
+        },
+        "mfaBackupCodesTemp": {
+          "type": "array",
+          "required": false,
+          "description": "Temporary hashed backup codes during enrollment"
+        },
+        "mfaBackupCodesSalt": {
+          "type": "string",
+          "required": false,
+          "description": "Salt for hashing backup codes"
+        },
+        "mfaFailedAttempts": {
+          "type": "number",
+          "default": 0,
+          "description": "Count of consecutive failed MFA attempts"
+        },
+        "mfaLockoutUntil": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Lockout expiry after max failed attempts"
+        },
+        "lastMfaVerify": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Last successful MFA verification"
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Last update timestamp"
+        }
+      }
+    },
+    "seller_profiles": {
+      "description": "Seller-specific profile data — split from users doc. Buyers never load this doc.",
+      "fields": {
+        "stripeAccountId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe Connect account ID"
+        },
+        "payoutsEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether seller can receive payouts"
+        },
+        "chargesEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether seller can accept charges"
+        },
+        "onboardingCompleted": {
+          "type": "boolean",
+          "default": false,
+          "description": "Stripe Connect onboarding complete"
+        },
+        "pendingRequirements": {
+          "type": "array",
+          "required": false,
+          "description": "Outstanding Stripe onboarding requirements"
+        },
+        "commissionRateBps": {
+          "type": "number",
+          "default": 250,
+          "description": "Platform commission in basis points (250 = 2.50%)"
+        },
+        "avgRating": {
+          "type": "number",
+          "default": 0,
+          "description": "Average seller rating (0-5)"
+        },
+        "totalReviews": {
+          "type": "number",
+          "default": 0,
+          "description": "Total number of reviews"
+        },
+        "totalSales": {
+          "type": "number",
+          "default": 0,
+          "description": "Total completed sales"
+        },
+        "warehouseIds": {
+          "type": "array",
+          "required": false,
+          "description": "IDs of seller warehouses"
+        },
+        "businessName": {
+          "type": "string",
+          "required": false,
+          "description": "Seller business name"
+        },
+        "businessAddress": {
+          "type": "map",
+          "required": false,
+          "description": "Seller business address",
+          "schema": "$ref:Address"
+        },
+        "acceptsReturns": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether seller accepts returns"
+        },
+        "returnWindowDays": {
+          "type": "number",
+          "default": 30,
+          "description": "Days buyer has to initiate a return"
+        },
+        "verified": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether seller identity is verified"
+        },
+        "verificationStatus": {
+          "type": "string",
+          "required": false,
+          "description": "Verification status: pending, verified, rejected"
+        },
+        "platform": {
+          "type": "string",
+          "required": false,
+          "description": "Seller platform/source"
+        },
+        "payoutHoldDays": {
+          "type": "number",
+          "required": false,
+          "description": "Days to hold payouts after delivery"
+        },
+        "bankAccountLast4": {
+          "type": "string",
+          "required": false,
+          "description": "Last 4 digits of bank account"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When seller profile was created"
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Last update timestamp"
+        }
+      }
     }
   },
   "sharedSchemas": {
@@ -2616,7 +2814,8 @@
         "deliveryStatus": {
           "type": "string",
           "default": "pending",
-          "description": "Parallel status field for type-safe enum access (both 'status' and 'deliveryStatus' are written)",
+          "deprecated": true,
+          "description": "DEPRECATED — kept for reading legacy documents only. Use 'status' field instead.",
           "values": [
             "pending",
             "shipped",
@@ -2632,7 +2831,7 @@
         "carrier": {
           "type": "string",
           "required": false,
-          "description": "Shipping carrier (e.g., Canada Post, Purolator)"
+          "description": "Shipping carrier: ups, fedex, canada_post, purolator, dhl, usps, other"
         },
         "shippedAt": {
           "type": "timestamp",
@@ -2669,6 +2868,28 @@
           "type": "boolean",
           "default": false,
           "description": "Buyer confirmed receipt of this item"
+        },
+        "variantId": {
+          "type": "string",
+          "required": false,
+          "description": "Variant ID at time of purchase"
+        },
+        "variantTitle": {
+          "type": "string",
+          "required": false,
+          "maxLength": 255,
+          "description": "Human-readable variant label e.g. 'Size: M / Color: Blue'"
+        },
+        "variantOptions": {
+          "type": "object",
+          "required": false,
+          "description": "Variant option key-value map e.g. {'Size': 'M', 'Color': 'Blue'}"
+        },
+        "variantSku": {
+          "type": "string",
+          "required": false,
+          "maxLength": 100,
+          "description": "Variant SKU snapshotted at purchase time"
         },
         "isDigital": {
           "type": "boolean",
@@ -2740,6 +2961,22 @@
           "type": "string",
           "required": false,
           "description": "Warehouse ID from which this item was fulfilled (null if seller ships from address)"
+        },
+        "carrierNote": {
+          "type": "string",
+          "required": false,
+          "description": "Free-text carrier override when carrier='other' (max 500 chars)"
+        },
+        "sellerSku": {
+          "type": "string",
+          "required": false,
+          "description": "Seller's SKU snapshotted at purchase time"
+        },
+        "sellerName": {
+          "type": "string",
+          "required": false,
+          "description": "Seller display name snapshotted at purchase time (Shopify/Amazon pattern)",
+          "maxLength": 200
         }
       }
     },
@@ -2813,8 +3050,6 @@
         "cancelled": "Order cancelled",
         "failed": "Payment failed",
         "expired": "Checkout session expired",
-        "refunded": "Full refund issued",
-        "partially_refunded": "Partial refund issued",
         "disputed": "Order disputed (active chargeback/dispute)"
       }
     },
@@ -2828,6 +3063,7 @@
         "captured": "Payment captured (funds transferred)",
         "payment_failed": "Payment failed",
         "refunded": "Payment refunded",
+        "partially_refunded": "Partial refund issued",
         "session_expired": "Checkout session expired",
         "cancelled": "Payment cancelled",
         "authorization_expired": "Authorization expired (7-day window passed)",

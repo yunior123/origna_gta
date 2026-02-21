@@ -46,7 +46,6 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
     createdAt: createdAt,
     sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
     sellerId: productData[Fields.sellerId] ?? '',
-    deliveryStatus: DeliveryStatusValues.pending,
     weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
     lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
     widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
@@ -77,9 +76,9 @@ final cartItemQuantityProvider = StreamProvider.autoDispose.family<int, String>(
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value(0);
 
-  return ref.watch(firestoreProvider).collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId).snapshots().map((doc) {
-    if (!doc.exists) return 0;
-    return (doc.data()?[Fields.quantity] ?? 0) as int;
+  return ref.watch(firestoreProvider).collection(Collections.users).doc(userId).collection(Collections.cart)
+      .where(Fields.productId, isEqualTo: productId).snapshots().map((snapshot) {
+    return snapshot.docs.fold<int>(0, (total, doc) => total + ((doc.data()[Fields.quantity] as num?)?.toInt() ?? 0));
   });
 });
 
@@ -146,7 +145,6 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
                 createdAt: cartItem.createdAt,
                 sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
                 sellerId: productData[Fields.sellerId] ?? '',
-                deliveryStatus: DeliveryStatusValues.pending,
                 weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
                 lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
                 widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
@@ -279,13 +277,15 @@ class CartController {
   Future<void> removeFromCart(String productId) async {
     final userId = _userId;
     if (userId == null) return;
-    await _repository.removeFromCart(userId, productId);
+    final cartItemId = await _resolveCartItemId(userId, productId);
+    if (cartItemId != null) await _repository.removeFromCart(userId, cartItemId);
   }
 
   Future<void> updateBuyerNote(String productId, String? note) async {
     final userId = _userId;
     if (userId == null) return;
-    await _repository.updateBuyerNote(userId, productId, note);
+    final cartItemId = await _resolveCartItemId(userId, productId);
+    if (cartItemId != null) await _repository.updateBuyerNote(userId, cartItemId, note);
   }
 
   /// Updates the quantity of a product in the cart.
@@ -307,7 +307,17 @@ class CartController {
       }
     }
 
-    await _repository.updateQuantity(userId, productId, newQuantity);
+    final cartItemId = await _resolveCartItemId(userId, productId);
+    if (cartItemId == null) return false;
+    await _repository.updateQuantity(userId, cartItemId, newQuantity);
     return true;
+  }
+
+  /// Resolve a productId to the first matching cartItemId (auto-generated doc ID).
+  Future<String?> _resolveCartItemId(String userId, String productId) async {
+    final firestore = _ref.read(firestoreProvider);
+    final snap = await firestore.collection(Collections.users).doc(userId)
+        .collection(Collections.cart).where(Fields.productId, isEqualTo: productId).limit(1).get();
+    return snap.docs.isNotEmpty ? snap.docs.first.id : null;
   }
 }

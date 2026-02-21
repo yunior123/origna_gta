@@ -22,20 +22,8 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
-/// Parse DeliveryStatus from dynamic
-DeliveryStatus _parseDeliveryStatus(dynamic raw) {
-  final value = _safeString(raw, DeliveryStatusValues.pending);
-  switch (value) {
-    case DeliveryStatusValues.shipped:
-      return DeliveryStatus.shipped;
-    case DeliveryStatusValues.delivered:
-      return DeliveryStatus.delivered;
-    case DeliveryStatusValues.refunded:
-      return DeliveryStatus.refunded;
-    default:
-      return DeliveryStatus.pending;
-  }
-}
+/// Parse DeliveryStatus from dynamic — DEPRECATED, kept for legacy reads
+// DeliveryStatus _parseDeliveryStatus(dynamic raw) { ... } — removed, use 'status' string field
 
 /// Parse an OrderItem from a Firestore map without relying on generated fromJson
 OrderItem _parseOrderItem(dynamic raw) {
@@ -53,9 +41,11 @@ OrderItem _parseOrderItem(dynamic raw) {
       (map[Fields.status] == null || map[Fields.status].toString().isEmpty) ? map[Fields.deliveryStatus] : map[Fields.status],
       DeliveryStatusValues.pending,
     ),
-    deliveryStatus: _parseDeliveryStatus(map[Fields.deliveryStatus]),
     trackingNumber: map[Fields.trackingNumber] != null ? _safeString(map[Fields.trackingNumber]) : null,
     carrier: map[Fields.carrier] != null ? _safeString(map[Fields.carrier]) : null,
+    carrierNote: map[Fields.carrierNote] != null ? _safeString(map[Fields.carrierNote]) : null,
+    sellerSku: map[Fields.sellerSku] != null ? _safeString(map[Fields.sellerSku]) : null,
+    sellerName: map[Fields.sellerName] != null ? _safeString(map[Fields.sellerName]) : null,
     shippedAt: _parseDateTime(map[Fields.shippedAt]),
     deliveredAt: _parseDateTime(map[Fields.deliveredAt]),
     refundedAt: _parseDateTime(map[Fields.refundedAt]),
@@ -63,6 +53,10 @@ OrderItem _parseOrderItem(dynamic raw) {
     refundAmountCents: map[Fields.refundAmountCents] != null ? _safeInt(map[Fields.refundAmountCents]) : null,
     refundId: map[Fields.refundId] != null ? _safeString(map[Fields.refundId]) : null,
     confirmedByBuyer: _safeBool(map[Fields.confirmedByBuyer] ?? map[Fields.buyerConfirmed]),
+    variantId: map[Fields.variantId] != null ? _safeString(map[Fields.variantId]) : null,
+    variantTitle: map[Fields.variantTitle] != null ? _safeString(map[Fields.variantTitle]) : null,
+    variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
+    variantSku: map[Fields.variantSku] != null ? _safeString(map[Fields.variantSku]) : null,
     weightKg: map[Fields.weightKg] != null ? _safeDouble(map[Fields.weightKg]) : null,
     lengthCm: map[Fields.lengthCm] != null ? _safeDouble(map[Fields.lengthCm]) : null,
     widthCm: map[Fields.widthCm] != null ? _safeDouble(map[Fields.widthCm]) : null,
@@ -170,6 +164,8 @@ abstract class Order with _$Order {
   const factory Order({
     required String orderId,
     required String userId,
+    @Default(1) int version,
+    @Default(1) int schemaVersion,
     required String customerId,
     required String customerEmail,
     required List<OrderItem> items,
@@ -347,6 +343,8 @@ abstract class Order with _$Order {
     return Order(
       orderId: _safeString(data[Fields.orderId], doc.id),
       userId: _safeString(data[Fields.userId]),
+      version: _safeInt(data[Fields.version], 1),
+      schemaVersion: _safeInt(data[Fields.schemaVersion], 1),
       customerId: _safeString(data[Fields.customerId]),
       customerEmail: _safeString(data[Fields.customerEmail]),
       items: items,
@@ -454,9 +452,11 @@ abstract class OrderItem with _$OrderItem {
     required Address sellerAddress,
     // Per-item status tracking
     @Default(DeliveryStatusValues.pending) String status, // 'pending' | 'shipped' | 'delivered' | 'refunded'
-    @Default(DeliveryStatus.pending) DeliveryStatus deliveryStatus, // Parallel enum field for type-safe access
     String? trackingNumber,
     String? carrier,
+    String? carrierNote, // Free-text override when carrier='other'
+    String? sellerSku, // Seller's SKU snapshotted at purchase time
+    String? sellerName, // Seller display name snapshotted at purchase time
     DateTime? shippedAt,
     DateTime? deliveredAt,
     DateTime? refundedAt,
@@ -464,6 +464,11 @@ abstract class OrderItem with _$OrderItem {
     int? refundAmountCents,
     String? refundId,
     @Default(false) bool confirmedByBuyer,
+    // Variant tracking (immutable snapshot at order creation)
+    String? variantId,
+    String? variantTitle,
+    Map<String, String>? variantOptions,
+    String? variantSku,
     // Shipping metadata
     double? weightKg,
     double? lengthCm,

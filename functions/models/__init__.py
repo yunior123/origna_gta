@@ -20,6 +20,7 @@ from .order import (
     SellerPayout,
     Taxes,
 )
+from .order_event import OrderEvent
 from .product import (
     InventoryConfig,
     Product,
@@ -56,6 +57,7 @@ __all__ = [
     "SellerPayout",
     "Order",
     "OrderCreate",
+    "OrderEvent",
     # User
     "User",
     "UserCreate",
