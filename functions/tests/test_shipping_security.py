@@ -149,7 +149,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "price": 100000.00,  # REAL PRICE
             "stockQuantity": 5,
             "sellerId": "seller_elon",
-            "isActive": True,
+            "lifecycleStatus": "active",
             "sellerAddress": {"state": "TX", "longitude": -97.0, "latitude": 30.0},
         }
 
@@ -328,7 +328,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "price": 10.0,
             "stockQuantity": 50,  # Only 50 in stock
             "sellerId": "seller_1",
-            "isActive": True,
+            "lifecycleStatus": "active",
         }
 
         mock_doc_ref = MagicMock()

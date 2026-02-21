@@ -174,15 +174,15 @@ class _ActionChip extends StatelessWidget {
 }
 
 class _ApprovalBadge extends StatelessWidget {
-  final String approvalStatus;
-  const _ApprovalBadge({required this.approvalStatus});
+  final String lifecycleStatus;
+  const _ApprovalBadge({required this.lifecycleStatus});
 
   @override
   Widget build(BuildContext context) {
-    final (color, label) = switch (approvalStatus) {
-      ProductApprovalStatusValues.underReview => (DesignTokens.info, tr('seller.under_review')),
-      ProductApprovalStatusValues.rejected => (DesignTokens.error, tr('seller.rejected')),
-      _ => (DesignTokens.textSecondary, approvalStatus),
+    final (color, label) = switch (lifecycleStatus) {
+      ProductLifecycleStatusValues.underReview => (DesignTokens.info, tr('seller.under_review')),
+      ProductLifecycleStatusValues.rejected => (DesignTokens.error, tr('seller.rejected')),
+      _ => (DesignTokens.textSecondary, lifecycleStatus),
     };
 
     return Container(
@@ -334,10 +334,10 @@ class _SellerProductCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      _StatusBadge(status: product.status),
-                      if (product.approvalStatus != ProductApprovalStatusValues.approved) ...[
+                      _StatusBadge(status: product.lifecycleStatus),
+                      if (product.lifecycleStatus != ProductLifecycleStatusValues.active) ...[
                         const SizedBox(width: 6),
-                        _ApprovalBadge(approvalStatus: product.approvalStatus),
+                        _ApprovalBadge(lifecycleStatus: product.lifecycleStatus),
                       ],
                       const Spacer(),
                       Text(
@@ -386,11 +386,13 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
-      ProductStatusValues.active => (DesignTokens.success, tr('seller.active')),
-      ProductStatusValues.paused => (DesignTokens.warning, tr('seller.pause')),
-      ProductStatusValues.archived => (DesignTokens.textDisabled, tr('seller.archived')),
-      ProductStatusValues.draft => (DesignTokens.info, tr('seller.draft')),
-      ProductStatusValues.outOfStock => (DesignTokens.error, tr('seller.out_of_stock')),
+      ProductLifecycleStatusValues.active => (DesignTokens.success, tr('seller.active')),
+      ProductLifecycleStatusValues.paused => (DesignTokens.warning, tr('seller.pause')),
+      ProductLifecycleStatusValues.archived => (DesignTokens.textDisabled, tr('seller.archived')),
+      ProductLifecycleStatusValues.draft => (DesignTokens.info, tr('seller.draft')),
+      ProductLifecycleStatusValues.underReview => (DesignTokens.info, tr('seller.under_review')),
+      ProductLifecycleStatusValues.rejected => (DesignTokens.error, tr('seller.rejected')),
+      ProductLifecycleStatusValues.approved => (DesignTokens.success, 'Approved'),
       _ => (DesignTokens.textSecondary, status),
     };
 

@@ -378,8 +378,7 @@ class TestCheckLowStockAlerts:
 
     def _make_product(self, stock=2, threshold=5, track=True, last_alert=None, seller_id="seller_1"):
         return {
-            "isActive": True,
-            "approvalStatus": "approved",
+            "lifecycleStatus": "active",
             "stockQuantity": stock,
             "sellerId": seller_id,
             "name": "Test Widget",

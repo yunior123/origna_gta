@@ -202,7 +202,7 @@ class FirebaseProductRepository implements ProductRepository {
     if (!doc.exists) return null;
     final data = doc.data();
     if (data == null) return null;
-    if (data[Fields.isActive] == false) return null;
+    if (data[Fields.lifecycleStatus] != ProductLifecycleStatusValues.active) return null;
     return Product.fromFirestore(doc);
   }
 
@@ -227,7 +227,7 @@ class FirebaseProductRepository implements ProductRepository {
   }) async {
     Query query = _firestore.collection(Collections.products);
 
-    query = query.where(Fields.isActive, isEqualTo: true);
+    query = query.where(Fields.lifecycleStatus, isEqualTo: ProductLifecycleStatusValues.active);
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
       query = query.where(
@@ -253,7 +253,7 @@ class FirebaseProductRepository implements ProductRepository {
     final snapshot = await query.get();
     final products = snapshot.docs
         .map((doc) => Product.fromFirestore(doc))
-        .where((p) => p.isActive)
+        .where((p) => p.lifecycleStatus == ProductLifecycleStatusValues.active)
         .toList();
     final hasMore = snapshot.docs.length >= pageSize;
 
@@ -276,12 +276,12 @@ class FirebaseProductRepository implements ProductRepository {
       final snapshot = await _firestore
           .collection(Collections.products)
           .where(FieldPath.documentId, whereIn: chunk)
-          .where(Fields.isActive, isEqualTo: true)
+          .where(Fields.lifecycleStatus, isEqualTo: ProductLifecycleStatusValues.active)
           .get();
       results.addAll(
         snapshot.docs
             .map((doc) => Product.fromFirestore(doc))
-            .where((p) => p.isActive),
+            .where((p) => p.lifecycleStatus == ProductLifecycleStatusValues.active),
       );
     }
     return results;

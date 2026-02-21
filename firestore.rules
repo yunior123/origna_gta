@@ -271,7 +271,7 @@ service cloud.firestore {
     // ================================================================
     match /products/{productId} {
       // Anyone can read active products; owners/admins can read all
-      allow read: if resource.data.isActive != false || isAdmin() || isProductOwner();
+      allow read: if resource.data.lifecycleStatus == 'active' || isAdmin() || isProductOwner();
 
       // Only sellers can create products
       // Must set correct sellerId
@@ -282,12 +282,12 @@ service cloud.firestore {
         // CRITICAL: Prevent client injecting arbitrary fields (e.g., rating)
         request.resource.data.keys().hasOnly([
           // Core
-          'name', 'price', 'compareAtPrice', 'description', 'imageUrls',
+          'name', 'nameF', 'price', 'compareAtPrice', 'description', 'descriptionF', 'imageUrls',
           'sellerId', 'sellerAddress',
           'categoryId', 'stockQuantity',
           'keywords',
           // Metadata
-          'createdAt', 'isActive', 'rating', 'status', 'taxCode',
+          'createdAt', 'lifecycleStatus', 'rating', 'taxCode',
           // Shipping / delivery
           'weightKg', 'lengthCm', 'widthCm', 'heightCm',
           'isLocalDeliveryOnly', 'isPerishable', 'estimatedShipDays',
@@ -307,13 +307,13 @@ service cloud.firestore {
         isStringWithLen(request.resource.data.name, 2, 120) &&
         isStringWithLen(request.resource.data.description, 10, 4000) &&
         (!request.resource.data.keys().hasAny(['sellerAddress']) || isValidSellerAddress(request.resource.data.sellerAddress)) &&
-        request.resource.data.isActive == true &&
+        request.resource.data.lifecycleStatus in ['draft', 'under_review', 'active'] &&
         request.resource.data.price > 0);
       allow update: if isAuthenticated() &&
         ((resource.data.sellerId == request.auth.uid && isSellerApproved()) || isAdmin()) &&
           // Only allow specific fields to be changed via client updates
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'name', 'price', 'compareAtPrice', 'description', 'imageUrls',
+            'name', 'nameF', 'price', 'compareAtPrice', 'description', 'descriptionF', 'imageUrls',
             'sellerAddress', 'keywords',
             'stockQuantity',
             'weightKg', 'lengthCm', 'widthCm', 'heightCm',
@@ -322,12 +322,12 @@ service cloud.firestore {
             'isDigital', 'taxCode',
             // Digital product fields
             'digitalType', 'slug', 'digitalBuilds', 'bookSourceUrl', 'deviceLimit',
-            'supplier', 'inventory', 'status',
+            'supplier', 'inventory', 'lifecycleStatus',
             'cost', 'supplierSku', 'supplierUrl',
             // Multi-warehouse fields
             'sellerSku', 'warehouseIds', 'warehouseStock', 'shipFromCity', 'shipFromProvince',
             // Admin-only toggles
-            'isActive', 'isTrending', 'trendingAt'
+            'isTrending', 'trendingAt'
           ]) &&
           // Never allow ratings from client updates
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rating', 'ratingCount']) &&
@@ -348,14 +348,15 @@ service cloud.firestore {
           request.resource.data.categoryId is int &&
           request.resource.data.categoryId >= 1 &&
           request.resource.data.categoryId <= 21 &&
-          // Validate product status if changed
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
-           request.resource.data.status in ['draft', 'active', 'paused', 'archived', 'out_of_stock']) &&
+          // Validate product lifecycleStatus if changed
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lifecycleStatus']) ||
+           request.resource.data.lifecycleStatus in ['draft', 'under_review', 'approved', 'active', 'paused', 'archived', 'rejected']) &&
           // FIX: Enforce positive price on update (prevents negative price attack)
           request.resource.data.price > 0 &&
           request.resource.data.price <= 100000 &&
-          // Sellers cannot toggle isActive; admins can.
-          (isAdmin() || request.resource.data.isActive == resource.data.isActive) &&
+          // Sellers cannot set lifecycleStatus to active directly; admins can.
+          (isAdmin() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['lifecycleStatus']) ||
+           request.resource.data.lifecycleStatus in ['draft', 'paused']) &&
           !request.resource.data.keys().hasAny(['deletedAt']);
 
       // Only product owner or admin can delete
@@ -367,6 +368,22 @@ service cloud.firestore {
         allow read: if true;
         allow write: if false;  // Backend-only via Admin SDK
       }
+    }
+
+    // ================================================================
+    // RETURN REQUESTS COLLECTION
+    // ================================================================
+    match /return_requests/{returnId} {
+      allow read: if isAuthenticated() && (
+        resource.data.buyerId == request.auth.uid ||
+        resource.data.sellerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && request.resource.data.buyerId == request.auth.uid;
+      allow update: if isAdmin() || (
+        isAuthenticated() && resource.data.sellerId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['returnStatus', 'returnTrackingNumber', 'updatedAt'])
+      );
     }
     
     // ================================================================

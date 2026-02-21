@@ -51,6 +51,7 @@ from schema_constants import (
     PaymentStatusValues,
     PayoutStatusValues,
     PlaceholderAddressValues,
+    ProductLifecycleStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
     SubscriptionStatusValues,
@@ -313,7 +314,7 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
         product_data = product_doc.to_dict()
 
         # Check if product is still active
-        if not product_data.get(Fields.IS_ACTIVE, False):
+        if product_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
             removed_products.append(
                 {
                     Fields.PRODUCT_ID: product_id,
@@ -648,7 +649,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         product_data = product_doc.to_dict()
 
         # SECURITY: Reject inactive/deactivated products
-        if not product_data.get(Fields.IS_ACTIVE, False):
+        if product_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
             raise https_fn.HttpsError(
                 "failed-precondition", f"Product {item[Fields.PRODUCT_ID]} is not active and cannot be purchased"
             )
@@ -1781,7 +1782,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
             return f"Order {order_id} cancelled - product removed"
 
         product_data = product_doc.to_dict()
-        if not product_data.get(Fields.IS_ACTIVE, False):
+        if product_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
             logger.warning(f"⚠️ Product {product_id} deactivated, cancelling order {order_id}")
             _restore_stock_and_cancel_order(order_id, order_data, f"Product {product_id} deactivated")
             return f"Order {order_id} cancelled - product deactivated"

@@ -32,6 +32,7 @@ from schema_constants import (
     PaymentStatusValues,
     PayoutStatusValues,
     ProductApprovalStatusValues,
+    ProductLifecycleStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
     SubscriptionStatusValues,
@@ -709,7 +710,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
     try:
         # Count active products in Firestore using count aggregation
 
-        products_query = get_db().collection(Collections.PRODUCTS).where(Fields.IS_ACTIVE, "==", True)
+        products_query = get_db().collection(Collections.PRODUCTS).where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
 
         # Use count aggregation (more efficient than streaming)
         count_query = products_query.count()
@@ -1042,7 +1043,7 @@ def retry_failed_algolia_syncs(event: scheduler_fn.ScheduledEvent) -> None:
                     algolia_delete_product(product_id)
                 else:
                     product_data = product_doc.to_dict()
-                    if product_data.get(Fields.IS_ACTIVE, True):
+                    if product_data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE:
                         algolia_index_product(product_id, product_data)
                     else:
                         algolia_delete_product(product_id)
@@ -1089,8 +1090,7 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
         get_db()
         .collection(Collections.PRODUCTS)
         .where(Fields.IS_DIGITAL, "==", True)
-        .where(Fields.APPROVAL_STATUS, "==", ProductApprovalStatusValues.APPROVED)
-        .where(Fields.IS_ACTIVE, "==", True)
+        .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
         .stream()
     )
 
@@ -1121,8 +1121,7 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
             reason = f"Download URL(s) became unreachable: {', '.join(dead)}"
             doc.reference.update(
                 {
-                    Fields.IS_ACTIVE: False,
-                    Fields.APPROVAL_STATUS: ProductApprovalStatusValues.UNDER_REVIEW,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.UNDER_REVIEW,
                     Fields.APPROVAL_REJECTION_REASON: reason,
                 }
             )
@@ -1173,8 +1172,7 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     query = (
         get_db()
         .collection(Collections.PRODUCTS)
-        .where(Fields.IS_ACTIVE, "==", True)
-        .where(Fields.APPROVAL_STATUS, "==", ProductApprovalStatusValues.APPROVED)
+        .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
         .limit(500)
     )
 

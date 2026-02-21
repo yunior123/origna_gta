@@ -32,10 +32,12 @@ Map<String, dynamic> _$InventoryConfigToJson(_InventoryConfig instance) =>
 _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   productId: json['productId'] as String,
   name: json['name'] as String,
+  nameF: json['nameF'] as String?,
   price: (json['price'] as num).toDouble(),
   priceCents: (json['priceCents'] as num?)?.toInt(),
   compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble(),
   description: json['description'] as String,
+  descriptionF: json['descriptionF'] as String?,
   imageUrls: (json['imageUrls'] as List<dynamic>)
       .map((e) => e as String)
       .toList(),
@@ -48,7 +50,8 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
   ratingCount: (json['ratingCount'] as num?)?.toInt() ?? 0,
   createdAt: DateTime.parse(json['createdAt'] as String),
-  isActive: json['isActive'] as bool? ?? true,
+  lifecycleStatus:
+      json['lifecycleStatus'] as String? ?? ProductLifecycleStatusValues.draft,
   weightKg: (json['weightKg'] as num?)?.toDouble(),
   lengthCm: (json['lengthCm'] as num?)?.toDouble(),
   widthCm: (json['widthCm'] as num?)?.toDouble(),
@@ -74,9 +77,6 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   keywords:
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
-  approvalStatus:
-      json['approvalStatus'] as String? ??
-      ProductApprovalStatusValues.underReview,
   approvalRejectionReason: json['approvalRejectionReason'] as String?,
   cost: (json['cost'] as num?)?.toDouble(),
   supplierSku: json['supplierSku'] as String?,
@@ -87,7 +87,6 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   inventory: json['inventory'] == null
       ? null
       : InventoryConfig.fromJson(json['inventory'] as Map<String, dynamic>),
-  status: json['status'] as String? ?? ProductStatusValues.active,
   sellerSku: json['sellerSku'] as String?,
   warehouseIds: (json['warehouseIds'] as List<dynamic>?)
       ?.map((e) => e as String)
@@ -123,10 +122,12 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
 Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'productId': instance.productId,
   'name': instance.name,
+  'nameF': instance.nameF,
   'price': instance.price,
   'priceCents': instance.priceCents,
   'compareAtPrice': instance.compareAtPrice,
   'description': instance.description,
+  'descriptionF': instance.descriptionF,
   'imageUrls': instance.imageUrls,
   'sellerId': instance.sellerId,
   'sellerAddress': instance.sellerAddress,
@@ -135,7 +136,7 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'rating': instance.rating,
   'ratingCount': instance.ratingCount,
   'createdAt': instance.createdAt.toIso8601String(),
-  'isActive': instance.isActive,
+  'lifecycleStatus': instance.lifecycleStatus,
   'weightKg': instance.weightKg,
   'lengthCm': instance.lengthCm,
   'widthCm': instance.widthCm,
@@ -153,14 +154,12 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'deviceLimit': instance.deviceLimit,
   'taxCode': instance.taxCode,
   'keywords': instance.keywords,
-  'approvalStatus': instance.approvalStatus,
   'approvalRejectionReason': instance.approvalRejectionReason,
   'cost': instance.cost,
   'supplierSku': instance.supplierSku,
   'supplierUrl': instance.supplierUrl,
   'supplier': instance.supplier,
   'inventory': instance.inventory,
-  'status': instance.status,
   'sellerSku': instance.sellerSku,
   'warehouseIds': instance.warehouseIds,
   'shipFromCity': instance.shipFromCity,
@@ -183,9 +182,11 @@ _ProductCreate _$ProductCreateFromJson(
   Map<String, dynamic> json,
 ) => _ProductCreate(
   name: json['name'] as String,
+  nameF: json['nameF'] as String?,
   price: (json['price'] as num).toDouble(),
   compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble(),
   description: json['description'] as String,
+  descriptionF: json['descriptionF'] as String?,
   imageUrls: (json['imageUrls'] as List<dynamic>)
       .map((e) => e as String)
       .toList(),
@@ -196,7 +197,8 @@ _ProductCreate _$ProductCreateFromJson(
   categoryId: (json['categoryId'] as num).toInt(),
   stockQuantity: (json['stockQuantity'] as num).toInt(),
   rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-  isActive: json['isActive'] as bool? ?? true,
+  lifecycleStatus:
+      json['lifecycleStatus'] as String? ?? ProductLifecycleStatusValues.draft,
   weightKg: (json['weightKg'] as num?)?.toDouble(),
   lengthCm: (json['lengthCm'] as num?)?.toDouble(),
   widthCm: (json['widthCm'] as num?)?.toDouble(),
@@ -231,7 +233,6 @@ _ProductCreate _$ProductCreateFromJson(
   inventory: json['inventory'] == null
       ? null
       : InventoryConfig.fromJson(json['inventory'] as Map<String, dynamic>),
-  status: json['status'] as String? ?? ProductStatusValues.active,
   sellerSku: json['sellerSku'] as String?,
   warehouseIds: (json['warehouseIds'] as List<dynamic>?)
       ?.map((e) => e as String)
@@ -259,16 +260,18 @@ _ProductCreate _$ProductCreateFromJson(
 Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
     <String, dynamic>{
       'name': instance.name,
+      'nameF': instance.nameF,
       'price': instance.price,
       'compareAtPrice': instance.compareAtPrice,
       'description': instance.description,
+      'descriptionF': instance.descriptionF,
       'imageUrls': instance.imageUrls,
       'sellerId': instance.sellerId,
       'sellerAddress': instance.sellerAddress,
       'categoryId': instance.categoryId,
       'stockQuantity': instance.stockQuantity,
       'rating': instance.rating,
-      'isActive': instance.isActive,
+      'lifecycleStatus': instance.lifecycleStatus,
       'weightKg': instance.weightKg,
       'lengthCm': instance.lengthCm,
       'widthCm': instance.widthCm,
@@ -291,7 +294,6 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'supplierUrl': instance.supplierUrl,
       'supplier': instance.supplier,
       'inventory': instance.inventory,
-      'status': instance.status,
       'sellerSku': instance.sellerSku,
       'warehouseIds': instance.warehouseIds,
       'shipFromCity': instance.shipFromCity,

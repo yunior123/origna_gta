@@ -13,6 +13,7 @@ from schema_constants import (
     DiscountTypeValues,
     Fields,
     ProductApprovalStatusValues,
+    ProductLifecycleStatusValues,
     ProductStatusValues,
     SupplierCurrencyValues,
     SupplierTypeValues,
@@ -267,12 +268,14 @@ class Product(BaseModel):
         default="", max_length=100, description="Unique product identifier (assigned by Firestore on create)"
     )
     name: str = Field(..., min_length=1, max_length=120, description="Product name")
+    nameF: str | None = Field(default=None, max_length=200, description="French product name (Quebec Bill 96 compliance)")
     price: float = Field(..., gt=0, le=100000, description="Price in CAD")
     priceCents: int | None = Field(default=None, ge=0, description="Price in integer cents — derived from price at write time")
     compareAtPrice: float | None = Field(
         default=None, gt=0, le=100000, description="Original/crossed-out price for sale display (must be > price)"
     )
     description: str = Field(..., min_length=10, max_length=4000, description="Product description")
+    descriptionF: str | None = Field(default=None, max_length=5000, description="French product description")
     imageUrls: list[str] = Field(..., min_length=1, max_length=5, description="Product image URLs (1-5 images)")
     sellerId: str = Field(..., min_length=1, description="Seller user ID")
     sellerAddress: Address | None = Field(default=None, description="Seller's address for shipping calculations")
@@ -281,7 +284,12 @@ class Product(BaseModel):
     rating: float = Field(default=0.0, ge=0, le=5, description="Average product rating (0-5)")
     ratingCount: int = Field(default=0, ge=0, description="Number of ratings")
     createdAt: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Product creation timestamp")
-    isActive: bool = Field(default=True, description="Whether product is active and visible")
+
+    # Single lifecycle state replacing isActive + status + approvalStatus
+    lifecycleStatus: str = Field(
+        default=ProductLifecycleStatusValues.DRAFT,
+        description="Single lifecycle state: draft|under_review|approved|active|paused|archived|rejected",
+    )
 
     # Optional shipping metadata
     weightKg: float | None = Field(default=None, gt=0, le=1000, description="Product weight in kilograms")
@@ -352,15 +360,11 @@ class Product(BaseModel):
         default=None, description="All unique countries across warehouses (denormalized for card display)"
     )
 
-    # Admin approval — all products start under_review, go live only when approved
-    approvalStatus: str = Field(
-        default=ProductApprovalStatusValues.UNDER_REVIEW,
-        description="Admin approval status: under_review | approved | rejected",
-    )
+    # Admin approval — rejection reason preserved for seller feedback
     approvalRejectionReason: str | None = Field(
         default=None,
         max_length=1000,
-        description="Admin rejection reason (only set when approvalStatus=rejected)",
+        description="Admin rejection reason (only set when lifecycleStatus=rejected)",
     )
 
     # NEW: Structured objects for scalability
@@ -368,9 +372,6 @@ class Product(BaseModel):
         default=None, description="Supplier information for dropshipping/marketplace products"
     )
     inventory: InventoryConfig | None = Field(default=None, description="Inventory management configuration")
-    status: str = Field(
-        default=ProductStatusValues.ACTIVE, description="Product status: draft, active, paused, archived, out_of_stock"
-    )
 
     # === TRENDING & ENGAGEMENT ===
     trendingScore: int = Field(
@@ -399,11 +400,11 @@ class Product(BaseModel):
             object.__setattr__(self, "priceCents", round(self.price * 100))
         return self
 
-    @field_validator("status")
+    @field_validator("lifecycleStatus")
     @classmethod
-    def validate_status(cls, v: str) -> str:
-        if v not in ProductStatusValues.ALL:
-            raise ValueError(f"Invalid status: {v}. Must be one of: {ProductStatusValues.ALL}")
+    def validate_lifecycle_status(cls, v: str) -> str:
+        if v not in ProductLifecycleStatusValues.ALL:
+            raise ValueError(f"Invalid lifecycleStatus: {v}. Must be one of: {ProductLifecycleStatusValues.ALL}")
         return v
 
     @field_validator("name")
@@ -465,16 +466,6 @@ class Product(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_status_active_consistency(self) -> "Product":
-        """Ensure isActive and status are not contradictory"""
-        if self.status == ProductStatusValues.ACTIVE and not self.isActive:
-            # Auto-fix: if status is active but isActive is False, respect isActive
-            object.__setattr__(self, "status", ProductStatusValues.PAUSED)
-        elif self.status in {ProductStatusValues.ARCHIVED, ProductStatusValues.PAUSED} and self.isActive:
-            object.__setattr__(self, "isActive", False)
-        return self
-
-    @model_validator(mode="after")
     def validate_compare_at_price(self) -> "Product":
         """Ensure compareAtPrice is strictly greater than price when set (it represents the original/higher price)."""
         if self.compareAtPrice is not None and self.compareAtPrice <= self.price:
@@ -505,11 +496,13 @@ class ProductCreate(BaseModel):
     """
 
     name: str = Field(..., min_length=1, max_length=120)
+    nameF: str | None = Field(default=None, max_length=200)
     price: float = Field(..., gt=0, le=100000)
     compareAtPrice: float | None = Field(
         default=None, gt=0, le=100000, description="Original/crossed-out price (must be > price when set)"
     )
     description: str = Field(..., min_length=10, max_length=4000)
+    descriptionF: str | None = Field(default=None, max_length=5000)
     imageUrls: list[str] = Field(..., min_length=1, max_length=5)
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address | None = Field(
@@ -518,7 +511,7 @@ class ProductCreate(BaseModel):
     categoryId: int = Field(..., ge=CategoryIds.MIN, le=CategoryIds.MAX)
     stockQuantity: int = Field(..., ge=0)
     rating: float = Field(default=0.0, ge=0, le=5)
-    isActive: bool = Field(default=True)
+    lifecycleStatus: str = Field(default=ProductLifecycleStatusValues.DRAFT)
     weightKg: float | None = Field(default=None, gt=0, le=1000)
     lengthCm: float | None = Field(default=None, gt=0, le=1000)
     widthCm: float | None = Field(default=None, gt=0, le=1000)
@@ -548,7 +541,6 @@ class ProductCreate(BaseModel):
     # NEW: Structured objects
     supplier: SupplierInfo | None = Field(default=None)
     inventory: InventoryConfig | None = Field(default=None)
-    status: str = Field(default=ProductStatusValues.ACTIVE)
 
     @model_validator(mode="after")
     def validate_shipping_source(self) -> "ProductCreate":
@@ -595,9 +587,9 @@ class ProductCreate(BaseModel):
                 raise ValueError("Description contains disallowed content")
         return v
 
-    @field_validator("status")
+    @field_validator("lifecycleStatus")
     @classmethod
-    def validate_status(cls, v: str) -> str:
-        if v not in ProductStatusValues.ALL:
-            raise ValueError(f"Invalid status: {v}. Must be one of: {ProductStatusValues.ALL}")
+    def validate_lifecycle_status(cls, v: str) -> str:
+        if v not in ProductLifecycleStatusValues.ALL:
+            raise ValueError(f"Invalid lifecycleStatus: {v}. Must be one of: {ProductLifecycleStatusValues.ALL}")
         return v

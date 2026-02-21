@@ -50,7 +50,7 @@ class TestStockRevalidation:
         # Mock product is DEACTIVATED
         mock_product_doc = Mock()
         mock_product_doc.exists = True
-        mock_product_doc.to_dict.return_value = {"isActive": False, "name": "Test Product"}
+        mock_product_doc.to_dict.return_value = {"lifecycleStatus": "paused", "name": "Test Product"}
 
         # Mock seller is active
         mock_seller_doc = Mock()
@@ -118,7 +118,7 @@ class TestStockRevalidation:
         # Product is active
         mock_product_doc = Mock()
         mock_product_doc.exists = True
-        mock_product_doc.to_dict.return_value = {"isActive": True}
+        mock_product_doc.to_dict.return_value = {"lifecycleStatus": "active"}
 
         # But SELLER IS SUSPENDED
         mock_seller_doc = Mock()
@@ -234,7 +234,7 @@ class TestStockRevalidation:
         # Product active
         mock_product_doc = Mock()
         mock_product_doc.exists = True
-        mock_product_doc.to_dict.return_value = {"isActive": True}
+        mock_product_doc.to_dict.return_value = {"lifecycleStatus": "active"}
 
         # Seller active
         mock_seller_doc = Mock()

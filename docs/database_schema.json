@@ -490,6 +490,12 @@
           "description": "Product name",
           "maxLength": 120
         },
+        "nameF": {
+          "type": "string",
+          "required": false,
+          "description": "French product name (Quebec Bill 96 compliance)",
+          "maxLength": 200
+        },
         "price": {
           "type": "number",
           "required": true,
@@ -505,6 +511,12 @@
           "required": true,
           "description": "Product description",
           "maxLength": 4000
+        },
+        "descriptionF": {
+          "type": "string",
+          "required": false,
+          "description": "French product description",
+          "maxLength": 5000
         },
         "imageUrls": {
           "type": "array<string>",
@@ -581,21 +593,6 @@
           "description": "Keywords for search functionality",
           "maxItems": 30
         },
-        "isActive": {
-          "type": "boolean",
-          "default": true,
-          "description": "Soft delete flag for product visibility"
-        },
-        "approvalStatus": {
-          "type": "string",
-          "enum": [
-            "under_review",
-            "approved",
-            "rejected"
-          ],
-          "default": "under_review",
-          "description": "Admin approval gate: all products start under_review, go live only when approved"
-        },
         "approvalRejectionReason": {
           "type": "string",
           "required": false,
@@ -610,6 +607,20 @@
           "type": "timestamp",
           "required": true,
           "description": "Product creation date"
+        },
+        "lifecycleStatus": {
+          "type": "string",
+          "default": "draft",
+          "description": "Single lifecycle state: draft|under_review|approved|active|paused|archived|rejected. Replaces isActive+status+approvalStatus.",
+          "values": [
+            "draft",
+            "under_review",
+            "approved",
+            "active",
+            "paused",
+            "archived",
+            "rejected"
+          ]
         },
         "isDigital": {
           "type": "boolean",
@@ -819,18 +830,6 @@
               "description": "How long to hold inventory during checkout"
             }
           }
-        },
-        "status": {
-          "type": "string",
-          "default": "active",
-          "description": "Product status",
-          "values": [
-            "draft",
-            "active",
-            "paused",
-            "archived",
-            "out_of_stock"
-          ]
         },
         "deliverySpeed": {
           "type": "string",
@@ -2677,6 +2676,100 @@
           "type": "timestamp",
           "required": false,
           "description": "Last update timestamp"
+        }
+      }
+    },
+    "return_requests": {
+      "description": "Tracks physical return requests with state machine: requested → approved → label_issued → received → refunded | rejected",
+      "fields": {
+        "returnId": {
+          "type": "string",
+          "required": true,
+          "description": "Auto-generated document ID"
+        },
+        "orderId": {
+          "type": "string",
+          "required": true,
+          "description": "Parent order ID"
+        },
+        "orderItemId": {
+          "type": "string",
+          "required": true,
+          "description": "Cart item ID of the item being returned"
+        },
+        "buyerId": {
+          "type": "string",
+          "required": true,
+          "description": "Buyer user ID"
+        },
+        "sellerId": {
+          "type": "string",
+          "required": true,
+          "description": "Seller user ID"
+        },
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product ID"
+        },
+        "productName": {
+          "type": "string",
+          "required": true,
+          "description": "Product name snapshot"
+        },
+        "quantity": {
+          "type": "integer",
+          "default": 1,
+          "description": "Quantity being returned"
+        },
+        "returnStatus": {
+          "type": "string",
+          "default": "requested",
+          "description": "Return state machine status",
+          "values": [
+            "requested",
+            "approved",
+            "label_issued",
+            "received",
+            "refunded",
+            "rejected"
+          ]
+        },
+        "returnReason": {
+          "type": "string",
+          "required": true,
+          "description": "Buyer's reason for return",
+          "maxLength": 1000
+        },
+        "returnAdminNote": {
+          "type": "string",
+          "required": false,
+          "description": "Admin/seller note",
+          "maxLength": 1000
+        },
+        "returnTrackingNumber": {
+          "type": "string",
+          "required": false,
+          "description": "Return shipment tracking number",
+          "maxLength": 100
+        },
+        "returnRefundAmountCents": {
+          "type": "integer",
+          "required": false,
+          "description": "Refund amount in cents"
+        },
+        "requestedAt": {
+          "type": "timestamp",
+          "description": "When return was requested"
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "description": "Last update timestamp"
+        },
+        "resolvedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When return was resolved (refunded or rejected)"
         }
       }
     }

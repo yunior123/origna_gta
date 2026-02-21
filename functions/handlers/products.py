@@ -36,6 +36,7 @@ from schema_constants import (
     Fields,
     OrderStatusValues,
     ProductApprovalStatusValues,
+    ProductLifecycleStatusValues,
     ProductStatusValues,
     UserRoleValues,
     WarehouseTypeValues,
@@ -435,7 +436,7 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
         )
 
     # Soft delete
-    product_ref.update({Fields.IS_ACTIVE: False, Fields.DELETED_AT: get_server_timestamp(), Fields.DELETED_BY: user_id})
+    product_ref.update({Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ARCHIVED, Fields.DELETED_AT: get_server_timestamp(), Fields.DELETED_BY: user_id})
 
     # Remove from Algolia index
     try:
@@ -828,7 +829,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         return
 
     # Only index active products
-    if not product_data.get(Fields.IS_ACTIVE, True):
+    if product_data.get(Fields.LIFECYCLE_STATUS) not in ProductLifecycleStatusValues.BUYER_VISIBLE:
         logger.info(f"Product {product_id} is not active, skipping indexing")
         return
 
@@ -845,8 +846,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
                 logger.info(f"SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating")
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
-                        Fields.IS_ACTIVE: False,
-                        Fields.STATUS: ProductStatusValues.DRAFT,
+                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
                         Fields.DEACTIVATION_REASON: "Seller is suspended",
                     }
                 )
@@ -861,7 +861,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             .collection(Collections.PRODUCTS)
             .where(Fields.SELLER_ID, "==", seller_id)
             .where(Fields.SELLER_SKU, "==", seller_sku)
-            .where(Fields.IS_ACTIVE, "!=", False)
+            .where(Fields.LIFECYCLE_STATUS, "!=", ProductLifecycleStatusValues.ARCHIVED)
             .limit(2)
             .get()
         )
@@ -874,8 +874,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             )
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
-                    Fields.IS_ACTIVE: False,
-                    Fields.STATUS: ProductStatusValues.DRAFT,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
                     Fields.DEACTIVATION_REASON: f"Duplicate sellerSku: '{seller_sku}' already exists for this seller",
                 }
             )
@@ -887,8 +886,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         logger.info(f"SECURITY: Product {product_id} has invalid price ({price}) — deactivating")
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
-                Fields.IS_ACTIVE: False,
-                Fields.STATUS: ProductStatusValues.DRAFT,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
                 Fields.DEACTIVATION_REASON: f"Invalid price: {price}",
             }
         )
@@ -900,8 +898,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         logger.info(f"SECURITY: Product {product_id} has invalid stock ({stock}) — deactivating")
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
-                Fields.IS_ACTIVE: False,
-                Fields.STATUS: ProductStatusValues.DRAFT,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
                 Fields.DEACTIVATION_REASON: f"Invalid stock: {stock}",
             }
         )
@@ -919,8 +916,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             logger.info(f"SECURITY: Product {product_id} has empty seller country — deactivating")
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
-                    Fields.IS_ACTIVE: False,
-                    Fields.STATUS: ProductStatusValues.DRAFT,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
                     Fields.DEACTIVATION_REASON: "Missing seller country",
                 }
             )
@@ -939,8 +935,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             )
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
-                    Fields.IS_ACTIVE: False,
-                    Fields.STATUS: ProductStatusValues.DRAFT,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
                     Fields.DEACTIVATION_REASON: "Address not verified via Geoapify (missing coordinates)",
                 }
             )
@@ -959,8 +954,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
                 logger.info(f"SECURITY: Product {product_id} failed address verification: {error_reason} — REJECTING")
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
-                        Fields.IS_ACTIVE: False,
-                        Fields.STATUS: ProductStatusValues.DRAFT,
+                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
                         Fields.DEACTIVATION_REASON: f"Address verification failed: {error_reason}",
                     }
                 )
@@ -981,8 +975,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         logger.info(f"SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating")
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
-                Fields.IS_ACTIVE: False,
-                Fields.STATUS: ProductStatusValues.DRAFT,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
                 Fields.DEACTIVATION_REASON: f"Invalid categoryId: {category_id}",
             }
         )
@@ -1082,8 +1075,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             logger.warning(f"SECURITY: Product {product_id} has invalid image — deactivating: {img_url[:80]}")
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
-                    Fields.IS_ACTIVE: False,
-                    Fields.STATUS: ProductStatusValues.DRAFT,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
                     Fields.DEACTIVATION_REASON: "Image validation failed (invalid file type)",
                 }
             )
@@ -1123,10 +1115,8 @@ def on_product_created(event: firestore_fn.Event) -> None:
             logger.warning(f"SECURITY: Product {product_id} has non-HTTPS digital URL(s): {bad_urls} — deactivating")
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
-                    Fields.IS_ACTIVE: False,
-                    Fields.STATUS: ProductStatusValues.DRAFT,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.REJECTED,
                     Fields.DEACTIVATION_REASON: f"Digital download URLs must use HTTPS: {', '.join(bad_urls)}",
-                    Fields.APPROVAL_STATUS: ProductApprovalStatusValues.REJECTED,
                     Fields.APPROVAL_REJECTION_REASON: f"Download URLs must use HTTPS: {', '.join(bad_urls)}",
                 }
             )
@@ -1134,13 +1124,11 @@ def on_product_created(event: firestore_fn.Event) -> None:
 
     # ── ADMIN APPROVAL GATE: All products land in under_review ──
     # Products are NOT indexed to Algolia until an admin explicitly approves them.
-    # The admin_approve_product callable sets isActive=True and triggers indexing.
+    # The admin_approve_product callable sets lifecycleStatus=active and triggers indexing.
     try:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
-                Fields.IS_ACTIVE: False,
-                Fields.STATUS: ProductStatusValues.DRAFT,
-                Fields.APPROVAL_STATUS: ProductApprovalStatusValues.UNDER_REVIEW,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.UNDER_REVIEW,
             }
         )
         logger.info(f"Product {product_id} set to under_review — awaiting admin approval")
@@ -1157,14 +1145,6 @@ def on_product_created(event: firestore_fn.Event) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
-
-
-def _compute_is_active(status: str, approval_status: str) -> bool:
-    """Single source of truth: isActive = status=='active' AND approvalStatus=='approved'.
-
-    This invariant must be enforced at every product write path.
-    """
-    return status == ProductStatusValues.ACTIVE and approval_status == ProductApprovalStatusValues.APPROVED
 
 
 def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
@@ -1343,10 +1323,8 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
             reason = f"Download URL(s) unreachable: {', '.join(dead_urls)}"
             product_ref.update(
                 {
-                    Fields.APPROVAL_STATUS: ProductApprovalStatusValues.REJECTED,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.REJECTED,
                     Fields.APPROVAL_REJECTION_REASON: reason,
-                    Fields.IS_ACTIVE: False,
-                    Fields.STATUS: ProductStatusValues.PAUSED,
                 }
             )
             if seller_email:
@@ -1356,13 +1334,11 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
                 message=f"Product auto-rejected: {reason}",
             )
 
-    # Approve — STATUS must be set to 'active' atomically with IS_ACTIVE=True
+    # Approve — set lifecycleStatus=active atomically
     product_ref.update(
         {
-            Fields.APPROVAL_STATUS: ProductApprovalStatusValues.APPROVED,
+            Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
             Fields.APPROVAL_REJECTION_REASON: None,
-            Fields.IS_ACTIVE: _compute_is_active(ProductStatusValues.ACTIVE, ProductApprovalStatusValues.APPROVED),
-            Fields.STATUS: ProductStatusValues.ACTIVE,
         }
     )
 
@@ -1371,8 +1347,7 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
         product_data.update(
             {
                 "id": product_id,
-                Fields.IS_ACTIVE: True,
-                Fields.APPROVAL_STATUS: ProductApprovalStatusValues.APPROVED,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
             }
         )
         index_product(product_id, product_data)
@@ -1442,10 +1417,8 @@ def admin_reject_product(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     product_ref.update(
         {
-            Fields.APPROVAL_STATUS: ProductApprovalStatusValues.REJECTED,
+            Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.REJECTED,
             Fields.APPROVAL_REJECTION_REASON: reason,
-            Fields.IS_ACTIVE: False,
-            Fields.STATUS: ProductStatusValues.PAUSED,
         }
     )
 
@@ -1517,8 +1490,8 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         logger.info(f"No data for product {product_id}")
         return
 
-    # If product is inactive, delete from index
-    if not product_data.get(Fields.IS_ACTIVE, True):
+    # If product is not active, delete from index
+    if product_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
         try:
             algolia_delete_product(product_id)
             logger.info(f"Product {product_id} removed from Algolia (inactive)")
@@ -1534,11 +1507,9 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         Fields.STOCK_QUANTITY,
         Fields.UPDATED_AT,
         Fields.STOCK_RESTORED,
-        Fields.IS_ACTIVE,
+        Fields.LIFECYCLE_STATUS,
         Fields.DEACTIVATION_REASON,
-        Fields.APPROVAL_STATUS,
         Fields.APPROVAL_REJECTION_REASON,
-        Fields.STATUS,  # seller pause/unpause — synced via _compute_is_active below
     }
     _address_changed = False
     if before_data:
@@ -1561,20 +1532,18 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             Fields.STOCK_QUANTITY,
             Fields.DIGITAL_TYPE,
         }
-        before_approval = before_data.get(Fields.APPROVAL_STATUS)
-        after_approval = product_data.get(Fields.APPROVAL_STATUS)
+        before_lifecycle = before_data.get(Fields.LIFECYCLE_STATUS)
+        after_lifecycle = product_data.get(Fields.LIFECYCLE_STATUS)
         if (
-            before_approval == ProductApprovalStatusValues.REJECTED
-            and after_approval == ProductApprovalStatusValues.REJECTED
+            before_lifecycle == ProductLifecycleStatusValues.REJECTED
+            and after_lifecycle == ProductLifecycleStatusValues.REJECTED
             and changed_fields & _SELLER_EDITABLE_FIELDS
         ):
             logger.info(f"Product {product_id}: rejected product edited by seller — resetting to under_review")
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
-                    Fields.APPROVAL_STATUS: ProductApprovalStatusValues.UNDER_REVIEW,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.UNDER_REVIEW,
                     Fields.APPROVAL_REJECTION_REASON: None,
-                    Fields.IS_ACTIVE: False,
-                    Fields.STATUS: ProductStatusValues.PAUSED,
                 }
             )
             # Notify admins of the resubmission
@@ -1585,20 +1554,13 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             return
 
         if changed_fields and changed_fields.issubset(_SKIP_VALIDATION_FIELDS):
-            # Non-security-relevant update — sync IS_ACTIVE from STATUS+APPROVAL_STATUS, then re-index
-            current_status = product_data.get(Fields.STATUS, ProductStatusValues.DRAFT)
-            current_approval = product_data.get(Fields.APPROVAL_STATUS, ProductApprovalStatusValues.UNDER_REVIEW)
-            correct_is_active = _compute_is_active(current_status, current_approval)
-            if product_data.get(Fields.IS_ACTIVE) != correct_is_active:
-                get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                    {Fields.IS_ACTIVE: correct_is_active}
-                )
-                product_data[Fields.IS_ACTIVE] = correct_is_active
-            if correct_is_active:
+            # Non-security-relevant update — re-index if active
+            is_active = product_data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE
+            if is_active:
                 try:
                     product_data["id"] = product_id
                     # Use partial update for stock/status-only changes to avoid rewriting all fields
-                    stock_only_fields = {Fields.STOCK_QUANTITY, Fields.IS_ACTIVE, Fields.UPDATED_AT}
+                    stock_only_fields = {Fields.STOCK_QUANTITY, Fields.LIFECYCLE_STATUS, Fields.UPDATED_AT}
                     if changed_fields.issubset(stock_only_fields):
                         partial_fields = {k: product_data[k] for k in changed_fields if k in product_data and k != Fields.UPDATED_AT}
                         if partial_fields:
@@ -1637,8 +1599,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 logger.info(f"SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating")
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
-                        Fields.IS_ACTIVE: False,
-                        Fields.STATUS: ProductStatusValues.PAUSED,
+                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
                         Fields.DEACTIVATION_REASON: "Seller is suspended",
                     }
                 )
@@ -1650,8 +1611,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         logger.info(f"SECURITY: Product {product_id} updated with invalid price ({price}) — deactivating")
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
-                Fields.IS_ACTIVE: False,
-                Fields.STATUS: ProductStatusValues.PAUSED,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
             }
         )
         return
@@ -1662,8 +1622,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         logger.info(f"SECURITY: Product {product_id} updated with invalid stock ({stock}) — deactivating")
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
-                Fields.IS_ACTIVE: False,
-                Fields.STATUS: ProductStatusValues.PAUSED,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
             }
         )
         return
@@ -1679,8 +1638,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             logger.info(f"SECURITY: Product {product_id} updated with empty seller country — deactivating")
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
-                    Fields.IS_ACTIVE: False,
-                    Fields.STATUS: ProductStatusValues.PAUSED,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
                 }
             )
             return
@@ -1697,8 +1655,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 logger.info(f"SECURITY: Product {product_id} updated with missing coordinates — REJECTING")
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
-                        Fields.IS_ACTIVE: False,
-                        Fields.STATUS: ProductStatusValues.PAUSED,
+                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
                         Fields.DEACTIVATION_REASON: "Address not verified via Geoapify (missing coordinates)",
                     }
                 )
@@ -1717,8 +1674,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 logger.info(f"SECURITY: Product {product_id} updated with invalid address: {error_reason} — REJECTING")
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
-                        Fields.IS_ACTIVE: False,
-                        Fields.STATUS: ProductStatusValues.PAUSED,
+                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
                         Fields.DEACTIVATION_REASON: f"Address verification failed: {error_reason}",
                     }
                 )
@@ -1765,13 +1721,12 @@ def on_product_updated(event: firestore_fn.Event) -> None:
 
     try:
         product_data["id"] = product_id
-        # Only index if product is approved — prevents bypassing the approval gate
-        approval_status = product_data.get(Fields.APPROVAL_STATUS, ProductApprovalStatusValues.UNDER_REVIEW)
-        if approval_status == ProductApprovalStatusValues.APPROVED and product_data.get(Fields.IS_ACTIVE, True):
+        # Only index if product is active — prevents bypassing the approval gate
+        if product_data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE:
             index_product(product_id, product_data)
             logger.info(f"Product {product_id} updated in Algolia")
         else:
-            logger.info(f"Product {product_id} not indexed — approvalStatus={approval_status}")
+            logger.info(f"Product {product_id} not indexed — lifecycleStatus={product_data.get(Fields.LIFECYCLE_STATUS)}")
     except Exception as e:
         logger.error(f"Failed to update product {product_id} in Algolia: {str(e)}")
 
@@ -1890,8 +1845,8 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
     order_by = data.get("orderBy", Fields.CREATED_AT)
     order_direction = data.get("orderDirection", "desc")
 
-    # SECURITY FIX #14: Force isActive=True for public API — only admins can list inactive products
-    # Prevents client-side bypass where isActive=false exposes deleted/hidden products
+    # SECURITY FIX #14: Force lifecycleStatus=active for public API — only admins can list non-active products
+    # Prevents client-side bypass where inactive products are exposed
     is_admin = False
     if req.auth:
         user_doc = get_db().collection(Collections.USERS).document(req.auth.uid).get()
@@ -1899,10 +1854,12 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
             roles = user_doc.to_dict().get(Fields.ROLES, [])
             is_admin = UserRoleValues.ADMIN in roles
 
-    is_active = True  # Public always sees active products only
+    # Admins can optionally filter by lifecycleStatus; public always gets active only
+    lifecycle_filter = ProductLifecycleStatusValues.ACTIVE
     if is_admin:
-        # Admins can optionally filter by isActive
-        is_active = data.get(Fields.IS_ACTIVE, True)
+        requested = data.get(Fields.LIFECYCLE_STATUS)
+        if requested and requested in ProductLifecycleStatusValues.ALL:
+            lifecycle_filter = requested
 
     # Validation
     if order_by not in [Fields.CREATED_AT, Fields.PRICE, Fields.RATING, Fields.RATING_COUNT, Fields.NAME]:
@@ -1916,8 +1873,8 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
         query = get_db().collection(Collections.PRODUCTS)
 
         # Filtres
-        if is_active is not None:
-            query = query.where(Fields.IS_ACTIVE, "==", is_active)
+        if lifecycle_filter is not None:
+            query = query.where(Fields.LIFECYCLE_STATUS, "==", lifecycle_filter)
 
         if category:
             query = query.where(Fields.CATEGORY_ID, "==", category)
@@ -2038,7 +1995,7 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, An
 
         # Filtrer par statut si nécessaire
         if not include_inactive:
-            query = query.where(Fields.IS_ACTIVE, "==", True)
+            query = query.where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
 
         # Tri par date de création (plus récent en premier)
         query = query.order_by(Fields.CREATED_AT, direction="DESCENDING")
@@ -2516,7 +2473,7 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
     # Only trigger on 0→>0 transition on active products
     if before_stock > 0 or after_stock <= 0:
         return
-    if not after_data.get(Fields.IS_ACTIVE):
+    if after_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
         return
 
     from services.email_service import send_email
@@ -3204,29 +3161,26 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         if action == "pause":
             batch.update(prod_ref, {
-                Fields.STATUS: ProductStatusValues.PAUSED,
-                Fields.IS_ACTIVE: False,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             updated += 1
 
         elif action == "activate":
-            # Only activate if product is approved
-            approval = prod_data.get(Fields.APPROVAL_STATUS, ProductApprovalStatusValues.UNDER_REVIEW)
-            if approval != ProductApprovalStatusValues.APPROVED:
+            # Only activate if product is in approved or paused state
+            current_lifecycle = prod_data.get(Fields.LIFECYCLE_STATUS)
+            if current_lifecycle not in {ProductLifecycleStatusValues.APPROVED, ProductLifecycleStatusValues.PAUSED}:
                 skipped += 1
                 continue
             batch.update(prod_ref, {
-                Fields.STATUS: ProductStatusValues.ACTIVE,
-                Fields.IS_ACTIVE: True,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             updated += 1
 
         elif action == "archive":
             batch.update(prod_ref, {
-                Fields.STATUS: ProductStatusValues.ARCHIVED,
-                Fields.IS_ACTIVE: False,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ARCHIVED,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             updated += 1

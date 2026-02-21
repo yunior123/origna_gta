@@ -424,7 +424,7 @@ class TestPerformanceAndScalability:
 
         required_indexes = [
             ("categoryId", "price", "createdAt"),
-            ("sellerId", "isActive", "createdAt"),
+            ("sellerId", "lifecycleStatus", "createdAt"),
             ("userId", "orderStatus", "createdAt"),
         ]
 

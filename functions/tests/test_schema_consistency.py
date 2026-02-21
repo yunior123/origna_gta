@@ -122,7 +122,7 @@ class TestSchemaConsistency:
             "stockQuantity",
             "rating",
             "ratingCount",
-            "isActive",
+            "lifecycleStatus",
             "searchKeywords",
             "sellerAddress",
             "freeShipping",

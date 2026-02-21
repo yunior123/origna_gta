@@ -411,7 +411,7 @@ def create_mock_product_doc(product_id="prod_123", price=50.00, stock_quantity=1
         "imageUrls": ["http://example.com/image.jpg"],
         "categoryId": 1,
         "description": "Test description",
-        "isActive": True,
+        "lifecycleStatus": "active",
     }
     return doc
 
@@ -478,7 +478,7 @@ def mock_product_doc():
         "imageUrls": ["http://example.com/image.jpg"],
         "categoryId": 1,
         "description": "Test description",
-        "isActive": True,
+        "lifecycleStatus": "active",
     }
     return doc
 
@@ -553,7 +553,7 @@ def mock_product_data():
         "stockQuantity": 10,
         "sellerId": "seller_123",
         "imageUrls": ["https://example.com/image.jpg"],
-        "isActive": True,
+        "lifecycleStatus": "active",
     }
 
 
@@ -641,7 +641,7 @@ def create_mock_product_doc(
         "imageUrls": image_urls,
         "description": f"Description for {name}",
         "category": "test_category",
-        "isActive": True,
+        "lifecycleStatus": "active",
         "deleted": deleted,
         "createdAt": MagicMock(),
         "updatedAt": MagicMock(),
@@ -876,7 +876,7 @@ class FirestoreMockBuilder:
                 "imageUrls": ["http://example.com/image.jpg"],
                 "categoryId": 1,
                 "description": "Test description",
-                "isActive": True,
+                "lifecycleStatus": "active",
             },
         )
 

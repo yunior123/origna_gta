@@ -48,6 +48,9 @@ class Collections:
     ALGOLIA_SYNC_FAILURES = "algolia_sync_failures"
     CRON_LOCKS = "_cron_locks"
 
+    # Return tracking
+    RETURN_REQUESTS = "return_requests"
+
     # Subcollections
     WAREHOUSES = "warehouses"  # users/{sellerId}/warehouses
     CART = "cart"  # users/{userId}/cart
@@ -245,6 +248,8 @@ class Fields:
     COMPARE_AT_PRICE = "compareAtPrice"  # Original/crossed-out price for sale display
     COMPARE_AT_PRICE_HISTORY = "compareAtPriceHistory"
     DESCRIPTION = "description"
+    NAME_F = "nameF"  # French product name (Quebec Bill 96)
+    DESCRIPTION_F = "descriptionF"  # French product description
     IMAGE_URLS = "imageUrls"
     SELLER_ID = "sellerId"
     SELLER_ADDRESS = "sellerAddress"
@@ -264,9 +269,10 @@ class Fields:
     REVIEW = "review"
     KEYWORDS = "keywords"
     SEARCH_KEYWORDS = "searchKeywords"
-    IS_ACTIVE = "isActive"
-    APPROVAL_STATUS = "approvalStatus"
+    IS_ACTIVE = "isActive"  # DEPRECATED — use LIFECYCLE_STATUS
+    APPROVAL_STATUS = "approvalStatus"  # DEPRECATED — use LIFECYCLE_STATUS
     APPROVAL_REJECTION_REASON = "approvalRejectionReason"
+    LIFECYCLE_STATUS = "lifecycleStatus"
     IS_DIGITAL = "isDigital"
     # Digital product extended fields
     DIGITAL_TYPE = "digitalType"
@@ -443,6 +449,14 @@ class Fields:
     PAYMENT_COMPLETED_AT = "paymentCompletedAt"
     PAYMENT_ERROR = "paymentError"
     CUSTOMER_NAME = "customerName"
+
+    # === RETURN REQUEST FIELDS ===
+    RETURN_ID = "returnId"
+    RETURN_STATUS = "returnStatus"
+    RETURN_REASON = "returnReason"
+    RETURN_TRACKING_NUMBER = "returnTrackingNumber"
+    RETURN_REFUND_AMOUNT_CENTS = "returnRefundAmountCents"
+    RETURN_ADMIN_NOTE = "returnAdminNote"
 
     # === ORDER ITEM FIELDS ===
     QUANTITY = "quantity"
@@ -821,7 +835,7 @@ class UserRoleValues:
 
 
 class ProductStatusValues:
-    """Valid values for product status field"""
+    """DEPRECATED — use ProductLifecycleStatusValues"""
 
     DRAFT = "draft"
     ACTIVE = "active"
@@ -833,17 +847,62 @@ class ProductStatusValues:
 
 
 class ProductApprovalStatusValues:
-    """Valid values for product approvalStatus field.
-
-    All new products land in UNDER_REVIEW until an admin explicitly approves them.
-    Only APPROVED products are marked isActive=True and indexed in Algolia.
-    """
+    """DEPRECATED — use ProductLifecycleStatusValues"""
 
     UNDER_REVIEW = "under_review"
     APPROVED = "approved"
     REJECTED = "rejected"
 
     ALL: frozenset[str] = frozenset({UNDER_REVIEW, APPROVED, REJECTED})
+
+
+class ProductLifecycleStatusValues:
+    """Single lifecycle status replacing isActive + status + approvalStatus.
+
+    State machine: draft → under_review → approved → active → paused | archived
+    Rejection: under_review → rejected → draft (resubmit)
+    """
+
+    DRAFT = "draft"
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    ARCHIVED = "archived"
+    REJECTED = "rejected"
+
+    ALL: frozenset[str] = frozenset({"draft", "under_review", "approved", "active", "paused", "archived", "rejected"})
+    VALID_TRANSITIONS: dict = {
+        "draft": {"under_review"},
+        "under_review": {"approved", "rejected"},
+        "approved": {"active"},
+        "active": {"paused", "archived"},
+        "paused": {"active", "archived"},
+        "rejected": {"draft", "under_review"},
+        "archived": frozenset(),
+    }
+    BUYER_VISIBLE: frozenset = frozenset({"active"})
+
+
+class ReturnStatusValues:
+    """Valid values for return request status — state machine for physical returns."""
+
+    REQUESTED = "requested"
+    APPROVED = "approved"
+    LABEL_ISSUED = "label_issued"
+    RECEIVED = "received"
+    REFUNDED = "refunded"
+    REJECTED = "rejected"
+
+    ALL: frozenset[str] = frozenset({"requested", "approved", "label_issued", "received", "refunded", "rejected"})
+    VALID_TRANSITIONS: dict = {
+        "requested": {"approved", "rejected"},
+        "approved": {"label_issued", "rejected"},
+        "label_issued": {"received"},
+        "received": {"refunded"},
+        "refunded": frozenset(),
+        "rejected": frozenset(),
+    }
 
 
 class ShippingApprovalStatusValues:

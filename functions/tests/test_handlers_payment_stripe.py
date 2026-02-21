@@ -1272,7 +1272,7 @@ def _make_warehouse_product(stock_quantity: int, warehouse_stock: dict):
         "stockQuantity": stock_quantity,
         "warehouseStock": warehouse_stock,
         "sellerId": "seller_1",
-        "isActive": True,
+        "lifecycleStatus": "active",
     }
     return doc
 

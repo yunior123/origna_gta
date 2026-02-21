@@ -521,9 +521,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   }
 
   Widget _buildApprovalStatusBanner() {
-    final status = widget.product.approvalStatus;
+    final status = widget.product.lifecycleStatus;
     final reason = widget.product.approvalRejectionReason;
-    if (status == ProductApprovalStatusValues.approved) return const SizedBox.shrink();
+    if (status == ProductLifecycleStatusValues.active || status == ProductLifecycleStatusValues.approved) return const SizedBox.shrink();
 
     Color bgColor;
     Color textColor;
@@ -531,7 +531,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     String title;
     String subtitle = '';
 
-    if (status == ProductApprovalStatusValues.rejected) {
+    if (status == ProductLifecycleStatusValues.rejected) {
       bgColor = const Color(0xFFFEE2E2);
       textColor = const Color(0xFFDC2626);
       icon = Icons.cancel_rounded;

@@ -301,6 +301,9 @@ abstract final class Collections {
   // Security (backend-only)
   static const userSecurity = 'user_security'; // Backend-only MFA secrets — allow read: if false
   static const sellerProfiles = 'seller_profiles'; // Seller-only profile data
+
+  // Return tracking
+  static const returnRequests = 'return_requests';
 }
 
 /// Confirmation values for sensitive operations requiring explicit confirmation
@@ -518,6 +521,8 @@ abstract final class Fields {
   static const compareAtPrice = 'compareAtPrice';
   static const compareAtPriceHistory = 'compareAtPriceHistory';
   static const description = 'description';
+  static const nameF = 'nameF';
+  static const descriptionF = 'descriptionF';
   static const imageUrls = 'imageUrls';
   static const sellerId = 'sellerId';
   static const sellerAddress = 'sellerAddress';
@@ -536,9 +541,10 @@ abstract final class Fields {
   static const rating = 'rating';
   static const ratingCount = 'ratingCount';
   static const keywords = 'keywords';
-  static const isActive = 'isActive';
-  static const approvalStatus = 'approvalStatus';
+  static const isActive = 'isActive'; // DEPRECATED — use lifecycleStatus
+  static const approvalStatus = 'approvalStatus'; // DEPRECATED — use lifecycleStatus
   static const approvalRejectionReason = 'approvalRejectionReason';
+  static const lifecycleStatus = 'lifecycleStatus';
   static const isDigital = 'isDigital';
   // Digital product extended fields
   static const digitalType = 'digitalType';
@@ -580,6 +586,14 @@ abstract final class Fields {
   static const lastSyncedAt = 'lastSyncedAt';
   static const status = 'status';
   static const deliverySpeed = 'deliverySpeed';
+
+  // === RETURN REQUEST FIELDS ===
+  static const returnId = 'returnId';
+  static const returnStatus = 'returnStatus';
+  static const returnReason = 'returnReason';
+  static const returnTrackingNumber = 'returnTrackingNumber';
+  static const returnRefundAmountCents = 'returnRefundAmountCents';
+  static const returnAdminNote = 'returnAdminNote';
 
   // === ORDER FIELDS ===
   static const orderId = 'orderId';
@@ -1124,6 +1138,7 @@ abstract final class PolicyVersionValues {
   static const defaultVersion = '1.0';
 }
 
+/// DEPRECATED — use ProductLifecycleStatusValues
 /// Valid values for product approvalStatus field.
 /// All new products start as underReview until an admin approves them.
 abstract final class ProductApprovalStatusValues {
@@ -1134,6 +1149,7 @@ abstract final class ProductApprovalStatusValues {
   static const all = {underReview, approved, rejected};
 }
 
+/// DEPRECATED — use ProductLifecycleStatusValues
 /// Valid values for product status field
 abstract final class ProductStatusValues {
   static const draft = 'draft';
@@ -1145,6 +1161,18 @@ abstract final class ProductStatusValues {
   static const all = {draft, active, paused, archived, outOfStock};
 }
 
+/// Single lifecycle status replacing isActive + status + approvalStatus.
+/// State machine: draft → under_review → approved → active → paused | archived
+abstract final class ProductLifecycleStatusValues {
+  static const draft = 'draft';
+  static const underReview = 'under_review';
+  static const approved = 'approved';
+  static const active = 'active';
+  static const paused = 'paused';
+  static const archived = 'archived';
+  static const rejected = 'rejected';
+}
+
 /// Product condition values for marketplace-style listings
 abstract final class ProductConditionValues {
   static const newCondition = 'new';
@@ -1154,6 +1182,16 @@ abstract final class ProductConditionValues {
   static const forParts = 'for_parts';
 
   static const all = {newCondition, likeNew, good, fair, forParts};
+}
+
+/// Valid values for return request status — state machine for physical returns.
+abstract final class ReturnStatusValues {
+  static const requested = 'requested';
+  static const approved = 'approved';
+  static const labelIssued = 'label_issued';
+  static const received = 'received';
+  static const refunded = 'refunded';
+  static const rejected = 'rejected';
 }
 
 /// Normalized shipping carrier identifiers

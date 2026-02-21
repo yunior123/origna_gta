@@ -91,7 +91,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                     bool matchesStock = true;
                     switch (_stockFilter) {
                       case 'pending_review':
-                        matchesStock = data.approvalStatus == ProductApprovalStatusValues.underReview;
+                        matchesStock = data.lifecycleStatus == ProductLifecycleStatusValues.underReview;
                         break;
                       case 'in_stock':
                         matchesStock = stock > 0;
@@ -152,7 +152,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           loading: () => const SizedBox.shrink(),
           error: (err, stack) => const SizedBox.shrink(),
           data: (products) {
-            final pendingCount = products.where((p) => p.approvalStatus == ProductApprovalStatusValues.underReview).length;
+            final pendingCount = products.where((p) => p.lifecycleStatus == ProductLifecycleStatusValues.underReview).length;
             final isSelected = _stockFilter == 'pending_review';
             return Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -231,21 +231,22 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
 }
 
 class _ApprovalBadge extends StatelessWidget {
-  final String approvalStatus;
-  const _ApprovalBadge({required this.approvalStatus});
+  final String lifecycleStatus;
+  const _ApprovalBadge({required this.lifecycleStatus});
 
   @override
   Widget build(BuildContext context) {
     Color color;
     String label;
     IconData icon;
-    switch (approvalStatus) {
-      case ProductApprovalStatusValues.approved:
+    switch (lifecycleStatus) {
+      case ProductLifecycleStatusValues.active:
+      case ProductLifecycleStatusValues.approved:
         color = const Color(0xFF22C55E);
         label = 'Approved';
         icon = Icons.check_circle_rounded;
         break;
-      case ProductApprovalStatusValues.rejected:
+      case ProductLifecycleStatusValues.rejected:
         color = const Color(0xFFEF4444);
         label = 'Rejected';
         icon = Icons.cancel_rounded;
@@ -373,7 +374,7 @@ class _ProductCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  _ApprovalBadge(approvalStatus: product.approvalStatus),
+                  _ApprovalBadge(lifecycleStatus: product.lifecycleStatus),
                 ],
               ),
             ),
@@ -384,9 +385,9 @@ class _ProductCard extends ConsumerWidget {
               icon: Icon(Icons.more_vert_rounded, color: DesignTokens.textDisabled),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
               itemBuilder: (context) => [
-                if (product.approvalStatus != ProductApprovalStatusValues.approved)
+                if (product.lifecycleStatus != ProductLifecycleStatusValues.active)
                   _menuItem('approve', Icons.check_circle_rounded, 'Approve Product', DesignTokens.success),
-                if (product.approvalStatus != ProductApprovalStatusValues.rejected)
+                if (product.lifecycleStatus != ProductLifecycleStatusValues.rejected)
                   _menuItem('reject', Icons.cancel_rounded, 'Reject Product', DesignTokens.error),
                 _menuItem('set_stock', Icons.edit_rounded, 'admin.sellers.set_stock'.tr(), DesignTokens.primary),
                 _menuItem('mark_out_of_stock', Icons.remove_circle_outline_rounded, 'admin.sellers.mark_out_of_stock'.tr(), DesignTokens.warning),

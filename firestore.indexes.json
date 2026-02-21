@@ -5,7 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -13,14 +13,14 @@
           "order": "DESCENDING"
         }
       ],
-      "comment": "FIX 2026-02-11: Index for products filtered by isActive ordered by createdAt (home page)"
+      "comment": "FIX 2026-02-11: Index for products filtered by lifecycleStatus ordered by createdAt (home page)"
     },
     {
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -38,7 +38,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -56,7 +56,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -270,7 +270,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -331,7 +331,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -346,7 +346,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -361,7 +361,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -376,7 +376,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -391,7 +391,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -410,7 +410,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         },
         {
@@ -493,7 +493,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "isActive",
+          "fieldPath": "lifecycleStatus",
           "order": "ASCENDING"
         }
       ]

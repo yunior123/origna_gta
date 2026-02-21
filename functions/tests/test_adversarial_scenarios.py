@@ -26,7 +26,7 @@ class TestPriceManipulationScenarios:
         mock_product.to_dict.return_value = {
             "price": 15.0,  # Current price
             "stockQuantity": 10,
-            "isActive": True,
+            "lifecycleStatus": "active",
             "sellerId": "seller_123",
             "name": "Test Product",
             "imageUrls": [],
@@ -112,7 +112,7 @@ class TestPriceManipulationScenarios:
         mock_product.to_dict.return_value = {
             "price": 10.0,
             "stockQuantity": 10,
-            "isActive": True,
+            "lifecycleStatus": "active",
             "sellerId": "legitimate_seller",  # Actual owner
             "name": "Test Product",
             "imageUrls": [],

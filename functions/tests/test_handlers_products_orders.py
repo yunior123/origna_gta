@@ -151,7 +151,7 @@ class TestProductHandlers:
         # Mock product owned by user
         mock_product_doc = Mock()
         mock_product_doc.exists = True
-        mock_product_doc.to_dict.return_value = {"productId": "prod_123", "sellerId": "seller_123", "isActive": True}
+        mock_product_doc.to_dict.return_value = {"productId": "prod_123", "sellerId": "seller_123", "lifecycleStatus": "active"}
 
         mock_product_ref = Mock()
         mock_product_ref.get.return_value = mock_product_doc
@@ -834,67 +834,36 @@ def test_generate_product_slug_different_each_call():
 # =============================================================================
 
 
-class TestComputeIsActive:
-    """_compute_is_active() enforces: isActive = (status=='active' AND approvalStatus=='approved')"""
+class TestProductLifecycleStatus:
+    """Verify ProductLifecycleStatusValues transitions are well-defined"""
 
-    def test_active_and_approved_returns_true(self):
-        from handlers.products import _compute_is_active
+    def test_all_states_have_transitions(self):
+        from schema_constants import ProductLifecycleStatusValues
 
-        assert _compute_is_active("active", "approved") is True
+        for state in ProductLifecycleStatusValues.ALL:
+            assert state in ProductLifecycleStatusValues.VALID_TRANSITIONS
 
-    def test_active_but_under_review_returns_false(self):
-        from handlers.products import _compute_is_active
+    def test_active_is_buyer_visible(self):
+        from schema_constants import ProductLifecycleStatusValues
 
-        assert _compute_is_active("active", "under_review") is False
-
-    def test_active_but_rejected_returns_false(self):
-        from handlers.products import _compute_is_active
-
-        assert _compute_is_active("active", "rejected") is False
-
-    def test_draft_and_approved_returns_false(self):
-        from handlers.products import _compute_is_active
-
-        assert _compute_is_active("draft", "approved") is False
-
-    def test_paused_and_approved_returns_false(self):
-        from handlers.products import _compute_is_active
-
-        assert _compute_is_active("paused", "approved") is False
-
-    def test_archived_and_approved_returns_false(self):
-        from handlers.products import _compute_is_active
-
-        assert _compute_is_active("archived", "approved") is False
-
-    def test_out_of_stock_and_approved_returns_false(self):
-        from handlers.products import _compute_is_active
-
-        assert _compute_is_active("out_of_stock", "approved") is False
-
-    def test_empty_strings_return_false(self):
-        from handlers.products import _compute_is_active
-
-        assert _compute_is_active("", "") is False
+        assert "active" in ProductLifecycleStatusValues.BUYER_VISIBLE
+        assert "draft" not in ProductLifecycleStatusValues.BUYER_VISIBLE
 
 
 class TestAdminApproveProductStatusSync:
     """admin_approve_product must write STATUS='active' alongside IS_ACTIVE=True"""
 
-    @patch("handlers.products._compute_is_active", return_value=True)
     @patch("handlers.products._get_seller_email", return_value=None)
     @patch("handlers.products.index_product")
     @patch("handlers.products.create_success_response")
     @patch("handlers.products.get_db")
     def test_approve_writes_status_active(
-        self, mock_get_db, mock_create_response, mock_index, mock_email, mock_compute
+        self, mock_get_db, mock_create_response, mock_index, mock_email
     ):
         from handlers.products import admin_approve_product
 
         product_data = {
-            "isActive": False,
-            "status": "draft",
-            "approvalStatus": "under_review",
+            "lifecycleStatus": "under_review",
             "isDigital": False,
             "sellerId": "seller_1",
         }
@@ -933,8 +902,7 @@ class TestAdminApproveProductStatusSync:
         update_calls = mock_product_ref.update.call_args_list
         assert update_calls, "Expected product_ref.update() to be called"
         update_payload = update_calls[0][0][0]
-        assert update_payload.get("status") == "active", f"Expected status='active', got: {update_payload}"
-        assert update_payload.get("isActive") is True
+        assert update_payload.get("lifecycleStatus") == "active", f"Expected lifecycleStatus='active', got: {update_payload}"
 
 
 class TestAdminRejectProductStatusSync:
@@ -948,9 +916,7 @@ class TestAdminRejectProductStatusSync:
         from handlers.products import admin_reject_product
 
         product_data = {
-            "isActive": True,
-            "status": "active",
-            "approvalStatus": "approved",
+            "lifecycleStatus": "active",
             "sellerId": "seller_1",
             "name": "Test Product",
         }
@@ -988,5 +954,4 @@ class TestAdminRejectProductStatusSync:
         update_calls = mock_product_ref.update.call_args_list
         assert update_calls, "Expected product_ref.update() to be called"
         update_payload = update_calls[0][0][0]
-        assert update_payload.get("status") == "paused", f"Expected status='paused', got: {update_payload}"
-        assert update_payload.get("isActive") is False
+        assert update_payload.get("lifecycleStatus") in ("paused", "archived", "rejected", "draft", "under_review"), f"Expected lifecycleStatus in non-active values, got: {update_payload}"

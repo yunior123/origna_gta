@@ -97,12 +97,14 @@ abstract class Product with _$Product {
   const factory Product({
     required String productId,
     required String name,
+    String? nameF,
     required double price,
     int? priceCents,
 
     /// Original/crossed-out price for discount display (null = no sale, must be > price)
     double? compareAtPrice,
     required String description,
+    String? descriptionF,
     required List<String> imageUrls,
     required String sellerId,
     // sellerAddress is optional — products with warehouses use warehouseIds instead
@@ -112,7 +114,8 @@ abstract class Product with _$Product {
     @Default(0.0) double rating,
     @Default(0) int ratingCount,
     required DateTime createdAt,
-    @Default(true) bool isActive,
+    // Single lifecycle state replacing isActive + status + approvalStatus
+    @Default(ProductLifecycleStatusValues.draft) String lifecycleStatus,
     // Optional shipping metadata
     double? weightKg,
     double? lengthCm,
@@ -135,8 +138,7 @@ abstract class Product with _$Product {
     // Tax and metadata
     String? taxCode,
     @Default([]) List<String> keywords,
-    // Admin approval — all products start under_review, go live only when approved
-    @Default(ProductApprovalStatusValues.underReview) String approvalStatus,
+    // Admin rejection reason
     String? approvalRejectionReason,
     // Flat supplier fields (used when supplier object is not provided)
     double? cost,
@@ -148,9 +150,6 @@ abstract class Product with _$Product {
 
     /// Inventory management configuration
     InventoryConfig? inventory,
-
-    /// Product status: draft, active, paused, archived, out_of_stock
-    @Default(ProductStatusValues.active) String status,
 
     // Multi-warehouse support
     /// Seller's unique product identifier — enforced unique per seller at write time
@@ -220,11 +219,13 @@ abstract class Product with _$Product {
 abstract class ProductCreate with _$ProductCreate {
   const factory ProductCreate({
     required String name,
+    String? nameF,
     required double price,
 
     /// Original/crossed-out price for discount display (null = no sale, must be > price)
     double? compareAtPrice,
     required String description,
+    String? descriptionF,
     required List<String> imageUrls,
     required String sellerId,
     // sellerAddress is optional — required only when warehouseIds is not provided
@@ -232,7 +233,7 @@ abstract class ProductCreate with _$ProductCreate {
     required int categoryId,
     required int stockQuantity,
     @Default(0.0) double rating,
-    @Default(true) bool isActive,
+    @Default(ProductLifecycleStatusValues.draft) String lifecycleStatus,
     double? weightKg,
     double? lengthCm,
     double? widthCm,
@@ -251,7 +252,7 @@ abstract class ProductCreate with _$ProductCreate {
     int? deviceLimit,
     String? taxCode,
     @Default([]) List<String> keywords,
-    // approvalStatus intentionally not in ProductCreate — backend sets it to under_review on creation
+    // lifecycleStatus intentionally defaults to draft — backend sets under_review on creation
     // Flat supplier fields (used when supplier object is not provided)
     double? cost,
     String? supplierSku,
@@ -259,7 +260,6 @@ abstract class ProductCreate with _$ProductCreate {
     // Structured objects
     SupplierInfo? supplier,
     InventoryConfig? inventory,
-    @Default(ProductStatusValues.active) String status,
     // Multi-warehouse support
     String? sellerSku,
     List<String>? warehouseIds,

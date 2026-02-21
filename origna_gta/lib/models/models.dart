@@ -703,13 +703,14 @@ class ProductModel {
   final bool isPerishable; // Food, flowers, etc. - affects same-day delivery logic
   final int minimumOrderQuantity;
   final bool freeShipping;
-  final bool isActive;
+  final bool isActive; // DEPRECATED — use lifecycleStatus
   final Timestamp? deletedAt;
   final bool isDigital; // True if product is digital (no shipping required)
   final String? digitalType; // 'software' | 'book'
   final Map<String, String>? digitalBuilds; // platform -> download URL (software only)
-  final String approvalStatus; // 'under_review' | 'approved' | 'rejected'
+  final String approvalStatus; // DEPRECATED — use lifecycleStatus
   final String? approvalRejectionReason;
+  final String lifecycleStatus;
 
   ProductModel({
     required this.id,
@@ -736,13 +737,14 @@ class ProductModel {
     this.isPerishable = false,
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
-    this.isActive = true,
+    this.isActive = true, // DEPRECATED — use lifecycleStatus
     this.deletedAt,
     this.isDigital = false,
     this.digitalType,
     this.digitalBuilds,
-    this.approvalStatus = 'under_review',
+    this.approvalStatus = 'under_review', // DEPRECATED — use lifecycleStatus
     this.approvalRejectionReason,
+    this.lifecycleStatus = 'draft',
   }) : deliveryOptions = deliveryOptions ?? SellerDeliveryOption.defaultOptions(),
        searchKeywords = keywords;
 
@@ -787,6 +789,7 @@ class ProductModel {
       digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
       approvalStatus: map[Fields.approvalStatus]?.toString() ?? 'under_review',
       approvalRejectionReason: map[Fields.approvalRejectionReason]?.toString(),
+      lifecycleStatus: map[Fields.lifecycleStatus]?.toString() ?? 'draft',
       weightKg: map[Fields.weightKg] != null ? _parseDouble(map[Fields.weightKg]) : null,
       lengthCm: map[Fields.lengthCm] != null ? _parseDouble(map[Fields.lengthCm]) : null,
       widthCm: map[Fields.widthCm] != null ? _parseDouble(map[Fields.widthCm]) : null,
@@ -837,6 +840,7 @@ class ProductModel {
       Fields.freeShipping: freeShipping,
       Fields.isActive: isActive,
       Fields.isDigital: isDigital,
+      Fields.lifecycleStatus: lifecycleStatus,
       if (deletedAt != null) Fields.deletedAt: deletedAt,
     };
   }

@@ -115,8 +115,7 @@ class AlgoliaProductRepository implements ProductRepository {
       final snapshot = await _firestore
           .collection(Collections.products)
           .where(FieldPath.documentId, whereIn: chunk)
-          .where(Fields.isActive, isEqualTo: true)
-          .get();
+          .where(Fields.lifecycleStatus, isEqualTo: ProductLifecycleStatusValues.active)          .get();
       results.addAll(snapshot.docs.map((doc) => Product.fromFirestore(doc)));
     }
     return results;
@@ -135,7 +134,7 @@ class AlgoliaProductRepository implements ProductRepository {
     final snapshot = await _firestore
         .collection(Collections.products)
         .where(Fields.keywords, arrayContains: query.toLowerCase())
-        .where(Fields.isActive, isEqualTo: true)
+        .where(Fields.lifecycleStatus, isEqualTo: ProductLifecycleStatusValues.active)
         .limit(5)
         .get();
 
@@ -219,7 +218,7 @@ class AlgoliaProductRepository implements ProductRepository {
     Query<Map<String, dynamic>> query = _firestore.collection(Collections.products);
 
     // Apply filters
-    query = query.where(Fields.isActive, isEqualTo: true);
+    query = query.where(Fields.lifecycleStatus, isEqualTo: ProductLifecycleStatusValues.active);
 
     if (categoryId != null) {
       query = query.where(Fields.categoryId, isEqualTo: categoryId);

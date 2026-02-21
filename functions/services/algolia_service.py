@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from config import AlgoliaConfig, get_algolia_app_id, get_algolia_write_api_key
 from models.product import Product
-from schema_constants import AppConfig, Collections, Fields
+from schema_constants import AppConfig, Collections, Fields, ProductLifecycleStatusValues
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,7 @@ def format_product_for_algolia(product_id: str, product_data: dict | Product) ->
         Fields.RATING: data.get(Fields.RATING, 0.0),
         Fields.RATING_COUNT: data.get(Fields.RATING_COUNT, 0),
         Fields.IS_ACTIVE: data.get(Fields.IS_ACTIVE, True),
+        Fields.LIFECYCLE_STATUS: data.get(Fields.LIFECYCLE_STATUS, ProductLifecycleStatusValues.DRAFT),
         Fields.KEYWORDS: data.get(Fields.KEYWORDS, []) or data.get(Fields.SEARCH_KEYWORDS, []),
         Fields.FREE_SHIPPING: data.get(Fields.FREE_SHIPPING, False),
         Fields.IS_PERISHABLE: data.get(Fields.IS_PERISHABLE, False),
