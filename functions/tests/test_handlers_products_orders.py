@@ -19,11 +19,9 @@ class TestProductHandlers:
 
     @patch("handlers.products.create_success_response")
     @patch("handlers.products.get_db")
-    @patch.dict(
-        "os.environ", {"R2_ACCESS_KEY": "mock_key", "R2_SECRET_KEY": "mock_secret", "R2_ACCOUNT_ID": "mock_account"}
-    )
+    @patch("handlers.products.get_r2_credentials", return_value={"access_key": "mock_key", "secret_key": "mock_secret", "account_id": "mock_account"})
     @patch("handlers.products.boto3.client")
-    def test_upload_product_images_success(self, mock_boto_client, mock_get_db, mock_create_response):
+    def test_upload_product_images_success(self, mock_boto_client, mock_get_r2_creds, mock_get_db, mock_create_response):
         """Test successful image upload with presigned URLs"""
         from handlers.products import upload_product_images
 
@@ -61,11 +59,9 @@ class TestProductHandlers:
 
     @patch("handlers.products.create_success_response")
     @patch("handlers.products.get_db")
-    @patch.dict(
-        "os.environ", {"R2_ACCESS_KEY": "mock_key", "R2_SECRET_KEY": "mock_secret", "R2_ACCOUNT_ID": "mock_account"}
-    )
+    @patch("handlers.products.get_r2_credentials", return_value={"access_key": "mock_key", "secret_key": "mock_secret", "account_id": "mock_account"})
     @patch("handlers.products.boto3.client")
-    def test_upload_images_invalid_file_type_rejected(self, mock_boto_client, mock_get_db, mock_create_response):
+    def test_upload_images_invalid_file_type_rejected(self, mock_boto_client, mock_get_r2_creds, mock_get_db, mock_create_response):
         """SECURITY: Test non-image file types are rejected - verifies presigned URLs are only generated for images"""
         from handlers.products import upload_product_images
 
