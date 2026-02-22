@@ -259,7 +259,7 @@ def _secrets() -> dict:
     global _app_secrets
     if _app_secrets is None:
         raw = APP_SECRETS_PARAM.value
-        _app_secrets = json.loads(raw) if raw else {}
+        _app_secrets = json.loads(raw) if isinstance(raw, (str, bytes, bytearray)) and raw else {}
     return _app_secrets
 
 
