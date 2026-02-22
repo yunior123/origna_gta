@@ -27,6 +27,7 @@ USAGE:
 - Production: Deployed via GitHub Actions after tests pass
 """
 
+import json
 import os
 from enum import Enum
 
@@ -218,63 +219,74 @@ class AlgoliaConfig:
 
 # ============================================================================
 # SECRETS MANAGEMENT
+#
+# STRATEGY: Single APP_SECRETS JSON blob = 1 active secret version per project.
+# Free tier = 6 versions per billing account. 3 projects × 1 = 3 → always free.
+#
+# Production (Secret Manager): one secret "APP_SECRETS" with this shape:
+#   {
+#     "stripe":   {"secret_key":"","webhook_secret":"","premium_price_id":""},
+#     "mailjet":  {"api_key":"","secret_key":""},
+#     "algolia":  {"app_id":"","write_api_key":""},
+#     "r2":       {"access_key":"","secret_key":"","account_id":""},
+#     "unsubscribe_hmac": "",
+#     "geoapify": "",
+#     "sentry":   ""
+#   }
+#
+# Emulator/local: reads individual env vars from .env (no changes for devs).
 # ============================================================================
 
-
-# Helper for local scripts to use .env secrets even when targeting non-emulator envs
 FORCE_LOCAL_SECRETS = os.environ.get("FORCE_LOCAL_SECRETS", "false").lower() == "true"
+_USE_LOCAL = IS_EMULATOR or FORCE_LOCAL_SECRETS
+
+APP_SECRETS_PARAM = params.SecretParam("APP_SECRETS")
+
+# Parsed once per cold start
+_app_secrets: dict | None = None
 
 
 def _load_secret(key: str, required: bool = True) -> str:
-    """
-    Load secret safely based on environment.
+    """Load a secret from env vars (emulator/local only)."""
+    value = os.environ.get(key)
+    if not value and required:
+        raise ValueError(f"❌ {key} required in local mode. Add to .env or export {key}=...")
+    return value or ""
 
-    EMULATOR/LOCAL: Reads from environment variables (.env file via dotenv)
-    PRODUCTION: Reads from Google Secret Manager via params.SecretParam
-    """
-    if IS_EMULATOR or FORCE_LOCAL_SECRETS:
-        value = os.environ.get(key)
-        if not value and required:
-            raise ValueError(f"❌ {key} required in local mode. Add to .env or export {key}=...")
-        return value or ""
-    else:
-        try:
-            return params.SecretParam(key).value
-        except Exception as e:
-            if required:
-                raise RuntimeError(f"❌ Failed to load {key} from Secret Manager: {e}") from e
-            return ""
+
+def _secrets() -> dict:
+    """Return parsed APP_SECRETS dict, cached per cold start."""
+    global _app_secrets
+    if _app_secrets is None:
+        raw = APP_SECRETS_PARAM.value
+        _app_secrets = json.loads(raw) if raw else {}
+    return _app_secrets
 
 
 # ============================================================================
 # STRIPE CONFIGURATION
 # ============================================================================
 
-# Define SecretParams (resolved at runtime in production)
-_STRIPE_SECRET_KEY_PARAM = params.SecretParam("STRIPE_SECRET_KEY")
-_STRIPE_WEBHOOK_SECRET_PARAM = params.SecretParam("STRIPE_WEBHOOK_SECRET")
-_STRIPE_PREMIUM_PRICE_ID_PARAM = params.SecretParam("STRIPE_PREMIUM_PRICE_ID")
-
 
 def get_stripe_secret_key() -> str:
-    """Get Stripe Secret Key (lazy load)."""
-    if IS_EMULATOR:
+    """Get Stripe Secret Key."""
+    if _USE_LOCAL:
         return _load_secret("STRIPE_SECRET_KEY", required=False)
-    return _STRIPE_SECRET_KEY_PARAM.value
+    return _secrets().get("stripe", {}).get("secret_key", "")
 
 
 def get_stripe_webhook_secret() -> str:
-    """Get Stripe Webhook Secret (lazy load)."""
-    if IS_EMULATOR:
+    """Get Stripe Webhook Secret."""
+    if _USE_LOCAL:
         return _load_secret("STRIPE_WEBHOOK_SECRET", required=False)
-    return _STRIPE_WEBHOOK_SECRET_PARAM.value
+    return _secrets().get("stripe", {}).get("webhook_secret", "")
 
 
 def get_stripe_premium_price_id() -> str:
-    """Get Stripe Premium Subscription Price ID (lazy load)."""
-    if IS_EMULATOR:
+    """Get Stripe Premium Subscription Price ID."""
+    if _USE_LOCAL:
         return _load_secret("STRIPE_PREMIUM_PRICE_ID", required=False)
-    return _STRIPE_PREMIUM_PRICE_ID_PARAM.value
+    return _secrets().get("stripe", {}).get("premium_price_id", "")
 
 
 class StripeConfig:
@@ -291,108 +303,82 @@ class StripeConfig:
 # MAILJET CONFIGURATION
 # ============================================================================
 
-_MAILJET_API_KEY_PARAM = params.SecretParam("MAILJET_API_KEY")
-_MAILJET_SECRET_KEY_PARAM = params.SecretParam("MAILJET_SECRET_KEY")
-
 
 def get_mailjet_api_key() -> str:
     """Get Mailjet API Key."""
-    if IS_EMULATOR:
+    if _USE_LOCAL:
         return _load_secret("MAILJET_API_KEY", required=False)
-    return _MAILJET_API_KEY_PARAM.value
+    return _secrets().get("mailjet", {}).get("api_key", "")
 
 
 def get_mailjet_secret_key() -> str:
     """Get Mailjet Secret Key."""
-    if IS_EMULATOR:
+    if _USE_LOCAL:
         return _load_secret("MAILJET_SECRET_KEY", required=False)
-    return _MAILJET_SECRET_KEY_PARAM.value
+    return _secrets().get("mailjet", {}).get("secret_key", "")
 
 
 # ============================================================================
-# UNSUBSCRIBE HMAC SECRET (email unsubscribe link signing)
+# UNSUBSCRIBE HMAC SECRET
 # ============================================================================
-
-_UNSUBSCRIBE_HMAC_SECRET_PARAM = params.SecretParam("UNSUBSCRIBE_HMAC_SECRET")
 
 
 def get_unsubscribe_hmac_secret() -> str:
     """Get Unsubscribe HMAC Secret."""
-    if IS_EMULATOR:
+    if _USE_LOCAL:
         return _load_secret("UNSUBSCRIBE_HMAC_SECRET", required=False)
-    # This secret is optional in some contexts, but SecretParam requires it to exist
-    try:
-        return _UNSUBSCRIBE_HMAC_SECRET_PARAM.value
-    except Exception:
-        return ""
+    return _secrets().get("unsubscribe_hmac", "")
 
 
 # ============================================================================
 # GEOAPIFY CONFIGURATION
 # ============================================================================
 
-_GEOAPIFY_API_KEY_PARAM = params.SecretParam("GEOAPIFY_API_KEY")
-
 
 def get_geoapify_api_key() -> str:
     """Get Geoapify API Key."""
-    if IS_EMULATOR:
+    if _USE_LOCAL:
         return _load_secret("GEOAPIFY_API_KEY", required=False)
-    try:
-        return _GEOAPIFY_API_KEY_PARAM.value
-    except Exception:
-        # Fallback to lowercase for safety
-        return _load_secret("geoapify-key", required=False)
+    return _secrets().get("geoapify", "")
 
 
 # ============================================================================
 # ALGOLIA SECRETS
 # ============================================================================
 
-_ALGOLIA_APP_ID_PARAM = params.SecretParam("ALGOLIA_APP_ID")
-_ALGOLIA_WRITE_API_KEY_PARAM = params.SecretParam("ALGOLIA_WRITE_API_KEY")
-
 
 def get_algolia_app_id() -> str:
     """Get Algolia App ID."""
-    if IS_EMULATOR:
+    if _USE_LOCAL:
         return _load_secret("ALGOLIA_APP_ID", required=False)
-    return _ALGOLIA_APP_ID_PARAM.value
+    return _secrets().get("algolia", {}).get("app_id", "")
 
 
 def get_algolia_write_api_key() -> str:
     """Get Algolia Write API Key."""
-    if IS_EMULATOR:
+    if _USE_LOCAL:
         return _load_secret("ALGOLIA_WRITE_API_KEY", required=False)
-    try:
-        return _ALGOLIA_WRITE_API_KEY_PARAM.value
-    except Exception:
-        # Fallback to lowercase for safety
-        return _load_secret("ALGOLIA_API_KEY", required=False)
+    return _secrets().get("algolia", {}).get("write_api_key", "")
 
 
 # ============================================================================
 # CLOUDFLARE R2 SECRETS
 # ============================================================================
 
-# These are params.SecretParam for Firebase deployment (resolved at runtime in prod)
-R2_ACCESS_KEY_PARAM = params.SecretParam("R2_ACCESS_KEY")
-R2_SECRET_KEY_PARAM = params.SecretParam("R2_SECRET_KEY")
-R2_ACCOUNT_ID_PARAM = params.SecretParam("R2_ACCOUNT_ID")
-
 
 def get_r2_credentials() -> dict:
-    """Get R2 credentials based on environment."""
-    if IS_EMULATOR:
+    """Get R2 credentials."""
+    if _USE_LOCAL:
         return {
             "access_key": os.environ.get("R2_ACCESS_KEY", ""),
             "secret_key": os.environ.get("R2_SECRET_KEY", ""),
             "account_id": os.environ.get("R2_ACCOUNT_ID", ""),
         }
+    r2 = _secrets().get("r2", {})
     return {
-        "access_key": R2_ACCESS_KEY_PARAM.value,
-        "secret_key": R2_SECRET_KEY_PARAM.value,
-        "account_id": R2_ACCOUNT_ID_PARAM.value,
+        "access_key": r2.get("access_key", ""),
+        "secret_key": r2.get("secret_key", ""),
+        "account_id": r2.get("account_id", ""),
     }
 
 
@@ -400,13 +386,11 @@ def get_r2_credentials() -> dict:
 # SENTRY ERROR MONITORING
 # ============================================================================
 
-_SENTRY_DSN_PARAM = params.SecretParam("SENTRY_DSN_BACKEND")
-
 
 def get_sentry_dsn() -> str:
-    if IS_EMULATOR:
+    if _USE_LOCAL:
         return _load_secret("SENTRY_DSN_BACKEND", required=False)
-    return _SENTRY_DSN_PARAM.value
+    return _secrets().get("sentry", "")
 
 
 def init_sentry():

@@ -1,0 +1,8 @@
+Service description,Service ID,Cost ($),Savings programs ($),Other savings ($),Unrounded subtotal ($),Subtotal ($),Percent change in subtotal compared to previous period
+Secret Manager,EE82-7A5E-871C,0.86,0.00,0.00,0.860701,0.86,New
+Cloud Scheduler,1F14-4801-0E16,0.14,0.00,0.00,0.138352,0.14,New
+Cloud Build,8B5D-EF7D-EB12,0.00,0.00,0.00,0.000389,0.00,0%
+Cloud Run Functions,29E7-DA93-CA13,0.75,0.00,-0.75,0.000002,0.00,0%
+,,,,Subtotal,2.007809,2.01
+,,,,Tax,0.000000,0.00
+,,,,Filtered total,2.007809,2.01

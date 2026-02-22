@@ -34,12 +34,27 @@ test.describe('Trending Products flows', () => {
             isPremium: true,
             notifyTrending: false // Start with it off to test toggling
         }), adminAuth.idToken);
+
+        // Also create an active subscription doc so the subscription screen shows the premium view
+        const now = new Date();
+        const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+        await writeDoc(`subscriptions/${userId}`, toFirestoreFields({
+            status: 'active',
+            customerId: 'cus_test_e2e',
+            subscriptionId: 'sub_test_e2e',
+            currentPeriodStart: now,
+            currentPeriodEnd: periodEnd,
+            cancelAtPeriodEnd: false,
+        }), adminAuth.idToken, false);
     });
 
     test('Premium user can toggle Trending Products notifications', async ({ page }) => {
         // 1. Ensure target URL is reachable
         await requireWebApp(page, WEB_APP_URL);
         page.setDefaultTimeout(60_000);
+
+        // Get admin token for Firestore verification reads
+        const adminToken = (await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS)).idToken;
 
         // 2. Load the page and wait for Flutter web initialization
         await page.goto(`${WEB_APP_URL}/`);
@@ -56,13 +71,13 @@ test.describe('Trending Products flows', () => {
         await waitForFlutter(page);
 
         // 5. Go to Premium Subscription using the semantics label
-        const premiumBtn = page.locator('[aria-label^="menu-premium"]').first();
+        const premiumBtn = page.getByRole('button', { name: /menu-premium/i }).first();
         await premiumBtn.click();
         await expect(page).toHaveURL(/\/subscription/i, { timeout: 20000 });
         await waitForFlutter(page);
 
         // 6. Toggle the Trending Products switch
-        const trendingListTile = page.locator('text=Trending Products').first();
+        const trendingListTile = page.getByRole('switch', { name: /Trending Products/i }).first();
         await expect(trendingListTile).toBeVisible();
         await trendingListTile.click();
 
@@ -71,7 +86,7 @@ test.describe('Trending Products flows', () => {
 
         let updatedDoc;
         for (let i = 0; i < 5; i++) {
-            updatedDoc = await getDoc(`users/${userId}`);
+            updatedDoc = await getDoc(`users/${userId}`, adminToken);
             if (updatedDoc?.notifyTrending === true) {
                 break;
             }

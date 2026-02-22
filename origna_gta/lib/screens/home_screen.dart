@@ -941,14 +941,11 @@ class _ProductGrid extends ConsumerWidget {
         ),
         delegate: SliverChildBuilderDelegate((context, index) {
           final product = products[index];
-          return Semantics(
-            label: '${product.name}, \$${product.price.toStringAsFixed(2)}',
-            child: ProductCard(
-              key: Key('product_card_${product.name}'),
-              productId: product.productId,
-              product: product,
-              userModel: userProfile ?? fallbackUserModel,
-            ),
+          return ProductCard(
+            key: Key('product_card_${product.name}'),
+            productId: product.productId,
+            product: product,
+            userModel: userProfile ?? fallbackUserModel,
           );
         }, childCount: products.length),
       ),

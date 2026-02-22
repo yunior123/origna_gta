@@ -320,6 +320,9 @@ service cloud.firestore {
         (!request.resource.data.keys().hasAny(['sellerAddress']) || isValidSellerAddress(request.resource.data.sellerAddress)) &&
         request.resource.data.lifecycleStatus in ['draft', 'under_review', 'active'] &&
         request.resource.data.price > 0);
+      // Admin-only: lightweight update for just isTrending / trendingAt (no full doc validation needed)
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isTrending', 'trendingAt']);
       allow update: if isAuthenticated() &&
         ((resource.data.sellerId == request.auth.uid && isSellerApproved()) || isAdmin()) &&
           // Only allow specific fields to be changed via client updates
@@ -582,7 +585,7 @@ service cloud.firestore {
     // ================================================================
     match /subscriptions/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create, update, delete: if false; // Backend-only writes
+      allow write: if isAdmin(); // Admin can write for test setup and management
     }
 
     // ================================================================

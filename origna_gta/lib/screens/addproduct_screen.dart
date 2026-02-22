@@ -1298,13 +1298,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                   child: Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.info.withValues(alpha: 0.5)),
                 ),
               ),
-            SizedBox(
-              height: 28,
-              child: Switch.adaptive(
-                value: value,
-                onChanged: onChanged,
-                activeThumbColor: DesignTokens.primary,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            Semantics(
+              label: label,
+              child: SizedBox(
+                height: 28,
+                child: Switch.adaptive(
+                  value: value,
+                  onChanged: onChanged,
+                  activeThumbColor: DesignTokens.primary,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             ),
           ],

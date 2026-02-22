@@ -183,9 +183,9 @@ test.describe('PW Digital Products — Add Product', () => {
 
         // D01e: Enter a macOS URL
         await macosField.click();
-        await page.waitForTimeout(400);
-        await page.keyboard.type('https://releases.example.com/cleaner.dmg', { delay: 20 });
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(600);
+        await macosField.pressSequentially('https://releases.example.com/cleaner.dmg', { delay: 30 });
+        await page.waitForTimeout(500);
 
         // D01f: Field retains value
         await expect(macosField).toHaveValue(/releases\.example\.com/);
