@@ -22,8 +22,12 @@ import {
   fillStripeCheckout,
   waitForOrderStatus,
   verifyEmailSent,
+  writeDoc,
+  deleteDoc,
+  toFirestoreFields,
   FUNCTIONS_URL,
   TEST_ACCOUNTS,
+  TEST_UIDS,
 } from './api-helpers';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -271,24 +275,47 @@ test.describe('D. License Activation & Book Download', () => {
   let softwareLicenseKey: string;
   let bookLicenseKey: string;
 
-  // Purchase the software and book once; reuse license keys across D.* tests
-  test.beforeAll(async ({ browser }) => {
-    const page = await browser.newPage();
+  // Seed license keys directly via admin API to avoid slow Stripe checkout
+  test.beforeAll(async () => {
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    const buyerAuth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
 
-    // Buy software product
-    const swResult = await fullCheckoutAndPay(page, BUYER_EMAIL, DIGITAL_SW_ID, 1);
-    const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
-    const swOrder = await waitForOrderStatus(swResult.orderId, ['confirmed', 'delivered'], auth.idToken, 90_000);
-    const swItem = (swOrder.items || []).find((it: any) => it.productId === DIGITAL_SW_ID);
-    softwareLicenseKey = swItem?.licenseKey;
+    // Seed software license (FXCleaner — macOS only)
+    softwareLicenseKey = 'REDACTED_SECRET';
+    await writeDoc(`licenses/${softwareLicenseKey}`, toFirestoreFields({
+      licenseKey: softwareLicenseKey,
+      productId: DIGITAL_SW_ID,
+      orderId: 'e2e-test-order-d-sw',
+      userId: buyerAuth.localId,
+      digitalType: 'software',
+      status: 'active',
+      supportedPlatforms: ['macos'],
+      deviceLimit: 3,
+      activations: [],
+      digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-mac-test.dmg' },
+      productName: 'FXCleaner',
+      createdAt: new Date(),
+    }), adminAuth.idToken, false);
 
-    // Buy book product
-    const bookResult = await fullCheckoutAndPay(page, BUYER_EMAIL, DIGITAL_BOOK_ID, 1);
-    const bookOrder = await waitForOrderStatus(bookResult.orderId, ['confirmed', 'delivered'], auth.idToken, 90_000);
-    const bookItem = (bookOrder.items || []).find((it: any) => it.productId === DIGITAL_BOOK_ID);
-    bookLicenseKey = bookItem?.licenseKey;
+    // Seed book license (eBook)
+    bookLicenseKey = 'REDACTED_SECRET';
+    await writeDoc(`licenses/${bookLicenseKey}`, toFirestoreFields({
+      licenseKey: bookLicenseKey,
+      productId: DIGITAL_BOOK_ID,
+      orderId: 'e2e-test-order-d-book',
+      userId: buyerAuth.localId,
+      digitalType: 'book',
+      status: 'active',
+      bookSourceUrl: 'https://cdn.example.com/test-ebook.pdf',
+      productName: 'Canadian History eBook Bundle',
+      createdAt: new Date(),
+    }), adminAuth.idToken, false);
+  });
 
-    await page.close();
+  test.afterAll(async () => {
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    await deleteDoc(`licenses/${softwareLicenseKey}`, adminAuth.idToken);
+    await deleteDoc(`licenses/${bookLicenseKey}`, adminAuth.idToken);
   });
 
   test('D.1 Activate software license on a new device → approved with downloadUrls', async () => {
@@ -363,15 +390,47 @@ test.describe('E. Security & Access Control', () => {
   test.setTimeout(180_000);
 
   let buyerLicenseKey: string;
+  let buyerBookLicenseKey: string;
 
-  test.beforeAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    const { orderId } = await fullCheckoutAndPay(page, BUYER_EMAIL, DIGITAL_SW_ID, 1);
-    const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
-    const order = await waitForOrderStatus(orderId, ['confirmed', 'delivered'], auth.idToken, 90_000);
-    const item = (order.items || []).find((it: any) => it.productId === DIGITAL_SW_ID);
-    buyerLicenseKey = item?.licenseKey;
-    await page.close();
+  // Seed license keys directly via admin API to avoid slow Stripe checkout
+  test.beforeAll(async () => {
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    const buyerAuth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
+
+    buyerLicenseKey = 'E2EE-SW01-ABCD-9999';
+    await writeDoc(`licenses/${buyerLicenseKey}`, toFirestoreFields({
+      licenseKey: buyerLicenseKey,
+      productId: DIGITAL_SW_ID,
+      orderId: 'e2e-test-order-e-sw',
+      userId: buyerAuth.localId,
+      digitalType: 'software',
+      status: 'active',
+      supportedPlatforms: ['macos'],
+      deviceLimit: 3,
+      activations: [],
+      digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-mac-test.dmg' },
+      productName: 'FXCleaner',
+      createdAt: new Date(),
+    }), adminAuth.idToken, false);
+
+    buyerBookLicenseKey = 'E2EE-BK01-ABCD-8888';
+    await writeDoc(`licenses/${buyerBookLicenseKey}`, toFirestoreFields({
+      licenseKey: buyerBookLicenseKey,
+      productId: DIGITAL_BOOK_ID,
+      orderId: 'e2e-test-order-e-book',
+      userId: buyerAuth.localId,
+      digitalType: 'book',
+      status: 'active',
+      bookSourceUrl: 'https://cdn.example.com/test-ebook-e4.pdf',
+      productName: 'Canadian History eBook Bundle',
+      createdAt: new Date(),
+    }), adminAuth.idToken, false);
+  });
+
+  test.afterAll(async () => {
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    await deleteDoc(`licenses/${buyerLicenseKey}`, adminAuth.idToken);
+    await deleteDoc(`licenses/${buyerBookLicenseKey}`, adminAuth.idToken);
   });
 
   test('E.1 Another buyer cannot activate a license they do not own', async () => {
@@ -412,18 +471,15 @@ test.describe('E. Security & Access Control', () => {
     expect(result.code, 'Must reject non-existent license key request').not.toBe('unexpected-success');
   });
 
-  test('E.4 Book download session token is single-use (second use of same token fails)', async ({ page }) => {
-    // Buy a book, generate a session token, "use" it by calling the redirect endpoint,
+  test('E.4 Book download session token is single-use (second use of same token fails)', async () => {
+    // Use pre-seeded book license to generate a session token, "use" it by calling the redirect endpoint,
     // then try to reuse the token — should get 410 Gone (already_used).
-    const { orderId } = await fullCheckoutAndPay(page, BUYER_EMAIL, DIGITAL_BOOK_ID, 1);
-    const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
-    const order = await waitForOrderStatus(orderId, ['confirmed', 'delivered'], auth.idToken, 90_000);
+    expect(buyerBookLicenseKey).toBeTruthy();
 
-    const bookItem = (order.items || []).find((it: any) => it.productId === DIGITAL_BOOK_ID);
-    expect(bookItem?.licenseKey, 'Book license key required').toBeTruthy();
+    const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
 
     const sessionResult = await callOk('generate_book_download_session', {
-      licenseKey: bookItem.licenseKey,
+      licenseKey: buyerBookLicenseKey,
     }, auth.idToken);
 
     // Extract the token from the downloadUrl

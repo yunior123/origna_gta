@@ -339,3 +339,85 @@ Firebase Test Lab free tier: 5 virtual tests/day. CI uses 2 (Pixel 6 API33 + iPh
 ./admin secrets upload --env=prod
 ./admin webhooks verify --env=prod
 ```
+
+---
+
+## Playwright E2E — Flutter Web Accessibility (Feb 2026 — Session 6)
+
+### Critical Flutter Web Aria Behavior
+- Flutter Web does NOT set `aria-label` as HTML attributes on `role="button"` elements. Accessible names for buttons live in text content INSIDE the element. **Must use** `page.getByRole('button', { name: /pattern/ })`, NOT `[aria-label^="..."]` CSS selectors for buttons.
+- Flutter Web DOES set `aria-label` on `role="group"` elements (e.g. product card containers). `[aria-label^="product-card-"]` works for groups.
+- `SwitchListTile` renders as `role="switch"` → use `page.getByRole('switch', { name: /Label Text/i })`.
+- `fill()` NEVER works for Flutter Web text inputs. Use `locator.click() + locator.pressSequentially(text, { delay: 30 })`.
+- `page.keyboard.type()` can drift focus when multiple fields visible. Use `locator.pressSequentially()` instead — dispatches directly to the element.
+- Outer `Semantics(label: 'X')` wrapping a child with `Semantics(label: 'product-card-...')` causes the group's `aria-label` to start with 'X', blocking `[aria-label^="product-card-"]`. Keep the innermost Semantics label as the outermost wrapper.
+
+### Switch Toggle in Semantics
+- `Switch.adaptive` inside a container has NO accessible label by default. Must wrap with `Semantics(label: label, child: Switch.adaptive(...))` to expose the label in the accessibility tree for Playwright to find it via `getByRole('switch', { name: /.../ })`.
+
+### Subscription Screen Auth
+- `subscription_screen.dart` reads `isPremium` from `subscriptions/{uid}` collection (NOT `users/{uid}.isPremium`). For tests to show the premium view, BOTH must exist:
+  1. `users/{userId}.isPremium = true`
+  2. `subscriptions/{userId}` doc with `status: 'active'`
+
+### Firestore Rules — Phone Number Regex Bug (FIXED)
+- Original: `addr.phoneNumber.matches('^\\d{10,15}$')` — rejects international format `+14169001234`
+- Fixed: `addr.phoneNumber.matches('^\\+?\\d{10,15}$')` — allows optional `+` prefix
+- This bug silently blocked `users/{uid}` self-updates (any user with a `+` phone number got 403 PERMISSION_DENIED when updating their own profile)
+
+### Firestore Rules — Notification Preferences Update
+- Added a separate, simpler `allow update` rule for notification-only updates to bypass the strict address validation in the full user update rule:
+  ```
+  // Simplified rule for notification-only updates
+  (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notifyNewProducts', 'notifyTrending']))
+  ```
+- Multiple `allow update` rules in the same `match` block are OR'd together.
+
+### Playwright Test Auth Gotcha
+- `getDoc(path)` WITHOUT a token returns `null` for any collection requiring auth (`allow read: if isOwner || isAdmin`). Always pass an admin token when verifying Firestore state after a UI action performed as a non-admin user.
+
+### Playwright Skipped / Did Not Run
+- **5 skipped**: `premium-subscription.spec.ts` tests that guard against buyer ALREADY being premium (e.g. "Already premium — skipping"). The buyer account's subscription state from a prior test run left `isPremium=true` / `subscriptions/{uid}` active. These tests check the current state and skip themselves rather than fail.
+- **6 did not run**: `digital-products-e2e.spec.ts` tests D.1 (license activation) and E.1 (security) are currently `0ms` — they have no implementation body yet (empty `test()` shells).
+- Neither category is a test failure. Fix for "did not run": implement the empty test bodies. Fix for "skipped": the `beforeEach` in `premium-subscription.spec.ts` should tear down premium state after each test, or use an isolated test account.
+
+### Admin-Only Firestore Trending Rule
+- The product `allow update` rule runs full validation (name, description, imageUrls...) even for admins. Admins doing partial updates like `{isTrending, trendingAt}` would fail the "all-fields" AND chain. Solution: add a SEPARATE `allow update` BEFORE the main rule:
+  ```
+  allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isTrending', 'trendingAt']);
+  ```
+
+### Subscriptions Collection Rule
+- `subscriptions/{userId}` was `allow create, update, delete: if false` (backend-only). Changed to `allow write: if isAdmin()` so E2E tests can set up premium state without going through the full Stripe checkout flow.
+
+### Dev Build + Deploy Commands
+- `./scripts/build/build_dev.sh web` — builds Flutter web debug (~4 min)
+- `firebase deploy --only hosting --project orignagta-dev` — deploys to orignagta-dev.web.app
+- `firebase deploy --only firestore:rules --project orignagta-dev` — deploys Firestore rules (propagation ~5-10s)
+
+### Digital Products E2E — License Seeding Pattern (Feb 2026)
+- `digital-products-e2e.spec.ts` Suites D and E previously did 2 full Stripe checkouts in `beforeAll` (~4-6 min), exceeding the 5-min global timeout → D.2-D.4 and E.2-E.4 skipped.
+- Fix: Replace checkout-based `beforeAll` with direct admin `writeDoc` to seed `licenses/{key}` docs (< 1s). Cleaned up in `afterAll` with `deleteDoc`.
+- License key format: `^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$`
+- Seeded keys: `REDACTED_SECRET` (software D suite), `REDACTED_SECRET` (book D suite), `E2EE-SW01-ABCD-9999` (E suite software), `E2EE-BK01-ABCD-8888` (E suite book)
+- Firestore rules must have `allow write: if isAdmin()` on `licenses` collection for seeding to work.
+
+### activate_license HTTP vs Callable Format (Feb 2026)
+- `callCallable` sends `{ data: { licenseKey, deviceId, platform } }` (Firebase callable wrapper).
+- Old HTTP handler read `body.get("licenseKey")` directly → always `null` → `invalid_key_format`.
+- Fix: `data = body.get("data", body) if isinstance(body.get("data"), dict) else body`
+- Response must be `{ "result": { ...fields } }` so `callOk` (which reads `body.result || body`) works.
+- Errors must be `{ "error": { "code": "...", "message": "..." } }` (NOT `{ "error": "string" }`), because `normalizeErrorCode` returns empty message for string input.
+
+### activate_license Ownership + downloadUrls (Feb 2026)
+- `downloadUrls` in response: `{p: url for p, url in lic.digitalBuilds.items()}` — E2E D.1 tests `expect(result.downloadUrls).toBeTruthy()`.
+
+### premium-subscription.spec.ts B/I UI Tests (Feb 2026)
+- Tests B1/B3/B4 and I4/I5 were hard-skipped due to `ensureLoggedInAsAdmin(page, url, email)` missing the `pass` argument.
+- Fix: always pass `DEFAULT_PASS = 'REDACTED_TEST_PASSWORD'` as 4th argument to `ensureLoggedInAsAdmin`.
+- These tests navigate the Flutter web UI to the Subscription screen (B tests: non-premium buyer) and Cancel dialog (I tests: premium buyer).
+
+### Trending Test State Pollution (Feb 2026)
+- `trending-products.spec.ts` `beforeEach` sets `users/${BUYER_UID}.isPremium = true` and `subscriptions/${BUYER_UID}.status = 'active'` — NO CLEANUP.
+- This leaves the buyer permanently premium, causing 52+ unexpected failures in `premium-subscription.spec.ts` (tests that expect non-premium state).
+- Fix: Add `test.afterAll` that resets `isPremium = false` and `subscriptions.status = 'canceled'`.

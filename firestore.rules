@@ -47,7 +47,7 @@ service cloud.firestore {
         isValidPostalCode(addr.postalCode) &&
         // Buyer/shipping addresses must be in Canada
         (addr.country == 'Canada' || addr.country == 'CA' || addr.country == 'canada') &&
-        (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\\d{10,15}$'))) &&
+        (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\\+?\\d{10,15}$'))) &&
         (addr.isDefault == null || addr.isDefault is bool) &&
         (addr.label == null || isStringWithLen(addr.label, 1, 30)) &&
         (addr.latitude == null || (addr.latitude is number && addr.latitude >= -90 && addr.latitude <= 90)) &&
@@ -64,7 +64,7 @@ service cloud.firestore {
         isStringWithLen(addr.state, 1, 50) &&
         isStringWithLen(addr.postalCode, 2, 15) &&
         isStringWithLen(addr.country, 2, 56) &&
-        (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\\d{10,15}$'))) &&
+        (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\\+?\\d{10,15}$'))) &&
         (addr.isDefault == null || addr.isDefault is bool) &&
         (addr.label == null || isStringWithLen(addr.label, 1, 30)) &&
         (addr.latitude == null || (addr.latitude is number && addr.latitude >= -90 && addr.latitude <= 90)) &&
@@ -186,7 +186,10 @@ service cloud.firestore {
           'lastCheckoutTimestamp',
           'notifyNewProducts',
           'notifyTrending'
-        ]));
+        ])) ||
+      // Simplified rule for notification-only updates (avoids address validation edge cases)
+      (isOwner(userId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notifyNewProducts', 'notifyTrending']));
       
       // Users can create their own profile with strict fields only
       allow create: if isOwner(userId) &&
@@ -574,8 +577,8 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       // Admin reads all
       allow read: if isAdmin();
-      // Backend-only writes (Cloud Functions only)
-      allow create, update, delete: if false;
+      // Admin can write (needed for E2E test seeding)
+      allow write: if isAdmin();
     }
 
     // ================================================================

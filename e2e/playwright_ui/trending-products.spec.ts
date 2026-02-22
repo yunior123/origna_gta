@@ -48,6 +48,13 @@ test.describe('Trending Products flows', () => {
         }), adminAuth.idToken, false);
     });
 
+    test.afterAll(async () => {
+        const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+        // Reset buyer premium state to avoid polluting subsequent test suites
+        await writeDoc(`users/${userId}`, toFirestoreFields({ isPremium: false }), adminAuth.idToken, true);
+        await writeDoc(`subscriptions/${userId}`, toFirestoreFields({ status: 'canceled' }), adminAuth.idToken, false);
+    });
+
     test('Premium user can toggle Trending Products notifications', async ({ page }) => {
         // 1. Ensure target URL is reachable
         await requireWebApp(page, WEB_APP_URL);

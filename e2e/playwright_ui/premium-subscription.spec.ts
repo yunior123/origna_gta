@@ -265,11 +265,7 @@ test.describe('B. Subscription Screen UI', () => {
     }
 
     await requireWebApp(page, WEB_APP_URL);
-    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL);
-    await page.goto(`${WEB_APP_URL}/subscription`);
-    await waitForFlutter(page);
-
-    // Either upgrade CTA or premium status must be visible
+    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
     const upgradeCta  = page.locator('[aria-label="btn-subscribe-premium"]');
     const premiumBadge = page.getByText(/Premium Member/i).first();
     const either = await Promise.race([
@@ -288,7 +284,7 @@ test.describe('B. Subscription Screen UI', () => {
     }
 
     await requireWebApp(page, WEB_APP_URL);
-    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL);
+    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
     await page.goto(`${WEB_APP_URL}/subscription`);
     await waitForFlutter(page);
 
@@ -298,7 +294,7 @@ test.describe('B. Subscription Screen UI', () => {
 
   test('B3: Subscription screen lists all four premium benefits', async ({ page }) => {
     await requireWebApp(page, WEB_APP_URL);
-    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL);
+    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
     await page.goto(`${WEB_APP_URL}/subscription`);
     await waitForFlutter(page);
 
@@ -309,7 +305,7 @@ test.describe('B. Subscription Screen UI', () => {
 
   test('B4: Price shows CAD $7.86/month', async ({ page }) => {
     await requireWebApp(page, WEB_APP_URL);
-    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL);
+    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
     await page.goto(`${WEB_APP_URL}/subscription`);
     await waitForFlutter(page);
 
@@ -952,7 +948,7 @@ test.describe('I. Cancel Subscription Flow', () => {
     }
 
     await requireWebApp(page, WEB_APP_URL);
-    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL);
+    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
     await page.goto(`${WEB_APP_URL}/subscription`);
     await waitForFlutter(page);
 
@@ -974,7 +970,7 @@ test.describe('I. Cancel Subscription Flow', () => {
     }
 
     await requireWebApp(page, WEB_APP_URL);
-    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL);
+    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
     await page.goto(`${WEB_APP_URL}/subscription`);
     await waitForFlutter(page);
 
@@ -1124,7 +1120,7 @@ test.describe('K. Chat Paywall Gate', () => {
     }
 
     await requireWebApp(page, WEB_APP_URL);
-    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL);
+    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
     await page.goto(`${WEB_APP_URL}/chat?productId=product_001&productTitle=Test`);
     await waitForFlutter(page);
 

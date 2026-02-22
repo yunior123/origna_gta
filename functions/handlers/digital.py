@@ -41,8 +41,10 @@ APP_BASE_URL = "https://app.origna.com"
 # ── Internal implementations (pure functions, testable without HTTP context) ──
 
 
-def _activate_license_impl(license_key: str, device_id: str, platform: str) -> dict:
-    """Core activation logic. Raises ValueError with error code on failure."""
+def _activate_license_impl(license_key: str, device_id: str, platform: str, caller_uid: str | None = None) -> dict:
+    """Core activation logic. Raises ValueError with error code on failure.
+    caller_uid: if provided, verifies the license belongs to this user (ownership enforcement).
+    """
     if not _LICENSE_KEY_RE.match(license_key):
         raise ValueError("invalid_key_format")
 
@@ -54,6 +56,10 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str) -> d
     lic = lic_doc.to_dict()
     if lic.get(Fields.STATUS) != LicenseStatusValues.ACTIVE:
         raise ValueError("revoked")
+
+    # Ownership check: if caller is authenticated, verify they own this license
+    if caller_uid and lic.get(Fields.USER_ID) != caller_uid:
+        raise ValueError("unauthorized")
 
     supported = lic.get(Fields.SUPPORTED_PLATFORMS, [])
     if platform not in supported:
@@ -69,11 +75,13 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str) -> d
             db.collection(Collections.LICENSES).document(license_key).update(
                 {"activations": activations, "updatedAt": now}
             )
+            builds = lic.get(Fields.DIGITAL_BUILDS, {})
             return {
                 "approved": True,
                 "licenseKey": license_key,
                 "activatedAt": act.get("activatedAt"),
                 Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
+                "downloadUrls": {p: url for p, url in builds.items()} if builds else None,
             }
 
     # Check device limit
@@ -91,11 +99,13 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str) -> d
     activations.append(new_activation)
     db.collection(Collections.LICENSES).document(license_key).update({"activations": activations, "updatedAt": now})
 
+    builds = lic.get(Fields.DIGITAL_BUILDS, {})
     return {
         "approved": True,
         "licenseKey": license_key,
         "activatedAt": now.isoformat(),
         Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
+        "downloadUrls": {p: url for p, url in builds.items()} if builds else None,
     }
 
 
@@ -225,17 +235,20 @@ def _revoke_digital_licenses_for_order(order_id: str) -> int:
 
 @https_fn.on_request(cors=True)
 def activate_license(req: https_fn.Request) -> https_fn.Response:
-    """POST /activate_license — no auth required (installed app to server).
-    Body: { licenseKey, deviceId, platform }
+    """POST /activate_license — supports authenticated and unauthenticated callers.
+    Body: { licenseKey, deviceId, platform }  OR Firebase callable wrapper: { data: {...} }
+    If Authorization header is present, verifies ownership (licenseKey must belong to the caller).
     """
     if req.method != "POST":
         return https_fn.Response("Method not allowed", status=405)
 
     try:
         body = req.get_json(silent=True) or {}
-        license_key = str(body.get("licenseKey", "")).strip().upper()
-        device_id = str(body.get("deviceId", "")).strip()
-        platform = str(body.get("platform", "")).strip().lower()
+        # Accept both direct format { licenseKey, ... } and Firebase callable wrapper { data: { licenseKey, ... } }
+        data = body.get("data", body) if isinstance(body.get("data"), dict) else body
+        license_key = str(data.get("licenseKey", "")).strip().upper()
+        device_id = str(data.get("deviceId", "")).strip()
+        platform = str(data.get("platform", "")).strip().lower()
 
         if not license_key or not device_id or not platform:
             return https_fn.Response(
@@ -243,6 +256,22 @@ def activate_license(req: https_fn.Request) -> https_fn.Response:
                 status=400,
                 content_type="application/json",
             )
+
+        # Verify caller identity from Authorization header (optional but enforced when present)
+        caller_uid: str | None = None
+        auth_header = req.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            id_token = auth_header[len("Bearer "):]
+            try:
+                from firebase_admin import auth as fb_auth
+                decoded = fb_auth.verify_id_token(id_token)
+                caller_uid = decoded["uid"]
+            except Exception:
+                return https_fn.Response(
+                    json.dumps({"error": "invalid_token", "message": "Invalid authorization token"}),
+                    status=401,
+                    content_type="application/json",
+                )
 
         # Rate limit: 10 attempts per device per 10 min to block brute-force
         rate_id = f"device:{device_id[:64]}"
@@ -261,8 +290,9 @@ def activate_license(req: https_fn.Request) -> https_fn.Response:
                 content_type="application/json",
             )
 
-        result = _activate_license_impl(license_key, device_id, platform)
-        return https_fn.Response(json.dumps(result), status=200, content_type="application/json")
+        result = _activate_license_impl(license_key, device_id, platform, caller_uid)
+        # Wrap result in Firebase callable format so callCallable/callOk works correctly
+        return https_fn.Response(json.dumps({"result": result}), status=200, content_type="application/json")
 
     except ValueError as e:
         code = str(e)
@@ -272,12 +302,25 @@ def activate_license(req: https_fn.Request) -> https_fn.Response:
             "platform_not_supported": 403,
             "device_limit_exceeded": 403,
             "invalid_key_format": 400,
+            "unauthorized": 403,
         }
         status = status_map.get(code, 400)
-        return https_fn.Response(json.dumps({"error": code}), status=status, content_type="application/json")
+        msg_map = {
+            "unauthorized": "You do not own this license",
+            "not_found": "License key not found",
+            "revoked": "License has been revoked",
+            "platform_not_supported": "Platform not supported by this license",
+            "device_limit_exceeded": "Device activation limit reached",
+            "invalid_key_format": "Invalid license key format",
+        }
+        return https_fn.Response(
+            json.dumps({"error": {"code": code, "message": msg_map.get(code, code)}}),
+            status=status,
+            content_type="application/json",
+        )
     except Exception:
         logger.exception("activate_license unexpected error")
-        return https_fn.Response(json.dumps({"error": "internal_error"}), status=500, content_type="application/json")
+        return https_fn.Response(json.dumps({"error": {"code": "internal_error", "message": "Internal error"}}), status=500, content_type="application/json")
 
 
 @https_fn.on_call()
