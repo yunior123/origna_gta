@@ -13,9 +13,11 @@ from schema_constants import Collections, Fields
 
 logger = logging.getLogger(__name__)
 
-# In emulator mode, relax rate limits 100x for E2E test throughput
+# In emulator/dev mode, relax rate limits 100x for E2E test throughput
 _IS_EMULATOR = os.environ.get("FUNCTIONS_EMULATOR", "false").lower() == "true"
-_EMULATOR_RATE_MULTIPLIER = 100 if _IS_EMULATOR else 1
+_PROJECT_ID = os.environ.get("GCP_PROJECT", os.environ.get("GCLOUD_PROJECT", "orignagta"))
+_IS_DEV = _PROJECT_ID == "orignagta-dev"
+_EMULATOR_RATE_MULTIPLIER = 100 if (_IS_EMULATOR or _IS_DEV) else 1
 
 
 class RateLimiter:

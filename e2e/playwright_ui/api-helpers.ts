@@ -37,10 +37,10 @@ export const STRIPE_CARD = {
 // ════════════════════════════════════════════════════════════════════
 
 export const TEST_ACCOUNTS = {
-  ADMIN_EMAIL: 'yr62813@gmail.com',
+  ADMIN_EMAIL: 'yr62813@gmail.com',              // roles: buyer+seller+admin, chargesEnabled, onboardingCompleted
   ADMIN_PASS: 'REDACTED_TEST_PASSWORD',
-  SELLER_EMAIL: 'yuniorrodriguezo4601@yahoo.com',
-  BUYER_EMAIL: 'yuniorrodriguezo460@gmail.com',
+  SELLER_EMAIL: 'yuniorrodriguezo4601@yahoo.com', // roles: buyer+seller, chargesEnabled
+  BUYER_EMAIL: 'yuniorrodriguezo460@gmail.com',   // roles: buyer+admin, NOT a seller-approved account
 };
 
 export const TEST_UIDS = {
@@ -762,50 +762,51 @@ export function invalidateProductCache(): void {
 }
 
 /**
+ * Stable product IDs used across E2E test runs.
+ * Using fixed IDs + getDoc (single-document GET) avoids runQuery (list) permission
+ * issues — Firestore rules evaluate `resource.data` reliably for individual GETs.
+ */
+const STABLE_TEST_PRODUCTS: Array<{ id: string; sellerUid: string; prefix: string }> = [
+  { id: 'e2e_product_admin_seller',  sellerUid: TEST_UIDS.ADMIN,  prefix: 'A' },
+  { id: 'e2e_product_test_seller',   sellerUid: TEST_UIDS.SELLER, prefix: 'B' },
+];
+
+/**
  * Discover available products in dev Firestore.
- * Products have auto-generated IDs, so we list them and pick suitable ones.
+ * Uses stable product IDs + individual getDoc calls instead of runQuery to avoid
+ * Firestore list-operation permission issues. Creates products if they don't exist.
  * Results are cached for the test run (call invalidateProductCache() to refresh).
  */
 export async function discoverProducts(_token?: string): Promise<DiscoveredProduct[]> {
   if (_cachedProducts) return _cachedProducts;
 
-  // Admin auth required for listing products collection
   const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-  const res = await fetch(`${FIRESTORE_BASE}/products?pageSize=50`, {
-    headers: { 'Authorization': `Bearer ${adminAuth.idToken}` },
-  });
-  if (!res.ok) throw new Error(`Failed to list products: ${res.status}`);
-  const body = await res.json() as any;
-  const docs = body.documents || [];
+  const products: DiscoveredProduct[] = [];
 
-  // Known seller UIDs that have Stripe Connect accounts
-  const knownSellers = new Set([TEST_UIDS.ADMIN, TEST_UIDS.SELLER]);
+  for (const { id, sellerUid, prefix } of STABLE_TEST_PRODUCTS) {
+    let product: DiscoveredProduct | null = null;
+    try {
+      const fields = await getDoc(`products/${id}`, adminAuth.idToken);
+      if (fields && fields.lifecycleStatus === 'active' && (fields.stockQuantity ?? 0) > 0) {
+        product = {
+          id,
+          name: fields.name || `E2E Product ${prefix}`,
+          price: fields.price || 0,
+          sellerId: fields.sellerId || sellerUid,
+          stockQuantity: fields.stockQuantity,
+          lifecycleStatus: 'active',
+        };
+      }
+    } catch { /* will create below */ }
 
-  _cachedProducts = docs
-    .map((doc: any) => {
-      const id = doc.name?.split('/').pop();
-      const fields = parseDoc(doc);
-      if (!fields) return null;
-      return {
-        id,
-        name: fields.name || '',
-        price: fields.price || 0,
-        sellerId: fields.sellerId || '',
-        stockQuantity: fields.stockQuantity || 0,
-        lifecycleStatus: fields.lifecycleStatus || 'draft',
-      } as DiscoveredProduct;
-    })
-    .filter((p: DiscoveredProduct | null): p is DiscoveredProduct =>
-      p !== null && p.price > 0 && p.stockQuantity > 0 && p.lifecycleStatus === 'active' && knownSellers.has(p.sellerId)
-    )
-    // Sort by stock descending — prefer products with the most stock
-    .sort((a: DiscoveredProduct, b: DiscoveredProduct) => b.stockQuantity - a.stockQuantity);
-
-  if (_cachedProducts!.length === 0) {
-    throw new Error('No purchasable products found in dev Firestore. Add products first.');
+    if (!product) {
+      product = await createDummyProduct(sellerUid, prefix, id);
+    }
+    products.push(product);
   }
 
-  return _cachedProducts!;
+  _cachedProducts = products;
+  return _cachedProducts;
 }
 
 /**
@@ -876,9 +877,9 @@ export async function getTwoSellerProducts(token: string): Promise<[DiscoveredPr
   return [a, b];
 }
 
-export async function createDummyProduct(sellerUid: string, prefix: string): Promise<DiscoveredProduct> {
+export async function createDummyProduct(sellerUid: string, prefix: string, productId?: string): Promise<DiscoveredProduct> {
   const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
-  const productId = `test_dummy_${prefix}_${Date.now()}`;
+  const id = productId ?? `test_dummy_${prefix}_${Date.now()}`;
   const productData = {
     sellerId: sellerUid,
     sellerSku: `DUMMY-${prefix}-${Date.now()}`,
@@ -901,11 +902,11 @@ export async function createDummyProduct(sellerUid: string, prefix: string): Pro
     }
   };
 
-  const ok = await writeDoc(`products/${productId}`, toFirestoreFields(productData), adminAuth.idToken, false);
+  const ok = await writeDoc(`products/${id}`, toFirestoreFields(productData), adminAuth.idToken, false);
   if (!ok) throw new Error(`Failed to create dummy product for ${sellerUid}`);
 
   return {
-    id: productId,
+    id,
     name: productData.name,
     price: productData.price,
     sellerId: productData.sellerId,
@@ -916,18 +917,22 @@ export async function createDummyProduct(sellerUid: string, prefix: string): Pro
 
 /**
  * Ensures two products from different sellers exist on the dev environment.
- * If not, it uses the Admin REST API to create dummy products.
+ * Delegates to discoverProducts which creates stable products if missing.
  */
-export async function ensureTwoSellerProducts(token: string): Promise<[DiscoveredProduct, DiscoveredProduct]> {
-  const existing = await getTwoSellerProducts(token);
-  if (existing) return existing;
-
-  // We need to create products for admin and seller
-  const sellerA = await createDummyProduct(TEST_UIDS.ADMIN, 'A');
-  const sellerB = await createDummyProduct(TEST_UIDS.SELLER, 'B');
-
-  invalidateProductCache(); // clear cache so these new products are found next time
-  return [sellerA, sellerB];
+export async function ensureTwoSellerProducts(_token: string): Promise<[DiscoveredProduct, DiscoveredProduct]> {
+  const products = await discoverProducts();
+  const adminProd = products.find(p => p.sellerId === TEST_UIDS.ADMIN);
+  const sellerProd = products.find(p => p.sellerId === TEST_UIDS.SELLER);
+  if (!adminProd || !sellerProd) {
+    // Stale cache — invalidate and retry once
+    invalidateProductCache();
+    const fresh = await discoverProducts();
+    const a = fresh.find(p => p.sellerId === TEST_UIDS.ADMIN);
+    const b = fresh.find(p => p.sellerId === TEST_UIDS.SELLER);
+    if (!a || !b) throw new Error('ensureTwoSellerProducts: failed to ensure products for both sellers');
+    return [a, b];
+  }
+  return [adminProd, sellerProd];
 }
 
 // ════════════════════════════════════════════════════════════════════

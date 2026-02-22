@@ -14,7 +14,7 @@ import {
  * REPLICA of integration_test/flows/smoke_home_profile_test.dart
  */
 
-const TARGET_URL = process.env.E2E_TARGET_URL ?? 'http://127.0.0.1:5005';
+const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? 'yr62813@gmail.com';
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
 

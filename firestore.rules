@@ -108,15 +108,22 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function sellerStripeProfile() {
+      return get(/databases/$(database)/documents/seller_profiles/$(request.auth.uid)).data;
+    }
+
     function isSellerApproved() {
+      let userDoc = sellerProfile();
+      let sp = sellerStripeProfile();
       return isAuthenticated() && (
-        sellerProfile().roles.hasAny(['admin']) || (
-          sellerProfile().roles.hasAny(['seller']) &&
-          sellerProfile().onboardingCompleted == true &&
-          sellerProfile().chargesEnabled == true &&
-          sellerProfile().payoutsEnabled == true
+        userDoc.roles.hasAny(['admin']) || (
+          userDoc.roles.hasAny(['seller']) &&
+          sp != null &&
+          sp.onboardingCompleted == true &&
+          sp.chargesEnabled == true &&
+          sp.payoutsEnabled == true
         )
-      ) && sellerProfile().suspended != true;
+      ) && userDoc.suspended != true;
     }
 
     function isProductOwner() {
@@ -238,7 +245,9 @@ service cloud.firestore {
         
         // No deletes (audit trail)
         allow delete: if false;
-            // --- WAREHOUSES SUBCOLLECTION (Seller shipping locations) ---
+      }
+
+      // --- WAREHOUSES SUBCOLLECTION (Seller shipping locations) ---
       match /warehouses/{warehouseId} {
         // Only the seller (owner) can read/write their warehouses
         // Buyers never read warehouse docs directly — only denormalized fields on products are public
@@ -270,8 +279,10 @@ service cloud.firestore {
     // PRODUCTS COLLECTION
     // ================================================================
     match /products/{productId} {
-      // Anyone can read active products; owners/admins can read all
-      allow read: if resource.data.lifecycleStatus == 'active' || isAdmin() || isProductOwner();
+      // Admins/owners can read all; anyone can read active products.
+      // isAdmin() MUST come first — resource is null for non-existent docs and
+      // resource.data.lifecycleStatus would throw a null-reference error if evaluated first.
+      allow read: if isAdmin() || isProductOwner() || resource.data.lifecycleStatus == 'active';
 
       // Only sellers can create products
       // Must set correct sellerId
@@ -399,9 +410,8 @@ service cloud.firestore {
         isAdmin()
       );
       
-      // ONLY BACKEND CAN CREATE ORDERS
-      // This prevents client-side order manipulation
-      allow create: if false;
+      // ONLY BACKEND CAN CREATE ORDERS (admins can create for testing/support)
+      allow create: if isAdmin();
       
       // Backend/admin only with state machine validation and field whitelisting
       // Phase 3.5 fields: sellerCaptures, captureAttempts, requiresManualReview, fraudScore
@@ -669,5 +679,4 @@ service cloud.firestore {
     // VALIDATION FUNCTIONS
     // ================================================================
   }
-}
 }

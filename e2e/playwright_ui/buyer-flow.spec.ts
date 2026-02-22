@@ -13,7 +13,7 @@ import {
  * REPLICA of integration_test/flows/buyer_flow_test.dart
  */
 
-const TARGET_URL = process.env.E2E_TARGET_URL ?? 'http://127.0.0.1:5005';
+const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
 const BUYER_EMAIL = process.env.E2E_BUYER_EMAIL ?? 'yuniorrodriguezo460@gmail.com';
 const BUYER_PASSWORD = process.env.E2E_BUYER_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
 
