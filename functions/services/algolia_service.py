@@ -336,7 +336,7 @@ def batch_index_products(products: list) -> tuple:
         algolia_objects = []
         for product_id, product_data in products:
             # Only index active products
-            if product_data.get(Fields.IS_ACTIVE, True):
+            if product_data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE:
                 algolia_objects.append(format_product_for_algolia(product_id, product_data))
 
         if algolia_objects:
@@ -374,6 +374,7 @@ def configure_algolia_index():
                     ],
                     "attributesForFaceting": [
                         Fields.CATEGORY_ID,
+                        Fields.SUBCATEGORY,
                         Fields.SELLER_ID,
                         Fields.IS_ACTIVE,
                         Fields.FREE_SHIPPING,
@@ -392,6 +393,7 @@ def configure_algolia_index():
                         Fields.DESCRIPTION,
                         Fields.PRICE,
                         Fields.CATEGORY_ID,
+                        Fields.SUBCATEGORY,
                         Fields.SELLER_ID,
                         Fields.IMAGE_URLS,
                         Fields.STOCK_QUANTITY,

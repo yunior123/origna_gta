@@ -90,6 +90,7 @@ class AlgoliaService {
       Fields.isPerishable: hit[Fields.isPerishable] ?? false,
       Fields.minimumOrderQuantity: hit[Fields.minimumOrderQuantity] ?? 1,
       Fields.freeShipping: hit[Fields.freeShipping] ?? false,
+      Fields.subcategory: hit[Fields.subcategory] ?? '',
     };
   }
 }

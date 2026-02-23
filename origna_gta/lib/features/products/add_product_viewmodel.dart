@@ -59,6 +59,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     // Bug #27: Prevent double-submit
     if (state.isLoading) return;
 
+    final isDevOrTestRun =
+        const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'dev' ||
+        const bool.fromEnvironment('IS_TEST', defaultValue: false);
+
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'product.please_enter_name'.tr());
       return;
@@ -125,9 +129,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
       // SECURITY: Require address to be verified via Geoapify autocomplete
       // In dev/test mode, allow bypass for integration tests
-      final isDevOrTest =
-          const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'dev' || const bool.fromEnvironment('IS_TEST', defaultValue: false);
-      if (!state.addressVerified && !isDevOrTest) {
+      if (!state.addressVerified && !isDevOrTestRun) {
         if (state.latitude == null || state.longitude == null) {
           state = state.copyWith(errorMessage: 'product.address_not_verified'.tr());
           return;
@@ -143,9 +145,6 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(errorMessage: 'product.dimensions_positive'.tr());
       return;
     }
-
-    final isDevOrTestRun =
-        const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'dev' || const bool.fromEnvironment('IS_TEST', defaultValue: false);
 
     if (state.imageModels.isEmpty && !isDevOrTestRun) {
       state = state.copyWith(errorMessage: 'product.image_required'.tr());
@@ -163,29 +162,45 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     // Digital product validation
     if (state.isDigital) {
       if (state.digitalType == null) {
-        state = state.copyWith(errorMessage: 'Select a digital product type (Software or Book)');
+        state = state.copyWith(errorMessage: 'product.digital_type_required'.tr());
         return;
       }
       if (state.digitalType == DigitalTypeValues.software) {
         final urls = [state.macosDownloadUrl, state.windowsDownloadUrl, state.linuxDownloadUrl];
         if (urls.every((u) => u == null || u.trim().isEmpty)) {
-          state = state.copyWith(errorMessage: 'Add at least one platform download URL');
+          state = state.copyWith(errorMessage: 'product.digital_platform_url_required'.tr());
           return;
         }
         final nonEmptyUrls = urls.whereType<String>().where((u) => u.trim().isNotEmpty);
         if (nonEmptyUrls.any((u) => !u.startsWith('https://'))) {
-          state = state.copyWith(errorMessage: 'Download URLs must start with https://');
+          state = state.copyWith(errorMessage: 'product.digital_url_https_required'.tr());
           return;
         }
       } else if (state.digitalType == DigitalTypeValues.book) {
         if (state.bookSourceUrl == null || state.bookSourceUrl!.trim().isEmpty) {
-          state = state.copyWith(errorMessage: 'Enter the book download URL');
+          state = state.copyWith(errorMessage: 'product.book_url_required'.tr());
           return;
         }
         if (!state.bookSourceUrl!.startsWith('https://')) {
-          state = state.copyWith(errorMessage: 'Book URL must start with https://');
+          state = state.copyWith(errorMessage: 'product.book_url_https_required'.tr());
           return;
         }
+      }
+    }
+
+    // Variant validation: all variants must have a price > 0
+    if (state.hasVariants) {
+      if (state.variantOptions.isEmpty) {
+        state = state.copyWith(errorMessage: 'product.variants_required'.tr());
+        return;
+      }
+      final invalidVariants = state.variants.where((v) {
+        final p = v['price'];
+        return p == null || (p is num && p <= 0);
+      });
+      if (invalidVariants.isNotEmpty) {
+        state = state.copyWith(errorMessage: 'product.variant_price_required'.tr());
+        return;
       }
     }
 
@@ -225,8 +240,12 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       }
 
       final useWarehouses = state.selectedWarehouseIds.isNotEmpty;
+      if (useWarehouses && state.warehouseStockMap.isEmpty) {
+        state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_stock_required'.tr());
+        return;
+      }
       // When using warehouses, stock = sum of all warehouseStockMap values
-      final effectiveStock = useWarehouses && state.warehouseStockMap.isNotEmpty ? state.warehouseStockMap.values.fold(0, (a, b) => a + b) : stock;
+      final effectiveStock = useWarehouses ? state.warehouseStockMap.values.fold(0, (a, b) => a + b) : stock;
 
       final product = models.Product(
         productId: tempProductId,
@@ -366,7 +385,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     freeShipping: value ? true : state.freeShipping,
     isPerishable: value ? false : state.isPerishable,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
-    standardEnabled: value ? false : true, // Re-enable standard when going back to physical
+    standardEnabled: value ? false : state.standardEnabled, // Restore previous value when going back to physical
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
     // Clear digital sub-fields when turning off

@@ -1001,6 +1001,32 @@ class PaymentProviderValues:
     ALL: frozenset[str] = frozenset({STRIPE})
 
 
+class ConsentMethodValues:
+    """Valid values for consentMethod field (CASL / PIPEDA)"""
+
+    SIGNUP = "signup"
+    CHECKBOX = "checkbox"
+    DOUBLE_OPT_IN = "double_opt_in"
+    IMPLIED = "implied"
+
+    ALL: frozenset[str] = frozenset({SIGNUP, CHECKBOX, DOUBLE_OPT_IN, IMPLIED})
+
+
+class PolicyVersionValues:
+    """Current policy version strings"""
+
+    DEFAULT = "1.0"
+
+
+class LanguageValues:
+    """Supported UI languages (Quebec Bill 96)"""
+
+    ENGLISH = "en"
+    FRENCH = "fr"
+
+    ALL: frozenset[str] = frozenset({ENGLISH, FRENCH})
+
+
 class SupplierCurrencyValues:
     """Valid currencies for supplier cost tracking (NOT selling price)"""
 

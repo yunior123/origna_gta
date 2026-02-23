@@ -217,9 +217,9 @@ def validate_order_data(data: dict[str, Any]) -> tuple[bool, str | None]:
     customer_email = data.get(Fields.CUSTOMER_EMAIL)
     if customer_email:
         try:
-            from pydantic import EmailStr
+            from pydantic import EmailStr, TypeAdapter
 
-            EmailStr._validate(customer_email)
+            TypeAdapter(EmailStr).validate_python(customer_email)
         except Exception:
             return False, "Invalid email address format"
 

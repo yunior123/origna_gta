@@ -164,13 +164,8 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
       final functions = _ref.read(firebaseFunctionsProvider);
       final createLink = functions.httpsCallable(CloudFunctionEndpoints.createAccountLink);
 
-      // Use current origin on web (works for both localhost and production)
-      final String baseUrl = kIsWeb ? Uri.base.origin : 'https://orignagta.ca';
-      
-      final refreshUrl = '$baseUrl/seller/refresh';
-      final returnUrl = '$baseUrl/seller/return';
-
-      final result = await createLink.call({ApiKeys.refreshUrl: refreshUrl, ApiKeys.returnUrl: returnUrl});
+      // URLs are built server-side for security (open-redirect prevention)
+      final result = await createLink.call();
 
       final data = result.data as Map<String, dynamic>;
       final url = data[ApiKeys.url] as String?;

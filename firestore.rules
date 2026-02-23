@@ -108,20 +108,14 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function sellerStripeProfile() {
-      return get(/databases/$(database)/documents/seller_profiles/$(request.auth.uid)).data;
-    }
-
     function isSellerApproved() {
       let userDoc = sellerProfile();
-      let sp = sellerStripeProfile();
       return isAuthenticated() && (
         userDoc.roles.hasAny(['admin']) || (
           userDoc.roles.hasAny(['seller']) &&
-          sp != null &&
-          sp.onboardingCompleted == true &&
-          sp.chargesEnabled == true &&
-          sp.payoutsEnabled == true
+          userDoc.onboardingCompleted == true &&
+          userDoc.chargesEnabled == true &&
+          userDoc.payoutsEnabled == true
         )
       ) && userDoc.suspended != true;
     }
@@ -191,12 +185,18 @@ service cloud.firestore {
       (isOwner(userId) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notifyNewProducts', 'notifyTrending']));
       
-      // Users can create their own profile with strict fields only
+      // Users can create their own profile with strict fields only.
+      // NOTE: preferred path is the create_user_profile Cloud Function (server controls consent).
+      // This rule is a fallback; it enforces correct consent values even if called directly.
       allow create: if isOwner(userId) &&
         request.resource.data.uid == request.auth.uid &&
         request.resource.data.email == request.auth.token.email &&
         request.resource.data.roles.size() == 1 &&
         request.resource.data.roles[0] == 'buyer' &&
+        // Enforce correct consent values — client cannot forge false consent
+        (!request.resource.data.keys().hasAny(['dataProcessingConsent']) || request.resource.data.dataProcessingConsent == true) &&
+        (!request.resource.data.keys().hasAny(['emailConsent']) || request.resource.data.emailConsent == true) &&
+        (!request.resource.data.keys().hasAny(['marketingOptIn']) || request.resource.data.marketingOptIn == false) &&
         request.resource.data.keys().hasOnly([
           'uid', 'email', 'name', 'roles', 'address', 'createdAt',
           'emailConsent', 'consentTimestamp', 'consentMethod',
@@ -665,11 +665,11 @@ service cloud.firestore {
 
     // ================================================================
     // SELLER_PROFILES — Seller-specific data split from users doc.
-    // Owner and admins can read/write. Buyers never need this.
+    // Owner can read; writes exclusively via backend Admin SDK (no client self-promotion bypass).
     // ================================================================
     match /seller_profiles/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow write: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
     }
 
     // ================================================================

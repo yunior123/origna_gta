@@ -421,3 +421,49 @@ Firebase Test Lab free tier: 5 virtual tests/day. CI uses 2 (Pixel 6 API33 + iPh
 - `trending-products.spec.ts` `beforeEach` sets `users/${BUYER_UID}.isPremium = true` and `subscriptions/${BUYER_UID}.status = 'active'` — NO CLEANUP.
 - This leaves the buyer permanently premium, causing 52+ unexpected failures in `premium-subscription.spec.ts` (tests that expect non-premium state).
 - Fix: Add `test.afterAll` that resets `isPremium = false` and `subscriptions.status = 'canceled'`.
+
+---
+
+## Schema Consistency Fixes (Feb 2026 — Session 7)
+
+### User.json was stale
+`docs/json_schemas/individual/User.json` had old `adminMfa*` field names, airwallex fields, and was missing 13 fields. It is now regenerated from `functions/models/user.py` (Python is always the source of truth). Run `python3 -c "from models.user import User; import json; print(json.dumps(User.model_json_schema(), indent=2))"` to regenerate.
+
+### taxExemption type: user.py
+`user.taxExemption` was `str | None` but the handler used `{gstNumber: "..."}` (dict) and Dart had `Map<String, dynamic>?`. Fixed to `dict | None` in `user.py`. All 3 layers now consistent.
+
+### emailConsent default: database_schema.json
+`database_schema.json` had `"default": false` for `emailConsent`. Fixed to `true` — matching `user.py` and CASL intent (transactional emails are on by default).
+
+### Order Dart model: couponCode + discountAmountCents missing
+`order.py` has `couponCode: str | None` and `discountAmountCents: int` but Dart `Order` class was missing both. Added to Freezed constructor + `fromFirestore`. Fields constants already existed in both `schema_constants.dart` and `schema_constants.py`.
+
+### SecurityAlertTypes.sellerMetricsBreach missing in Dart
+Python had `SELLER_METRICS_BREACH = "seller_metrics_breach"` but Dart `SecurityAlertTypes` class was missing it. Added `static const sellerMetricsBreach = 'seller_metrics_breach';`.
+
+### OrderItem quantity limit mismatch
+`order.py` had `le=1000` but `ValidationLimits.MAX_ITEM_QUANTITY = 100` and all handler validation used 100. Fixed to `le=ValidationLimits.MAX_ITEM_QUANTITY`. Now `ValidationLimits` is imported in `order.py`.
+
+### Order money field naming (toJson corruption fix)
+`Order` Freezed class had `@Default(0.0) double actualShipping/pendingTotal/platformFeeTotal/refundAmount` — dollar-named floats stored as constructor params. `toJson()` would write dollar float values with wrong keys to Firestore. Fixed:
+- Renamed to `actualShippingCents/pendingTotalCents/platformFeeTotalCents/refundAmountCents` (int) in constructor
+- `fromFirestore` parses as int (no `/ 100.0`)
+- Added computed dollar getters: `double get actualShipping => actualShippingCents / 100.0;` etc.
+- `toJson()` now writes correct cents-keyed ints — screens unchanged (use getters)
+
+### Consent fields moved to Cloud Function
+`_createUserDocumentIfNeeded` in `auth_repository.dart` wrote CASL/PIPEDA/Law 25 compliance fields directly from Flutter. Fixed:
+- New `create_user_profile` HTTPS callable in `functions/handlers/users.py` — server controls `dataProcessingConsent`, `emailConsent`, `consentTimestamp`, `termsAcceptedAt`, `privacyAcceptedAt`, `consentMethod`, `privacyPolicyVersion`, `termsVersion`.
+- Idempotent: no-ops if user doc already exists.
+- Client now calls Cloud Function instead of writing directly.
+- Firestore `allow create` rule tightened to enforce `dataProcessingConsent == true`, `emailConsent == true`, `marketingOptIn == false` as belt-and-suspenders.
+- Added `ConsentMethodValues`, `PolicyVersionValues`, `LanguageValues` to `schema_constants.py`.
+
+### Pydantic private API fixed
+`helpers.py` used `EmailStr._validate(email)` (private, breaks on upgrades). Fixed to `TypeAdapter(EmailStr).validate_python(email)`.
+
+### Rate limiter dev detection
+`rate_limiter.py` used `GCP_PROJECT == "orignagta-dev"` to detect dev mode (fragile — defaults to prod if env var unset). Fixed to explicit `RELAXED_RATE_LIMITS=true` env var. Set on dev project via:
+```bash
+firebase deploy --only functions --set-env-vars RELAXED_RATE_LIMITS=true --project orignagta-dev
+```

@@ -1260,6 +1260,7 @@ abstract final class SecurityAlertTypes {
   static const taxExemptionPendingReview = 'tax_exemption_pending_review';
   static const suspiciousTaxExemption = 'suspicious_tax_exemption';
   static const authDeletionFailed = 'auth_deletion_failed';
+  static const sellerMetricsBreach = 'seller_metrics_breach'; // TASK 11
 }
 
 /// Security alert severity levels

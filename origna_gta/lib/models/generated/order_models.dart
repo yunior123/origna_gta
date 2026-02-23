@@ -185,13 +185,13 @@ abstract class Order with _$Order {
     // Shipping approval
     @Default(ShippingApprovalStatus.notRequired) ShippingApprovalStatus shippingApprovalStatus,
     @Default(false) bool shippingApprovalRequired,
-    @Default(0.0) double actualShipping,
-    @Default(0.0) double pendingTotal,
+    @Default(0) int actualShippingCents,
+    @Default(0) int pendingTotalCents,
     // Payout tracking
     @Default([]) List<SellerPayout> sellerPayouts,
     @Default(false) bool confirmedByClient,
     DateTime? confirmedAt,
-    @Default(0.0) double platformFeeTotal,
+    @Default(0) int platformFeeTotalCents,
     @Default(PayoutStatusValues.pending) String payoutStatus,
     // Ratings
     @Default([]) List<Ratings> ratings,
@@ -204,7 +204,7 @@ abstract class Order with _$Order {
     @Default(false) bool autoConfirmed,
     @Default(false) bool autoCaptured,
     // Refund tracking
-    @Default(0.0) double refundAmount,
+    @Default(0) int refundAmountCents,
     DateTime? refundedAt,
     // Cancellation tracking
     @Default(false) bool stockRestored,
@@ -226,6 +226,9 @@ abstract class Order with _$Order {
     Map<String, dynamic>? taxExemption,
     // Delivery instructions from buyer
     String? deliveryInstructions,
+    // Coupon / promo code (N-07)
+    String? couponCode,
+    @Default(0) int discountAmountCents,
   }) = _Order;
 
   factory Order.fromFirestore(DocumentSnapshot doc) {
@@ -362,12 +365,12 @@ abstract class Order with _$Order {
       stripeSessionId: _safeString(data[Fields.stripeSessionId]),
       shippingApprovalStatus: parseShippingApprovalStatus(data[Fields.shippingApprovalStatus]),
       shippingApprovalRequired: _safeBool(data[Fields.shippingApprovalRequired]),
-      actualShipping: _safeInt(data[Fields.actualShippingCents]) / 100.0,
-      pendingTotal: _safeInt(data[Fields.pendingTotalCents]) / 100.0,
+      actualShippingCents: _safeInt(data[Fields.actualShippingCents]),
+      pendingTotalCents: _safeInt(data[Fields.pendingTotalCents]),
       sellerPayouts: payouts,
       confirmedByClient: _safeBool(data[Fields.confirmedByClient]),
       confirmedAt: _parseDateTime(data[Fields.confirmedAt]),
-      platformFeeTotal: _safeInt(data[Fields.platformFeeTotalCents]) / 100.0,
+      platformFeeTotalCents: _safeInt(data[Fields.platformFeeTotalCents]),
       payoutStatus: _safeString(data[Fields.payoutStatus], PayoutStatusValues.pending),
       ratings: ratings,
       // === AUDIT FIX: Parse 18 missing fields ===
@@ -377,7 +380,7 @@ abstract class Order with _$Order {
       expiresAt: _parseDateTime(data[Fields.expiresAt]),
       autoConfirmed: _safeBool(data[Fields.autoConfirmed]),
       autoCaptured: _safeBool(data[Fields.autoCaptured]),
-      refundAmount: _safeInt(data[Fields.orderRefundCents]) / 100.0,
+      refundAmountCents: _safeInt(data[Fields.orderRefundCents]),
       refundedAt: _parseDateTime(data[Fields.refundedAt]),
       stockRestored: _safeBool(data[Fields.stockRestored]),
       cancelledBy: data[Fields.cancelledBy] != null ? _safeString(data[Fields.cancelledBy]) : null,
@@ -395,12 +398,27 @@ abstract class Order with _$Order {
       taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
       // Delivery instructions from buyer
       deliveryInstructions: data[Fields.deliveryInstructions] != null ? _safeString(data[Fields.deliveryInstructions]) : null,
+      // Coupon / promo code (N-07)
+      couponCode: data[Fields.couponCode] != null ? _safeString(data[Fields.couponCode]) : null,
+      discountAmountCents: _safeInt(data[Fields.discountAmountCents]),
     );
   }
 
   factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 
   const Order._();
+
+  /// Actual shipping in dollars (derived from cents — Firestore stores cents)
+  double get actualShipping => actualShippingCents / 100.0;
+
+  /// Pending total in dollars (derived from cents)
+  double get pendingTotal => pendingTotalCents / 100.0;
+
+  /// Platform fee total in dollars (derived from cents)
+  double get platformFeeTotal => platformFeeTotalCents / 100.0;
+
+  /// Refund amount in dollars (derived from cents)
+  double get refundAmount => refundAmountCents / 100.0;
 
   /// Shipping in dollars (derived from cents)
   double get shippingCost => shippingCostCents / 100.0;

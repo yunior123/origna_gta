@@ -391,29 +391,18 @@ class FirebaseAuthRepository implements AuthRepository {
 
   Future<void> _createUserDocumentIfNeeded(User? user, {String? name}) async {
     if (user == null) return;
+
+    // Check if the doc already exists before calling the server (avoids unnecessary CF invocation)
     final userDoc = _firestore.collection(Collections.users).doc(user.uid);
     final docSnapshot = await userDoc.get();
 
     if (!docSnapshot.exists) {
-      final now = FieldValue.serverTimestamp();
-      await userDoc.set({
-        Fields.uid: user.uid,
-        Fields.email: user.email ?? '',
+      // SECURITY: All legal-compliance fields (CASL/PIPEDA/Law 25) are set server-side.
+      // The server controls dataProcessingConsent, emailConsent, consentTimestamp, etc.
+      final callable = _functions.httpsCallable('create_user_profile');
+      await callable.call<Map<String, dynamic>>({
         Fields.name: name ?? user.displayName ?? 'User',
-        Fields.roles: [UserRoles.buyer],
-        Fields.createdAt: now,
-        // PIPEDA / CASL / Law 25 consent fields
-        Fields.consentTimestamp: now,
-        Fields.termsAcceptedAt: now,
-        Fields.privacyAcceptedAt: now,
-        Fields.consentMethod: ConsentMethodValues.signup,
-        Fields.dataProcessingConsent: true,
-        Fields.emailConsent: true,
-        // FIX #7-8: Add missing PIPEDA fields (version tracking + granular marketing opt-in)
-        Fields.marketingOptIn: false, // CASL requires explicit opt-in, default false
-        Fields.privacyPolicyVersion: PolicyVersionValues.defaultVersion,
-        Fields.termsVersion: PolicyVersionValues.defaultVersion,
-        Fields.preferredLanguage: _deviceLanguage(), // Bill 96 — detect device locale at signup
+        Fields.preferredLanguage: _deviceLanguage(),
       });
     } else {
       final data = docSnapshot.data();

@@ -242,6 +242,31 @@ _EMAIL_STRINGS: dict[str, dict[str, str]] = {
         "fr": "Remboursement partiel pour la commande #{oid} - Origna",
     },
     "sub.payment_issue": {"en": "Payment Issue - Order #{oid}", "fr": "Problème de paiement - Commande #{oid}"},
+    # Payment capture failed — "What happened" / "Next steps" sections (fix #5: i18n for FR buyers)
+    "capture.what_happened_h": {"en": "What happened?", "fr": "Que s'est-il passé ?"},
+    "capture.what_happened_b": {
+        "en": "Your payment was authorized but couldn't be charged. Common causes:",
+        "fr": "Votre paiement a été autorisé mais n'a pas pu être débité. Causes fréquentes :",
+    },
+    "capture.cause_funds": {"en": "Card has insufficient funds", "fr": "Fonds insuffisants sur la carte"},
+    "capture.cause_expired": {"en": "Card was canceled or expired", "fr": "Carte annulée ou expirée"},
+    "capture.cause_declined": {"en": "Bank declined the transaction", "fr": "Banque a refusé la transaction"},
+    "capture.next_steps_h": {"en": "Next steps:", "fr": "Prochaines étapes :"},
+    "capture.step_1": {"en": "1. Log in to your account", "fr": "1. Connectez-vous à votre compte"},
+    "capture.step_2": {"en": "2. Update your payment method", "fr": "2. Mettez à jour votre moyen de paiement"},
+    "capture.step_3": {
+        "en": "3. Contact your bank if the issue persists",
+        "fr": "3. Contactez votre banque si le problème persiste",
+    },
+    "capture.cta": {"en": "View Order", "fr": "Voir la commande"},
+    "capture.help": {
+        "en": "Need help? Contact us with order ID:",
+        "fr": "Besoin d'aide ? Contactez-nous avec l'ID de commande :",
+    },
+    "capture.action_required": {
+        "en": "Action required for Order #{oid}",
+        "fr": "Action requise pour la commande #{oid}",
+    },
 }
 
 
@@ -263,7 +288,7 @@ def _get_signed_unsubscribe_url(email: str) -> str:
     return f"{UNSUBSCRIBE_URL}?email={quote(email)}&token={token}"
 
 
-def _casl_compliant_footer(include_gst: bool = False, lang: str = "en") -> str:
+def _casl_compliant_footer(include_gst: bool = False, lang: str = "en", recipient_email: str = "") -> str:
     """Generate CASL-compliant email footer with physical address, unsubscribe, and optional GST/HST.
 
     Required by:
@@ -278,6 +303,7 @@ def _casl_compliant_footer(include_gst: bool = False, lang: str = "en") -> str:
     )
     t_unsub = _t("footer.unsubscribe", lang)
     t_privacy = _t("footer.privacy", lang)
+    unsub_url = _get_signed_unsubscribe_url(recipient_email) if recipient_email else UNSUBSCRIBE_URL
     return f"""
         <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 32px 40px; text-align: center;">
             <div style="margin-bottom: 16px;">
@@ -287,7 +313,7 @@ def _casl_compliant_footer(include_gst: bool = False, lang: str = "en") -> str:
             <p style="margin: 0 0 8px 0; font-size: 12px; color: rgba(255,255,255,0.35);">{EmailConfig.PHYSICAL_ADDRESS}</p>
             {gst_line}
             <p style="margin: 0 0 8px 0; font-size: 12px; color: rgba(255,255,255,0.35);">Questions? <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.SUPPORT_EMAIL}</a> | Privacy: <a href="mailto:{EmailConfig.PRIVACY_OFFICER_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.PRIVACY_OFFICER_EMAIL}</a></p>
-            <p style="margin: 0 0 12px 0; font-size: 12px; color: rgba(255,255,255,0.35);"><a href="{UNSUBSCRIBE_URL}" style="color: #667EEA; text-decoration: underline;">{t_unsub}</a> | <a href="{APP_BASE_URL}/privacy-policy" style="color: #667EEA; text-decoration: none;">{t_privacy}</a></p>
+            <p style="margin: 0 0 12px 0; font-size: 12px; color: rgba(255,255,255,0.35);"><a href="{unsub_url}" style="color: #667EEA; text-decoration: underline;">{t_unsub}</a> | <a href="{APP_BASE_URL}/privacy-policy" style="color: #667EEA; text-decoration: none;">{t_privacy}</a></p>
             <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
                 <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.25);">{EmailConfig.COPYRIGHT_TEXT}</p>
             </div>
@@ -297,7 +323,7 @@ def _casl_compliant_footer(include_gst: bool = False, lang: str = "en") -> str:
 def _log_email_for_testing(to_email: str, subject: str, html_body: str) -> None:
     """Log an email to Firestore so E2E tests can verify it was "sent" in the emulator/dev."""
     from config import Environment, CURRENT_ENV
-    if CURRENT_ENV == Environment.PRODUCTION:
+    if CURRENT_ENV in (Environment.PRODUCTION, Environment.STAGING):
         return
         
     from firebase_admin import firestore
@@ -375,7 +401,11 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
     formatted_address = "<br>".join(p for p in address_parts if p and p.strip())
     phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ""
 
-    order_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    _order_created_at = order_data.get(Fields.CREATED_AT)
+    if _order_created_at and hasattr(_order_created_at, "strftime"):
+        order_date = _order_created_at.strftime("%B %d, %Y at %I:%M %p")
+    else:
+        order_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
 
     # CPA Ontario: estimated delivery date (7 business days from now as default)
     from datetime import timedelta
@@ -945,7 +975,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None, lan
     """
 
 
-def _email_wrapper(title: str, content_html: str, include_gst: bool = False, lang: str = "en") -> str:
+def _email_wrapper(title: str, content_html: str, include_gst: bool = False, lang: str = "en", recipient_email: str = "") -> str:
     """Wrap email content in full branded HTML email template with CASL-compliant footer.
 
     Gmail-safe: uses bgcolor fallbacks, no CSS-only gradients for backgrounds.
@@ -965,7 +995,7 @@ def _email_wrapper(title: str, content_html: str, include_gst: bool = False, lan
 
         {content_html}
 
-        {_casl_compliant_footer(include_gst=include_gst, lang=lang)}
+        {_casl_compliant_footer(include_gst=include_gst, lang=lang, recipient_email=recipient_email)}
 
         </table>
         </td></tr>
@@ -1548,7 +1578,7 @@ def get_order_partially_refunded_email(
     return _email_wrapper("Partial Refund", content, include_gst=False, lang=lang)
 
 
-def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_EMAIL, attachments=None):
+def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_EMAIL, attachments=None, to_name: str = ""):
     """Send email using Mailjet — CASL compliant with List-Unsubscribe header
 
     Args:
@@ -1556,6 +1586,7 @@ def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_E
         subject: Email subject line
         html_content: HTML body
         from_email: Sender email (default: support@)
+        to_name: Optional recipient display name
         attachments: Optional list of dicts with keys:
             - ContentType (str): MIME type, e.g. 'application/pdf'
             - Filename (str): Attachment filename
@@ -1574,9 +1605,12 @@ def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_E
             auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION
         )
 
+        to_field: dict = {"Email": to_email}
+        if to_name:
+            to_field["Name"] = to_name
         message = {
             "From": {"Email": from_email, "Name": EmailConfig.SENDER_NAME},
-            "To": [{"Email": to_email}],
+            "To": [to_field],
             "Subject": subject,
             "HTMLPart": html_content,
             "Headers": {
@@ -1604,90 +1638,39 @@ def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_E
 
 
 def send_authorization_expired_email(order_id: str, order_data: dict, lang: str = "en") -> None:
-    """Send notification when payment authorization expires after 7 days"""
+    """Send notification when payment authorization expires after 7 days."""
     customer_email = order_data.get(Fields.CUSTOMER_EMAIL)
+    if not customer_email:
+        logger.warning(f"Cannot send authorization expired email for order {order_id}: missing customer_email")
+        return
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
-    html_body = f"""
-    <html lang="{lang}">
-    <body style="font-family: Arial, sans-serif; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #FF6B35;">{_t("auth_exp.hero_h", lang)}</h2>
-            <p>{_t("auth_exp.body_1", lang)}</p>
+    content = f"""
+        {_hero_header("⏰", _t("auth_exp.hero_h", lang), "Order #" + order_id[:8], "rgba(255, 107, 53, 0.2)")}
+        <tr><td style="padding: 28px 40px;">
+            <p style="margin: 0 0 20px 0; font-size: 15px; color: #333;">{_t("auth_exp.body_1", lang)}</p>
 
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>{_t("label.order_id", lang)}</strong> {order_id}</p>
-                <p><strong>{_t("label.amount", lang)}</strong> ${total:.2f} CAD</p>
-            </div>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f9ff; border-radius: 12px; border: 1px solid #e5e8f5; margin-bottom: 24px;">
+            <tr><td style="padding: 16px 20px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.order_id", lang)}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 600;">{order_id[:8]}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.amount", lang)}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 600;">${total:.2f} CAD</td>
+                    </tr>
+                </table>
+            </td></tr>
+            </table>
 
-            <p>{_t("auth_exp.body_2", lang)}</p>
-            <p>{_t("auth_exp.body_3", lang)}</p>
-
-            <p style="margin-top: 20px; font-size: 12px; color: #666;">
-                {EmailConfig.PHYSICAL_ADDRESS}<br>
-                <a href="{UNSUBSCRIBE_URL}">{_t("footer.unsubscribe", lang)}</a> | <a href="{APP_BASE_URL}/privacy-policy">{_t("footer.privacy", lang)}</a>
-            </p>
-            <p style="margin-top: 8px; font-size: 11px; color: #999;">{EmailConfig.COPYRIGHT_TEXT}</p>
-        </div>
-    </body>
-    </html>
+            <p style="margin: 0 0 12px 0; font-size: 15px; color: #333;">{_t("auth_exp.body_2", lang)}</p>
+            <p style="margin: 0; font-size: 15px; color: #333;">{_t("auth_exp.body_3", lang)}</p>
+        </td></tr>
     """
-    _log_email_for_testing(customer_email, _t("auth_exp.subject", lang).replace("{oid}", order_id[:8]), html_body)
-
-    if IS_EMULATOR and not FORCE_REAL_EMAIL:
-        logger.info(f"🔧 EMULATOR: Would send authorization expired email for order {order_id}")
-        return
-
-    if not get_mailjet_api_key() or not get_mailjet_secret_key():
-        logger.warning("⚠️ Mailjet credentials not configured")
-        return
-
-    try:
-        mailjet = Client(
-            auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION
-        )
-
-        customer_email = order_data.get(Fields.CUSTOMER_EMAIL)
-        total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
-        # Email to buyer
-        buyer_message = {
-            "Messages": [
-                {
-                    "From": {"Email": EmailConfig.SUPPORT_EMAIL, "Name": EmailConfig.SENDER_NAME},
-                    "To": [{"Email": customer_email}],
-                    "Subject": _t("auth_exp.subject", lang).replace("{oid}", order_id[:8]),
-                    "HTMLPart": f"""
-                <html lang="{lang}">
-                <body style="font-family: Arial, sans-serif; color: #333;">
-                    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                        <h2 style="color: #FF6B35;">{_t("auth_exp.hero_h", lang)}</h2>
-                        <p>{_t("auth_exp.body_1", lang)}</p>
-
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <p><strong>{_t("label.order_id", lang)}</strong> {order_id}</p>
-                            <p><strong>{_t("label.amount", lang)}</strong> ${total:.2f} CAD</p>
-                        </div>
-
-                        <p>{_t("auth_exp.body_2", lang)}</p>
-                        <p>{_t("auth_exp.body_3", lang)}</p>
-
-                        <p style="margin-top: 20px; font-size: 12px; color: #666;">
-                            {EmailConfig.PHYSICAL_ADDRESS}<br>
-                            <a href="{UNSUBSCRIBE_URL}">{_t("footer.unsubscribe", lang)}</a> | <a href="{APP_BASE_URL}/privacy-policy">{_t("footer.privacy", lang)}</a>
-                        </p>
-                        <p style="margin-top: 8px; font-size: 11px; color: #999;">{EmailConfig.COPYRIGHT_TEXT}</p>
-                    </div>
-                </body>
-                </html>
-                """,
-                }
-            ]
-        }
-
-        mailjet.send.create(data=buyer_message)
-        logger.info(f"✅ Authorization expired email sent to {customer_email}")
-
-    except Exception as e:
-        logger.warning(f"⚠️ Failed to send authorization expired email: {str(e)}")
+    subject = _t("auth_exp.subject", lang).replace("{oid}", order_id[:8])
+    html_body = _email_wrapper(_t("auth_exp.hero_h", lang), content, include_gst=False, lang=lang, recipient_email=customer_email)
+    send_email(customer_email, subject, html_body)
 
 
 def send_payment_capture_failed_email(
@@ -1701,7 +1684,7 @@ def send_payment_capture_failed_email(
         logger.info("Cannot send capture failure email: missing customer_email")
         return
 
-    # Build HTML to log it for E2E and to send
+    # Build HTML (single build — used for logging, emulator, and sending)
     safe_name = html.escape(str(customer_name or ""))
     safe_error = html.escape(str(error_message or "Unknown error"))
     html_body = f"""
@@ -1725,7 +1708,7 @@ def send_payment_capture_failed_email(
             </div>
             <div style="font-size: 48px; margin: 12px 0;">⚠️</div>
             <h1 style="margin: 12px 0 8px 0; font-size: 24px; font-weight: 800; color: #ffffff;">{_t("capture.hero_h", lang)}</h1>
-            <p style="margin: 0; font-size: 14px; color: #b0b0cc;">Action required for Order #{order_id[:8]}</p>
+            <p style="margin: 0; font-size: 14px; color: #b0b0cc;">{_t("capture.action_required", lang).replace("{oid}", order_id[:8])}</p>
         </td></tr>
 
         <!-- Alert Banner -->
@@ -1757,33 +1740,33 @@ def send_payment_capture_failed_email(
             </td></tr>
             </table>
 
-            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">What happened?</p>
-            <p style="margin: 0 0 12px 0; font-size: 14px; color: #555; line-height: 1.6;">Your payment was authorized but couldn't be charged. Common causes:</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">&bull; Card has insufficient funds</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">&bull; Card was canceled or expired</p>
-            <p style="margin: 0 0 20px 0; font-size: 14px; color: #555;">&bull; Bank declined the transaction</p>
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">{_t("capture.what_happened_h", lang)}</p>
+            <p style="margin: 0 0 12px 0; font-size: 14px; color: #555; line-height: 1.6;">{_t("capture.what_happened_b", lang)}</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">&bull; {_t("capture.cause_funds", lang)}</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">&bull; {_t("capture.cause_expired", lang)}</p>
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: #555;">&bull; {_t("capture.cause_declined", lang)}</p>
 
-            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">Next steps:</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">1. Log in to your account</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">2. Update your payment method</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">3. Contact your bank if the issue persists</p>
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">{_t("capture.next_steps_h", lang)}</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">{_t("capture.step_1", lang)}</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">{_t("capture.step_2", lang)}</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">{_t("capture.step_3", lang)}</p>
         </td></tr>
 
         <!-- CTA Button -->
         <tr><td style="padding: 0 40px 28px 40px; text-align: center;">
             <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
             <td align="center" bgcolor="#667EEA" style="background-color: #667EEA; border-radius: 50px;">
-                <a href="{APP_BASE_URL}/orders/{order_id}" target="_blank" style="display: inline-block; padding: 14px 40px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 50px;">View Order</a>
+                <a href="{APP_BASE_URL}/orders/{order_id}" target="_blank" style="display: inline-block; padding: 14px 40px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 50px;">{_t("capture.cta", lang)}</a>
             </td>
             </tr></table>
         </td></tr>
 
         <tr><td style="padding: 0 40px 24px 40px;">
-            <p style="margin: 0; font-size: 13px; color: #888; text-align: center;">Need help? Contact us with order ID: <strong>{order_id[:8]}</strong></p>
+            <p style="margin: 0; font-size: 13px; color: #888; text-align: center;">{_t("capture.help", lang)} <strong>{order_id[:8]}</strong></p>
         </td></tr>
 
         <!-- CASL-COMPLIANT FOOTER -->
-        {_casl_compliant_footer(include_gst=False, lang=lang)}
+        {_casl_compliant_footer(include_gst=False, lang=lang, recipient_email=customer_email)}
 
         </table>
         </td></tr>
@@ -1792,132 +1775,4 @@ def send_payment_capture_failed_email(
     </html>
     """
     subject = _t("sub.payment_issue", lang).replace("{oid}", order_id[:8])
-    _log_email_for_testing(customer_email, subject, html_body)
-
-    if IS_EMULATOR and not FORCE_REAL_EMAIL:
-        logger.info(f"EMULATOR: Would send capture failure email for order {order_id[:8]}")
-        return
-
-    # AUDIT FIX: Guard against missing Mailjet credentials (prevents crash)
-    if not get_mailjet_api_key() or not get_mailjet_secret_key():
-        logger.warning("Mailjet not configured — skipping capture failure email")
-        return
-
-    # Sanitize user-controlled inputs before HTML injection
-    safe_name = html.escape(str(customer_name or ""))
-    safe_error = html.escape(str(error_message or "Unknown error"))
-
-    # Initialize Mailjet client
-    mailjet = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION)
-
-    subject = _t("sub.payment_issue", lang).replace("{oid}", order_id[:8])
-    html_body = f"""
-    <!DOCTYPE html>
-    <html lang="{lang}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Payment Issue - Origna</title>
-    </head>
-    <body style="margin: 0; padding: 0; background-color: #f0f2f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-        <div style="display:none;font-size:1px;color:#f0f2f8;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Action required: payment issue with order #{order_id[:8]}</div>
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0f2f8;">
-        <tr><td align="center" style="padding: 24px 16px;">
-        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden;">
-
-        <!-- Header -->
-        <tr><td bgcolor="#1F235A" style="background-color: #1F235A; padding: 40px 40px 32px 40px; text-align: center;">
-            <div style="margin-bottom: 8px;">
-                <span style="font-size: 14px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: #9999b3;">O R I G N A</span>
-            </div>
-            <div style="font-size: 48px; margin: 12px 0;">⚠️</div>
-            <h1 style="margin: 12px 0 8px 0; font-size: 24px; font-weight: 800; color: #ffffff;">{_t("capture.hero_h", lang)}</h1>
-            <p style="margin: 0; font-size: 14px; color: #b0b0cc;">Action required for Order #{order_id[:8]}</p>
-        </td></tr>
-
-        <!-- Alert Banner -->
-        <tr><td bgcolor="#FEF3C7" style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px 40px;">
-            <span style="font-size: 14px; font-weight: 700; color: #92400E;">{_t("capture.alert_t", lang)}</span><br>
-            <span style="font-size: 14px; color: #78350F;">{_t("capture.alert_b", lang)}</span>
-        </td></tr>
-
-        <!-- Content -->
-        <tr><td style="padding: 28px 40px;">
-            <p style="margin: 0 0 20px 0; font-size: 15px; color: #333;">Hi {safe_name},</p>
-
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f9ff; border-radius: 12px; border: 1px solid #e5e8f5; margin-bottom: 24px;">
-            <tr><td style="padding: 16px 20px;">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                    <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.order_id", lang)}</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 600;">{order_id[:8]}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.amount", lang)}</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 600;">${amount:.2f} CAD</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.issue", lang)}</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #dc2626; text-align: right; font-weight: 500;">{safe_error}</td>
-                    </tr>
-                </table>
-            </td></tr>
-            </table>
-
-            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">What happened?</p>
-            <p style="margin: 0 0 12px 0; font-size: 14px; color: #555; line-height: 1.6;">Your payment was authorized but couldn't be charged. Common causes:</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">&bull; Card has insufficient funds</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">&bull; Card was canceled or expired</p>
-            <p style="margin: 0 0 20px 0; font-size: 14px; color: #555;">&bull; Bank declined the transaction</p>
-
-            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">Next steps:</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">1. Log in to your account</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">2. Update your payment method</p>
-            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">3. Contact your bank if the issue persists</p>
-        </td></tr>
-
-        <!-- CTA Button -->
-        <tr><td style="padding: 0 40px 28px 40px; text-align: center;">
-            <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
-            <td align="center" bgcolor="#667EEA" style="background-color: #667EEA; border-radius: 50px;">
-                <a href="{APP_BASE_URL}/orders/{order_id}" target="_blank" style="display: inline-block; padding: 14px 40px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 50px;">View Order</a>
-            </td>
-            </tr></table>
-        </td></tr>
-
-        <tr><td style="padding: 0 40px 24px 40px;">
-            <p style="margin: 0; font-size: 13px; color: #888; text-align: center;">Need help? Contact us with order ID: <strong>{order_id[:8]}</strong></p>
-        </td></tr>
-
-        <!-- CASL-COMPLIANT FOOTER -->
-        {_casl_compliant_footer(include_gst=False, lang=lang)}
-
-        </table>
-        </td></tr>
-        </table>
-    </body>
-    </html>
-    """
-
-    try:
-        result = mailjet.send.create(
-            data={
-                "Messages": [
-                    {
-                        "From": {"Email": EmailConfig.SUPPORT_EMAIL, "Name": EmailConfig.SENDER_NAME},
-                        "To": [{"Email": customer_email, "Name": customer_name}],
-                        "Subject": subject,
-                        "HTMLPart": html_body,
-                        "Headers": {
-                            "List-Unsubscribe": f"<{_get_signed_unsubscribe_url(customer_email)}>, <mailto:{EmailConfig.SUPPORT_EMAIL}?subject=Unsubscribe>",
-                            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-                        },
-                    }
-                ]
-            }
-        )
-        logger.info(f"✅ Capture failure email sent to {customer_email}")
-        return result
-    except Exception as e:
-        logger.error(f"❌ Failed to send capture failure email: {str(e)}")
-        raise
+    send_email(customer_email, subject, html_body, to_name=customer_name)

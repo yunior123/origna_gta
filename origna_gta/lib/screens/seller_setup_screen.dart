@@ -18,11 +18,15 @@ class SellerSetupCompleteScreen extends ConsumerStatefulWidget {
   ConsumerState<SellerSetupCompleteScreen> createState() => _SellerSetupCompleteScreenState();
 }
 
+enum _CheckResult { success, pending, error }
+
 class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteScreen> {
   bool _isRefreshing = false;
   String? _statusMessage;
   DateTime? _lastCheckTime;
   static const _minCheckInterval = Duration(seconds: 10); // Rate limit: 10 seconds between checks
+
+  _CheckResult? _checkResult;
 
   Future<void> _checkStatusAgain() async {
     // Rate limiting - prevent spam clicking
@@ -31,7 +35,8 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
       if (elapsed < _minCheckInterval) {
         final remaining = _minCheckInterval - elapsed;
         setState(() {
-          _statusMessage = '⏳ Please wait ${remaining.inSeconds} seconds before checking again.';
+          _checkResult = _CheckResult.pending;
+          _statusMessage = 'seller.wait_seconds'.tr(namedArgs: {'seconds': remaining.inSeconds.toString()});
         });
         return;
       }
@@ -42,6 +47,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
     setState(() {
       _isRefreshing = true;
       _statusMessage = null;
+      _checkResult = null;
     });
     
     try {
@@ -56,24 +62,25 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
         setState(() {
           _isRefreshing = false;
           if (status.isComplete) {
-            // Account is fully verified - charges enabled
-            _statusMessage = '✅ Verification complete! You can now add products.';
+            _checkResult = _CheckResult.success;
+            _statusMessage = 'seller.verification_complete'.tr();
           } else {
-            // Still waiting for Stripe verification
-            _statusMessage = '⏳ Verification still in progress. Stripe is reviewing your documents.';
+            _checkResult = _CheckResult.pending;
+            _statusMessage = 'seller.verification_in_progress'.tr();
           }
         });
         
         // Clear message after 5 seconds
         Future.delayed(const Duration(seconds: 5), () {
-          if (mounted) setState(() => _statusMessage = null);
+          if (mounted) setState(() { _statusMessage = null; _checkResult = null; });
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isRefreshing = false;
-          _statusMessage = '❌ Could not check status. Please try again.';
+          _checkResult = _CheckResult.error;
+          _statusMessage = 'seller.status_check_failed'.tr();
         });
       }
     }
@@ -373,9 +380,9 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: _statusMessage!.startsWith('✅') 
+                  color: _checkResult == _CheckResult.success
                       ? DesignTokens.success.withValues(alpha: 0.1)
-                      : _statusMessage!.startsWith('❌')
+                      : _checkResult == _CheckResult.error
                           ? DesignTokens.error.withValues(alpha: 0.1)
                           : DesignTokens.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
@@ -386,9 +393,9 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: _statusMessage!.startsWith('✅')
+                    color: _checkResult == _CheckResult.success
                         ? DesignTokens.success
-                        : _statusMessage!.startsWith('❌')
+                        : _checkResult == _CheckResult.error
                             ? DesignTokens.error
                             : DesignTokens.primary,
                   ),

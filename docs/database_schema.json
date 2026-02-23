@@ -143,8 +143,8 @@
         },
         "emailConsent": {
           "type": "boolean",
-          "default": false,
-          "description": "User accepted transactional emails (CASL)"
+          "default": true,
+          "description": "User consented to receive transactional emails (CASL)"
         },
         "marketingOptIn": {
           "type": "boolean",

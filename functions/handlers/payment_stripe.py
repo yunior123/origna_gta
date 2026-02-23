@@ -3310,10 +3310,16 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Update Firestore with latest status
         from firebase_admin import firestore as admin_firestore
 
+        requirements = account.requirements
+        currently_due = list(requirements.currently_due or [])
+        eventually_due = list(requirements.eventually_due or [])
+        pending_requirements = list(set(currently_due + eventually_due))
+
         update_data = {
             Fields.CHARGES_ENABLED: account.charges_enabled,
             Fields.PAYOUTS_ENABLED: account.payouts_enabled,
             Fields.ONBOARDING_COMPLETED: account.details_submitted,
+            Fields.PENDING_REQUIREMENTS: pending_requirements,
             Fields.UPDATED_AT: get_server_timestamp(),
         }
 

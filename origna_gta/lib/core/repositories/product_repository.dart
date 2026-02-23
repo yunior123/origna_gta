@@ -149,6 +149,61 @@ class FirebaseProductRepository implements ProductRepository {
       ensureDateCreated: true,
     );
     try {
+      // SKU uniqueness check (same as addProduct — safety net before write)
+      final sellerSku = product.sellerSku;
+      if (sellerSku != null && sellerSku.isNotEmpty) {
+        final existing = await _firestore
+            .collection(Collections.products)
+            .where(Fields.sellerId, isEqualTo: product.sellerId)
+            .where(Fields.sellerSku, isEqualTo: sellerSku)
+            .limit(1)
+            .get();
+        if (existing.docs.isNotEmpty) {
+          throw Exception(
+            'A product with SKU "$sellerSku" already exists. '
+            'Use a unique seller SKU per product.',
+          );
+        }
+      }
+
+      // Denormalize shipFrom fields from warehouses for O(1) card rendering
+      final warehouseIds = product.warehouseIds;
+      if (warehouseIds != null && warehouseIds.isNotEmpty) {
+        try {
+          final warehouseDocs = await Future.wait(
+            warehouseIds.map((wId) => _firestore
+                .collection(Collections.users)
+                .doc(product.sellerId)
+                .collection(Collections.warehouses)
+                .doc(wId)
+                .get()),
+          );
+
+          final primaryData = warehouseDocs
+              .where((d) => d.exists)
+              .map((d) => d.data()!)
+              .firstOrNull;
+          if (primaryData != null) {
+            final addr = primaryData['address'] as Map<String, dynamic>?;
+            firestoreData[Fields.shipFromCity] = addr?[Fields.city];
+            firestoreData[Fields.shipFromProvince] = addr?[Fields.state];
+            firestoreData[Fields.shipFromCountry] = addr?[Fields.country];
+          }
+
+          final countries = warehouseDocs
+              .where((d) => d.exists)
+              .map((d) => (d.data()!['address'] as Map<String, dynamic>?)?[Fields.country] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          if (countries.isNotEmpty) {
+            firestoreData[Fields.shipFromCountries] = countries;
+          }
+        } catch (_) {
+          // Non-fatal — card falls back gracefully
+        }
+      }
+
       if (kDebugMode) {
         final currentUser = FirebaseAuth.instance.currentUser;
         debugPrint(
@@ -159,13 +214,28 @@ class FirebaseProductRepository implements ProductRepository {
         );
       }
 
-      await _firestore
-          .collection(Collections.products)
-          .doc(productId)
-          .set(firestoreData);
+      final docRef = _firestore.collection(Collections.products).doc(productId);
+      await docRef.set(firestoreData);
 
-      if (kDebugMode) {
-        debugPrint('REPO: Product added with predetermined ID: $productId');
+      // Server verification — same guarantee as addProduct
+      try {
+        final docSnapshot = await docRef.get(const GetOptions(source: Source.server));
+        if (!docSnapshot.exists) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'sync-failed',
+            message: '[FirebaseProductRepository] Write succeeded locally but failed to persist to server.',
+          );
+        }
+        if (kDebugMode) debugPrint('REPO: Product added with predetermined ID: $productId');
+      } catch (e) {
+        if (kDebugMode) debugPrint('REPO: SERVER VERIFICATION ERROR: $e');
+        if (e is FirebaseException && e.code == 'sync-failed') rethrow;
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'sync-failed-network',
+          message: '[FirebaseProductRepository] Server verification threw error: $e',
+        );
       }
     } catch (e) {
       if (kDebugMode) {

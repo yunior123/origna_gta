@@ -86,6 +86,19 @@
           "description": "Address label (Home, Work, Other)",
           "title": "Label"
         },
+        "addressId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unique identifier for the address document",
+          "title": "Addressid"
+        },
         "latitude": {
           "anyOf": [
             {
@@ -248,35 +261,10 @@
       "description": "Timestamp of last checkout",
       "title": "Lastcheckouttimestamp"
     },
-    "stripeAccountId": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Stripe Connect account ID (for sellers)",
-      "title": "Stripeaccountid"
-    },
-    "payoutsEnabled": {
+    "isSeller": {
       "default": false,
-      "description": "Whether seller can receive payouts",
-      "title": "Payoutsenabled",
-      "type": "boolean"
-    },
-    "chargesEnabled": {
-      "default": false,
-      "description": "Whether seller can accept charges",
-      "title": "Chargesenabled",
-      "type": "boolean"
-    },
-    "onboardingCompleted": {
-      "default": false,
-      "description": "Whether Stripe Connect onboarding is complete",
-      "title": "Onboardingcompleted",
+      "description": "Quick flag \u2014 seller details live in seller_profiles collection",
+      "title": "Isseller",
       "type": "boolean"
     },
     "suspended": {
@@ -309,68 +297,16 @@
         }
       ],
       "default": "stripe",
-      "description": "Payment provider for seller payouts (stripe or airwallex)",
+      "description": "Payment provider for seller payouts",
       "title": "Paymentprovider"
     },
-    "airwallexAccountId": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Airwallex connected account ID",
-      "title": "Airwallexaccountid"
-    },
-    "airwallexCustomerId": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Airwallex customer ID",
-      "title": "Airwallexcustomerid"
-    },
-    "airwallexStatus": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Airwallex account status",
-      "title": "Airwallexstatus"
-    },
-    "adminMfaEnabled": {
+    "mfaEnabled": {
       "default": false,
       "description": "Whether admin MFA is enabled",
-      "title": "Adminmfaenabled",
+      "title": "Mfaenabled",
       "type": "boolean"
     },
-    "adminMfaSecret": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Admin TOTP secret (server-only)",
-      "title": "Adminmfasecret"
-    },
-    "adminMfaVerifiedAt": {
+    "mfaEnrolledAt": {
       "anyOf": [
         {
           "format": "date-time",
@@ -381,24 +317,22 @@
         }
       ],
       "default": null,
-      "description": "Last successful admin MFA verification",
-      "title": "Adminmfaverifiedat"
+      "description": "When MFA was first enrolled (OK for display)",
+      "title": "Mfaenrolledat"
     },
-    "adminMfaBackupCodes": {
+    "lastMfaVerify": {
       "anyOf": [
         {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+          "format": "date-time",
+          "type": "string"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "description": "One-time admin MFA backup codes",
-      "title": "Adminmfabackupcodes"
+      "description": "Last successful admin MFA verification (display-only copy; authoritative in user_security)",
+      "title": "Lastmfaverify"
     },
     "updatedAt": {
       "anyOf": [
@@ -413,6 +347,224 @@
       "default": null,
       "description": "Last update timestamp",
       "title": "Updatedat"
+    },
+    "taxExemption": {
+      "anyOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Tax exemption details map, e.g. {gstNumber: '123456789RT0001'}",
+      "title": "Taxexemption"
+    },
+    "emailConsent": {
+      "default": true,
+      "description": "User consented to receive transactional emails",
+      "title": "Emailconsent",
+      "type": "boolean"
+    },
+    "marketingOptIn": {
+      "default": false,
+      "description": "Explicit opt-in for marketing/promotional emails (CASL)",
+      "title": "Marketingoptin",
+      "type": "boolean"
+    },
+    "consentTimestamp": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "When consent was given (ISO 8601)",
+      "title": "Consenttimestamp"
+    },
+    "consentMethod": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "How consent was obtained: signup, checkbox, double_opt_in, implied",
+      "title": "Consentmethod"
+    },
+    "privacyAcceptedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "When user accepted the privacy policy",
+      "title": "Privacyacceptedat"
+    },
+    "termsAcceptedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "When user accepted the Terms of Service",
+      "title": "Termsacceptedat"
+    },
+    "privacyPolicyVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Version of privacy policy the user accepted",
+      "title": "Privacypolicyversion"
+    },
+    "termsVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Version of Terms of Service the user accepted",
+      "title": "Termsversion"
+    },
+    "preferredLanguage": {
+      "default": "en",
+      "description": "User preferred language: 'en' or 'fr' (for Quebec Bill 96 compliance)",
+      "title": "Preferredlanguage",
+      "type": "string"
+    },
+    "unsubscribedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "When user unsubscribed from marketing emails",
+      "title": "Unsubscribedat"
+    },
+    "dataProcessingConsent": {
+      "default": false,
+      "description": "Explicit consent for personal data processing (PIPEDA / Law 25)",
+      "title": "Dataprocessingconsent",
+      "type": "boolean"
+    },
+    "isPremium": {
+      "default": false,
+      "description": "Cached premium status \u2014 authoritative source: subscriptions/{uid}",
+      "title": "Ispremium",
+      "type": "boolean"
+    },
+    "premiumSince": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "When premium subscription started",
+      "title": "Premiumsince"
+    },
+    "premiumExpiresAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Current billing period end (premium expires after this)",
+      "title": "Premiumexpiresat"
+    },
+    "stripeSubscriptionId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stripe Subscription ID",
+      "title": "Stripesubscriptionid"
+    },
+    "notifyNewProducts": {
+      "default": false,
+      "description": "Opt-in: receive FCM notification when new products are added (premium only)",
+      "title": "Notifynewproducts",
+      "type": "boolean"
+    },
+    "notifyTrending": {
+      "default": false,
+      "description": "Opt-in: receive FCM notification for trending products (premium only)",
+      "title": "Notifytrending",
+      "type": "boolean"
+    },
+    "fcmToken": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Firebase Cloud Messaging device token for push notifications",
+      "title": "Fcmtoken"
+    },
+    "fcmTokenUpdatedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Last FCM token update timestamp",
+      "title": "Fcmtokenupdatedat"
     }
   },
   "required": [

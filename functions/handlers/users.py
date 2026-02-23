@@ -12,7 +12,16 @@ from typing import Any
 
 from firebase_functions import https_fn
 
-from schema_constants import BusinessRules, Collections, Fields, UserRoleValues, ValidationLimits
+from schema_constants import (
+    BusinessRules,
+    Collections,
+    ConsentMethodValues,
+    Fields,
+    LanguageValues,
+    PolicyVersionValues,
+    UserRoleValues,
+    ValidationLimits,
+)
 from utils.function_options import DEFAULT_OPTIONS
 from utils.helpers import create_success_response, sanitized_text
 
@@ -36,6 +45,72 @@ def get_server_timestamp():
     from firebase_admin import firestore
 
     return firestore.SERVER_TIMESTAMP
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Create the Firestore user document server-side after Firebase Auth sign-in/sign-up.
+
+    Server controls all legal-compliance fields (CASL / PIPEDA / Law 25):
+      dataProcessingConsent, emailConsent, consentTimestamp, termsAcceptedAt,
+      privacyAcceptedAt, consentMethod, privacyPolicyVersion, termsVersion.
+
+    Idempotent: safe to call on every login — no-ops if doc already exists.
+
+    Request data:
+        - name: string (required — display name)
+        - preferredLanguage: 'en' | 'fr' (optional, defaults to 'en')
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    email = req.auth.token.get("email", "")
+    data = req.data or {}
+
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    doc = user_ref.get()
+    if doc.exists:
+        return create_success_response({"created": False, "existing": True})
+
+    # Validate and sanitize name
+    name_raw = data.get(Fields.NAME, "").strip()
+    if not name_raw:
+        # Fall back to email prefix as display name
+        name_raw = email.split("@")[0] if email else "User"
+    name = sanitized_text(name_raw)[: ValidationLimits.MAX_NAME_LENGTH]
+    if len(name) < ValidationLimits.MIN_NAME_LENGTH:
+        name = "User"
+
+    # Validate preferredLanguage
+    lang = data.get(Fields.PREFERRED_LANGUAGE, LanguageValues.ENGLISH)
+    if lang not in LanguageValues.ALL:
+        lang = LanguageValues.ENGLISH
+
+    server_ts = get_server_timestamp()
+
+    user_ref.set({
+        Fields.UID: user_id,
+        Fields.EMAIL: email,
+        Fields.NAME: name,
+        Fields.ROLES: [UserRoleValues.BUYER],
+        Fields.CREATED_AT: server_ts,
+        Fields.PREFERRED_LANGUAGE: lang,
+        # === LEGAL COMPLIANCE — server-only (CASL / PIPEDA / Law 25) ===
+        Fields.DATA_PROCESSING_CONSENT: True,
+        Fields.EMAIL_CONSENT: True,
+        Fields.MARKETING_OPT_IN: False,  # CASL: explicit opt-in required, default off
+        Fields.CONSENT_TIMESTAMP: server_ts,
+        Fields.TERMS_ACCEPTED_AT: server_ts,
+        Fields.PRIVACY_ACCEPTED_AT: server_ts,
+        Fields.CONSENT_METHOD: ConsentMethodValues.SIGNUP,
+        Fields.PRIVACY_POLICY_VERSION: PolicyVersionValues.DEFAULT,
+        Fields.TERMS_VERSION: PolicyVersionValues.DEFAULT,
+    })
+
+    logger.info("Created user profile server-side for uid=%s", user_id)
+    return create_success_response({"created": True})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)

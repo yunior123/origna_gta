@@ -14,6 +14,7 @@ from schema_constants import (
     DeliveryStatusValues,
     Fields,
     PayoutStatusValues,
+    ValidationLimits,
 )
 
 from .base import Address, OrderStatusEnum, PaymentStatusEnum, ShippingApprovalStatusEnum
@@ -49,7 +50,7 @@ class OrderItem(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     description: str = Field(default="", max_length=4000)
     price: float = Field(..., gt=0)
-    quantity: int = Field(..., gt=0, le=1000)
+    quantity: int = Field(..., gt=0, le=ValidationLimits.MAX_ITEM_QUANTITY)
     imageUrls: list[str] = Field(..., min_length=1, description="Product image URLs")
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address | None = Field(default=None)

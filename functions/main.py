@@ -173,6 +173,7 @@ from handlers.subscriptions import (  # noqa: E402
 )
 from handlers.users import (  # noqa: E402
     add_buyer_address,
+    create_user_profile,
     delete_buyer_address,
     get_user_profile,
     set_default_buyer_address,
@@ -301,6 +302,7 @@ __all__ = [
     "e2e_get_mail_logs",
     # User Profile
     "add_buyer_address",
+    "create_user_profile",
     "delete_buyer_address",
     "get_user_profile",
     "set_default_buyer_address",

@@ -130,6 +130,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
   void onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
       state = state.copyWith(
         searchQuery: value,
         products: [],
@@ -144,7 +145,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
   }
 
   Future<void> refresh() async {
-    state = state.copyWith(products: [], lastDocument: null, hasMore: true);
+    state = state.copyWith(products: [], lastDocument: null, hasMore: true, isLoading: false, isLoadingMore: false);
     await loadProducts();
   }
 }

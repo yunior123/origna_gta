@@ -1476,6 +1476,7 @@ def _check_digital_url_reachability(product_id: str, product_data: dict) -> list
     return dead
 
 
+@firestore_fn.on_document_updated(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_product_updated(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Updates product in Algolia when modified.

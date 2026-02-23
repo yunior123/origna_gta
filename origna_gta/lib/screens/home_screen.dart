@@ -389,7 +389,7 @@ class _SubcategoryChips extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       child: Text(
-                        isAll ? 'All' : subcategory!,
+                        isAll ? 'home.category_all'.tr() : subcategory!,
                         style: TextStyle(
                           color: isSelected
                               ? DesignTokens.secondary
