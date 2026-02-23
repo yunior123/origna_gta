@@ -10,6 +10,18 @@ import 'package:origna_gta/utils/utils.dart';
 
 import 'edit_product_state.dart';
 
+/// Top-level isolate function for image compression — runs in a separate thread.
+Uint8List? _compressImageEditIsolate(Uint8List bytes) {
+  const int maxDimension = 2048;
+  final image = img.decodeImage(bytes);
+  if (image == null) return null;
+  img.Image resized = image;
+  if (image.width > maxDimension || image.height > maxDimension) {
+    resized = img.copyResize(image, width: image.width > image.height ? maxDimension : null, height: image.height > image.width ? maxDimension : null);
+  }
+  return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
+}
+
 final editProductViewModelProvider = StateNotifierProvider.autoDispose.family<EditProductViewModel, EditProductState, models.Product>((ref, product) {
   return EditProductViewModel(ref, product);
 });
@@ -40,6 +52,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           sameDayEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.sameDay),
           minimumOrderQuantity: _product.minimumOrderQuantity,
           freeShipping: _product.freeShipping,
+          freeShippingAt10Plus: _product.deliveryOptions
+              .expand((o) => o.quantityDiscounts)
+              .any((d) => d.minQuantity == 10 && d.discountValue == 0 && d.discountType == DiscountTypeValues.flatRate),
         ),
       );
 
@@ -109,6 +124,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   );
 
   void toggleFreeShipping(bool value) => state = state.copyWith(freeShipping: value);
+  void setFreeShippingAt10Plus(bool value) => state = state.copyWith(freeShippingAt10Plus: value);
 
   void toggleLocalDelivery(bool value) => state = state.copyWith(isLocalDeliveryOnly: value);
 
@@ -278,10 +294,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       );
 
       // Build update map and add bookSourceUrl only if seller re-entered it
-      // Note: bookSourceUrl is server-side only — not in Fields constants by design
       final updateMap = updatedProduct.toJson();
       if (state.isDigital && state.digitalType == DigitalTypeValues.book && state.bookSourceUrl?.isNotEmpty == true) {
-        updateMap['bookSourceUrl'] = state.bookSourceUrl!;
+        updateMap[Fields.bookSourceUrl] = state.bookSourceUrl!;
       }
 
       await _repository.updateProduct(_product.productId, updateMap);
@@ -301,19 +316,19 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   }
 
   Future<Uint8List?> _validateAndCompressImage(Uint8List bytes) async {
-    const int maxImageSize = 5 * 1024 * 1024;
-    const int maxDimension = 2048;
-
-    if (bytes.length > maxImageSize) return null;
-
-    final image = img.decodeImage(bytes);
-    if (image == null) return null;
-
-    img.Image resized = image;
-    if (image.width > maxDimension || image.height > maxDimension) {
-      resized = img.copyResize(image, width: image.width > image.height ? maxDimension : null, height: image.height > image.width ? maxDimension : null);
+    const int maxImageSize = 10 * 1024 * 1024; // 10MB — matches backend limit
+    if (bytes.length > maxImageSize) {
+      throw Exception('product.image_too_large'.tr());
     }
+    return compute(_compressImageEditIsolate, bytes);
+  }
 
-    return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
+  /// Move the image at [index] in existingImageUrls to position 0 (cover slot).
+  void setExistingImageAsCover(int index) {
+    final urls = List<String>.from(state.existingImageUrls);
+    if (index <= 0 || index >= urls.length) return;
+    final cover = urls.removeAt(index);
+    urls.insert(0, cover);
+    state = state.copyWith(existingImageUrls: urls);
   }
 }

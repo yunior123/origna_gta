@@ -4,6 +4,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 
+class ProductAddImages extends StatefulWidget {
+  final List<ImageModel> imageModels;
+  final ValueChanged<List<ImageModel>>? onImagesChanged;
+
+  const ProductAddImages({super.key, required this.imageModels, this.onImagesChanged});
+
+  @override
+  State<ProductAddImages> createState() => _ProductAddImagesState();
+}
+
 class _ProductAddImagesState extends State<ProductAddImages> {
   late List<ImageModel> _imageModels;
 
@@ -188,6 +198,8 @@ class _ImageTile extends StatelessWidget {
               width: 110,
               height: 110,
               fit: BoxFit.cover,
+              cacheWidth: 110,
+              cacheHeight: 110,
             ),
           ),
         ),
@@ -232,14 +244,4 @@ class _ImageTile extends StatelessWidget {
       ],
     );
   }
-}
-
-class ProductAddImages extends StatefulWidget {
-  final List<ImageModel> imageModels;
-  final ValueChanged<List<ImageModel>>? onImagesChanged;
-
-  const ProductAddImages({super.key, required this.imageModels, this.onImagesChanged});
-
-  @override
-  State<ProductAddImages> createState() => _ProductAddImagesState();
 }

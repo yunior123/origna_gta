@@ -338,6 +338,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           ),
                         ],
                       ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('product.free_shipping_10_plus_label'.tr()),
+                        value: state.freeShippingAt10Plus,
+                        activeTrackColor: DesignTokens.primary,
+                        onChanged: viewModel.setFreeShippingAt10Plus,
+                      ),
                     ],
                     const SizedBox(height: 16),
                     _buildDeliveryOptions(state, viewModel),
@@ -804,7 +811,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     // Bug #6: Preserve existing quantityDiscounts/additionalItemCost/maxItemsPerShipment from product
     final existingStandard = widget.product.deliveryOptions.where((o) => o.type == 'standard').firstOrNull;
     final existingExpress = widget.product.deliveryOptions.where((o) => o.type == 'express').firstOrNull;
-    final existingQuantityDiscounts = existingStandard?.quantityDiscounts ?? existingExpress?.quantityDiscounts ?? const [];
+    // Strip any existing free-at-10 entry — will be re-added from state.freeShippingAt10Plus
+    final baseQuantityDiscounts = (existingStandard?.quantityDiscounts ?? existingExpress?.quantityDiscounts ?? const <ShippingQuantityDiscount>[])
+        .where((d) => !(d.minQuantity == 10 && d.discountValue == 0 && d.discountType == DiscountTypeValues.flatRate))
+        .toList();
+    final freeAt10Discount = state.freeShippingAt10Plus
+        ? [ShippingQuantityDiscount(minQuantity: 10, discountType: DiscountTypeValues.flatRate, discountValue: 0, label: 'product.free_shipping_10_plus_label'.tr())]
+        : <ShippingQuantityDiscount>[];
+    final existingQuantityDiscounts = [...baseQuantityDiscounts, ...freeAt10Discount];
     final existingAdditionalItemCost = existingStandard?.additionalItemCost ?? existingExpress?.additionalItemCost ?? 0.0;
     final existingMaxItems = existingStandard?.maxItemsPerShipment ?? existingExpress?.maxItemsPerShipment ?? 0;
 

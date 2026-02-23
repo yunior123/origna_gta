@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -93,43 +94,19 @@ class FirebaseProductRepository implements ProductRepository {
         );
       }
 
-      // DIAGNOSTIC: Check connectivity
-      try {
-        if (kDebugMode) {
-          debugPrint(
-            'REPO: [FirebaseProductRepository] Verifying write from SERVER...',
-          );
-        }
-        final docSnapshot = await docRef.get(
-          const GetOptions(source: Source.server),
-        );
-        if (docSnapshot.exists) {
-          if (kDebugMode) {
+      // Debug-only server verification to confirm write persisted
+      if (kDebugMode) {
+        try {
+          debugPrint('REPO: [FirebaseProductRepository] Verifying write from SERVER...');
+          final docSnapshot = await docRef.get(const GetOptions(source: Source.server));
+          if (docSnapshot.exists) {
             debugPrint('REPO: SERVER VERIFICATION SUCCESS!');
+          } else {
+            debugPrint('REPO: SERVER VERIFICATION FAILED: Document does not exist on server.');
           }
-        } else {
-          if (kDebugMode) {
-            debugPrint(
-              'REPO: SERVER VERIFICATION FAILED: Document does not exist on server.',
-            );
-          }
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'sync-failed',
-            message:
-                '[FirebaseProductRepository] Write succeeded locally but failed to persist to server.',
-          );
+        } catch (e) {
+          debugPrint('REPO: SERVER VERIFICATION ERROR: $e');
         }
-      } catch (e) {
-        if (kDebugMode) debugPrint('REPO: SERVER VERIFICATION ERROR: $e');
-        if (e is FirebaseException && e.code == 'sync-failed') rethrow;
-        // If network error on get(), it usually means offline/blocked
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'sync-failed-network',
-          message:
-              '[FirebaseProductRepository] Server verification threw error: $e',
-        );
       }
 
       return docRef.id;
@@ -217,25 +194,18 @@ class FirebaseProductRepository implements ProductRepository {
       final docRef = _firestore.collection(Collections.products).doc(productId);
       await docRef.set(firestoreData);
 
-      // Server verification — same guarantee as addProduct
-      try {
-        final docSnapshot = await docRef.get(const GetOptions(source: Source.server));
-        if (!docSnapshot.exists) {
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'sync-failed',
-            message: '[FirebaseProductRepository] Write succeeded locally but failed to persist to server.',
-          );
+      // Debug-only server verification
+      if (kDebugMode) {
+        try {
+          final docSnapshot = await docRef.get(const GetOptions(source: Source.server));
+          if (docSnapshot.exists) {
+            debugPrint('REPO: Product added with predetermined ID: $productId');
+          } else {
+            debugPrint('REPO: SERVER VERIFICATION FAILED: Document does not exist on server.');
+          }
+        } catch (e) {
+          debugPrint('REPO: SERVER VERIFICATION ERROR: $e');
         }
-        if (kDebugMode) debugPrint('REPO: Product added with predetermined ID: $productId');
-      } catch (e) {
-        if (kDebugMode) debugPrint('REPO: SERVER VERIFICATION ERROR: $e');
-        if (e is FirebaseException && e.code == 'sync-failed') rethrow;
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'sync-failed-network',
-          message: '[FirebaseProductRepository] Server verification threw error: $e',
-        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -388,6 +358,7 @@ class FirebaseProductRepository implements ProductRepository {
     String productId,
     int rating, {
     List<String>? reviewImageUrls,
+    String? reviewText,
   }) async {
     final payload = {
       Fields.orderId: orderId,
@@ -396,6 +367,9 @@ class FirebaseProductRepository implements ProductRepository {
     };
     if (reviewImageUrls != null && reviewImageUrls.isNotEmpty) {
       payload[Fields.reviewImageUrls] = reviewImageUrls;
+    }
+    if (reviewText != null && reviewText.isNotEmpty) {
+      payload[Fields.reviewText] = reviewText;
     }
     await _functions
         .httpsCallable(CloudFunctionEndpoints.submitProductRating)
@@ -446,7 +420,11 @@ class FirebaseProductRepository implements ProductRepository {
     });
 
     final results = await Future.wait(uploadFutures);
-    return results.whereType<String>().toList();
+    final urls = results.whereType<String>().toList();
+    if (urls.length != images.length) {
+      throw Exception('product.image_upload_failed'.tr());
+    }
+    return urls;
   }
 
   @override
@@ -608,7 +586,7 @@ abstract class ProductRepository {
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query);
   Future<Product?> getProductBySlug(String slug);
   Future<String?> getUploadUrl(String fileName);
-  Future<void> submitRating(String orderId, String productId, int rating, {List<String>? reviewImageUrls});
+  Future<void> submitRating(String orderId, String productId, int rating, {List<String>? reviewImageUrls, String? reviewText});
   Future<void> toggleFavorite(String userId, String productId);
   Future<void> updateProduct(String productId, Map<String, dynamic> data);
   Future<List<String>> uploadImages(List<Uint8List> images, String productId);

@@ -1615,6 +1615,20 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         )
         return
 
+    # Validate compareAtPrice > price to prevent fraudulent discount display
+    compare_at_price = product_data.get(Fields.COMPARE_AT_PRICE)
+    if compare_at_price is not None and price is not None:
+        if not isinstance(compare_at_price, (int, float)) or compare_at_price <= price:
+            logger.info(
+                f"SECURITY: Product {product_id} updated with invalid compareAtPrice ({compare_at_price}) <= price ({price}) — deactivating"
+            )
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+                }
+            )
+            return
+
     # Validate stock quantity >= 0
     stock = product_data.get(Fields.STOCK_QUANTITY, 0)
     if not isinstance(stock, (int, float)) or stock < 0:

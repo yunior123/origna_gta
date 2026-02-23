@@ -1893,12 +1893,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           // Existing option types
           ...List.generate(state.variantOptions.length, (i) {
             final opt = state.variantOptions[i];
-            final name = opt['name'] as String;
-            final values = (opt['values'] as List).cast<String>();
             return _VariantOptionCard(
               key: Key('variant_option_$i'),
-              name: name,
-              values: values,
+              name: opt.name,
+              values: opt.values,
               onRemove: () => viewModel.removeVariantOption(i),
               onUpdate: (newName, newValues) => viewModel.updateVariantOption(i, newName, newValues),
             );
@@ -1906,7 +1904,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           const SizedBox(height: 8),
           // Add new option type
           if (state.variantOptions.length < 3) // Max 3 option types (e.g. Size, Color, Material)
-            _AddVariantOptionButton(existingNames: state.variantOptions.map((o) => o['name'] as String).toList(), onAdd: viewModel.addVariantOption),
+            _AddVariantOptionButton(existingNames: state.variantOptions.map((o) => o.name).toList(), onAdd: viewModel.addVariantOption),
           // Generated variants table
           if (state.variants.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -1916,16 +1914,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             const SizedBox(height: 8),
             ...List.generate(state.variants.length, (i) {
               final variant = state.variants[i];
-              final optionValues = (variant['optionValues'] as Map).cast<String, String>();
               return _VariantRow(
                 key: Key('variant_row_$i'),
-                optionValues: optionValues,
-                price: variant['price'] as double?,
-                stockQuantity: variant['stockQuantity'] as int? ?? 0,
-                sku: variant['sku'] as String?,
-                onPriceChanged: (v) => viewModel.updateVariantField(i, 'price', v),
-                onStockChanged: (v) => viewModel.updateVariantField(i, 'stockQuantity', v),
-                onSkuChanged: (v) => viewModel.updateVariantField(i, 'sku', v),
+                optionValues: variant.optionValues,
+                price: variant.price,
+                stockQuantity: variant.stockQuantity,
+                sku: variant.sku,
+                onPriceChanged: (v) => viewModel.updateVariantPrice(i, v),
+                onStockChanged: (v) => viewModel.updateVariantStock(i, v),
+                onSkuChanged: (v) => viewModel.updateVariantSku(i, v),
               );
             }),
           ],

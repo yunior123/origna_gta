@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +8,19 @@ import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/utils/utils.dart';
 
 import 'add_product_state.dart';
+import 'variant_models.dart';
+
+/// Top-level isolate function for image compression — runs in a separate thread.
+Uint8List? _compressImageAddIsolate(Uint8List bytes) {
+  const int maxDimension = 2048;
+  final image = img.decodeImage(bytes);
+  if (image == null) return null;
+  img.Image resized = image;
+  if (image.width > maxDimension || image.height > maxDimension) {
+    resized = img.copyResize(image, width: image.width > image.height ? maxDimension : null, height: image.height > image.width ? maxDimension : null);
+  }
+  return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
+}
 
 final addProductViewModelProvider = StateNotifierProvider.autoDispose<AddProductViewModel, AddProductState>((ref) {
   return AddProductViewModel(ref);
@@ -195,8 +206,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         return;
       }
       final invalidVariants = state.variants.where((v) {
-        final p = v['price'];
-        return p == null || (p is num && p <= 0);
+        return v.price == null || v.price! <= 0;
       });
       if (invalidVariants.isNotEmpty) {
         state = state.copyWith(errorMessage: 'product.variant_price_required'.tr());
@@ -303,8 +313,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         subcategory: subcategory,
         warehouseIds: useWarehouses ? state.selectedWarehouseIds : null,
         hasVariants: state.hasVariants,
-        variants: state.hasVariants ? state.variants : const [],
-        variantOptions: state.hasVariants ? state.variantOptions : const [],
+        variants: state.hasVariants ? state.variants.map((v) => v.toMap()).toList() : const [],
+        variantOptions: state.hasVariants ? state.variantOptions.map((o) => o.toMap()).toList() : const [],
       );
 
       await productRepository.addProductWithId(tempProductId, product);
@@ -424,29 +434,41 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   void addVariantOption(String name, List<String> values) {
-    final options = List<Map<String, dynamic>>.from(state.variantOptions);
-    options.add({'name': name, 'values': values});
+    final options = List<VariantOption>.from(state.variantOptions);
+    options.add(VariantOption(name: name, values: values));
     state = state.copyWith(variantOptions: options);
     _regenerateVariants();
   }
 
   void removeVariantOption(int index) {
-    final options = List<Map<String, dynamic>>.from(state.variantOptions);
+    final options = List<VariantOption>.from(state.variantOptions);
     options.removeAt(index);
     state = state.copyWith(variantOptions: options);
     _regenerateVariants();
   }
 
   void updateVariantOption(int index, String name, List<String> values) {
-    final options = List<Map<String, dynamic>>.from(state.variantOptions);
-    options[index] = {'name': name, 'values': values};
+    final options = List<VariantOption>.from(state.variantOptions);
+    options[index] = VariantOption(name: name, values: values);
     state = state.copyWith(variantOptions: options);
     _regenerateVariants();
   }
 
-  void updateVariantField(int index, String field, dynamic value) {
-    final variants = List<Map<String, dynamic>>.from(state.variants);
-    variants[index] = Map<String, dynamic>.from(variants[index])..[field] = value;
+  void updateVariantPrice(int index, double? price) {
+    final variants = List<ProductVariantEntry>.from(state.variants);
+    variants[index] = variants[index].copyWith(price: price);
+    state = state.copyWith(variants: variants);
+  }
+
+  void updateVariantStock(int index, int stockQuantity) {
+    final variants = List<ProductVariantEntry>.from(state.variants);
+    variants[index] = variants[index].copyWith(stockQuantity: stockQuantity);
+    state = state.copyWith(variants: variants);
+  }
+
+  void updateVariantSku(int index, String? sku) {
+    final variants = List<ProductVariantEntry>.from(state.variants);
+    variants[index] = variants[index].copyWith(sku: sku);
     state = state.copyWith(variants: variants);
   }
 
@@ -461,34 +483,32 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     // Generate cartesian product of all option values
     List<Map<String, String>> combos = [{}];
     for (final opt in options) {
-      final name = opt['name'] as String;
-      final values = (opt['values'] as List).cast<String>();
       final newCombos = <Map<String, String>>[];
       for (final combo in combos) {
-        for (final val in values) {
-          newCombos.add({...combo, name: val});
+        for (final val in opt.values) {
+          newCombos.add({...combo, opt.name: val});
         }
       }
       combos = newCombos;
     }
 
     // Map existing variants by their optionValues for preservation
-    final existingByKey = <String, Map<String, dynamic>>{};
+    final existingByKey = <String, ProductVariantEntry>{};
     for (final v in state.variants) {
-      final ov = v['optionValues'] as Map<String, dynamic>? ?? {};
-      existingByKey[ov.entries.map((e) => '${e.key}=${e.value}').join('|')] = v;
+      final key = v.optionValues.entries.map((e) => '${e.key}=${e.value}').join('|');
+      existingByKey[key] = v;
     }
 
     final newVariants = combos.map((combo) {
       final key = combo.entries.map((e) => '${e.key}=${e.value}').join('|');
       final existing = existingByKey[key];
-      return <String, dynamic>{
-        'optionValues': combo,
-        'price': existing?['price'],
-        'stockQuantity': existing?['stockQuantity'] ?? 0,
-        'sku': existing?['sku'],
-        'isActive': existing?['isActive'] ?? true,
-      };
+      return ProductVariantEntry(
+        optionValues: combo,
+        price: existing?.price,
+        stockQuantity: existing?.stockQuantity ?? 0,
+        sku: existing?.sku,
+        isActive: existing?.isActive ?? true,
+      );
     }).toList();
 
     state = state.copyWith(variants: newVariants);
@@ -522,12 +542,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   Future<Uint8List?> _validateAndCompressImage(Uint8List bytes) async {
-    final image = img.decodeImage(bytes);
-    if (image == null) return null;
-    img.Image resized = image;
-    if (image.width > 2048 || image.height > 2048) {
-      resized = img.copyResize(image, width: image.width > image.height ? 2048 : null, height: image.height > image.width ? 2048 : null);
+    const int maxImageSize = 10 * 1024 * 1024; // 10MB — matches backend limit
+    if (bytes.length > maxImageSize) {
+      throw Exception('product.image_too_large'.tr());
     }
-    return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
+    return compute(_compressImageAddIsolate, bytes);
   }
 }

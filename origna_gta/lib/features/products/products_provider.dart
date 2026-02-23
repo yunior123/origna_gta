@@ -36,7 +36,9 @@ final favoritesProvider = StreamProvider.autoDispose<Set<String>>((ref) {
 
   // Keep the stream alive while a user is logged in so it survives
   // product-grid rebuilds (category change, search, etc.).
-  ref.keepAlive();
+  // Store the link so we can close it on logout to prevent keepAlive leaks.
+  final link = ref.keepAlive();
+  ref.onDispose(link.close);
 
   final repository = ref.watch(productRepositoryProvider);
   return repository.watchFavorites(userId);
@@ -112,7 +114,7 @@ class ProductQuery {
   const ProductQuery({this.categoryId, this.searchQuery = '', this.limit = 20});
 
   @override
-  int get hashCode => categoryId.hashCode ^ searchQuery.hashCode ^ limit.hashCode;
+  int get hashCode => Object.hash(categoryId, searchQuery, limit);
 
   @override
   bool operator ==(Object other) =>

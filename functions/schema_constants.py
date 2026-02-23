@@ -546,6 +546,7 @@ class Fields:
     # === NEW FEATURE FIELDS (TASKS 05-11) ===
     ADDRESS_ID = "addressId"
     REVIEW_IMAGE_URLS = "reviewImageUrls"
+    REVIEW_TEXT = "reviewText"
     NOTIFIED_AT = "notifiedAt"
     SUBSCRIBED_AT = "subscribedAt"
     QUESTION_TEXT = "question"

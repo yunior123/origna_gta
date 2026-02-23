@@ -826,6 +826,7 @@ abstract final class Fields {
   // === NEW FEATURE FIELDS (TASKS 05-11) ===
   static const addressId = 'addressId';
   static const reviewImageUrls = 'reviewImageUrls';
+  static const reviewText = 'reviewText';
   static const notifiedAt = 'notifiedAt';
   static const subscribedAt = 'subscribedAt';
   static const questionText = 'question';

@@ -453,6 +453,8 @@
     "invalid_tax_code_format": "Code taxe invalide (attendu txcd_########)",
     "dimensions_positive": "Les dimensions du colis doivent être positives",
     "image_required": "Veuillez ajouter au moins une image du produit",
+    "image_too_large": "Une ou plusieurs images dépassent la limite de 10 Mo. Veuillez choisir un fichier plus petit.",
+    "image_upload_failed": "Certaines images n'ont pas pu être téléversées. Veuillez réessayer."
     "delivery_tier_required": "Activez au moins une option de livraison pour les produits physiques",
     "fix_errors_before_submit": "Veuillez corriger les erreurs en surbrillance avant de publier",
     "add_product_failed": "Échec de l'ajout du produit",

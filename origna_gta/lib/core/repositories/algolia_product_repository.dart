@@ -154,7 +154,7 @@ class AlgoliaProductRepository implements ProductRepository {
   }
 
   @override
-  Future<void> submitRating(String orderId, String productId, int rating, {List<String>? reviewImageUrls}) async {
+  Future<void> submitRating(String orderId, String productId, int rating, {List<String>? reviewImageUrls, String? reviewText}) async {
     // Call backend Cloud Function for secure rating submission
     // Backend validates: auth, ownership, delivery status, duplicate check
     final payload = {Fields.orderId: orderId, Fields.productId: productId, Fields.rating: rating};

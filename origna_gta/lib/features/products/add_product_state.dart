@@ -1,6 +1,8 @@
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
+import 'variant_models.dart';
+
 /// Sentinel to explicitly clear nullable fields in copyWith.
 const _sentinel = Object();
 
@@ -38,8 +40,8 @@ class AddProductState {
   final Map<String, int> warehouseStockMap; // warehouseId → stock qty
   // N-09: Variant builder fields
   final bool hasVariants;
-  final List<Map<String, dynamic>> variantOptions; // [{name: 'Size', values: ['S','M','L']}, ...]
-  final List<Map<String, dynamic>> variants; // [{optionValues: {Size: 'S', Color: 'Red'}, price: 29.99, stockQuantity: 10, sku: '...'}, ...]
+  final List<VariantOption> variantOptions;
+  final List<ProductVariantEntry> variants;
 
   AddProductState({
     this.isLoading = false,
@@ -111,8 +113,8 @@ class AddProductState {
     List<String>? selectedWarehouseIds,
     Map<String, int>? warehouseStockMap,
     bool? hasVariants,
-    List<Map<String, dynamic>>? variantOptions,
-    List<Map<String, dynamic>>? variants,
+    List<VariantOption>? variantOptions,
+    List<ProductVariantEntry>? variants,
   }) {
     return AddProductState(
       isLoading: isLoading ?? this.isLoading,

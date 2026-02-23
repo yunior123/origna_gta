@@ -453,6 +453,8 @@
     "invalid_tax_code_format": "Invalid tax code (expected txcd_########)",
     "dimensions_positive": "Package dimensions must be positive",
     "image_required": "Please add at least one product image",
+    "image_too_large": "One or more images exceed the 10 MB limit. Please choose a smaller file.",
+    "image_upload_failed": "Some images failed to upload. Please try again."
     "delivery_tier_required": "Enable at least one delivery option for physical products",
     "fix_errors_before_submit": "Please fix the highlighted errors before publishing",
     "add_product_failed": "Failed to add product",

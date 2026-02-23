@@ -29,6 +29,7 @@ class EditProductState {
   final bool sameDayEnabled;
   final int minimumOrderQuantity;
   final bool freeShipping;
+  final bool freeShippingAt10Plus;
 
   EditProductState({
     this.isLoading = false,
@@ -56,11 +57,12 @@ class EditProductState {
     this.sameDayEnabled = false,
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
+    this.freeShippingAt10Plus = false,
   });
 
   EditProductState copyWith({
     bool? isLoading,
-    String? errorMessage,
+    Object? errorMessage = _sentinel,
     bool? isSuccess,
     bool? isSoldOut,
     bool? isLocalDeliveryOnly,
@@ -84,10 +86,11 @@ class EditProductState {
     bool? sameDayEnabled,
     int? minimumOrderQuantity,
     bool? freeShipping,
+    bool? freeShippingAt10Plus,
   }) {
     return EditProductState(
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage, // We want to be able to null it out
+      errorMessage: errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
       isSuccess: isSuccess ?? this.isSuccess,
       isSoldOut: isSoldOut ?? this.isSoldOut,
       isLocalDeliveryOnly: isLocalDeliveryOnly ?? this.isLocalDeliveryOnly,
@@ -111,6 +114,7 @@ class EditProductState {
       sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,
       minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
       freeShipping: freeShipping ?? this.freeShipping,
+      freeShippingAt10Plus: freeShippingAt10Plus ?? this.freeShippingAt10Plus,
     );
   }
 }
