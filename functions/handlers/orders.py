@@ -291,7 +291,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Record order event
     OrderEvent.write(
         get_db(), order_id, OrderEventTypes.STATUS_CHANGED,
-        actor=user_id, actor_type="seller" if user_role == UserRoleValues.SELLER else "admin",
+        actor=user_id, actor_type="seller" if (is_seller and not is_admin) else "admin",
         from_status=old_status, to_status=new_status,
     )
 
@@ -1316,13 +1316,20 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Restore stock atomically with order cancellation
         for item in order_data[Fields.ITEMS]:
             product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-            reject_batch.update(
-                product_ref,
-                {
-                    Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                },
-            )
+            stock_patch: dict = {
+                Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
+                Fields.UPDATED_AT: get_server_timestamp(),
+            }
+            # Restore per-warehouse stock to keep warehouseStock map in sync
+            fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
+            if fulfillment_wh:
+                stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(item[Fields.QUANTITY])
+                inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+                reject_batch.set(inv_ref, {
+                    Fields.AVAILABLE_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
+                    Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                }, merge=True)
+            reject_batch.update(product_ref, stock_patch)
 
         reject_batch.commit()
 

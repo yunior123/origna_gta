@@ -82,7 +82,7 @@ def acquire_cron_lock(job_name: str, ttl_minutes: int = 30) -> bool:
     Returns True if lock acquired, False if another instance is running.
     """
     lock_ref = get_db().collection(Collections.CRON_LOCKS).document(job_name)
-    now = datetime.now()
+    now = datetime.now(UTC)
     cutoff = now - timedelta(minutes=ttl_minutes)
 
     @get_firestore().transactional
@@ -116,7 +116,7 @@ def release_cron_lock(job_name: str) -> None:
         get_db().collection(Collections.CRON_LOCKS).document(job_name).update(
             {
                 Fields.STATUS: CronLockStatusValues.COMPLETED,
-                Fields.COMPLETED_AT: datetime.now(),
+                Fields.COMPLETED_AT: datetime.now(UTC),
             }
         )
     except Exception as e:
@@ -162,7 +162,7 @@ def _run_auto_capture() -> None:
         logger.info("Stripe payments are disabled, skipping auto-payout")
         return
 
-    cutoff_date = datetime.now() - timedelta(days=AUTO_CONFIRM_DAYS)
+    cutoff_date = datetime.now(UTC) - timedelta(days=AUTO_CONFIRM_DAYS)
 
     # Query DELIVERED orders with captured payment that haven't been paid out yet
     # Also query SHIPPED orders past cutoff for auto-confirmation
@@ -298,7 +298,7 @@ def _run_auto_capture() -> None:
             for item in items:
                 if item.get(Fields.STATUS) == DeliveryStatusValues.SHIPPED:
                     item[Fields.STATUS] = DeliveryStatusValues.DELIVERED
-                    item[Fields.DELIVERED_AT] = datetime.now().isoformat()
+                    item[Fields.DELIVERED_AT] = datetime.now(UTC)
             order_doc.reference.update(
                 {
                     Fields.ITEMS: items,
@@ -530,7 +530,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
 def _run_expired_authorizations() -> None:
     """Inner implementation of expired authorization cleanup."""
 
-    cutoff_date = datetime.now() - timedelta(days=AUTHORIZATION_VALID_DAYS)
+    cutoff_date = datetime.now(UTC) - timedelta(days=AUTHORIZATION_VALID_DAYS)
 
     # Find stale PENDING orders that were never paid (session expired/abandoned)
     # OR were AUTHORIZED but never captured (manual capture expiry)
@@ -652,7 +652,7 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running auto_archive_old_orders cron job")
 
-    cutoff_date = datetime.now() - timedelta(days=BusinessRules.ARCHIVE_AFTER_DAYS)
+    cutoff_date = datetime.now(UTC) - timedelta(days=BusinessRules.ARCHIVE_AFTER_DAYS)
 
     # Limit to 200 orders per run and use batch
     # NOTE: We cannot filter 'archived == False' because Firestore doesn't match
@@ -762,7 +762,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running cleanup_stale_rate_limits cron job")
 
-    cutoff_time = datetime.now() - timedelta(hours=1)
+    cutoff_time = datetime.now(UTC) - timedelta(hours=1)
 
     # Limit and batch delete
     rate_limits = (
@@ -856,7 +856,7 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
     # List objects in products/ prefix
     orphaned_keys = []
     continuation_token = None
-    cutoff = datetime.now() - timedelta(hours=24)
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
 
     while True:
         list_kwargs = {
@@ -917,7 +917,7 @@ def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running cleanup_stale_webhook_events cron job")
 
-    cutoff_time = datetime.now() - timedelta(days=BusinessRules.WEBHOOK_EVENT_RETENTION_DAYS)
+    cutoff_time = datetime.now(UTC) - timedelta(days=BusinessRules.WEBHOOK_EVENT_RETENTION_DAYS)
 
     webhook_docs = (
         get_db().collection(Collections.WEBHOOK_EVENTS).where(Fields.TIMESTAMP, "<=", cutoff_time).limit(500).stream()
@@ -953,7 +953,7 @@ def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running cleanup_stale_security_alerts cron job")
 
-    cutoff_time = datetime.now() - timedelta(days=BusinessRules.SECURITY_ALERT_RETENTION_DAYS)
+    cutoff_time = datetime.now(UTC) - timedelta(days=BusinessRules.SECURITY_ALERT_RETENTION_DAYS)
 
     alert_docs = (
         get_db()
@@ -1517,15 +1517,15 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                 breaches.append(f"cancellationRate={cancel_rate:.1%}")
 
             if breaches:
-                get_db().collection("security_alerts").add(
+                get_db().collection(Collections.SECURITY_ALERTS).add(
                     {
-                        "type": SecurityAlertTypes.SELLER_METRICS_BREACH,
+                        Fields.TYPE: SecurityAlertTypes.SELLER_METRICS_BREACH,
                         Fields.SELLER_ID: seller_id,
-                        "breaches": breaches,
-                        "totalOrders": total_orders,
-                        "severity": SeverityLevels.HIGH,
+                        Fields.BREACHES: breaches,
+                        Fields.TOTAL_ORDERS: total_orders,
+                        Fields.SEVERITY: SeverityLevels.HIGH,
                         Fields.CREATED_AT: now_utc,
-                        "requiresManualReview": True,
+                        Fields.REQUIRES_MANUAL_REVIEW: True,
                     }
                 )
                 alerted_count += 1

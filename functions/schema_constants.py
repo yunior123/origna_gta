@@ -440,6 +440,8 @@ class Fields:
     REQUESTED_BY = "requestedBy"
     REQUESTED_AT = "requestedAt"
     REQUIRES_MANUAL_REVIEW = "requiresManualReview"
+    BREACHES = "breaches"
+    TOTAL_ORDERS = "totalOrders"
     MANUAL_REVIEW_REASON = "manualReviewReason"
     PAYOUT_ERRORS = "payoutErrors"
     ACTION = "action"
