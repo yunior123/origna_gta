@@ -3320,11 +3320,20 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             "invalid-argument", "Invalid email format. Please provide a valid email address."
         ) from None
 
-    # Validate country code (ISO 3166-1 alpha-2)
-    # Sellers can be from any Stripe-supported country — no CA-only restriction
-    if not country or len(country) != 2 or not country.isalpha():
+    # Validate country code against Stripe Connect-supported countries (ISO 3166-1 alpha-2)
+    # https://stripe.com/docs/connect/account-capabilities#supported-countries
+    _STRIPE_CONNECT_COUNTRIES = {
+        "AU", "AT", "BE", "BR", "BG", "CA", "HR", "CY", "CZ", "DK", "EE", "FI",
+        "FR", "DE", "GH", "GI", "GR", "HK", "HU", "IN", "ID", "IE", "IT", "JP",
+        "KE", "LV", "LI", "LT", "LU", "MY", "MT", "MX", "NL", "NZ", "NG", "NO",
+        "PL", "PT", "RO", "SG", "SK", "SI", "ZA", "ES", "SE", "CH", "TH", "TT",
+        "GB", "US", "UY",
+    }
+    country_upper = (country or "").upper()
+    if country_upper not in _STRIPE_CONNECT_COUNTRIES:
         raise https_fn.HttpsError(
-            "invalid-argument", f"Invalid country code: {country}. Must be a 2-letter ISO country code."
+            "invalid-argument",
+            f"Country '{country}' is not supported for Stripe Connect. Please select a supported country.",
         )
 
     # Optional business type (default: individual)
@@ -3338,7 +3347,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         account = stripe.Account.create(
             type="express",
-            country=country,
+            country=country_upper,
             email=email,
             capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
             business_type=business_type,

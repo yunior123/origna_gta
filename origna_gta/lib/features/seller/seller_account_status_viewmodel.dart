@@ -41,10 +41,8 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
     if (kDebugMode) {
       debugPrint('Stripe Status - charges: $chargesEnabled, payouts: $payoutsEnabled');
     }
-    
-    // Invalidate main provider so it refetches from Firestore (now updated by backend)
-    ref.invalidate(sellerAccountStatusProvider);
-    
+
+    // Stream provider auto-updates from Firestore once CF writes the new status — no invalidate needed.
     return SellerAccountStatus(
       isSeller: true,
       chargesEnabled: chargesEnabled && payoutsEnabled,

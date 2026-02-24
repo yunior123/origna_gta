@@ -39,6 +39,8 @@ class ChatThread {
   final String sellerId;
   final String? lastMessage;
   final DateTime? lastMessageAt;
+  final int buyerUnreadCount;
+  final int sellerUnreadCount;
 
   const ChatThread({
     required this.chatId,
@@ -49,6 +51,8 @@ class ChatThread {
     required this.sellerId,
     this.lastMessage,
     this.lastMessageAt,
+    this.buyerUnreadCount = 0,
+    this.sellerUnreadCount = 0,
   });
 
   factory ChatThread.fromFirestore(DocumentSnapshot doc) {
@@ -63,6 +67,8 @@ class ChatThread {
       sellerId: data[Fields.sellerId] as String? ?? '',
       lastMessage: data[Fields.lastMessage] as String?,
       lastMessageAt: ts is Timestamp ? ts.toDate() : null,
+      buyerUnreadCount: (data[Fields.buyerUnreadCount] as int?) ?? 0,
+      sellerUnreadCount: (data[Fields.sellerUnreadCount] as int?) ?? 0,
     );
   }
 }

@@ -171,13 +171,81 @@ class _MessagesList extends ConsumerWidget {
           controller: scrollController,
           padding: const EdgeInsets.all(16),
           itemCount: messages.length,
-          itemBuilder: (ctx, i) => _MessageBubble(
+          itemBuilder: (ctx, i) => _AnimatedMessageBubble(
+            key: ValueKey(messages[i].id),
+            index: i,
             message: messages[i],
             isMe: messages[i].senderId == myUid,
             isDark: isDark,
           ),
         );
       },
+    );
+  }
+}
+
+class _AnimatedMessageBubble extends StatefulWidget {
+  final int index;
+  final ChatMessage message;
+  final bool isMe;
+  final bool isDark;
+
+  const _AnimatedMessageBubble({
+    super.key,
+    required this.index,
+    required this.message,
+    required this.isMe,
+    required this.isDark,
+  });
+
+  @override
+  State<_AnimatedMessageBubble> createState() => _AnimatedMessageBubbleState();
+}
+
+class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    // Cap stagger at 12 items (max 240 ms delay) to keep it snappy for long histories.
+    final delayMs = (widget.index.clamp(0, 12) * 20).toInt();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.12),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    Future.delayed(Duration(milliseconds: delayMs), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _slide,
+        child: _MessageBubble(
+          message: widget.message,
+          isMe: widget.isMe,
+          isDark: widget.isDark,
+        ),
+      ),
     );
   }
 }

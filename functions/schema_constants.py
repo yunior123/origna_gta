@@ -362,6 +362,8 @@ class Fields:
     SENDER_ID = "senderId"
     MESSAGE_TEXT = "text"
     IS_READ = "read"  # bool — message read by recipient
+    BUYER_UNREAD_COUNT = "buyerUnreadCount"  # int — unread messages for buyer
+    SELLER_UNREAD_COUNT = "sellerUnreadCount"  # int — unread messages for seller
     DELIVERY_INSTRUCTIONS = "deliveryInstructions"
     SHIPPING_DAYS = "shippingDays"
     HAS_TRACKING = "hasTracking"

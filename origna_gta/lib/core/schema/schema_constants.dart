@@ -735,6 +735,8 @@ abstract final class Fields {
   static const senderId = 'senderId';
   static const messageText = 'text';
   static const isRead = 'read';
+  static const buyerUnreadCount = 'buyerUnreadCount';
+  static const sellerUnreadCount = 'sellerUnreadCount';
 
   // === DELIVERY FIELDS ===
   static const deliveryInstructions = 'deliveryInstructions';

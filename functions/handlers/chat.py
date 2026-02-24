@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from firebase_functions import https_fn
+from google.cloud import firestore
 
 from schema_constants import (
     Collections,
@@ -146,6 +147,8 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.SELLER_ID: seller_id,
             Fields.LAST_MESSAGE: None,
             Fields.LAST_MESSAGE_AT: None,
+            Fields.BUYER_UNREAD_COUNT: 0,
+            Fields.SELLER_UNREAD_COUNT: 0,
             Fields.CREATED_AT: now,
             Fields.UPDATED_AT: now,
         }
@@ -198,6 +201,10 @@ def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if count > 0:
         batch.commit()
+
+    # Reset the caller's unread counter on the thread doc
+    unread_field = Fields.BUYER_UNREAD_COUNT if uid == chat_data.get(Fields.BUYER_ID) else Fields.SELLER_UNREAD_COUNT
+    db.collection(Collections.CHATS).document(chat_id).update({unread_field: 0})
 
     return {"success": True, "count": count}
 
@@ -277,12 +284,14 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     )
 
-    # Update thread denormalized last message
+    # Update thread: last message + increment recipient's unread counter
+    recipient_unread_field = Fields.SELLER_UNREAD_COUNT if uid == buyer_id else Fields.BUYER_UNREAD_COUNT
     db.collection(Collections.CHATS).document(chat_id).update(
         {
             Fields.LAST_MESSAGE: text[:100],
             Fields.LAST_MESSAGE_AT: now,
             Fields.UPDATED_AT: now,
+            recipient_unread_field: firestore.Increment(1),
         }
     )
 

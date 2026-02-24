@@ -33,7 +33,7 @@ For each finding, output exactly this block — nothing more:
 ```
 [SEVERITY] file/path.ext:LINE_NUMBER
 PROBLEM: one sentence — what is wrong and why it matters.
-FIX: one sentence — exact change needed (field name, method, value, logic).
+FIX: one sentence — exact change needed (field name, method, value, logic) plus code snippet demonstrating the fix.
 ```
 
 Severity levels: `[CRITICAL]` · `[HIGH]` · `[MEDIUM]` · `[LOW]` · `[BONUS]`
@@ -46,6 +46,7 @@ Severity levels: `[CRITICAL]` · `[HIGH]` · `[MEDIUM]` · `[LOW]` · `[BONUS]`
 - If no issues found for a checklist item, skip it entirely — do NOT write "✅ No issues".
 - Use `[BONUS]` for findings outside the checklist scope.
 - Line numbers are mandatory. If uncertain, give the nearest anchor (function name + offset).
+- Ultrathink, make sure the proposed fixes do not contradict themselves, provide code snippets with the proposed solutions, verify that the proposed fixes are real.
 
 **Example output:**
 ```
