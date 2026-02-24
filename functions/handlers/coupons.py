@@ -83,7 +83,9 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     data = req.data
     code_raw = data.get(Fields.COUPON_CODE, "")
     cart_subtotal_cents = data.get(ApiKeys.CART_SUBTOTAL_CENTS)
-    seller_ids = data.get("sellerIds", [])
+    seller_ids = data.get("sellerIds") or []
+    if not isinstance(seller_ids, list):
+        seller_ids = []
 
     # --- Input validation ---
     if not code_raw or not isinstance(code_raw, str):
@@ -135,9 +137,8 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # --- Seller scope check ---
     coupon_seller_id = coupon.get(Fields.SELLER_ID)
-    if coupon_seller_id is not None:
-        if not isinstance(seller_ids, list) or coupon_seller_id not in seller_ids:
-            raise https_fn.HttpsError("failed-precondition", "Coupon invalid or unavailable")
+    if coupon_seller_id is not None and coupon_seller_id not in seller_ids:
+        raise https_fn.HttpsError("failed-precondition", "Coupon invalid or unavailable")
 
     # --- Minimum order check ---
     min_order_cents = coupon.get(Fields.MIN_ORDER_CENTS)

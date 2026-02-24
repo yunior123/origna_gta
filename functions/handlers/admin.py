@@ -340,8 +340,9 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
         if batch_count > 0:
             batch.commit()
 
-        # Cancel all pending/confirmed orders (with safety limit)
-        # NOTE: Use denormalized sellerIds field (not nested items.sellerId which Firestore doesn't support)
+        # Cancel all pending/confirmed orders (with safety limit).
+        # Query uses the denormalized sellerIds array field — Firestore does not support
+        # filtering on nested fields inside arrays like items[].sellerId.
         orders = (
             get_db()
             .collection(Collections.ORDERS)

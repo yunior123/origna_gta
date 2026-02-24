@@ -44,6 +44,27 @@ try:
 except Exception:
     pass  # Fail silently — worst case, the original bug remains
 
+# ===============================================
+# MONKEY-PATCH: firebase-functions 0.4.x scheduler_fn uses strptime('%Y-%m-%dT%H:%M:%S%z')
+# which crashes when Cloud Scheduler sends microseconds: '2026-02-24T14:05:03.713303-08:00'.
+# Fix: subclass datetime to fall back to fromisoformat() on ValueError.
+# ===============================================
+try:
+    import datetime as _datetime_module
+    import firebase_functions.scheduler_fn as _sched_fn_module
+
+    class _DatetimeWithIsoFallback(_datetime_module.datetime):
+        @classmethod
+        def strptime(cls, date_string, fmt):
+            try:
+                return super().strptime(date_string, fmt)
+            except ValueError:
+                return _datetime_module.datetime.fromisoformat(date_string)
+
+    _sched_fn_module._dt.datetime = _DatetimeWithIsoFallback
+except Exception:
+    pass  # Fail silently — worst case, the original bug remains
+
 # Initialize Firebase Admin SDK BEFORE any handler imports — handlers may call
 # firestore.client() or firebase_admin.auth at import time.
 if not firebase_admin._apps:

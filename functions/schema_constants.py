@@ -507,6 +507,7 @@ class Fields:
     AMOUNT_CENTS = "amountCents"
     PLATFORM_FEE_CENTS = "platformFeeCents"
     NET_AMOUNT_CENTS = "netAmountCents"
+    FEE_RATE = "feeRate"
     STRIPE_TRANSFER_ID = "stripeTransferId"
     REVERSAL_ID = "reversalId"
     PARTIAL_REVERSALS = "partialReversals"

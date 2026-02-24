@@ -1805,7 +1805,7 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
             Fields.NET_AMOUNT_CENTS: net_amount_cents,
             Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
             Fields.STATUS: PayoutStatusValues.PENDING,
-            "feeRate": PLATFORM_FEE_RATIO,  # TODO: use Fields.FEE_RATE when added to schema_constants
+            Fields.FEE_RATE: PLATFORM_FEE_RATIO,
             Fields.CREATED_AT: get_server_timestamp(),
         }
         payout_ref.set(payout_data, merge=True)
@@ -3674,7 +3674,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             if len(existing_payouts) == 0:
                 items = order_data.get(Fields.ITEMS, [])
-                fee_rate = PLATFORM_FEE_RATIO  # TODO: use Fields.FEE_RATE when added to schema_constants
+                fee_rate = PLATFORM_FEE_RATIO
 
                 sellers_total = {}
                 for item in items:

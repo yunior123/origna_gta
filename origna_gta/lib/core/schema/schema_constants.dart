@@ -826,6 +826,7 @@ abstract final class Fields {
   static const amountCents = 'amountCents';
   static const platformFeeCents = 'platformFeeCents';
   static const netAmountCents = 'netAmountCents';
+  static const feeRate = 'feeRate';
   static const stripeTransferId = 'stripeTransferId';
   static const reversalId = 'reversalId';
   static const partialReversals = 'partialReversals';

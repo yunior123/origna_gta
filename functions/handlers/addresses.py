@@ -61,9 +61,9 @@ def get_address_suggestions(req: https_fn.CallableRequest) -> dict[str, Any]:
         response.raise_for_status()
         body = response.json()
         return {"features": body.get("features", [])}
-    except requests.Timeout:
-        raise https_fn.HttpsError("deadline-exceeded", "Address lookup timed out")
-    except requests.HTTPError as e:
-        raise https_fn.HttpsError("internal", f"Address service error: {e}")
+    except requests.exceptions.Timeout:
+        raise https_fn.HttpsError("deadline-exceeded", "Address lookup timed out") from None
+    except requests.exceptions.HTTPError as e:
+        raise https_fn.HttpsError("internal", f"Address service error: {e}") from e
     except Exception as e:
-        raise https_fn.HttpsError("internal", f"Unexpected error: {e}")
+        raise https_fn.HttpsError("internal", f"Unexpected error: {e}") from e
