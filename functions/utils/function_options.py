@@ -26,6 +26,12 @@ WEBHOOK_OPTIONS = {
     "timeout_sec": 90,
 }
 
+# Payment on_call handlers: 120s timeout (Stripe API calls + DB writes can be slow)
+PAYMENT_OPTIONS = {
+    "cors": _CORS,
+    "timeout_sec": 120,
+}
+
 # Cron jobs: 256MB memory, 300s timeout (batch processing up to 500 orders)
 CRON_OPTIONS = {
     "timeout_sec": 300,

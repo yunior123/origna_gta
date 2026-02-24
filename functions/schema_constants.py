@@ -45,6 +45,7 @@ class Collections:
     CONFIG = "config"
     ADMIN_LOGS = "admin_logs"
     PRODUCT_RATINGS = "product_ratings"
+    REVIEW_VOTES = "review_votes"  # subcollection of product_ratings/{ratingId}
     ALGOLIA_SYNC_FAILURES = "algolia_sync_failures"
     CRON_LOCKS = "_cron_locks"
 

@@ -1,42 +1,26 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:origna_gta/services/conf_services.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 abstract class LocationRepository {
   Future<List<Map<String, dynamic>>> getAddressSuggestions(String query);
 }
 
+/// Calls the `get_address_suggestions` Cloud Function which proxies Geoapify
+/// server-side, keeping the API key out of the client bundle.
 class GeoapifyLocationRepository implements LocationRepository {
   @override
   Future<List<Map<String, dynamic>>> getAddressSuggestions(String query) async {
-    final String apiKey = ConfigService().geoapifyKey;
-    if (apiKey.trim().isEmpty) {
-      // Fail soft, but make it visible in logs.
-      // (If this prints, set Remote Config geoapify_api_key, or pass --dart-define=geoapify_api_key=...)
+    try {
+      final result = await FirebaseFunctions.instance
+          .httpsCallable(CloudFunctionEndpoints.getAddressSuggestions)
+          .call<Map>({'query': query, 'limit': 5});
+      final features = (result.data['features'] as List?) ?? [];
+      return features.cast<Map<String, dynamic>>();
+    } catch (e) {
+      // Fail soft — address suggestions are non-critical.
       // ignore: avoid_print
-      print('⚠️ Geoapify disabled: geoapify_api_key is empty');
+      print('⚠️ get_address_suggestions CF failed: $e');
       return [];
     }
-
-    final uri = Uri.https(
-      'api.geoapify.com',
-      '/v1/geocode/autocomplete',
-      <String, String>{
-        'text': query,
-        'filter': 'countrycode:ca',
-        'apiKey': apiKey,
-      },
-    );
-
-    final response = await http.get(uri);
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return List<Map<String, dynamic>>.from(data['features'] ?? []);
-    }
-
-    // ignore: avoid_print
-    print('⚠️ Geoapify autocomplete HTTP ${response.statusCode}');
-    return [];
   }
 }

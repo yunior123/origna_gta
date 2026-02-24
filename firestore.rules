@@ -546,7 +546,13 @@ service cloud.firestore {
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sellerReply', 'sellerReplyAt']) &&
         (!('sellerReply' in resource.data) || resource.data.sellerReply == null) &&
         get(/databases/$(database)/documents/products/$(resource.data.productId)).data.sellerId == request.auth.uid;
-      // N-04: helpfulCount and helpfulVoterIds are backend-only (handled via Cloud Function)
+      // N-04: helpfulCount is backend-only (handled via Cloud Function)
+
+      // review_votes subcollection — backend-only (written by vote_review_helpful CF)
+      match /review_votes/{voterId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete: if false;
+      }
     }
     
     match /refunds/{refundId} {

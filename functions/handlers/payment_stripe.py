@@ -65,7 +65,7 @@ from services.email_service import get_order_confirmation_email, get_seller_noti
 from services.pdf_invoice_service import generate_invoice_pdf
 from services.rate_limiter import RateLimiter
 from services.shipping_service import calculate_shipping_cost, get_tax_rate
-from utils.function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS
+from utils.function_options import DEFAULT_OPTIONS, PAYMENT_OPTIONS, WEBHOOK_OPTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -548,7 +548,7 @@ def _coupon_min_order_met(coupon_data: dict, actual_subtotal_cents: int) -> bool
 
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS)
+@https_fn.on_call(**PAYMENT_OPTIONS)
 def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Creates a Stripe Checkout session with server-side validation.
@@ -4044,7 +4044,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("internal", "Could not capture payment. Please try again.") from e
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS)
+@https_fn.on_call(**PAYMENT_OPTIONS)
 def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Manually captures authorized payment and initiates seller payouts.

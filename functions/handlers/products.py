@@ -577,7 +577,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.REVIEW: review,
         Fields.CREATED_AT: get_server_timestamp(),
         Fields.HELPFUL_COUNT: 0,
-        Fields.HELPFUL_VOTER_IDS: [],
+        # Votes are tracked in review_votes/{userId} subcollection (not an array)
     }
     if review_image_urls:
         rating_doc[Fields.REVIEW_IMAGE_URLS] = review_image_urls
@@ -3108,15 +3108,18 @@ def vote_review_helpful(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     N-04: Vote a review as helpful (or remove vote).
 
+    Votes are stored in `product_ratings/{ratingId}/review_votes/{userId}` to
+    avoid the Firestore 1 MB document limit on an unbounded helpfulVoterIds array.
+
     Request data:
         ratingId: str — product_ratings document ID
         productId: str — product document ID
-        helpful: bool — True = upvote, False = remove vote/downvote
+        helpful: bool — True = upvote, False = remove vote
 
     Rules:
         - User cannot vote on their own review.
         - User can only vote once per review.
-        - helpful=False removes the vote (decrements helpfulCount, removes uid from helpfulVoterIds).
+        - helpful=False removes the vote (decrements helpfulCount).
         - helpfulCount never goes below 0.
     """
     if not req.auth:
@@ -3135,12 +3138,11 @@ def vote_review_helpful(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     db = get_db()
     rating_ref = db.collection(Collections.PRODUCT_RATINGS).document(rating_id)
+    vote_ref = rating_ref.collection(Collections.REVIEW_VOTES).document(user_id)
 
-    # Capture helpful and user_id in closure via nonlocal workaround (mutable container)
     _result: dict = {}
     _error: dict = {}
 
-    @_firestore.transactional
     def _vote_txn(transaction):
         rating_snap = rating_ref.get(transaction=transaction)
         if not rating_snap.exists:
@@ -3149,52 +3151,48 @@ def vote_review_helpful(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         rating_data = rating_snap.to_dict() or {}
 
-        # Verify rating belongs to specified product
         if rating_data.get(Fields.PRODUCT_ID) != product_id:
             _error["err"] = https_fn.HttpsError("invalid-argument", "Rating does not belong to the specified product")
             return
 
-        # Prevent self-voting on your own review
+        # Prevent self-voting
         reviewer_uid = rating_data.get(Fields.USER_ID) or rating_data.get("userId")
         if reviewer_uid == user_id:
             _error["err"] = https_fn.HttpsError("permission-denied", "Users cannot vote on their own reviews")
             return
 
-        # Prevent sellers from voting on reviews for their own products
+        # Prevent sellers from voting on their own product's reviews
         product_snap = db.collection(Collections.PRODUCTS).document(product_id).get(transaction=transaction)
         if product_snap.exists and product_snap.to_dict().get(Fields.SELLER_ID) == user_id:
             _error["err"] = https_fn.HttpsError("permission-denied", "Sellers cannot vote on reviews for their own products")
             return
 
-        voter_ids: list = list(rating_data.get(Fields.HELPFUL_VOTER_IDS, []))
+        vote_snap = vote_ref.get(transaction=transaction)
+        already_voted = vote_snap.exists
         current_count: int = int(rating_data.get(Fields.HELPFUL_COUNT, 0))
 
-        already_voted = user_id in voter_ids
-
         if helpful:
-            # Upvote
             if already_voted:
                 _error["err"] = https_fn.HttpsError("already-exists", "already-voted")
                 return
-            voter_ids.append(user_id)
+            transaction.set(vote_ref, {
+                "isHelpful": True,
+                Fields.CREATED_AT: get_server_timestamp(),
+            })
             new_count = current_count + 1
         else:
-            # Remove vote
             if not already_voted:
                 _error["err"] = https_fn.HttpsError("failed-precondition", "No vote to remove")
                 return
-            voter_ids = [uid for uid in voter_ids if uid != user_id]
+            transaction.delete(vote_ref)
             new_count = max(0, current_count - 1)
 
-        transaction.update(rating_ref, {
-            Fields.HELPFUL_COUNT: new_count,
-            Fields.HELPFUL_VOTER_IDS: voter_ids,
-        })
+        transaction.update(rating_ref, {Fields.HELPFUL_COUNT: new_count})
         _result["helpfulCount"] = new_count
 
     try:
         txn = db.transaction()
-        _vote_txn(txn)
+        _firestore.transactional(_vote_txn)(txn)
     except Exception as e:
         logger.error(f"vote_review_helpful transaction failed for {rating_id}: {e}")
         raise https_fn.HttpsError("internal", "Failed to record vote") from e

@@ -85,8 +85,8 @@ class _AnimatedListItemState extends State<AnimatedListItem>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
-    // Staggered delay based on index
-    Future.delayed(widget.delay * widget.index, () {
+    // Staggered delay capped at 10 items to prevent excessive wait on long lists.
+    Future.delayed(widget.delay * widget.index.clamp(0, 10), () {
       if (mounted) _controller.forward();
     });
   }

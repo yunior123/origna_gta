@@ -187,6 +187,9 @@ abstract final class CategoryIds {
 /// Cloud Function endpoint names. Update here ONLY if backend function names change.
 /// Prevents endpoint name drift between frontend and backend.
 abstract final class CloudFunctionEndpoints {
+  // === ADDRESS ENDPOINTS ===
+  static const getAddressSuggestions = 'get_address_suggestions';
+
   // === AUTH ENDPOINTS ===
   static const deleteAccount = 'delete_account';
 
@@ -277,6 +280,7 @@ abstract final class Collections {
   static const config = 'config';
   static const adminLogs = 'admin_logs';
   static const productRatings = 'product_ratings';
+  static const reviewVotes = 'review_votes'; // subcollection of product_ratings/{ratingId}
   static const algoliaSyncFailures = 'algolia_sync_failures';
   static const cronLocks = '_cron_locks';
 

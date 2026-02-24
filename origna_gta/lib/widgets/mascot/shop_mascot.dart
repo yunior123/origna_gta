@@ -341,7 +341,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
           padding: const EdgeInsets.only(right: 12),
           child: CustomPaint(
             size: const Size(16, 12),
-            painter: _ModernBubbleTail(color: Colors.white),
+            painter: const _ModernBubbleTail(color: Colors.white),
           ),
         ),
       ],
@@ -351,7 +351,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
 
 class _ModernBubbleTail extends CustomPainter {
   final Color color;
-  _ModernBubbleTail({required this.color});
+  const _ModernBubbleTail({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {

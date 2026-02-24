@@ -56,6 +56,11 @@ if not firebase_admin._apps:
 # DIGITAL PRODUCT HANDLERS
 # ===============================================
 # ===============================================
+# ADDRESS HANDLERS
+# ===============================================
+from handlers.addresses import get_address_suggestions  # noqa: E402
+
+# ===============================================
 # ADMIN HANDLERS
 # ===============================================
 from handlers.admin import (  # noqa: E402
@@ -225,6 +230,8 @@ if os.environ.get("TESTING") != "true":
 
 # Export all functions for Firebase deployment
 __all__ = [
+    # Address autocomplete proxy
+    "get_address_suggestions",
     # Stripe payments
     "create_checkout_session",
     "verify_cart_prices",

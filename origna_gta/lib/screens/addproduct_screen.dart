@@ -614,6 +614,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           if (!config.supportedCurrencies.contains(_selectedSupplierCurrency)) {
                                             _selectedSupplierCurrency = config.defaultCurrency;
                                           }
+                                          // Pre-populate delivery days from supplier config so the
+                                          // seller sees sensible defaults (they can override manually).
+                                          final range = getSupplierDeliveryRange(v);
+                                          _standardDaysController.text = range.minDays.toString();
+                                          _expressDaysController.text = (range.minDays ~/ 2).clamp(1, range.minDays).toString();
                                         });
                                       },
                                     ),

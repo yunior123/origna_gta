@@ -139,6 +139,7 @@ class _CartBadge extends ConsumerWidget {
           icon: Icons.shopping_cart_outlined,
           tooltip: 'Cart',
           onPressed: () {
+            if (!context.mounted) return;
             if (!isLoggedIn) {
               showLoginPrompt(context);
               return;
