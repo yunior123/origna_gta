@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import stripe
+from firebase_admin import firestore as _fs
 from firebase_functions import https_fn
 
 from config import (
@@ -33,9 +34,12 @@ def _stripe_init() -> None:
     stripe.api_key = get_stripe_secret_key()
 
 
-def _get_or_create_stripe_customer(uid: str, user_data: dict) -> str:
+def _get_or_create_stripe_customer(uid: str, user_snap) -> str:
     """Get existing Stripe customer ID or create a new one for the user."""
     _stripe_init()
+    if not user_snap.exists:
+        raise https_fn.HttpsError("not-found", "User profile not found.")
+    user_data = user_snap.to_dict() or {}
     customer_id = user_data.get(Fields.CUSTOMER_ID)
     if customer_id:
         return customer_id
@@ -63,15 +67,20 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
     uid = req.auth.uid
     user_ref = _get_db().collection(Collections.USERS).document(uid)
     user_snap = user_ref.get()
-    user_data = user_snap.to_dict() if user_snap.exists else {}
 
-    # Check already subscribed
+    # Check already subscribed — block all non-terminal statuses to prevent double-subscriptions
+    _NON_SUBSCRIBABLE = frozenset({
+        SubscriptionStatusValues.ACTIVE,
+        SubscriptionStatusValues.TRIALING,
+        SubscriptionStatusValues.PAST_DUE,
+        SubscriptionStatusValues.INCOMPLETE,
+    })
     sub_snap = _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).get()
     if sub_snap.exists:
         sub_data = sub_snap.to_dict() or {}
         status = sub_data.get(Fields.STATUS, "")
-        if status in SubscriptionStatusValues.PREMIUM_ACTIVE:
-            raise https_fn.HttpsError("already-exists", "You already have an active premium subscription.")
+        if status in _NON_SUBSCRIBABLE:
+            raise https_fn.HttpsError("already-exists", "You already have a subscription. Manage it from the subscription page.")
 
     price_id = get_stripe_premium_price_id()
     if not price_id:
@@ -81,7 +90,7 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     from config import BASE_URL
 
-    customer_id = _get_or_create_stripe_customer(uid, user_data)
+    customer_id = _get_or_create_stripe_customer(uid, user_snap)
 
     try:
         session = stripe.checkout.Session.create(
@@ -96,16 +105,18 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
             # Use 5-minute window idempotency to allow retry after session expiry
             idempotency_key=f"premium_sub_{uid}_{datetime.now(UTC).strftime('%Y%m%d%H%M')}",
         )
+        # Cache session URL so we can recover it on IdempotencyError
+        user_ref.update({
+            Fields.LAST_CHECKOUT_SESSION: session.url,
+            Fields.LAST_CHECKOUT_TIMESTAMP: datetime.now(UTC),
+        })
         return {"success": True, "checkoutUrl": session.url, "sessionId": session.id}
     except stripe.error.IdempotencyError as e:
-        # Same click within the same minute window — re-fetch the existing session
+        # Same click within the same minute window — return cached session URL
         logger.info(f"Idempotency hit for premium subscription {uid}: {e}")
-        existing_session = e.request_id and stripe.checkout.Session.retrieve(
-            e.headers.get("idempotency-replayed-request", "")
-        ) if hasattr(e, "headers") else None
-        if existing_session and existing_session.url:
-            return {"success": True, "checkoutUrl": existing_session.url, "sessionId": existing_session.id}
-        # Fallback: surface as retriable error
+        cached_url = (user_ref.get().to_dict() or {}).get(Fields.LAST_CHECKOUT_SESSION)
+        if cached_url:
+            return {"success": True, "checkoutUrl": cached_url}
         raise https_fn.HttpsError("already-exists", "A checkout session is already in progress. Please try again in a moment.") from e
     except stripe.StripeError as e:
         logger.error(f"Stripe error creating subscription for {uid}: {e}")
@@ -148,6 +159,43 @@ def cancel_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
     except stripe.StripeError as e:
         logger.error(f"Stripe error canceling subscription for {uid}: {e}")
         raise https_fn.HttpsError("internal", "Failed to cancel subscription. Please try again.") from e
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def reactivate_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Reactivate a subscription that was scheduled to cancel at period end.
+    Calls stripe.Subscription.modify to set cancel_at_period_end=False.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Authentication required.")
+
+    uid = req.auth.uid
+    sub_snap = _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).get()
+    if not sub_snap.exists:
+        raise https_fn.HttpsError("not-found", "No subscription found.")
+
+    sub_data = sub_snap.to_dict() or {}
+    if not sub_data.get(Fields.CANCEL_AT_PERIOD_END):
+        raise https_fn.HttpsError("failed-precondition", "Subscription is not scheduled to cancel.")
+
+    stripe_sub_id = sub_data.get(Fields.STRIPE_SUBSCRIPTION_ID)
+    if not stripe_sub_id:
+        raise https_fn.HttpsError("not-found", "Subscription ID not found.")
+
+    _stripe_init()
+    try:
+        stripe.Subscription.modify(stripe_sub_id, cancel_at_period_end=False)
+        _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).update(
+            {
+                Fields.CANCEL_AT_PERIOD_END: False,
+                Fields.UPDATED_AT: _get_server_timestamp(),
+            }
+        )
+        return {"success": True, "message": "Subscription reactivated."}
+    except stripe.StripeError as e:
+        logger.error(f"Stripe error reactivating subscription for {uid}: {e}")
+        raise https_fn.HttpsError("internal", "Failed to reactivate subscription. Please try again.") from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -268,7 +316,6 @@ def _sync_subscription(sub: dict | stripe.Subscription) -> None:
     now = datetime.now(UTC)
 
     db = _get_db()
-    from firebase_admin import firestore as _fs
 
     sub_ref = db.collection(Collections.SUBSCRIPTIONS).document(uid)
     user_ref = db.collection(Collections.USERS).document(uid)

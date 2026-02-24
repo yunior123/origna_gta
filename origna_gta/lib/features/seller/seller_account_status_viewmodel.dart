@@ -20,7 +20,7 @@ final sellerAccountStatusProvider = StreamProvider.autoDispose<SellerAccountStat
 /// Manual refresh provider - calls backend to sync Stripe status with Firestore
 /// Use this ONLY when user explicitly requests a status check (e.g., "Check Status" button)
 final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAccountStatus, void>((ref, _) async {
-  final user = ref.watch(currentUserProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) {
     throw Exception('Please log in to continue');
   }

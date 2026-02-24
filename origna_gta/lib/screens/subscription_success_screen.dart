@@ -1,14 +1,20 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-class SubscriptionSuccessScreen extends StatefulWidget {
+import '../features/subscription/subscription_provider.dart';
+
+class SubscriptionSuccessScreen extends ConsumerStatefulWidget {
   const SubscriptionSuccessScreen({super.key});
 
   @override
-  State<SubscriptionSuccessScreen> createState() => _SubscriptionSuccessScreenState();
+  ConsumerState<SubscriptionSuccessScreen> createState() => _SubscriptionSuccessScreenState();
 }
 
 class _BenefitRow extends StatelessWidget {
@@ -58,14 +64,46 @@ class _BenefitRow extends StatelessWidget {
   }
 }
 
-class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen> with SingleTickerProviderStateMixin {
+class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _glowAnimation;
+  Timer? _activationTimeout;
+  bool _timedOut = false;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final subAsync = ref.watch(subscriptionStreamProvider);
+
+    // Gate the success UI on actual isPremium=true from Firestore
+    final isPremium = subAsync.valueOrNull?.isPremium ?? false;
+    if (!isPremium && !_timedOut) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [const Color(0xFFF0F2FF), Colors.white],
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ModernLoadingIndicator(),
+                const SizedBox(height: 24),
+                Text(
+                  'subscription.activating_membership'.tr(),
+                  style: const TextStyle(fontSize: 16, color: DesignTokens.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: Container(
@@ -187,6 +225,7 @@ class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen> w
 
   @override
   void dispose() {
+    _activationTimeout?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -195,8 +234,11 @@ class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen> w
   void initState() {
     super.initState();
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
-
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
     _glowAnimation = Tween<double>(begin: 0.25, end: 0.55).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    // 30s timeout fallback — if webhook is delayed, show a manual refresh prompt
+    _activationTimeout = Timer(const Duration(seconds: 30), () {
+      if (mounted) setState(() => _timedOut = true);
+    });
   }
 }

@@ -1614,9 +1614,11 @@ def _notify_premium_users_new_product(product_data: dict, product_id: str) -> No
 
         tokens = []
         for user in docs:
-            token = (user.to_dict() or {}).get(Fields.FCM_TOKEN)
-            if token:
-                tokens.append(token)
+            token_docs = user.reference.collection(Collections.FCM_TOKENS).stream()
+            for td in token_docs:
+                t = (td.to_dict() or {}).get("token")
+                if t:
+                    tokens.append(t)
 
         if tokens:
             msg = messaging.MulticastMessage(

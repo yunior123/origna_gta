@@ -76,10 +76,8 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
     await _continueOnboarding();
   }
 
-  /// Opens the Stripe Express Dashboard.
-  /// TODO: Replace with a dynamic Stripe login link from CF 'create_stripe_login_link'.
-  /// Static URLs don't work for Express accounts — need:
-  ///   stripe.Account.create_login_link(account_id) called server-side.
+  /// Opens the Stripe Express Dashboard via a server-side login link.
+  /// Express accounts require stripe.Account.create_login_link called server-side.
   Future<void> openStripeDashboard() async {
     if (!_canProceed()) return;
     
@@ -87,12 +85,20 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
     _lastOperationTime = DateTime.now();
     
     try {
-      const url = ExternalUrls.stripeDashboard;
-      if (await canLaunchUrl(Uri.parse(url))) {
+      final functions = _ref.read(firebaseFunctionsProvider);
+      final callable = functions.httpsCallable(CloudFunctionEndpoints.createStripeLoginLink);
+      final result = await callable.call();
+      final data = result.data as Map<String, dynamic>;
+      final url = data[ApiKeys.url] as String?;
+      if (url != null && await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       } else {
         state = state.copyWith(error: 'Could not open Stripe Dashboard');
       }
+    } on FirebaseFunctionsException catch (e) {
+      state = state.copyWith(error: _cleanErrorMessage(e, 'Failed to open Stripe Dashboard'));
+    } catch (e) {
+      state = state.copyWith(error: 'Could not open Stripe Dashboard. Please try again.');
     } finally {
       _isOperationInProgress = false;
     }

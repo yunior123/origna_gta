@@ -12,7 +12,7 @@ applyTo: "origna_gta/lib/**/*.dart,origna_gta/test/**/*.dart"
 
 ## Models
 - Primary: `lib/models/generated/*.dart` (Freezed + json_serializable)
-- Legacy: `lib/models/models.dart` — `Address` collision risk, use `hide Address`
+- Older: `lib/models/models.dart` — `Address` collision risk, use `hide Address`
 - Factory constructors: `Order.fromFirestore(doc)`, `User.fromFirestore(doc)`
 
 ## Critical Patterns

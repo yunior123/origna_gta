@@ -23,6 +23,7 @@ from schema_constants import (
     EmailConfig,
     Fields,
     ShippingTiers,
+    UserRoleValues,
 )
 from services import shipping_service
 
@@ -1655,7 +1656,7 @@ def get_return_request_submitted_email(return_data: dict, return_id: str, order_
     short_rid = return_id[:8]
     reason = html.escape(str(return_data.get(Fields.RETURN_REASON, "")))
 
-    if recipient == "seller":
+    if recipient == UserRoleValues.SELLER:
         content = _hero_header("⚠️", _t("return.requested_seller_h", lang), _t("return.requested_seller_s", lang), "rgba(245, 158, 11, 0.2)")
     else:
         content = _hero_header("📦", _t("return.requested_buyer_h", lang), _t("return.requested_buyer_s", lang), "rgba(102, 126, 234, 0.2)")
@@ -1670,8 +1671,8 @@ def get_return_request_submitted_email(return_data: dict, return_id: str, order_
             <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e;">{reason}</td>
         </tr>""" if reason else ""
 
-    bg = "#FFFBEB" if recipient == "seller" else "#EFF6FF"
-    border = "#FDE68A" if recipient == "seller" else "#BFDBFE"
+    bg = "#FFFBEB" if recipient == UserRoleValues.SELLER else "#EFF6FF"
+    border = "#FDE68A" if recipient == UserRoleValues.SELLER else "#BFDBFE"
 
     content += f"""
         <tr><td style="padding: 24px 40px;">
@@ -1694,9 +1695,9 @@ def get_return_request_submitted_email(return_data: dict, return_id: str, order_
             </div>
         </td></tr>
     """
-    cta_label = _t("cta.manage_orders", lang) if recipient == "seller" else _t("cta.view_orders", lang)
+    cta_label = _t("cta.manage_orders", lang) if recipient == UserRoleValues.SELLER else _t("cta.view_orders", lang)
     content += _cta_button(f"{APP_BASE_URL}/orders", cta_label)
-    title = "New Return Request" if recipient == "seller" else "Return Request Submitted"
+    title = "New Return Request" if recipient == UserRoleValues.SELLER else "Return Request Submitted"
     return _email_wrapper(title, content, include_gst=False, lang=lang)
 
 

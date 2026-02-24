@@ -1766,12 +1766,13 @@ def _notify_trending_products(db, top_products: list[tuple]) -> None:
             .stream()
         )
 
-        tokens = [
-            d.get(Fields.FCM_TOKEN)
-            for user in users_query
-            for d in [(user.to_dict() or {})]
-            if d.get(Fields.FCM_TOKEN)
-        ]
+        tokens = []
+        for user in users_query:
+            token_docs = user.reference.collection(Collections.FCM_TOKENS).stream()
+            for td in token_docs:
+                t = (td.to_dict() or {}).get("token")
+                if t:
+                    tokens.append(t)
 
         if not tokens:
             return
@@ -1855,6 +1856,7 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
                             Fields.IS_PREMIUM: False,
                             Fields.PREMIUM_EXPIRES_AT: None,
                             Fields.STRIPE_SUBSCRIPTION_ID: None,
+                            Fields.PREMIUM_SINCE: None,
                             Fields.UPDATED_AT: now,
                         },
                     )

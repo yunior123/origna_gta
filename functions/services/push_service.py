@@ -26,7 +26,6 @@ def send_push_notification(user_id: str, title: str, body: str, data: dict | Non
     """
     Send FCM push notification to all active devices for a user.
     Reads tokens from users/{uid}/fcm_tokens subcollection (multi-device support).
-    Falls back to legacy fcmToken field on user doc if subcollection is empty.
     On UnregisteredError per token, removes the stale token doc atomically.
     Returns True if at least one message succeeded, False otherwise.
     """
@@ -56,12 +55,6 @@ def send_push_notification(user_id: str, title: str, body: str, data: dict | Non
             if d.to_dict().get("token")
         ]
 
-        # Pre-subcollection FCM path: for accounts before fcm_tokens subcollection was added
-        if not tokens_with_refs:
-            legacy_token = user_data.get(Fields.FCM_TOKEN)
-            if legacy_token:
-                tokens_with_refs = [(legacy_token, None)]
-
         if not tokens_with_refs:
             return False
 
@@ -80,18 +73,11 @@ def send_push_notification(user_id: str, title: str, body: str, data: dict | Non
             elif response.exception:
                 err_str = str(response.exception)
                 if "registration-token-not-registered" in err_str or "invalid-registration-token" in err_str:
-                    # Remove stale token
+                    # Remove stale token from subcollection
                     _, token_ref = tokens_with_refs[idx]
                     try:
                         if token_ref:
                             token_ref.delete()
-                        else:
-                            # Legacy field — clear it
-                            from firebase_admin.firestore import SERVER_TIMESTAMP
-                            user_ref.update({
-                                Fields.FCM_TOKEN: None,
-                                Fields.FCM_TOKEN_UPDATED_AT: SERVER_TIMESTAMP,
-                            })
                         logger.info(f"Removed stale FCM token for user {user_id}")
                     except Exception as del_err:
                         logger.warning(f"Failed to remove stale FCM token: {del_err}")

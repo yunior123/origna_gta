@@ -124,8 +124,8 @@ Real email delivery verification (requires real Mailjet credentials)
 | Script | Data | Notes |
 |--------|------|-------|
 | `mega-seed.ts` | 76 users, 30 products, ~20 carts, 8 orders | **Use this for E2E** |
-| `seed-emulator.ts` | 25 users, 16 products, 3 carts | Legacy — NOT recommended |
-| `seed-orders.py` | 8 orders at various statuses | Legacy — now built into mega-seed.ts |
+| `seed-emulator.ts` | 25 users, 16 products, 3 carts | Deprecated — NOT recommended |
+| `seed-orders.py` | 8 orders at various statuses | Deprecated — now built into mega-seed.ts |
 | `write_cycle.py` | Cycles order through all statuses (10s each) | — |
 
 ### mega-seed.ts — CRITICAL for E2E

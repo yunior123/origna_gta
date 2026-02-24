@@ -257,8 +257,8 @@ class LoginViewModel extends StateNotifier<LoginState> {
       return 'auth.validation.name_too_long';
     }
     
-    // Allow letters, spaces, hyphens, apostrophes, periods (O'Brien, Jr., María-José)
-    final nameRegex = RegExp(r"^[a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ' .\-]*[a-zA-ZÀ-ÿ.]?$");
+    // Allow any Unicode letter + space/hyphen/apostrophe/period — mirrors backend
+    final nameRegex = RegExp(r"^[\p{L} '\-\.·]+$", unicode: true);
     if (!nameRegex.hasMatch(trimmedName)) {
       return 'auth.validation.name_invalid_format';
     }

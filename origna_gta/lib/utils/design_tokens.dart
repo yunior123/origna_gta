@@ -50,6 +50,14 @@ class DesignTokens {
   static const Color statusShipped = Color(0xFF06B6D4); // Cyan — shipped status
   static const Color statusInTransit = Color(0xFF14B8A6); // Teal — in-transit status
 
+  // Payment provider brand colors (used in seller registration screen)
+  static const Color stripeViolet = Color(0xFF635BFF);
+  static const Color stripeCyan = Color(0xFF00D4AA);
+  static const Color paypalNavy = Color(0xFF003087);
+  static const Color paypalBlue = Color(0xFF009CDE);
+  static const Color wiseGreen = Color(0xFF9FE870);
+  static const Color wiseSky = Color(0xFF00B9FF);
+
   // Timeline inactive step colors
   static const Color timelineInactiveDark = Color(0xFF3A3A50);
   static const Color timelineInactiveLight = Color(0xFFE0E4EE);

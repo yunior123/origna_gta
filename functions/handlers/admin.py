@@ -28,6 +28,7 @@ from schema_constants import (
     Collections,
     Fields,
     OrderStatusValues,
+    PaymentStatusValues,
     PayoutStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
@@ -63,8 +64,8 @@ def _require_recent_admin_mfa(admin_data: dict[str, Any]) -> None:
 
     # Check if MFA was verified within allowed window
     now = datetime.now(UTC)
-    # Firestore timestamps are UTC — compare in UTC
-    last_mfa_utc = last_mfa_verify.replace(tzinfo=UTC) if last_mfa_verify.tzinfo is None else last_mfa_verify
+    # Firestore timestamps may be timezone-aware; use astimezone for correct conversion
+    last_mfa_utc = last_mfa_verify.astimezone(UTC) if last_mfa_verify.tzinfo is not None else last_mfa_verify.replace(tzinfo=UTC)
     time_diff = now - last_mfa_utc
 
     if time_diff > timedelta(minutes=BusinessRules.MFA_VERIFICATION_VALIDITY_MINUTES):
@@ -1716,11 +1717,20 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("not-found", "Order not found")
 
     order_data = order_doc.to_dict()
+
+    # Guard: only refundable statuses
+    _REFUNDABLE_STATUSES = {OrderStatusValues.DELIVERED, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING}
+    current_status = order_data.get(Fields.ORDER_STATUS)
+    if current_status not in _REFUNDABLE_STATUSES:
+        raise https_fn.HttpsError(
+            "failed-precondition",
+            f"Order status '{current_status}' is not refundable. Must be one of: {', '.join(_REFUNDABLE_STATUSES)}",
+        )
+
     payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
     if not payment_intent_id:
         raise https_fn.HttpsError("failed-precondition", "Order has no payment intent — cannot refund")
 
-    import stripe
     try:
         refund = stripe.Refund.create(
             payment_intent=payment_intent_id,
@@ -1728,12 +1738,31 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             idempotency_key=f"admin_refund_{order_id}",
             metadata={"admin_id": admin_id, "order_id": order_id, "reason": reason},
         )
-    except stripe.error.StripeError as e:
+    except stripe.StripeError as e:
         raise https_fn.HttpsError("internal", f"Stripe refund failed: {e}") from e
+
+    # Restore stock atomically in Firestore transaction
+    items = order_data.get(Fields.ITEMS, [])
+    if items:
+        from firebase_admin import firestore as _fs
+
+        @_fs.transactional
+        def _restore_stock(transaction):
+            refs_snaps = []
+            for item in items:
+                product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+                snap = product_ref.get(transaction=transaction)
+                refs_snaps.append((product_ref, snap, item.get(Fields.QUANTITY, 0)))
+            for ref, snap, qty in refs_snaps:
+                if snap.exists and qty > 0:
+                    current = (snap.to_dict() or {}).get(Fields.STOCK_QUANTITY, 0)
+                    transaction.update(ref, {Fields.STOCK_QUANTITY: current + qty})
+
+        _restore_stock(get_db().transaction())
 
     order_ref.update(
         {
-            Fields.PAYMENT_STATUS: "refunded",
+            Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED,
             Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
             Fields.REFUNDED_AT: get_server_timestamp(),
             Fields.CANCELLED_BY: admin_id,
@@ -1753,3 +1782,33 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     )
     return create_success_response({"refundId": refund.id, "status": refund.status})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def create_stripe_login_link(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Generate a Stripe Express Dashboard login link for the authenticated seller.
+    Static dashboard URLs don't work for Express accounts — requires server-side call.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Authentication required.")
+
+    uid = req.auth.uid
+    sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(uid).get()
+    if not sp_doc.exists:
+        raise https_fn.HttpsError("not-found", "Seller profile not found.")
+
+    stripe_account_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
+    if not stripe_account_id:
+        raise https_fn.HttpsError("failed-precondition", "No Stripe account found. Please complete onboarding first.")
+
+    if not stripe.api_key:
+        from config import get_stripe_secret_key
+        stripe.api_key = get_stripe_secret_key()
+
+    try:
+        login_link = stripe.Account.create_login_link(stripe_account_id)
+        return create_success_response({"url": login_link.url})
+    except stripe.StripeError as e:
+        logger.error(f"Failed to create Stripe login link for {uid}: {e}")
+        raise https_fn.HttpsError("internal", "Failed to generate dashboard link. Please try again.") from e

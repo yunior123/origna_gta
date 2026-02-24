@@ -378,7 +378,7 @@ class Fields:
     SHIPPING_DAYS = "shippingDays"
     HAS_TRACKING = "hasTracking"
     MAX_ITEMS_PER_SHIPMENT = "maxItemsPerShipment"
-    ADDITIONAL_ITEM_COST = "additionalItemCost"  # kept for legacy; for SellerDeliveryOption use ADDITIONAL_ITEM_COST_CENTS
+    ADDITIONAL_ITEM_COST = "additionalItemCost"  # kept for backward compat; for SellerDeliveryOption use ADDITIONAL_ITEM_COST_CENTS
     ADDITIONAL_ITEM_COST_CENTS = "additionalItemCostCents"
     QUANTITY_DISCOUNTS = "quantityDiscounts"
     DISCOUNT_TYPE = "discountType"
@@ -496,7 +496,7 @@ class Fields:
     REFUND_AMOUNT_CENTS = "refundAmountCents"
     REFUND_ID = "refundId"
     CONFIRMED_BY_BUYER = "confirmedByBuyer"
-    DELIVERY_STATUS = "deliveryStatus"  # DEPRECATED — kept for reading legacy documents only. Write 'status' field.
+    DELIVERY_STATUS = "deliveryStatus"  # DEPRECATED — kept for reading existing documents only. Write 'status' field.
 
     # === STRIPE METADATA KEYS (used in transfer/alert metadata) ===
     SNAPSHOT_ACCOUNT_ID = "snapshotAccountId"
@@ -743,7 +743,7 @@ class OrderStatusValues:
     CANCELLED = "cancelled"
     FAILED = "failed"
     EXPIRED = "expired"
-    # DEPRECATED: REFUNDED / PARTIALLY_REFUNDED moved to PaymentStatusValues — kept for legacy reads
+    # DEPRECATED: REFUNDED / PARTIALLY_REFUNDED moved to PaymentStatusValues — kept for backward-compatible reads
     REFUNDED = "refunded"
     PARTIALLY_REFUNDED = "partially_refunded"
     DISPUTED = "disputed"
@@ -1642,12 +1642,13 @@ class SubscriptionStatusValues:
 
     ACTIVE = "active"
     CANCELED = "canceled"
+    INACTIVE = "inactive"  # Internal status: no subscription doc exists
     PAST_DUE = "past_due"
     INCOMPLETE = "incomplete"
     INCOMPLETE_EXPIRED = "incomplete_expired"
     TRIALING = "trialing"
     UNPAID = "unpaid"
-    ALL = [ACTIVE, CANCELED, PAST_DUE, INCOMPLETE, INCOMPLETE_EXPIRED, TRIALING, UNPAID]
+    ALL = [ACTIVE, CANCELED, INACTIVE, PAST_DUE, INCOMPLETE, INCOMPLETE_EXPIRED, TRIALING, UNPAID]
     # Statuses that grant premium access
     PREMIUM_ACTIVE = frozenset({ACTIVE, TRIALING})
 

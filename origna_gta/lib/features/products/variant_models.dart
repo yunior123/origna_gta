@@ -53,7 +53,7 @@ class ProductVariantEntry {
   double? get priceDollars => priceCents != null ? priceCents! / 100.0 : null;
 
   factory ProductVariantEntry.fromMap(Map<String, dynamic> map) {
-    // Support both legacy 'price' (float) and new 'priceCents' (int)
+    // Support both old 'price' (float) and new 'priceCents' (int)
     int? priceCents;
     if (map['priceCents'] != null) {
       priceCents = (map['priceCents'] as num).toInt();

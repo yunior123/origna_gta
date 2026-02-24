@@ -67,6 +67,17 @@ class SubscriptionViewModel extends StateNotifier<SubscriptionState> {
     );
   }
 
+  Future<void> reactivateSubscription() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final functions = _ref.read(firebaseFunctionsProvider);
+      await functions.httpsCallable(CloudFunctionEndpoints.reactivateSubscription).call();
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
+    }
+  }
+
   void clearCheckoutUrl() => state = state.copyWith(clearCheckoutUrl: true);
 
   String _parseError(Object e) {

@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -159,7 +160,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                       if (value == null || value.isEmpty) {
                                         return 'auth.password_required'.tr();
                                       }
-                                      if (value.length < 6) {
+                                      if (!state.isLogin && value.length < 8) {
+                                        return 'auth.validation.password_min_8'.tr();
+                                      }
+                                      if (state.isLogin && value.length < 6) {
                                         return 'auth.password_min_length'.tr();
                                       }
                                       return null;
@@ -381,7 +385,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('auth.welcome_back_msg'.tr()), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating));
-    Navigator.of(context).pop();
+    Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
   }
 
   void _showForgotPasswordDialog(BuildContext context) {
@@ -430,22 +434,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                     onPressed: isSending
                         ? null
                         : () async {
-                            final messanger = ScaffoldMessenger.of(context);
-
                             if (!formKey.currentState!.validate()) return;
+                            final messenger = ScaffoldMessenger.of(dialogContext);
                             setState(() => isSending = true);
                             try {
                               await ref.read(loginViewModelProvider.notifier).resetPassword(emailController.text.trim());
                               if (dialogContext.mounted) {
                                 Navigator.pop(dialogContext);
-                                ScaffoldMessenger.of(
-                                  context,
-                                ).showSnackBar(SnackBar(content: Text('auth.reset_link_sent'.tr()), backgroundColor: DesignTokens.success));
+                                messenger.showSnackBar(SnackBar(content: Text('auth.reset_link_sent'.tr()), backgroundColor: DesignTokens.success));
                               }
                             } catch (e) {
-                              messanger.showSnackBar(SnackBar(content: Text('auth.reset_link_failed'.tr()), backgroundColor: DesignTokens.error));
+                              if (dialogContext.mounted) {
+                                messenger.showSnackBar(SnackBar(content: Text('auth.reset_link_failed'.tr()), backgroundColor: DesignTokens.error));
+                              }
                             } finally {
-                              setState(() => isSending = false);
+                              if (mounted) setState(() => isSending = false);
                             }
                           },
                     style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),

@@ -605,7 +605,7 @@ extension SellerDeliveryOptionExtension on SellerDeliveryOption {
 
 extension SellerWarehouseExtension on SellerWarehouse {
   String get cityProvince => '${address.city}, ${address.state}';
-  bool get isPersonal => type == 'personal';
-  bool get isWarehouse => type == 'warehouse';
+  bool get isPersonal => type == WarehouseTypeValues.personal;
+  bool get isWarehouse => type == WarehouseTypeValues.warehouse;
   String get typeLabel => isWarehouse ? 'Warehouse' : 'Personal Address';
 }

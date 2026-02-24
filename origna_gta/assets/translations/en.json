@@ -1229,6 +1229,7 @@
     "trending_products_desc": "Alert when products are trending",
     "cancel_subscription": "Cancel Subscription",
     "subscription_ends_on": "Your subscription will end on {date}.",
+    "reactivate_subscription": "Reactivate Subscription",
     "subscribe_button": "Upgrade to Premium — CAD $7.86/mo",
     "cancel_premium_title": "Cancel Premium?",
     "cancel_premium_body": "You'll keep premium benefits until the end of your billing period. Are you sure?",

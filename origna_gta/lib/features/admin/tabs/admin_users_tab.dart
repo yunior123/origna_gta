@@ -81,9 +81,9 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                 children: [
                   _filterChip('admin.users.filter_all'.tr(), 'all'),
                   const SizedBox(width: 6),
-                  _filterChip('admin.users.filter_sellers'.tr(), 'seller'),
+                  _filterChip('admin.users.filter_sellers'.tr(), UserRoles.seller),
                   const SizedBox(width: 6),
-                  _filterChip('admin.users.filter_admins'.tr(), 'admin'),
+                  _filterChip('admin.users.filter_admins'.tr(), UserRoles.admin),
                   const SizedBox(width: 6),
                   _filterChip('admin.users.filter_buyers'.tr(), UserRoles.buyer),
                 ],

@@ -74,6 +74,7 @@ from handlers.admin import (  # noqa: E402
     admin_mfa_verify_backup,
     admin_refund_order,
     admin_update_product_stock,
+    create_stripe_login_link,
     delete_account,
     e2e_get_mail_logs,
     export_my_data,
@@ -193,6 +194,7 @@ from handlers.subscriptions import (  # noqa: E402
     cancel_subscription,
     create_subscription,
     get_subscription_status,
+    reactivate_subscription,
 )
 from handlers.users import (  # noqa: E402
     add_buyer_address,
@@ -202,6 +204,7 @@ from handlers.users import (  # noqa: E402
     set_default_buyer_address,
     update_buyer_address,
     update_email_consent,
+    update_notification_preferences,
     update_user_profile,
 )
 
@@ -251,6 +254,7 @@ __all__ = [
     "create_subscription",
     "cancel_subscription",
     "get_subscription_status",
+    "reactivate_subscription",
     # Chat (premium feature)
     "get_or_create_chat",
     "mark_messages_read",
@@ -325,6 +329,7 @@ __all__ = [
     "admin_mfa_verify",
     "admin_mfa_verify_backup",
     "admin_mfa_disable",
+    "create_stripe_login_link",
     "delete_account",
     "export_my_data",
     "unsubscribe_email",
@@ -337,6 +342,7 @@ __all__ = [
     "set_default_buyer_address",
     "update_buyer_address",
     "update_email_consent",
+    "update_notification_preferences",
     "update_user_profile",
     # Payment Provider Management
     "get_payment_providers",

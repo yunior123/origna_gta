@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -30,7 +31,7 @@ IconData _iconForSection(String title) {
   if (t.contains('purchase') || t.contains('payment')) return Icons.payment_outlined;
   if (t.contains('shipping') || t.contains('delivery')) return Icons.local_shipping_outlined;
   if (t.contains('return') || t.contains('refund')) return Icons.assignment_return_outlined;
-  if (t.contains('seller')) return Icons.storefront_outlined;
+  if (t.contains(UserRoleValues.seller)) return Icons.storefront_outlined;
   if (t.contains('prohibited')) return Icons.block_outlined;
   if (t.contains('intellectual') || t.contains('property')) return Icons.copyright_outlined;
   if (t.contains('liability') || t.contains('limitation')) return Icons.shield_outlined;

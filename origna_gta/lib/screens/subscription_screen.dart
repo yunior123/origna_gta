@@ -18,15 +18,13 @@ class SubscriptionScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final subAsync = ref.watch(subscriptionStreamProvider);
     final vmState = ref.watch(subscriptionViewModelProvider);
-    final vm = ref.read(subscriptionViewModelProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Launch Stripe checkout when URL appears
-    // vm is a StateNotifier — no BuildContext used after await, so no mounted guard needed.
+    // Launch Stripe checkout when URL appears — use ref.read inside callback to avoid stale capture
     ref.listen(subscriptionViewModelProvider.select((s) => s.checkoutUrl), (prev, next) async {
       if (next != null && next.isNotEmpty) {
         await launchUrl(Uri.parse(next), mode: LaunchMode.externalApplication);
-        vm.clearCheckoutUrl();
+        ref.read(subscriptionViewModelProvider.notifier).clearCheckoutUrl();
       }
     });
 
@@ -43,7 +41,7 @@ class SubscriptionScreen extends ConsumerWidget {
         child: subAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
           error: (e, _) => Center(child: Text(e.toString())),
-          data: (subInfo) => _buildContent(context, ref, vm, vmState, subInfo, isDark),
+          data: (subInfo) => _buildContent(context, ref, vmState, subInfo, isDark),
         ),
       ),
     );
@@ -80,7 +78,8 @@ class SubscriptionScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, SubscriptionViewModel vm, SubscriptionState vmState, SubscriptionInfo? subInfo, bool isDark) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, SubscriptionState vmState, SubscriptionInfo? subInfo, bool isDark) {
+    final vm = ref.read(subscriptionViewModelProvider.notifier);
     final isPremium = subInfo?.isPremium ?? false;
     final userAsync = ref.watch(userProfileProvider);
     final notifyNew = userAsync.valueOrNull?.notifyNewProducts ?? false;
@@ -154,18 +153,39 @@ class SubscriptionScreen extends ConsumerWidget {
                 ),
               )
             else
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: DesignTokens.warning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  'subscription.subscription_ends_on'.tr(namedArgs: {'date': _formatDate(subInfo.currentPeriodEnd)}),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: DesignTokens.warning, fontWeight: FontWeight.w500),
-                ),
+              Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: DesignTokens.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      'subscription.subscription_ends_on'.tr(namedArgs: {'date': _formatDate(subInfo.currentPeriodEnd)}),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: DesignTokens.warning, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Semantics(
+                    button: true,
+                    label: 'btn-reactivate-subscription',
+                    child: OutlinedButton(
+                      onPressed: vmState.isLoading ? null : () => vm.reactivateSubscription(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: DesignTokens.primary,
+                        side: BorderSide(color: DesignTokens.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: vmState.isLoading
+                          ? const ModernLoadingIndicator(size: 20)
+                          : Text('subscription.reactivate_subscription'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
               ),
           ] else ...[
             // Subscribe CTA

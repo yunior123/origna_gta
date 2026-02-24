@@ -27,7 +27,7 @@ class _CompactLanguageButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentLocale = context.locale;
-    final isEn = currentLocale.languageCode == 'en';
+    final isEn = currentLocale.languageCode == LanguageValues.english;
 
     return Semantics(
       label: 'language.select_language'.tr(),
@@ -36,7 +36,7 @@ class _CompactLanguageButton extends ConsumerWidget {
         message: 'language.select_language'.tr(),
         child: IconButton(
           onPressed: () {
-            final newLocale = isEn ? const Locale('fr') : const Locale('en');
+            final newLocale = isEn ? const Locale(LanguageValues.french) : const Locale(LanguageValues.english);
             context.setLocale(newLocale);
             _persistLang(ref, newLocale.languageCode);
           },
@@ -68,11 +68,11 @@ class _LanguageDropdown extends ConsumerWidget {
         icon: const Icon(Icons.language, color: DesignTokens.primary),
         items: const [
           DropdownMenuItem(
-            value: Locale('en'),
+            value: Locale(LanguageValues.english),
             child: Text('English'),
           ),
           DropdownMenuItem(
-            value: Locale('fr'),
+            value: Locale(LanguageValues.french),
             child: Text('Français'),
           ),
         ],

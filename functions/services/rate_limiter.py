@@ -9,14 +9,18 @@ from datetime import UTC, datetime, timedelta
 
 from firebase_admin import firestore
 
+from config import CURRENT_ENV, Environment
 from schema_constants import Collections, Fields
 
 logger = logging.getLogger(__name__)
 
 # In emulator/dev mode, relax rate limits 100x for E2E test throughput.
-# Set RELAXED_RATE_LIMITS=true in Cloud Functions env to enable (dev/emulator).
+# Set RELAXED_RATE_LIMITS=true in Cloud Functions env to enable (dev/emulator only).
 _IS_EMULATOR = os.environ.get("FUNCTIONS_EMULATOR", "false").lower() == "true"
-_RELAXED_LIMITS = os.environ.get("RELAXED_RATE_LIMITS", "false").lower() == "true"
+_RELAXED_LIMITS = (
+    os.environ.get("RELAXED_RATE_LIMITS", "false").lower() == "true"
+    and CURRENT_ENV != Environment.PRODUCTION
+)
 _EMULATOR_RATE_MULTIPLIER = 100 if (_IS_EMULATOR or _RELAXED_LIMITS) else 1
 
 

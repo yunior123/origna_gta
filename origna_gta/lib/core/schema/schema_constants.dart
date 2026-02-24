@@ -272,6 +272,13 @@ abstract final class CloudFunctionEndpoints {
   static const createSubscription = 'create_subscription';
   static const cancelSubscription = 'cancel_subscription';
   static const getSubscriptionStatus = 'get_subscription_status';
+  static const reactivateSubscription = 'reactivate_subscription';
+
+  // === USER PROFILE ENDPOINTS ===
+  static const updateNotificationPreferences = 'update_notification_preferences';
+
+  // === SELLER ENDPOINTS ===
+  static const createStripeLoginLink = 'create_stripe_login_link';
 
   // === CHAT ENDPOINTS ===
   static const getOrCreateChat = 'get_or_create_chat';
@@ -808,7 +815,7 @@ abstract final class Fields {
   static const discountValue = 'discountValue';
   static const minQuantity = 'minQuantity';
 
-  /// DEPRECATED — kept for reading legacy documents only. Use [status] field.
+  /// DEPRECATED — kept for reading existing documents only. Use [status] field.
   static const deliveryStatus = 'deliveryStatus';
 
   // === PAYOUT FIELDS ===
@@ -1090,7 +1097,7 @@ abstract final class OrderStatusValues {
   static const cancelled = 'cancelled';
   static const failed = 'failed';
   static const expired = 'expired';
-  // DEPRECATED: refunded/partiallyRefunded moved to PaymentStatusValues — kept for legacy reads
+  // DEPRECATED: refunded/partiallyRefunded moved to PaymentStatusValues — kept for backward-compatible reads
   static const refunded = 'refunded';
   static const partiallyRefunded = 'partially_refunded';
   static const disputed = 'disputed';
@@ -1436,6 +1443,7 @@ abstract final class SubscriptionStatusValues {
   static const unpaid = 'unpaid';
 
   /// Statuses that grant premium access
+  static const inactive = 'inactive'; // Internal: no subscription doc exists
   static const premiumActive = {active, trialing};
 }
 

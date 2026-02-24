@@ -72,7 +72,7 @@ def encrypt_mfa_secret(plaintext_secret: str, associated_data: str | None = None
 
     Returns:
         A string in format "v2:nonce_b64:ciphertext_b64" (with AAD) or
-        "nonce_b64:ciphertext_b64" (legacy, no AAD) safe for Firestore storage.
+        "nonce_b64:ciphertext_b64" (v1, no AAD) safe for Firestore storage.
 
     The nonce (12 bytes) is randomly generated per encryption to ensure
     the same secret never produces the same ciphertext.
@@ -105,7 +105,7 @@ def decrypt_mfa_secret(encrypted_secret: str, associated_data: str | None = None
 
     Args:
         encrypted_secret: String in format "v2:nonce_b64:ciphertext_b64" (with AAD)
-                          or "nonce_b64:ciphertext_b64" (legacy, no AAD).
+                          or "nonce_b64:ciphertext_b64" (v1, no AAD).
         associated_data: Optional AAD (e.g., user_id) used during encryption.
 
     Returns:
@@ -130,7 +130,7 @@ def decrypt_mfa_secret(encrypted_secret: str, associated_data: str | None = None
     parts = encrypted_secret.split(":")
 
     # v2 format: "v2:nonce_b64:ct_b64" (with AAD)
-    # v1 format: "nonce_b64:ct_b64" (legacy, no AAD)
+    # v1 format: "nonce_b64:ct_b64" (no AAD)
     if parts[0] == "v2":
         if len(parts) != 3:
             raise ValueError("Invalid v2 encrypted MFA secret format")
@@ -152,18 +152,18 @@ def decrypt_mfa_secret(encrypted_secret: str, associated_data: str | None = None
     key = _get_encryption_key()
     aesgcm = AESGCM(key)
 
-    # Use AAD for v2 secrets, None for legacy
+    # Use AAD for v2 secrets, None for v1 secrets
     aad = associated_data.encode("utf-8") if associated_data else None
 
     try:
         plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, aad)
         return plaintext_bytes.decode("utf-8")
     except Exception as e:
-        # If v2 decryption with AAD fails, try without AAD (legacy migration)
+        # If v2 decryption with AAD fails, try without AAD (v1 format migration)
         if aad:
             try:
                 plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, None)
-                logger.warning("Decrypted legacy MFA secret without AAD — re-encrypt with AAD on next verify")
+                logger.warning("Decrypted v1 MFA secret without AAD — re-encrypt with AAD on next verify")
                 return plaintext_bytes.decode("utf-8")
             except Exception as e2:
                 raise RuntimeError(f"Failed to decrypt MFA secret (wrong key or tampered data): {e2}") from e2

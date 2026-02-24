@@ -46,22 +46,21 @@ class SubscriptionInfo {
 
   factory SubscriptionInfo.fromMap(Map<String, dynamic> data) {
     DateTime? periodEnd;
-    final periodEndRaw = data['currentPeriodEnd'];
+    final periodEndRaw = data[Fields.currentPeriodEnd];
     if (periodEndRaw is Timestamp) {
       periodEnd = periodEndRaw.toDate();
     } else if (periodEndRaw is int) {
       periodEnd = DateTime.fromMillisecondsSinceEpoch(periodEndRaw * 1000);
     }
 
-    final status = data['status'] as String? ?? 'inactive';
-    final isPremium = status == SubscriptionStatusValues.active ||
-        status == SubscriptionStatusValues.trialing;
+    final status = data[Fields.status] as String? ?? SubscriptionStatusValues.inactive;
+    final isPremium = SubscriptionStatusValues.premiumActive.contains(status);
 
     return SubscriptionInfo(
       status: status,
       isPremium: isPremium,
       currentPeriodEnd: periodEnd,
-      cancelAtPeriodEnd: data['cancelAtPeriodEnd'] as bool? ?? false,
+      cancelAtPeriodEnd: data[Fields.cancelAtPeriodEnd] as bool? ?? false,
     );
   }
 }

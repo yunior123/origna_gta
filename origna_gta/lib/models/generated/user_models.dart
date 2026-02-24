@@ -92,7 +92,7 @@ abstract class User with _$User {
     final data = doc.data() as Map<String, dynamic>;
 
     // Parse roles
-    final rolesData = data[Fields.roles] as List<dynamic>? ?? ['buyer'];
+    final rolesData = data[Fields.roles] as List<dynamic>? ?? [UserRoleValues.buyer];
     final roles = rolesData.map((r) => UserRole.values.firstWhere((e) => e.name == r.toString(), orElse: () => UserRole.buyer)).toList();
 
     return User(
@@ -106,7 +106,7 @@ abstract class User with _$User {
       lastCheckoutSession: data[Fields.lastCheckoutSession],
       lastOrderId: data[Fields.lastOrderId],
       lastCheckoutTimestamp: _parseDateTime(data[Fields.lastCheckoutTimestamp]),
-      isSeller: (data[Fields.roles] as List<dynamic>? ?? []).contains('seller'),
+      isSeller: (data[Fields.roles] as List<dynamic>? ?? []).contains(UserRoleValues.seller),
       suspended: data[Fields.suspended] ?? false,
       suspendedAt: _parseDateTime(data[Fields.suspendedAt]),
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
@@ -127,7 +127,7 @@ abstract class User with _$User {
       termsAcceptedAt: _parseDateTime(data[Fields.termsAcceptedAt]),
       privacyPolicyVersion: data[Fields.privacyPolicyVersion] as String?,
       termsVersion: data[Fields.termsVersion] as String?,
-      preferredLanguage: data[Fields.preferredLanguage] as String? ?? 'en',
+      preferredLanguage: data[Fields.preferredLanguage] as String? ?? LanguageValues.english,
       unsubscribedAt: _parseDateTime(data[Fields.unsubscribedAt]),
       dataProcessingConsent: data[Fields.dataProcessingConsent] ?? false,
       // === PREMIUM SUBSCRIPTION ===

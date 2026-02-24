@@ -36,6 +36,10 @@ Read each pair together and verify field names, types, error handling, and respo
 - `origna_gta/lib/core/schema/schema_constants.dart` ↔ `functions/schema_constants.py`
 - Check: every constant value is identical, no typos, no missing entries
 
+### 5. Subscription Flow
+- `origna_gta/lib/features/subscription/subscription_provider.dart` ↔ `functions/handlers/subscriptions.py`
+- Check: cancel request fields match handler, reactivation response parsed, error codes handled
+
 ### 6. Models
 - `origna_gta/lib/models/generated/order_models.dart` ↔ `functions/models/order.py`
 - `origna_gta/lib/models/generated/product_models.dart` ↔ `functions/models/product.py`

@@ -15,7 +15,8 @@ Audit the ENTIRE premium subscription lifecycle end-to-end. Read the ACTUAL code
 
 ### 1. Stripe Checkout → Webhook Sync
 - `functions/handlers/payment_stripe.py` — Stripe Checkout session creation for premium
-- `functions/main.py` — Webhook endpoint registration
+- `functions/handlers/subscriptions.py` — Subscription lifecycle: cancel, reactivate, expiry
+- `functions/main.py` — Webhook endpoint registration (includes `reactivate_subscription` CF)
 - Look for: `checkout.session.completed`, `customer.subscription.*` webhook handlers
 - Verify: HMAC signature validation on webhook, idempotency keys
 
@@ -33,8 +34,11 @@ Audit the ENTIRE premium subscription lifecycle end-to-end. Read the ACTUAL code
 - Check: What happens if webhook sets subscription=active but fails to update user.isPremium?
 
 ### 4. Frontend Subscription Stream
-- Search for `subscriptionStreamProvider`, `subscriptionProvider`, or `premium` in `lib/`
-- `origna_gta/lib/features/` — subscription-related providers
+- `origna_gta/lib/features/subscription/subscription_provider.dart` — Riverpod subscription provider
+- `origna_gta/lib/features/subscription/subscription_state.dart` — Subscription state model
+- `origna_gta/lib/screens/subscription_screen.dart` — Subscription purchase UI
+- `origna_gta/lib/screens/subscription_cancel_screen.dart` — Cancellation UI
+- `origna_gta/lib/screens/subscription_success_screen.dart` — Post-purchase confirmation
 - Verify: provider listens to real-time subscription doc, not just user.isPremium
 
 ### 5. PremiumPaywallWidget Gate Enforcement
@@ -60,6 +64,7 @@ Audit the ENTIRE premium subscription lifecycle end-to-end. Read the ACTUAL code
 - [ ] Client-side bypass impossible — backend validates premium on protected endpoints
 - [ ] Period end: isPremium flipped to false
 - [ ] Reactivation: isPremium flipped back to true
+- [ ] `reactivate_subscription` CF: reactivation updates both subscription doc AND user.isPremium atomically?
 - [ ] Cancellation: handled gracefully (immediate vs end-of-period)
 - [ ] No stale cache: user.isPremium eventually consistent with subscription doc
 

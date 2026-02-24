@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart' show CloudFunctionEndpoints;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -72,7 +73,13 @@ class FirebaseUserRepository implements UserRepository {
     if (notifyNewProducts != null) updates[Fields.notifyNewProducts] = notifyNewProducts;
     if (notifyTrending != null) updates[Fields.notifyTrending] = notifyTrending;
     if (updates.isEmpty) return;
-    await _firestore.collection(Collections.users).doc(userId).update(updates);
+    // Use CF to prevent field injection and validate isPremium server-side
+    final callable = _functions.httpsCallable(CloudFunctionEndpoints.updateNotificationPreferences);
+    final response = await callable.call(updates);
+    final data = response.data as Map<String, dynamic>;
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Failed to update notification preferences');
+    }
   }
 
   @override

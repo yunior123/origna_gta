@@ -22,7 +22,7 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
-/// Parse DeliveryStatus from dynamic — DEPRECATED, kept for legacy reads
+/// Parse DeliveryStatus from dynamic — DEPRECATED, kept for backward-compatible reads
 // DeliveryStatus _parseDeliveryStatus(dynamic raw) { ... } — removed, use 'status' string field
 
 /// Parse an OrderItem from a Firestore map without relying on generated fromJson

@@ -41,3 +41,4 @@ Les 3 références CODE_SIGN_ENTITLEMENTS sont supprimées. Tu peux maintenant r
 
 
 
+10.**Cloud Scheduler frequency** — Cron jobs should run at the minimum effective frequency (e.g. every 5 minutes, not every minute) to reduce invocations while still meeting timing requirements.

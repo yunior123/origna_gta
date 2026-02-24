@@ -511,3 +511,35 @@ def set_default_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     _set_default_txn(transaction)
 
     return create_success_response({"updated": True})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def update_notification_preferences(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Update premium notification preferences for the authenticated user.
+    Uses Admin SDK to prevent field injection attacks.
+    Validates isPremium server-side — only premium users can enable these preferences.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Authentication required.")
+
+    uid = req.auth.uid
+    db = get_db()
+
+    # Validate isPremium from Firestore (never trust client)
+    user_doc = db.collection(Collections.USERS).document(uid).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError("not-found", "User profile not found.")
+    user_data = user_doc.to_dict() or {}
+    if not user_data.get(Fields.IS_PREMIUM, False):
+        raise https_fn.HttpsError("permission-denied", "Premium membership required to change notification preferences.")
+
+    # Only allow the two notification fields — no other fields accepted
+    allowed = {Fields.NOTIFY_NEW_PRODUCTS, Fields.NOTIFY_TRENDING}
+    updates = {k: v for k, v in req.data.items() if k in allowed and isinstance(v, bool)}
+    if not updates:
+        raise https_fn.HttpsError("invalid-argument", "No valid notification fields provided.")
+
+    updates[Fields.UPDATED_AT] = get_server_timestamp()
+    db.collection(Collections.USERS).document(uid).update(updates)
+    return create_success_response({})

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 
@@ -34,7 +35,7 @@ IconData iconForSection(String title) {
   if (t.contains('contact')) return Icons.mail_outlined;
   if (t.contains('partner')) return Icons.people_outlined;
   if (t.contains('payment')) return Icons.payment_outlined;
-  if (t.contains('seller')) return Icons.storefront_outlined;
+  if (t.contains(UserRoleValues.seller)) return Icons.storefront_outlined;
   if (t.contains('acceptance')) return Icons.handshake_outlined;
   if (t.contains('account')) return Icons.person_add_outlined;
   if (t.contains('purchase')) return Icons.payment_outlined;

@@ -35,8 +35,8 @@ For each finding, output exactly this block — nothing more:
 
 ```
 [SEVERITY] file/path.ext:LINE_NUMBER
-PROBLEM: one sentence — what is wrong and why it matters.
-FIX: one sentence — exact change needed (field name, method, value, logic) plus code snippet demonstrating the fix.
+PROBLEM: one sentence — what is wrong and why it matters, backed by strong evidence.
+FIX: one sentence — exact change needed (field name, method, value, logic) +  section for code snippet demonstrating the fix.
 ```
 
 Severity levels: `[CRITICAL]` · `[HIGH]` · `[MEDIUM]` · `[LOW]` · `[BONUS]`
@@ -80,7 +80,7 @@ Examples: architectural smells, race conditions, missing indexes, N+1 queries, s
 
 ---
 
-## 🤖 Specialized Agent Playbooks
+## 🤖 Specialized Agent Playbooks, when taking decision and verifying that the issues and bonus features or issues are correct, spawn them all to verify that the answer is correct so that all is well orchestrated.
 
 > These are the exact patterns our specialized audit agents use. Apply ALL of them to the files in this flow.
 
@@ -178,6 +178,7 @@ State machine: `pending → confirmed → processing → shipped → in_transit 
 6. **Mailjet volume** — Free tier = 200/day. Combine order confirmation + receipt into 1 email. Seller notifications should batch (daily digest) not per-event.
 7. **R2 orphan cleanup** — Deleted/archived product images must be removed from Cloudflare R2. Orphaned images accumulate storage cost silently.
 8. **Cloud Function memory** — Default 256MB is wasteful for lightweight handlers. Audit each function's actual peak memory and right-size.
+9. **Cron job batching** — Cron handlers should process records in batches (e.g. 100 orders at a time), not one-by-one. Look for loops that call Firestore updates inside them.
 
 ### 🏆 Rival Agent Patterns
 1. **Standard checkout features** — Amazon/Shopify baseline: save-for-later, quantity limits with stock validation, address autocomplete, free-shipping threshold display. Flag missing items.
@@ -732,6 +733,22 @@ FLOW_INSTRUCTIONS: dict[str, str] = {
 8. **Cross-stack coupling notes** — where Dart and Python models must stay in sync, add a comment referencing the counterpart file.
 9. **Cron job documentation** — each cron job should have a header comment explaining its trigger frequency and purpose.
 10. **Error handling rationale** — non-obvious error handling choices (swallowing exceptions, retry logic) should explain why.
+""",
+
+    "legacy_code_audit": """\
+# Audit: Legacy, Deprecated & Dead Code
+
+## What to Audit
+1. **Banned Flutter APIs** — `withOpacity()`, `MaterialPageRoute`, `CircularProgressIndicator`, raw `ElevatedButton`/`TextField`/`AppBar`.
+2. **Old state management** — any `Provider`, `ChangeNotifier`, `BlocProvider`, or `GetX` usage; Riverpod ONLY.
+3. **Business logic in screens** — direct Firestore/Firebase calls in `screens/`; all logic must be in ViewModels.
+4. **Deprecated Python idioms** — Pydantic v1 `.dict()`, `@validator`, bare `except:`, `print()` for logging.
+5. **Dead/commented-out code** — commented-out code blocks, unreachable branches, unused functions.
+6. **The word "legacy"** — forbidden in the entire codebase; flag every occurrence.
+7. **`@deprecated`/`@Deprecated` markers** — code that was deprecated must be removed, not just marked.
+8. **Magic strings** — hardcoded Firestore field names and collection names outside `schema_constants`.
+9. **Removed schema fields** — `warehouseStock`, `deliveryStatus`, or any field removed from the schema still referenced in code.
+10. **TODOs/FIXMEs without issue reference** — untracked deferred work must be resolved or tracked with `TODO(#issue)`.
 """,
 
     "rival_audit": """\
@@ -1413,6 +1430,37 @@ FLOWS: dict[str, list[str]] = {
         "origna_gta/lib/core/schema/schema_constants.dart",
         "functions/models/order.py",
         "functions/models/product.py",
+    ],
+
+    "legacy_code_audit": [
+        # Key screens (most likely to accumulate banned patterns)
+        "origna_gta/lib/screens/addproduct_screen.dart",
+        "origna_gta/lib/screens/checkout_screen.dart",
+        "origna_gta/lib/screens/orders_screen.dart",
+        "origna_gta/lib/screens/home_screen.dart",
+        "origna_gta/lib/screens/productdetails_screen.dart",
+        "origna_gta/lib/screens/login_screen.dart",
+        "origna_gta/lib/screens/profile_screen.dart",
+        # ViewModels & providers
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "origna_gta/lib/features/orders/buyer_orders_viewmodel.dart",
+        "origna_gta/lib/features/auth/auth_provider.dart",
+        "origna_gta/lib/core/providers.dart",
+        # Models (check for removed/renamed fields)
+        "origna_gta/lib/models/generated/order_models.dart",
+        "origna_gta/lib/models/generated/product_models.dart",
+        "origna_gta/lib/models/generated/user_models.dart",
+        # Backend handlers
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/orders.py",
+        "functions/handlers/products.py",
+        "functions/handlers/admin.py",
+        # Schema constants (source of truth for removed fields)
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "docs/database_schema.json",
     ],
 
     "rival_audit": [

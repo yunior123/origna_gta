@@ -18,8 +18,8 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     id: PaymentProviderValues.stripe,
     name: 'Stripe',
     icon: Icons.flash_on,
-    primaryColor: Color(0xFF635BFF),
-    secondaryColor: Color(0xFF00D4AA),
+    primaryColor: DesignTokens.stripeViolet,
+    secondaryColor: DesignTokens.stripeCyan,
     payoutTiming: '7 days after delivery confirmation',
     features: ['Automatic payouts after 7-day hold period', 'Best for Canada-based sellers', 'Stripe Express instant setup', '2.9% + \$0.30 per transaction'],
     recommendedFor: 'Recommended for local Canadian sellers.',
@@ -28,8 +28,8 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     id: 'paypal', // Not in PaymentProviderValues — future provider
     name: 'PayPal',
     icon: Icons.account_balance_wallet,
-    primaryColor: Color(0xFF003087),
-    secondaryColor: Color(0xFF009CDE),
+    primaryColor: DesignTokens.paypalNavy,
+    secondaryColor: DesignTokens.paypalBlue,
     payoutTiming: '3-5 days after delivery',
     features: ['Instant PayPal balance transfers', 'Buyer/Seller protection included', 'Wide international acceptance', '2.9% + \$0.30 per transaction'],
     recommendedFor: 'Great for sellers with existing PayPal business accounts.',
@@ -39,8 +39,8 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     id: 'wise', // Not in PaymentProviderValues — future provider
     name: 'Wise (TransferWise)',
     icon: Icons.swap_horiz,
-    primaryColor: Color(0xFF9FE870),
-    secondaryColor: Color(0xFF00B9FF),
+    primaryColor: DesignTokens.wiseGreen,
+    secondaryColor: DesignTokens.wiseSky,
     payoutTiming: '1-3 days international transfer',
     features: ['Low-cost international transfers', 'Real mid-market exchange rates', 'Multi-currency accounts', '0.35% - 1% transfer fees'],
     recommendedFor: 'Perfect for international sellers needing fast, cheap transfers.',
@@ -531,8 +531,9 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     final provider = user.paymentProvider.isNotEmpty ? user.paymentProvider : state.paymentProvider;
     final selectedConfig = availablePaymentProviders.firstWhere((p) => p.id == provider, orElse: () => availablePaymentProviders.first);
     
-    // Watch backend provider status
+    // Watch backend provider status once — pass resolved value into the map to avoid double-watch
     final backendStatus = ref.watch(paymentProviderStatusProvider);
+    final backendStatusMap = backendStatus.valueOrNull ?? {};
 
     return GlassContainer(
       child: Column(
@@ -551,15 +552,8 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
               final isSelected = provider == config.id;
               
               // Check if provider is configured in backend (defaults to true if unknown)
-              final isConfiguredInBackend = backendStatus.when(
-                data: (statusMap) {
-                  final providerStatus = statusMap[config.id];
-                  if (providerStatus == null) return true; // Unknown = assume available
-                  return providerStatus[ApiKeys.configured] == true;
-                },
-                loading: () => true, // While loading, show as available
-                error: (_, _) => true, // On error, show as available
-              );
+              final providerStatus = backendStatusMap[config.id];
+              final isConfiguredInBackend = providerStatus == null ? true : providerStatus[ApiKeys.configured] == true;
               
               // Provider is disabled if it's marked "comingSoon" OR not configured in backend
               final isDisabled = config.comingSoon || !isConfiguredInBackend;

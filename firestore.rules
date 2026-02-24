@@ -721,6 +721,18 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // PENDING PROFILES: Temporary pre-verification storage
+    // Client can write marketingOptIn before email verification.
+    // Only the owner can create; all other access is denied (backend reads via Admin SDK).
+    // ================================================================
+    match /pending_profiles/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['marketingOptIn'])
+        && request.resource.data.marketingOptIn is bool;
+      allow read, update, delete: if false;
+    }
+
+    // ================================================================
     // CATCH-ALL: Deny access to any unmatched collections
     // This prevents accidental data exposure if new collections are
     // added without explicit rules. Defense-in-depth.

@@ -1230,6 +1230,7 @@
     "trending_products_desc": "Alerte quand des produits sont en tendance",
     "cancel_subscription": "Annuler l'abonnement",
     "subscription_ends_on": "Votre abonnement se terminera le {date}.",
+    "reactivate_subscription": "Réactiver l'abonnement",
     "subscribe_button": "Passer à Premium — 7,86 $ CAD/mois",
     "cancel_premium_title": "Annuler Premium ?",
     "cancel_premium_body": "Vous conserverez les avantages premium jusqu'à la fin de votre période de facturation. Êtes-vous sûr ?",
