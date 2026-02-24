@@ -41,6 +41,9 @@ from services.email_service import (
     get_order_processing_email,
     get_order_refunded_email,
     get_order_shipped_email,
+    get_return_request_approved_email,
+    get_return_request_rejected_email,
+    get_return_request_submitted_email,
     get_seller_notification_email,
     send_email,
 )
@@ -2119,10 +2122,57 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         logger.error(f"🚨 Failed to send order status email for order {order_id}: {str(e)}")
 
 
+def _send_return_email(return_data: dict, return_id: str, order_id: str, buyer_id: str, seller_id: str, status: str) -> None:
+    """Fetch buyer/seller emails and send return request notification emails."""
+    db = get_db()
+
+    def _fetch_email(uid: str) -> tuple[str | None, str]:
+        if not uid:
+            return None, "en"
+        try:
+            doc = db.collection(Collections.USERS).document(uid).get()
+            if doc.exists:
+                d = doc.to_dict() or {}
+                return d.get(Fields.EMAIL), d.get(Fields.PREFERRED_LANGUAGE, "en")
+        except Exception as e:
+            logger.warning(f"Could not fetch email for user {uid}: {e}")
+        return None, "en"
+
+    oid_short = order_id[:8]
+
+    if status == ReturnStatusValues.REQUESTED:
+        # Email seller
+        seller_email, seller_lang = _fetch_email(seller_id)
+        if seller_email:
+            html_body = get_return_request_submitted_email(return_data, return_id, order_id, recipient="seller", lang=seller_lang)
+            subject = _email_t("sub.return_requested_seller", seller_lang).replace("{oid}", oid_short)
+            send_email(to_email=seller_email, subject=subject, html_content=html_body)
+        # Also email buyer as confirmation
+        buyer_email, buyer_lang = _fetch_email(buyer_id)
+        if buyer_email:
+            html_body = get_return_request_submitted_email(return_data, return_id, order_id, recipient="buyer", lang=buyer_lang)
+            subject = _email_t("sub.return_requested_buyer", buyer_lang).replace("{oid}", oid_short)
+            send_email(to_email=buyer_email, subject=subject, html_content=html_body)
+
+    elif status == ReturnStatusValues.APPROVED:
+        buyer_email, buyer_lang = _fetch_email(buyer_id)
+        if buyer_email:
+            html_body = get_return_request_approved_email(return_data, return_id, order_id, lang=buyer_lang)
+            subject = _email_t("sub.return_approved", buyer_lang).replace("{oid}", oid_short)
+            send_email(to_email=buyer_email, subject=subject, html_content=html_body)
+
+    elif status == ReturnStatusValues.REJECTED:
+        buyer_email, buyer_lang = _fetch_email(buyer_id)
+        if buyer_email:
+            html_body = get_return_request_rejected_email(return_data, return_id, order_id, lang=buyer_lang)
+            subject = _email_t("sub.return_rejected", buyer_lang).replace("{oid}", oid_short)
+            send_email(to_email=buyer_email, subject=subject, html_content=html_body)
+
+
 @firestore_fn.on_document_updated(document="return_requests/{returnId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_return_request_status_changed(event: firestore_fn.Event) -> None:
     """
-    Firestore trigger: Sends push notifications when a return request status changes.
+    Firestore trigger: Sends push + email notifications when a return request status changes.
     Covers status transitions that may happen outside the CF handlers (admin writes, cron).
     """
     return_id = event.params["returnId"]
@@ -2162,6 +2212,7 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
                 f"A buyer has requested a return for order #{oid_short}",
                 data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
             )
+            _send_return_email(after_data, return_id, order_id, buyer_id, seller_id, new_status)
         elif new_status == ReturnStatusValues.APPROVED and buyer_id:
             send_push_notification(
                 buyer_id,
@@ -2169,6 +2220,7 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
                 f"Your return request for order #{oid_short} has been approved",
                 data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
             )
+            _send_return_email(after_data, return_id, order_id, buyer_id, seller_id, new_status)
         elif new_status == ReturnStatusValues.REJECTED and buyer_id:
             send_push_notification(
                 buyer_id,
@@ -2176,6 +2228,7 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
                 f"Your return request for order #{oid_short} has been rejected",
                 data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
             )
+            _send_return_email(after_data, return_id, order_id, buyer_id, seller_id, new_status)
         elif new_status == ReturnStatusValues.RECEIVED:
             if buyer_id:
                 send_push_notification(

@@ -180,13 +180,18 @@ def _assert_seller_active(seller_id: str, require_approval: bool = True) -> dict
         raise https_fn.HttpsError("permission-denied", "Seller is suspended and cannot process orders")
 
     if require_approval:
-        if not seller_data.get(Fields.ONBOARDING_COMPLETED, False):
+        # Stripe Connect approval fields live in seller_profiles/{uid}
+        sp_ref = get_db().collection(Collections.SELLER_PROFILES).document(seller_id)
+        sp_doc = sp_ref.get()
+        sp_data = sp_doc.to_dict() if sp_doc.exists else {}
+
+        if not sp_data.get(Fields.ONBOARDING_COMPLETED, False):
             raise https_fn.HttpsError("failed-precondition", "Seller has not completed onboarding")
 
-        if not seller_data.get(Fields.CHARGES_ENABLED, False):
+        if not sp_data.get(Fields.CHARGES_ENABLED, False):
             raise https_fn.HttpsError("failed-precondition", "Seller is not approved to receive payments")
 
-        if not seller_data.get(Fields.PAYOUTS_ENABLED, False):
+        if not sp_data.get(Fields.PAYOUTS_ENABLED, False):
             raise https_fn.HttpsError("failed-precondition", "Seller payouts are not yet enabled")
 
     return seller_data
@@ -325,8 +330,9 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
             continue
 
         # Check price change (> 1 cent tolerance)
-        db_price = product_data.get(Fields.PRICE, 0)
-        if abs(db_price - client_price) > 0.01:
+        db_price = round(product_data.get(Fields.PRICE, 0), 2)
+        client_price_r = round(client_price, 2)
+        if abs(db_price - client_price_r) > 0.01:
             price_changes.append(
                 {
                     Fields.PRODUCT_ID: product_id,
@@ -1556,14 +1562,16 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     event_type = event[Fields.TYPE]
 
     # SECURITY FIX #3b: Reject stale webhooks (replay attack prevention)
-    # Stripe events have a 'created' timestamp (Unix epoch seconds).
-    # Reject events older than 5 minutes to prevent replay attacks.
+    # Only apply to payment/checkout events — Stripe retries subscription events for up to 72h
+    # so subscription.* and invoice.* must never be rejected based on age.
     import time as _time
 
+    _STALE_CHECK_EVENT_PREFIXES = ("payment_intent.", "checkout.session.")
     event_created = event.get("created", 0)
     current_time = int(_time.time())
     event_age_seconds = current_time - event_created
-    if not IS_EMULATOR and event_age_seconds > BusinessRules.WEBHOOK_MAX_AGE_SECONDS:
+    _needs_stale_check = any(event_type.startswith(p) for p in _STALE_CHECK_EVENT_PREFIXES)
+    if not IS_EMULATOR and _needs_stale_check and event_age_seconds > BusinessRules.WEBHOOK_MAX_AGE_SECONDS:
         logger.warning(f"⚠️ Rejecting stale webhook: {event_type} age={event_age_seconds}s (event: {event_id[:16]}...)")
         return https_fn.Response("Event too old", status=400)
 
@@ -1655,6 +1663,16 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             from handlers.subscriptions import handle_invoice_payment_failed
 
             handle_invoice_payment_failed(event)
+        elif event_type == "invoice.paid":
+            # Handles successful recurring subscription renewals — keeps currentPeriodEnd fresh
+            from handlers.subscriptions import handle_subscription_updated
+
+            invoice_obj = event["data"]["object"]
+            sub_id = invoice_obj.get("subscription")
+            if sub_id:
+                sub = stripe.Subscription.retrieve(sub_id)
+                sub_event = {"data": {"object": sub}}
+                handle_subscription_updated(sub_event)
         else:
             logger.info(f"ℹ️ Unhandled Stripe event type: {event_type}")
 
@@ -3204,16 +3222,17 @@ def process_account_updated(account: dict) -> None:
     if currently_due:
         logger.info(f"  Requirements Due: {currently_due}")
 
-    # Find user with this Stripe account
-    users = get_db().collection(Collections.USERS).where(Fields.STRIPE_ACCOUNT_ID, "==", account_id).limit(1).get()
+    # Find user by querying seller_profiles where stripeAccountId == account_id
+    seller_profiles = get_db().collection(Collections.SELLER_PROFILES).where(Fields.STRIPE_ACCOUNT_ID, "==", account_id).limit(1).get()
 
-    if not users:
-        logger.warning(f"  ⚠️ No user found with Stripe account {account_id}")
+    if not seller_profiles:
+        logger.warning(f"  ⚠️ No seller profile found with Stripe account {account_id}")
         return
 
-    user_ref = users[0].reference
-    user_id = user_ref.id
-    user_data = users[0].to_dict()
+    sp_ref = seller_profiles[0].reference
+    user_id = sp_ref.id
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_data = user_ref.get().to_dict() or {}
 
     logger.info(f"  User ID: {user_id}")
 
@@ -3221,27 +3240,27 @@ def process_account_updated(account: dict) -> None:
     eventually_due = requirements.get("eventually_due", []) or []
     pending_requirements = list(set(currently_due + eventually_due))
 
-    # Update user document with current account status
-    update_data = {
+    # Update seller_profiles with Stripe Connect status
+    sp_update = {
         Fields.CHARGES_ENABLED: account.get("charges_enabled", False),
         Fields.PAYOUTS_ENABLED: account.get("payouts_enabled", False),
         Fields.ONBOARDING_COMPLETED: account.get("details_submitted", False),
         Fields.PENDING_REQUIREMENTS: pending_requirements,
         Fields.UPDATED_AT: get_server_timestamp(),
     }
+    sp_ref.update(sp_update)
 
-    # Grant SELLER role only when FULLY approved: details submitted + charges enabled
+    # Grant SELLER role on users doc only when FULLY approved: details submitted + charges enabled
     # This ensures KYC is complete before any seller privileges are granted
     if account.get("details_submitted", False) and account.get("charges_enabled", False):
         from firebase_admin import firestore as admin_firestore
 
         current_roles = user_data.get(Fields.ROLES, [])
         if UserRoleValues.SELLER not in current_roles:
-            update_data[Fields.ROLES] = admin_firestore.ArrayUnion([UserRoleValues.SELLER])
+            user_ref.update({Fields.ROLES: admin_firestore.ArrayUnion([UserRoleValues.SELLER])})
             logger.info(f"  ✅ Adding seller role to user {user_id} (KYC fully approved)")
 
-    user_ref.update(update_data)
-    logger.info(f"  ✅ Updated user {user_id} Stripe account status")
+    logger.info(f"  ✅ Updated seller profile {user_id} Stripe account status")
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -3276,8 +3295,10 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     if user_data.get(Fields.SUSPENDED, False):
         raise https_fn.HttpsError("permission-denied", "Your account is suspended. You cannot register as a seller.")
 
-    # Check if user already has a Stripe account
-    existing_account_id = user_data.get(Fields.STRIPE_ACCOUNT_ID)
+    # Check if user already has a Stripe account (read from seller_profiles)
+    sp_ref = get_db().collection(Collections.SELLER_PROFILES).document(user_id)
+    sp_doc = sp_ref.get()
+    existing_account_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID) if sp_doc.exists else None
     if existing_account_id:
         # Return existing account instead of creating new one
         return {ApiKeys.SUCCESS: True, ApiKeys.ACCOUNT_ID: existing_account_id, ApiKeys.EXISTING: True}
@@ -3306,27 +3327,37 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             "invalid-argument", f"Invalid country code: {country}. Must be a 2-letter ISO country code."
         )
 
+    # Optional business type (default: individual)
+    valid_business_types = {"individual", "company", "non_profit", "government_entity"}
+    business_type = data.get("businessType", "individual")
+    if business_type not in valid_business_types:
+        raise https_fn.HttpsError(
+            "invalid-argument", f"Invalid businessType. Must be one of: {', '.join(sorted(valid_business_types))}."
+        )
+
     try:
         account = stripe.Account.create(
             type="express",
             country=country,
             email=email,
             capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
-            business_type="individual",
+            business_type=business_type,
             metadata={Fields.USER_ID: user_id},
         )
 
-        # Save account ID to Firestore — SELLER role granted only after full KYC approval
+        # Save Stripe Connect fields to seller_profiles/{uid} — SELLER role granted only after full KYC approval
         # (via process_account_updated webhook or get_connect_account_status)
-        user_ref.update(
-            {
-                Fields.STRIPE_ACCOUNT_ID: account.id,
-                Fields.ONBOARDING_COMPLETED: False,
-                Fields.CHARGES_ENABLED: False,
-                Fields.PAYOUTS_ENABLED: False,
-                Fields.UPDATED_AT: get_server_timestamp(),
-            }
-        )
+        from models.seller_profile import SellerProfile
+        now_ts = get_server_timestamp()
+        sp_payload = SellerProfile(
+            stripeAccountId=account.id,
+            onboardingCompleted=False,
+            chargesEnabled=False,
+            payoutsEnabled=False,
+        ).model_dump(exclude_none=True)
+        sp_payload[Fields.UPDATED_AT] = now_ts
+        sp_payload[Fields.CREATED_AT] = now_ts
+        sp_ref.set(sp_payload, merge=True)
 
         return {ApiKeys.SUCCESS: True, ApiKeys.ACCOUNT_ID: account.id}
 
@@ -3426,7 +3457,11 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("not-found", "User not found")
 
     user_data = user_doc.to_dict()
-    account_id = user_data.get(Fields.STRIPE_ACCOUNT_ID)
+
+    # Read Stripe account ID from seller_profiles
+    sp_ref = get_db().collection(Collections.SELLER_PROFILES).document(user_id)
+    sp_doc = sp_ref.get()
+    account_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID) if sp_doc.exists else None
 
     if not account_id:
         raise https_fn.HttpsError(
@@ -3437,7 +3472,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         account = stripe.Account.retrieve(account_id)
 
-        # Update Firestore with latest status
+        # Update seller_profiles with latest Stripe status
         from firebase_admin import firestore as admin_firestore
 
         requirements = account.requirements
@@ -3445,20 +3480,19 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         eventually_due = list(requirements.eventually_due or [])
         pending_requirements = list(set(currently_due + eventually_due))
 
-        update_data = {
+        sp_update = {
             Fields.CHARGES_ENABLED: account.charges_enabled,
             Fields.PAYOUTS_ENABLED: account.payouts_enabled,
             Fields.ONBOARDING_COMPLETED: account.details_submitted,
             Fields.PENDING_REQUIREMENTS: pending_requirements,
             Fields.UPDATED_AT: get_server_timestamp(),
         }
+        sp_ref.update(sp_update)
 
         # Only grant seller role if fully approved: onboarding + charges enabled + not suspended
         is_suspended = user_data.get(Fields.SUSPENDED, False)
         if account.details_submitted and account.charges_enabled and not is_suspended:
-            update_data[Fields.ROLES] = admin_firestore.ArrayUnion([UserRoleValues.SELLER])
-
-        user_ref.update(update_data)
+            user_ref.update({Fields.ROLES: admin_firestore.ArrayUnion([UserRoleValues.SELLER])})
 
         # Return dict directly for on_call functions
         return {

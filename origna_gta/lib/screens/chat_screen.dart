@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,11 +31,13 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  final _inputFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref.read(chatViewModelProvider(widget.productId).notifier).openChat();
     });
   }
@@ -43,6 +46,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
+    _inputFocusNode.dispose();
     super.dispose();
   }
 
@@ -83,14 +87,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Expanded(
               child: _MessagesList(
                 chatId: vmState.chatId!,
+                productId: widget.productId,
                 myUid: myUid,
                 isDark: isDark,
                 scrollController: _scrollController,
                 onNewMessages: _scrollToBottom,
+                onFocusInput: () => _inputFocusNode.requestFocus(),
               ),
             ),
             _MessageInput(
               controller: _textController,
+              focusNode: _inputFocusNode,
               isDark: isDark,
               onSend: () async {
                 final text = _textController.text.trim();
@@ -109,17 +116,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
 class _MessagesList extends ConsumerWidget {
   final String chatId;
+  final String productId;
   final String myUid;
   final bool isDark;
   final ScrollController scrollController;
   final VoidCallback onNewMessages;
+  final VoidCallback onFocusInput;
 
   const _MessagesList({
     required this.chatId,
+    required this.productId,
     required this.myUid,
     required this.isDark,
     required this.scrollController,
     required this.onNewMessages,
+    required this.onFocusInput,
   });
 
   @override
@@ -129,6 +140,8 @@ class _MessagesList extends ConsumerWidget {
     ref.listen(chatMessagesProvider(chatId), (prev, next) {
       if (next.hasValue) {
         WidgetsBinding.instance.addPostFrameCallback((_) => onNewMessages());
+        // Clear unread count when messages become visible
+        ref.read(chatViewModelProvider(productId).notifier).markRead();
       }
     });
 
@@ -138,9 +151,19 @@ class _MessagesList extends ConsumerWidget {
       data: (messages) {
         if (messages.isEmpty) {
           return Center(
-            child: Text(
-              'No messages yet. Say hello! 👋',
-              style: TextStyle(color: DesignTokens.textSecondary),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'No messages yet. Say hello! 👋',
+                  style: TextStyle(color: DesignTokens.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: onFocusInput,
+                  child: const Text('Send a message'),
+                ),
+              ],
             ),
           );
         }
@@ -174,7 +197,7 @@ class _MessageBubble extends StatelessWidget {
         onLongPress: () {
           Clipboard.setData(ClipboardData(text: message.text));
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Message copied'), duration: Duration(seconds: 1)),
+            SnackBar(content: Text('chat.message_copied'.tr()), duration: const Duration(seconds: 1)),
           );
         },
         child: Container(
@@ -184,7 +207,7 @@ class _MessageBubble extends StatelessWidget {
           decoration: BoxDecoration(
             color: isMe
                 ? DesignTokens.primary
-                : (isDark ? DesignTokens.darkSurface : Colors.grey.shade200),
+                : (isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant),
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(16),
               topRight: const Radius.circular(16),
@@ -207,10 +230,11 @@ class _MessageBubble extends StatelessWidget {
 
 class _MessageInput extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final bool isDark;
   final VoidCallback onSend;
 
-  const _MessageInput({required this.controller, required this.isDark, required this.onSend});
+  const _MessageInput({required this.controller, required this.isDark, required this.onSend, this.focusNode});
 
   @override
   Widget build(BuildContext context) {
@@ -230,6 +254,7 @@ class _MessageInput extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              focusNode: focusNode,
               minLines: 1,
               maxLines: 4,
               textCapitalization: TextCapitalization.sentences,
@@ -241,7 +266,7 @@ class _MessageInput extends StatelessWidget {
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: isDark ? DesignTokens.darkSurfaceVariant : Colors.grey.shade100,
+                fillColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surfaceVariant,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),
               onSubmitted: (_) => onSend(),

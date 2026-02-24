@@ -94,8 +94,7 @@ class ChatRepository {
 
   /// Stream all chat threads for the current user (buyer or seller).
   Stream<List<ChatThread>> userChatsStream(String userId) {
-    // We do two queries and merge — buyer and seller threads
-    // For simplicity, query by buyerId; sellers see their threads via a separate widget
+    // Queries threads where user is the buyer; seller threads are via sellerChatsStream.
     return _firestore
         .collection(Collections.chats)
         .where(Fields.buyerId, isEqualTo: userId)
@@ -114,31 +113,14 @@ class ChatRepository {
         .map((snap) => snap.docs.map(ChatThread.fromFirestore).toList());
   }
 
-  /// Send a message directly to Firestore (client-side write per security rules).
-  Future<void> sendMessage(String chatId, String senderId, String text) async {
-    final now = FieldValue.serverTimestamp();
-    final batch = _firestore.batch();
-
-    final msgRef = _firestore
-        .collection(Collections.chats)
-        .doc(chatId)
-        .collection(Collections.chatMessages)
-        .doc();
-
-    batch.set(msgRef, {
-      Fields.senderId: senderId,
+  /// Send a message through the Cloud Function (sanitizes text server-side).
+  Future<void> sendMessage(String chatId, String text) async {
+    await _functions
+        .httpsCallable(CloudFunctionEndpoints.sendMessage)
+        .call<Map<String, dynamic>>({
+      Fields.chatId: chatId,
       Fields.messageText: text.trim(),
-      Fields.createdAt: now,
-      Fields.isRead: false,
     });
-
-    // Update lastMessage on the thread
-    batch.update(_firestore.collection(Collections.chats).doc(chatId), {
-      Fields.lastMessage: text.trim(),
-      Fields.lastMessageAt: now,
-    });
-
-    await batch.commit();
   }
 
   /// Mark all unread messages in a chat as read.

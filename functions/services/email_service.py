@@ -270,6 +270,60 @@ _EMAIL_STRINGS: dict[str, dict[str, str]] = {
         "en": "Action required for Order #{oid}",
         "fr": "Action requise pour la commande #{oid}",
     },
+    # Return request — buyer notifications
+    "return.requested_buyer_h": {"en": "Return Request Submitted", "fr": "Demande de retour soumise"},
+    "return.requested_buyer_s": {
+        "en": "Your return request has been submitted and is awaiting seller review.",
+        "fr": "Votre demande de retour a été soumise et est en attente d'examen par le vendeur.",
+    },
+    "return.approved_buyer_h": {"en": "Return Request Approved! 🎉", "fr": "Demande de retour approuvée ! 🎉"},
+    "return.approved_buyer_s": {
+        "en": "Your return has been approved. Please ship the item back to the seller.",
+        "fr": "Votre retour a été approuvé. Veuillez renvoyer l'article au vendeur.",
+    },
+    "return.rejected_buyer_h": {"en": "Return Request Update", "fr": "Mise à jour de la demande de retour"},
+    "return.rejected_buyer_s": {
+        "en": "Unfortunately, your return request was not approved.",
+        "fr": "Malheureusement, votre demande de retour n'a pas été approuvée.",
+    },
+    # Return request — seller notifications
+    "return.requested_seller_h": {"en": "⚠️ New Return Request", "fr": "⚠️ Nouvelle demande de retour"},
+    "return.requested_seller_s": {
+        "en": "A buyer has submitted a return request for one of your orders.",
+        "fr": "Un acheteur a soumis une demande de retour pour l'une de vos commandes.",
+    },
+    # Return request — shared labels
+    "return.label_return_id": {"en": "Return ID:", "fr": "N° de retour :"},
+    "return.label_reason": {"en": "Reason:", "fr": "Motif :"},
+    "return.label_status": {"en": "Status:", "fr": "Statut :"},
+    "return.status_requested": {"en": "Awaiting Review", "fr": "En attente d'examen"},
+    "return.status_approved": {"en": "Approved", "fr": "Approuvé"},
+    "return.status_rejected": {"en": "Not Approved", "fr": "Non approuvé"},
+    "return.next_steps_approved": {
+        "en": "Please ship the item back and mark it as shipped in the app once sent.",
+        "fr": "Veuillez renvoyer l'article et le marquer comme expédié dans l'application.",
+    },
+    "return.contact_seller_note": {
+        "en": "If you believe this decision is incorrect, please contact our support team.",
+        "fr": "Si vous pensez que cette décision est incorrecte, veuillez contacter notre équipe de support.",
+    },
+    # Return request email subjects
+    "sub.return_requested_buyer": {
+        "en": "Return Request Submitted - Order #{oid}",
+        "fr": "Demande de retour soumise - Commande #{oid}",
+    },
+    "sub.return_approved": {
+        "en": "Return Approved - Order #{oid}",
+        "fr": "Retour approuvé - Commande #{oid}",
+    },
+    "sub.return_rejected": {
+        "en": "Return Request Update - Order #{oid}",
+        "fr": "Mise à jour de la demande de retour - Commande #{oid}",
+    },
+    "sub.return_requested_seller": {
+        "en": "New Return Request - Order #{oid}",
+        "fr": "Nouvelle demande de retour - Commande #{oid}",
+    },
 }
 
 
@@ -1581,7 +1635,152 @@ def get_order_partially_refunded_email(
     return _email_wrapper("Partial Refund", content, include_gst=False, lang=lang)
 
 
-def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_EMAIL, attachments=None, to_name: str = ""):
+def get_return_request_submitted_email(return_data: dict, return_id: str, order_id: str, recipient: str = "buyer", lang: str = "en") -> str:
+    """Email to buyer (request submitted) or seller (new return request)."""
+    short_oid = order_id[:8]
+    short_rid = return_id[:8]
+    reason = html.escape(str(return_data.get(Fields.RETURN_REASON, "")))
+
+    if recipient == "seller":
+        content = _hero_header("⚠️", _t("return.requested_seller_h", lang), _t("return.requested_seller_s", lang), "rgba(245, 158, 11, 0.2)")
+    else:
+        content = _hero_header("📦", _t("return.requested_buyer_h", lang), _t("return.requested_buyer_s", lang), "rgba(102, 126, 234, 0.2)")
+
+    t_order_id = _t("label.order_id", lang)
+    t_return_id = _t("return.label_return_id", lang)
+    t_status = _t("return.label_status", lang)
+    t_status_val = _t("return.status_requested", lang)
+    reason_row = f"""
+        <tr>
+            <td style="padding: 4px 0; font-size: 13px; color: #888888;">{_t("return.label_reason", lang)}</td>
+            <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e;">{reason}</td>
+        </tr>""" if reason else ""
+
+    bg = "#FFFBEB" if recipient == "seller" else "#EFF6FF"
+    border = "#FDE68A" if recipient == "seller" else "#BFDBFE"
+
+    content += f"""
+        <tr><td style="padding: 24px 40px;">
+            <div style="background-color: {bg}; border: 1px solid {border}; border-radius: 16px; padding: 20px 24px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">{t_order_id}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_return_id}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-family: 'Courier New', monospace;">#{short_rid}</td>
+                    </tr>
+                    {reason_row}
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_status}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #D97706; font-weight: 600;">{t_status_val}</td>
+                    </tr>
+                </table>
+            </div>
+        </td></tr>
+    """
+    cta_label = _t("cta.manage_orders", lang) if recipient == "seller" else _t("cta.view_orders", lang)
+    content += _cta_button(f"{APP_BASE_URL}/orders", cta_label)
+    title = "New Return Request" if recipient == "seller" else "Return Request Submitted"
+    return _email_wrapper(title, content, include_gst=False, lang=lang)
+
+
+def get_return_request_approved_email(return_data: dict, return_id: str, order_id: str, lang: str = "en") -> str:
+    """Email to buyer when their return request is approved."""
+    short_oid = order_id[:8]
+    short_rid = return_id[:8]
+    reason = html.escape(str(return_data.get(Fields.RETURN_REASON, "")))
+
+    content = _hero_header("✅", _t("return.approved_buyer_h", lang), _t("return.approved_buyer_s", lang), "rgba(16, 185, 129, 0.2)")
+
+    t_order_id = _t("label.order_id", lang)
+    t_return_id = _t("return.label_return_id", lang)
+    t_status = _t("return.label_status", lang)
+    t_next = _t("return.next_steps_approved", lang)
+    reason_row = f"""
+        <tr>
+            <td style="padding: 4px 0; font-size: 13px; color: #888888;">{_t("return.label_reason", lang)}</td>
+            <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e;">{reason}</td>
+        </tr>""" if reason else ""
+
+    content += f"""
+        <tr><td style="padding: 24px 40px;">
+            <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 16px; padding: 20px 24px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">{t_order_id}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_return_id}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-family: 'Courier New', monospace;">#{short_rid}</td>
+                    </tr>
+                    {reason_row}
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_status}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #059669; font-weight: 600;">{_t("return.status_approved", lang)}</td>
+                    </tr>
+                </table>
+            </div>
+        </td></tr>
+        <tr><td style="padding: 0 40px 24px 40px;">
+            <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
+                <p style="margin: 0; font-size: 13px; color: #555555;">{t_next}</p>
+            </div>
+        </td></tr>
+    """
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
+    return _email_wrapper("Return Approved", content, include_gst=False, lang=lang)
+
+
+def get_return_request_rejected_email(return_data: dict, return_id: str, order_id: str, lang: str = "en") -> str:
+    """Email to buyer when their return request is rejected."""
+    short_oid = order_id[:8]
+    short_rid = return_id[:8]
+    reason = html.escape(str(return_data.get(Fields.RETURN_REASON, "")))
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+
+    content = _hero_header("❌", _t("return.rejected_buyer_h", lang), _t("return.rejected_buyer_s", lang), "rgba(220, 38, 38, 0.2)")
+
+    t_order_id = _t("label.order_id", lang)
+    t_return_id = _t("return.label_return_id", lang)
+    t_status = _t("return.label_status", lang)
+    t_contact = _t("return.contact_seller_note", lang).replace("{support}", support_link)
+    reason_row = f"""
+        <tr>
+            <td style="padding: 4px 0; font-size: 13px; color: #888888;">{_t("return.label_reason", lang)}</td>
+            <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e;">{reason}</td>
+        </tr>""" if reason else ""
+
+    content += f"""
+        <tr><td style="padding: 24px 40px;">
+            <div style="background-color: #FEF2F2; border: 1px solid #FECACA; border-radius: 16px; padding: 20px 24px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">{t_order_id}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_return_id}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-family: 'Courier New', monospace;">#{short_rid}</td>
+                    </tr>
+                    {reason_row}
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_status}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #DC2626; font-weight: 600;">{_t("return.status_rejected", lang)}</td>
+                    </tr>
+                </table>
+            </div>
+        </td></tr>
+        <tr><td style="padding: 0 40px 24px 40px;">
+            <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
+                <p style="margin: 0; font-size: 12px; color: #555555;">{t_contact}</p>
+            </div>
+        </td></tr>
+    """
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
+    return _email_wrapper("Return Request Update", content, include_gst=False, lang=lang)
     """Send email using Mailjet — CASL compliant with List-Unsubscribe header
 
     Args:
