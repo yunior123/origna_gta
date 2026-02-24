@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 class SubscriptionState {
   final bool isLoading;
@@ -35,14 +36,12 @@ class SubscriptionInfo {
   final bool isPremium;
   final DateTime? currentPeriodEnd;
   final bool cancelAtPeriodEnd;
-  final String? stripeSubscriptionId;
 
   const SubscriptionInfo({
     required this.status,
     required this.isPremium,
     this.currentPeriodEnd,
     this.cancelAtPeriodEnd = false,
-    this.stripeSubscriptionId,
   });
 
   factory SubscriptionInfo.fromMap(Map<String, dynamic> data) {
@@ -54,12 +53,15 @@ class SubscriptionInfo {
       periodEnd = DateTime.fromMillisecondsSinceEpoch(periodEndRaw * 1000);
     }
 
+    final status = data['status'] as String? ?? 'inactive';
+    final isPremium = status == SubscriptionStatusValues.active ||
+        status == SubscriptionStatusValues.trialing;
+
     return SubscriptionInfo(
-      status: data['status'] as String? ?? 'inactive',
-      isPremium: data['isPremium'] as bool? ?? false,
+      status: status,
+      isPremium: isPremium,
       currentPeriodEnd: periodEnd,
       cancelAtPeriodEnd: data['cancelAtPeriodEnd'] as bool? ?? false,
-      stripeSubscriptionId: data['stripeSubscriptionId'] as String?,
     );
   }
 }

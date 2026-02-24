@@ -1637,9 +1637,10 @@ def _notify_trending_products(db, top_products: list[tuple]) -> None:
         )
 
         tokens = [
-            (user.to_dict() or {}).get(Fields.FCM_TOKEN)
+            d.get(Fields.FCM_TOKEN)
             for user in users_query
-            if (user.to_dict() or {}).get(Fields.FCM_TOKEN)
+            for d in [(user.to_dict() or {})]
+            if d.get(Fields.FCM_TOKEN)
         ]
 
         if not tokens:
@@ -1663,52 +1664,63 @@ def _notify_trending_products(db, top_products: list[tuple]) -> None:
 @scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
 def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
     """Hourly: detect and fix subscription-user cache mismatches. Catches missed webhooks."""
-    import stripe as stripe_lib
-    from handlers.subscriptions import _sync_subscription
+    if not acquire_cron_lock("sync_expired_subscriptions"):
+        logger.info("sync_expired_subscriptions: already running, skipping")
+        return
 
-    stripe_lib.api_key = get_stripe_secret_key()
-    db = get_db()
-    now = datetime.now(UTC)
-    synced_count = 0
-    error_count = 0
+    try:
+        import stripe as stripe_lib
+        from handlers.subscriptions import _sync_subscription
 
-    # Fix subscriptions that should be expired but user.isPremium is still True
-    expired_query = (
-        db.collection(Collections.SUBSCRIPTIONS)
-        .where(Fields.CURRENT_PERIOD_END, "<", now)
-        .where(Fields.STATUS, "in", list(SubscriptionStatusValues.PREMIUM_ACTIVE))
-        .limit(50)
-        .stream()
-    )
-    for sub_doc in expired_query:
-        uid = sub_doc.id
-        sub_data = sub_doc.to_dict() or {}
-        stripe_sub_id = sub_data.get(Fields.STRIPE_SUBSCRIPTION_ID)
-        if not stripe_sub_id:
-            continue
-        try:
-            stripe_sub = stripe_lib.Subscription.retrieve(stripe_sub_id)
-            _sync_subscription(stripe_sub)
-            synced_count += 1
-        except Exception as e:
-            logger.error(f"sync_expired_subscriptions: failed for {uid}: {e}")
-            error_count += 1
+        stripe_lib.api_key = get_stripe_secret_key()
+        db = get_db()
+        now = datetime.now(UTC)
+        synced_count = 0
+        error_count = 0
 
-    # Fix orphaned isPremium=True with no subscription doc
-    for user_doc in db.collection(Collections.USERS).where(Fields.IS_PREMIUM, "==", True).limit(100).stream():
-        uid = user_doc.id
-        sub_snap = db.collection(Collections.SUBSCRIPTIONS).document(uid).get()
-        if not sub_snap.exists:
-            logger.warning(f"Clearing orphaned isPremium for user {uid}")
-            db.collection(Collections.USERS).document(uid).update({
-                Fields.IS_PREMIUM: False,
-                Fields.PREMIUM_EXPIRES_AT: None,
-                Fields.STRIPE_SUBSCRIPTION_ID: None,
-                Fields.UPDATED_AT: now,
-            })
-            synced_count += 1
+        # Fix subscriptions that should be expired but user.isPremium is still True
+        expired_query = (
+            db.collection(Collections.SUBSCRIPTIONS)
+            .where(Fields.CURRENT_PERIOD_END, "<", now)
+            .where(Fields.STATUS, "in", list(SubscriptionStatusValues.PREMIUM_ACTIVE))
+            .limit(50)
+            .stream()
+        )
+        for sub_doc in expired_query:
+            uid = sub_doc.id
+            sub_data = sub_doc.to_dict() or {}
+            stripe_sub_id = sub_data.get(Fields.STRIPE_SUBSCRIPTION_ID)
+            if not stripe_sub_id:
+                continue
+            try:
+                stripe_sub = stripe_lib.Subscription.retrieve(stripe_sub_id)
+                _sync_subscription(stripe_sub)
+                synced_count += 1
+            except Exception as e:
+                logger.error(f"sync_expired_subscriptions: failed for {uid}: {e}")
+                error_count += 1
 
-    logger.info(f"sync_expired_subscriptions: {synced_count} fixed, {error_count} errors")
+        # Fix orphaned isPremium=True with no subscription doc (batch read to avoid N+1)
+        premium_users = list(db.collection(Collections.USERS).where(Fields.IS_PREMIUM, "==", True).limit(100).stream())
+        if premium_users:
+            uid_list = [u.id for u in premium_users]
+            sub_refs = [db.collection(Collections.SUBSCRIPTIONS).document(uid) for uid in uid_list]
+            sub_docs = db.get_all(sub_refs)
+            sub_exists = {doc.id: doc.exists for doc in sub_docs}
+            for uid in uid_list:
+                if not sub_exists.get(uid, False):
+                    logger.warning(f"Clearing orphaned isPremium for user {uid}")
+                    db.collection(Collections.USERS).document(uid).update({
+                        Fields.IS_PREMIUM: False,
+                        Fields.PREMIUM_EXPIRES_AT: None,
+                        Fields.STRIPE_SUBSCRIPTION_ID: None,
+                        Fields.UPDATED_AT: now,
+                    })
+                    synced_count += 1
+
+        logger.info(f"sync_expired_subscriptions: {synced_count} fixed, {error_count} errors")
+    finally:
+        release_cron_lock("sync_expired_subscriptions")
 
 
 @scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)

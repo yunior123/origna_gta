@@ -230,6 +230,12 @@ class Fields:
     IS_CORPORATE = "isCorporate"
     BANK_DETAILS = "bankDetails"
     PAYOUT_HOLD_DAYS = "payoutHoldDays"
+    AVG_RATING = "avgRating"
+    TOTAL_REVIEWS = "totalReviews"
+    TOTAL_SALES = "totalSales"
+    BANK_ACCOUNT_LAST4 = "bankAccountLast4"
+    ACCEPTS_RETURNS = "acceptsReturns"
+    RETURN_WINDOW_DAYS_FIELD = "returnWindowDays"  # seller-profile field; see BusinessRules.RETURN_WINDOW_DAYS for default value
     MFA_ENABLED = "mfaEnabled"
     MFA_SECRET = "mfaSecret"
     MFA_SECRET_TEMP = "mfaSecretTemp"

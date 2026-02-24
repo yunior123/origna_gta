@@ -1,9 +1,10 @@
 """
 Chat Handlers — Product-scoped buyer↔seller messaging.
-Premium buyers only. One chat thread per buyer+product combination.
-Messages are written directly to Firestore by the client (Firestore rules enforce access).
+Premium buyers only. One chat thread per buyer+product pair (requires a prior order).
+All messages are written through the send_message Cloud Function (sanitized server-side).
 The backend provides:
-- get_or_create_chat: idempotent thread creation with premium guard
+- get_or_create_chat: idempotent thread creation with premium + order guards
+- send_message: sanitize and persist a message, update thread, push notification
 - mark_messages_read: mark all messages in a thread as read
 """
 
@@ -17,7 +18,6 @@ from firebase_functions import https_fn
 from schema_constants import (
     Collections,
     Fields,
-    SubscriptionStatusValues,
 )
 from utils.function_options import DEFAULT_OPTIONS
 
@@ -106,6 +106,20 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     if seller_id == buyer_id:
         raise https_fn.HttpsError("permission-denied", "You cannot chat with yourself.")
 
+    # Require an existing order: buyer must have purchased from this seller
+    order_query = (
+        db.collection(Collections.ORDERS)
+        .where(Fields.USER_ID, "==", buyer_id)
+        .where(Fields.SELLER_IDS, "array_contains", seller_id)
+        .limit(1)
+        .get()
+    )
+    if not order_query:
+        raise https_fn.HttpsError(
+            "failed-precondition",
+            "An order is required to chat with the seller. Please purchase a product from this seller first.",
+        )
+
     # Check for existing thread (idempotent)
     existing = (
         db.collection(Collections.CHATS)
@@ -125,7 +139,6 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     chat_ref = db.collection(Collections.CHATS).document()
     chat_ref.set(
         {
-            Fields.CHAT_ID: chat_ref.id,
             Fields.PRODUCT_ID: product_id,
             Fields.PRODUCT_TITLE: product_title,
             Fields.PRODUCT_IMAGE_URL: product_image_url,
@@ -235,6 +248,19 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
             "Premium subscription required to send messages.",
         )
 
+    # Rate limit: max 60 messages per minute per user
+    from services.rate_limiter import RateLimiter
+    limiter = RateLimiter(db)
+    allowed, msg = limiter.check_rate_limit(
+        identifier=f"{uid}_chat",
+        action="send_message",
+        max_requests=60,
+        window_minutes=1,
+        fail_closed=False,
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", "Too many messages. Please slow down.")
+
     now = datetime.now(UTC)
     msg_ref = (
         db.collection(Collections.CHATS)
@@ -261,4 +287,20 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     )
 
     logger.info(f"Message sent in chat {chat_id} by user {uid}")
+
+    # Push notification to the recipient
+    recipient_id = seller_id if uid == buyer_id else buyer_id
+    try:
+        from handlers.orders import send_push_notification
+        sender_snap = db.collection(Collections.USERS).document(uid).get()
+        sender_name = (sender_snap.to_dict() or {}).get(Fields.NAME, "Someone") if sender_snap.exists else "Someone"
+        send_push_notification(
+            recipient_id,
+            title=f"New message from {sender_name}",
+            body=text[:80],
+            data={Fields.CHAT_ID: chat_id, Fields.PRODUCT_ID: chat_data.get(Fields.PRODUCT_ID, "")},
+        )
+    except Exception as push_err:
+        logger.warning(f"Push notification failed for chat {chat_id}: {push_err}")
+
     return {"success": True, "messageId": msg_ref.id}

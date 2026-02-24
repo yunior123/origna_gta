@@ -55,8 +55,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
 
     ref.listen(addressViewModelProvider, (previous, next) {
       if (next.isSuccess) {
+        final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text('address.saved_success'.tr()),
             backgroundColor: DesignTokens.success,

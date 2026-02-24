@@ -71,23 +71,31 @@ abstract class SellerProfile with _$SellerProfile {
 
   factory SellerProfile.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    Address? businessAddr;
+    final rawAddr = data[Fields.businessAddress];
+    if (rawAddr is Map<String, dynamic>) {
+      businessAddr = Address.fromJson(rawAddr);
+    }
     return SellerProfile(
       stripeAccountId: data[Fields.stripeAccountId] as String?,
       payoutsEnabled: data[Fields.payoutsEnabled] ?? false,
       chargesEnabled: data[Fields.chargesEnabled] ?? false,
       onboardingCompleted: data[Fields.onboardingCompleted] ?? false,
+      pendingRequirements: (data[Fields.pendingRequirements] as List?)?.cast<String>(),
       commissionRateBps: (data[Fields.commissionRateBps] as num?)?.toInt() ?? 250,
-      avgRating: (data['avgRating'] as num?)?.toDouble() ?? 0.0,
-      totalReviews: (data['totalReviews'] as num?)?.toInt() ?? 0,
-      totalSales: (data['totalSales'] as num?)?.toInt() ?? 0,
+      avgRating: (data[Fields.avgRating] as num?)?.toDouble() ?? 0.0,
+      totalReviews: (data[Fields.totalReviews] as num?)?.toInt() ?? 0,
+      totalSales: (data[Fields.totalSales] as num?)?.toInt() ?? 0,
+      warehouseIds: (data[Fields.warehouseIds] as List?)?.cast<String>(),
       businessName: data[Fields.businessName] as String?,
+      businessAddress: businessAddr,
+      acceptsReturns: data[Fields.acceptsReturns] ?? true,
+      returnWindowDays: (data[Fields.returnWindowDaysField] as num?)?.toInt() ?? 30,
       verified: data[Fields.verified] ?? false,
       verificationStatus: data[Fields.verificationStatus] as String?,
       platform: data[Fields.platform] as String?,
       payoutHoldDays: (data[Fields.payoutHoldDays] as num?)?.toInt(),
-      bankAccountLast4: data['bankAccountLast4'] as String?,
-      acceptsReturns: data['acceptsReturns'] ?? true,
-      returnWindowDays: (data['returnWindowDays'] as num?)?.toInt() ?? 30,
+      bankAccountLast4: data[Fields.bankAccountLast4] as String?,
       createdAt: _parseDateTime(data[Fields.createdAt]),
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
     );

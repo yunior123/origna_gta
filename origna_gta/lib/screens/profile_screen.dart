@@ -794,13 +794,13 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'To access your settings and use all features, please verify your email:',
+                        'profile.verify_email_desc'.tr(),
                         style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5),
                       ),
                       const SizedBox(height: 16),
-                      _buildStep('1', 'Check your email inbox (and spam folder)'),
-                      _buildStep('2', 'Click the verification link in the email'),
-                      _buildStep('3', 'Return here and tap "I\'ve Verified" below'),
+                      _buildStep('1', 'profile.verify_step_1'.tr()),
+                      _buildStep('2', 'profile.verify_step_2'.tr()),
+                      _buildStep('3', 'profile.verify_step_3'.tr()),
                     ],
                   ),
                 ),
@@ -809,7 +809,7 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
               FadeSlideIn(
                 delay: const Duration(milliseconds: 150),
                 child: ModernButton(
-                  label: _isChecking ? 'Checking...' : "I've Verified My Email",
+                  label: _isChecking ? 'profile.checking_button'.tr() : 'profile.verified_button'.tr(),
                   icon: Icons.check_circle_outline,
                   isLoading: _isChecking,
                   onPressed: _isChecking ? () {} : _checkVerification,
@@ -819,7 +819,7 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
               FadeSlideIn(
                 delay: const Duration(milliseconds: 175),
                 child: ModernButton(
-                  label: _isResending ? 'Sending...' : 'Resend Verification Email',
+                  label: _isResending ? 'profile.sending_button'.tr() : 'profile.resend_verification_button'.tr(),
                   icon: Icons.send_outlined,
                   isPrimary: false,
                   isLoading: _isResending,
@@ -838,7 +838,7 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
                   },
                   icon: Icon(Icons.logout, size: 16, color: DesignTokens.textSecondary),
                   label: Text(
-                    'Sign in with a different account',
+                    'profile.sign_in_different'.tr(),
                     style: TextStyle(color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                   ),
                 ),

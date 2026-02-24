@@ -34,9 +34,9 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
     final chargesEnabled = data[Fields.chargesEnabled] == true;
     final payoutsEnabled = data[Fields.payoutsEnabled] == true;
     final detailsSubmitted = data[ApiKeys.detailsSubmitted] == true;
-    final requirementsDue = (data[ApiKeys.requirementsCurrentlyDue] as List<dynamic>? ?? [])
-        .map((e) => e.toString())
-        .toList();
+    final requirementsDue = data[ApiKeys.requirementsCurrentlyDue] is List
+        ? (data[ApiKeys.requirementsCurrentlyDue] as List<dynamic>).map((e) => e.toString()).toList()
+        : <String>[];
     
     if (kDebugMode) {
       debugPrint('Stripe Status - charges: $chargesEnabled, payouts: $payoutsEnabled');

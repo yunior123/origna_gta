@@ -23,12 +23,9 @@ final subscriptionStreamProvider = StreamProvider.autoDispose<SubscriptionInfo?>
       .map((snap) {
     if (!snap.exists) return null;
     final data = snap.data() ?? {};
-    return SubscriptionInfo.fromMap({...data, 'isPremium': _isPremiumStatus(data['status'] as String?)});
+    return SubscriptionInfo.fromMap(data);
   });
 });
-
-bool _isPremiumStatus(String? status) =>
-    status == SubscriptionStatusValues.active || status == SubscriptionStatusValues.trialing;
 
 class SubscriptionViewModel extends StateNotifier<SubscriptionState> {
   final Ref _ref;

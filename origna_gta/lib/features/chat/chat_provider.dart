@@ -66,7 +66,7 @@ class ChatViewModel extends StateNotifier<ChatState> {
   ChatViewModel(this._ref, this._productId) : super(const ChatState());
 
   Future<void> openChat() async {
-    if (state.chatId != null) return;
+    if (state.chatId != null || state.isLoading) return;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final chatId = await _ref.read(chatRepositoryProvider).getOrCreateChat(_productId);
@@ -79,9 +79,11 @@ class ChatViewModel extends StateNotifier<ChatState> {
   Future<void> sendMessage(String text) async {
     final chatId = state.chatId;
     if (chatId == null || text.trim().isEmpty) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    await _ref.read(chatRepositoryProvider).sendMessage(chatId, uid, text);
+    try {
+      await _ref.read(chatRepositoryProvider).sendMessage(chatId, text);
+    } catch (e) {
+      state = state.copyWith(errorMessage: _parseError(e));
+    }
   }
 
   Future<void> markRead() async {

@@ -223,8 +223,14 @@ class AddressManagementScreen extends ConsumerWidget {
                         ],
                       ),
                     );
-                    if (confirm == true && address.addressId != null) {
-                      ref.read(addressManagementViewModelProvider.notifier).deleteAddress(address.addressId!);
+                    if (confirm == true) {
+                      if (address.addressId != null) {
+                        ref.read(addressManagementViewModelProvider.notifier).deleteAddress(address.addressId!);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('address.delete_failed'.tr()), backgroundColor: DesignTokens.error),
+                        );
+                      }
                     }
                   } else if (value == 'set_default') {
                     if (address.addressId != null) {

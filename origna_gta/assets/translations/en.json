@@ -403,7 +403,16 @@
     "setting_up": "Setting up your profile...",
     "contact_us_desc": "Have questions or need help? Reach out to us!",
     "delete_warning_short": "This action cannot be undone. All your data will be permanently deleted.",
-    "type_delete_keyword": "DELETE"
+    "type_delete_keyword": "DELETE",
+    "verify_email_desc": "To access your settings and use all features, please verify your email:",
+    "verify_step_1": "Check your email inbox (and spam folder)",
+    "verify_step_2": "Click the verification link in the email",
+    "verify_step_3": "Return here and tap \"I've Verified\" below",
+    "verified_button": "I've Verified My Email",
+    "checking_button": "Checking...",
+    "resend_verification_button": "Resend Verification Email",
+    "sending_button": "Sending...",
+    "sign_in_different": "Sign in with a different account"
   },
   "favorites": {
     "my_favorites": "My Favorites",
@@ -458,7 +467,7 @@
     "image_required": "Please add at least one product image",
     "image_too_large": "One or more images exceed the 10 MB limit. Please choose a smaller file.",
     "image_invalid_format": "Invalid image format. Please use JPG, PNG, or WebP.",
-    "image_upload_failed": "Some images failed to upload. Please try again."
+    "image_upload_failed": "Some images failed to upload. Please try again.",
     "delivery_tier_required": "Enable at least one delivery option for physical products",
     "fix_errors_before_submit": "Please fix the highlighted errors before publishing",
     "add_product_failed": "Failed to add product",
@@ -1002,7 +1011,8 @@
     "other": "Other",
     "details": "Address Details",
     "valid_postal": "Enter a valid Canadian postal code (e.g., M5V 2T6)",
-    "valid_phone": "Enter a valid phone number (10-15 digits)"
+    "valid_phone": "Enter a valid phone number (10-15 digits)",
+    "delete_failed": "Cannot delete address: ID not found"
   },
   "legal": {
     "privacy_policy": "Privacy Policy",
@@ -1213,5 +1223,8 @@
     "welcome_to_premium": "Welcome to Premium!",
     "subscription_active_desc": "Your subscription is active. Enjoy all the benefits below.",
     "start_shopping": "Start Shopping"
+  },
+  "chat": {
+    "message_copied": "Message copied"
   }
 }

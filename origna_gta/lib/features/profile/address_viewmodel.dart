@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -11,10 +13,17 @@ final addressViewModelProvider = StateNotifierProvider.autoDispose<AddressViewMo
 
 class AddressViewModel extends StateNotifier<AddressState> {
   final Ref _ref;
+  Timer? _debounce;
 
   AddressViewModel(this._ref) : super(AddressState());
 
-  Future<void> onStreetChanged(String value) async {
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void onStreetChanged(String value) {
     // Reset coordinates when user types manually
     state = state.copyWith(clearCoordinates: true);
 
@@ -22,8 +31,13 @@ class AddressViewModel extends StateNotifier<AddressState> {
       state = state.copyWith(showSuggestions: false, addressSuggestions: []);
       return;
     }
-    final suggestions = await _ref.read(locationRepositoryProvider).getAddressSuggestions(value);
-    state = state.copyWith(addressSuggestions: suggestions, showSuggestions: suggestions.isNotEmpty);
+
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      if (!mounted) return;
+      final suggestions = await _ref.read(locationRepositoryProvider).getAddressSuggestions(value);
+      if (mounted) state = state.copyWith(addressSuggestions: suggestions, showSuggestions: suggestions.isNotEmpty);
+    });
   }
 
   Future<void> saveAddress({

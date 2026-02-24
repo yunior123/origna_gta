@@ -404,7 +404,16 @@
     "setting_up": "Configuration de votre profil...",
     "contact_us_desc": "Vous avez des questions ou besoin d'aide ? Contactez-nous !",
     "delete_warning_short": "Cette action est irréversible. Toutes vos données seront définitivement supprimées.",
-    "type_delete_keyword": "SUPPRIMER"
+    "type_delete_keyword": "SUPPRIMER",
+    "verify_email_desc": "Pour accéder à vos paramètres et utiliser toutes les fonctionnalités, veuillez vérifier votre email :",
+    "verify_step_1": "Consultez votre boîte de réception (et le dossier spam)",
+    "verify_step_2": "Cliquez sur le lien de vérification dans l'email",
+    "verify_step_3": "Revenez ici et appuyez sur « J'ai vérifié » ci-dessous",
+    "verified_button": "J'ai vérifié mon email",
+    "checking_button": "Vérification...",
+    "resend_verification_button": "Renvoyer l'email de vérification",
+    "sending_button": "Envoi...",
+    "sign_in_different": "Se connecter avec un autre compte"
   },
   "favorites": {
     "my_favorites": "Mes favoris",
@@ -459,7 +468,7 @@
     "image_required": "Veuillez ajouter au moins une image du produit",
     "image_too_large": "Une ou plusieurs images dépassent la limite de 10 Mo. Veuillez choisir un fichier plus petit.",
     "image_invalid_format": "Format d'image invalide. Veuillez utiliser JPG, PNG ou WebP.",
-    "image_upload_failed": "Certaines images n'ont pas pu être téléversées. Veuillez réessayer."
+    "image_upload_failed": "Certaines images n'ont pas pu être téléversées. Veuillez réessayer.",
     "delivery_tier_required": "Activez au moins une option de livraison pour les produits physiques",
     "fix_errors_before_submit": "Veuillez corriger les erreurs en surbrillance avant de publier",
     "add_product_failed": "Échec de l'ajout du produit",
@@ -1003,7 +1012,8 @@
     "other": "Autre",
     "details": "Détails de l'adresse",
     "valid_postal": "Entrez un code postal canadien valide (ex. : M5V 2T6)",
-    "valid_phone": "Entrez un numéro de téléphone valide (10-15 chiffres)"
+    "valid_phone": "Entrez un numéro de téléphone valide (10-15 chiffres)",
+    "delete_failed": "Impossible de supprimer l'adresse : identifiant introuvable"
   },
   "legal": {
     "privacy_policy": "Politique de confidentialité",
@@ -1214,5 +1224,8 @@
     "welcome_to_premium": "Bienvenue dans Premium !",
     "subscription_active_desc": "Votre abonnement est actif. Profitez de tous les avantages ci-dessous.",
     "start_shopping": "Commencer les achats"
+  },
+  "chat": {
+    "message_copied": "Message copié"
   }
 }
