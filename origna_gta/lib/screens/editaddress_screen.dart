@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -22,14 +23,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _phoneController = TextEditingController();
-
-  final List<String> _canadianProvinces = ['AB', 'BC', 'MB', 'NB', 'NL', 'NT', 'NS', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'];
-  final Map<String, String> _provinceNames = {
-    'AB': 'Alberta', 'BC': 'British Columbia', 'MB': 'Manitoba', 'NB': 'New Brunswick',
-    'NL': 'Newfoundland and Labrador', 'NT': 'Northwest Territories', 'NS': 'Nova Scotia',
-    'NU': 'Nunavut', 'ON': 'Ontario', 'PE': 'Prince Edward Island', 'QC': 'Quebec',
-    'SK': 'Saskatchewan', 'YT': 'Yukon',
-  };
 
   @override
   void initState() {
@@ -105,9 +98,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                     const SizedBox(height: DesignTokens.spacing12),
                     Wrap(
                       spacing: 10,
-                      children: ['Home', 'Work', 'Other'].map((label) {
+                      children: [AddressLabelValues.home, AddressLabelValues.work, AddressLabelValues.other].map((label) {
                         final isSelected = state.selectedLabel == label;
-                        final displayLabel = label == 'Home' ? 'address.home'.tr() : label == 'Work' ? 'address.work'.tr() : 'address.other'.tr();
+                        final displayLabel = label == AddressLabelValues.home ? 'address.home'.tr() : label == AddressLabelValues.work ? 'address.work'.tr() : 'address.other'.tr();
                         return Semantics(
                           button: true,
                           label: 'chip-address-label-${label.toLowerCase()}',
@@ -235,7 +228,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                               filled: true,
                               fillColor: isDark ? DesignTokens.textPrimary : Colors.white,
                             ),
-                            items: _canadianProvinces.map((code) => DropdownMenuItem(value: code, child: Text('${_provinceNames[code]} ($code)'))).toList(),
+                            items: ProvinceCodeValues.all.map((code) => DropdownMenuItem(value: code, child: Text('${ProvinceCodeValues.names[code]} ($code)'))).toList(),
                             onChanged: (v) => viewModel.setProvince(v!),
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
@@ -274,7 +267,17 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: DesignTokens.spacing32),
+                    const SizedBox(height: DesignTokens.spacing16),
+
+                    // Set as default toggle
+                    SwitchListTile.adaptive(
+                      value: state.isDefault,
+                      onChanged: (v) => viewModel.setDefault(v),
+                      title: Text('address.set_as_default'.tr()),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+
+                    const SizedBox(height: DesignTokens.spacing24),
 
                     Semantics(
                       button: true,

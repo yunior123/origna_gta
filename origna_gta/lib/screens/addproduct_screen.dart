@@ -1917,7 +1917,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               return _VariantRow(
                 key: Key('variant_row_$i'),
                 optionValues: variant.optionValues,
-                price: variant.price,
+                price: variant.priceDollars,
                 stockQuantity: variant.stockQuantity,
                 sku: variant.sku,
                 onPriceChanged: (v) => viewModel.updateVariantPrice(i, v),

@@ -39,8 +39,8 @@ class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
     // Prevent double-submit if widget is rebuilt during submission (autoDispose)
     _keepAliveLink = _ref.keepAlive();
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
+    List<String>? reviewImageUrls;
     try {
-      List<String>? reviewImageUrls;
       if (reviewImages != null && reviewImages.isNotEmpty) {
         final userId = _ref.read(userIdProvider) ?? 'unknown';
         reviewImageUrls = await _ref.read(productRepositoryProvider).uploadReviewImages(reviewImages, userId);
@@ -48,7 +48,12 @@ class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
       await _ref.read(productRepositoryProvider).submitRating(orderId, productId, rating, reviewImageUrls: reviewImageUrls, reviewText: reviewText ?? state.reviewText);
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      // If rating submission failed after images were uploaded, log orphaned URLs so they
+      // can be cleaned up. TODO: move uploads inside a single atomic backend function.
+      if (reviewImageUrls != null && reviewImageUrls.isNotEmpty) {
+        AppError.log(Exception('Orphaned review images after rating failure: $reviewImageUrls'), stackTrace: st, context: 'product_rating_orphaned_images');
+      }
       state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to submit rating'));
       return false;
     } finally {

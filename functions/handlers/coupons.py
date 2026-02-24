@@ -13,6 +13,7 @@ from typing import Any
 from firebase_functions import https_fn
 
 from schema_constants import (
+    ApiKeys,
     Collections,
     CouponDiscountTypeValues,
     Fields,
@@ -63,14 +64,17 @@ def _validate_coupon_code(code: str) -> bool:
 def _compute_discount(coupon_data: dict, cart_subtotal_cents: int) -> int:
     """
     Compute discount amount in cents.
-    - percent: (discountValue / 100) * cart_subtotal_cents, rounded down
-    - fixed_cents: min(discountValue, cart_subtotal_cents)  — never discount more than cart total
+    - percent: integer arithmetic to avoid float drift (rounds down)
+    - fixed_cents: min(discountValue, cart_subtotal_cents) — never discount more than cart total
     """
     discount_type = coupon_data.get(Fields.DISCOUNT_TYPE)
     discount_value = coupon_data.get(Fields.DISCOUNT_VALUE, 0)
 
     if discount_type == CouponDiscountTypeValues.PERCENT:
-        return int(cart_subtotal_cents * discount_value / 100)
+        # Integer arithmetic: avoid float * float before truncation
+        # discountValue is stored as 0-100; multiply by 1000 for milli-percent precision
+        discount_value_millipercent = int(round(discount_value * 1000))
+        return cart_subtotal_cents * discount_value_millipercent // 100000
     elif discount_type == CouponDiscountTypeValues.FIXED_CENTS:
         return min(int(discount_value), cart_subtotal_cents)
     return 0
@@ -83,12 +87,14 @@ def _compute_discount(coupon_data: dict, cart_subtotal_cents: int) -> int:
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
-    N-07: Validate a coupon code and return the computed discount.
+    N-07: Validate a coupon code and return the computed discount preview.
     Does NOT apply/redeem the coupon — that happens in redeem_coupon after checkout succeeds.
+    The actual discount is re-computed server-side in payment_stripe.py against the verified subtotal.
 
     Request data:
         code: str — coupon code (will be uppercased)
-        cartSubtotalCents: int — cart subtotal in cents (before discount/tax/shipping)
+        cartSubtotalCents: int — cart subtotal in cents (preview only; not trusted at payment time)
+        sellerIds: list[str]? — seller IDs in cart (for seller-scoped coupon validation)
 
     Returns:
         {valid: true, discountAmountCents: N, discountType: X, discountValue: Y}
@@ -99,14 +105,15 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_id = req.auth.uid
     data = req.data
     code_raw = data.get(Fields.COUPON_CODE, "")
-    cart_subtotal_cents = data.get("cartSubtotalCents")
+    cart_subtotal_cents = data.get(ApiKeys.CART_SUBTOTAL_CENTS)
+    seller_ids = data.get("sellerIds", [])
 
     # --- Input validation ---
     if not code_raw or not isinstance(code_raw, str):
         raise https_fn.HttpsError("invalid-argument", "couponCode is required")
     code = code_raw.strip().upper()
     if not _validate_coupon_code(code):
-        raise https_fn.HttpsError("invalid-argument", "Invalid coupon code format (4-20 alphanumeric uppercase chars)")
+        raise https_fn.HttpsError("invalid-argument", "Coupon invalid or unavailable")
 
     if not isinstance(cart_subtotal_cents, int) or cart_subtotal_cents < 0:
         raise https_fn.HttpsError("invalid-argument", "cartSubtotalCents must be a non-negative integer")
@@ -115,18 +122,17 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     coupon_ref = get_db().collection(Collections.COUPONS).document(code)
     coupon_snap = coupon_ref.get()
     if not coupon_snap.exists:
-        raise https_fn.HttpsError("not-found", "Coupon not found")
+        raise https_fn.HttpsError("not-found", "Coupon invalid or unavailable")
 
     coupon = coupon_snap.to_dict() or {}
 
     # --- Active check ---
     if not coupon.get(Fields.IS_ACTIVE, False):
-        raise https_fn.HttpsError("failed-precondition", "Coupon is not active")
+        raise https_fn.HttpsError("failed-precondition", "Coupon invalid or unavailable")
 
     # --- Expiry check ---
     expires_at = coupon.get(Fields.EXPIRES_AT)
     if expires_at is not None:
-        # expires_at is a Firestore Timestamp; compare with now
         now_utc = datetime.now(UTC)
         if hasattr(expires_at, "ToDatetime"):
             expires_dt = expires_at.ToDatetime().replace(tzinfo=UTC)
@@ -135,31 +141,36 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
         else:
             expires_dt = None
         if expires_dt is not None and now_utc > expires_dt:
-            raise https_fn.HttpsError("failed-precondition", "Coupon has expired")
+            raise https_fn.HttpsError("failed-precondition", "Coupon invalid or unavailable")
 
     # --- Global max uses check ---
     max_uses_total = coupon.get(Fields.MAX_USES_TOTAL)
     used_count = int(coupon.get(Fields.USED_COUNT, 0))
     if max_uses_total is not None and used_count >= int(max_uses_total):
-        raise https_fn.HttpsError("resource-exhausted", "Coupon has reached its maximum usage limit")
+        raise https_fn.HttpsError("resource-exhausted", "Coupon invalid or unavailable")
 
-    # --- Per-user max uses check (using coupon_uses subcollection) ---
+    # --- Per-user max uses check (reuse coupon_ref from above — no extra Firestore read) ---
     max_uses_per_user = int(coupon.get(Fields.MAX_USES_PER_USER, 1))
-    coupon_ref = db.collection(Collections.COUPONS).document(code)
     user_uses = coupon_ref.collection(Collections.COUPON_USES).document(user_id).get()
     user_usage_count = int(user_uses.to_dict().get("useCount", 0)) if user_uses.exists else 0
     if user_usage_count >= max_uses_per_user:
-        raise https_fn.HttpsError("resource-exhausted", "You have already used this coupon the maximum number of times")
+        raise https_fn.HttpsError("resource-exhausted", "Coupon invalid or unavailable")
+
+    # --- Seller scope check ---
+    coupon_seller_id = coupon.get(Fields.SELLER_ID)
+    if coupon_seller_id is not None:
+        if not isinstance(seller_ids, list) or coupon_seller_id not in seller_ids:
+            raise https_fn.HttpsError("failed-precondition", "Coupon invalid or unavailable")
 
     # --- Minimum order check ---
     min_order_cents = coupon.get(Fields.MIN_ORDER_CENTS)
     if min_order_cents is not None and cart_subtotal_cents < int(min_order_cents):
         raise https_fn.HttpsError(
             "failed-precondition",
-            f"Cart subtotal does not meet the minimum order requirement for this coupon"
+            "Cart subtotal does not meet the minimum order requirement for this coupon"
         )
 
-    # --- Compute discount ---
+    # --- Compute discount preview (cartSubtotalCents is client-supplied — for display only) ---
     discount_amount_cents = _compute_discount(coupon, cart_subtotal_cents)
 
     return create_success_response({
@@ -175,12 +186,13 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
 # N-07: redeem_coupon — internal function, called after successful checkout
 # ---------------------------------------------------------------------------
 
-def redeem_coupon(code: str, user_id: str) -> None:
+def redeem_coupon(code: str, user_id: str, order_id: str = "") -> None:
     """
     N-07: Internal — atomically increment usedCount and record usage in coupon_uses subcollection.
     Called from payment_stripe.py after payment succeeds.
 
     Silently no-ops if coupon no longer exists (defensive).
+    On transaction failure, writes a pending_redemptions/{orderId} doc for retry.
     """
     if not code or not user_id:
         return
@@ -220,7 +232,18 @@ def redeem_coupon(code: str, user_id: str) -> None:
         logger.info(f"Coupon {code} redeemed by user {user_id}")
     except Exception as e:
         logger.error(f"redeem_coupon failed for code={code} user={user_id}: {e}")
-        # Non-fatal — do not block order completion
+        # Non-fatal — do not block order completion.
+        # Write a pending_redemptions doc so a retry job can pick it up.
+        if order_id:
+            try:
+                db.collection("pending_redemptions").document(order_id).set({
+                    Fields.COUPON_CODE: code,
+                    Fields.USER_ID: user_id,
+                    "retriesRemaining": 5,
+                    "createdAt": get_firestore().SERVER_TIMESTAMP,
+                }, merge=True)
+            except Exception as write_err:
+                logger.error(f"Failed to write pending_redemption for order {order_id}: {write_err}")
 
 
 # ---------------------------------------------------------------------------

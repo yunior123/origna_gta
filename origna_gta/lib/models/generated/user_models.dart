@@ -83,6 +83,9 @@ abstract class User with _$User {
     String? stripeSubscriptionId,
     @Default(false) bool notifyNewProducts,
     @Default(false) bool notifyTrending,
+    // === FCM (push notifications) ===
+    String? fcmToken,
+    DateTime? fcmTokenUpdatedAt,
   }) = _User;
 
   factory User.fromFirestore(DocumentSnapshot doc) {
@@ -134,6 +137,8 @@ abstract class User with _$User {
       stripeSubscriptionId: data[Fields.stripeSubscriptionId] as String?,
       notifyNewProducts: data[Fields.notifyNewProducts] ?? false,
       notifyTrending: data[Fields.notifyTrending] ?? false,
+      fcmToken: data[Fields.fcmToken] as String?,
+      fcmTokenUpdatedAt: _parseDateTime(data[Fields.fcmTokenUpdatedAt]),
     );
   }
 

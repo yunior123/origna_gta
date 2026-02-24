@@ -121,7 +121,7 @@ class OrderSuccessScreen extends StatelessWidget {
                           onPressed: () {
                             Navigator.of(context).pushNamedAndRemoveUntil(
                               AppRoutes.orders,
-                              (route) => route.isFirst,
+                              (route) => route.settings.name == AppRoutes.home,
                             );
                           },
                         ),

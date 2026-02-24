@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Custom page route with slide and fade animation
 class SlidePageRoute<T> extends PageRouteBuilder<T> {
@@ -214,10 +215,10 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
             return LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              colors: const [
-                Color(0xFFE0E0E0),
-                Color(0xFFF5F5F5),
-                Color(0xFFE0E0E0),
+              colors: [
+                DesignTokens.outline,
+                DesignTokens.surfaceVariant,
+                DesignTokens.outline,
               ],
               stops: [
                 _controller.value - 0.3,
@@ -329,7 +330,7 @@ class AnimatedCheckmark extends StatefulWidget {
   const AnimatedCheckmark({
     super.key,
     this.size = 80,
-    this.color = const Color(0xFF10B981),
+    this.color = DesignTokens.success,
     this.duration = const Duration(milliseconds: 800),
   });
 

@@ -547,6 +547,7 @@ class Fields:
 
     # === NEW FEATURE FIELDS (TASKS 05-11) ===
     ADDRESS_ID = "addressId"
+    ADDRESS_COUNT = "addressCount"
     REVIEW_IMAGE_URLS = "reviewImageUrls"
     REVIEW_TEXT = "reviewText"
     NOTIFIED_AT = "notifiedAt"
@@ -641,6 +642,7 @@ class Fields:
     HAS_VARIANTS = "hasVariants"
     VARIANTS = "variants"
     VARIANT_ID = "variantId"
+    VARIANT_KEY = "variantKey"
     VARIANT_OPTIONS = "variantOptions"
     VARIANT_TITLE = "variantTitle"
     VARIANT_SKU = "variantSku"
@@ -656,6 +658,7 @@ class Fields:
 
     # === N-03/N-04: Product ratings ===
     RATING_ID = "ratingId"
+    REVIEW_ID = "reviewId"  # alias used in admin operations
 
     # === N-04: Review helpfulness voting ===
     HELPFUL_COUNT = "helpfulCount"
@@ -1011,8 +1014,10 @@ class ConsentMethodValues:
     CHECKBOX = "checkbox"
     DOUBLE_OPT_IN = "double_opt_in"
     IMPLIED = "implied"
+    USER_PREFERENCE = "user_preference"  # User toggled consent in settings
+    UNSUBSCRIBE = "unsubscribe"  # User clicked unsubscribe link
 
-    ALL: frozenset[str] = frozenset({SIGNUP, CHECKBOX, DOUBLE_OPT_IN, IMPLIED})
+    ALL: frozenset[str] = frozenset({SIGNUP, CHECKBOX, DOUBLE_OPT_IN, IMPLIED, USER_PREFERENCE, UNSUBSCRIBE})
 
 
 class PolicyVersionValues:
@@ -1070,6 +1075,10 @@ class AdminActionValues:
     """Valid values for admin log action field."""
 
     PAYMENT_PROVIDER_UPDATE = "payment_provider_update"
+    STOCK_UPDATE = "stock_update"
+    ORDER_REFUND = "order_refund"
+    REVIEW_DELETE = "review_delete"
+    REVIEW_FLAG = "review_flag"
 
 
 class WebhookResponseStatus:
@@ -1134,8 +1143,33 @@ class SupplierTypeValues:
     CJDROPSHIPPING = "cjdropshipping"
     LOCAL = "local"
     OTHER = "other"
+    # Extended supplier platforms
+    SPOCKET = "spocket"
+    OBERLO = "oberlo"
+    PRINTFUL = "printful"
+    PRINTIFY = "printify"
+    MADE_IN_CHINA = "made_in_china"
+    GLOBAL_SOURCES = "global_sources"
+    GMARKET = "gmarket"
+    COUPANG = "coupang"
+    RAKUTEN = "rakuten"
+    FAIRE = "faire"
+    AMAZON_EUROPE = "amazon_europe"
+    AMAZON_USA = "amazon_usa"
+    AMAZON_JAPAN = "amazon_japan"
+    WALMART = "walmart"
+    COSTCO = "costco"
+    ETSY_WHOLESALE = "etsy_wholesale"
+    INDIAMART = "indiamart"
+    TRADEINDIA = "tradeindia"
+    CUSTOM = "custom"
     ALL: frozenset[str] = frozenset(
-        {ALIEXPRESS, DHGATE, ALIBABA, S1688, TEMU, CJDROPSHIPPING, LOCAL, OTHER}
+        {
+            ALIEXPRESS, DHGATE, ALIBABA, S1688, TEMU, CJDROPSHIPPING, LOCAL, OTHER,
+            SPOCKET, OBERLO, PRINTFUL, PRINTIFY, MADE_IN_CHINA, GLOBAL_SOURCES,
+            GMARKET, COUPANG, RAKUTEN, FAIRE, AMAZON_EUROPE, AMAZON_USA, AMAZON_JAPAN,
+            WALMART, COSTCO, ETSY_WHOLESALE, INDIAMART, TRADEINDIA, CUSTOM,
+        }
     )
 
 
@@ -1479,6 +1513,7 @@ class ApiKeys:
     AVAILABLE = "available"
     PRODUCT_NAME = "productName"
     APPROVAL_REQUIRED = "approvalRequired"
+    CART_SUBTOTAL_CENTS = "cartSubtotalCents"
 
     # === PAYMENT PROVIDER RESPONSE KEYS ===
     SUPPORTED_CURRENCIES = "supportedCurrencies"

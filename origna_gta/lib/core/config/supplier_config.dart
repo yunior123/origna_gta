@@ -174,6 +174,8 @@ final Map<String, SupplierPlatformConfig> supplierPlatforms = {
     color: Color(0xFF5C6BC0),
     websiteUrl: 'https://oberlo.com',
     description: 'Shopify dropshipping app',
+    isActive: false,
+    deprecationNote: 'Permanently shut down by Shopify in June 2022.',
   ),
   'printful': const SupplierPlatformConfig(
     id: 'printful',
@@ -390,7 +392,7 @@ final Map<String, SupplierPlatformConfig> supplierPlatforms = {
 
   // ============== CANADA LOCAL ==============
   'local_canada': const SupplierPlatformConfig(
-    id: 'local_canada',
+    id: 'local',
     displayName: 'Local Canadian Supplier',
     region: 'Canada',
     country: 'Canada',
@@ -541,6 +543,7 @@ class SupplierPlatformConfig {
   final String description;
   final bool isInternational;
   final bool isActive; // Can be disabled without removing
+  final String? deprecationNote; // Set when platform is shut down or deprecated
 
   const SupplierPlatformConfig({
     required this.id,
@@ -558,6 +561,7 @@ class SupplierPlatformConfig {
     this.description = '',
     this.isInternational = true,
     this.isActive = true,
+    this.deprecationNote,
   });
 
   /// Whether this is a custom/user-defined supplier

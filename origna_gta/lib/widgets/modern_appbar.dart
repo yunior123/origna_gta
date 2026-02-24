@@ -28,7 +28,10 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.centerTitle = true,
     this.showBackButton = true,
     this.backgroundColor,
-  });
+  }) : assert(
+          !(showBackButton && leadingIcon != null),
+          'leadingIcon is ignored when showBackButton is true',
+        );
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);

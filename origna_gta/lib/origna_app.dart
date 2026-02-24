@@ -471,6 +471,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
       onPanDown: (_) => _sessionTimeout.recordActivity(context),
       child: MaterialApp(
         navigatorKey: _navigatorKey,
+        scaffoldMessengerKey: NotificationService.scaffoldMessengerKey,
         // === i18n: easy_localization (Quebec Bill 96 / Loi 96 compliance) ===
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,

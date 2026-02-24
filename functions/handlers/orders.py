@@ -84,8 +84,55 @@ def get_firestore():
     return _firestore
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS)
-def confirm_order_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
+def send_push_notification(user_id: str, title: str, body: str, data: dict | None = None) -> bool:
+    """
+    Send a single FCM push notification to a user.
+    Fetches the user's FCM token from Firestore.
+    On UnregisteredError, removes the stale token atomically.
+    Returns True on success, False on no-token or error.
+    """
+    try:
+        from firebase_admin import messaging
+    except ImportError:
+        logger.warning("firebase_admin.messaging not available — push skipped")
+        return False
+
+    try:
+        user_ref = get_db().collection(Collections.USERS).document(user_id)
+        user_doc = user_ref.get()
+        if not user_doc.exists:
+            return False
+
+        token = (user_doc.to_dict() or {}).get(Fields.FCM_TOKEN)
+        if not token:
+            return False
+
+        msg = messaging.Message(
+            token=token,
+            notification=messaging.Notification(title=title, body=body),
+            data={k: str(v) for k, v in (data or {}).items()},
+        )
+        messaging.send(msg)
+        logger.info(f"Push sent to user {user_id}")
+        return True
+    except Exception as e:
+        err_str = str(e)
+        if "registration-token-not-registered" in err_str or "invalid-registration-token" in err_str:
+            # Stale token — remove it atomically
+            try:
+                from firebase_admin.firestore import SERVER_TIMESTAMP
+                get_db().collection(Collections.USERS).document(user_id).update({
+                    Fields.FCM_TOKEN: None,
+                    Fields.FCM_TOKEN_UPDATED_AT: SERVER_TIMESTAMP,
+                })
+                logger.info(f"Removed stale FCM token for user {user_id}")
+            except Exception as del_err:
+                logger.warning(f"Failed to remove stale FCM token for {user_id}: {del_err}")
+        else:
+            logger.warning(f"FCM push failed for user {user_id}: {e}")
+        return False
+
+
     """
     Buyer confirms order receipt, triggering payment capture and seller payouts.
 
@@ -1564,6 +1611,19 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             _handle_payment_status_email(order_id, after_data, new_payment_status, buyer_email=None)
         return
 
+    # DEDUP GUARD: at-least-once trigger — skip if already sent for this transition
+    flag_field = f"notificationSentFor_{new_status}"
+    if after_data.get(flag_field):
+        logger.info(f"Notification already sent for order {order_id} status={new_status}, skipping")
+        return
+
+    # Atomically mark notification as sent before dispatching (prevents duplicate sends on retry)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    try:
+        order_ref.update({flag_field: True})
+    except Exception as flag_err:
+        logger.warning(f"Failed to set dedup flag for {order_id}/{new_status}: {flag_err}")
+
     # Send notification emails based on status change
     user_id = after_data.get(Fields.USER_ID)
 
@@ -1595,6 +1655,30 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 subject=_email_t("sub.processing", lang).replace("{oid}", oid_short),
                 html_content=processing_html,
             )
+            send_push_notification(
+                user_id, "Order Update", f"Your order #{oid_short} is being processed",
+                data={"type": "order_status", "orderId": order_id, "status": new_status},
+            )
+
+            # Clean up stock_notifications for purchased products so buyer is not re-notified
+            try:
+                product_ids = list({item.get(Fields.PRODUCT_ID) for item in after_data.get(Fields.ITEMS, []) if item.get(Fields.PRODUCT_ID)})
+                if product_ids:
+                    batch = get_db().batch()
+                    for pid in product_ids:
+                        subs = list(
+                            get_db()
+                            .collection(Collections.STOCK_NOTIFICATIONS)
+                            .where(Fields.PRODUCT_ID, "==", pid)
+                            .where(Fields.USER_ID, "==", user_id)
+                            .limit(10)
+                            .stream()
+                        )
+                        for sub in subs:
+                            batch.delete(sub.reference)
+                    batch.commit()
+            except Exception as sub_err:
+                logger.warning(f"Failed to cleanup stock_notifications after order {order_id}: {sub_err}")
 
         elif new_status == OrderStatusValues.SHIPPED:
             tracking_number = after_data.get(Fields.TRACKING_NUMBER, "N/A")
@@ -1607,13 +1691,22 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 subject=_email_t("sub.shipped", lang).replace("{oid}", oid_short),
                 html_content=shipped_html,
             )
+            send_push_notification(
+                user_id, "Order Shipped!", f"Order #{oid_short} is on its way via {carrier}",
+                data={"type": "order_status", "orderId": order_id, "status": new_status},
+            )
 
             # Also notify sellers that shipment confirmed — filtered to their items only
+            # Skip the seller who triggered the transition (stored in lastActorId if set)
+            last_actor_id = after_data.get("lastActorId")
             seller_ids = set(item.get(Fields.SELLER_ID) for item in after_data.get(Fields.ITEMS, []))
             # Batch-read all seller docs in one RPC (avoids N sequential reads for multi-seller orders)
             seller_refs = [get_db().collection(Collections.USERS).document(sid) for sid in seller_ids]
             seller_docs = {doc.id: doc for doc in get_db().get_all(seller_refs)}
             for sid in seller_ids:
+                # Skip self-notification: if there's only one seller and they are the actor, skip email
+                if last_actor_id and sid == last_actor_id:
+                    continue
                 try:
                     seller_doc = seller_docs.get(sid)
                     if seller_doc and seller_doc.exists:
@@ -1630,6 +1723,10 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                                 subject=_email_t("sub.shipped_seller", seller_lang).replace("{oid}", oid_short),
                                 html_content=seller_shipped_html,
                             )
+                        send_push_notification(
+                            sid, "Shipment Confirmed", f"Order #{oid_short} has been marked as shipped",
+                            data={"type": "order_status", "orderId": order_id, "status": new_status},
+                        )
                 except Exception as e:
                     logger.warning(f"⚠️ Failed to send shipped notification to seller {sid}: {str(e)}")
 
@@ -1641,6 +1738,10 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 subject=_email_t("sub.in_transit", lang).replace("{oid}", oid_short),
                 html_content=in_transit_html,
             )
+            send_push_notification(
+                user_id, "In Transit", f"Order #{oid_short} is in transit",
+                data={"type": "order_status", "orderId": order_id, "status": new_status},
+            )
 
         elif new_status == OrderStatusValues.DELIVERED:
             # Email buyer — branded template with receipt + confirm receipt CTA
@@ -1650,6 +1751,21 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 subject=_email_t("sub.delivered", lang).replace("{oid}", oid_short),
                 html_content=delivered_html,
             )
+            send_push_notification(
+                user_id, "Package Delivered!", f"Order #{oid_short} has been delivered. Confirm receipt to release payment",
+                data={"type": "order_status", "orderId": order_id, "status": new_status},
+            )
+
+            # Notify sellers — receipt confirmed, payout triggered
+            seller_ids = set(item.get(Fields.SELLER_ID) for item in after_data.get(Fields.ITEMS, []))
+            for sid in seller_ids:
+                try:
+                    send_push_notification(
+                        sid, "Receipt Confirmed", f"Order #{oid_short} confirmed by buyer — payout pending",
+                        data={"type": "order_status", "orderId": order_id, "status": new_status},
+                    )
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to send delivered push to seller {sid}: {str(e)}")
 
         elif new_status == OrderStatusValues.CANCELLED:
             reason = after_data.get(Fields.CANCELLATION_REASON, "Unknown")
@@ -1658,6 +1774,10 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 to_email=buyer_email,
                 subject=_email_t("sub.cancelled", lang).replace("{oid}", oid_short),
                 html_content=cancelled_html,
+            )
+            send_push_notification(
+                user_id, "Order Cancelled", f"Order #{oid_short} has been cancelled",
+                data={"type": "order_status", "orderId": order_id, "status": new_status},
             )
 
         elif new_status == OrderStatusValues.REFUNDED:
@@ -1668,6 +1788,10 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 subject=_email_t("sub.refunded", lang).replace("{oid}", oid_short),
                 html_content=refunded_html,
             )
+            send_push_notification(
+                user_id, "Refund Processed", f"Your refund for order #{oid_short} has been processed",
+                data={"type": "order_status", "orderId": order_id, "status": new_status},
+            )
 
         elif new_status == OrderStatusValues.PARTIALLY_REFUNDED:
             refund_amount = after_data.get(Fields.PARTIAL_REFUND_AMOUNT_CENTS, 0)
@@ -1676,6 +1800,10 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 to_email=buyer_email,
                 subject=_email_t("sub.partial", lang).replace("{oid}", oid_short),
                 html_content=partial_html,
+            )
+            send_push_notification(
+                user_id, "Partial Refund", f"A partial refund for order #{oid_short} has been issued",
+                data={"type": "order_status", "orderId": order_id, "status": new_status},
             )
 
     except Exception as e:

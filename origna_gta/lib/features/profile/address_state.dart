@@ -11,6 +11,7 @@ class AddressState {
   final String? addressId;
   final String? errorMessage;
   final bool isSuccess;
+  final bool isDefault;
 
   AddressState({
     this.isLoading = false,
@@ -23,6 +24,7 @@ class AddressState {
     this.addressId,
     this.errorMessage,
     this.isSuccess = false,
+    this.isDefault = false,
   });
 
   AddressState copyWith({
@@ -36,6 +38,7 @@ class AddressState {
     String? addressId,
     String? errorMessage,
     bool? isSuccess,
+    bool? isDefault,
     bool clearCoordinates = false,
   }) {
     return AddressState(
@@ -49,6 +52,7 @@ class AddressState {
       addressId: addressId ?? this.addressId,
       errorMessage: errorMessage,
       isSuccess: isSuccess ?? this.isSuccess,
+      isDefault: isDefault ?? this.isDefault,
     );
   }
 }

@@ -175,27 +175,47 @@ class _AdminOrderCard extends StatelessWidget {
   void _showRefundDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
-        title: Row(
-          children: [
-            Icon(Icons.undo_rounded, color: DesignTokens.error),
-            const SizedBox(width: 10),
-            Text('orders.issue_refund'.tr()),
-          ],
-        ),
-        content: Text('orders.refund_warning'.tr()),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.refund_stripe_warning'.tr()), backgroundColor: DesignTokens.warning));
-            },
-            style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
-            child: Text('orders.issue_refund'.tr()),
-          ),
-        ],
+      builder: (ctx) => Consumer(
+        builder: (ctx, ref, _) {
+          var isLoading = false;
+          return StatefulBuilder(
+            builder: (ctx, setState) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+              title: Row(
+                children: [
+                  Icon(Icons.undo_rounded, color: DesignTokens.error),
+                  const SizedBox(width: 10),
+                  Text('orders.issue_refund'.tr()),
+                ],
+              ),
+              content: Text('orders.refund_warning'.tr()),
+              actions: [
+                TextButton(onPressed: isLoading ? null : () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+                FilledButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() => isLoading = true);
+                          try {
+                            await ref.read(adminRepositoryProvider).refundOrder(order.orderId);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.refund_success'.tr()), backgroundColor: DesignTokens.success));
+                            }
+                          } catch (e) {
+                            setState(() => isLoading = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.refund_error'.tr()), backgroundColor: DesignTokens.error));
+                            }
+                          }
+                        },
+                  style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
+                  child: isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('orders.issue_refund'.tr()),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

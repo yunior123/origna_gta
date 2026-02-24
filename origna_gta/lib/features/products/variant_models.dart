@@ -34,23 +34,33 @@ class ProductVariantEntry {
   static const _sentinel = Object();
 
   final Map<String, String> optionValues;
-  final double? price;
+  final int? priceCents;
   final int stockQuantity;
   final String? sku;
   final bool isActive;
 
   const ProductVariantEntry({
     required this.optionValues,
-    this.price,
+    this.priceCents,
     this.stockQuantity = 0,
     this.sku,
     this.isActive = true,
   });
 
+  /// Price in dollars for display purposes.
+  double? get priceDollars => priceCents != null ? priceCents! / 100.0 : null;
+
   factory ProductVariantEntry.fromMap(Map<String, dynamic> map) {
+    // Support both legacy 'price' (float) and new 'priceCents' (int)
+    int? priceCents;
+    if (map['priceCents'] != null) {
+      priceCents = (map['priceCents'] as num).toInt();
+    } else if (map['price'] != null) {
+      priceCents = ((map['price'] as num).toDouble() * 100).round();
+    }
     return ProductVariantEntry(
       optionValues: (map['optionValues'] as Map).cast<String, String>(),
-      price: (map['price'] as num?)?.toDouble(),
+      priceCents: priceCents,
       stockQuantity: (map['stockQuantity'] as int?) ?? 0,
       sku: map['sku'] as String?,
       isActive: (map['isActive'] as bool?) ?? true,
@@ -59,7 +69,7 @@ class ProductVariantEntry {
 
   Map<String, dynamic> toMap() => {
         'optionValues': optionValues,
-        'price': price,
+        'priceCents': priceCents,
         'stockQuantity': stockQuantity,
         'sku': sku,
         'isActive': isActive,
@@ -67,14 +77,14 @@ class ProductVariantEntry {
 
   ProductVariantEntry copyWith({
     Map<String, String>? optionValues,
-    Object? price = _sentinel,
+    Object? priceCents = _sentinel,
     int? stockQuantity,
     Object? sku = _sentinel,
     bool? isActive,
   }) {
     return ProductVariantEntry(
       optionValues: optionValues ?? this.optionValues,
-      price: identical(price, _sentinel) ? this.price : price as double?,
+      priceCents: identical(priceCents, _sentinel) ? this.priceCents : priceCents as int?,
       stockQuantity: stockQuantity ?? this.stockQuantity,
       sku: identical(sku, _sentinel) ? this.sku : sku as String?,
       isActive: isActive ?? this.isActive,
@@ -85,11 +95,11 @@ class ProductVariantEntry {
   bool operator ==(Object other) =>
       other is ProductVariantEntry &&
       mapEquals(other.optionValues, optionValues) &&
-      other.price == price &&
+      other.priceCents == priceCents &&
       other.stockQuantity == stockQuantity &&
       other.sku == sku &&
       other.isActive == isActive;
 
   @override
-  int get hashCode => Object.hash(Object.hashAll(optionValues.entries.map((e) => '${e.key}=${e.value}')), price, stockQuantity, sku, isActive);
+  int get hashCode => Object.hash(Object.hashAll(optionValues.entries.map((e) => '${e.key}=${e.value}')), priceCents, stockQuantity, sku, isActive);
 }

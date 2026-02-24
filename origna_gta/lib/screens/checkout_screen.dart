@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -14,6 +15,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Provider for terms acceptance state — shared between _TermsText and _CheckoutButton
 final _termsAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
+
+/// Tracks whether the user has interacted with the terms checkbox — gates error state
+final _termsInteractedProvider = StateProvider.autoDispose<bool>((ref) => false);
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final List<CartItemDetailModel> items;
@@ -162,10 +166,20 @@ class _CheckoutButton extends ConsumerWidget {
     );
   }
 
-  Future<void> _redirectToStripe(String url) async {
+  Future<void> _redirectToStripe(String url, BuildContext context) async {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      // Stripe redirect failed — user will see unchanged UI
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('checkout.stripe_redirect_failed'.tr()),
+          duration: const Duration(seconds: 10),
+          action: SnackBarAction(
+            label: 'common.copy_link'.tr(),
+            onPressed: () => Clipboard.setData(ClipboardData(text: url)),
+          ),
+        ),
+      );
     }
   }
 
@@ -178,7 +192,7 @@ class _CheckoutButton extends ConsumerWidget {
 
     switch (result) {
       case CheckoutSuccess(:final checkoutUrl):
-        await _redirectToStripe(checkoutUrl);
+        await _redirectToStripe(checkoutUrl, context);
       case CheckoutError(:final message):
         messenger.showSnackBar(
           SnackBar(
@@ -818,7 +832,7 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Promo Code', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        Text('checkout.coupon_title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -828,7 +842,7 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
                 enabled: !applied && !isLoading,
                 textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
-                  hintText: 'Enter promo code',
+                  hintText: 'checkout.coupon_hint'.tr(),
                   filled: true,
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -850,13 +864,13 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
                       _controller.clear();
                       notifier.removeCoupon();
                     },
-                    child: const Text('Remove', style: TextStyle(color: DesignTokens.error)),
+                    child: Text('common.remove'.tr(), style: TextStyle(color: DesignTokens.error)),
                   )
                 : ElevatedButton(
                     key: const Key('checkout_apply_coupon_button'),
                     onPressed: isLoading ? null : () => _apply(notifier),
                     style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: isLoading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Apply'),
+                    child: isLoading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('common.apply'.tr()),
                   ),
           ],
         ),
@@ -937,6 +951,8 @@ class _TermsText extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final termsAccepted = ref.watch(_termsAcceptedProvider);
+    final hasInteracted = ref.watch(_termsInteractedProvider);
+    final showError = hasInteracted && !termsAccepted;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -945,7 +961,7 @@ class _TermsText extends ConsumerWidget {
         decoration: BoxDecoration(
           color: DesignTokens.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: termsAccepted ? DesignTokens.outlineVariant : DesignTokens.error, width: 1),
+          border: Border.all(color: showError ? DesignTokens.error : DesignTokens.outlineVariant, width: 1),
         ),
         child: Row(
           key: const Key('checkout_terms_link'),
@@ -960,8 +976,11 @@ class _TermsText extends ConsumerWidget {
                 child: Checkbox(
                   key: const Key('checkout_terms_checkbox'),
                   value: termsAccepted,
-                  onChanged: (value) => ref.read(_termsAcceptedProvider.notifier).state = value ?? false,
-                  side: BorderSide(color: termsAccepted ? DesignTokens.textDisabled : DesignTokens.error),
+                  onChanged: (value) {
+                    ref.read(_termsInteractedProvider.notifier).state = true;
+                    ref.read(_termsAcceptedProvider.notifier).state = value ?? false;
+                  },
+                  side: BorderSide(color: showError ? DesignTokens.error : DesignTokens.textDisabled),
                 ),
               ),
             ),

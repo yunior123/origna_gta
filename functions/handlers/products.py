@@ -442,6 +442,17 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to delete from Algolia: {str(e)}")
 
+    # Clean up stock_notification subscriptions for this product
+    try:
+        subs = list(get_db().collection(Collections.STOCK_NOTIFICATIONS).where(Fields.PRODUCT_ID, "==", product_id).limit(200).stream())
+        batch = get_db().batch()
+        for sub in subs:
+            batch.delete(sub.reference)
+        if subs:
+            batch.commit()
+    except Exception as e:
+        logger.error(f"Failed to cleanup stock_notifications for deleted product {product_id}: {e}")
+
     return create_success_response({"message": "Product deleted successfully"})
 
 
@@ -529,7 +540,12 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     if order_data[Fields.USER_ID] != user_id:
         raise https_fn.HttpsError("permission-denied", "This is not your order")
 
-    if order_data[Fields.ORDER_STATUS] != OrderStatusValues.DELIVERED:
+    # Block sellers from rating their own product
+    rated_item = next((item for item in order_data.get(Fields.ITEMS, []) if item.get(Fields.PRODUCT_ID) == product_id), None)
+    if rated_item and rated_item.get(Fields.SELLER_ID) == user_id:
+        raise https_fn.HttpsError("permission-denied", "Sellers cannot rate their own products")
+
+    if order_data[Fields.ORDER_STATUS] not in {OrderStatusValues.DELIVERED, OrderStatusValues.DISPUTED}:
         raise https_fn.HttpsError("failed-precondition", "Can only rate delivered orders")
 
     # Check if product is in order
@@ -538,21 +554,20 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not product_in_order:
         raise https_fn.HttpsError("invalid-argument", "Product not in this order")
 
-    # Check if user already rated this product with lazy loading
+    # Check if this specific order has already been rated (one rating per order)
     existing_ratings_query = (
         get_db()
         .collection(Collections.PRODUCT_RATINGS)
-        .where(Fields.PRODUCT_ID, "==", product_id)
-        .where(Fields.USER_ID, "==", user_id)
+        .where(Fields.ORDER_ID, "==", order_id)
         .limit(1)
     )
 
     existing_ratings = list(existing_ratings_query.stream())
 
     if existing_ratings:
-        raise https_fn.HttpsError("already-exists", "You have already rated this product")
+        raise https_fn.HttpsError("already-exists", "This order has already been rated")
 
-    # Save rating
+    # Build rating doc (pre-assembled — written atomically inside transaction below)
     rating_doc: dict = {
         Fields.PRODUCT_ID: product_id,
         Fields.USER_ID: user_id,
@@ -563,10 +578,11 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     }
     if review_image_urls:
         rating_doc[Fields.REVIEW_IMAGE_URLS] = review_image_urls
-    get_db().collection(Collections.PRODUCT_RATINGS).add(rating_doc)
 
-    # Update product's average rating using transaction (atomic, prevents race conditions)
+    # Atomically: write the rating doc AND update the product average in one transaction.
+    # This prevents orphaned ratings (no average update) or stale averages (no rating doc).
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    new_rating_ref = get_db().collection(Collections.PRODUCT_RATINGS).document()  # Pre-generate doc ref
 
     @_firestore.transactional
     def update_rating_transaction(transaction):
@@ -583,6 +599,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         new_rating_count = rating_count + 1
         new_average = (total_rating + rating) / new_rating_count
 
+        transaction.create(new_rating_ref, rating_doc)
         transaction.update(product_ref, {Fields.RATING: new_average, Fields.RATING_COUNT: new_rating_count})
         return new_average, new_rating_count
 
@@ -590,6 +607,8 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     new_average, new_rating_count = update_rating_transaction(transaction)
 
     if new_average is not None:
+        # Sync updated rating to Algolia so sort-by-rating returns correct results
+        algolia_partial_update(product_id, {Fields.RATING: new_average, Fields.RATING_COUNT: new_rating_count})
         return create_success_response({"newRating": new_average, Fields.RATING_COUNT: new_rating_count})
 
     raise https_fn.HttpsError("not-found", "Product not found")
@@ -1732,6 +1751,12 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     except Exception as e:
         logger.error(f"Price history tracking error for {product_id}: {e}")
 
+    # Fire back-in-stock notifications unconditionally (covers full-validation path too)
+    try:
+        _fire_back_in_stock_notifications(product_id, before_data, product_data)
+    except Exception as e:
+        logger.error(f"Back-in-stock notification error for {product_id}: {e}")
+
     try:
         product_data["id"] = product_id
         # Only index if product is active — prevents bypassing the approval gate
@@ -1747,7 +1772,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
 @firestore_fn.on_document_deleted(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_product_deleted(event: firestore_fn.Event) -> None:
     """
-    Firestore trigger: Removes product from Algolia when deleted.
+    Firestore trigger: Removes product from Algolia and cleans up stock_notifications when deleted.
     """
     product_id = event.params[Fields.PRODUCT_ID]
 
@@ -1756,6 +1781,17 @@ def on_product_deleted(event: firestore_fn.Event) -> None:
         logger.info(f"Product {product_id} deleted from Algolia")
     except Exception as e:
         logger.error(f"Failed to delete product {product_id} from Algolia: {str(e)}")
+
+    try:
+        subs = list(get_db().collection(Collections.STOCK_NOTIFICATIONS).where(Fields.PRODUCT_ID, "==", product_id).limit(200).stream())
+        batch = get_db().batch()
+        for sub in subs:
+            batch.delete(sub.reference)
+        if subs:
+            batch.commit()
+        logger.info(f"Cleaned up {len(subs)} stock_notifications for deleted product {product_id}")
+    except Exception as e:
+        logger.error(f"Failed to cleanup stock_notifications for hard-deleted product {product_id}: {e}")
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -2482,18 +2518,77 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
 
     before_stock = before_data.get(Fields.STOCK_QUANTITY, 0)
     after_stock = after_data.get(Fields.STOCK_QUANTITY, 0)
+    has_variants = after_data.get(Fields.HAS_VARIANTS, False)
 
-    # Only trigger on 0→>0 transition on active products
-    if before_stock > 0 or after_stock <= 0:
-        return
-    if after_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
-        return
+    # For non-variant products: check top-level stock transition.
+    # For variant products: we fire per-variant notifications when variants change.
+    if not has_variants:
+        if before_stock > 0 or after_stock <= 0:
+            return
+        if after_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
+            return
 
     from services.email_service import send_email
 
     product_name = after_data.get(Fields.NAME, "A product you wanted")
     now_utc = datetime.now(UTC)
 
+    if has_variants:
+        # Find variants that just transitioned 0 → >0 and fire their subscriptions.
+        before_variants = before_data.get(Fields.VARIANTS) or {}
+        after_variants = after_data.get(Fields.VARIANTS) or {}
+        restocked_keys: list[str] = [
+            vk
+            for vk, vdata in after_variants.items()
+            if (before_variants.get(vk) or {}).get(Fields.STOCK_QUANTITY, 0) == 0
+            and (vdata or {}).get(Fields.STOCK_QUANTITY, 0) > 0
+        ]
+        if not restocked_keys:
+            return
+        if after_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
+            return
+
+        for variant_key in restocked_keys:
+            subscriptions = (
+                get_db()
+                .collection(Collections.STOCK_NOTIFICATIONS)
+                .where(Fields.PRODUCT_ID, "==", product_id)
+                .where(Fields.VARIANT_KEY, "==", variant_key)
+                .where(Fields.NOTIFIED_AT, "==", None)
+                .limit(200)
+                .stream()
+            )
+            variant_url = f"https://orignagta.ca/products/{product_id}?variant={variant_key}"
+            for sub_doc in subscriptions:
+                sub_data = sub_doc.to_dict() or {}
+                email = sub_data.get(Fields.EMAIL)
+                if not email:
+                    continue
+                subject = f"🎉 Back in stock: {product_name} — Origna"
+                html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #5B30F6;">It's back! 🎉</h2>
+  <p><strong>{product_name}</strong> (the variant you wanted) is back in stock on Origna.</p>
+  <p style="margin-top:20px;">
+    <a href="{variant_url}"
+       style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
+      Shop now
+    </a>
+  </p>
+  <p style="color:#999; font-size:12px; margin-top:24px;">
+    You requested this notification. If you no longer want back-in-stock emails,
+    visit your <a href="https://orignagta.ca/settings/notifications" style="color:#999;">notification settings</a>.<br>
+    Origna Ventures Inc.
+  </p>
+</div>"""
+                try:
+                    send_email(email, subject, html)
+                    sub_doc.reference.update({Fields.NOTIFIED_AT: now_utc})
+                except Exception as e:
+                    logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
+        return
+
+    # Non-variant product: fire for subscribers without a variantKey.
     subscriptions = (
         get_db()
         .collection(Collections.STOCK_NOTIFICATIONS)
@@ -2556,7 +2651,16 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     if not product_doc.exists:
         raise https_fn.HttpsError("not-found", "Product not found")
     product_data = product_doc.to_dict() or {}
-    if product_data.get(Fields.STOCK_QUANTITY, 0) > 0:
+
+    # When a variantKey is provided, check that specific variant's stock instead
+    # of top-level stockQuantity, which would be > 0 if other variants are in stock.
+    variant_key = data.get(Fields.VARIANT_KEY)
+    if variant_key and product_data.get(Fields.HAS_VARIANTS):
+        variants = product_data.get(Fields.VARIANTS) or {}
+        variant_data = variants.get(variant_key) or {}
+        if variant_data.get(Fields.STOCK_QUANTITY, 0) > 0:
+            raise https_fn.HttpsError("failed-precondition", "Variant is already in stock")
+    elif product_data.get(Fields.STOCK_QUANTITY, 0) > 0:
         raise https_fn.HttpsError("failed-precondition", "Product is already in stock")
 
     # Fetch buyer email
@@ -2567,29 +2671,30 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     if not user_email:
         raise https_fn.HttpsError("failed-precondition", "Account has no email")
 
-    # Idempotency: skip if active subscription already exists
-    existing = list(
+    # Idempotency: skip if active subscription already exists for same product+variant
+    existing_query = (
         get_db()
         .collection(Collections.STOCK_NOTIFICATIONS)
         .where(Fields.PRODUCT_ID, "==", product_id)
         .where(Fields.USER_ID, "==", user_id)
         .where(Fields.NOTIFIED_AT, "==", None)
-        .limit(1)
-        .stream()
     )
-    if existing:
+    if variant_key:
+        existing_query = existing_query.where(Fields.VARIANT_KEY, "==", variant_key)
+    if list(existing_query.limit(1).stream()):
         return create_success_response({"alreadySubscribed": True})
 
-    get_db().collection(Collections.STOCK_NOTIFICATIONS).add(
-        {
-            Fields.PRODUCT_ID: product_id,
-            Fields.USER_ID: user_id,
-            Fields.EMAIL: user_email,
-            Fields.NAME: product_data.get(Fields.NAME, ""),
-            Fields.NOTIFIED_AT: None,
-            Fields.CREATED_AT: datetime.now(UTC),
-        }
-    )
+    doc: dict[str, Any] = {
+        Fields.PRODUCT_ID: product_id,
+        Fields.USER_ID: user_id,
+        Fields.EMAIL: user_email,
+        Fields.NAME: product_data.get(Fields.NAME, ""),
+        Fields.NOTIFIED_AT: None,
+        Fields.CREATED_AT: get_server_timestamp(),
+    }
+    if variant_key:
+        doc[Fields.VARIANT_KEY] = variant_key
+    get_db().collection(Collections.STOCK_NOTIFICATIONS).add(doc)
     return create_success_response({"subscribed": True})
 
 
@@ -3153,18 +3258,23 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
     updated = 0
     skipped = 0
 
+    # Fetch all product docs in a single RPC (avoid N+1 sequential gets)
+    product_refs = [db.collection(Collections.PRODUCTS).document(pid) for pid in product_ids if isinstance(pid, str) and pid.strip()]
+    product_snaps = db.get_all(product_refs) if product_refs else []
+    snap_by_id = {snap.id: snap for snap in product_snaps}
+
     for pid in product_ids:
         if not isinstance(pid, str) or not pid.strip():
             skipped += 1
             continue
 
-        prod_ref = db.collection(Collections.PRODUCTS).document(pid)
-        prod_snap = prod_ref.get()
+        prod_snap = snap_by_id.get(pid)
 
-        if not prod_snap.exists:
+        if not prod_snap or not prod_snap.exists:
             skipped += 1
             continue
 
+        prod_ref = db.collection(Collections.PRODUCTS).document(pid)
         prod_data = prod_snap.to_dict() or {}
 
         # Skip products not owned by caller
@@ -3180,9 +3290,9 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
             updated += 1
 
         elif action == "activate":
-            # Only activate if product is in approved or paused state
+            # Only activate from PAUSED — APPROVED → ACTIVE is admin-only (approval flow)
             current_lifecycle = prod_data.get(Fields.LIFECYCLE_STATUS)
-            if current_lifecycle not in {ProductLifecycleStatusValues.APPROVED, ProductLifecycleStatusValues.PAUSED}:
+            if current_lifecycle not in {ProductLifecycleStatusValues.PAUSED}:
                 skipped += 1
                 continue
             batch.update(prod_ref, {

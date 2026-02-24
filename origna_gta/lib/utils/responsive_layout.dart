@@ -181,8 +181,16 @@ class ResponsiveGridView extends StatelessWidget {
 }
 
 /// Responsive layout builders
+///
+/// Breakpoints (based on [ResponsiveBreakpoints]):
+/// - [mobilePlus] covers ALL phones (< 768px, including < 320px). There is no
+///   separate `mobile` layout — sub-480px devices use the same layout as larger
+///   phones. This is intentional: screens narrower than 320px are negligible
+///   in practice and the same layout adapts well enough.
+/// - [tablet] covers 768–1023px.
+/// - [desktop] covers 1024px+.
 class ResponsiveLayout extends StatelessWidget {
-  final Widget mobilePlus; // 320px+
+  final Widget mobilePlus; // all phones < 768px
   final Widget tablet; // 768px+
   final Widget desktop; // 1024px+
 

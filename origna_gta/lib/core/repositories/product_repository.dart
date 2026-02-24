@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/services/conf_services.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 class FirebaseProductRepository implements ProductRepository {
   final FirebaseFirestore _firestore;
@@ -80,8 +81,8 @@ class FirebaseProductRepository implements ProductRepository {
           if (countries.isNotEmpty) {
             firestoreData[Fields.shipFromCountries] = countries;
           }
-        } catch (_) {
-          // Non-fatal — card falls back gracefully
+        } catch (e) {
+          AppError.log(e, context: 'addProduct.warehouseDenorm');
         }
       }
 
@@ -251,6 +252,7 @@ class FirebaseProductRepository implements ProductRepository {
     final snap = await _firestore
         .collection(Collections.products)
         .where(Fields.slug, isEqualTo: slug)
+        .where(Fields.lifecycleStatus, isEqualTo: ProductLifecycleStatusValues.active)
         .limit(1)
         .get();
     if (snap.docs.isEmpty) return null;
@@ -345,11 +347,22 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
-  Future<String?> getUploadUrl(String fileName) async {
+  Future<Map<String, String>?> getUploadUrlInfo(String fileName) async {
     final result = await _functions
         .httpsCallable(CloudFunctionEndpoints.uploadProductImages)
-        .call({Fields.fileName: fileName});
-    return result.data[Fields.uploadUrl];
+        .call({'fileNames': [fileName], 'contentTypes': ['image/jpeg']});
+    final uploadUrls = List<Map<String, dynamic>>.from(result.data['uploadUrls'] ?? []);
+    if (uploadUrls.isEmpty) return null;
+    return {
+      'uploadUrl': uploadUrls[0]['uploadUrl'] as String,
+      'publicUrl': uploadUrls[0]['publicUrl'] as String,
+    };
+  }
+
+  @override
+  Future<String?> getUploadUrl(String fileName) async {
+    final info = await getUploadUrlInfo(fileName);
+    return info?['uploadUrl'];
   }
 
   @override
@@ -433,6 +446,7 @@ class FirebaseProductRepository implements ProductRepository {
         .collection(Collections.users)
         .doc(userId)
         .collection(Collections.favorites)
+        .limit(BusinessRules.favoritesPageSize)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
   }
@@ -450,20 +464,20 @@ class FirebaseProductRepository implements ProductRepository {
       try {
         final fileName =
             "product_${productId}_${index}_${DateTime.now().millisecondsSinceEpoch}.jpg";
-        final uploadUrl = await getUploadUrl(fileName);
+        final urlInfo = await getUploadUrlInfo(fileName);
 
-        if (uploadUrl == null) throw Exception('Could not get upload URL');
+        if (urlInfo == null) throw Exception('Could not get upload URL');
 
         final response = await http
             .put(
-              Uri.parse(uploadUrl),
+              Uri.parse(urlInfo['uploadUrl']!),
               body: bytes,
               headers: {"Content-Type": "image/jpeg"},
             )
             .timeout(const Duration(seconds: 30));
 
         if (response.statusCode == 200) {
-          return "${ConfigService().imageBaseUrl}/products/$fileName";
+          return urlInfo['publicUrl'];
         }
         throw Exception('Upload failed with status ${response.statusCode}');
       } catch (e) {
@@ -533,8 +547,9 @@ Map<String, dynamic> sanitizeProductForFirestore(
 
   // productId is derived from document id; avoid storing a client-controlled field.
   data.remove(Fields.productId);
-  // ratingCount is server-managed via rating events; do not allow client write on create.
+  // ratingCount and rating are server-managed via rating events; do not allow client write on create.
   data.remove(Fields.ratingCount);
+  data.remove(Fields.rating);
 
   // Firestore rules expect sellerAddress.apartment to be null OR non-empty string.
   // Address model defaults apartment to '', so normalize empty values to null.
@@ -550,19 +565,21 @@ Map<String, dynamic> sanitizeProductForFirestore(
     data[Fields.sellerAddress] = address;
   }
 
-  // Ensure createdAt is stored as a Firestore Timestamp (not ISO string)
-  if (data.containsKey(Fields.createdAt) || ensureDateCreated) {
+  // Ensure createdAt is stored as a server timestamp (not a client-side value)
+  // When ensureDateCreated is true (new products), always use FieldValue.serverTimestamp()
+  // to prevent clock skew or manipulation.
+  if (ensureDateCreated) {
+    data[Fields.createdAt] = FieldValue.serverTimestamp();
+  } else if (data.containsKey(Fields.createdAt)) {
     final createdAt = data[Fields.createdAt];
     if (createdAt is String) {
       try {
         data[Fields.createdAt] = Timestamp.fromDate(DateTime.parse(createdAt));
       } catch (_) {
-        data[Fields.createdAt] = Timestamp.now();
+        data[Fields.createdAt] = FieldValue.serverTimestamp();
       }
     } else if (createdAt is DateTime) {
       data[Fields.createdAt] = Timestamp.fromDate(createdAt);
-    } else if (createdAt == null && ensureDateCreated) {
-      data[Fields.createdAt] = Timestamp.now();
     }
   }
 
@@ -585,6 +602,7 @@ abstract class ProductRepository {
   String generateProductId();
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query);
   Future<Product?> getProductBySlug(String slug);
+  Future<Map<String, String>?> getUploadUrlInfo(String fileName);
   Future<String?> getUploadUrl(String fileName);
   Future<void> submitRating(String orderId, String productId, int rating, {List<String>? reviewImageUrls, String? reviewText});
   Future<void> toggleFavorite(String userId, String productId);

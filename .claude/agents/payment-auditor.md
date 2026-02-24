@@ -28,9 +28,9 @@ Audit the complete payment pipeline for financial correctness, security, and edg
 ## Audit Checklist
 - [ ] PaymentIntent amount = sum of (item prices × quantities) + shipping - discounts?
 - [ ] Platform fee calculation: exactly 2.5% of total?
-- [ ] Manual capture: authorization created but NOT captured at checkout?
-- [ ] Capture only triggered after seller confirms shipping?
-- [ ] 7-day authorization expiry handled by cron?
+- [ ] Auto-capture: payment captured immediately at checkout (`paymentStatus` always `'captured'`); no manual capture step?
+- [ ] `source_transaction` = charge ID (`ch_xxx`), NOT PaymentIntent (`pi_xxx`)?
+- [ ] 7-day authorization expiry handled by cron (only for edge-case un-captured auths)?
 - [ ] Refund: full amount returned, stock restored, order status updated?
 - [ ] Partial refund: per-item amounts correct?
 - [ ] Webhook idempotency: duplicate events don't double-process?

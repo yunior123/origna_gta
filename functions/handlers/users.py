@@ -13,6 +13,7 @@ from typing import Any
 from firebase_functions import https_fn
 
 from schema_constants import (
+    COUNTRY_CANADA,
     BusinessRules,
     Collections,
     ConsentMethodValues,
@@ -45,6 +46,13 @@ def get_server_timestamp():
     from firebase_admin import firestore
 
     return firestore.SERVER_TIMESTAMP
+
+
+def _get_firestore_increment(n: int):
+    """Return a Firestore Increment sentinel for atomic counter updates."""
+    from firebase_admin import firestore
+
+    return firestore.Increment(n)
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -202,6 +210,13 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
         update_data[Fields.NAME] = name
 
+    # Handle preferredLanguage update (Quebec Bill 96 / CASL compliance)
+    if Fields.PREFERRED_LANGUAGE in data:
+        lang = data[Fields.PREFERRED_LANGUAGE]
+        if lang not in LanguageValues.ALL:
+            raise https_fn.HttpsError("invalid-argument", f"Invalid language. Must be one of: {list(LanguageValues.ALL)}")
+        update_data[Fields.PREFERRED_LANGUAGE] = lang
+
     # Update user document
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
@@ -287,7 +302,7 @@ def update_email_consent(req: https_fn.CallableRequest) -> dict[str, Any]:
         {
             Fields.EMAIL_CONSENT: email_consent,
             Fields.CONSENT_TIMESTAMP: get_server_timestamp(),
-            Fields.CONSENT_METHOD: "user_preference" if email_consent else "unsubscribe",
+            Fields.CONSENT_METHOD: ConsentMethodValues.USER_PREFERENCE if email_consent else ConsentMethodValues.UNSUBSCRIBE,
             Fields.UPDATED_AT: get_server_timestamp(),
         }
     )
@@ -320,35 +335,40 @@ def add_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     except Exception as e:
         raise https_fn.HttpsError("invalid-argument", f"Invalid address: {e}") from e
 
+    if address.country != COUNTRY_CANADA:
+        raise https_fn.HttpsError("invalid-argument", "Shipping addresses must be in Canada")
+
     address_dict = address.model_dump()
 
     db = get_db()
-    addresses_ref = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES)
+    user_ref = db.collection(Collections.USERS).document(user_id)
+    addresses_ref = user_ref.collection(Collections.ADDRESSES)
 
-    # Check limit
-    existing_addresses = list(addresses_ref.get())
-    if len(existing_addresses) >= 10:
+    # Check limit using the cached counter (O(1) instead of O(n) reads)
+    user_snap = user_ref.get()
+    user_data = user_snap.to_dict() or {}
+    address_count = int(user_data.get(Fields.ADDRESS_COUNT, 0))
+    if address_count >= 10:
         raise https_fn.HttpsError("resource-exhausted", "Maximum of 10 addresses allowed.")
 
     # First address is automatically default
-    if len(existing_addresses) == 0:
+    if address_count == 0:
         address_dict[Fields.IS_DEFAULT] = True
 
-    # If this one is set to default, we must unset others
-    if address_dict.get(Fields.IS_DEFAULT):
-        batch = db.batch()
-        for doc in existing_addresses:
-            if doc.to_dict().get(Fields.IS_DEFAULT):
-                batch.update(doc.reference, {Fields.IS_DEFAULT: False})
+    batch = db.batch()
 
-        new_ref = addresses_ref.document()
-        batch.set(new_ref, address_dict)
-        batch.commit()
-        address_id = new_ref.id
-    else:
-        # Just add it
-        _, new_ref = addresses_ref.add(address_dict)
-        address_id = new_ref.id
+    # If new address is default, unset the current default
+    if address_dict.get(Fields.IS_DEFAULT) and address_count > 0:
+        existing_defaults = list(addresses_ref.where(Fields.IS_DEFAULT, "==", True).get())
+        for doc in existing_defaults:
+            batch.update(doc.reference, {Fields.IS_DEFAULT: False})
+
+    new_ref = addresses_ref.document()
+    batch.set(new_ref, address_dict)
+    # Atomically increment addressCount
+    batch.update(user_ref, {Fields.ADDRESS_COUNT: _get_firestore_increment(1)})
+    batch.commit()
+    address_id = new_ref.id
 
     return create_success_response({Fields.ADDRESS_ID: address_id})
 
@@ -374,6 +394,9 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     except Exception as e:
         raise https_fn.HttpsError("invalid-argument", f"Invalid address: {e}") from e
 
+    if address.country != COUNTRY_CANADA:
+        raise https_fn.HttpsError("invalid-argument", "Shipping addresses must be in Canada")
+
     address_dict = address.model_dump()
 
     db = get_db()
@@ -385,10 +408,12 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not doc.exists:
         raise https_fn.HttpsError("not-found", "Address not found")
 
+    # Fetch existing addresses once — used in both default-change branches
+    existing_addresses = list(db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get())
+
     # If this one is set to default and wasn't before, we must unset others
     if address_dict.get(Fields.IS_DEFAULT) and not doc.to_dict().get(Fields.IS_DEFAULT):
         batch = db.batch()
-        existing_addresses = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get()
         for existing_doc in existing_addresses:
             if existing_doc.id != address_id and existing_doc.to_dict().get(Fields.IS_DEFAULT):
                 batch.update(existing_doc.reference, {Fields.IS_DEFAULT: False})
@@ -396,9 +421,6 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
         batch.commit()
     elif not address_dict.get(Fields.IS_DEFAULT) and doc.to_dict().get(Fields.IS_DEFAULT):
         # Prevent unsetting default if it's the only one
-        existing_addresses = list(
-            db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get()
-        )
         if len(existing_addresses) > 1:
             # We enforce that AT LEAST one must be default
             # Auto-promote the first non-matching address
@@ -442,21 +464,23 @@ def delete_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("not-found", "Address not found")
 
     was_default = doc.to_dict().get(Fields.IS_DEFAULT)
+    user_ref = db.collection(Collections.USERS).document(user_id)
 
-    # If it was default, try to promote another address
+    # Always use a batch so we atomically decrement addressCount
+    batch = db.batch()
+    batch.delete(address_ref)
+    batch.update(user_ref, {Fields.ADDRESS_COUNT: _get_firestore_increment(-1)})
+
+    # If it was default, promote another address
     if was_default:
         existing_addresses = list(addresses_ref.get())
-        batch = db.batch()
-        batch.delete(address_ref)
         promoted = False
         for existing_doc in existing_addresses:
             if existing_doc.id != address_id and not promoted:
                 batch.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
                 promoted = True
-        batch.commit()
-    else:
-        address_ref.delete()
 
+    batch.commit()
     return create_success_response({"deleted": True})
 
 

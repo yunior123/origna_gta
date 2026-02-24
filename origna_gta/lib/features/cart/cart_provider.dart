@@ -107,65 +107,51 @@ final cartSubtotalProvider = Provider.autoDispose<double>((ref) {
   return cartDetails.maybeWhen(data: (items) => items.fold(0.0, (total, item) => total + (item.price * item.quantity)), orElse: () => 0.0);
 });
 
-/// Fetches cart items with full product details using batch fetch
+/// Fetches cart items with full product details using the shared batch-fetch cache.
+/// Reuses [_cartProductsBatchProvider] to avoid a duplicate Firestore whereIn query.
 final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailModel>>((ref) async {
   final cartItems = ref.watch(cartItemsProvider);
-  final firestore = ref.watch(firestoreProvider);
+  final productCache = await ref.watch(_cartProductsBatchProvider.future);
 
   return cartItems.when(
     data: (items) async {
       if (items.isEmpty) return [];
 
-      final productIds = items.map((i) => i.productId).toList();
       final List<CartItemDetailModel> results = [];
-
-      // Batch fetch products using whereIn (Firestore limit is 30 per query)
-      for (var i = 0; i < productIds.length; i += 30) {
-        final batch = productIds.skip(i).take(30).toList();
-        final snapshot = await firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: batch).get();
-
-        // Create a map for O(1) lookup
-        final productMap = {for (var doc in snapshot.docs) doc.id: doc};
-
-        // Match products with cart items in original batch order
-        for (final productId in batch) {
-          final productDoc = productMap[productId];
-          if (productDoc != null && productDoc.exists) {
-            final cartItem = items.firstWhere((item) => item.productId == productId);
-            final productData = productDoc.data();
-
-            results.add(
-              CartItemDetailModel(
-                productId: productId,
-                name: productData[Fields.name] ?? '',
-                description: productData[Fields.description] ?? '',
-                price: (productData[Fields.price] ?? 0).toDouble(),
-                imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
-                quantity: cartItem.quantity,
-                createdAt: cartItem.createdAt,
-                sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
-                sellerId: productData[Fields.sellerId] ?? '',
-                weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
-                lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
-                widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
-                heightCm: productData[Fields.heightCm] != null ? (productData[Fields.heightCm] as num).toDouble() : null,
-                isLocalDeliveryOnly: productData[Fields.isLocalDeliveryOnly] ?? false,
-                isPerishable: productData[Fields.isPerishable] ?? false,
-                estimatedShipDays: productData[Fields.estimatedShipDays] ?? 3,
-                deliveryOptions: productData[Fields.deliveryOptions] != null
-                    ? (productData[Fields.deliveryOptions] as List)
-                          .whereType<Map>()
-                          .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
-                          .whereType<SellerDeliveryOption>()
-                          .toList()
-                    : [],
-                minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
-                freeShipping: productData[Fields.freeShipping] ?? false,
-                isDigital: productData[Fields.isDigital] ?? false,
-                buyerNote: cartItem.buyerNote,
-              ),
-            );
-          }
+      for (final cartItem in items) {
+        final productData = productCache[cartItem.productId];
+        if (productData != null) {
+          results.add(
+            CartItemDetailModel(
+              productId: cartItem.productId,
+              name: productData[Fields.name] ?? '',
+              description: productData[Fields.description] ?? '',
+              price: (productData[Fields.price] ?? 0).toDouble(),
+              imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
+              quantity: cartItem.quantity,
+              createdAt: cartItem.createdAt,
+              sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
+              sellerId: productData[Fields.sellerId] ?? '',
+              weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
+              lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
+              widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
+              heightCm: productData[Fields.heightCm] != null ? (productData[Fields.heightCm] as num).toDouble() : null,
+              isLocalDeliveryOnly: productData[Fields.isLocalDeliveryOnly] ?? false,
+              isPerishable: productData[Fields.isPerishable] ?? false,
+              estimatedShipDays: productData[Fields.estimatedShipDays] ?? 3,
+              deliveryOptions: productData[Fields.deliveryOptions] != null
+                  ? (productData[Fields.deliveryOptions] as List)
+                        .whereType<Map>()
+                        .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
+                        .whereType<SellerDeliveryOption>()
+                        .toList()
+                  : [],
+              minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
+              freeShipping: productData[Fields.freeShipping] ?? false,
+              isDigital: productData[Fields.isDigital] ?? false,
+              buyerNote: cartItem.buyerNote,
+            ),
+          );
         }
       }
 

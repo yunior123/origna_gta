@@ -71,8 +71,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     if (state.isLoading) return;
 
     final isDevOrTestRun =
-        const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'dev' ||
-        const bool.fromEnvironment('IS_TEST', defaultValue: false);
+        const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'dev';
 
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'product.please_enter_name'.tr());
@@ -206,7 +205,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         return;
       }
       final invalidVariants = state.variants.where((v) {
-        return v.price == null || v.price! <= 0;
+        return v.priceCents == null || v.priceCents! <= 0;
       });
       if (invalidVariants.isNotEmpty) {
         state = state.copyWith(errorMessage: 'product.variant_price_required'.tr());
@@ -456,7 +455,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void updateVariantPrice(int index, double? price) {
     final variants = List<ProductVariantEntry>.from(state.variants);
-    variants[index] = variants[index].copyWith(price: price);
+    final priceCents = price != null ? (price * 100).round() : null;
+    variants[index] = variants[index].copyWith(priceCents: priceCents);
     state = state.copyWith(variants: variants);
   }
 
@@ -504,7 +504,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       final existing = existingByKey[key];
       return ProductVariantEntry(
         optionValues: combo,
-        price: existing?.price,
+        priceCents: existing?.priceCents,
         stockQuantity: existing?.stockQuantity ?? 0,
         sku: existing?.sku,
         isActive: existing?.isActive ?? true,

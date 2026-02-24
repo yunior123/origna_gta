@@ -71,6 +71,10 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
   stripeSubscriptionId: json['stripeSubscriptionId'] as String?,
   notifyNewProducts: json['notifyNewProducts'] as bool? ?? false,
   notifyTrending: json['notifyTrending'] as bool? ?? false,
+  fcmToken: json['fcmToken'] as String?,
+  fcmTokenUpdatedAt: json['fcmTokenUpdatedAt'] == null
+      ? null
+      : DateTime.parse(json['fcmTokenUpdatedAt'] as String),
 );
 
 Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
@@ -112,6 +116,8 @@ Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'stripeSubscriptionId': instance.stripeSubscriptionId,
   'notifyNewProducts': instance.notifyNewProducts,
   'notifyTrending': instance.notifyTrending,
+  'fcmToken': instance.fcmToken,
+  'fcmTokenUpdatedAt': instance.fcmTokenUpdatedAt?.toIso8601String(),
 };
 
 const _$UserRoleEnumMap = {

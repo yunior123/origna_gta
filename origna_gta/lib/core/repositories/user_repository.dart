@@ -54,11 +54,6 @@ class FirebaseUserRepository implements UserRepository {
   }
 
   @override
-  Future<void> updateAddress(String userId, Address address) async {
-    await _firestore.collection(Collections.users).doc(userId).update({Fields.address: address.toMap()});
-  }
-
-  @override
   Future<void> updateBuyerAddress(String addressId, Address address) async {
     final callable = _functions.httpsCallable('update_buyer_address');
     final Map<String, dynamic> payload = address.toMap();
@@ -72,7 +67,12 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Future<void> updatePreferredLanguage(String userId, String lang) async {
-    await _firestore.collection(Collections.users).doc(userId).update({Fields.preferredLanguage: lang});
+    final callable = _functions.httpsCallable('update_user_profile');
+    final response = await callable.call({Fields.preferredLanguage: lang});
+    final data = response.data as Map<String, dynamic>;
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Failed to update language preference');
+    }
   }
 
   // --- Address Book Methods ---
@@ -172,7 +172,6 @@ abstract class UserRepository {
   Future<UserModel?> getUserProfile(String userId);
   Future<void> setDefaultBuyerAddress(String addressId);
 
-  Future<void> updateAddress(String userId, Address address);
   Future<void> updateBuyerAddress(String addressId, Address address);
   Future<void> updatePreferredLanguage(String userId, String lang);
   // Address Book

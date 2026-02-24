@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../utils/design_tokens.dart';
@@ -100,6 +101,9 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
   }
 
   void _onHover(bool isHovering) {
+    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.macOS && defaultTargetPlatform != TargetPlatform.windows && defaultTargetPlatform != TargetPlatform.linux) {
+      return;
+    }
     if (widget.enableHoverScale && widget.onTap != null) {
       if (isHovering) {
         _controller.forward();

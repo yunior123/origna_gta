@@ -1,19 +1,41 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 /// Tracks local subscription state for back-in-stock notifications.
-/// The source of truth for "are we subscribed?" is the backend; this
-/// provider manages the optimistic local state after subscribe/unsubscribe.
+/// On first use, fetches the real subscription state from Firestore.
 final stockNotificationNotifierProvider =
-    StateNotifierProvider.autoDispose.family<StockNotificationNotifier, AsyncValue<bool>, String>(
-  (ref, productId) => StockNotificationNotifier(productId),
+    StateNotifierProvider.family<StockNotificationNotifier, AsyncValue<bool>, String>(
+  (ref, productId) => StockNotificationNotifier(productId)..init(),
 );
 
 class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
   final String productId;
 
-  StockNotificationNotifier(this.productId) : super(const AsyncValue.data(false));
+  StockNotificationNotifier(this.productId) : super(const AsyncValue.loading());
+
+  /// Checks Firestore for an existing subscription so the UI reflects the
+  /// real state even if the user subscribed in a previous session.
+  Future<void> init() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        state = const AsyncValue.data(false);
+        return;
+      }
+      final snap = await FirebaseFirestore.instance
+          .collection(Collections.stockNotifications)
+          .where(Fields.userId, isEqualTo: uid)
+          .where(Fields.productId, isEqualTo: productId)
+          .limit(1)
+          .get();
+      state = AsyncValue.data(snap.docs.isNotEmpty);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
 
   Future<void> subscribe() async {
     state = const AsyncValue.loading();

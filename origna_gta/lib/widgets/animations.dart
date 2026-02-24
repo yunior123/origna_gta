@@ -89,7 +89,7 @@ class StaggeredList extends StatelessWidget {
       children: List.generate(children.length, (index) {
         return FadeSlideIn(
           duration: itemDuration,
-          delay: staggerDelay * index,
+          delay: staggerDelay * index.clamp(0, 10),
           beginOffset: beginOffset,
           child: children[index],
         );

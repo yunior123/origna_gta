@@ -50,6 +50,7 @@ dependencies:
   intl: ^0.20.2
   easy_localization: ^3.0.7
   image_picker: ^1.2.1
+  qr_flutter: ^4.1.0
   cloudflare_r2: ^0.0.14
   cloudflare_r2_uploader: ^1.0.0
   cloud_functions: ^6.0.6

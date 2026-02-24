@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -114,6 +115,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         deliverySpeed: DeliverySpeed.standard,
         isCalculatingShipping: false,
       );
+
+      // Recalculate taxes — GST/HST applies to shipping costs in Canada
+      final subtotal = _ref.read(cartSubtotalProvider);
+      calculateTaxes(subtotal, shippingCost: cost);
     } on CircuitBreakerOpenException catch (_) {
       // Algolia/service is temporarily unavailable
       state = state.copyWith(shippingError: 'checkout.errors.shipping_unavailable'.tr(), isCalculatingShipping: false);
@@ -176,15 +181,16 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final functions = _ref.read(firebaseFunctionsProvider);
       final result = await functions.httpsCallable(CloudFunctionEndpoints.applyCoupon).call({
         Fields.couponCode: trimmed,
-        'cartSubtotalCents': subtotalCents,
+        ApiKeys.cartSubtotalCents: subtotalCents,
       });
       final data = (result.data as Map<Object?, Object?>).cast<String, dynamic>();
       final discountCents = (data['discountAmountCents'] as num?)?.toInt() ?? 0;
       state = state.copyWith(couponCode: trimmed, couponDiscountCents: discountCents, isCouponLoading: false);
     } on FirebaseFunctionsException catch (e) {
       state = state.copyWith(isCouponLoading: false, couponError: e.message ?? 'Invalid coupon code');
-    } catch (_) {
+    } catch (e, st) {
       state = state.copyWith(isCouponLoading: false, couponError: 'Unable to apply coupon. Please try again.');
+      AppError.log(e, stackTrace: st, context: 'checkout_applyCoupon');
     }
   }
 
@@ -333,10 +339,11 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       state = state.copyWith(isProcessing: false, checkoutError: message);
 
       return CheckoutError(message: message, code: e.code);
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) {
         return CheckoutError(message: 'Operation cancelled');
       }
+      AppError.log(e, stackTrace: st, context: 'checkout_startCheckout');
       state = state.copyWith(isProcessing: false, checkoutError: AppError.getMessage(e));
       return CheckoutError(message: AppError.getMessage(e));
     }
@@ -370,7 +377,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     for (final item in items) {
       final sellerAddr = item.sellerAddress;
       if (sellerAddr.latitude == null || sellerAddr.longitude == null) {
-        return false;
+        // Seller geo coordinates missing — skip item, can't confirm local delivery distance
+        debugPrint('[checkout_localDelivery] product ${item.productId}: seller address missing geo coords, skipping');
+        continue;
       }
 
       // Simple distance check using Haversine approximation

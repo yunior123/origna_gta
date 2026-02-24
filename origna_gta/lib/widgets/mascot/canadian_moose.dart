@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -36,15 +37,15 @@ class MooseController extends ChangeNotifier {
 }
 
 class MooseTips {
-  static final List<String> _tips = [
-    '🍁 Support local sellers!',
-    '📦 Fast GTA shipping',
-    '🔒 Secure payments',
-    '🌟 Support local biz',
-    '🛒 Cart saves items',
-    '📱 Become a seller!',
-    '💬 Need help? Tap!',
-    '🇨🇦 Made in Canada',
+  static List<String> get _tips => [
+    'mascot.moose_tip_local_support'.tr(),
+    'mascot.moose_tip_fast_shipping'.tr(),
+    'mascot.moose_tip_secure_payments'.tr(),
+    'mascot.moose_tip_local_biz'.tr(),
+    'mascot.moose_tip_cart_saves'.tr(),
+    'mascot.moose_tip_become_seller'.tr(),
+    'mascot.moose_tip_get_help'.tr(),
+    'mascot.moose_tip_made_in_canada'.tr(),
   ];
 
   static String getTipForIndex(int index) => _tips[index % _tips.length];

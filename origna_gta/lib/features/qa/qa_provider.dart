@@ -51,9 +51,9 @@ class QAController extends StateNotifier<AsyncValue<void>> {
       final subState = _ref.read(subscriptionStreamProvider);
       final isPremium = subState.when(
         data: (sub) => sub?.isPremium ?? false,
-        // If stream is still loading/error, let backend perform authoritative enforcement.
-        loading: () => true,
-        error: (error, stackTrace) => true,
+        // Default to false — backend is authoritative; show error state rather than silently passing
+        loading: () => false,
+        error: (error, stackTrace) => false,
       );
       if (!isPremium) {
         throw const PremiumRequiredException(

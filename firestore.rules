@@ -208,6 +208,13 @@ service cloud.firestore {
       
       // Users can't delete their own account (use Cloud Function)
       allow delete: if false;
+
+      // --- NOTIFICATIONS SUBCOLLECTION ---
+      match /notifications/{notifId} {
+        allow read: if isOwner(userId);
+        // Backend-only writes via Admin SDK
+        allow create, update, delete: if false;
+      }
       
       // --- CART SUBCOLLECTION ---
       match /cart/{itemId} {
@@ -234,8 +241,8 @@ service cloud.firestore {
       // --- ADDRESSES SUBCOLLECTION ---
       match /addresses/{addressId} {
         allow read: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidAddress(request.resource.data);
-        allow delete: if isOwner(userId);
+        allow create, update: if false;  // All writes go through Cloud Functions (Admin SDK)
+        allow delete: if false;  // Deletes also go through delete_buyer_address CF
       }
       
       // --- PAYOUTS SUBCOLLECTION (Seller payout history) ---
@@ -301,7 +308,7 @@ service cloud.firestore {
           'categoryId', 'stockQuantity',
           'keywords',
           // Metadata
-          'createdAt', 'lifecycleStatus', 'rating', 'taxCode',
+          'createdAt', 'lifecycleStatus', 'taxCode',
           // Shipping / delivery
           'weightKg', 'lengthCm', 'widthCm', 'heightCm',
           'isLocalDeliveryOnly', 'isPerishable', 'estimatedShipDays',
@@ -494,7 +501,7 @@ service cloud.firestore {
         && request.resource.data.question.size() >= 10
         && request.resource.data.question.size() <= 500;
       allow update: if false;  // answers written by backend only
-      allow delete: if false;  // no deletes from client
+      allow delete: if isAdmin();  // admins can purge abusive content
     }
     
     // ================================================================
@@ -647,12 +654,18 @@ service cloud.firestore {
 
     // ================================================================
     // COUPONS COLLECTION (N-07)
-    // Any authenticated user can read (to validate a code).
+    // Reads restricted to admin-only — all coupon validation is done
+    // server-side via apply_coupon callable; clients never read raw docs.
     // All writes are backend-only via Cloud Functions.
     // ================================================================
     match /coupons/{couponId} {
-      allow read: if request.auth != null;
+      allow read: if isAdmin();
       allow write: if false;
+
+      // Per-user usage tracking — never readable by clients
+      match /coupon_uses/{userId} {
+        allow read, write: if false;
+      }
     }
 
     // ================================================================

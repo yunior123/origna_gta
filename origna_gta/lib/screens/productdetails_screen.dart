@@ -8,6 +8,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/features/products/stock_notification_provider.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/models/qa_model.dart';
@@ -468,9 +469,6 @@ class _AddToCartButton extends ConsumerStatefulWidget {
 }
 
 class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
-  bool _notifyLoading = false;
-  bool? _subscribed; // null = unknown, true = subscribed, false = not subscribed
-
   @override
   Widget build(BuildContext context) {
     final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
@@ -494,14 +492,16 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
 
     // Out of stock: show "Notify me when available" button
     if (widget.stockQuantity <= 0) {
-      final isSubscribed = _subscribed ?? false;
+      final notifState = ref.watch(stockNotificationNotifierProvider(widget.productId));
+      final isSubscribed = notifState.value ?? false;
+      final isLoading = notifState.isLoading;
       return Column(
         key: const Key('product_notify_section'),
         children: [
           ModernButton(
             key: const Key('product_notify_me_button'),
             label: isSubscribed ? 'product.notify_cancel'.tr() : 'product.notify_me'.tr(),
-            onPressed: _notifyLoading ? null : () => _toggleNotification(context, currentUser),
+            onPressed: isLoading ? null : () => _toggleNotification(context, currentUser),
             fullWidth: true,
             icon: isSubscribed ? Icons.notifications_off_outlined : Icons.notifications_outlined,
           ),
@@ -558,24 +558,17 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
       showLoginPrompt(context);
       return;
     }
-    setState(() => _notifyLoading = true);
     final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(stockNotificationNotifierProvider(widget.productId).notifier);
+    final isSubscribed = ref.read(stockNotificationNotifierProvider(widget.productId)).value ?? false;
     try {
-      final functions = ref.read(firebaseFunctionsProvider);
-      final isSubscribed = _subscribed ?? false;
       if (isSubscribed) {
-        await functions
-            .httpsCallable(CloudFunctionEndpoints.unsubscribeStockNotification)
-            .call({Fields.productId: widget.productId});
-        if (mounted) setState(() => _subscribed = false);
+        await notifier.unsubscribe();
         if (context.mounted) {
           messenger.showSnackBar(SnackBar(content: Text('product.notify_cancelled'.tr()), backgroundColor: DesignTokens.textSecondary));
         }
       } else {
-        await functions
-            .httpsCallable(CloudFunctionEndpoints.subscribeStockNotification)
-            .call({Fields.productId: widget.productId});
-        if (mounted) setState(() => _subscribed = true);
+        await notifier.subscribe();
         if (context.mounted) {
           messenger.showSnackBar(SnackBar(content: Text('product.notify_subscribed'.tr()), backgroundColor: DesignTokens.success));
         }
@@ -584,8 +577,6 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
       if (context.mounted) {
         messenger.showSnackBar(SnackBar(content: Text(AppError.getMessage(e, 'product.notify_error'.tr())), backgroundColor: DesignTokens.error));
       }
-    } finally {
-      if (mounted) setState(() => _notifyLoading = false);
     }
   }
 }

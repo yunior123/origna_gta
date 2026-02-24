@@ -227,10 +227,15 @@ class ProductVariant(BaseModel):
 
     variantId: str = Field(..., min_length=1, max_length=100, description="Unique variant identifier")
     optionValues: dict[str, str] = Field(..., description="Selected options: { 'Size': 'M', 'Color': 'Red' }")
-    price: float | None = Field(default=None, gt=0, le=100000, description="Override price for this variant")
+    priceCents: int | None = Field(default=None, ge=0, description="Override price for this variant in integer cents")
     stockQuantity: int = Field(..., ge=0, description="Available stock for this variant")
     sku: str | None = Field(default=None, max_length=100, description="Variant SKU")
     isActive: bool = Field(default=True, description="Whether variant is active")
+
+    @property
+    def price_dollars(self) -> float | None:
+        """Price in dollars for display/computation."""
+        return self.priceCents / 100.0 if self.priceCents is not None else None
 
 
 class Product(BaseModel):

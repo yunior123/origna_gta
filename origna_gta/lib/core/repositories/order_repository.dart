@@ -51,8 +51,8 @@ class FirebaseOrderRepository implements OrderRepository {
       Fields.orderId: orderId,
       Fields.productId: itemId,
       ApiKeys.newStatus: status,
-      Fields.trackingNumber: ?trackingNumber,
-      Fields.carrier: ?carrier,
+      if (trackingNumber != null) Fields.trackingNumber: trackingNumber,
+      if (carrier != null) Fields.carrier: carrier,
     });
   }
 
@@ -88,7 +88,7 @@ class FirebaseOrderRepository implements OrderRepository {
           constants.PaymentStatus.authorizationExpired.value,
         ])
         .orderBy(Fields.createdAt, descending: true)
-        .limit(50) // Pagination: limit initial load for scalability (100M+ users)
+        .limit(BusinessRules.ordersPageSize) // Pagination: limit initial load for scalability (100M+ users)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
   }
@@ -121,7 +121,7 @@ class FirebaseOrderRepository implements OrderRepository {
           constants.PaymentStatus.authorizationExpired.value,
         ])
         .orderBy(Fields.createdAt, descending: true)
-        .limit(50) // Pagination: limit initial load for scalability (100M+ users)
+        .limit(BusinessRules.ordersPageSize) // Pagination: limit initial load for scalability (100M+ users)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
   }

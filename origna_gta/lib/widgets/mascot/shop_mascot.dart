@@ -92,7 +92,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
 
     if (widget.showSpeechBubble) {
       Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
+        if (mounted && widget.showSpeechBubble) {
           setState(() => _isBubbleVisible = true);
           _bubbleController.forward();
           _startTipRotation();
@@ -508,7 +508,7 @@ class MascotPainter extends CustomPainter {
   }
 
   void _drawFace(Canvas canvas, Size size) {
-    final facePaint = Paint()..color = const Color(0xFF1A1A2A);
+    final facePaint = Paint()..color = DesignTokens.darkSurface;
     final faceRect = RRect.fromRectAndRadius(
       Rect.fromCenter(
         center: Offset(0, -size.height * 0.05),
@@ -582,7 +582,7 @@ class MascotPainter extends CustomPainter {
   }
 
   void _drawHands(Canvas canvas, Size size) {
-    final handPaint = Paint()..color = Colors.white;
+    final handPaint = Paint()..color = DesignTokens.textOnPrimary;
     final handY = size.height * 0.08 + (math.sin(idleValue * math.pi * 2 + 1) * 3);
 
     // Rounded paws
@@ -603,5 +603,11 @@ class MascotPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant MascotPainter oldDelegate) => true;
+  bool shouldRepaint(covariant MascotPainter oldDelegate) =>
+      idleValue != oldDelegate.idleValue ||
+      jumpValue != oldDelegate.jumpValue ||
+      blinkValue != oldDelegate.blinkValue ||
+      breathingValue != oldDelegate.breathingValue ||
+      lookTarget != oldDelegate.lookTarget ||
+      excitement != oldDelegate.excitement;
 }

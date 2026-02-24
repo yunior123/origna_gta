@@ -53,7 +53,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
         country: GeoValues.countryCanada,
         phoneNumber: phoneNumber.trim(),
         label: state.selectedLabel,
-        isDefault: state.addressId == null, // first or specific
+        isDefault: state.isDefault,
         latitude: state.latitude,
         longitude: state.longitude,
         addressId: state.addressId,
@@ -90,9 +90,12 @@ class AddressViewModel extends StateNotifier<AddressState> {
         latitude: address.latitude,
         longitude: address.longitude,
         addressId: address.addressId,
+        isDefault: address.isDefault,
       );
     }
   }
+
+  void setDefault(bool value) => state = state.copyWith(isDefault: value);
 
   void setLabel(String label) => state = state.copyWith(selectedLabel: label);
 

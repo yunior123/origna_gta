@@ -118,6 +118,7 @@ abstract final class ApiKeys {
   // === SHIPPING RESPONSE KEYS ===
   static const allItemsShipped = 'allItemsShipped';
   static const approvalRequired = 'approvalRequired';
+  static const cartSubtotalCents = 'cartSubtotalCents';
 }
 
 /// Business rule constants
@@ -129,6 +130,8 @@ abstract final class BusinessRules {
   static const maxCaptureAttempts = 3;
   static const defaultCurrency = 'cad';
   static const allowedShippingCountries = {'Canada', 'CA'};
+  static const ordersPageSize = 50; // Initial load limit for order lists — cursor pagination planned
+  static const favoritesPageSize = 50; // Max favorites streamed per query — pagination planned
   // Sellers can be from any country — no country restriction on seller addresses
 
   /// Tax rates by province
@@ -192,6 +195,9 @@ abstract final class CloudFunctionEndpoints {
   static const suspendSeller = 'suspend_seller';
   static const unsuspendSeller = 'unsuspend_seller';
   static const adminUpdateProductStock = 'admin_update_product_stock';
+  static const adminDeleteReview = 'admin_delete_review';
+  static const adminFlagReview = 'admin_flag_review';
+  static const adminRefundOrder = 'admin_refund_order';
   static const adminMfaEnroll = 'admin_mfa_enroll';
   static const adminMfaVerify = 'admin_mfa_verify';
   static const adminMfaDisable = 'admin_mfa_disable';
@@ -965,6 +971,7 @@ abstract final class Fields {
   static const hasVariants = 'hasVariants';
   static const variants = 'variants';
   static const variantId = 'variantId';
+  static const variantKey = 'variantKey';
   static const variantOptions = 'variantOptions';
   static const variantTitle = 'variantTitle';
   static const variantSku = 'variantSku';
@@ -1210,7 +1217,41 @@ abstract final class CarrierValues {
 
 /// Canadian province code values
 abstract final class ProvinceCodeValues {
+  static const alberta = 'AB';
+  static const britishColumbia = 'BC';
+  static const manitoba = 'MB';
+  static const newBrunswick = 'NB';
+  static const newfoundland = 'NL';
+  static const northwestTerritories = 'NT';
+  static const novaScotia = 'NS';
+  static const nunavut = 'NU';
   static const ontario = 'ON';
+  static const princeEdwardIsland = 'PE';
+  static const quebec = 'QC';
+  static const saskatchewan = 'SK';
+  static const yukon = 'YT';
+
+  static const all = [
+    alberta, britishColumbia, manitoba, newBrunswick, newfoundland,
+    northwestTerritories, novaScotia, nunavut, ontario,
+    princeEdwardIsland, quebec, saskatchewan, yukon,
+  ];
+
+  static const names = {
+    alberta: 'Alberta',
+    britishColumbia: 'British Columbia',
+    manitoba: 'Manitoba',
+    newBrunswick: 'New Brunswick',
+    newfoundland: 'Newfoundland and Labrador',
+    northwestTerritories: 'Northwest Territories',
+    novaScotia: 'Nova Scotia',
+    nunavut: 'Nunavut',
+    ontario: 'Ontario',
+    princeEdwardIsland: 'Prince Edward Island',
+    quebec: 'Quebec',
+    saskatchewan: 'Saskatchewan',
+    yukon: 'Yukon',
+  };
 }
 
 /// Firebase RemoteConfig keys
@@ -1374,8 +1415,33 @@ abstract final class SupplierTypeValues {
   static const cjdropshipping = 'cjdropshipping';
   static const local = 'local';
   static const other = 'other';
+  // Extended supplier platforms
+  static const spocket = 'spocket';
+  static const oberlo = 'oberlo';
+  static const printful = 'printful';
+  static const printify = 'printify';
+  static const madeInChina = 'made_in_china';
+  static const globalSources = 'global_sources';
+  static const gmarket = 'gmarket';
+  static const coupang = 'coupang';
+  static const rakuten = 'rakuten';
+  static const faire = 'faire';
+  static const amazonEurope = 'amazon_europe';
+  static const amazonUsa = 'amazon_usa';
+  static const amazonJapan = 'amazon_japan';
+  static const walmart = 'walmart';
+  static const costco = 'costco';
+  static const etsyWholesale = 'etsy_wholesale';
+  static const indiamart = 'indiamart';
+  static const tradeindia = 'tradeindia';
+  static const custom = 'custom';
 
-  static const all = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping, local, other};
+  static const all = {
+    aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping, local, other,
+    spocket, oberlo, printful, printify, madeInChina, globalSources,
+    gmarket, coupang, rakuten, faire, amazonEurope, amazonUsa, amazonJapan,
+    walmart, costco, etsyWholesale, indiamart, tradeindia, custom,
+  };
 
   /// International suppliers (non-local)
   static const international = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping};

@@ -525,8 +525,22 @@
           "order": "DESCENDING"
         }
       ]
-    }
-    ,
+    },
+    {
+      "collectionGroup": "product_ratings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orderId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "Duplicate-rating guard: one rating per order (query by orderId + userId)"
+    },
     {
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
@@ -541,6 +555,20 @@
         }
       ],
       "comment": "Warehouse pipeline: find seller products referencing a specific warehouse"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "slug",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lifecycleStatus",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

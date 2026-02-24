@@ -5,6 +5,7 @@ library;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Glassmorphic appbar header
 class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -19,7 +20,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.actions,
     this.blurIntensity = GlassBlurIntensity.light,
-    this.backgroundColor = const Color(0xFFFFFFFF),
+    this.backgroundColor = DesignTokens.surface,
     this.elevation = 2,
   });
 
@@ -132,7 +133,7 @@ class GlassCard extends StatelessWidget {
     this.width,
     this.height,
     this.padding = const EdgeInsets.all(12),
-    this.backgroundColor = const Color(0xFFFFFFFF),
+    this.backgroundColor = DesignTokens.surface,
   });
 
   @override
@@ -178,7 +179,7 @@ class GlassFloatingActionButton extends StatefulWidget {
     required this.icon,
     this.tooltip,
     this.blurIntensity = GlassBlurIntensity.light,
-    this.backgroundColor = const Color(0xFFFFFFFF),
+    this.backgroundColor = DesignTokens.surface,
     this.size = 56,
   });
 

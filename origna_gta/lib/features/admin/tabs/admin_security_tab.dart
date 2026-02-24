@@ -1,7 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -20,6 +23,19 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
   List<String> _backupCodes = [];
   final TextEditingController _mfaCodeController = TextEditingController();
   // Backup codes visibility state - reserved for future use
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final uid = ref.read(currentUserProvider)?.uid;
+      if (uid == null || !mounted) return;
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (mounted) {
+        setState(() => _mfaEnabled = (doc.data()?[Fields.mfaEnabled] as bool?) ?? false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -137,16 +153,11 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                       padding: const EdgeInsets.all(16),
                       color: Colors.white,
                       child: _qrCodeUri != null
-                          ? Image.network(
-                              'https://chart.googleapis.com/chart?chs=300x300&chld=M|0&cht=qr&chl=${Uri.encodeComponent(_qrCodeUri!)}',
-                              width: 250,
-                              height: 250,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                width: 250,
-                                height: 250,
-                                color: DesignTokens.outlineVariant,
-                                child: Center(child: Text('admin.security.qr_unavailable'.tr())),
-                              ),
+                          ? QrImageView(
+                              data: _qrCodeUri!,
+                              version: QrVersions.auto,
+                              size: 250,
+                              errorCorrectionLevel: QrErrorCorrectLevel.M,
                             )
                           : Container(
                               width: 250,

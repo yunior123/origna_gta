@@ -149,6 +149,11 @@ class AlgoliaProductRepository implements ProductRepository {
   }
 
   @override
+  Future<Map<String, String>?> getUploadUrlInfo(String fileName) async {
+    throw UnimplementedError('Image upload URLs should be handled by FirebaseProductRepository');
+  }
+
+  @override
   Future<String?> getUploadUrl(String fileName) async {
     throw UnimplementedError('Image upload URLs should be handled by FirebaseProductRepository');
   }

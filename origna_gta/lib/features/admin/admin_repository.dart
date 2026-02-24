@@ -13,6 +13,7 @@ abstract class AdminRepository {
   Future<UserModel?> fetchUserById(String userId);
   Future<Map<String, dynamic>> getPaymentProviders();
   Future<void> flagReview(String reviewId, {required bool flagged});
+  Future<void> refundOrder(String orderId, {String reason = 'Admin refund'});
   Future<void> rejectProduct(String productId, String reason);
   Future<void> setUserSuspended(String userId, bool suspended);
   Future<void> updatePaymentProvider(String provider, bool enabled, {String? reason});
@@ -21,6 +22,7 @@ abstract class AdminRepository {
   Future<Map<String, dynamic>> verifyAdminMfa(String code);
   Stream<List<OrderModel>> watchOrders({String? status, int limit});
   Stream<List<ProductModel>> watchProducts({int limit, String? sellerId});
+  Stream<List<ProductModel>> watchPendingReviewProducts({int limit});
   Stream<List<Map<String, dynamic>>> watchReviews({bool flaggedOnly, bool hasPhotosOnly, int limit});
   Stream<List<UserModel>> watchSellers({int limit});
   Stream<List<UserModel>> watchUsers({int limit});
@@ -148,6 +150,20 @@ class FirebaseAdminRepository implements AdminRepository {
   }
 
   @override
+  Stream<List<ProductModel>> watchPendingReviewProducts({int limit = 200}) {
+    return _firestore
+        .collection(Collections.products)
+        .where(Fields.lifecycleStatus, isEqualTo: ProductLifecycleStatusValues.underReview)
+        .orderBy(Fields.createdAt, descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              return ProductModel.fromMap({Fields.productId: doc.id, ...data});
+            }).toList());
+  }
+
+  @override
   Stream<List<UserModel>> watchSellers({int limit = 100}) {
     return _firestore.collection(Collections.users).where(Fields.roles, arrayContains: UserRoles.seller).orderBy(Fields.createdAt, descending: true).limit(limit).snapshots().map((
       snapshot,
@@ -178,11 +194,16 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> deleteReview(String reviewId) async {
-    await _firestore.collection(Collections.productRatings).doc(reviewId).delete();
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminDeleteReview).call({'reviewId': reviewId});
   }
 
   @override
   Future<void> flagReview(String reviewId, {required bool flagged}) async {
-    await _firestore.collection(Collections.productRatings).doc(reviewId).update({'isFlagged': flagged});
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminFlagReview).call({'reviewId': reviewId, 'flagged': flagged});
+  }
+
+  @override
+  Future<void> refundOrder(String orderId, {String reason = 'Admin refund'}) async {
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminRefundOrder).call({'orderId': orderId, 'reason': reason});
   }
 }

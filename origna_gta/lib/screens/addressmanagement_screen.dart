@@ -4,16 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/profile/address_management_viewmodel.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
-
-final addressManagementViewModelProvider = StateNotifierProvider.autoDispose<AddressManagementViewModel, AsyncValue<void>>((ref) {
-  return AddressManagementViewModel(ref);
-});
 
 class AddressManagementScreen extends ConsumerWidget {
   const AddressManagementScreen({super.key});
@@ -171,9 +169,9 @@ class AddressManagementScreen extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            address.label == 'Home'
+                            address.label == AddressLabelValues.home
                                 ? Icons.home_outlined
-                                : address.label == 'Work'
+                                : address.label == AddressLabelValues.work
                                 ? Icons.business_outlined
                                 : Icons.location_on_outlined,
                             size: 14,
@@ -316,27 +314,3 @@ class AddressManagementScreen extends ConsumerWidget {
   }
 }
 
-class AddressManagementViewModel extends StateNotifier<AsyncValue<void>> {
-  final Ref ref;
-  AddressManagementViewModel(this.ref) : super(const AsyncValue.data(null));
-
-  Future<void> deleteAddress(String addressId) async {
-    state = const AsyncValue.loading();
-    try {
-      await ref.read(userRepositoryProvider).deleteBuyerAddress(addressId);
-      state = const AsyncValue.data(null);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-
-  Future<void> setDefaultAddress(String addressId) async {
-    state = const AsyncValue.loading();
-    try {
-      await ref.read(userRepositoryProvider).setDefaultBuyerAddress(addressId);
-      state = const AsyncValue.data(null);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-}

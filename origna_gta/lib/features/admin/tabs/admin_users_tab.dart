@@ -307,6 +307,29 @@ class _UserCard extends ConsumerWidget {
         success = await viewModel.updateUserRoles(user.uid, remove: [UserRoles.seller]);
         break;
       case 'make_admin':
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+            title: Row(
+              children: [
+                Icon(Icons.admin_panel_settings_rounded, color: DesignTokens.secondary),
+                const SizedBox(width: 10),
+                Text('admin.users.make_admin'.tr()),
+              ],
+            ),
+            content: Text('admin.users.make_admin_confirm'.tr(args: [user.email])),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(backgroundColor: DesignTokens.secondary),
+                child: Text('admin.users.confirm_grant_admin'.tr()),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
         success = await viewModel.updateUserRoles(user.uid, add: [UserRoles.admin]);
         break;
       case 'suspend':

@@ -22,6 +22,7 @@ from firebase_functions import https_fn
 
 from schema_constants import (
     APP_NAME,
+    AdminActionValues,
     ApiKeys,
     BusinessRules,
     Collections,
@@ -203,13 +204,20 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
     target_user_data = target_user_doc.to_dict()
     old_roles = target_user_data.get(Fields.ROLES, [])
 
+    # Guard: cannot demote another admin's admin role (requires super-admin or second admin)
+    if UserRoleValues.ADMIN in roles_to_remove and UserRoleValues.ADMIN in old_roles:
+        raise https_fn.HttpsError(
+            "permission-denied",
+            "Demoting an admin requires contacting the platform owner directly.",
+        )
+
     # Compute new roles via add/remove delta
     new_roles = list((set(old_roles) | set(roles_to_add)) - set(roles_to_remove))
     # Ensure at least 'buyer' role is always present
     if UserRoleValues.BUYER not in new_roles:
         new_roles.append(UserRoleValues.BUYER)
 
-    # Update roles
+    # Update roles in Firestore first
     target_user_ref.update(
         {
             Fields.ROLES: new_roles,
@@ -219,12 +227,23 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     )
 
-    # Update custom claims in Firebase Auth
+    # Sync Firebase Auth custom claims — if this fails, revert the Firestore write
     try:
         custom_claims = {role: role in new_roles for role in UserRoleValues.ALL}
         auth.set_custom_user_claims(target_user_id, custom_claims)
     except Exception as e:
-        logger.error(f"Failed to set custom claims: {str(e)}")
+        # Revert to keep Firestore and Auth claims in sync
+        try:
+            target_user_ref.update(
+                {
+                    Fields.ROLES: old_roles,
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                    Fields.LAST_ROLE_UPDATE_BY: admin_id,
+                }
+            )
+        except Exception as revert_err:
+            logger.critical(f"CRITICAL: Failed to revert roles after claims failure for {target_user_id}: {revert_err}")
+        raise https_fn.HttpsError("internal", f"Role update failed during Auth sync: {e}") from e
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add(
@@ -317,9 +336,8 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     seller_data = seller_doc.to_dict()
 
-    # Verify user has seller role
-    if UserRoleValues.SELLER not in seller_data.get(Fields.ROLES, []):
-        raise https_fn.HttpsError("failed-precondition", "User is not a seller")
+    # Deactivate products and cancel orders only if user has seller role
+    is_seller = UserRoleValues.SELLER in seller_data.get(Fields.ROLES, [])
 
     # Suspend seller
     seller_ref.update(
@@ -332,108 +350,100 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     )
 
-    # Deactivate all seller's products (with safety limit)
-    products = (
-        get_db()
-        .collection(Collections.PRODUCTS)
-        .where(Fields.SELLER_ID, "==", seller_id)
-        .where(Fields.IS_ACTIVE, "==", True)
-        .limit(500)
-        .stream()
-    )
-
+    # Deactivate all seller's products and cancel orders only if user has seller role
     product_count = 0
-    batch = get_db().batch()
-    batch_count = 0
-
-    for product_doc in products:
-        batch.update(product_doc.reference, {Fields.IS_ACTIVE: False, Fields.SUSPENDED_AT: get_server_timestamp()})
-        product_count += 1
-        batch_count += 1
-
-        # Commit batch every 500 operations (Firestore limit)
-        if batch_count >= 500:
-            batch.commit()
-            batch = get_db().batch()
-            batch_count = 0
-
-    # Commit remaining operations
-    if batch_count > 0:
-        batch.commit()
-
-    # Cancel all pending/confirmed orders (with safety limit)
-    # NOTE: Use denormalized sellerIds field (not nested items.sellerId which Firestore doesn't support)
-    orders = (
-        get_db()
-        .collection(Collections.ORDERS)
-        .where(Fields.SELLER_IDS, "array_contains", seller_id)
-        .where(
-            Fields.ORDER_STATUS,
-            "in",
-            [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING],
-        )
-        .limit(200)
-        .stream()
-    )
-
     order_count = 0
-    # Collect product IDs to update in batch
-    product_updates = {}  # {productId: quantity_to_restore}
+    product_updates: dict[str, int] = {}
 
-    order_batch = get_db().batch()
-    order_batch_count = 0
-
-    for order_doc in orders:
-        order_data = order_doc.to_dict()
-
-        # Accumulate stock restorations
-        for item in order_data[Fields.ITEMS]:
-            if item[Fields.SELLER_ID] == seller_id:
-                product_id = item[Fields.PRODUCT_ID]
-                quantity = item[Fields.QUANTITY]
-                product_updates[product_id] = product_updates.get(product_id, 0) + quantity
-
-        order_batch.update(
-            order_doc.reference,
-            {
-                Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
-                Fields.CANCELLATION_REASON: f"Seller suspended: {reason}",
-                Fields.CANCELLED_BY: admin_id,
-                Fields.CANCELLED_AT: get_server_timestamp(),
-                Fields.UPDATED_AT: get_server_timestamp(),
-            },
+    if is_seller:
+        # Deactivate all seller's products (with safety limit)
+        products = (
+            get_db()
+            .collection(Collections.PRODUCTS)
+            .where(Fields.SELLER_ID, "==", seller_id)
+            .where(Fields.IS_ACTIVE, "==", True)
+            .limit(500)
+            .stream()
         )
-        order_count += 1
-        order_batch_count += 1
 
-        # Commit every 500 operations
-        if order_batch_count >= 500:
+        batch = get_db().batch()
+        batch_count = 0
+
+        for product_doc in products:
+            batch.update(product_doc.reference, {Fields.IS_ACTIVE: False, Fields.SUSPENDED_AT: get_server_timestamp()})
+            product_count += 1
+            batch_count += 1
+
+            if batch_count >= 500:
+                batch.commit()
+                batch = get_db().batch()
+                batch_count = 0
+
+        if batch_count > 0:
+            batch.commit()
+
+        # Cancel all pending/confirmed orders (with safety limit)
+        # NOTE: Use denormalized sellerIds field (not nested items.sellerId which Firestore doesn't support)
+        orders = (
+            get_db()
+            .collection(Collections.ORDERS)
+            .where(Fields.SELLER_IDS, "array_contains", seller_id)
+            .where(
+                Fields.ORDER_STATUS,
+                "in",
+                [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING],
+            )
+            .limit(200)
+            .stream()
+        )
+
+        order_batch = get_db().batch()
+        order_batch_count = 0
+
+        for order_doc in orders:
+            order_data = order_doc.to_dict()
+
+            # Accumulate stock restorations
+            for item in order_data[Fields.ITEMS]:
+                if item[Fields.SELLER_ID] == seller_id:
+                    product_id = item[Fields.PRODUCT_ID]
+                    quantity = item[Fields.QUANTITY]
+                    product_updates[product_id] = product_updates.get(product_id, 0) + quantity
+
+            order_batch.update(
+                order_doc.reference,
+                {
+                    Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+                    Fields.CANCELLATION_REASON: f"Seller suspended: {reason}",
+                    Fields.CANCELLED_BY: admin_id,
+                    Fields.CANCELLED_AT: get_server_timestamp(),
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                },
+            )
+            order_count += 1
+            order_batch_count += 1
+
+            if order_batch_count >= 500:
+                order_batch.commit()
+                order_batch = get_db().batch()
+                order_batch_count = 0
+
+        if order_batch_count > 0:
             order_batch.commit()
-            order_batch = get_db().batch()
-            order_batch_count = 0
 
-    # Commit remaining order updates
-    if order_batch_count > 0:
-        order_batch.commit()
+        # Restore stock in batch — all reads/writes happen atomically inside the transaction
+        if product_updates:
+            @get_firestore().transactional
+            def restore_stock_batch(transaction):
+                product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_updates]
+                snapshots = list(transaction.get_all(product_refs))
+                for snapshot in snapshots:
+                    if snapshot.exists:
+                        current_stock = snapshot.to_dict().get(Fields.STOCK_QUANTITY, 0)
+                        qty = product_updates[snapshot.id]
+                        transaction.update(snapshot.reference, {Fields.STOCK_QUANTITY: current_stock + qty})
 
-    # Restore stock in batch (avoid N+1 queries)
-    if product_updates:
-        # Use transaction for stock updates to avoid race conditions
-        @get_firestore().transactional
-        def restore_stock_batch(transaction):
-            product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_updates]
-            product_snapshots = [transaction.get(ref) for ref in product_refs]
-
-            for ref, snapshot in zip(product_refs, product_snapshots, strict=False):
-                if snapshot.exists:
-                    product_data = snapshot.to_dict()
-                    current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
-                    quantity_to_restore = product_updates[snapshot.id]
-                    transaction.update(ref, {Fields.STOCK_QUANTITY: current_stock + quantity_to_restore})
-
-        # Execute transaction
-        transaction = get_db().transaction()
-        restore_stock_batch(transaction)
+            restore_stock_batch(get_db().transaction())
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add(
@@ -558,6 +568,7 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
             .collection(Collections.PRODUCTS)
             .where(Fields.SELLER_ID, "==", seller_id)
             .where(Fields.IS_ACTIVE, "==", False)
+            .where(Fields.SUSPENDED_AT, "!=", None)
             .limit(500)
             .stream()
         )
@@ -571,7 +582,7 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
         for product_doc in products:
             product_data = product_doc.to_dict()
             # Only reactivate products that were suspended (not explicitly deleted)
-            if product_data.get(Fields.SUSPENDED_AT) and not product_data.get(Fields.DELETED_AT):
+            if not product_data.get(Fields.DELETED_AT):
                 batch.update(
                     product_doc.reference,
                     {
@@ -585,16 +596,8 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         if batch_count > 0:
             batch.commit()
-        else:
-            # No eligible products in this batch — all were deleted, not suspended
-            # If we fetched products but didn't reactivate any, we might get the same 500 again
-            # if we don't have a way to filter them out in the query.
-            # Currently query is: where(IS_ACTIVE == False).
-            # If they are DELETED_AT set, they are still IS_ACTIVE=False.
-            # So if we don't update them, we will find them again.
-            # We MUST break here to avoid infinite loop if we didn't process any.
-            logger.info("No reactivatable products found in batch, stopping loop.")
-            break
+        # Query now filters SUSPENDED_AT != None at DB level, so all fetched docs are reactivatable.
+        # The while loop converges naturally as reactivated products no longer match IS_ACTIVE=False.
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add(
@@ -685,6 +688,19 @@ def admin_update_product_stock(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     logger.info(
         f"Admin {admin_id} updated stock for product {product_id}: {old_quantity} -> {quantity}. Reason: {reason}"
+    )
+
+    # Audit log (queryable, matches pattern in update_payment_provider)
+    get_db().collection(Collections.ADMIN_LOGS).add(
+        {
+            Fields.ACTION: AdminActionValues.STOCK_UPDATE,
+            Fields.ADMIN_ID: admin_id,
+            Fields.PRODUCT_ID: product_id,
+            "oldQuantity": old_quantity,
+            "newQuantity": quantity,
+            Fields.REASON: reason[:500],
+            Fields.TIMESTAMP: get_server_timestamp(),
+        }
     )
 
     return create_success_response(
@@ -1037,17 +1053,19 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Check if code matches using constant-time comparison
     code_found = False
-    for _idx, stored_hash in enumerate(stored_hashed_codes):
+    matched_hash: str | None = None
+    for stored_hash in stored_hashed_codes:
         if hmac.compare_digest(hashed_input, stored_hash):
             code_found = True
+            matched_hash = stored_hash
 
     if not code_found:
         # Log failed attempt
         logger.info(f"SECURITY: Invalid backup code attempt for user {user_id}")
         raise https_fn.HttpsError("invalid-argument", "Invalid backup code")
 
-    # Remove used code (one-time use)
-    remaining_codes = [c for c in stored_hashed_codes if not hmac.compare_digest(c, hashed_input)]
+    # Remove used code by its exact hash — no second full scan
+    remaining_codes = [c for c in stored_hashed_codes if c != matched_hash]
 
     # Update last MFA verify time on users doc
     user_ref.update(
@@ -1384,57 +1402,39 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             s_batch.delete(s_doc.reference)
         s_batch.commit()
 
-    # GDPR: Anonymize or delete chat threads
-    while True:
-        user_chats = list(
-            get_db()
-            .collection(Collections.CHATS)
-            .where(
-                Fields.BUYER_ID if "buyer" in user_data.get(Fields.ROLES, []) else Fields.SELLER_ID,
-                "==",
-                user_id,
-            )
-            .limit(100)
-            .stream()
-        )
-        # Note: A user could be both buyer and seller, but usually one role predominates in a chat.
-        # Just to be safe, we check both for each user.
-        if not user_chats:
-            # Try the other role just in case
+    # GDPR: Anonymize or delete chat threads — run BOTH buyer and seller queries
+    # unconditionally to handle users with both roles (fixes GDPR PII leak)
+    for chat_field in [Fields.BUYER_ID, Fields.SELLER_ID]:
+        while True:
             user_chats = list(
                 get_db()
                 .collection(Collections.CHATS)
-                .where(
-                    Fields.SELLER_ID if "buyer" in user_data.get(Fields.ROLES, []) else Fields.BUYER_ID,
-                    "==",
-                    user_id,
-                )
+                .where(chat_field, "==", user_id)
                 .limit(100)
                 .stream()
             )
             if not user_chats:
                 break
 
-        for chat_doc in user_chats:
-            # GDPR: Delete all messages in the thread first
-            while True:
-                messages = list(chat_doc.reference.collection(Collections.CHAT_MESSAGES).limit(500).stream())
-                if not messages:
-                    break
-                m_batch = get_db().batch()
-                for m_doc in messages:
-                    m_batch.delete(m_doc.reference)
-                m_batch.commit()
+            for chat_doc in user_chats:
+                # GDPR: Delete all messages in the thread first
+                while True:
+                    messages = list(chat_doc.reference.collection(Collections.CHAT_MESSAGES).limit(500).stream())
+                    if not messages:
+                        break
+                    m_batch = get_db().batch()
+                    for m_doc in messages:
+                        m_batch.delete(m_doc.reference)
+                    m_batch.commit()
 
-            # Now anonymize or delete the thread
-            # If both parties are deleted, we can delete the thread. For now, anonymize.
-            chat_doc.reference.update(
-                {
-                    Fields.BUYER_ID: anonymized_id if chat_doc.to_dict().get(Fields.BUYER_ID) == user_id else chat_doc.to_dict().get(Fields.BUYER_ID),
-                    Fields.SELLER_ID: anonymized_id if chat_doc.to_dict().get(Fields.SELLER_ID) == user_id else chat_doc.to_dict().get(Fields.SELLER_ID),
-                    Fields.LAST_MESSAGE: "[Chat history deleted]",
-                }
-            )
+                chat_data = chat_doc.to_dict()
+                chat_doc.reference.update(
+                    {
+                        Fields.BUYER_ID: anonymized_id if chat_data.get(Fields.BUYER_ID) == user_id else chat_data.get(Fields.BUYER_ID),
+                        Fields.SELLER_ID: anonymized_id if chat_data.get(Fields.SELLER_ID) == user_id else chat_data.get(Fields.SELLER_ID),
+                        Fields.LAST_MESSAGE: "[Chat history deleted]",
+                    }
+                )
 
     # Delete cart, favorites, address book, notifications, warehouses, and metrics (subcollections, paginated)
     for sub_coll in [
@@ -1508,15 +1508,22 @@ def export_my_data(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("not-found", "User not found")
 
     user_data = user_doc.to_dict()
-    # Remove internal fields
-    for internal_field in [
-        Fields.MFA_SECRET,
-        Fields.MFA_SECRET_TEMP,
-        Fields.MFA_BACKUP_CODES,
-        Fields.MFA_BACKUP_CODES_SALT,
-        Fields.MFA_BACKUP_CODES_TEMP,
-    ]:
-        user_data.pop(internal_field, None)
+    # PIPEDA allowlist: only export fields the user explicitly provided or that are legally required.
+    # Internal operational fields (suspendedBy, lastMfaVerify, etc.) are excluded.
+    exportable_fields = {
+        Fields.UID, Fields.EMAIL, Fields.NAME, Fields.ADDRESS,
+        Fields.ROLES, Fields.CREATED_AT, Fields.UPDATED_AT,
+        Fields.PREFERRED_LANGUAGE,
+        Fields.EMAIL_CONSENT, Fields.MARKETING_OPT_IN,
+        Fields.CONSENT_TIMESTAMP, Fields.CONSENT_METHOD,
+        Fields.PRIVACY_ACCEPTED_AT, Fields.TERMS_ACCEPTED_AT,
+        Fields.PRIVACY_POLICY_VERSION, Fields.TERMS_VERSION,
+        Fields.DATA_PROCESSING_CONSENT, Fields.UNSUBSCRIBED_AT,
+        Fields.MFA_ENABLED, Fields.MFA_ENROLLED_AT,
+        Fields.TAX_EXEMPTION,
+        Fields.NOTIFY_NEW_PRODUCTS, Fields.NOTIFY_TRENDING,
+    }
+    user_export = {k: v for k, v in user_data.items() if k in exportable_fields}
 
     # Collect orders
     orders = []
@@ -1536,14 +1543,14 @@ def export_my_data(req: https_fn.CallableRequest) -> dict[str, Any]:
     for fav_doc in fav_docs:
         favorites.append(fav_doc.id)
 
-    # Serialize user data datetime fields
-    for key, val in user_data.items():
+    # Serialize user_export datetime fields
+    for key, val in user_export.items():
         if hasattr(val, "isoformat"):
-            user_data[key] = val.isoformat()
+            user_export[key] = val.isoformat()
 
     return create_success_response(
         {
-            "profile": user_data,
+            "profile": user_export,
             "orders": orders,
             "favorites": favorites,
             "exportedAt": datetime.now(UTC).isoformat(),
@@ -1640,3 +1647,142 @@ def e2e_get_mail_logs(req: https_fn.CallableRequest) -> dict[str, Any]:
         results.append(data)
 
     return create_success_response({"logs": results})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_delete_review(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Delete a product review (admin only with MFA). Logs to admin_logs."""
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    admin_id = req.auth.uid
+    review_id = req.data.get(Fields.REVIEW_ID)
+    reason = (req.data.get(ApiKeys.REASON) or "Admin decision")[:500]
+
+    if not review_id:
+        raise https_fn.HttpsError("invalid-argument", "reviewId required")
+
+    admin_doc = get_db().collection(Collections.USERS).document(admin_id).get()
+    if not admin_doc.exists or UserRoleValues.ADMIN not in admin_doc.to_dict().get(Fields.ROLES, []):
+        raise https_fn.HttpsError("permission-denied", "Admin role required")
+
+    _require_recent_admin_mfa(admin_doc.to_dict())
+
+    review_ref = get_db().collection(Collections.PRODUCT_RATINGS).document(review_id)
+    if not review_ref.get().exists:
+        raise https_fn.HttpsError("not-found", "Review not found")
+
+    review_ref.delete()
+
+    get_db().collection(Collections.ADMIN_LOGS).add(
+        {
+            Fields.ACTION: AdminActionValues.REVIEW_DELETE,
+            Fields.ADMIN_ID: admin_id,
+            Fields.REVIEW_ID: review_id,
+            Fields.REASON: reason,
+            Fields.TIMESTAMP: get_server_timestamp(),
+        }
+    )
+    return create_success_response({"deleted": True})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_flag_review(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Flag or unflag a product review (admin only with MFA). Logs to admin_logs."""
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    admin_id = req.auth.uid
+    review_id = req.data.get(Fields.REVIEW_ID)
+    flagged = req.data.get("flagged")
+    reason = (req.data.get(ApiKeys.REASON) or "Admin decision")[:500]
+
+    if not review_id or not isinstance(flagged, bool):
+        raise https_fn.HttpsError("invalid-argument", "reviewId and flagged (bool) required")
+
+    admin_doc = get_db().collection(Collections.USERS).document(admin_id).get()
+    if not admin_doc.exists or UserRoleValues.ADMIN not in admin_doc.to_dict().get(Fields.ROLES, []):
+        raise https_fn.HttpsError("permission-denied", "Admin role required")
+
+    _require_recent_admin_mfa(admin_doc.to_dict())
+
+    review_ref = get_db().collection(Collections.PRODUCT_RATINGS).document(review_id)
+    if not review_ref.get().exists:
+        raise https_fn.HttpsError("not-found", "Review not found")
+
+    review_ref.update({"isFlagged": flagged, Fields.UPDATED_AT: get_server_timestamp()})
+
+    get_db().collection(Collections.ADMIN_LOGS).add(
+        {
+            Fields.ACTION: AdminActionValues.REVIEW_FLAG,
+            Fields.ADMIN_ID: admin_id,
+            Fields.REVIEW_ID: review_id,
+            "flagged": flagged,
+            Fields.REASON: reason,
+            Fields.TIMESTAMP: get_server_timestamp(),
+        }
+    )
+    return create_success_response({"flagged": flagged})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Full-order refund (admin only with MFA). Issues Stripe refund and updates order."""
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    admin_id = req.auth.uid
+    order_id = (req.data.get(Fields.ORDER_ID) or "").strip()
+    reason = (req.data.get(ApiKeys.REASON) or "Admin refund")[:500]
+
+    if not order_id:
+        raise https_fn.HttpsError("invalid-argument", "orderId required")
+
+    admin_doc = get_db().collection(Collections.USERS).document(admin_id).get()
+    if not admin_doc.exists or UserRoleValues.ADMIN not in admin_doc.to_dict().get(Fields.ROLES, []):
+        raise https_fn.HttpsError("permission-denied", "Admin role required")
+
+    _require_recent_admin_mfa(admin_doc.to_dict())
+
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+    if not order_doc.exists:
+        raise https_fn.HttpsError("not-found", "Order not found")
+
+    order_data = order_doc.to_dict()
+    payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+    if not payment_intent_id:
+        raise https_fn.HttpsError("failed-precondition", "Order has no payment intent — cannot refund")
+
+    import stripe
+    try:
+        refund = stripe.Refund.create(
+            payment_intent=payment_intent_id,
+            reason="requested_by_customer",
+            metadata={"admin_id": admin_id, "order_id": order_id, "reason": reason},
+        )
+    except stripe.error.StripeError as e:
+        raise https_fn.HttpsError("internal", f"Stripe refund failed: {e}") from e
+
+    order_ref.update(
+        {
+            Fields.PAYMENT_STATUS: "refunded",
+            Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+            Fields.REFUNDED_AT: get_server_timestamp(),
+            Fields.CANCELLED_BY: admin_id,
+            Fields.CANCELLATION_REASON: reason,
+            Fields.UPDATED_AT: get_server_timestamp(),
+        }
+    )
+
+    get_db().collection(Collections.ADMIN_LOGS).add(
+        {
+            Fields.ACTION: AdminActionValues.ORDER_REFUND,
+            Fields.ADMIN_ID: admin_id,
+            Fields.ORDER_ID: order_id,
+            "stripeRefundId": refund.id,
+            Fields.REASON: reason,
+            Fields.TIMESTAMP: get_server_timestamp(),
+        }
+    )
+    return create_success_response({"refundId": refund.id, "status": refund.status})

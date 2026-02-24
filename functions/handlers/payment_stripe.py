@@ -492,8 +492,61 @@ def ensure_stripe_key():
         stripe.api_key = get_stripe_secret_key()
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS)
-def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
+# ---------------------------------------------------------------------------
+# Coupon validation helpers (used inside create_checkout_session)
+# ---------------------------------------------------------------------------
+
+def _coupon_not_expired(coupon_data: dict) -> bool:
+    expires_at = coupon_data.get(Fields.EXPIRES_AT)
+    if expires_at is None:
+        return True
+    now_utc = datetime.now(UTC)
+    if hasattr(expires_at, "ToDatetime"):
+        expires_dt = expires_at.ToDatetime().replace(tzinfo=UTC)
+    elif hasattr(expires_at, "astimezone"):
+        expires_dt = expires_at.astimezone(UTC)
+    else:
+        return True
+    return now_utc <= expires_dt
+
+
+def _coupon_within_limits(coupon_data: dict, user_id: str) -> bool:
+    max_uses_total = coupon_data.get(Fields.MAX_USES_TOTAL)
+    used_count = int(coupon_data.get(Fields.USED_COUNT, 0))
+    if max_uses_total is not None and used_count >= int(max_uses_total):
+        return False
+    coupon_code = coupon_data.get(Fields.COUPON_CODE, "")
+    max_uses_per_user = int(coupon_data.get(Fields.MAX_USES_PER_USER, 1))
+    if coupon_code:
+        use_snap = (
+            get_db()
+            .collection(Collections.COUPONS)
+            .document(coupon_code)
+            .collection(Collections.COUPON_USES)
+            .document(user_id)
+            .get()
+        )
+        user_count = int(use_snap.to_dict().get("useCount", 0)) if use_snap.exists else 0
+        if user_count >= max_uses_per_user:
+            return False
+    return True
+
+
+def _coupon_seller_allowed(coupon_data: dict, sellers: set) -> bool:
+    coupon_seller_id = coupon_data.get(Fields.SELLER_ID)
+    if coupon_seller_id is None:
+        return True  # Platform-wide coupon
+    return coupon_seller_id in sellers
+
+
+def _coupon_min_order_met(coupon_data: dict, actual_subtotal_cents: int) -> bool:
+    min_order_cents = coupon_data.get(Fields.MIN_ORDER_CENTS)
+    if min_order_cents is None:
+        return True
+    return actual_subtotal_cents >= int(min_order_cents)
+
+
+
     """
     Creates a Stripe Checkout session with server-side validation.
 
@@ -828,7 +881,39 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             "invalid-argument", f"Subtotal mismatch: expected ${actual_subtotal:.2f}, got ${client_subtotal:.2f}"
         )
 
-    # Calculate shipping and taxes
+    # --- Coupon / promo code (N-07) ---
+    # Re-validate and compute discount server-side against verified actual_subtotal_cents.
+    # Client-supplied cartSubtotalCents is used only for UX preview in apply_coupon.
+    coupon_code: str | None = None
+    discount_amount_cents = 0
+    coupon_code_raw = data.get(Fields.COUPON_CODE)
+    if coupon_code_raw and isinstance(coupon_code_raw, str):
+        from handlers.coupons import _compute_discount, _validate_coupon_code, redeem_coupon as _redeem_coupon  # noqa: E402
+
+        code = coupon_code_raw.strip().upper()
+        if _validate_coupon_code(code):
+            coupon_snap = get_db().collection(Collections.COUPONS).document(code).get()
+            if coupon_snap.exists:
+                coupon_data = coupon_snap.to_dict() or {}
+                _coupon_valid = (
+                    coupon_data.get(Fields.IS_ACTIVE, False)
+                    and _coupon_not_expired(coupon_data)
+                    and _coupon_within_limits(coupon_data, user_id)
+                    and _coupon_seller_allowed(coupon_data, sellers)
+                    and _coupon_min_order_met(coupon_data, actual_subtotal_cents)
+                )
+                if _coupon_valid:
+                    coupon_code = code
+                    discount_amount_cents = _compute_discount(coupon_data, actual_subtotal_cents)
+                else:
+                    logger.warning(f"Coupon {code} re-validation failed at payment time for user {user_id}")
+            else:
+                logger.warning(f"Coupon {code} not found at payment time for user {user_id}")
+
+    # Discounted subtotal is the taxable base (CRA: tax applies to amount actually paid)
+    discounted_subtotal_cents = max(0, actual_subtotal_cents - discount_amount_cents)
+
+
     if all_digital:
         # Digital-only orders: worldwide delivery, zero shipping, zero Canadian tax
         delivery_speed = DeliveryTypeValues.STANDARD
@@ -884,10 +969,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 # because we cannot validate the GST number without Stripe
                 logger.warning(f"⚠️ Stripe Tax API failed, falling back to manual calculation for user {user_id}")
 
+                # CRA: tax applies to amount actually paid (post-discount subtotal)
+                discount_ratio = discounted_subtotal_cents / actual_subtotal_cents if actual_subtotal_cents > 0 else 1.0
                 tax_amount_cents = 0
                 item_taxes = []
                 for item in validated_items:
-                    item_subtotal_cents = int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
+                    item_subtotal_cents = round(int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY] * discount_ratio)
                     item_tax_rate = get_item_tax_rate(item, state_code)
                     item_tax_cents = round(item_subtotal_cents * item_tax_rate)
                     tax_amount_cents += item_tax_cents
@@ -906,8 +993,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                     tax_amount_cents += shipping_tax_cents
 
                 # Build tax breakdown dict (matches Flutter provinceTaxRates)
-                # Tax base includes subtotal + shipping (CRA requirement)
-                taxable_total = actual_subtotal + (shipping_cost_cents / 100)
+                # Tax base: post-discount subtotal + shipping (CRA requirement)
+                taxable_total = (discounted_subtotal_cents / 100) + (shipping_cost_cents / 100)
                 province_rates = _PROVINCE_TAX_BREAKDOWN.get(
                     state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05})
                 )
@@ -917,11 +1004,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 is_reverse_charge = False
         else:
             # Calculate per-item tax (manual calculation)
+            # CRA: tax applies to amount actually paid (post-discount subtotal)
+            discount_ratio = discounted_subtotal_cents / actual_subtotal_cents if actual_subtotal_cents > 0 else 1.0
             tax_amount_cents = 0
             item_taxes = []  # Store for breakdown
 
             for item in validated_items:
-                item_subtotal_cents = int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
+                item_subtotal_cents = round(int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY] * discount_ratio)
                 item_tax_rate = get_item_tax_rate(item, state_code)
                 item_tax_cents = round(item_subtotal_cents * item_tax_rate)
                 tax_amount_cents += item_tax_cents
@@ -940,8 +1029,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 tax_amount_cents += shipping_tax_cents
 
             # Build tax breakdown dict (matches Flutter provinceTaxRates)
-            # Tax base includes subtotal + shipping (CRA requirement)
-            taxable_total = actual_subtotal + (shipping_cost_cents / 100)
+            # Tax base: post-discount subtotal + shipping (CRA requirement)
+            taxable_total = (discounted_subtotal_cents / 100) + (shipping_cost_cents / 100)
             province_rates = _PROVINCE_TAX_BREAKDOWN.get(
                 state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05})
             )
@@ -950,8 +1039,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             # No Stripe Tax API available — B2B exemption not possible
             is_reverse_charge = False
 
-    # Total in cents
-    total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents
+    # Total in cents (discount reduces the subtotal component)
+    total_amount_cents = discounted_subtotal_cents + shipping_cost_cents + tax_amount_cents
 
     # Reserve stock atomically using Firestore transactions
     # IMPORTANT: All reads MUST happen before any writes to avoid
@@ -1221,6 +1310,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.SELLER_IDS: sorted(list(sellers)),
         Fields.ITEMS: validated_items,
         Fields.SUBTOTAL_CENTS: actual_subtotal_cents,
+        Fields.DISCOUNT_AMOUNT_CENTS: discount_amount_cents,
+        Fields.COUPON_CODE: coupon_code,
         Fields.SHIPPING_COST_CENTS: shipping_cost_cents,
         Fields.TAX_AMOUNT_CENTS: tax_amount_cents,
         Fields.TOTAL_AMOUNT_CENTS: total_amount_cents,
@@ -1236,11 +1327,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
         Fields.DELIVERY_SPEED: delivery_speed,
-        # Platform fee: waived for premium subscribers (verified from authoritative subscriptions doc)
+        # Platform fee on post-discount subtotal (platform earns only on amount actually collected)
         # P-03 FIX: Read from subscriptions/{uid} instead of cached isPremium to prevent race condition
         Fields.PLATFORM_FEE_TOTAL_CENTS: 0
         if _check_premium_from_sub(user_id)
-        else round(actual_subtotal_cents * PLATFORM_FEE_PERCENT),
+        else round(discounted_subtotal_cents * PLATFORM_FEE_PERCENT),
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
         Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
@@ -1907,6 +1998,15 @@ def process_checkout_session_completed(session: dict) -> str | None:
     except Exception as e:
         logger.error(f"Digital license generation failed for order {order_id}: {str(e)}")
         # Non-fatal: order is confirmed, license can be re-generated by admin
+
+    # Redeem coupon if one was applied (N-07)
+    try:
+        applied_coupon_code = order_data.get(Fields.COUPON_CODE)
+        if applied_coupon_code:
+            from handlers.coupons import redeem_coupon as _redeem_coupon
+            _redeem_coupon(applied_coupon_code, order_data[Fields.USER_ID], order_id=order_id)
+    except Exception as e:
+        logger.error(f"Failed to redeem coupon for order {order_id}: {str(e)}")
 
     # Clear user's cart
     try:
