@@ -298,6 +298,7 @@ abstract final class Collections {
   static const cart = 'cart'; // users/{userId}/cart
   static const favorites = 'favorites'; // users/{userId}/favorites
   static const notifications = 'notifications'; // users/{uid}/notifications
+  static const fcmTokens = 'fcm_tokens'; // users/{uid}/fcm_tokens — multi-device push tokens
   static const productQuestions = 'product_questions'; // top-level: product_questions/{questionId}
   static const addresses = 'addresses'; // users/{userId}/addresses
   static const stockNotifications = 'stock_notifications'; // Tasks 07

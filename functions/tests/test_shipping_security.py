@@ -8,6 +8,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 # Set TESTING environment variable BEFORE importing main
 os.environ["TESTING"] = "true"
+os.environ.setdefault("FUNCTIONS_EMULATOR", "true")
+os.environ.setdefault("UNSUBSCRIBE_HMAC_SECRET", "origna-unsub-default-dev-key")
 
 # 1. Setup global mocks BEFORE importing main
 mock_firebase_functions = MagicMock()

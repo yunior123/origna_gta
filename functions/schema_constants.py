@@ -57,6 +57,7 @@ class Collections:
     CART = "cart"  # users/{userId}/cart
     FAVORITES = "favorites"  # users/{userId}/favorites
     NOTIFICATIONS = "notifications"  # users/{uid}/notifications
+    FCM_TOKENS = "fcm_tokens"  # users/{uid}/fcm_tokens — multi-device push tokens
     LICENSES = "licenses"
     BOOK_ACCESS_TOKENS = "book_access_tokens"
     SOFTWARE_ACCESS_TOKENS = "software_access_tokens"

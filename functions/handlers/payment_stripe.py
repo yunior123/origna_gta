@@ -1823,6 +1823,84 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
         order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: datetime.now(UTC)})
 
 
+def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
+    """Run confirmation emails, digital licenses, coupon redemption, and cart clearing after payment capture.
+    Called by both process_checkout_session_completed (card/instant) and process_async_payment_succeeded (bank/Interac).
+    """
+    # Send confirmation emails
+    try:
+        buyer_email = order_data.get(Fields.CUSTOMER_EMAIL)
+        if not buyer_email:
+            buyer_doc = get_db().collection(Collections.USERS).document(order_data[Fields.USER_ID]).get()
+            if buyer_doc.exists:
+                buyer_email = buyer_doc.to_dict().get(Fields.EMAIL)
+
+        buyer_lang = order_data.get(Fields.PREFERRED_LANGUAGE, "en")
+        if buyer_email:
+            buyer_email_html = get_order_confirmation_email(order_data, order_id, lang=buyer_lang)
+
+            pdf_attachments = None
+            try:
+                import base64
+                pdf_bytes = generate_invoice_pdf(order_data, order_id)
+                if pdf_bytes:
+                    short_oid = order_id[:8] if len(order_id) > 8 else order_id
+                    pdf_attachments = [
+                        {
+                            "ContentType": "application/pdf",
+                            "Filename": f"Origna_Invoice_{short_oid}.pdf",
+                            "Base64Content": base64.b64encode(pdf_bytes).decode("utf-8"),
+                        }
+                    ]
+            except Exception as e:
+                logger.warning(f"PDF invoice generation failed (non-critical): {str(e)}")
+
+            send_email(
+                to_email=buyer_email,
+                subject=_email_t("sub.confirmed", buyer_lang),
+                html_content=buyer_email_html,
+                attachments=pdf_attachments,
+            )
+
+        sellers = set(item[Fields.SELLER_ID] for item in order_data[Fields.ITEMS])
+        for seller_id in sellers:
+            seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+            if seller_doc.exists:
+                seller_data = seller_doc.to_dict()
+                seller_email = seller_data.get(Fields.EMAIL)
+                if seller_email:
+                    seller_lang = seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
+                    seller_email_html = get_seller_notification_email(order_data, order_id, seller_id, lang=seller_lang)
+                    send_email(
+                        to_email=seller_email,
+                        subject=_email_t("sub.new_order", seller_lang),
+                        html_content=seller_email_html,
+                    )
+    except Exception as e:
+        logger.error(f"Failed to send confirmation emails: {str(e)}")
+
+    # Generate digital licenses for any digital items
+    try:
+        _generate_digital_licenses(order_id, order_data)
+    except Exception as e:
+        logger.error(f"Digital license generation failed for order {order_id}: {str(e)}")
+
+    # Redeem coupon if one was applied
+    try:
+        applied_coupon_code = order_data.get(Fields.COUPON_CODE)
+        if applied_coupon_code:
+            from handlers.coupons import redeem_coupon as _redeem_coupon
+            _redeem_coupon(applied_coupon_code, order_data[Fields.USER_ID], order_id=order_id)
+    except Exception as e:
+        logger.error(f"Failed to redeem coupon for order {order_id}: {str(e)}")
+
+    # Clear user's cart
+    try:
+        _clear_user_cart(order_data[Fields.USER_ID])
+    except Exception as e:
+        logger.error(f"Failed to clear cart: {str(e)}")
+
+
 def process_checkout_session_completed(session: dict) -> str | None:
     """
     Processes checkout.session.completed event.
@@ -1956,84 +2034,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
     except Exception as e:
         logger.warning(f"Failed to write order event for {order_id}: {e}")
 
-    # Send confirmation emails
-    try:
-        # Get buyer email from order data or user document
-        buyer_email = order_data.get(Fields.CUSTOMER_EMAIL)
-        if not buyer_email:
-            buyer_doc = get_db().collection(Collections.USERS).document(order_data[Fields.USER_ID]).get()
-            if buyer_doc.exists:
-                buyer_email = buyer_doc.to_dict().get(Fields.EMAIL)
-
-        buyer_lang = order_data.get(Fields.PREFERRED_LANGUAGE, "en")
-        if buyer_email:
-            buyer_email_html = get_order_confirmation_email(order_data, order_id, lang=buyer_lang)
-
-            # Generate PDF invoice attachment
-            pdf_attachments = None
-            try:
-                import base64
-
-                pdf_bytes = generate_invoice_pdf(order_data, order_id)
-                if pdf_bytes:
-                    short_oid = order_id[:8] if len(order_id) > 8 else order_id
-                    pdf_attachments = [
-                        {
-                            "ContentType": "application/pdf",
-                            "Filename": f"Origna_Invoice_{short_oid}.pdf",
-                            "Base64Content": base64.b64encode(pdf_bytes).decode("utf-8"),
-                        }
-                    ]
-            except Exception as e:
-                logger.warning(f"PDF invoice generation failed (non-critical): {str(e)}")
-
-            send_email(
-                to_email=buyer_email,
-                subject=_email_t("sub.confirmed", buyer_lang),
-                html_content=buyer_email_html,
-                attachments=pdf_attachments,
-            )
-
-        # Email to sellers — filter items per seller (multi-seller privacy)
-        sellers = set(item[Fields.SELLER_ID] for item in order_data[Fields.ITEMS])
-        for seller_id in sellers:
-            # Get seller email from user document
-            seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
-            if seller_doc.exists:
-                seller_data = seller_doc.to_dict()
-                seller_email = seller_data.get(Fields.EMAIL)
-                if seller_email:
-                    seller_lang = seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
-                    seller_email_html = get_seller_notification_email(order_data, order_id, seller_id, lang=seller_lang)
-                    send_email(
-                        to_email=seller_email,
-                        subject=_email_t("sub.new_order", seller_lang),
-                        html_content=seller_email_html,
-                    )
-    except Exception as e:
-        logger.error(f"Failed to send confirmation emails: {str(e)}")
-
-    # Generate digital licenses for any digital items
-    try:
-        _generate_digital_licenses(order_id, order_data)
-    except Exception as e:
-        logger.error(f"Digital license generation failed for order {order_id}: {str(e)}")
-        # Non-fatal: order is confirmed, license can be re-generated by admin
-
-    # Redeem coupon if one was applied (N-07)
-    try:
-        applied_coupon_code = order_data.get(Fields.COUPON_CODE)
-        if applied_coupon_code:
-            from handlers.coupons import redeem_coupon as _redeem_coupon
-            _redeem_coupon(applied_coupon_code, order_data[Fields.USER_ID], order_id=order_id)
-    except Exception as e:
-        logger.error(f"Failed to redeem coupon for order {order_id}: {str(e)}")
-
-    # Clear user's cart
-    try:
-        _clear_user_cart(order_data[Fields.USER_ID])
-    except Exception as e:
-        logger.error(f"Failed to clear cart: {str(e)}")
+    _run_post_payment_side_effects(order_id, order_data)
 
     return f"Order {order_id} confirmed"
 
@@ -2052,14 +2053,31 @@ def _clear_user_cart(user_id: str) -> None:
 
 
 def process_async_payment_succeeded(session: dict) -> str | None:
-    """Handles async payment success (e.g., bank transfers)"""
+    """Handles async payment success (e.g., bank transfers, Interac).
+    Mirrors process_checkout_session_completed side effects.
+    """
     order_id = session.get("metadata", {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+
+    if not order_doc.exists:
+        logger.warning(f"process_async_payment_succeeded: order {order_id} not found")
+        return None
+
+    order_data = order_doc.to_dict()
+
+    # Guard: skip if already captured (idempotency)
+    if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
+        logger.info(f"Order {order_id} already captured — skipping async_payment_succeeded")
+        return f"Order {order_id} already captured"
+
     order_ref.update({Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED, Fields.UPDATED_AT: get_server_timestamp()})
+    # Refresh order_data with new payment status for side effects
+    order_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
 
     try:
         OrderEvent.write(
@@ -2069,6 +2087,8 @@ def process_async_payment_succeeded(session: dict) -> str | None:
         )
     except Exception as e:
         logger.warning(f"Failed to write order event for {order_id}: {e}")
+
+    _run_post_payment_side_effects(order_id, order_data)
 
     return f"Order {order_id} payment captured"
 
@@ -3862,16 +3882,20 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             snapshot_account_id = seller_account_snapshot.get(seller_id)
 
             # Get seller's current data for suspension/charges checks
+            # Stripe-specific fields (stripeAccountId, chargesEnabled) live in seller_profiles
             seller_ref = get_db().collection(Collections.USERS).document(seller_id)
+            sp_live_ref = get_db().collection(Collections.SELLER_PROFILES).document(seller_id)
             seller_doc = seller_ref.get()
+            sp_live_doc = sp_live_ref.get()
 
             if seller_doc.exists:
                 seller_data = seller_doc.to_dict()
-                # Prefer snapshot (immutable at checkout), fall back to live
-                stripe_account_id = snapshot_account_id or seller_data.get(Fields.STRIPE_ACCOUNT_ID)
+                sp_live_data = sp_live_doc.to_dict() if sp_live_doc.exists else {}
+                # Prefer snapshot (immutable at checkout), fall back to live seller_profile
+                stripe_account_id = snapshot_account_id or sp_live_data.get(Fields.STRIPE_ACCOUNT_ID)
 
                 # SECURITY: Warn if account changed since checkout (potential fraud)
-                live_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
+                live_account_id = sp_live_data.get(Fields.STRIPE_ACCOUNT_ID)
                 if snapshot_account_id and live_account_id and snapshot_account_id != live_account_id:
                     logger.error(
                         f"🚨 SECURITY: Seller {seller_id} Stripe account changed since checkout! "
@@ -3909,7 +3933,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                     continue
 
                 # Verify seller account is enabled for charges
-                if not seller_data.get(Fields.CHARGES_ENABLED, False):
+                if not sp_live_data.get(Fields.CHARGES_ENABLED, False):
                     logger.warning(f"⚠️ Seller {seller_id} account not enabled for charges for order {order_id}")
                     order_ref.update(
                         {

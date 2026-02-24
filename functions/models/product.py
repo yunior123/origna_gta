@@ -452,6 +452,8 @@ class Product(BaseModel):
     @field_validator("description")
     @classmethod
     def validate_description(cls, v: str) -> str:
+        dangerous_patterns = ["javascript:", "data:text/html", "vbscript:", "expression("]
+        v_lower = v.lower()
         for pattern in dangerous_patterns:
             if pattern in v_lower:
                 raise ValueError("Description contains disallowed content")

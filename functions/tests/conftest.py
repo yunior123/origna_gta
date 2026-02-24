@@ -74,10 +74,13 @@ sys.modules["firebase_functions.scheduler_fn"] = sys.modules["firebase_functions
 
 # Set TESTING environment variable to prevent Secret Manager calls
 os.environ["TESTING"] = "true"
+# Treat test environment as emulator so email_service does not raise on missing secrets
+os.environ.setdefault("FUNCTIONS_EMULATOR", "true")
 
 # Set mock environment variables for secrets to avoid Secret Manager calls
 os.environ["STRIPE_SECRET_KEY"] = "STRIPE_SECRET_KEY_REDACTED"
 os.environ["STRIPE_WEBHOOK_SECRET"] = "STRIPE_WEBHOOK_SECRET_REDACTED"
+os.environ.setdefault("UNSUBSCRIBE_HMAC_SECRET", "origna-unsub-default-dev-key")
 
 
 @pytest.fixture(scope="session", autouse=True)

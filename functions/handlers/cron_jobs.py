@@ -1539,7 +1539,7 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
             items = od.get(Fields.ITEMS, [])
             for item in items:
                 if isinstance(item, dict) and item.get(Fields.SELLER_ID) == seller_id:
-                    shipped_at = item.get("shippedAt")
+                    shipped_at = item.get(Fields.SHIPPED_AT)
                     created_at = od.get(Fields.CREATED_AT)
                     est_days = item.get(Fields.ESTIMATED_SHIP_DAYS, 3)
                     if shipped_at and created_at:

@@ -91,10 +91,11 @@ def get_firestore():
 
 def send_push_notification(user_id: str, title: str, body: str, data: dict | None = None) -> bool:
     """
-    Send a single FCM push notification to a user.
-    Fetches the user's FCM token from Firestore.
-    On UnregisteredError, removes the stale token atomically.
-    Returns True on success, False on no-token or error.
+    Send FCM push notification to all active devices for a user.
+    Reads tokens from users/{uid}/fcm_tokens subcollection (multi-device support).
+    Falls back to legacy fcmToken field on user doc if subcollection is empty.
+    On UnregisteredError per token, removes the stale token doc atomically.
+    Returns True if at least one message succeeded, False otherwise.
     """
     try:
         from firebase_admin import messaging
@@ -108,33 +109,65 @@ def send_push_notification(user_id: str, title: str, body: str, data: dict | Non
         if not user_doc.exists:
             return False
 
-        token = (user_doc.to_dict() or {}).get(Fields.FCM_TOKEN)
-        if not token:
+        user_data = user_doc.to_dict() or {}
+
+        # Respect opt-out preference
+        if not user_data.get(Fields.PUSH_ENABLED, True):
             return False
 
-        msg = messaging.Message(
-            token=token,
+        # Collect all tokens from subcollection (multi-device)
+        token_docs = list(user_ref.collection(Collections.FCM_TOKENS).stream())
+        tokens_with_refs: list[tuple[str, object]] = [
+            (d.to_dict().get("token", ""), d.reference)
+            for d in token_docs
+            if d.to_dict().get("token")
+        ]
+
+        # Fallback to legacy single-token field for users who haven't updated app yet
+        if not tokens_with_refs:
+            legacy_token = user_data.get(Fields.FCM_TOKEN)
+            if legacy_token:
+                tokens_with_refs = [(legacy_token, None)]
+
+        if not tokens_with_refs:
+            return False
+
+        token_list = [t for t, _ in tokens_with_refs]
+        msg = messaging.MulticastMessage(
+            tokens=token_list,
             notification=messaging.Notification(title=title, body=body),
             data={k: str(v) for k, v in (data or {}).items()},
         )
-        messaging.send(msg)
-        logger.info(f"Push sent to user {user_id}")
-        return True
+        batch_response = messaging.send_each_for_multicast(msg)
+
+        success = False
+        for idx, response in enumerate(batch_response.responses):
+            if response.success:
+                success = True
+            elif response.exception:
+                err_str = str(response.exception)
+                if "registration-token-not-registered" in err_str or "invalid-registration-token" in err_str:
+                    # Remove stale token
+                    _, token_ref = tokens_with_refs[idx]
+                    try:
+                        if token_ref:
+                            token_ref.delete()
+                        else:
+                            # Legacy field — clear it
+                            from firebase_admin.firestore import SERVER_TIMESTAMP
+                            user_ref.update({
+                                Fields.FCM_TOKEN: None,
+                                Fields.FCM_TOKEN_UPDATED_AT: SERVER_TIMESTAMP,
+                            })
+                        logger.info(f"Removed stale FCM token for user {user_id}")
+                    except Exception as del_err:
+                        logger.warning(f"Failed to remove stale FCM token: {del_err}")
+
+        if success:
+            logger.info(f"Push sent to user {user_id} ({batch_response.success_count}/{len(token_list)} tokens)")
+        return success
     except Exception as e:
-        err_str = str(e)
-        if "registration-token-not-registered" in err_str or "invalid-registration-token" in err_str:
-            # Stale token — remove it atomically
-            try:
-                from firebase_admin.firestore import SERVER_TIMESTAMP
-                get_db().collection(Collections.USERS).document(user_id).update({
-                    Fields.FCM_TOKEN: None,
-                    Fields.FCM_TOKEN_UPDATED_AT: SERVER_TIMESTAMP,
-                })
-                logger.info(f"Removed stale FCM token for user {user_id}")
-            except Exception as del_err:
-                logger.warning(f"Failed to remove stale FCM token for {user_id}: {del_err}")
-        else:
-            logger.warning(f"FCM push failed for user {user_id}: {e}")
+        logger.warning(f"FCM push failed for user {user_id}: {e}")
         return False
 
 
@@ -2066,7 +2099,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
 
             # Also notify sellers that shipment confirmed — filtered to their items only
             # Skip the seller who triggered the transition (stored in lastActorId if set)
-            last_actor_id = after_data.get("lastActorId")
+            last_actor_id = after_data.get(Fields.LAST_ACTOR_ID)
             seller_ids = set(item.get(Fields.SELLER_ID) for item in after_data.get(Fields.ITEMS, []))
             # Batch-read all seller docs in one RPC (avoids N sequential reads for multi-seller orders)
             seller_refs = [get_db().collection(Collections.USERS).document(sid) for sid in seller_ids]

@@ -1458,3 +1458,14 @@ FIX: Add an else branch: `else: approval_required = new_shipping_cents > 0` (any
 no magic strings  shipped_at = item.get("shippedAt")
 
   Fields.AVG_RESPONSE_TIME_HOURS: 0.0,  # TODO: implement response time tracking
+
+  solve  - 29 failed - all pre-existing
+
+  undefined name db in   db, order_id, payment_event_type,
+
+
+   // If rating submission failed after images were uploaded, log orphaned URLs so they
+      // can be cleaned up. TODO: move uploads inside a single atomic backend function.
+
+
+3. solve all warnings in code, no dart warnings, no ruff warnings

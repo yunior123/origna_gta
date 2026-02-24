@@ -322,15 +322,20 @@ def test_revoke_licenses_for_order_full_refund():
     license2.id = "EEEE-FFFF-GGGG-HHHH"
     license2.to_dict.return_value = {"status": "active"}
 
+    mock_batch = MagicMock()
+    mock_db.batch.return_value = mock_batch
     mock_db.collection.return_value.where.return_value.stream.return_value = [license1, license2]
 
     with patch("handlers.digital.get_db", return_value=mock_db):
         count = _revoke_digital_licenses_for_order("order123")
 
     assert count == 2
-    assert license1.reference.update.called
-    assert license2.reference.update.called
-    revoke_payload = license1.reference.update.call_args[0][0]
+    # Batch write: check batch.update was called for each license
+    assert mock_batch.update.call_count == 2
+    assert mock_batch.commit.called
+    # Verify payload of first batch.update call
+    first_call_args = mock_batch.update.call_args_list[0]
+    revoke_payload = first_call_args[0][1]
     assert revoke_payload["status"] == "revoked"
     assert revoke_payload["revokedReason"] == "refunded"
 

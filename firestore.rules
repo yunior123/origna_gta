@@ -223,6 +223,16 @@ service cloud.firestore {
         // Backend-only creates and deletes
         allow create, delete: if false;
       }
+
+      // --- FCM TOKENS SUBCOLLECTION ---
+      // Each doc keyed by token hash; owner writes their own tokens, backend manages via Admin SDK.
+      match /fcm_tokens/{tokenId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+          request.resource.data.keys().hasOnly(['token', 'platform', 'fcmTokenUpdatedAt']) &&
+          request.resource.data.token is string;
+        allow delete: if isOwner(userId);
+      }
       
       // --- CART SUBCOLLECTION ---
       match /cart/{itemId} {
@@ -660,10 +670,6 @@ service cloud.firestore {
     // SOFTWARE_ACCESS_TOKENS COLLECTION
     // Backend-only access tokens for software products.
     // ================================================================
-    match /software_access_tokens/{token} {
-      allow read, write: if false;
-    }
-
     match /software_access_tokens/{token} {
       // No client reads — token is consumed server-side via redirect
       allow read, write: if false;

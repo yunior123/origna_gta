@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -112,6 +114,17 @@ class NotificationService {
       });
     } else {
       debugPrint('User declined or has not accepted notification permissions');
+      // Write opt-out preference so backend skips push for this user
+      final userId = _container.read(userIdProvider);
+      if (userId != null) {
+        try {
+          final firestore = _container.read(firestoreProvider);
+          await firestore.collection(Collections.users).doc(userId).set(
+            {Fields.pushEnabled: false},
+            SetOptions(merge: true),
+          );
+        } catch (_) {}
+      }
     }
 
     // Background handler is registered in main.dart before runApp — not here.
@@ -132,7 +145,9 @@ class NotificationService {
     });
   }
 
-  /// Fetches the current FCM token and saves it to the user's Firestore document.
+  /// Fetches the current FCM token and saves it to the user's fcm_tokens subcollection.
+  /// Each unique token is stored as a separate doc keyed by its SHA-256 hash,
+  /// so multiple devices work independently.
   @visibleForTesting
   Future<void> saveTokenToFirestore({String? token}) async {
     final userId = _container.read(userIdProvider);
@@ -142,11 +157,21 @@ class NotificationService {
       final fcmToken = token ?? await _messaging.getToken();
       if (fcmToken != null) {
         final firestore = _container.read(firestoreProvider);
-        await firestore.collection(Collections.users).doc(userId).set({
-          Fields.fcmToken: fcmToken,
+        // Key by URL-safe base64 of first 60 chars — stable unique ID without extra deps
+        final tokenSlice = fcmToken.substring(0, min(60, fcmToken.length));
+        final tokenHash = base64Url.encode(utf8.encode(tokenSlice)).replaceAll('=', '');
+        final platform = kIsWeb ? 'web' : defaultTargetPlatform.name.toLowerCase();
+        await firestore
+            .collection(Collections.users)
+            .doc(userId)
+            .collection(Collections.fcmTokens)
+            .doc(tokenHash)
+            .set({
+          'token': fcmToken,
+          'platform': platform,
           Fields.fcmTokenUpdatedAt: FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
-        debugPrint('FCM Token saved to Firestore for user: $userId');
+        debugPrint('FCM Token saved to fcm_tokens subcollection for user: $userId ($platform)');
       }
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'NotificationService.saveTokenToFirestore');

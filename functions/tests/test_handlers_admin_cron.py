@@ -85,12 +85,16 @@ class TestAdminHandlers:
         assert exc.value.code in ["permission-denied", "failed-precondition"]
         assert "mfa" in str(exc.value).lower()
 
+    @patch("firebase_admin.auth.set_custom_user_claims")
     @patch("services.rate_limiter.RateLimiter")
     @patch("handlers.admin.create_success_response")
     @patch("handlers.admin.get_db")
-    def test_update_user_roles_success_with_mfa(self, mock_get_db, mock_create_response, mock_rate_limiter_cls):
+    def test_update_user_roles_success_with_mfa(self, mock_get_db, mock_create_response, mock_rate_limiter_cls, mock_set_claims):
         """Test successful role update by verified admin"""
         from handlers.admin import update_user_roles
+
+        # Mock set_custom_user_claims to avoid hitting real Firebase Auth
+        mock_set_claims.return_value = None
 
         # Mock rate limiter to allow requests
         mock_rate_limiter_cls.return_value.check_rate_limit.return_value = (True, "")
@@ -406,6 +410,7 @@ class TestCheckLowStockAlerts:
 
         mock_seller_doc = Mock()
         mock_seller_doc.exists = True
+        mock_seller_doc.id = "seller_1"
         mock_seller_doc.to_dict.return_value = {"email": seller_email}
 
         def collection_side_effect(name):
@@ -421,6 +426,8 @@ class TestCheckLowStockAlerts:
             return coll
 
         mock_db.collection.side_effect = collection_side_effect
+        # Support batch read via get_all() for seller docs
+        mock_db.get_all.return_value = [mock_seller_doc]
         return mock_db, mock_product_ref, mock_products_coll
 
     @patch("handlers.cron_jobs.get_db")

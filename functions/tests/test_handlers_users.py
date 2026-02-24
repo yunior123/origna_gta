@@ -20,18 +20,18 @@ class TestBuyerAddressHandlers:
         mock_db = Mock()
         mock_get_db.return_value = mock_db
 
-        mock_addresses_ref = Mock()
-        # No existing addresses
-        mock_addresses_ref.get.return_value = []
-
-        mock_batch = Mock()
-        mock_db.batch.return_value = mock_batch
-
         mock_new_ref = Mock()
         mock_new_ref.id = "address_123"
-        mock_addresses_ref.document.return_value = mock_new_ref
+
+        mock_user_doc_snap = Mock()
+        mock_user_doc_snap.to_dict.return_value = {"addressCount": 0}  # no existing addresses
 
         mock_user_doc_ref = Mock()
+        mock_addresses_ref = Mock()
+        mock_addresses_ref.where.return_value.get.return_value = []
+        mock_addresses_ref.document.return_value = mock_new_ref
+
+        mock_user_doc_ref.get.return_value = mock_user_doc_snap
         mock_user_doc_ref.collection.return_value = mock_addresses_ref
 
         mock_users_collection = Mock()
@@ -39,26 +39,38 @@ class TestBuyerAddressHandlers:
 
         mock_db.collection.return_value = mock_users_collection
 
-        mock_request = Mock()
-        mock_request.auth = Mock(uid="buyer_123")
-        mock_request.data = {
-            "street": "123 Main St",
-            "city": "Toronto",
-            "state": "ON",
-            "postalCode": "M5V 2H1",
-            "country": "CA",
-        }
+        # Mock the transaction so _fs.transactional works without a real Firestore connection
+        mock_transaction = Mock()
+        mock_user_doc_ref.get = lambda transaction=None: mock_user_doc_snap
+        mock_db.transaction.return_value = mock_transaction
 
-        result = add_buyer_address(mock_request)
+        captured_set_args = []
+
+        def fake_set(ref, data, **kwargs):
+            captured_set_args.append((ref, data))
+
+        mock_transaction.set.side_effect = fake_set
+        mock_transaction.update = Mock()
+
+        with patch("firebase_admin.firestore.transactional", lambda f: lambda txn: f(txn)):
+            mock_request = Mock()
+            mock_request.auth = Mock(uid="buyer_123")
+            mock_request.data = {
+                "street": "123 Main St",
+                "city": "Toronto",
+                "state": "ON",
+                "postalCode": "M5V 2H1",
+                "country": "Canada",
+            }
+
+            result = add_buyer_address(mock_request)
 
         assert result["success"] is True
         assert result[Fields.ADDRESS_ID] == "address_123"
-
-        # Verify it was added with isDefault=True and batch was used
-        mock_batch.set.assert_called_once()
-        added_data = mock_batch.set.call_args[0][1]
+        # Verify it was added with isDefault=True
+        assert mock_transaction.set.called
+        added_data = mock_transaction.set.call_args[0][1]
         assert added_data[Fields.IS_DEFAULT] is True
-        mock_batch.commit.assert_called_once()
 
     @patch("handlers.users.get_db")
     def test_add_buyer_address_limit_exceeded(self, mock_get_db):
@@ -67,28 +79,32 @@ class TestBuyerAddressHandlers:
         mock_db = Mock()
         mock_get_db.return_value = mock_db
 
-        mock_addresses_ref = Mock()
-        # Exceed limit
-        mock_addresses_ref.get.return_value = [Mock() for _ in range(10)]
+        mock_user_doc_snap = Mock()
+        mock_user_doc_snap.to_dict.return_value = {"addressCount": 10}  # at limit
 
         mock_user_doc_ref = Mock()
-        mock_user_doc_ref.collection.return_value = mock_addresses_ref
+        mock_user_doc_ref.get = lambda transaction=None: mock_user_doc_snap
+
         mock_users_collection = Mock()
         mock_users_collection.document.return_value = mock_user_doc_ref
         mock_db.collection.return_value = mock_users_collection
 
-        mock_request = Mock()
-        mock_request.auth = Mock(uid="buyer_123")
-        mock_request.data = {
-            "street": "123 Main St",
-            "city": "Toronto",
-            "state": "ON",
-            "postalCode": "M5V 2H1",
-            "country": "CA",
-        }
+        mock_transaction = Mock()
+        mock_db.transaction.return_value = mock_transaction
 
-        with pytest.raises(https_fn.HttpsError) as exc:
-            add_buyer_address(mock_request)
+        with patch("firebase_admin.firestore.transactional", lambda f: lambda txn: f(txn)):
+            mock_request = Mock()
+            mock_request.auth = Mock(uid="buyer_123")
+            mock_request.data = {
+                "street": "123 Main St",
+                "city": "Toronto",
+                "state": "ON",
+                "postalCode": "M5V 2H1",
+                "country": "Canada",
+            }
+
+            with pytest.raises(https_fn.HttpsError) as exc:
+                add_buyer_address(mock_request)
 
         assert exc.value.code == "resource-exhausted"
         assert "10 addresses" in str(exc.value.message)
@@ -154,8 +170,12 @@ class TestBuyerAddressHandlers:
 
         assert result["success"] is True
         mock_batch.delete.assert_called_once_with(mock_address_ref)
-        # Should have updated the other doc to default
-        mock_batch.update.assert_called_once_with(mock_other_doc.reference, {Fields.IS_DEFAULT: True})
+        # batch.update is called twice: once for addressCount, once for promoting default
+        assert mock_batch.update.call_count == 2
+        # Verify the second call promotes the other doc to default
+        promote_call = mock_batch.update.call_args_list[1]
+        assert promote_call[0][0] == mock_other_doc.reference
+        assert promote_call[0][1] == {Fields.IS_DEFAULT: True}
         mock_batch.commit.assert_called_once()
 
     @patch("handlers.users.get_db")
@@ -165,26 +185,25 @@ class TestBuyerAddressHandlers:
         mock_db = Mock()
         mock_get_db.return_value = mock_db
 
-        mock_batch = Mock()
-        mock_db.batch.return_value = mock_batch
-
         mock_addresses_ref = Mock()
         mock_address_ref = Mock()
 
-        mock_doc = Mock()
-        mock_doc.exists = True
-        mock_address_ref.get.return_value = mock_doc
+        mock_doc_target = Mock()
+        mock_doc_target.exists = True
 
         mock_doc_1 = Mock()
         mock_doc_1.id = "address_123"
         mock_doc_1.reference = Mock()
+        mock_doc_1.to_dict.return_value = {Fields.IS_DEFAULT: False}
 
         mock_doc_2 = Mock()
         mock_doc_2.id = "address_456"
         mock_doc_2.reference = Mock()
         mock_doc_2.to_dict.return_value = {Fields.IS_DEFAULT: True}
 
-        mock_addresses_ref.get.return_value = [mock_doc_1, mock_doc_2]
+        # Support both regular and transaction-based gets
+        mock_addresses_ref.get = lambda transaction=None: [mock_doc_1, mock_doc_2]
+        mock_address_ref.get = lambda transaction=None: mock_doc_target
         mock_addresses_ref.document.return_value = mock_address_ref
 
         mock_user_doc_ref = Mock()
@@ -193,22 +212,20 @@ class TestBuyerAddressHandlers:
         mock_users_collection.document.return_value = mock_user_doc_ref
         mock_db.collection.return_value = mock_users_collection
 
+        mock_transaction = Mock()
+        mock_db.transaction.return_value = mock_transaction
+
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")
         mock_request.data = {Fields.ADDRESS_ID: "address_123"}
 
-        result = set_default_buyer_address(mock_request)
+        with patch("firebase_admin.firestore.transactional", lambda f: lambda txn: f(txn)):
+            result = set_default_buyer_address(mock_request)
 
         assert result["success"] is True
-
-        # Verify batch updates: set 123 to True, 456 to False
-        assert mock_batch.update.call_count == 2
-
-        calls = mock_batch.update.call_args_list
-        assert calls[0][0][0] == mock_doc_1.reference
-        assert calls[0][0][1] == {Fields.IS_DEFAULT: True}
-
-        assert calls[1][0][0] == mock_doc_2.reference
-        assert calls[1][0][1] == {Fields.IS_DEFAULT: False}
-
-        mock_batch.commit.assert_called_once()
+        # Verify transaction.update called: address_123 → True, address_456 → False
+        assert mock_transaction.update.call_count == 2
+        calls = mock_transaction.update.call_args_list
+        refs_and_vals = {call[0][0]: call[0][1] for call in calls}
+        assert refs_and_vals.get(mock_doc_1.reference) == {Fields.IS_DEFAULT: True}
+        assert refs_and_vals.get(mock_doc_2.reference) == {Fields.IS_DEFAULT: False}

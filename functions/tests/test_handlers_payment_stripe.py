@@ -891,8 +891,8 @@ class TestStripeConnectAccount:
 
         # Verify Stripe.Account.create was called
         mock_account_create.assert_called_once()
-        # Verify user was updated with new account ID
-        mock_doc_ref.update.assert_called()
+        # Verify seller_profile was set with new account ID (uses .set() not .update())
+        mock_doc_ref.set.assert_called()
 
 
 class TestEdgeCasesAndSecurity:

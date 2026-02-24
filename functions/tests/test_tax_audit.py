@@ -3,6 +3,11 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
+# Set env vars BEFORE any imports that read them
+os.environ.setdefault("FUNCTIONS_EMULATOR", "true")
+os.environ.setdefault("UNSUBSCRIBE_HMAC_SECRET", "origna-unsub-default-dev-key")
+os.environ.setdefault("TESTING", "true")
+
 # Global Mocks
 mock_firebase_functions = MagicMock()
 mock_firebase_admin = MagicMock()
@@ -136,6 +141,12 @@ class TestTaxAudit(unittest.TestCase):
         mock_seller_doc.to_dict.return_value = {
             "roles": ["seller"],
             "suspended": False,
+        }
+
+        # Mock Seller Profile Document (returned by collection('seller_profiles').document(seller_id).get())
+        mock_seller_profile_doc = MagicMock()
+        mock_seller_profile_doc.exists = True
+        mock_seller_profile_doc.to_dict.return_value = {
             "onboardingCompleted": True,
             "chargesEnabled": True,
             "payoutsEnabled": True,
@@ -163,6 +174,8 @@ class TestTaxAudit(unittest.TestCase):
                 mock_doc_ref.id = doc_id or "order_123"
                 if name == "users":
                     mock_doc_ref.get.return_value = mock_seller_doc
+                elif name == "seller_profiles":
+                    mock_doc_ref.get.return_value = mock_seller_profile_doc
                 elif name == "products":
                     mock_doc_ref.get.return_value = mock_product
                 else:  # orders
@@ -242,6 +255,12 @@ class TestTaxAudit(unittest.TestCase):
         mock_seller_doc.to_dict.return_value = {
             "roles": ["seller"],
             "suspended": False,
+        }
+
+        # Mock Seller Profile Document (Stripe fields live in seller_profiles)
+        mock_seller_profile_doc = MagicMock()
+        mock_seller_profile_doc.exists = True
+        mock_seller_profile_doc.to_dict.return_value = {
             "onboardingCompleted": True,
             "chargesEnabled": True,
             "payoutsEnabled": True,
@@ -268,6 +287,8 @@ class TestTaxAudit(unittest.TestCase):
                 mock_doc_ref.id = doc_id or "order_123"
                 if name == "users":
                     mock_doc_ref.get.return_value = mock_seller_doc
+                elif name == "seller_profiles":
+                    mock_doc_ref.get.return_value = mock_seller_profile_doc
                 elif name == "products":
                     mock_doc_ref.get.return_value = mock_product
                 else:  # orders
