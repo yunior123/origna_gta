@@ -1469,3 +1469,13 @@ no magic strings  shipped_at = item.get("shippedAt")
 
 
 3. solve all warnings in code, no dart warnings, no ruff warnings
+
+4. fix all playwright tests that were broken with the massive changes and create more to cover what has not been covered in app
+
+5. in .claude/agents improve the agents and update them. Also, create at least 3 more agents one of which should take care of the performance, other about refactoring, correct code comments in code- there is already a hook for that, etc
+
+6. make sure that the generation of origna_flows covers all flows in app and the files associated with the flows are the right ones.
+
+7. search for anthropic official repos in github and docs to see if we can improve our claude.md and the way ai reads the code
+
+8. delete all finished tasks in state.md

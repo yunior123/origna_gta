@@ -383,6 +383,21 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         update_data[Fields.CARRIER] = carrier or ""
         update_data[Fields.SHIPPED_AT] = get_server_timestamp()
 
+    # Admin-triggered DELIVERED: capture payment if still authorized
+    if is_admin and new_status == OrderStatusValues.DELIVERED:
+        payment_status = order_data.get(Fields.PAYMENT_STATUS)
+        if payment_status in (PaymentStatusValues.AUTHORIZED, PaymentStatusValues.CAPTURING):
+            pi_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+            if pi_id:
+                try:
+                    stripe.api_key = get_stripe_secret_key()
+                    pi = stripe.PaymentIntent.retrieve(pi_id)
+                    if pi.status == "requires_capture":
+                        stripe.PaymentIntent.capture(pi_id, idempotency_key=f"admin_capture_{order_id}")
+                except Exception as e:
+                    logger.error(f"Admin-triggered capture failed for {order_id}: {e}")
+                    raise https_fn.HttpsError("internal", "Could not capture payment before marking delivered.")
+
     order_ref.update(update_data)
 
     # Record order event
@@ -1992,18 +2007,30 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             _handle_payment_status_email(order_id, after_data, new_payment_status, buyer_email=None)
         return
 
-    # DEDUP GUARD: at-least-once trigger — skip if already sent for this transition
-    if new_status in after_data.get(Fields.NOTIFICATIONS_SENT, []):
+    # Transactional dedup — claim slot atomically to prevent duplicate sends on retries
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    from firebase_admin import firestore as _fs_dedup
+    from google.cloud.firestore_v1 import transaction as _txn_mod
+
+    @_txn_mod.transactional
+    def _claim_notification(txn):
+        fresh = order_ref.get(transaction=txn)
+        if not fresh.exists:
+            return False
+        sent = (fresh.to_dict() or {}).get(Fields.NOTIFICATIONS_SENT, [])
+        if new_status in sent:
+            return False
+        txn.update(order_ref, {Fields.NOTIFICATIONS_SENT: _fs_dedup.ArrayUnion([new_status])})
+        return True
+
+    try:
+        claimed = _claim_notification(get_db().transaction())
+    except Exception as flag_err:
+        logger.warning(f"Failed to claim notification slot for {order_id}/{new_status}: {flag_err}")
+        claimed = False
+    if not claimed:
         logger.info(f"Notification already sent for order {order_id} status={new_status}, skipping")
         return
-
-    # Atomically mark notification as sent before dispatching (prevents duplicate sends on retry)
-    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-    try:
-        from firebase_admin import firestore as _fs_dedup
-        order_ref.update({Fields.NOTIFICATIONS_SENT: _fs_dedup.ArrayUnion([new_status])})
-    except Exception as flag_err:
-        logger.warning(f"Failed to set dedup flag for {order_id}/{new_status}: {flag_err}")
 
     # Send notification emails based on status change
     user_id = after_data.get(Fields.USER_ID)
@@ -2012,10 +2039,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
     buyer_email = after_data.get(Fields.CUSTOMER_EMAIL)
     if not buyer_email:
         try:
-            from firebase_admin import firestore as _fs
-
-            _db = _fs.client()
-            buyer_doc = _db.collection(Collections.USERS).document(user_id).get()
+            buyer_doc = get_db().collection(Collections.USERS).document(user_id).get()
             if buyer_doc.exists:
                 buyer_email = buyer_doc.to_dict().get(Fields.EMAIL)
         except Exception as e:
@@ -2282,17 +2306,29 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
     seller_id = after_data.get(Fields.SELLER_ID, "")
     oid_short = order_id[:8] if order_id else "?"
 
-    # Dedup guard: skip if already notified for this transition
-    if new_status in after_data.get(Fields.NOTIFICATIONS_SENT, []):
-        return
+    # Atomically claim this notification slot (transactional dedup)
+    return_ref = get_db().collection(Collections.RETURN_REQUESTS).document(return_id)
+    from firebase_admin import firestore as _fs_rr_dedup
+    from google.cloud.firestore_v1 import transaction as _rr_txn_mod
+
+    @_rr_txn_mod.transactional
+    def _claim_return_notification(txn):
+        fresh = return_ref.get(transaction=txn)
+        if not fresh.exists:
+            return False
+        sent = (fresh.to_dict() or {}).get(Fields.NOTIFICATIONS_SENT, [])
+        if new_status in sent:
+            return False
+        txn.update(return_ref, {Fields.NOTIFICATIONS_SENT: _fs_rr_dedup.ArrayUnion([new_status])})
+        return True
 
     try:
-        from firebase_admin import firestore as _fs_rr_dedup
-        get_db().collection(Collections.RETURN_REQUESTS).document(return_id).update(
-            {Fields.NOTIFICATIONS_SENT: _fs_rr_dedup.ArrayUnion([new_status])}
-        )
+        claimed = _claim_return_notification(get_db().transaction())
     except Exception as e:
-        logger.warning(f"Failed to set notification flag for return {return_id}: {e}")
+        logger.warning(f"Failed to claim notification slot for return {return_id}: {e}")
+        claimed = False
+    if not claimed:
+        return
 
     try:
         if new_status == ReturnStatusValues.REQUESTED and seller_id:

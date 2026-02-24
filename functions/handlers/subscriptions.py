@@ -102,7 +102,6 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
     from config import BASE_URL
 
     customer_id = _get_or_create_stripe_customer(uid, user_data)
-    now = datetime.now(UTC)
 
     try:
         session = stripe.checkout.Session.create(

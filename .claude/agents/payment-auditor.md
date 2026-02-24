@@ -27,11 +27,17 @@ Audit the complete payment pipeline for financial correctness, security, and edg
 
 ## Audit Checklist
 - [ ] PaymentIntent amount = sum of (item prices × quantities) + shipping - discounts?
-- [ ] Platform fee calculation: exactly 2.5% of total?
-- [ ] Auto-capture: payment captured immediately at checkout (`paymentStatus` always `'captured'`); no manual capture step?
-- [ ] `source_transaction` = charge ID (`ch_xxx`), NOT PaymentIntent (`pi_xxx`)?
-- [ ] 7-day authorization expiry handled by cron (only for edge-case un-captured auths)?
+- [ ] Platform fee calculation: exactly 2.5% of total? (stored as PLATFORM_FEE_RATIO constant)
+- [ ] Auto-capture: payment captured immediately at checkout (`paymentStatus` = `'captured'` in `checkout.session.completed`); NO manual capture path?
+- [ ] `source_transaction` = charge ID (`ch_xxx`), NOT PaymentIntent (`pi_xxx`)? Use `pi.latest_charge if isinstance(..., str) else pi.latest_charge.id`?
+- [ ] Seller profile validation reads from `seller_profiles/{uid}` (NOT `users/{uid}`) for `onboardingCompleted` + `chargesEnabled`?
+- [ ] Stripe Transfer `destination` reads `stripeAccountId` from `seller_profiles/{uid}`?
 - [ ] Refund: full amount returned, stock restored, order status updated?
+- [ ] Digital products: stock NOT decremented on purchase, NOT restored on refund?
+- [ ] Digital licenses: only generated AFTER `paymentStatus == CAPTURED`?
+- [ ] Dedup check runs BEFORE stock reservation (not after)?
+- [ ] Async payment (Interac/bank): `process_async_payment_succeeded` calls `_execute_seller_payouts` + `_run_post_payment_side_effects`?
+- [ ] Coupon redemption atomic: `usedCount` check + increment inside Firestore transaction?
 - [ ] Partial refund: per-item amounts correct?
 - [ ] Webhook idempotency: duplicate events don't double-process?
 - [ ] Webhook signature: HMAC verified?
@@ -40,7 +46,9 @@ Audit the complete payment pipeline for financial correctness, security, and edg
 - [ ] 3DS: `requires_action` status handled, email sent?
 - [ ] Dispute: auto-reversal of all transfers?
 - [ ] Error states: what happens if Stripe API call fails mid-flow?
-- [ ] Multi-seller cart: each seller gets correct amount?
+- [ ] Multi-seller cart: each seller gets correct amount? `_execute_seller_payouts` used?
+- [ ] `inventoryLevels` subcollection restored on session expired (not just top-level stockQuantity)?
+- [ ] Payout records checked for existing PENDING before creating new (dedup on cron retry)?
 
 ## Output
 For each finding, specify:

@@ -34,9 +34,7 @@ from schema_constants import (
     EmailConfig,
     Fields,
     OrderStatusValues,
-    ProductApprovalStatusValues,
     ProductLifecycleStatusValues,
-    ProductStatusValues,
     UserRoleValues,
     WarehouseTypeValues,
 )
@@ -2665,7 +2663,6 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
 
     product_name = after_data.get(Fields.NAME, "A product you wanted")
     safe_name = _html.escape(product_name)
-    now_utc = datetime.now(UTC)
 
     if has_variants:
         # variants is a list[dict] — key by variantId for before/after comparison.

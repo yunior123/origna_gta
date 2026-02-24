@@ -209,6 +209,7 @@ class AddressManagementScreen extends ConsumerWidget {
                   if (value == 'edit') {
                     Navigator.pushNamed(context, AppRoutes.addEditAddress, arguments: address);
                   } else if (value == 'delete') {
+                    final messenger = ScaffoldMessenger.of(context);
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (context) => AlertDialog(
@@ -227,7 +228,7 @@ class AddressManagementScreen extends ConsumerWidget {
                       if (address.addressId != null) {
                         ref.read(addressManagementViewModelProvider.notifier).deleteAddress(address.addressId!);
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(content: Text('address.delete_failed'.tr()), backgroundColor: DesignTokens.error),
                         );
                       }

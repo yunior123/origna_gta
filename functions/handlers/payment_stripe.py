@@ -54,7 +54,6 @@ from schema_constants import (
     ProductLifecycleStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
-    SubscriptionStatusValues,
     UserRoleValues,
     ValidationLimits,
     WebhookStatusValues,
@@ -626,6 +625,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     shipping_address = data.get(Fields.SHIPPING_ADDRESS, {})
     # Note: 'subtotal' is not in Fields as it's an API parameter (dollars) vs Firestore field (cents)
     client_subtotal = data.get(ApiKeys.SUBTOTAL, 0)
+    client_idempotency_key = data.get(ApiKeys.IDEMPOTENCY_KEY)
 
     if not items or len(items) == 0:
         raise https_fn.HttpsError("invalid-argument", "No items in cart")
@@ -913,7 +913,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     discount_amount_cents = 0
     coupon_code_raw = data.get(Fields.COUPON_CODE)
     if coupon_code_raw and isinstance(coupon_code_raw, str):
-        from handlers.coupons import _compute_discount, _validate_coupon_code, redeem_coupon as _redeem_coupon  # noqa: E402
+        from handlers.coupons import _compute_discount, _validate_coupon_code  # noqa: E402
 
         code = coupon_code_raw.strip().upper()
         if _validate_coupon_code(code):
@@ -1194,7 +1194,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 if variant is None:
                     raise https_fn.HttpsError("not-found", f"Variant {variant_id} not found")
                 if not variant.get("isActive", True):
-                    raise https_fn.HttpsError("failed-precondition", f"Selected variant is no longer available")
+                    raise https_fn.HttpsError("failed-precondition", "Selected variant is no longer available")
                 variant_stock = variant.get(Fields.STOCK_QUANTITY, 0)
                 if variant_stock < item[Fields.QUANTITY] and not allow_backorder:
                     raise https_fn.HttpsError(
@@ -1452,7 +1452,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             },
             # NOTE: automatic_tax disabled - we calculate tax server-side to avoid double taxation
             # AUDIT FIX (CRITICAL-001): Idempotency key prevents duplicate sessions on retry
-            idempotency_key=f"checkout_{order_id}",
+            idempotency_key=client_idempotency_key or f"checkout_{order_id}",
         )
 
         # Update order with session ID
@@ -1823,6 +1823,79 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
         order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: datetime.now(UTC)})
 
 
+def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> list:
+    """Create payout records and Stripe Transfers for all sellers in an order.
+
+    Args:
+        order_id: Firestore order document ID
+        order_data: Order data dict
+        charge_id: Stripe Charge ID (ch_xxx) — required for source_transaction
+
+    Returns:
+        List of (seller_id, error) tuples for any transfer failures.
+    """
+    transfer_errors = []
+    items = order_data.get(Fields.ITEMS, [])
+
+    # Compute per-seller totals (price in dollars × 100 → cents, × quantity)
+    sellers_total: dict[str, int] = {}
+    for item in items:
+        sid = item.get(Fields.SELLER_ID)
+        if not sid:
+            continue
+        amt = round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1)
+        sellers_total[sid] = sellers_total.get(sid, 0) + amt
+
+    for seller_id, amount_cents in sellers_total.items():
+        platform_fee_cents = round(amount_cents * PLATFORM_FEE_RATIO)
+        net_amount_cents = amount_cents - platform_fee_cents
+
+        payout_ref = get_db().collection(Collections.PAYOUTS).document(f"{order_id}_{seller_id}")
+        payout_data = {
+            Fields.ORDER_ID: order_id,
+            Fields.SELLER_ID: seller_id,
+            Fields.AMOUNT_CENTS: amount_cents,
+            Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
+            Fields.NET_AMOUNT_CENTS: net_amount_cents,
+            Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
+            Fields.STATUS: PayoutStatusValues.PENDING,
+            "feeRate": PLATFORM_FEE_RATIO,  # TODO: use Fields.FEE_RATE when added to schema_constants
+            Fields.CREATED_AT: get_server_timestamp(),
+        }
+        payout_ref.set(payout_data, merge=True)
+
+        # Attempt Stripe Transfer
+        if charge_id:
+            try:
+                sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
+                acct_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
+                if acct_id:
+                    transfer = stripe.Transfer.create(
+                        amount=net_amount_cents,
+                        currency=BusinessRules.DEFAULT_CURRENCY,
+                        destination=acct_id,
+                        source_transaction=charge_id,
+                        transfer_group=order_id,
+                        metadata={Fields.ORDER_ID: order_id, Fields.SELLER_ID: seller_id},
+                        idempotency_key=f"transfer_{order_id}_{seller_id}",
+                    )
+                    payout_ref.update({
+                        Fields.STRIPE_TRANSFER_ID: transfer.id,
+                        Fields.STATUS: PayoutStatusValues.COMPLETED,
+                    })
+                else:
+                    logger.warning(f"⚠️ No Stripe account for seller {seller_id} — skipping transfer for order {order_id}")
+            except Exception as transfer_err:
+                logger.warning(f"⚠️ Transfer to seller {seller_id} failed for order {order_id}: {transfer_err}")
+                payout_ref.update({
+                    Fields.STATUS: PayoutStatusValues.FAILED,
+                    Fields.FAILURE_REASON: str(transfer_err),
+                })
+                transfer_errors.append((seller_id, str(transfer_err)))
+
+    return transfer_errors
+
+
 def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
     """Run confirmation emails, digital licenses, coupon redemption, and cart clearing after payment capture.
     Called by both process_checkout_session_completed (card/instant) and process_async_payment_succeeded (bank/Interac).
@@ -2026,7 +2099,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
     payment_event_type = OrderEventTypes.PAYMENT_CAPTURED if update_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED else OrderEventTypes.PAYMENT_AUTHORIZED
     try:
         OrderEvent.write(
-            db, order_id, payment_event_type,
+            get_db(), order_id, payment_event_type,
             actor="stripe_webhook", actor_type="system",
             to_status=update_data.get(Fields.PAYMENT_STATUS),
             metadata={"paymentIntentId": pi_id or ""},
@@ -2034,7 +2107,24 @@ def process_checkout_session_completed(session: dict) -> str | None:
     except Exception as e:
         logger.warning(f"Failed to write order event for {order_id}: {e}")
 
-    _run_post_payment_side_effects(order_id, order_data)
+    # Retrieve charge_id for seller payouts (auto-capture: charge is already on the PI)
+    charge_id = None
+    if pi_id:
+        try:
+            ensure_stripe_key()
+            pi = stripe.PaymentIntent.retrieve(pi_id)
+            charge_id = pi.latest_charge if isinstance(pi.latest_charge, str) else (pi.latest_charge.id if pi.latest_charge else None)
+        except Exception as pi_err:
+            logger.error(f"⚠️ Failed to retrieve PaymentIntent {pi_id} for charge_id: {pi_err}")
+
+    if charge_id:
+        try:
+            _execute_seller_payouts(order_id, order_data, charge_id)
+        except Exception as payout_err:
+            logger.error(f"⚠️ Seller payout creation failed for order {order_id}: {payout_err}")
+
+    if update_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
+        _run_post_payment_side_effects(order_id, order_data)
 
     return f"Order {order_id} confirmed"
 
@@ -2087,6 +2177,23 @@ def process_async_payment_succeeded(session: dict) -> str | None:
         )
     except Exception as e:
         logger.warning(f"Failed to write order event for {order_id}: {e}")
+
+    # Retrieve charge_id for seller payouts
+    pi_id = session.get("payment_intent")
+    charge_id = None
+    if pi_id:
+        try:
+            ensure_stripe_key()
+            pi = stripe.PaymentIntent.retrieve(pi_id)
+            charge_id = pi.latest_charge if isinstance(pi.latest_charge, str) else (pi.latest_charge.id if pi.latest_charge else None)
+        except Exception as pi_err:
+            logger.error(f"⚠️ Failed to retrieve PaymentIntent {pi_id} for charge_id: {pi_err}")
+
+    if charge_id:
+        try:
+            _execute_seller_payouts(order_id, order_data, charge_id)
+        except Exception as payout_err:
+            logger.error(f"⚠️ Seller payout creation failed for order {order_id}: {payout_err}")
 
     _run_post_payment_side_effects(order_id, order_data)
 
@@ -2288,6 +2395,13 @@ def process_session_expired(session: dict) -> str | None:
                     transaction.update(
                         product_ref,
                         {f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}": _firestore.Increment(qty)},
+                    )
+                    # Also restore inventoryLevels subcollection
+                    inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+                    transaction.set(
+                        inv_ref,
+                        {Fields.AVAILABLE_QUANTITY: _firestore.Increment(qty)},
+                        merge=True,
                     )
 
         transaction.update(
@@ -3224,13 +3338,8 @@ def process_refund_failed(refund: dict) -> None:
                 .get()
             )
         else:
-            orders = (
-                get_db()
-                .collection(Collections.ORDERS)
-                .where(Fields.CHARGE_ID, "==", charge_id)
-                .limit(1)
-                .get()
-            )
+            logger.warning(f"⚠️ Could not resolve PaymentIntent for charge {charge_id} — skipping order flag")
+            orders = []
         for order_doc in orders:
             order_doc.reference.update(
                 {
@@ -3628,11 +3737,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             if len(existing_payouts) == 0:
                 items = order_data.get(Fields.ITEMS, [])
-                stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
-                subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 1)
-                fee_rate = (
-                    (stored_fee_total / subtotal_cents) if stored_fee_total and subtotal_cents else PLATFORM_FEE_RATIO
-                )
+                fee_rate = PLATFORM_FEE_RATIO  # TODO: use Fields.FEE_RATE when added to schema_constants
 
                 sellers_total = {}
                 for item in items:
@@ -3649,7 +3754,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                 if pi_id:
                     try:
                         pi_obj = stripe.PaymentIntent.retrieve(pi_id)
-                        charge_id = pi_obj.latest_charge
+                        charge_id = pi_obj.latest_charge if isinstance(pi_obj.latest_charge, str) else (pi_obj.latest_charge.id if pi_obj.latest_charge else None)
                     except Exception as pi_err:
                         logger.error(f"\u26a0\ufe0f Failed to retrieve PaymentIntent for charge_id: {pi_err}")
 
@@ -3868,7 +3973,6 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # AUDIT FIX (CRITICAL-001): Use fee rate stored at checkout, not current config.
         # Prevents config manipulation between checkout and capture.
-        stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
         stored_fee_rate = PLATFORM_FEE_RATIO  # snapshot at checkout, not computed post-hoc
 
         for seller_id, amount_cents in sellers_total_cents.items():

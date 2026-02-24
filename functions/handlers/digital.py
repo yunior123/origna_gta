@@ -472,20 +472,27 @@ def _get_software_redirect_impl(token: str) -> str:
     if not doc.exists:
         raise ValueError("not_found")
 
-    data = doc.to_dict()
-    if data.get("used"):
-        raise ValueError("already_used")
+    from firebase_admin import firestore as _fs_stok
 
-    expires_at = data.get("expiresAt")
     now = datetime.now(UTC)
-    if hasattr(expires_at, "tzinfo"):
-        expires_dt = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=UTC)
-    else:
-        expires_dt = expires_at
-    if expires_dt < now:
-        raise ValueError("expired")
 
-    token_ref.update({"used": True, "usedAt": now})
+    @_fs_stok.transactional
+    def _mark_used(txn, ref):
+        snap = ref.get(transaction=txn)
+        tok_data = snap.to_dict() or {}
+        if tok_data.get("used"):
+            raise ValueError("already_used")
+        expires_at = tok_data.get("expiresAt")
+        if hasattr(expires_at, "tzinfo"):
+            expires_dt = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=UTC)
+        else:
+            expires_dt = expires_at
+        if expires_dt is not None and expires_dt < now:
+            raise ValueError("expired")
+        txn.update(ref, {"used": True, "usedAt": now})
+        return tok_data
+
+    data = _mark_used(db.transaction(), token_ref)
 
     url = data.get("downloadUrl", "")
     if not url:
@@ -587,6 +594,22 @@ def verify_license(req: https_fn.Request) -> https_fn.Response:
         if not allowed:
             return https_fn.Response(
                 json.dumps({"error": "rate_limited"}),
+                status=429,
+                content_type="application/json",
+            )
+
+        # IP-level rate limit: 200 calls per IP per hour (guards against distributed brute-force)
+        ip_key = f"ip:{req.remote_addr}"
+        ip_allowed, _ = limiter.check_rate_limit(
+            identifier=ip_key,
+            action="verify_license_ip",
+            max_requests=200,
+            window_minutes=60,
+            fail_closed=False,
+        )
+        if not ip_allowed:
+            return https_fn.Response(
+                json.dumps({"error": "rate_limited", "message": "Too many requests"}),
                 status=429,
                 content_type="application/json",
             )

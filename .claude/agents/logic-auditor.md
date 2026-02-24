@@ -41,6 +41,16 @@ WHY: Trace of the logic error
 FIX: Specific code change needed
 ```
 
+## Known Architecture Rules (Critical Context)
+- **Auto-capture**: Stripe sessions use auto-capture (no `capture_method="manual"`). `paymentStatus = CAPTURED` is set in `checkout.session.completed`. No manual capture step exists.
+- **Seller fields**: `stripeAccountId`, `onboardingCompleted`, `chargesEnabled`, `commissionRateBps` live in `seller_profiles/{uid}`. Never read from `users/{uid}`.
+- **Digital products**: `isDigital=True` items never decrement/restore stock. Licenses generated only after `paymentStatus == CAPTURED`.
+- **Dedup order**: Duplicate-order detection runs BEFORE stock reservation.
+- **Notification dedup**: `on_order_status_changed` uses Firestore transaction with `notificationsSent` ArrayUnion to prevent duplicate push/email on retries.
+- **variantKey sentinel**: Non-variant stock subscriptions store `variantKey: ""` (empty string sentinel) for clean Firestore queries.
+- **Payout records**: `{order_id}_{seller_id}` deterministic doc ID prevents duplicate payout records on cron retry.
+- **inventoryLevels**: All 3 stock levels (product.stockQuantity, product.warehouseStock map, inventoryLevels subcollection) must be updated atomically together.
+
 ## Memory Management
 Update your agent memory as you discover:
 - Common bug patterns in this codebase

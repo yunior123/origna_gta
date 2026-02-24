@@ -417,11 +417,16 @@ def _run_auto_capture() -> None:
                                 .limit(1)
                                 .get()
                             )
-                            payout_ref = (
-                                existing_payouts[0].reference
-                                if existing_payouts
-                                else get_db().collection(Collections.PAYOUTS).document()
-                            )
+                            if existing_payouts:
+                                payout_ref = existing_payouts[0].reference
+                                existing_status = (existing_payouts[0].to_dict() or {}).get(Fields.STATUS)
+                                if existing_status == PayoutStatusValues.COMPLETED:
+                                    logger.info(f"Payout already completed for {order_id}/{seller_id}, skipping")
+                                    current_order_success_count += 1
+                                    continue
+                            else:
+                                doc_id = f"{order_id}_{seller_id}"
+                                payout_ref = get_db().collection(Collections.PAYOUTS).document(doc_id)
                             payout_ref.set(
                                 {
                                     Fields.ORDER_ID: order_id,
@@ -515,7 +520,13 @@ def _run_auto_capture() -> None:
                     }
                 )
             else:
-                logger.warning(f"No successful payouts for order {order_id}, leaving as PROCESSING")
+                logger.warning(f"No successful payouts for order {order_id}, marking as FAILED")
+                order_doc.reference.update(
+                    {
+                        Fields.PAYOUT_STATUS: PayoutStatusValues.FAILED,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
 
         except stripe.error.StripeError as e:
             failed_count += 1
@@ -1464,9 +1475,9 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
     processed_count = 0
     alerted_count = 0
 
-    DISPUTE_THRESHOLD = 0.05
-    REFUND_THRESHOLD = 0.15
-    CANCEL_THRESHOLD = 0.10
+    DISPUTE_THRESHOLD = BusinessRules.SELLER_DISPUTE_RATE_THRESHOLD
+    REFUND_THRESHOLD = BusinessRules.SELLER_REFUND_RATE_THRESHOLD
+    CANCEL_THRESHOLD = BusinessRules.SELLER_CANCEL_RATE_THRESHOLD
 
     # Get all sellers
     sellers_query = get_db().collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.SELLER).limit(500)
@@ -1847,7 +1858,6 @@ def _run_return_escalation() -> None:
             return_data = doc.to_dict() or {}
             order_id = return_data.get(Fields.ORDER_ID, "")
             buyer_id = return_data.get(Fields.USER_ID, "")
-            seller_id = return_data.get(Fields.SELLER_ID, "")
 
             try:
                 doc.reference.update({

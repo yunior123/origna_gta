@@ -2,20 +2,31 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 /// Tracks local subscription state for back-in-stock notifications.
 /// On first use, fetches the real subscription state from Firestore.
-final stockNotificationNotifierProvider =
-    StateNotifierProvider.family<StockNotificationNotifier, AsyncValue<bool>, ({String productId, String? variantKey})>(
-  (ref, args) => StockNotificationNotifier(args.productId, args.variantKey)..init(),
+/// Uses autoDispose so state is cleared when the widget leaves the tree.
+final stockNotificationNotifierProvider = StateNotifierProvider.autoDispose
+    .family<StockNotificationNotifier, AsyncValue<bool>, ({String productId, String? variantKey})>(
+  (ref, args) => StockNotificationNotifier(ref, args.productId, args.variantKey),
 );
 
 class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
+  final Ref _ref;
   final String productId;
   final String? variantKey;
 
-  StockNotificationNotifier(this.productId, this.variantKey) : super(const AsyncValue.loading());
+  StockNotificationNotifier(this._ref, this.productId, this.variantKey) : super(const AsyncValue.loading()) {
+    // Re-initialize whenever auth state changes (login/logout).
+    _ref.listen<AsyncValue<User?>>(authStateProvider, (previous, next) {
+      final prevUid = previous?.valueOrNull?.uid;
+      final nextUid = next.valueOrNull?.uid;
+      if (prevUid != nextUid) init();
+    });
+    init();
+  }
 
   /// Checks Firestore for an existing subscription so the UI reflects the
   /// real state even if the user subscribed in a previous session.

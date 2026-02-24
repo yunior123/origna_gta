@@ -710,6 +710,26 @@
       "description": "Product status: draft, active, paused, archived, out_of_stock",
       "title": "Status",
       "type": "string"
+    },
+    "hasVariants": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the product has variant options (size, colour, etc.)"
+    },
+    "variants": {
+      "type": ["array", "null"],
+      "items": {"type": "object"},
+      "description": "List of variant objects (variantId, stockQuantity, price overrides, etc.)"
+    },
+    "variantOptions": {
+      "type": ["array", "null"],
+      "items": {"type": "object"},
+      "description": "Variant option definitions (e.g. [{name:'Size', values:['S','M','L']}])"
+    },
+    "lifecycleStatus": {
+      "type": "string",
+      "enum": ["active", "inactive", "pending_review", "rejected", "archived"],
+      "description": "Backend lifecycle gate controlling product visibility"
     }
   },
   "required": [

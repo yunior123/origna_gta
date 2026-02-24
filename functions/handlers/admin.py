@@ -822,8 +822,6 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not user_doc.exists:
         raise https_fn.HttpsError("not-found", "User not found")
 
-    user_data = user_doc.to_dict()
-
     # Read MFA secrets from user_security/{uid} (backend-only collection)
     security_ref = get_db().collection(Collections.USER_SECURITY).document(user_id)
     security_doc = security_ref.get()
