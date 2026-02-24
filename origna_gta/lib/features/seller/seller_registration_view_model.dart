@@ -84,7 +84,7 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
     _lastOperationTime = DateTime.now();
     
     try {
-      const url = 'https://dashboard.stripe.com/express';
+      const url = ExternalUrls.stripeDashboard;
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       } else {

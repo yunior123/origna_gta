@@ -22,6 +22,7 @@ class SubscriptionScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Launch Stripe checkout when URL appears
+    // vm is a StateNotifier — no BuildContext used after await, so no mounted guard needed.
     ref.listen(subscriptionViewModelProvider.select((s) => s.checkoutUrl), (prev, next) async {
       if (next != null && next.isNotEmpty) {
         await launchUrl(Uri.parse(next), mode: LaunchMode.externalApplication);
@@ -122,6 +123,7 @@ class SubscriptionScreen extends ConsumerWidget {
           _buildBenefit(Icons.chat_bubble_outline_rounded, 'subscription.chat_with_sellers'.tr(), 'subscription.chat_with_sellers_desc'.tr(), isDark),
           _buildBenefit(Icons.question_answer_outlined, 'subscription.ask_questions'.tr(), 'subscription.ask_questions_desc'.tr(), isDark),
           _buildBenefit(Icons.notifications_active_outlined, 'subscription.smart_notifications'.tr(), 'subscription.smart_notifications_desc'.tr(), isDark),
+          _buildBenefit(Icons.photo_camera_outlined, 'subscription.photo_reviews'.tr(), 'subscription.photo_reviews_desc'.tr(), isDark),
           const SizedBox(height: 24),
 
           if (isPremium) ...[

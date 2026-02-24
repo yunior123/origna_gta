@@ -501,6 +501,12 @@ abstract final class Fields {
   static const platform = 'platform';
   static const businessName = 'businessName';
   static const payoutHoldDays = 'payoutHoldDays';
+  static const avgRating = 'avgRating';
+  static const totalReviews = 'totalReviews';
+  static const totalSales = 'totalSales';
+  static const bankAccountLast4 = 'bankAccountLast4';
+  static const acceptsReturns = 'acceptsReturns';
+  static const returnWindowDaysField = 'returnWindowDays'; // seller-profile field name
 
   // === USER MFA FIELDS (admin only) ===
   static const mfaEnabled = 'mfaEnabled';
@@ -1508,4 +1514,12 @@ abstract final class OrderEventTypes {
   static const itemDelivered = 'item_delivered';
   static const cancellationConfirmed = 'cancellation_confirmed';
   static const noteAdded = 'note_added';
+}
+
+// =============================================================================
+// EXTERNAL URLS — centralised to avoid magic strings
+// =============================================================================
+
+abstract final class ExternalUrls {
+  static const stripeDashboard = 'https://dashboard.stripe.com/express';
 }

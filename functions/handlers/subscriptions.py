@@ -118,6 +118,16 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
             idempotency_key=f"premium_sub_{uid}_{datetime.now(UTC).strftime('%Y%m%d%H%M')}",
         )
         return {"success": True, "checkoutUrl": session.url, "sessionId": session.id}
+    except stripe.error.IdempotencyError as e:
+        # Same click within the same minute window — re-fetch the existing session
+        logger.info(f"Idempotency hit for premium subscription {uid}: {e}")
+        existing_session = e.request_id and stripe.checkout.Session.retrieve(
+            e.headers.get("idempotency-replayed-request", "")
+        ) if hasattr(e, "headers") else None
+        if existing_session and existing_session.url:
+            return {"success": True, "checkoutUrl": existing_session.url, "sessionId": existing_session.id}
+        # Fallback: surface as retriable error
+        raise https_fn.HttpsError("already-exists", "A checkout session is already in progress. Please try again in a moment.") from e
     except stripe.StripeError as e:
         logger.error(f"Stripe error creating subscription for {uid}: {e}")
         raise https_fn.HttpsError("internal", "Failed to create subscription. Please try again.") from e
@@ -182,7 +192,6 @@ def get_subscription_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         "status": status,
         "premiumExpiresAt": period_end.isoformat() if period_end else None,
         "cancelAtPeriodEnd": sub_data.get(Fields.CANCEL_AT_PERIOD_END, False),
-        "stripeSubscriptionId": sub_data.get(Fields.STRIPE_SUBSCRIPTION_ID),
     }
 
 
@@ -212,7 +221,11 @@ def handle_subscription_deleted(event: stripe.Event) -> None:
     db = _get_db()
     now = datetime.now(UTC)
 
-    db.collection(Collections.SUBSCRIPTIONS).document(uid).set(
+    batch = db.batch()
+
+    sub_ref = db.collection(Collections.SUBSCRIPTIONS).document(uid)
+    batch.set(
+        sub_ref,
         {
             Fields.STRIPE_SUBSCRIPTION_ID: sub["id"],
             Fields.STATUS: SubscriptionStatusValues.CANCELED,
@@ -223,8 +236,10 @@ def handle_subscription_deleted(event: stripe.Event) -> None:
         merge=True,
     )
 
-    # Clear premium cache on user doc
-    db.collection(Collections.USERS).document(uid).update(
+    # Clear premium cache on user doc — in same batch to avoid partial writes
+    user_ref = db.collection(Collections.USERS).document(uid)
+    batch.update(
+        user_ref,
         {
             Fields.IS_PREMIUM: False,
             Fields.PREMIUM_EXPIRES_AT: None,
@@ -233,6 +248,8 @@ def handle_subscription_deleted(event: stripe.Event) -> None:
             Fields.UPDATED_AT: now,
         }
     )
+
+    batch.commit()
     logger.info(f"Premium cleared for user {uid} (subscription deleted)")
 
 
@@ -272,43 +289,47 @@ def _sync_subscription(sub: dict | stripe.Subscription) -> None:
     now = datetime.now(UTC)
 
     db = _get_db()
-    batch = db.batch()
+    from firebase_admin import firestore as _fs
 
     sub_ref = db.collection(Collections.SUBSCRIPTIONS).document(uid)
-    batch.set(
-        sub_ref,
-        {
-            Fields.UID: uid,
-            Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
-            Fields.STATUS: status,
-            Fields.CURRENT_PERIOD_START: period_start,
-            Fields.CURRENT_PERIOD_END: period_end,
-            Fields.CANCEL_AT_PERIOD_END: cancel_at_end,
-            Fields.UPDATED_AT: now,
-        },
-        merge=True,
-    )
-
-    # Update cached isPremium on user doc
-    user_update: dict[str, Any] = {
-        Fields.IS_PREMIUM: is_premium,
-        Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
-        Fields.UPDATED_AT: now,
-    }
-    if is_premium and period_end:
-        user_update[Fields.PREMIUM_EXPIRES_AT] = period_end
-        # Set premiumSince only on activation
-        user_snap = db.collection(Collections.USERS).document(uid).get()
-        if user_snap.exists:
-            existing = (user_snap.to_dict() or {}).get(Fields.PREMIUM_SINCE)
-            if not existing:
-                user_update[Fields.PREMIUM_SINCE] = period_start or now
-    elif not is_premium:
-        user_update[Fields.PREMIUM_EXPIRES_AT] = period_end
-
     user_ref = db.collection(Collections.USERS).document(uid)
-    batch.update(user_ref, user_update)
-    batch.commit()
+
+    @_fs.transactional
+    def _sync_txn(transaction):
+        # Read premiumSince atomically inside the transaction
+        user_snap = user_ref.get(transaction=transaction)
+        existing_premium_since = (user_snap.to_dict() or {}).get(Fields.PREMIUM_SINCE) if user_snap.exists else None
+
+        transaction.set(
+            sub_ref,
+            {
+                Fields.UID: uid,
+                Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
+                Fields.STATUS: status,
+                Fields.CURRENT_PERIOD_START: period_start,
+                Fields.CURRENT_PERIOD_END: period_end,
+                Fields.CANCEL_AT_PERIOD_END: cancel_at_end,
+                Fields.UPDATED_AT: now,
+            },
+            merge=True,
+        )
+
+        user_update: dict[str, Any] = {
+            Fields.IS_PREMIUM: is_premium,
+            Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
+            Fields.UPDATED_AT: now,
+        }
+        if is_premium and period_end:
+            user_update[Fields.PREMIUM_EXPIRES_AT] = period_end
+            if not existing_premium_since:
+                user_update[Fields.PREMIUM_SINCE] = period_start or now
+        elif not is_premium:
+            user_update[Fields.PREMIUM_EXPIRES_AT] = period_end
+
+        transaction.update(user_ref, user_update)
+
+    transaction = db.transaction()
+    _sync_txn(transaction)
     logger.info(f"Subscription synced for user {uid}: status={status}, isPremium={is_premium}")
 
 

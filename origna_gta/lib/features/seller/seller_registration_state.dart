@@ -9,12 +9,19 @@ class SellerRegistrationState {
 
   SellerRegistrationState({this.isLoading = false, this.error, this.successMessage, this.paymentProvider = PaymentProviderValues.stripe});
 
-  SellerRegistrationState copyWith({bool? isLoading, String? error, String? successMessage, String? paymentProvider}) {
+  SellerRegistrationState copyWith({
+    bool? isLoading,
+    Object? error = _sentinel,
+    Object? successMessage = _sentinel,
+    String? paymentProvider,
+  }) {
     return SellerRegistrationState(
       isLoading: isLoading ?? this.isLoading,
-      error: error, // Nullable to allow clearing errors
-      successMessage: successMessage, // Nullable to allow clearing success messages
+      error: error == _sentinel ? this.error : error as String?,
+      successMessage: successMessage == _sentinel ? this.successMessage : successMessage as String?,
       paymentProvider: paymentProvider ?? this.paymentProvider,
     );
   }
 }
+
+const Object _sentinel = Object();

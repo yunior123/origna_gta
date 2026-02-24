@@ -190,7 +190,11 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         try:
             address = Address(**data[Fields.ADDRESS])
+            if address.country != COUNTRY_CANADA:
+                raise https_fn.HttpsError("invalid-argument", "Address must be in Canada")
             update_data[Fields.ADDRESS] = address.model_dump()
+        except https_fn.HttpsError:
+            raise
         except Exception as e:
             logger.error(f"Address validation error: {e}")
             raise https_fn.HttpsError(
@@ -216,6 +220,9 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         if lang not in LanguageValues.ALL:
             raise https_fn.HttpsError("invalid-argument", f"Invalid language. Must be one of: {list(LanguageValues.ALL)}")
         update_data[Fields.PREFERRED_LANGUAGE] = lang
+        # Record consent per Quebec Bill 96 / CASL language preference tracking
+        update_data[Fields.CONSENT_METHOD] = ConsentMethodValues.USER_PREFERENCE
+        update_data[Fields.CONSENT_TIMESTAMP] = get_server_timestamp()
 
     # Update user document
     user_ref = get_db().collection(Collections.USERS).document(user_id)
@@ -341,33 +348,36 @@ def add_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     address_dict = address.model_dump()
 
     db = get_db()
+    from firebase_admin import firestore as _fs
+
     user_ref = db.collection(Collections.USERS).document(user_id)
     addresses_ref = user_ref.collection(Collections.ADDRESSES)
-
-    # Check limit using the cached counter (O(1) instead of O(n) reads)
-    user_snap = user_ref.get()
-    user_data = user_snap.to_dict() or {}
-    address_count = int(user_data.get(Fields.ADDRESS_COUNT, 0))
-    if address_count >= 10:
-        raise https_fn.HttpsError("resource-exhausted", "Maximum of 10 addresses allowed.")
-
-    # First address is automatically default
-    if address_count == 0:
-        address_dict[Fields.IS_DEFAULT] = True
-
-    batch = db.batch()
-
-    # If new address is default, unset the current default
-    if address_dict.get(Fields.IS_DEFAULT) and address_count > 0:
-        existing_defaults = list(addresses_ref.where(Fields.IS_DEFAULT, "==", True).get())
-        for doc in existing_defaults:
-            batch.update(doc.reference, {Fields.IS_DEFAULT: False})
-
     new_ref = addresses_ref.document()
-    batch.set(new_ref, address_dict)
-    # Atomically increment addressCount
-    batch.update(user_ref, {Fields.ADDRESS_COUNT: _get_firestore_increment(1)})
-    batch.commit()
+
+    @_fs.transactional
+    def _add_address_txn(transaction):
+        user_snap = user_ref.get(transaction=transaction)
+        user_data = user_snap.to_dict() or {}
+        address_count = max(0, int(user_data.get(Fields.ADDRESS_COUNT, 0)))
+        if address_count >= 10:
+            raise https_fn.HttpsError("resource-exhausted", "Maximum of 10 addresses allowed.")
+
+        addr = dict(address_dict)
+        # First address is automatically default
+        if address_count == 0:
+            addr[Fields.IS_DEFAULT] = True
+
+        # If new address is default, unset the current default
+        if addr.get(Fields.IS_DEFAULT) and address_count > 0:
+            existing_defaults = list(addresses_ref.where(Fields.IS_DEFAULT, "==", True).get(transaction=transaction))
+            for doc in existing_defaults:
+                transaction.update(doc.reference, {Fields.IS_DEFAULT: False})
+
+        transaction.set(new_ref, addr)
+        transaction.update(user_ref, {Fields.ADDRESS_COUNT: _get_firestore_increment(1)})
+
+    transaction = db.transaction()
+    _add_address_txn(transaction)
     address_id = new_ref.id
 
     return create_success_response({Fields.ADDRESS_ID: address_id})
@@ -398,6 +408,7 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("invalid-argument", "Shipping addresses must be in Canada")
 
     address_dict = address.model_dump()
+    address_dict.pop('address_id', None)  # doc ID is read from doc.id — never stored as a field
 
     db = get_db()
     address_ref = (
@@ -408,11 +419,9 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not doc.exists:
         raise https_fn.HttpsError("not-found", "Address not found")
 
-    # Fetch existing addresses once — used in both default-change branches
-    existing_addresses = list(db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get())
-
     # If this one is set to default and wasn't before, we must unset others
     if address_dict.get(Fields.IS_DEFAULT) and not doc.to_dict().get(Fields.IS_DEFAULT):
+        existing_addresses = list(db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get())
         batch = db.batch()
         for existing_doc in existing_addresses:
             if existing_doc.id != address_id and existing_doc.to_dict().get(Fields.IS_DEFAULT):
@@ -420,6 +429,7 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
         batch.update(address_ref, address_dict)
         batch.commit()
     elif not address_dict.get(Fields.IS_DEFAULT) and doc.to_dict().get(Fields.IS_DEFAULT):
+        existing_addresses = list(db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get())
         # Prevent unsetting default if it's the only one
         if len(existing_addresses) > 1:
             # We enforce that AT LEAST one must be default
@@ -498,21 +508,24 @@ def set_default_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("invalid-argument", "addressId is required")
 
     db = get_db()
+    from firebase_admin import firestore as _fs
+
     addresses_ref = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES)
     address_ref = addresses_ref.document(address_id)
-    doc = address_ref.get()
 
-    if not doc.exists:
-        raise https_fn.HttpsError("not-found", "Address not found")
+    @_fs.transactional
+    def _set_default_txn(transaction):
+        doc = address_ref.get(transaction=transaction)
+        if not doc.exists:
+            raise https_fn.HttpsError("not-found", "Address not found")
+        existing_addresses = addresses_ref.get(transaction=transaction)
+        for existing_doc in existing_addresses:
+            if existing_doc.id == address_id:
+                transaction.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
+            elif existing_doc.to_dict().get(Fields.IS_DEFAULT):
+                transaction.update(existing_doc.reference, {Fields.IS_DEFAULT: False})
 
-    batch = db.batch()
-    existing_addresses = addresses_ref.get()
-    for existing_doc in existing_addresses:
-        if existing_doc.id == address_id:
-            batch.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
-        elif existing_doc.to_dict().get(Fields.IS_DEFAULT):
-            batch.update(existing_doc.reference, {Fields.IS_DEFAULT: False})
-
-    batch.commit()
+    transaction = db.transaction()
+    _set_default_txn(transaction)
 
     return create_success_response({"updated": True})
