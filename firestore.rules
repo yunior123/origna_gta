@@ -644,20 +644,10 @@ service cloud.firestore {
         allow read: if isAuthenticated() && (
           get(/databases/$(database)/documents/chats/$(chatId)).data.buyerId == request.auth.uid ||
           get(/databases/$(database)/documents/chats/$(chatId)).data.sellerId == request.auth.uid ||
-          (isAdmin() && resource.data.get('flagged', false) == true)
+          (isAdmin() && get(/databases/$(database)/documents/chats/$(chatId)).data.get('flagged', false) == true)
         );
-        // Only participants can send messages; buyers must be premium to send
-        allow create: if request.auth != null && (
-          get(/databases/$(database)/documents/chats/$(chatId)).data.sellerId == request.auth.uid ||
-          (get(/databases/$(database)/documents/chats/$(chatId)).data.buyerId == request.auth.uid && 
-           hasActivePremium(request.auth.uid))
-        ) && request.resource.data.keys().hasOnly(['senderId','text','createdAt','read']) &&
-          request.resource.data.senderId == request.auth.uid &&
-          request.resource.data.text is string &&
-          request.resource.data.text.size() > 0 &&
-          request.resource.data.text.size() <= 2000 &&
-          request.resource.data.read == false;
-        allow update, delete: if false;
+        // Messages are written only via backend (Admin SDK bypasses rules)
+        allow create, update, delete: if false;
       }
     }
 

@@ -6,6 +6,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/utils/env_config.dart';
 
 import 'add_product_state.dart';
 import 'variant_models.dart';
@@ -70,8 +71,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     // Bug #27: Prevent double-submit
     if (state.isLoading) return;
 
-    final isDevOrTestRun = const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'dev' ||
-        const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'emulator';
+    final isDevOrTestRun = EnvConfig().isDev || EnvConfig().isEmulator;
 
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'product.please_enter_name'.tr());

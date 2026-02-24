@@ -13,26 +13,43 @@ _CORS = options.CorsOptions(
     cors_methods=["POST", "OPTIONS"],
 )
 
+# Region — Canada (Montreal) for PIPEDA data-residency compliance + <5ms latency from GTA
+_REGION = "northamerica-northeast1"
+
 # Default: 256MB memory, 60s timeout (Firebase defaults - FREE TIER friendly)
 DEFAULT_OPTIONS = {
     "cors": _CORS,
+    "region": _REGION,
 }
 
 # Firestore triggers: No CORS (not HTTP-accessible). Used by on_document_*
-FIRESTORE_TRIGGER_OPTIONS: dict = {}
+FIRESTORE_TRIGGER_OPTIONS: dict = {
+    "region": _REGION,
+}
+
+# Firestore triggers for payment-adjacent collections (orders, payouts).
+# Higher memory to survive burst writes at scale without OOM.
+FIRESTORE_PAYMENT_TRIGGER_OPTIONS: dict = {
+    "memory": options.MemoryOption.MB_512,
+    "timeout_sec": 120,
+    "region": _REGION,
+}
 
 # Webhooks: 256MB memory, 90s timeout (Stripe retries on timeout, need margin)
 WEBHOOK_OPTIONS = {
     "timeout_sec": 90,
+    "region": _REGION,
 }
 
 # Payment on_call handlers: 120s timeout (Stripe API calls + DB writes can be slow)
 PAYMENT_OPTIONS = {
     "cors": _CORS,
     "timeout_sec": 120,
+    "region": _REGION,
 }
 
 # Cron jobs: 256MB memory, 300s timeout (batch processing up to 500 orders)
 CRON_OPTIONS = {
     "timeout_sec": 300,
+    "region": _REGION,
 }

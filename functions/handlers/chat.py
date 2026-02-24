@@ -19,6 +19,7 @@ from google.cloud import firestore
 from schema_constants import (
     Collections,
     Fields,
+    ProductLifecycleStatusValues,
 )
 from utils.db import get_db as _get_db
 from utils.function_options import DEFAULT_OPTIONS
@@ -75,7 +76,7 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("not-found", "Product not found.")
 
     product_data = product_snap.to_dict() or {}
-    if not product_data.get(Fields.IS_ACTIVE, True):
+    if product_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
         raise https_fn.HttpsError("not-found", "Product is no longer available.")
 
     seller_id = product_data.get(Fields.SELLER_ID, "")
@@ -91,6 +92,7 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
         db.collection(Collections.ORDERS)
         .where(Fields.USER_ID, "==", buyer_id)
         .where(Fields.SELLER_IDS, "array_contains", seller_id)
+        .where(Fields.PRODUCT_IDS, "array_contains", product_id)
         .limit(1)
         .get()
     )
@@ -100,41 +102,45 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
             "An order is required to chat with the seller. Please purchase a product from this seller first.",
         )
 
-    # Check for existing thread (idempotent)
-    existing = (
-        db.collection(Collections.CHATS)
-        .where(Fields.PRODUCT_ID, "==", product_id)
-        .where(Fields.BUYER_ID, "==", buyer_id)
-        .limit(1)
-        .get()
-    )
-    if existing:
-        return {"chatId": existing[0].id, "isNew": False}
+    # Deterministic chat ID prevents race condition on concurrent thread creation
+    # Two simultaneous requests for the same product+buyer will both attempt to create
+    # the same document — the second will fail with AlreadyExists, which we handle.
+    chat_doc_id = f"{product_id}_{buyer_id}"
+    chat_ref = db.collection(Collections.CHATS).document(chat_doc_id)
+
+    # Check for existing thread (idempotent read before write)
+    existing_snap = chat_ref.get()
+    if existing_snap.exists:
+        return {"chatId": chat_doc_id, "isNew": False}
 
     # Create new thread
     product_title = product_data.get(Fields.NAME, "Product")
     product_image_url = (product_data.get(Fields.IMAGE_URLS) or [None])[0]
     now = datetime.now(UTC)
 
-    chat_ref = db.collection(Collections.CHATS).document()
-    chat_ref.set(
-        {
-            Fields.PRODUCT_ID: product_id,
-            Fields.PRODUCT_TITLE: product_title,
-            Fields.PRODUCT_IMAGE_URL: product_image_url,
-            Fields.BUYER_ID: buyer_id,
-            Fields.SELLER_ID: seller_id,
-            Fields.LAST_MESSAGE: None,
-            Fields.LAST_MESSAGE_AT: None,
-            Fields.BUYER_UNREAD_COUNT: 0,
-            Fields.SELLER_UNREAD_COUNT: 0,
-            Fields.CREATED_AT: now,
-            Fields.UPDATED_AT: now,
-        }
-    )
+    try:
+        chat_ref.create(
+            {
+                Fields.PRODUCT_ID: product_id,
+                Fields.PRODUCT_TITLE: product_title,
+                Fields.PRODUCT_IMAGE_URL: product_image_url,
+                Fields.BUYER_ID: buyer_id,
+                Fields.SELLER_ID: seller_id,
+                Fields.LAST_MESSAGE: None,
+                Fields.LAST_MESSAGE_AT: None,
+                Fields.BUYER_UNREAD_COUNT: 0,
+                Fields.SELLER_UNREAD_COUNT: 0,
+                Fields.CREATED_AT: now,
+                Fields.UPDATED_AT: now,
+            }
+        )
+    except Exception as e:
+        if "ALREADY_EXISTS" in str(e):
+            return {"chatId": chat_doc_id, "isNew": False}
+        raise
 
-    logger.info(f"Chat thread created: {chat_ref.id} for buyer={buyer_id} product={product_id}")
-    return {"chatId": chat_ref.id, "isNew": True}
+    logger.info(f"Chat thread created: {chat_doc_id} for buyer={buyer_id} product={product_id}")
+    return {"chatId": chat_doc_id, "isNew": True}
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -172,18 +178,21 @@ def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
         .stream()
     )
 
-    batch = db.batch()
-    count = 0
-    for msg in messages:
-        batch.update(msg.reference, {Fields.IS_READ: True})
-        count += 1
-
-    if count > 0:
+    # Batch-mark unread messages in chunks of ≤ 499 (Firestore batch limit is 500)
+    BATCH_LIMIT = 499
+    messages_list = list(messages)
+    count = len(messages_list)
+    for i in range(0, count, BATCH_LIMIT):
+        chunk = messages_list[i:i + BATCH_LIMIT]
+        batch = db.batch()
+        for msg in chunk:
+            batch.update(msg.reference, {Fields.IS_READ: True})
         batch.commit()
 
-    # Reset the caller's unread counter on the thread doc
-    unread_field = Fields.BUYER_UNREAD_COUNT if uid == chat_data.get(Fields.BUYER_ID) else Fields.SELLER_UNREAD_COUNT
-    db.collection(Collections.CHATS).document(chat_id).update({unread_field: 0})
+    # Reset the caller's unread counter only when there were unread messages
+    if count > 0:
+        unread_field = Fields.BUYER_UNREAD_COUNT if uid == chat_data.get(Fields.BUYER_ID) else Fields.SELLER_UNREAD_COUNT
+        db.collection(Collections.CHATS).document(chat_id).update({unread_field: 0})
 
     return {"success": True, "count": count}
 

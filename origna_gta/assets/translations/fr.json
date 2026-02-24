@@ -1,6 +1,7 @@
 {
   "app": {
     "name": "Origna GTA",
+    "title": "Origna GTA",
     "tagline": "Le marché moderne du Canada"
   },
   "admin": {
@@ -487,6 +488,7 @@
     "tax_included": "Taxes incluses",
     "plus_applicable_taxes": "+ taxes applicables",
     "not_found": "Produit introuvable",
+    "browse": "Parcourir les produits",
     "go_back": "Retour",
     "delete_product": "Supprimer le produit",
     "delete_confirm": "Êtes-vous sûr de vouloir supprimer \"{name}\"? Cette action est irréversible.",
@@ -792,7 +794,16 @@
       "invalid_address": "Adresse de livraison invalide.",
       "stock_issue": "Certains articles sont en rupture de stock.",
       "shipping_calc_failed": "Impossible de calculer les frais de livraison",
-      "shipping_unavailable": "Le calcul de la livraison est temporairement indisponible. Veuillez réessayer."
+      "shipping_unavailable": "Le calcul de la livraison est temporairement indisponible. Veuillez réessayer.",
+      "no_items": "Aucun article à expédier",
+      "no_address": "Aucune adresse de livraison trouvée",
+      "cart_empty": "Votre panier est vide",
+      "address_required": "Adresse de livraison requise",
+      "invalid_total": "Total de commande invalide",
+      "missing_email": "Adresse courriel manquante",
+      "email_not_verified": "Veuillez vérifier votre adresse courriel avant de passer à la caisse",
+      "email_verify_failed": "Impossible de vérifier votre adresse courriel. Veuillez réessayer.",
+      "already_processing": "Paiement déjà en cours"
     },
     "free_shipping_banner": "Dépensez {amount} de plus pour la livraison gratuite !",
     "order_review_title": "Vérifier votre commande",
@@ -844,6 +855,7 @@
     "approval_needed_banner": "Le coût de livraison a changé — votre approbation est requise",
     "authorized_banner": "Paiement autorisé — en attente d'expédition par le vendeur",
     "failed_confirm_receipt": "Échec de la confirmation de réception",
+    "license_key_copied": "Clé de licence copiée",
     "transit_step": "Transit",
     "orders_need_approval": "{count} commande(s) nécessite(nt) une approbation",
     "review_shipping_cost": "Appuyez pour examiner les changements de coût de livraison",

@@ -49,8 +49,7 @@ class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e, st) {
-      // If rating submission failed after images were uploaded, log orphaned URLs so they
-      // can be cleaned up. TODO: move uploads inside a single atomic backend function.
+      // If rating submission failed after images were uploaded, log orphaned URLs for cleanup.
       if (reviewImageUrls != null && reviewImageUrls.isNotEmpty) {
         AppError.log(Exception('Orphaned review images after rating failure: $reviewImageUrls'), stackTrace: st, context: 'product_rating_orphaned_images');
       }

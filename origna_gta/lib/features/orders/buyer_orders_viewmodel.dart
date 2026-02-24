@@ -6,7 +6,7 @@ class BuyerOrdersState {
   final bool isLoading;
   final bool isSuccess;
   final String? errorMessage;
-  /// The productId of the item whose receipt is currently being confirmed.
+  /// The unique key (orderId_productId) of the item whose receipt is currently being confirmed.
   final String? confirmingItemId;
 
   BuyerOrdersState({this.isLoading = false, this.isSuccess = false, this.errorMessage, this.confirmingItemId});
@@ -30,9 +30,9 @@ class BuyerOrdersViewModel extends StateNotifier<BuyerOrdersState> {
 
   BuyerOrdersViewModel(this._ref) : super(BuyerOrdersState());
 
-  Future<bool> confirmReceipt(String orderId, String itemId) async {
+  Future<bool> confirmReceipt(String orderId, String itemKey) async {
     if (state.confirmingItemId != null) return false;
-    state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null, confirmingItemId: itemId);
+    state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null, confirmingItemId: itemKey);
     try {
       await _ref.read(orderRepositoryProvider).confirmReceipt(orderId);
       state = state.copyWith(isLoading: false, isSuccess: true);

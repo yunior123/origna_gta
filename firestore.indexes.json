@@ -675,6 +675,16 @@
         }
       ],
       "comment": "FIX 2026-02-24: Index for auto_capture cron \u2014 query by deliveredAt instead of updatedAt to avoid field-update reset"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "userId", "order": "ASCENDING"},
+        {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "productIds", "arrayConfig": "CONTAINS"}
+      ],
+      "comment": "Chat gate query: buyer must have ordered this specific product from this seller"
     }
   ],
   "fieldOverrides": []

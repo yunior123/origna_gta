@@ -24,7 +24,7 @@
 
 ## PROJECT
 
-**OrignaGta** — E-commerce marketplace, Canadian buyers, worldwide sellers. 100M+ users/year. Launch: March 2026. Solo founder-developer (Yunior) — action over discussion, short/direct, fix silently.
+**OrignaGta** — E-commerce marketplace, Canadian buyers only for the moment, worldwide sellers. 100M+ users/year. Launch: March 2026. Solo founder-developer (Yunior) — action over discussion, short/direct, fix silently.
 
 **Tech:** Flutter/Riverpod + Python Cloud Functions/Pydantic + Firestore + Stripe Connect Express + Algolia + R2/Cloudflare + Sentry + Mailjet + Geoapify
 

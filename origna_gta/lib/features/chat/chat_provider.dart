@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -79,10 +80,14 @@ class ChatViewModel extends StateNotifier<ChatState> {
   Future<void> sendMessage(String text) async {
     final chatId = state.chatId;
     if (chatId == null || text.trim().isEmpty) return;
+    if (state.isLoading) return; // in-flight guard
+    state = state.copyWith(isLoading: true);
     try {
       await _ref.read(chatRepositoryProvider).sendMessage(chatId, text);
     } catch (e) {
       state = state.copyWith(errorMessage: _parseError(e));
+    } finally {
+      state = state.copyWith(isLoading: false);
     }
   }
 
@@ -93,8 +98,22 @@ class ChatViewModel extends StateNotifier<ChatState> {
   }
 
   String _parseError(Object e) {
+    if (e is FirebaseFunctionsException) {
+      switch (e.code) {
+        case 'permission-denied':
+          if (e.message?.toLowerCase().contains('premium') == true) {
+            return 'A Premium membership is required to chat with sellers.';
+          }
+          return e.message ?? 'Access denied.';
+        case 'resource-exhausted':
+          return 'Too many messages. Please slow down.';
+        case 'failed-precondition':
+          return e.message ?? 'Action not allowed.';
+        default:
+          return e.message ?? e.toString();
+      }
+    }
     final str = e.toString();
-    if (str.contains('premium')) return 'A Premium membership is required to chat with sellers.';
     if (str.contains('] ')) return str.split('] ').last;
     return str;
   }

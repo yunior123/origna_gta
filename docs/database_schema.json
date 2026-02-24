@@ -997,6 +997,11 @@
           "required": false,
           "description": "Unique seller IDs in this order (computed from items)"
         },
+        "productIds": {
+          "type": "array<string>",
+          "required": false,
+          "description": "Unique product IDs in this order (computed from items, enables chat gate query)"
+        },
         "subtotalCents": {
           "type": "integer",
           "required": true,

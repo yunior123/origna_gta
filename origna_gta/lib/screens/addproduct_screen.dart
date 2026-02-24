@@ -87,21 +87,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
 
-  final Map<String, String> _provinceNames = {
-    'AB': 'Alberta',
-    'BC': 'British Columbia',
-    'MB': 'Manitoba',
-    'NB': 'New Brunswick',
-    'NL': 'Newfoundland and Labrador',
-    'NT': 'Northwest Territories',
-    'NS': 'Nova Scotia',
-    'NU': 'Nunavut',
-    'ON': 'Ontario',
-    'PE': 'Prince Edward Island',
-    'QC': 'Quebec',
-    'SK': 'Saskatchewan',
-    'YT': 'Yukon',
-  };
+  // Province names are sourced from ProvinceCodeValues.names in schema_constants.dart
 
   @override
   Widget build(BuildContext context) {
@@ -2088,7 +2074,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                       key: const Key('addproduct_province_dropdown'),
                       label: 'product.province'.tr(),
                       value: state.selectedProvince,
-                      items: _provinceNames.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.key))).toList(),
+                      items: ProvinceCodeValues.names.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.key))).toList(),
                       onChanged: state.addressVerified ? null : (v) => viewModel.setProvince(v!),
                     ),
                   ),

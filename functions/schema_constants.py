@@ -993,6 +993,7 @@ class SecurityAlertTypes:
 
     ALGOLIA_SYNC_ISSUE = "algolia_sync_issue"
     DISPUTE_CREATED = "dispute_created"
+    DISPUTE_FUNDS_REINSTATED = "dispute_funds_reinstated"
     ROLE_CHANGE = "role_change"
     SELLER_SUSPENDED = "seller_suspended"
     SELLER_UNSUSPENDED = "seller_unsuspended"
@@ -1393,6 +1394,7 @@ class BusinessRules:
     ALLOWED_SHIPPING_COUNTRIES = frozenset({"Canada", "CA"})  # Buyers/delivery in Canada only
     # Sellers can be from any country — no country restriction on seller addresses
     MAX_ORDER_AMOUNT_CAD = 100000  # $100,000 CAD per order
+    SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20% ratio — shipping updates above this require buyer approval
 
     # Stripe integration limits
     STRIPE_MAX_NETWORK_RETRIES = 2

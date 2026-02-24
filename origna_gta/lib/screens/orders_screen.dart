@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -544,7 +543,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     final isDelivered = item.status == OrderStatusValues.delivered;
     final isRated = _isProductRated(item.productId);
     final isConfirmed = _isItemConfirmed(item);
-    final isConfirmingThis = ref.watch(buyerOrdersViewModelProvider.select((s) => s.confirmingItemId)) == item.productId;
+    final isConfirmingThis = ref.watch(buyerOrdersViewModelProvider.select((s) => s.confirmingItemId)) == '${widget.order.orderId}_${item.productId}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -770,7 +769,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF8F9FF),
+        color: isDark ? Colors.white.withValues(alpha: 0.04) : DesignTokens.surfaceSubtle,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(
           color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.primary.withValues(alpha: 0.08),
@@ -816,7 +815,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.info.withValues(alpha: 0.06) : const Color(0xFFF0F7FF),
+        color: isDark ? DesignTokens.info.withValues(alpha: 0.06) : DesignTokens.infoSubtle,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(
           color: DesignTokens.info.withValues(alpha: 0.15),
@@ -897,7 +896,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     final messenger = ScaffoldMessenger.of(context);
     final viewModel = ref.read(buyerOrdersViewModelProvider.notifier);
 
-    final success = await viewModel.confirmReceipt(widget.order.orderId, item.productId);
+    final success = await viewModel.confirmReceipt(widget.order.orderId, '${widget.order.orderId}_${item.productId}');
     if (!mounted) return;
 
     if (success) {
@@ -1257,7 +1256,7 @@ class _DigitalItemActions extends ConsumerWidget {
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: item.licenseKey!));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('License key copied'), duration: Duration(seconds: 2)),
+                      SnackBar(content: Text('orders.license_key_copied'.tr()), duration: const Duration(seconds: 2)),
                     );
                   },
                 ),
@@ -1297,10 +1296,10 @@ class _SoftwareDownloadLinksState extends ConsumerState<_SoftwareDownloadLinks> 
   Future<void> _download(String platform) async {
     setState(() => _loading[platform] = true);
     try {
-      final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
-      final result = await functions
-          .httpsCallable('generate_software_download_session')
-          .call({'licenseKey': widget.item.licenseKey, 'platform': platform});
+      final result = await ref
+          .read(firebaseFunctionsProvider)
+          .httpsCallable(CloudFunctionEndpoints.generateSoftwareDownloadSession)
+          .call({Fields.licenseKey: widget.item.licenseKey, Fields.platform: platform});
       final downloadUrl = result.data['downloadUrl'] as String?;
       if (downloadUrl == null) throw Exception('Download URL not available');
       await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
@@ -1369,10 +1368,10 @@ class _BookDownloadButtonState extends ConsumerState<_BookDownloadButton> {
   Future<void> _download() async {
     setState(() => _loading = true);
     try {
-      final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
-      final result = await functions
-          .httpsCallable('generate_book_download_session')
-          .call({'licenseKey': widget.item.licenseKey});
+      final result = await ref
+          .read(firebaseFunctionsProvider)
+          .httpsCallable(CloudFunctionEndpoints.generateBookDownloadSession)
+          .call({Fields.licenseKey: widget.item.licenseKey});
       final downloadUrl = result.data['downloadUrl'] as String?;
       if (downloadUrl == null) throw Exception('Download URL not available');
       await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);

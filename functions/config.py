@@ -114,22 +114,18 @@ class CaptureMethod:
 
 # ============================================================================
 # PLATFORM CONFIGURATION
-# NOTE: These are RATIOS (0-1), not percentages (0-100).
-# BusinessRules.PLATFORM_FEE_PERCENT in schema_constants.py = 2.5 (percentage)
-# Here: PLATFORM_FEE_RATIO = 0.025 (ratio). Use this for math: amount * PLATFORM_FEE_RATIO
+# All business rule constants are canonically defined in BusinessRules
+# in schema_constants.py — re-exported here for backward compat.
 # ============================================================================
 
-PLATFORM_FEE_RATIO = 0.025  # 2.5% platform fee as ratio (0.025 = 2.5/100)
-# NOTE: Do not use PLATFORM_FEE_PERCENT — it was a misleading alias for a ratio, not a percent.
+from schema_constants import BusinessRules  # noqa: E402
 
-# Premium subscription — $7.86 CAD/month (no platform fee for premium buyers)
-PREMIUM_MONTHLY_PRICE_CAD = 7.86
-PREMIUM_MONTHLY_PRICE_CENTS = 786
-AUTO_CONFIRM_DAYS = (
-    5  # Auto-capture after 5 days post-delivery (must be < AUTHORIZATION_VALID_DAYS with 2-day safety margin)
-)
-AUTHORIZATION_VALID_DAYS = 7  # Stripe authorization valid for 7 days
-SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20% threshold ratio
+PLATFORM_FEE_RATIO = BusinessRules.PLATFORM_FEE_RATIO
+PREMIUM_MONTHLY_PRICE_CAD = BusinessRules.PREMIUM_MONTHLY_PRICE_CAD
+PREMIUM_MONTHLY_PRICE_CENTS = BusinessRules.PREMIUM_MONTHLY_PRICE_CENTS
+AUTO_CONFIRM_DAYS = BusinessRules.AUTO_CONFIRM_DAYS
+AUTHORIZATION_VALID_DAYS = BusinessRules.AUTHORIZATION_EXPIRY_DAYS
+SHIPPING_APPROVAL_THRESHOLD = BusinessRules.SHIPPING_APPROVAL_THRESHOLD
 
 # ============================================================================
 # R2 STORAGE CONFIGURATION - REAL service, environment-aware paths
@@ -394,8 +390,8 @@ def get_sentry_dsn() -> str:
 
 
 def init_sentry():
-    """Initialize Sentry SDK for backend error monitoring (production only)."""
-    if IS_EMULATOR:
+    """Initialize Sentry SDK for backend error monitoring (production and staging only)."""
+    if IS_EMULATOR or CURRENT_ENV == Environment.DEV:
         return
 
     dsn = get_sentry_dsn()
@@ -440,7 +436,7 @@ def _sentry_before_send(event, hint):
 # OTHER CONFIGURATION
 # ============================================================================
 
-SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "support@orignaventures.ca")
+SELLER_EMAIL = os.environ.get("SELLER_EMAIL") or "support@orignagta.ca"
 
 # Stripe Tax Feature Flag
 STRIPE_TAX_ENABLED = os.environ.get("STRIPE_TAX_ENABLED", "false").lower() == "true"

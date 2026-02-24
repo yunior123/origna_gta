@@ -40,7 +40,7 @@ class ConfigService {
     await _remoteConfig.setConfigSettings(
       RemoteConfigSettings(
         fetchTimeout: skipFetch ? const Duration(seconds: 1) : const Duration(seconds: 10),
-        minimumFetchInterval: Duration.zero, // FORCE REFRESH FOR DEBUGGING
+        minimumFetchInterval: kDebugMode ? Duration.zero : const Duration(hours: 12),
       ),
     );
 

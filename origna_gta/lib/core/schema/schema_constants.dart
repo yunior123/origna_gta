@@ -285,6 +285,10 @@ abstract final class CloudFunctionEndpoints {
   static const markMessagesRead = 'mark_messages_read';
   static const sendMessage = 'send_message';
 
+  // === DIGITAL DOWNLOAD ENDPOINTS ===
+  static const generateSoftwareDownloadSession = 'generate_software_download_session';
+  static const generateBookDownloadSession = 'generate_book_download_session';
+
   // === COUPON ENDPOINTS (N-07) ===
   static const applyCoupon = 'apply_coupon';
   static const adminCreateCoupon = 'admin_create_coupon';
@@ -1346,6 +1350,7 @@ abstract final class SchemaRegistry {
 abstract final class SecurityAlertTypes {
   static const algoliaSyncIssue = 'algolia_sync_issue';
   static const disputeCreated = 'dispute_created';
+  static const disputeFundsReinstated = 'dispute_funds_reinstated';
   static const roleChange = 'role_change';
   static const sellerSuspended = 'seller_suspended';
   static const sellerUnsuspended = 'seller_unsuspended';

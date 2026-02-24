@@ -49,23 +49,18 @@ class EnvConfig {
     defaultValue: false,
   );
 
-  /// Current environment
-  AppEnvironment get environment {
-    if (_envString == 'emulator' || _useEmulators) {
-      debugPrint('🚀 Running in EMULATOR mode');
-      return AppEnvironment.emulator;
-    }
-    if (_envString == 'dev') {
-      debugPrint('🛠️ Running in DEV mode');
-      return AppEnvironment.dev;
-    }
-    if (_envString == 'staging') {
-      debugPrint('🧪 Running in STAGING mode');
-      return AppEnvironment.staging;
-    }
-    debugPrint('🏭 Running in PRODUCTION mode');
+  /// Cached environment — resolved once at construction time, never re-evaluated.
+  late final AppEnvironment _cachedEnvironment = _resolveEnvironment();
+
+  AppEnvironment _resolveEnvironment() {
+    if (_envString == 'emulator' || _useEmulators) return AppEnvironment.emulator;
+    if (_envString == 'dev') return AppEnvironment.dev;
+    if (_envString == 'staging') return AppEnvironment.staging;
     return AppEnvironment.production;
   }
+
+  /// Current environment (memoized — safe to call on every rebuild)
+  AppEnvironment get environment => _cachedEnvironment;
 
   /// Check if running in emulator mode
   bool get isEmulator => environment == AppEnvironment.emulator;

@@ -21,6 +21,8 @@ class DesignTokens {
 
   // Neutral Palette
   static const Color surface = Color(0xFFF8F9FA); // Off-white background
+  static const Color surfaceSubtle = Color(0xFFF8F9FF); // Slightly blue-tinted off-white
+  static const Color infoSubtle = Color(0xFFF0F7FF); // Faint info/blue tint for section backgrounds
   static const Color surfaceVariant = Color(0xFFF3F4F9);
   static const Color outline = Color(0xFFD0D5E0);
   static const Color outlineVariant = Color(0xFFE8EBF0);

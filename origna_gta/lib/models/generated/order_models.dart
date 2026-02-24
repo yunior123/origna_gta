@@ -22,8 +22,6 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
-/// Parse DeliveryStatus from dynamic — DEPRECATED, kept for backward-compatible reads
-// DeliveryStatus _parseDeliveryStatus(dynamic raw) { ... } — removed, use 'status' string field
 
 /// Parse an OrderItem from a Firestore map without relying on generated fromJson
 OrderItem _parseOrderItem(dynamic raw) {
@@ -37,10 +35,7 @@ OrderItem _parseOrderItem(dynamic raw) {
     imageUrls: _safeStringList(map[Fields.imageUrls]),
     sellerId: _safeString(map[Fields.sellerId]),
     sellerAddress: map[Fields.sellerAddress] != null ? _safeAddress(map[Fields.sellerAddress]) : null,
-    status: _safeString(
-      (map[Fields.status] == null || map[Fields.status].toString().isEmpty) ? map[Fields.deliveryStatus] : map[Fields.status],
-      DeliveryStatusValues.pending,
-    ),
+    status: _safeString(map[Fields.status], DeliveryStatusValues.pending),
     trackingNumber: map[Fields.trackingNumber] != null ? _safeString(map[Fields.trackingNumber]) : null,
     carrier: map[Fields.carrier] != null ? _safeString(map[Fields.carrier]) : null,
     carrierNote: map[Fields.carrierNote] != null ? _safeString(map[Fields.carrierNote]) : null,
@@ -52,7 +47,7 @@ OrderItem _parseOrderItem(dynamic raw) {
     refundReason: map[Fields.refundReason] != null ? _safeString(map[Fields.refundReason]) : null,
     refundAmountCents: map[Fields.refundAmountCents] != null ? _safeInt(map[Fields.refundAmountCents]) : null,
     refundId: map[Fields.refundId] != null ? _safeString(map[Fields.refundId]) : null,
-    confirmedByBuyer: _safeBool(map[Fields.confirmedByBuyer] ?? map[Fields.buyerConfirmed]),
+    confirmedByBuyer: _safeBool(map[Fields.confirmedByBuyer]),
     variantId: map[Fields.variantId] != null ? _safeString(map[Fields.variantId]) : null,
     variantTitle: map[Fields.variantTitle] != null ? _safeString(map[Fields.variantTitle]) : null,
     variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
@@ -61,10 +56,10 @@ OrderItem _parseOrderItem(dynamic raw) {
     lengthCm: map[Fields.lengthCm] != null ? _safeDouble(map[Fields.lengthCm]) : null,
     widthCm: map[Fields.widthCm] != null ? _safeDouble(map[Fields.widthCm]) : null,
     heightCm: map[Fields.heightCm] != null ? _safeDouble(map[Fields.heightCm]) : null,
-    isLocalDeliveryOnly: _safeBool(map[Fields.isLocalDeliveryOnly] ?? map[Fields.localDeliveryOnly]),
-    isPerishable: _safeBool(map[Fields.isPerishable] ?? map[Fields.perishable]),
-    estimatedShipDays: _safeInt(map[Fields.estimatedShipDays] ?? map[Fields.supplierShippingDays], 3),
-    minimumOrderQuantity: _safeInt(map[Fields.minimumOrderQuantity] ?? map[Fields.minOrderQuantity], 1),
+    isLocalDeliveryOnly: _safeBool(map[Fields.isLocalDeliveryOnly]),
+    isPerishable: _safeBool(map[Fields.isPerishable]),
+    estimatedShipDays: _safeInt(map[Fields.estimatedShipDays], 3),
+    minimumOrderQuantity: _safeInt(map[Fields.minimumOrderQuantity], 1),
     freeShipping: _safeBool(map[Fields.freeShipping]),
     isDigital: _safeBool(map[Fields.isDigital]),
     licenseKey: map[Fields.licenseKey] != null ? _safeString(map[Fields.licenseKey]) : null,
@@ -213,7 +208,6 @@ abstract class Order with _$Order {
     String? cancellationReason,
     // Shipping approval
     DateTime? respondedAt,
-    double? actualCost,
     // Admin review
     @Default(false) bool requiresManualReview,
     String? manualReviewReason,
@@ -387,13 +381,14 @@ abstract class Order with _$Order {
       cancelledAt: _parseDateTime(data[Fields.cancelledAt]),
       cancellationReason: data[Fields.cancellationReason] != null ? _safeString(data[Fields.cancellationReason]) : null,
       respondedAt: _parseDateTime(data[Fields.respondedAt]),
-      actualCost: data[Fields.actualCost] != null ? _safeDouble(data[Fields.actualCost]) : null,
       requiresManualReview: _safeBool(data[Fields.requiresManualReview]),
       manualReviewReason: data[Fields.manualReviewReason] != null ? _safeString(data[Fields.manualReviewReason]) : null,
       payoutErrors: _safeStringList(data[Fields.payoutErrors]),
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
       // Parse tax fields
-      itemTaxes: (data[Fields.itemTaxes] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
+      itemTaxes: (data[Fields.itemTaxes] as List<dynamic>?)
+          ?.map((e) => _safeMap(e))
+          .toList() ?? [],
       taxExempt: _safeBool(data[Fields.taxExempt]),
       taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
       // Delivery instructions from buyer

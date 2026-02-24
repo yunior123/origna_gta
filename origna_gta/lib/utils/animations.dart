@@ -9,6 +9,7 @@ class SlidePageRoute<T> extends PageRouteBuilder<T> {
   SlidePageRoute({
     required this.page,
     this.direction = SlideDirection.right,
+    super.settings,
   }) : super(
           pageBuilder: (context, animation, secondaryAnimation) => page,
           transitionDuration: const Duration(milliseconds: 300),

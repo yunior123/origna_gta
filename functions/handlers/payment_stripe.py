@@ -178,26 +178,6 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
                     current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
                     patch = {Fields.STOCK_QUANTITY: current_stock + qty}
 
-                    # BUG-2 FIX: Restore warehouseStock in sync with stockQuantity.
-                    # Reverse the drain: add back to the warehouse with the least stock first
-                    # (mirrors the drain-fullest-first strategy in reserve_stock_transaction).
-                    warehouse_stock: dict = product_data.get(Fields.WAREHOUSE_STOCK) or {}
-                    if warehouse_stock:
-                        sorted_warehouses = sorted(warehouse_stock.items(), key=lambda kv: kv[1])
-                        remaining = qty
-                        for wh_id, wh_stock in sorted_warehouses:
-                            if remaining <= 0:
-                                break
-                            restore = min(qty, remaining)
-                            patch[f"{Fields.WAREHOUSE_STOCK}.{wh_id}"] = wh_stock + restore
-                            # Also restore inventoryLevels subcollection
-                            inv_ref = ref.collection(Collections.INVENTORY_LEVELS).document(wh_id)
-                            transaction.set(inv_ref, {
-                                Fields.AVAILABLE_QUANTITY: wh_stock + restore,
-                                Fields.LAST_SYNCED_AT: get_server_timestamp(),
-                            }, merge=True)
-                            remaining -= restore
-
                     transaction.update(ref, patch)
 
         transaction = get_db().transaction()
@@ -1304,6 +1284,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.USER_ID: user_id,
         Fields.CUSTOMER_EMAIL: buyer_email,
         Fields.SELLER_IDS: sorted(list(sellers)),
+        Fields.PRODUCT_IDS: sorted(list({item[Fields.PRODUCT_ID] for item in validated_items})),
         Fields.ITEMS: validated_items,
         Fields.SUBTOTAL_CENTS: actual_subtotal_cents,
         Fields.DISCOUNT_AMOUNT_CENTS: discount_amount_cents,
@@ -3053,12 +3034,11 @@ def process_dispute_funds_reinstated(dispute: dict) -> str | None:
     # Log security alert for audit trail
     get_db().collection(Collections.SECURITY_ALERTS).add(
         {
-            Fields.TYPE: SecurityAlertTypes.DISPUTE_CREATED,
+            Fields.TYPE: SecurityAlertTypes.DISPUTE_FUNDS_REINSTATED,
             Fields.SEVERITY: SeverityLevels.LOW if amount_reinstated > 0 else SeverityLevels.HIGH,
             Fields.CHARGE_ID: charge_id,
             Fields.PAYMENT_INTENT_ID: payment_intent_id,
             Fields.AMOUNT: amount_reinstated,
-            "event": "funds_reinstated",
             Fields.TIMESTAMP: get_server_timestamp(),
             Fields.RESOLVED: True,
         }

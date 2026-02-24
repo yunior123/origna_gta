@@ -16,6 +16,7 @@ class SessionTimeoutService {
   static final SessionTimeoutService _instance = SessionTimeoutService._internal();
   Timer? _timeoutTimer;
   DateTime _lastActivityTime = DateTime.now();
+  GlobalKey<NavigatorState>? _navigatorKey;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   factory SessionTimeoutService() => _instance;
@@ -33,28 +34,29 @@ class SessionTimeoutService {
     return getRemainingTime().inMinutes < 5;
   }
 
-  /// Call this whenever user interacts with the app
-  void recordActivity(BuildContext context) {
+  /// Call this whenever user interacts with the app (no context needed)
+  void recordActivity() {
     _lastActivityTime = DateTime.now();
-    _resetTimer(context);
+    _resetTimer();
   }
 
-  /// Start monitoring user activity
-  void startMonitoring(BuildContext context) {
+  /// Start monitoring user activity. Pass the app's [GlobalKey] of [NavigatorState].
+  void startMonitoring(GlobalKey<NavigatorState> navigatorKey) {
     _timeoutTimer?.cancel(); // Prevent timer leak on repeated calls
     if (_auth.currentUser == null) return;
-
-    _resetTimer(context);
+    _navigatorKey = navigatorKey;
+    _resetTimer();
   }
 
   /// Stop monitoring (when user logs out manually)
   void stopMonitoring() {
     _timeoutTimer?.cancel();
     _timeoutTimer = null;
+    _navigatorKey = null;
   }
 
   /// Handle timeout event - sign out user
-  Future<void> _handleTimeout(BuildContext context) async {
+  Future<void> _handleTimeout() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
@@ -69,12 +71,14 @@ class SessionTimeoutService {
             .timeout(const Duration(seconds: 5));
       } catch (_) {}
 
-      // Show snackbar to inform user
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      // Show snackbar using the NavigatorState's context (never stale)
+      final ctx = _navigatorKey?.currentContext;
+      if (ctx != null) {
+        // ignore: use_build_context_synchronously — context is obtained fresh at call time
+        ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(
             content: Text(UIMessages.sessionExpired),
-            duration: Duration(seconds: 5),
+            duration: const Duration(seconds: 5),
             backgroundColor: DesignTokens.warning,
           ),
         );
@@ -85,11 +89,8 @@ class SessionTimeoutService {
   }
 
   /// Reset the inactivity timer
-  void _resetTimer(BuildContext context) {
+  void _resetTimer() {
     _timeoutTimer?.cancel();
-
-    _timeoutTimer = Timer(_inactivityTimeout, () {
-      _handleTimeout(context);
-    });
+    _timeoutTimer = Timer(_inactivityTimeout, _handleTimeout);
   }
 }

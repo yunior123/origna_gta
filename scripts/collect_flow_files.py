@@ -1577,6 +1577,11 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
 
 
 def main() -> None:
+    # Wipe the entire output folder first so renamed/deleted flows don't linger
+    if DESKTOP.exists():
+        shutil.rmtree(DESKTOP)
+        print(f"🗑️  Removed old: {DESKTOP}")
+    DESKTOP.mkdir(parents=True)
     print(f"📂 Output: {DESKTOP}\n")
     total_copied = 0
     total_missing = 0

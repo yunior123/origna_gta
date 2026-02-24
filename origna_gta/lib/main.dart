@@ -61,11 +61,9 @@ void main() {
           firebaseOptions = FirebaseConfigProd.currentPlatform;
           break;
         case AppEnvironment.emulator:
-          // For emulator, we can use dev or prod config as base, 
-          // but we MUST connect to emulators. 
-          // Let's use Prod config as base to match previous behavior, 
-          // but ConfigService will handle avoiding real calls if needed.
-          firebaseOptions = FirebaseConfigProd.currentPlatform; 
+          // Use dev config as base — emulators intercept all network calls regardless of projectId.
+          // This prevents emulator analytics events from polluting the production Firebase project.
+          firebaseOptions = FirebaseConfigDev.currentPlatform;
           break;
       }
 

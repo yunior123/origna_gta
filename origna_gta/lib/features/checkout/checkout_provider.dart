@@ -23,7 +23,7 @@ final checkoutStateProvider = StateNotifierProvider.autoDispose<CheckoutNotifier
 /// Computed provider for tax rate based on address
 final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
   final checkoutState = ref.watch(checkoutStateProvider);
-  if (checkoutState.address == null) return getTaxRate('ON'); // Default Ontario HST
+  if (checkoutState.address == null) return getTaxRate(ProvinceCodeValues.ontario); // Default Ontario HST
   return getTaxRate(checkoutState.address!.state);
 });
 
@@ -58,7 +58,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   /// Uses circuit breaker pattern to handle Algolia/service outages gracefully
   Future<void> calculateShipping(List<CartItemDetailModel> items) async {
     if (items.isEmpty) {
-      state = state.copyWith(shippingError: 'No items to ship');
+      state = state.copyWith(shippingError: 'checkout.errors.no_items'.tr());
       return;
     }
 
@@ -75,7 +75,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         );
         return;
       }
-      state = state.copyWith(shippingError: 'No address found');
+      state = state.copyWith(shippingError: 'checkout.errors.no_address'.tr());
       return;
     }
     if (!hasPhysicalItems) {
@@ -93,12 +93,14 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     state = state.copyWith(isCalculatingShipping: true, clearShippingError: true);
 
     try {
+      // Capture subtotal once to avoid race condition between reads
+      final subtotal = _ref.read(cartSubtotalProvider);
+
       // Use circuit breaker for external service calls
       final rawCost = await _shippingCircuitBreaker.execute(() => calculateShippingCost(items, state.address));
 
       // Apply free shipping threshold — orders at or above $75 CAD get free standard shipping
-      final subtotalForThreshold = _ref.read(cartSubtotalProvider);
-      final cost = (subtotalForThreshold * 100).round() >= BusinessRules.freeShippingThresholdCents ? 0.0 : rawCost;
+      final cost = (subtotal * 100).round() >= BusinessRules.freeShippingThresholdCents ? 0.0 : rawCost;
 
       // Determine if local delivery (check if any seller is within ~50km)
       final isLocal = await _checkLocalDelivery(items, state.address!);
@@ -120,7 +122,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       );
 
       // Recalculate taxes — GST/HST applies to shipping costs in Canada
-      final subtotal = _ref.read(cartSubtotalProvider);
       calculateTaxes(subtotal, shippingCost: cost);
     } on CircuitBreakerOpenException catch (_) {
       // Algolia/service is temporarily unavailable
@@ -208,20 +209,20 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   /// Start Stripe checkout with idempotency
   Future<CheckoutResult> startCheckout({required List<CartItemDetailModel> items, required UserModel user, required double subtotal}) async {
     if (items.isEmpty) {
-      return CheckoutError(message: 'Your cart is empty');
+      return CheckoutError(message: 'checkout.errors.cart_empty'.tr());
     }
 
     final hasPhysicalItems = items.any((item) => !item.isDigital);
     if (hasPhysicalItems && !hasValidAddress(state.address)) {
-      return CheckoutError(message: 'Delivery address is required');
+      return CheckoutError(message: 'checkout.errors.address_required'.tr());
     }
 
     if (subtotal <= 0) {
-      return CheckoutError(message: 'Invalid order total');
+      return CheckoutError(message: 'checkout.errors.invalid_total'.tr());
     }
 
     if (user.email.trim().isEmpty) {
-      return CheckoutError(message: 'Missing customer email');
+      return CheckoutError(message: 'checkout.errors.missing_email'.tr());
     }
 
     // EMAIL VERIFICATION CHECK - CRITICAL BUSINESS LOGIC
@@ -231,15 +232,15 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final isEmailVerified = await authRepository.isEmailVerified();
 
       if (!isEmailVerified) {
-        return CheckoutError(message: 'Please verify your email before checkout', code: 'email-not-verified');
+        return CheckoutError(message: 'checkout.errors.email_not_verified'.tr(), code: 'email-not-verified');
       }
     } catch (e) {
       // SECURITY: Block checkout if we can't verify email status
-      return CheckoutError(message: 'Unable to verify email status. Please try again.', code: 'verification-check-failed');
+      return CheckoutError(message: 'checkout.errors.email_verify_failed'.tr(), code: 'verification-check-failed');
     }
 
     if (state.isProcessing) {
-      return CheckoutError(message: 'Checkout already in progress');
+      return CheckoutError(message: 'checkout.errors.already_processing'.tr());
     }
 
     state = state.copyWith(isProcessing: true, clearCheckoutError: true);

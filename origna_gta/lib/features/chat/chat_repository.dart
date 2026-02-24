@@ -94,6 +94,7 @@ class ChatRepository {
         .doc(chatId)
         .collection(Collections.chatMessages)
         .orderBy(Fields.createdAt, descending: false)
+        .limitToLast(100)
         .snapshots()
         .map((snap) => snap.docs.map(ChatMessage.fromFirestore).toList());
   }

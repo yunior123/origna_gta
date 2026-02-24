@@ -1,6 +1,7 @@
 {
   "app": {
     "name": "Origna GTA",
+    "title": "Origna GTA",
     "tagline": "Canada's Modern Marketplace"
   },
   "admin": {
@@ -486,6 +487,7 @@
     "tax_included": "Tax included",
     "plus_applicable_taxes": "+ applicable taxes",
     "not_found": "Product not found",
+    "browse": "Browse Products",
     "go_back": "Go back",
     "delete_product": "Delete Product",
     "delete_confirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
@@ -791,7 +793,16 @@
       "invalid_address": "Invalid shipping address.",
       "stock_issue": "Some items are out of stock.",
       "shipping_calc_failed": "Failed to calculate shipping",
-      "shipping_unavailable": "Shipping calculation temporarily unavailable. Please try again."
+      "shipping_unavailable": "Shipping calculation temporarily unavailable. Please try again.",
+      "no_items": "No items to ship",
+      "no_address": "No delivery address found",
+      "cart_empty": "Your cart is empty",
+      "address_required": "Delivery address is required",
+      "invalid_total": "Invalid order total",
+      "missing_email": "Missing customer email",
+      "email_not_verified": "Please verify your email before checkout",
+      "email_verify_failed": "Unable to verify email status. Please try again.",
+      "already_processing": "Checkout already in progress"
     },
     "free_shipping_banner": "Spend {amount} more for free shipping!",
     "order_review_title": "Review Your Order",
@@ -843,6 +854,7 @@
     "approval_needed_banner": "Shipping cost changed — your approval is needed",
     "authorized_banner": "Payment authorized — awaiting seller shipment",
     "failed_confirm_receipt": "Failed to confirm receipt",
+    "license_key_copied": "License key copied",
     "transit_step": "Transit",
     "orders_need_approval": "{count} order(s) need(s) approval",
     "review_shipping_cost": "Tap to review shipping cost changes",
