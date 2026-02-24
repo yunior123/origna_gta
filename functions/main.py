@@ -105,6 +105,7 @@ from handlers.cron_jobs import (  # noqa: E402
     revalidate_digital_product_urls,
     send_abandoned_cart_emails,
     sync_expired_subscriptions,
+    escalate_stale_return_requests,
 )
 from handlers.digital import (  # noqa: E402
     activate_license,
@@ -126,6 +127,7 @@ from handlers.orders import (  # noqa: E402
     confirm_order_receipt,
     create_return_request,
     on_order_status_changed,
+    on_return_request_status_changed,
     refund_order_item,
     reject_return_request,
     update_item_status,
@@ -301,6 +303,7 @@ __all__ = [
     "approve_shipping_cost",
     "update_shipping_cost",
     "on_order_status_changed",
+    "on_return_request_status_changed",
     "create_return_request",
     "approve_return_request",
     "reject_return_request",
@@ -350,6 +353,7 @@ __all__ = [
     # Trending products
     "compute_trending_products",
     "sync_expired_subscriptions",
+    "escalate_stale_return_requests",
     # Shipping
     "calculate_shipping_cost",
     # Digital products

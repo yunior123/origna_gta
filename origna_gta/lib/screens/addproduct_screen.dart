@@ -78,6 +78,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   bool _hasAttemptedSubmit = false;
 
   String? _selectedSubcategory;
+  String? _selectedCategoryId;
 
   // Active section for stepper
   int _activeStep = 0;
@@ -873,6 +874,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   Widget _buildCategorySelector(AddProductViewModel viewModel) {
     return DropdownButtonFormField<String>(
       key: const Key('addproduct_category_selector'),
+      initialValue: _selectedCategoryId,
       decoration: InputDecoration(
         labelText: 'Category',
         prefixIcon: const Icon(Icons.category_rounded, size: 20),
@@ -909,8 +911,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           )
           .toList(),
       onChanged: (v) {
-        _categoryController.text = v ?? '';
-        setState(() => _selectedSubcategory = null);
+        setState(() {
+          _selectedCategoryId = v;
+          _categoryController.text = v ?? '';
+          _selectedSubcategory = null;
+        });
       },
       validator: (v) => v == null ? 'Required' : null,
     );
@@ -1346,6 +1351,31 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 
   Widget _buildMarginPreview() {
+    // Cannot compute accurate margin when supplier cost is not in CAD
+    if (_selectedSupplierCurrency != 'CAD') {
+      return Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: DesignTokens.warning.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.warning),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'product.margin_warning'.tr(namedArgs: {'currency': _selectedSupplierCurrency}),
+                style: TextStyle(fontSize: 12, color: DesignTokens.warning),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final cost = double.tryParse(_costController.text) ?? 0;
     final price = double.tryParse(_priceController.text) ?? 0;
     if (cost <= 0 || price <= 0) return const SizedBox.shrink();
@@ -1404,14 +1434,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               Icon(isGood ? Icons.trending_up_rounded : (isOk ? Icons.trending_flat_rounded : Icons.trending_down_rounded), color: color, size: 28),
             ],
           ),
-          if (_selectedSupplierCurrency != 'CAD')
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'product.margin_warning'.tr(namedArgs: {'currency': _selectedSupplierCurrency}),
-                style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
-              ),
-            ),
         ],
       ),
     );
@@ -1948,27 +1970,27 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         padding: EdgeInsets.symmetric(vertical: 16),
         child: Center(child: ModernLoadingIndicator()),
       ),
-      error: (e, _) => _buildInfoBanner('Failed to load warehouses: $e', Icons.error_outline_rounded, DesignTokens.error),
+      error: (e, _) => _buildInfoBanner('product.warehouse_load_error'.tr(namedArgs: {'error': e.toString()}), Icons.error_outline_rounded, DesignTokens.error),
       data: (warehouses) {
         if (warehouses.isEmpty) {
           // No warehouses — show address form + prompt to add warehouses
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSubSectionHeader('Shipping Location', Icons.pin_drop_rounded),
+              _buildSubSectionHeader('product.ships_from'.tr(), Icons.pin_drop_rounded),
               const SizedBox(height: 8),
-              _buildInfoBanner('Add your shipping locations in Warehouse Settings for faster listing.', Icons.info_outline_rounded, DesignTokens.info),
+              _buildInfoBanner('product.warehouse_no_locations_hint'.tr(), Icons.info_outline_rounded, DesignTokens.info),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 key: const Key('addproduct_manage_warehouses_button'),
                 onPressed: () => Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
                 icon: const Icon(Icons.add_location_alt_rounded, size: 18),
-                label: const Text('Add Warehouse / Address'),
+                label: Text('product.warehouse_add_button'.tr()),
                 style: OutlinedButton.styleFrom(foregroundColor: DesignTokens.primary),
               ),
               const SizedBox(height: 16),
               // Manual address fallback
-              _buildSubSectionHeader('Or enter address manually', Icons.edit_location_alt_rounded),
+              _buildSubSectionHeader('product.warehouse_manual_address'.tr(), Icons.edit_location_alt_rounded),
               const SizedBox(height: 8),
               if (state.addressVerified)
                 _buildInfoBanner('product.address_verified'.tr(), Icons.verified_rounded, DesignTokens.success)
@@ -2054,13 +2076,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           children: [
             Row(
               children: [
-                _buildSubSectionHeader('Ships From', Icons.warehouse_rounded),
+                _buildSubSectionHeader('product.ships_from'.tr(), Icons.warehouse_rounded),
                 const Spacer(),
                 TextButton.icon(
                   key: const Key('addproduct_manage_warehouses_button'),
                   onPressed: () => Navigator.of(context).pushNamed(AppRoutes.sellerWarehouses),
                   icon: const Icon(Icons.settings_rounded, size: 14),
-                  label: const Text('Manage', style: TextStyle(fontSize: 12)),
+                  label: Text('product.warehouse_manage'.tr(), style: const TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(foregroundColor: DesignTokens.primary),
                 ),
               ],
@@ -2072,17 +2094,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               child: Row(
                 children: [
                   Tooltip(
-                    message:
-                        'Select one or more locations to ship this product from. '
-                        'Can be a warehouse facility or a home/business address. '
-                        'Buyers see the closest one.',
+                    message: 'product.warehouse_ships_from_tooltip'.tr(),
                     triggerMode: TooltipTriggerMode.tap,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.textTertiary),
                         const SizedBox(width: 4),
-                        Text('Select locations & set stock per location', style: TextStyle(fontSize: 12, color: DesignTokens.textTertiary)),
+                        Text('product.warehouse_select_hint'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.textTertiary)),
                       ],
                     ),
                   ),
@@ -2120,7 +2139,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(color: Color.fromRGBO(102, 126, 234, 0.15), borderRadius: BorderRadius.circular(6)),
                                 child: Text(
-                                  'Default',
+                                  'product.warehouse_default_label'.tr(),
                                   style: TextStyle(fontSize: 10, color: DesignTokens.primary, fontWeight: FontWeight.w600),
                                 ),
                               ),
@@ -2144,7 +2163,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                             children: [
                               Icon(Icons.inventory_2_rounded, size: 16, color: DesignTokens.textTertiary),
                               const SizedBox(width: 8),
-                              Text('Stock at this location:', style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                              Text('product.warehouse_stock_at_location'.tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
                               const SizedBox(width: 12),
                               SizedBox(
                                 width: 80,
@@ -2163,7 +2182,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text('units', style: TextStyle(fontSize: 12, color: DesignTokens.textTertiary)),
+                              Text('product.warehouse_units'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.textTertiary)),
                             ],
                           ),
                         ),
@@ -2176,7 +2195,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             if (state.selectedWarehouseIds.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Select at least one shipping location', style: TextStyle(fontSize: 12, color: DesignTokens.error)),
+                child: Text('product.warehouse_select_required'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.error)),
               ),
             if (state.selectedWarehouseIds.isNotEmpty)
               Padding(
@@ -2186,7 +2205,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     Icon(Icons.inventory_rounded, size: 14, color: DesignTokens.success),
                     const SizedBox(width: 6),
                     Text(
-                      'Total stock: ${state.warehouseStockMap.values.fold(0, (a, b) => a + b)} units across ${state.selectedWarehouseIds.length} location${state.selectedWarehouseIds.length > 1 ? 's' : ''}',
+                      state.selectedWarehouseIds.length > 1
+                          ? 'product.warehouse_total_stock_plural'.tr(namedArgs: {
+                              'total': state.warehouseStockMap.values.fold(0, (a, b) => a + b).toString(),
+                              'count': state.selectedWarehouseIds.length.toString(),
+                            })
+                          : 'product.warehouse_total_stock'.tr(namedArgs: {
+                              'total': state.warehouseStockMap.values.fold(0, (a, b) => a + b).toString(),
+                              'count': state.selectedWarehouseIds.length.toString(),
+                            }),
                       style: TextStyle(fontSize: 12, color: DesignTokens.success, fontWeight: FontWeight.w600),
                     ),
                   ],

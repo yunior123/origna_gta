@@ -904,7 +904,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
       _confirmingItemId = item.productId;
     });
 
-    final success = await viewModel.confirmReceipt(widget.order.orderId, [item.productId]);
+    final success = await viewModel.confirmReceipt(widget.order.orderId);
     if (!mounted) return;
 
     if (success) {

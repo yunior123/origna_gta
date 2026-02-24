@@ -24,10 +24,9 @@ class FirebaseOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<void> confirmReceipt(String orderId, List<String> itemIds) async {
+  Future<void> confirmReceipt(String orderId) async {
     await _functions.httpsCallable(CloudFunctionEndpoints.confirmOrderReceipt).call({
       Fields.orderId: orderId,
-      ApiKeys.itemIds: itemIds,
     });
   }
 
@@ -130,7 +129,7 @@ class FirebaseOrderRepository implements OrderRepository {
 abstract class OrderRepository {
   Future<void> approveShippingCost(String orderId, bool approved);
   Future<void> capturePayment(String orderId);
-  Future<void> confirmReceipt(String orderId, List<String> itemIds);
+  Future<void> confirmReceipt(String orderId);
   Future<Map<String, dynamic>> createCheckoutSession(Map<String, dynamic> orderData);
   Future<models.Order?> fetchOrderById(String orderId);
   Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber, String? carrier});

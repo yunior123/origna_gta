@@ -900,15 +900,17 @@ class ReturnStatusValues:
     RECEIVED = "received"
     REFUNDED = "refunded"
     REJECTED = "rejected"
+    ESCALATED = "escalated"  # Auto-escalated to admin after N days unresolved
 
-    ALL: frozenset[str] = frozenset({"requested", "approved", "label_issued", "received", "refunded", "rejected"})
+    ALL: frozenset[str] = frozenset({"requested", "approved", "label_issued", "received", "refunded", "rejected", "escalated"})
     VALID_TRANSITIONS: dict = {
-        "requested": {"approved", "rejected"},
+        "requested": {"approved", "rejected", "escalated"},
         "approved": {"label_issued", "rejected"},
         "label_issued": {"received"},
         "received": {"refunded"},
         "refunded": frozenset(),
         "rejected": frozenset(),
+        "escalated": {"approved", "rejected"},  # Admin can resolve escalated requests
     }
 
 
@@ -1344,6 +1346,7 @@ class BusinessRules:
     AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (2-day safety margin)
     AUTHORIZATION_EXPIRY_DAYS = 7
     RETURN_WINDOW_DAYS = 7  # No returns/refunds after 7 days post-delivery (Amazon-style policy)
+    RETURN_ESCALATION_DAYS = 3  # Return requests auto-escalated after 3 days without seller action
     MAX_CAPTURE_ATTEMPTS = 3
     DEFAULT_CURRENCY = "cad"
     SUPPORTED_SELLING_CURRENCIES = frozenset({"cad"})  # All transactions in CAD

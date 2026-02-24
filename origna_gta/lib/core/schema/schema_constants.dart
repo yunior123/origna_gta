@@ -1204,6 +1204,7 @@ abstract final class ReturnStatusValues {
   static const received = 'received';
   static const refunded = 'refunded';
   static const rejected = 'rejected';
+  static const escalated = 'escalated';
 }
 
 /// Normalized shipping carrier identifiers

@@ -79,6 +79,17 @@ class WarehousesViewModel extends StateNotifier<WarehousesState> {
     bool isDefault = false,
   }) async {
     if (state.isLoading) return;
+
+    final trimmedLabel = label.trim();
+    if (trimmedLabel.isEmpty || trimmedLabel.length > 100) {
+      state = state.copyWith(isLoading: false, errorMessage: 'Warehouse label must be 1–100 characters');
+      return;
+    }
+    if (address.city.trim().isEmpty) {
+      state = state.copyWith(isLoading: false, errorMessage: 'City is required for a warehouse address');
+      return;
+    }
+
     state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
 
     try {

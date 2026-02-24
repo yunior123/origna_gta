@@ -23,11 +23,11 @@ class BuyerOrdersViewModel extends StateNotifier<BuyerOrdersState> {
 
   BuyerOrdersViewModel(this._ref) : super(BuyerOrdersState());
 
-  Future<bool> confirmReceipt(String orderId, List<String> itemIds) async {
+  Future<bool> confirmReceipt(String orderId) async {
     if (state.isLoading) return false;
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
     try {
-      await _ref.read(orderRepositoryProvider).confirmReceipt(orderId, itemIds);
+      await _ref.read(orderRepositoryProvider).confirmReceipt(orderId);
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {

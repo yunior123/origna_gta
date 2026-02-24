@@ -568,6 +568,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     if (bytes.length > maxImageSize) {
       throw Exception('product.image_too_large'.tr());
     }
+    // Validate image format by attempting decode
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      throw Exception('product.image_invalid_format'.tr());
+    }
     return compute(_compressImageAddIsolate, bytes);
   }
 }

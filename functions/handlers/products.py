@@ -551,7 +551,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_data = order_doc.to_dict()
 
-    if order_data[Fields.USER_ID] != user_id:
+    if order_data.get(Fields.USER_ID) != user_id:
         raise https_fn.HttpsError("permission-denied", "This is not your order")
 
     # Block sellers from rating their own product
@@ -1033,6 +1033,11 @@ def on_product_created(event: firestore_fn.Event) -> None:
 
     # ── DATA CONSISTENCY VALIDATION ──────────────────────────────────
     patches = {}
+
+    # Derive priceCents from price (server-side, authoritative)
+    price_val = product_data.get(Fields.PRICE)
+    if isinstance(price_val, (int, float)) and price_val > 0:
+        patches[Fields.PRICE_CENTS] = round(price_val * 100)
 
     # Slug generation: assign on creation if missing (unique, URL-safe sharing URL)
     if not product_data.get(Fields.SLUG):
@@ -2223,8 +2228,8 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
             user_id = rating_data.get(Fields.USER_ID)
             if user_id and user_id in user_data_map:
                 user_data = user_data_map[user_id]
-                rating_data["userName"] = user_data.get(Fields.NAME, "Anonymous")
-                rating_data["userAvatar"] = user_data.get("profilePictureUrl")
+                rating_data["userName"] = user_data.get(Fields.NAME, "Anonymous").split()[0] if user_data.get(Fields.NAME) else "Anonymous"
+                # userAvatar intentionally omitted — privacy: avatars not exposed to other users
 
             ratings.append(rating_data)
 
@@ -3056,6 +3061,14 @@ def answer_review(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     from utils.helpers import sanitized_text
+    from services.rate_limiter import RateLimiter
+
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action="answer_review", max_requests=10, window_minutes=60, fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     user_id = req.auth.uid
     data = req.data
@@ -3094,9 +3107,15 @@ def answer_review(req: https_fn.CallableRequest) -> dict[str, Any]:
     if rating_data.get(Fields.PRODUCT_ID) != product_id:
         raise https_fn.HttpsError("invalid-argument", "Rating does not belong to the specified product")
 
-    # Seller can only reply once
-    if rating_data.get(Fields.SELLER_REPLY):
-        raise https_fn.HttpsError("already-exists", "Seller has already replied to this review")
+    # Allow update within 24h of original reply; block after that
+    existing_reply = rating_data.get(Fields.SELLER_REPLY)
+    if existing_reply:
+        replied_at = rating_data.get(Fields.SELLER_REPLY_AT)
+        if replied_at is None:
+            raise https_fn.HttpsError("already-exists", "Seller has already replied to this review")
+        reply_age = datetime.now(UTC) - replied_at
+        if reply_age.total_seconds() > 86400:  # 24 hours
+            raise https_fn.HttpsError("already-exists", "Reply can only be edited within 24 hours")
 
     rating_ref.update({
         Fields.SELLER_REPLY: reply,
@@ -3198,8 +3217,9 @@ def vote_review_helpful(req: https_fn.CallableRequest) -> dict[str, Any]:
         _result["helpfulCount"] = new_count
 
     try:
+        from firebase_admin import firestore as _fs_admin
         txn = db.transaction()
-        _firestore.transactional(_vote_txn)(txn)
+        _fs_admin.transactional(_vote_txn)(txn)
     except Exception as e:
         logger.error(f"vote_review_helpful transaction failed for {rating_id}: {e}")
         raise https_fn.HttpsError("internal", "Failed to record vote") from e
@@ -3303,6 +3323,7 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
     batch = db.batch()
     updated = 0
     skipped = 0
+    activated_ids: list[str] = []
 
     # Fetch all product docs in a single RPC (avoid N+1 sequential gets)
     product_refs = [db.collection(Collections.PRODUCTS).document(pid) for pid in product_ids if isinstance(pid, str) and pid.strip()]
@@ -3345,6 +3366,7 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
+            activated_ids.append(pid)
             updated += 1
 
         elif action == "archive":
@@ -3357,5 +3379,16 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
     if updated > 0:
         batch.commit()
         logger.info(f"bulk_update_products: user={user_id} action={action} updated={updated} skipped={skipped}")
+        # Re-index activated products in Algolia so they appear in search
+        if activated_ids:
+            for act_pid in activated_ids:
+                try:
+                    act_snap = snap_by_id.get(act_pid)
+                    if act_snap and act_snap.exists:
+                        act_data = act_snap.to_dict() or {}
+                        act_data[Fields.LIFECYCLE_STATUS] = ProductLifecycleStatusValues.ACTIVE
+                        algolia_partial_update(act_pid, {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE})
+                except Exception as alg_err:
+                    logger.error(f"bulk_update_products: Algolia re-index failed for {act_pid}: {alg_err}")
 
     return create_success_response({"updated": updated, "skipped": skipped})

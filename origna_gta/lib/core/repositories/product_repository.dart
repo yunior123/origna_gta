@@ -298,7 +298,6 @@ class FirebaseProductRepository implements ProductRepository {
     final snapshot = await query.get();
     final products = snapshot.docs
         .map((doc) => Product.fromFirestore(doc))
-        .where((p) => p.lifecycleStatus == ProductLifecycleStatusValues.active)
         .toList();
     final hasMore = snapshot.docs.length >= pageSize;
 
@@ -325,8 +324,7 @@ class FirebaseProductRepository implements ProductRepository {
           .get();
       results.addAll(
         snapshot.docs
-            .map((doc) => Product.fromFirestore(doc))
-            .where((p) => p.lifecycleStatus == ProductLifecycleStatusValues.active),
+            .map((doc) => Product.fromFirestore(doc)),
       );
     }
     return results;

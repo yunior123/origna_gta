@@ -899,8 +899,8 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     if item_data.get(Fields.STATUS) == DeliveryStatusValues.REFUNDED:
         raise https_fn.HttpsError("failed-precondition", "Item already refunded")
 
-    # Enforce 7-day return window post-delivery
-    if item_data.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED:
+    # Enforce 7-day return window post-delivery (bypassed for admins)
+    if not is_admin and item_data.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED:
         delivered_at = item_data.get(Fields.DELIVERED_AT) or order_data.get(Fields.DELIVERED_AT)
         if delivered_at:
             if hasattr(delivered_at, "timestamp"):
@@ -2117,3 +2117,93 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
 
     except Exception as e:
         logger.error(f"🚨 Failed to send order status email for order {order_id}: {str(e)}")
+
+
+@firestore_fn.on_document_updated(document="return_requests/{returnId}", **FIRESTORE_TRIGGER_OPTIONS)
+def on_return_request_status_changed(event: firestore_fn.Event) -> None:
+    """
+    Firestore trigger: Sends push notifications when a return request status changes.
+    Covers status transitions that may happen outside the CF handlers (admin writes, cron).
+    """
+    return_id = event.params["returnId"]
+    before_data = event.data.before.to_dict() if event.data.before else {}
+    after_data = event.data.after.to_dict() if event.data.after else {}
+
+    if not before_data or not after_data:
+        return
+
+    old_status = before_data.get(Fields.RETURN_STATUS)
+    new_status = after_data.get(Fields.RETURN_STATUS)
+
+    if old_status == new_status:
+        return
+
+    order_id = after_data.get(Fields.ORDER_ID, "")
+    buyer_id = after_data.get(Fields.USER_ID, "")
+    seller_id = after_data.get(Fields.SELLER_ID, "")
+    oid_short = order_id[:8] if order_id else "?"
+
+    # Dedup guard: skip if already notified for this transition
+    flag_field = f"notificationSentFor_{new_status}"
+    if after_data.get(flag_field):
+        return
+
+    try:
+        get_db().collection(Collections.RETURN_REQUESTS).document(return_id).update({flag_field: True})
+    except Exception as e:
+        logger.warning(f"Failed to set notification flag for return {return_id}: {e}")
+
+    try:
+        if new_status == ReturnStatusValues.REQUESTED and seller_id:
+            # New return request — notify seller
+            send_push_notification(
+                seller_id,
+                "New Return Request",
+                f"A buyer has requested a return for order #{oid_short}",
+                data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
+            )
+        elif new_status == ReturnStatusValues.APPROVED and buyer_id:
+            send_push_notification(
+                buyer_id,
+                "Return Approved",
+                f"Your return request for order #{oid_short} has been approved",
+                data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
+            )
+        elif new_status == ReturnStatusValues.REJECTED and buyer_id:
+            send_push_notification(
+                buyer_id,
+                "Return Rejected",
+                f"Your return request for order #{oid_short} has been rejected",
+                data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
+            )
+        elif new_status == ReturnStatusValues.RECEIVED:
+            if buyer_id:
+                send_push_notification(
+                    buyer_id,
+                    "Return Received",
+                    f"Your returned item for order #{oid_short} has been received — refund processing",
+                    data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
+                )
+            if seller_id:
+                send_push_notification(
+                    seller_id,
+                    "Return Received",
+                    f"Returned item for order #{oid_short} marked as received",
+                    data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
+                )
+        elif new_status == ReturnStatusValues.REFUNDED and buyer_id:
+            send_push_notification(
+                buyer_id,
+                "Return Refunded",
+                f"Your refund for return on order #{oid_short} has been processed",
+                data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
+            )
+        elif new_status == ReturnStatusValues.ESCALATED and buyer_id:
+            send_push_notification(
+                buyer_id,
+                "Return Escalated",
+                f"Your return for order #{oid_short} has been escalated to our support team",
+                data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": new_status},
+            )
+    except Exception as e:
+        logger.error(f"🚨 Failed to send return request notification for {return_id}: {str(e)}")

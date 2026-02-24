@@ -33,9 +33,11 @@ from schema_constants import (
     PayoutStatusValues,
     ProductApprovalStatusValues,
     ProductLifecycleStatusValues,
+    ReturnStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
     SubscriptionStatusValues,
+    UserRoleValues,
 )
 from utils.function_options import CRON_OPTIONS
 
@@ -1707,3 +1709,99 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
             synced_count += 1
 
     logger.info(f"sync_expired_subscriptions: {synced_count} fixed, {error_count} errors")
+
+
+@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+def escalate_stale_return_requests(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Cron: Escalates return requests that have been in 'requested' status for
+    more than _RETURN_ESCALATION_DAYS days without seller action.
+    Sets status to 'escalated' and sends push to admins and buyer.
+    """
+    if not acquire_cron_lock("escalate_stale_return_requests"):
+        logger.info("escalate_stale_return_requests: Lock held, skipping")
+        return
+
+    try:
+        _run_return_escalation()
+    finally:
+        release_cron_lock("escalate_stale_return_requests")
+
+
+def _run_return_escalation() -> None:
+    from datetime import timedelta
+
+    db = get_db()
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(days=BusinessRules.RETURN_ESCALATION_DAYS)
+
+    escalated = 0
+    errors = 0
+
+    try:
+        # Query return requests stuck in 'requested' status past cutoff
+        stale_returns = (
+            db.collection(Collections.RETURN_REQUESTS)
+            .where(Fields.RETURN_STATUS, "==", ReturnStatusValues.REQUESTED)
+            .where(Fields.CREATED_AT, "<", cutoff)
+            .limit(200)
+            .stream()
+        )
+
+        for doc in stale_returns:
+            return_id = doc.id
+            return_data = doc.to_dict() or {}
+            order_id = return_data.get(Fields.ORDER_ID, "")
+            buyer_id = return_data.get(Fields.USER_ID, "")
+            seller_id = return_data.get(Fields.SELLER_ID, "")
+
+            try:
+                doc.reference.update({
+                    Fields.RETURN_STATUS: ReturnStatusValues.ESCALATED,
+                    Fields.UPDATED_AT: now,
+                    "escalatedAt": now,
+                    "escalationReason": f"No seller response after {BusinessRules.RETURN_ESCALATION_DAYS} days",
+                })
+
+                # Notify buyer
+                if buyer_id:
+                    try:
+                        from handlers.orders import send_push_notification
+                        send_push_notification(
+                            buyer_id,
+                            "Return Request Escalated",
+                            f"Your return for order #{order_id[:8]} has been escalated to our support team",
+                            data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": ReturnStatusValues.ESCALATED},
+                        )
+                    except Exception as push_err:
+                        logger.warning(f"Push to buyer failed for return {return_id}: {push_err}")
+
+                # Notify admins (fetch admin users)
+                try:
+                    admin_docs = (
+                        db.collection(Collections.USERS)
+                        .where(Fields.ROLES, "array_contains", UserRoleValues.ADMIN)
+                        .limit(10)
+                        .stream()
+                    )
+                    from handlers.orders import send_push_notification
+                    for admin_doc in admin_docs:
+                        send_push_notification(
+                            admin_doc.id,
+                            "Return Escalated",
+                            f"Return #{return_id[:8]} on order #{order_id[:8]} needs admin review",
+                            data={"type": "return_request", "orderId": order_id, "returnId": return_id, "status": ReturnStatusValues.ESCALATED},
+                        )
+                except Exception as admin_err:
+                    logger.warning(f"Admin push failed for return {return_id}: {admin_err}")
+
+                escalated += 1
+            except Exception as e:
+                logger.error(f"Failed to escalate return {return_id}: {e}")
+                errors += 1
+
+    except Exception as e:
+        logger.error(f"escalate_stale_return_requests query failed: {e}")
+        return
+
+    logger.info(f"escalate_stale_return_requests: escalated={escalated}, errors={errors}")
