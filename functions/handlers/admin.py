@@ -34,54 +34,11 @@ from schema_constants import (
     UserRoleValues,
 )
 from services.rate_limiter import RateLimiter
+from utils.db import get_db, get_delete_field, get_firestore, get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS
 from utils.helpers import create_success_response
 
 logger = logging.getLogger(__name__)
-
-_db = None
-_firestore = None
-
-
-def get_db():
-    """Get Firestore client (lazy initialization)."""
-    global _db, _firestore
-    if _db is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-        _db = fs.client()
-    return _db
-
-
-def get_server_timestamp():
-    """Get Firestore SERVER_TIMESTAMP (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore.SERVER_TIMESTAMP
-
-
-def get_firestore():
-    """Get Firestore module (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore
-
-
-def get_delete_field():
-    """Get Firestore DELETE_FIELD (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore.DELETE_FIELD
 
 
 def _require_recent_admin_mfa(admin_data: dict[str, Any]) -> None:
@@ -551,6 +508,7 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Reactivate seller's products that were suspended (not manually deleted)
     # Paginate in batches of 500 (Firestore batch write limit)
     product_count = 0
+    skipped_count = 0
     max_iterations = 20  # Safety limit to prevent infinite loops (max 10k products)
     iteration_count = 0
 
@@ -583,6 +541,15 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
             product_data = product_doc.to_dict()
             # Only reactivate products that were suspended (not explicitly deleted)
             if not product_data.get(Fields.DELETED_AT):
+                stock = product_data.get(Fields.STOCK_QUANTITY, 0)
+                price = product_data.get(Fields.PRICE, 0)
+                if stock <= 0 or price <= 0:
+                    skipped_count += 1
+                    logger.info(
+                        f"Skipping product {product_doc.id} during unsuspend "
+                        f"(stock={stock}, price={price})"
+                    )
+                    continue
                 batch.update(
                     product_doc.reference,
                     {
@@ -613,7 +580,7 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     )
 
-    return create_success_response({ApiKeys.MESSAGE: "Seller unsuspended", "productsReactivated": product_count})
+    return create_success_response({ApiKeys.MESSAGE: "Seller unsuspended", "productsReactivated": product_count, "productsSkipped": skipped_count})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -788,7 +755,6 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     return create_success_response(
         {
-            ApiKeys.SECRET: secret,
             ApiKeys.QR_CODE_URL: qr_code_url,
             ApiKeys.PROVISIONING_URI: qr_code_url,
             ApiKeys.BACKUP_CODES: backup_codes,

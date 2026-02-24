@@ -43,12 +43,6 @@ class FirebaseAuthRepository implements AuthRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
 
-  // Holds marketingOptIn captured at registration time until doc is created after email verification.
-  // NOTE: This in-memory map is cleared after the CF call in _createUserDocumentIfNeeded.
-  // Limitation: entries leak if the process is killed before email verification completes.
-  // This is acceptable given the low frequency and the small data size.
-  static final Map<String, bool> _pendingMarketingOptIn = {};
-
   FirebaseAuthRepository(this._auth, this._firestore, this._functions);
 
   @override
@@ -142,9 +136,12 @@ class FirebaseAuthRepository implements AuthRepository {
     if (userCredential.user != null) {
       await userCredential.user!.updateDisplayName(name);
       if (kDebugMode) debugPrint('✅ Display name "$name" saved to Firebase Auth profile');
-      // Cache marketingOptIn so it can be passed to create_user_profile after email verification
+      // Cache marketingOptIn in Firestore so it survives process restarts before email verification
       if (marketingOptIn) {
-        _pendingMarketingOptIn[userCredential.user!.uid] = true;
+        await _firestore
+            .collection(Collections.pendingProfiles)
+            .doc(userCredential.user!.uid)
+            .set({Fields.marketingOptIn: true});
       }
     }
 
@@ -404,10 +401,22 @@ class FirebaseAuthRepository implements AuthRepository {
     final docSnapshot = await userDoc.get();
 
     if (!docSnapshot.exists) {
+      final callable = _functions.httpsCallable('create_user_profile');
+      bool marketingOptIn = false;
+      try {
+        final pendingDoc = await _firestore
+            .collection(Collections.pendingProfiles)
+            .doc(user.uid)
+            .get();
+        if (pendingDoc.exists) {
+          marketingOptIn = (pendingDoc.data()?[Fields.marketingOptIn] as bool?) ?? false;
+          await _firestore.collection(Collections.pendingProfiles).doc(user.uid).delete();
+        }
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ Could not read pending_profiles for ${user.uid}: $e');
+      }
       // SECURITY: All legal-compliance fields (CASL/PIPEDA/Law 25) are set server-side.
       // The server controls dataProcessingConsent, emailConsent, consentTimestamp, etc.
-      final callable = _functions.httpsCallable('create_user_profile');
-      final marketingOptIn = _pendingMarketingOptIn.remove(user.uid) ?? false;
       await callable.call<Map<String, dynamic>>({
         Fields.name: name ?? user.displayName ?? 'User',
         Fields.preferredLanguage: _deviceLanguage(),

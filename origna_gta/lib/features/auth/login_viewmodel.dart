@@ -54,14 +54,6 @@ class LoginViewModel extends StateNotifier<LoginState> {
   Future<void> handleAuth({required String email, required String password, String? name, bool marketingOptIn = false}) async {
     if (state.isLoading) return;
 
-    final now = DateTime.now();
-    final lockoutUntil = state.lockoutUntil;
-    if (lockoutUntil != null && now.isBefore(lockoutUntil)) {
-      final remaining = lockoutUntil.difference(now).inMinutes + 1;
-      state = state.copyWith(errorMessage: 'auth.errors.lockout_message'.tr(namedArgs: {'minutes': '$remaining'}));
-      return;
-    }
-
     // Validate email for both login and registration
     final emailError = _validateEmail(email);
     if (emailError != null) {
@@ -112,7 +104,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
         // SECURITY FIX: Force logout and require email verification before login
         // BYPASS for integration tests/dev
         if (envConfig.isDev || envConfig.isTest) {
-          state = state.copyWith(isLoading: false, isSuccess: true, failedAttempts: 0, lockoutUntil: null);
+          state = state.copyWith(isLoading: false, isSuccess: true);
           return;
         }
 
@@ -128,22 +120,14 @@ class LoginViewModel extends StateNotifier<LoginState> {
         // Do NOT set isSuccess=true, as that triggers navigation to home
         return;
       }
-      state = state.copyWith(isLoading: false, isSuccess: true, failedAttempts: 0, lockoutUntil: null);
+      state = state.copyWith(isLoading: false, isSuccess: true);
     } on FirebaseAuthException catch (e) {
       if (kDebugMode) {
         debugPrint('🔐 FirebaseAuthException — code: ${e.code}, message: ${e.message}');
       }
-      final attempts = state.failedAttempts + 1;
-      DateTime? newLockout;
-      if (attempts >= 5) {
-        final backoffMinutes = attempts >= 8 ? 15 : 5;
-        newLockout = DateTime.now().add(Duration(minutes: backoffMinutes));
-      }
       state = state.copyWith(
         isLoading: false,
         errorMessage: _friendlyAuthError(e),
-        failedAttempts: attempts,
-        lockoutUntil: newLockout,
       );
     } catch (e) {
       if (kDebugMode) {

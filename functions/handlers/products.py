@@ -45,6 +45,7 @@ from schema_constants import (
 from services.algolia_service import delete_product as algolia_delete_product
 from services.algolia_service import index_product
 from services.algolia_service import partial_update_product as algolia_partial_update
+from utils.db import get_db, get_firestore, get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS, FIRESTORE_TRIGGER_OPTIONS
 from utils.helpers import create_success_response
 
@@ -66,30 +67,7 @@ IMAGE_MAGIC_BYTES = {
 }
 MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB absolute max
 
-_db = None
-_firestore = None
 _r2_creds: dict | None = None  # Module-level cache to avoid repeated Secret Manager hits
-
-
-def get_db():
-    """Get Firestore client (lazy initialization)."""
-    global _db, _firestore
-    if _db is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-        _db = fs.client()
-    return _db
-
-
-def get_server_timestamp():
-    """Get Firestore SERVER_TIMESTAMP (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore.SERVER_TIMESTAMP
 
 
 def _get_cached_r2_credentials() -> dict:
@@ -725,11 +703,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         transaction.update(product_ref, {Fields.RATING: new_average, Fields.RATING_COUNT: new_rating_count})
         return new_average, new_rating_count
 
-    # Ensure _firestore is initialized before using transactional decorator
-    if _firestore is None:
-        from firebase_admin import firestore as _fs
-        globals()["_firestore"] = _fs
-    txn_fn = _firestore.transactional(update_rating_transaction)
+    txn_fn = get_firestore().transactional(update_rating_transaction)
     transaction = get_db().transaction()
     new_average, new_rating_count = txn_fn(transaction)
 
@@ -1529,9 +1503,9 @@ def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
     safe_product_name = _html.escape(str(product_name))
     safe_seller_id = _html.escape(str(seller_id))
 
-    # Fetch all admin users
+    # Fetch admin users (limit to prevent unbounded reads)
     admin_docs = (
-        get_db().collection(Collections.USERS).where(Fields.ROLES, "array-contains", UserRoleValues.ADMIN).get()
+        get_db().collection(Collections.USERS).where(Fields.ROLES, "array-contains", UserRoleValues.ADMIN).limit(50).get()
     )
 
     subject = f"[Origna] New Product Pending Review: {safe_product_name}"

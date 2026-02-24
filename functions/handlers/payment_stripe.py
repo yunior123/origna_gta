@@ -64,6 +64,7 @@ from services.email_service import get_order_confirmation_email, get_seller_noti
 from services.pdf_invoice_service import generate_invoice_pdf
 from services.rate_limiter import RateLimiter
 from services.shipping_service import calculate_shipping_cost, get_tax_rate
+from utils.db import get_db, get_firestore, get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS, PAYMENT_OPTIONS, WEBHOOK_OPTIONS
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,9 @@ logger = logging.getLogger(__name__)
 
 
 def _check_premium_from_sub(uid: str) -> bool:
-    """P-03 FIX: Check premium status from authoritative subscriptions doc, not cached user field."""
+    """Check premium status from authoritative subscriptions doc, not cached user field.
+    Called at checkout to gate free-shipping for premium buyers (line ~1368).
+    """
     from utils.premium_check import is_premium_authoritative
     return is_premium_authoritative(uid, db=get_db())
 
@@ -94,25 +97,9 @@ _PROVINCE_TAX_BREAKDOWN = {
 stripe.max_network_retries = BusinessRules.STRIPE_MAX_NETWORK_RETRIES
 # Note: stripe.default_http_client requires stripe-python v3+
 # For v2, timeout is set per-request via stripe.api_requestor.APIRequestor
-_db = None
 _rate_limiter = None
-_firestore = None
 
 # CORS is configured in DEFAULT_OPTIONS via function_options.py
-
-
-def get_db():
-    """Get Firestore client (lazy initialization)."""
-    global _db, _firestore
-    if _db is None:
-        try:
-            from firebase_admin import firestore as fs
-
-            _firestore = fs
-            _db = fs.client()
-        except Exception as e:
-            raise RuntimeError("Failed to initialize Firestore client") from e
-    return _db
 
 
 def get_rate_limiter():
@@ -123,34 +110,9 @@ def get_rate_limiter():
     return _rate_limiter
 
 
-def get_firestore():
-    """Get Firestore module (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore
-
-
-def get_server_timestamp():
-    """Get Firestore SERVER_TIMESTAMP (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore.SERVER_TIMESTAMP
-
-
 def get_transactional():
     """Get Firestore transactional decorator (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore.transactional
+    return get_firestore().transactional
 
 
 def _assert_seller_active(seller_id: str, require_approval: bool = True) -> dict[str, Any]:
@@ -454,7 +416,6 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
             line_items=line_items,
         )
 
-        tax_amount_cents = calculation.tax_amount_exclusive
         # Stripe Tax returns amounts in cents — convert to dollars for consistency with manual calc
         STRIPE_TAX_TYPE_MAP = {
             "gst_hst": "GST",
@@ -1971,9 +1932,14 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
     except Exception as e:
         logger.error(f"Failed to redeem coupon for order {order_id}: {str(e)}")
 
-    # Clear user's cart
+    # Clear user's cart and stamp lastCheckoutTimestamp so the abandoned-cart cron
+    # won't email users about items they just purchased.
     try:
-        _clear_user_cart(order_data[Fields.USER_ID])
+        user_id = order_data[Fields.USER_ID]
+        _clear_user_cart(user_id)
+        get_db().collection(Collections.USERS).document(user_id).update(
+            {Fields.LAST_CHECKOUT_TIMESTAMP: datetime.now(UTC)}
+        )
     except Exception as e:
         logger.error(f"Failed to clear cart: {str(e)}")
 
@@ -2248,24 +2214,19 @@ def process_async_payment_failed(session: dict) -> str | None:
 
 def _add_stock_restore_to_batch(batch, order_data: dict) -> None:
     """Adds stock increment operations to an existing batch."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-
+    _fs = get_firestore()
     for item in order_data.get(Fields.ITEMS, []):
         product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
         qty = item[Fields.QUANTITY]
-        patch = {Fields.STOCK_QUANTITY: _firestore.Increment(qty)}
+        patch = {Fields.STOCK_QUANTITY: _fs.Increment(qty)}
 
         fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
         if fulfillment_wh:
-            patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = _firestore.Increment(qty)
+            patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = _fs.Increment(qty)
             # Also restore inventoryLevels subcollection (safe if doc doesn't exist yet — merge=True)
             inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
             batch.set(inv_ref, {
-                Fields.AVAILABLE_QUANTITY: _firestore.Increment(qty),
+                Fields.AVAILABLE_QUANTITY: _fs.Increment(qty),
                 Fields.LAST_SYNCED_AT: get_server_timestamp(),
             }, merge=True)
 
@@ -2385,26 +2346,22 @@ def process_session_expired(session: dict) -> str | None:
 
         # IDEMPOTENCY FIX: Only restore stock once per order (atomic via transaction)
         if not order_data.get(Fields.STOCK_RESTORED, False):
-            global _firestore
-            if _firestore is None:
-                from firebase_admin import firestore as fs
-
-                _firestore = fs
+            _fs = get_firestore()
             for item in order_data.get(Fields.ITEMS, []):
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
                 qty = item[Fields.QUANTITY]
-                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(qty)})
+                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _fs.Increment(qty)})
                 fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
                 if fulfillment_wh:
                     transaction.update(
                         product_ref,
-                        {f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}": _firestore.Increment(qty)},
+                        {f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}": _fs.Increment(qty)},
                     )
                     # Also restore inventoryLevels subcollection
                     inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
                     transaction.set(
                         inv_ref,
-                        {Fields.AVAILABLE_QUANTITY: _firestore.Increment(qty)},
+                        {Fields.AVAILABLE_QUANTITY: _fs.Increment(qty)},
                         merge=True,
                     )
 
@@ -2485,14 +2442,10 @@ def process_payment_intent_failed(payment_intent: dict) -> str | None:
 
         # CRITICAL FIX: Restore stock on payment failure (atomic via transaction)
         if not order_data.get(Fields.STOCK_RESTORED, False):
-            global _firestore
-            if _firestore is None:
-                from firebase_admin import firestore as fs
-
-                _firestore = fs
+            _fs = get_firestore()
             for item in order_data.get(Fields.ITEMS, []):
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(item[Fields.QUANTITY])})
+                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _fs.Increment(item[Fields.QUANTITY])})
 
         transaction.update(
             order_ref,
@@ -2539,14 +2492,10 @@ def process_payment_intent_canceled(payment_intent: dict) -> str | None:
 
         # Restore stock idempotently (atomic via transaction)
         if not order_data.get(Fields.STOCK_RESTORED, False):
-            global _firestore
-            if _firestore is None:
-                from firebase_admin import firestore as fs
-
-                _firestore = fs
+            _fs = get_firestore()
             for item in order_data.get(Fields.ITEMS, []):
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(item[Fields.QUANTITY])})
+                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _fs.Increment(item[Fields.QUANTITY])})
 
         transaction.update(
             order_ref,

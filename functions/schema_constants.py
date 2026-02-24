@@ -52,6 +52,9 @@ class Collections:
     # Return tracking
     RETURN_REQUESTS = "return_requests"
 
+    # Temporary pre-verification storage (cleared after user doc creation)
+    PENDING_PROFILES = "pending_profiles"  # pending_profiles/{uid}
+
     # Subcollections
     WAREHOUSES = "warehouses"  # users/{sellerId}/warehouses
     CART = "cart"  # users/{userId}/cart
@@ -569,6 +572,7 @@ class Fields:
     ADDRESS_COUNT = "addressCount"
     REVIEW_IMAGE_URLS = "reviewImageUrls"
     REVIEW_TEXT = "reviewText"
+    VERIFIED_PURCHASE = "verifiedPurchase"
     NOTIFIED_AT = "notifiedAt"
     SUBSCRIBED_AT = "subscribedAt"
     QUESTION_TEXT = "question"
@@ -585,6 +589,8 @@ class Fields:
     CANCELLATION_RATE = "cancellationRate"
     LATE_SHIPMENT_RATE = "lateShipmentRate"
     AVG_RESPONSE_TIME_HOURS = "avgResponseTimeHours"
+    AVG_SHIP_DAYS = "avgShipDays"
+    POSITIVE_RATE_PCT = "positiveRatePct"
     TOTAL_ORDERS_30D = "totalOrders30d"
     TOTAL_REVENUE_CENTS_30D = "totalRevenueCents30d"
     COMPUTED_AT = "computedAt"
@@ -1423,6 +1429,7 @@ class BusinessRules:
     TRENDING_WINDOW_HOURS = 24       # Rolling window for trending calculation
     TRENDING_PURCHASE_WEIGHT = 3     # Weight for purchase events
     TRENDING_FAVORITE_WEIGHT = 1     # Weight for favorite events
+    FREE_SHIPPING_THRESHOLD_CENTS = 7500  # $75 CAD — subtotals at or above qualify for free standard shipping
 
     # Algolia monitoring
     ALGOLIA_SYNC_MISMATCH_THRESHOLD = 0.05  # 5%
@@ -1686,7 +1693,9 @@ class OrderEventTypes:
     ITEM_DELIVERED = "item_delivered"
     CANCELLATION_CONFIRMED = "cancellation_confirmed"
     NOTE_ADDED = "note_added"
+    AUTO_CONFIRMED = "auto_confirmed"
     ALL: frozenset = frozenset({
         "status_changed", "payment_authorized", "payment_captured", "payment_failed",
         "refund_issued", "item_shipped", "item_delivered", "cancellation_confirmed", "note_added",
+        "auto_confirmed",
     })

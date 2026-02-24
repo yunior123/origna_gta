@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -36,7 +35,7 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
           );
         } catch (e) {
           // Non-critical tracking write failed — log for visibility
-          debugPrint('sellerOrders: tracking update failed: $e');
+          AppError.log(e, context: 'sellerOrders.trackingUpdate');
         }
       }
 

@@ -23,29 +23,11 @@ from schema_constants import (
     UserRoleValues,
     ValidationLimits,
 )
+from utils.db import get_db, get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS
 from utils.helpers import create_success_response, sanitized_text
 
 logger = logging.getLogger(__name__)
-
-_db = None
-
-
-def get_db():
-    """Get Firestore client (lazy initialization)."""
-    global _db
-    if _db is None:
-        from firebase_admin import firestore
-
-        _db = firestore.client()
-    return _db
-
-
-def get_server_timestamp():
-    """Get Firestore SERVER_TIMESTAMP."""
-    from firebase_admin import firestore
-
-    return firestore.SERVER_TIMESTAMP
 
 
 def _get_firestore_increment(n: int):

@@ -58,20 +58,22 @@ if not firebase_admin._apps:
 # ===============================================
 # ADDRESS HANDLERS
 # ===============================================
+# Initialize Sentry for production error monitoring
+from config import init_sentry  # noqa: E402
 from handlers.addresses import get_address_suggestions  # noqa: E402
 
 # ===============================================
 # ADMIN HANDLERS
 # ===============================================
 from handlers.admin import (  # noqa: E402
+    admin_delete_review,
+    admin_flag_review,
     admin_mfa_disable,
     admin_mfa_enroll,
     admin_mfa_verify,
     admin_mfa_verify_backup,
-    admin_update_product_stock,
-    admin_delete_review,
-    admin_flag_review,
     admin_refund_order,
+    admin_update_product_stock,
     delete_account,
     e2e_get_mail_logs,
     export_my_data,
@@ -84,6 +86,10 @@ from handlers.chat import (  # noqa: E402
     get_or_create_chat,
     mark_messages_read,
     send_message,
+)
+from handlers.coupons import (  # noqa: E402
+    admin_create_coupon,
+    apply_coupon,
 )
 
 # ===============================================
@@ -100,12 +106,12 @@ from handlers.cron_jobs import (  # noqa: E402
     cleanup_stale_webhook_events,
     compute_seller_metrics,
     compute_trending_products,
+    escalate_stale_return_requests,
     monitor_algolia_sync,
     retry_failed_algolia_syncs,
     revalidate_digital_product_urls,
     send_abandoned_cart_emails,
     sync_expired_subscriptions,
-    escalate_stale_return_requests,
 )
 from handlers.digital import (  # noqa: E402
     activate_license,
@@ -160,10 +166,12 @@ from handlers.products import (  # noqa: E402
     answer_review,
     ask_product_question,
     bulk_update_products,
-    deactivate_supplier_platform,
     configure_algolia,
+    create_product_atomic,
     create_warehouse,
+    deactivate_supplier_platform,
     delete_product,
+    delete_product_images,
     delete_warehouse,
     get_product_questions,
     get_product_ratings_paginated,
@@ -179,13 +187,7 @@ from handlers.products import (  # noqa: E402
     update_warehouse,
     upload_product_images,
     upload_review_images,
-    delete_product_images,
-    create_product_atomic,
     vote_review_helpful,
-)
-from handlers.coupons import (  # noqa: E402
-    admin_create_coupon,
-    apply_coupon,
 )
 from handlers.subscriptions import (  # noqa: E402
     cancel_subscription,
@@ -212,9 +214,6 @@ from handlers.users import (  # noqa: E402
 # The checkout flow (payment_stripe.py) imports directly from services.shipping_service.
 # ===============================================
 from services.shipping_service import calculate_shipping_cost  # noqa: E402, F811
-
-# Initialize Sentry for production error monitoring
-from config import init_sentry  # noqa: E402
 
 init_sentry()
 

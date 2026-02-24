@@ -146,6 +146,7 @@ abstract final class BusinessRules {
   static const trendingWindowHours = 24; // Rolling window for trending calculation
   static const trendingPurchaseWeight = 3; // Weight for purchase events
   static const trendingFavoriteWeight = 1; // Weight for favorite events
+  static const freeShippingThresholdCents = 7500; // $75 CAD — subtotals at or above qualify for free standard shipping
   // Sellers can be from any country — no country restriction on seller addresses
 
   /// Tax rates by province
@@ -331,6 +332,9 @@ abstract final class Collections {
 
   // Return tracking
   static const returnRequests = 'return_requests';
+
+  // Temporary pre-verification storage (cleared after user doc creation)
+  static const pendingProfiles = 'pending_profiles'; // pending_profiles/{uid}
 }
 
 /// Confirmation values for sensitive operations requiring explicit confirmation
@@ -879,6 +883,7 @@ abstract final class Fields {
   static const addressId = 'addressId';
   static const reviewImageUrls = 'reviewImageUrls';
   static const reviewText = 'reviewText';
+  static const verifiedPurchase = 'verifiedPurchase';
   static const notifiedAt = 'notifiedAt';
   static const subscribedAt = 'subscribedAt';
   static const questionText = 'question';
@@ -897,6 +902,8 @@ abstract final class Fields {
   static const cancellationRate = 'cancellationRate';
   static const lateShipmentRate = 'lateShipmentRate';
   static const avgResponseTimeHours = 'avgResponseTimeHours';
+  static const avgShipDays = 'avgShipDays';
+  static const positiveRatePct = 'positiveRatePct';
   static const totalOrders30d = 'totalOrders30d';
   static const totalRevenueCents30d = 'totalRevenueCents30d';
   static const computedAt = 'computedAt';
@@ -1549,6 +1556,7 @@ abstract final class OrderEventTypes {
   static const itemDelivered = 'item_delivered';
   static const cancellationConfirmed = 'cancellation_confirmed';
   static const noteAdded = 'note_added';
+  static const autoConfirmed = 'auto_confirmed';
 }
 
 // =============================================================================

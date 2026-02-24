@@ -12,6 +12,7 @@ import 'package:origna_gta/features/products/stock_notification_provider.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/models/qa_model.dart';
+import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -51,6 +52,10 @@ class ProductDetailScreen extends ConsumerWidget {
               ),
             );
           }
+          // Trigger seller-metrics fetch once product is available
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(productDetailViewModelProvider.notifier).fetchSellerMetrics(product.sellerId);
+          });
           final imageUrls = product.imageUrls;
           return CustomScrollView(
             slivers: [
@@ -194,6 +199,8 @@ class ProductDetailScreen extends ConsumerWidget {
                               ],
                             ],
                           ),
+                          const SizedBox(height: 12),
+                          _SellerMetricsRow(sellerId: product.sellerId),
                           const SizedBox(height: 20),
                           Container(
                             padding: const EdgeInsets.all(16),
@@ -249,6 +256,8 @@ class ProductDetailScreen extends ConsumerWidget {
                           _ReviewsSection(productId: productId, ratingCount: product.ratingCount, averageRating: product.rating),
                           const SizedBox(height: 32),
                           _QASection(productId: productId, sellerId: product.sellerId),
+                          const SizedBox(height: 32),
+                          _SimilarProductsSection(productId: productId, categoryId: product.categoryId),
                           const SizedBox(height: 40),
                         ],
                       ),
@@ -925,6 +934,8 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     final reviewer = userId.length > 8 ? userId.substring(0, 8) : userId;
     final reviewerLabel = reviewer.isNotEmpty ? 'User ${reviewer.toUpperCase()}' : 'Anonymous';
     final createdAt = (review[Fields.createdAt] as Timestamp?)?.toDate();
+    final isVerified = review[Fields.verifiedPurchase] as bool? ?? false;
+    final photoUrls = (review[Fields.reviewImageUrls] as List?)?.whereType<String>().toList() ?? <String>[];
 
     if (comment.isEmpty && sellerReply == null) return const SizedBox.shrink();
 
@@ -974,6 +985,57 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
               ),
             ],
           ),
+
+          // Verified purchase badge
+          if (isVerified) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.verified_rounded, size: 14, color: DesignTokens.success),
+                const SizedBox(width: 4),
+                Text(
+                  'Verified Purchase',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.success),
+                ),
+              ],
+            ),
+          ],
+
+          // Photo row
+          if (photoUrls.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 80,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: photoUrls.length,
+                separatorBuilder: (context, i) => const SizedBox(width: 8),
+                itemBuilder: (context, idx) => GestureDetector(
+                  onTap: () => _showReviewPhotoDialog(context, photoUrls, idx),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: photoUrls[idx],
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      placeholder: (ctx, url) => Shimmer.fromColors(
+                        baseColor: DesignTokens.outlineVariant,
+                        highlightColor: DesignTokens.surface,
+                        child: Container(width: 80, height: 80, color: Colors.white),
+                      ),
+                      errorWidget: (ctx, url, err) => Container(
+                        width: 80,
+                        height: 80,
+                        color: DesignTokens.outlineVariant,
+                        child: const Icon(Icons.image_not_supported, size: 32),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
 
           // Review text
           if (comment.isNotEmpty) ...[
@@ -1085,6 +1147,51 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     } finally {
       if (mounted) setState(() => _votingHelpful = false);
     }
+  }
+
+  void _showReviewPhotoDialog(BuildContext context, List<String> urls, int initialIndex) {
+    showDialog(
+      context: context,
+      barrierColor: DesignTokens.textPrimary,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            PageView.builder(
+              itemCount: urls.length,
+              controller: PageController(initialPage: initialIndex),
+              itemBuilder: (_, i) => InteractiveViewer(
+                child: Center(
+                  child: CachedNetworkImage(
+                    imageUrl: urls[i],
+                    fit: BoxFit.contain,
+                    placeholder: (ctx, url) => Shimmer.fromColors(
+                      baseColor: DesignTokens.outlineVariant,
+                      highlightColor: DesignTokens.surface,
+                      child: Container(color: Colors.white),
+                    ),
+                    errorWidget: (ctx, url, err) => const Icon(Icons.image_not_supported, size: 100, color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              right: 16,
+              child: Container(
+                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
+                child: IconButton(
+                  tooltip: 'common.close'.tr(),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -1503,6 +1610,159 @@ class _QuantitySelector extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ============================================================================
+// SELLER METRICS ROW — Shows avg response time, ship days, positive rate
+// ============================================================================
+
+class _SellerMetricsRow extends ConsumerWidget {
+  final String sellerId;
+
+  const _SellerMetricsRow({required this.sellerId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final metricsState = ref.watch(productDetailViewModelProvider);
+    if (metricsState.sellerMetricsLoading) return const SizedBox.shrink();
+    final metrics = metricsState.sellerMetrics;
+    if (metrics == null) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    String fmt(double? v, String suffix) {
+      if (v == null) return '--';
+      return '${v.toStringAsFixed(1)}$suffix';
+    }
+
+    String fmtPct(double? v) {
+      if (v == null) return '--';
+      return '${v.toStringAsFixed(0)}%';
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      children: [
+        _MetricPill(
+          icon: Icons.schedule_rounded,
+          label: 'Response',
+          value: fmt(metrics.avgResponseHours, 'h'),
+          isDark: isDark,
+        ),
+        _MetricPill(
+          icon: Icons.local_shipping_outlined,
+          label: 'Ships in',
+          value: fmt(metrics.avgShipDays, 'd'),
+          isDark: isDark,
+        ),
+        _MetricPill(
+          icon: Icons.thumb_up_alt_outlined,
+          label: 'Positive',
+          value: fmtPct(metrics.positiveRatePct),
+          isDark: isDark,
+        ),
+        if (metrics.totalReviews != null && metrics.totalReviews! > 0)
+          _MetricPill(
+            icon: Icons.rate_review_outlined,
+            label: 'Reviews',
+            value: '${metrics.totalReviews}',
+            isDark: isDark,
+          ),
+      ],
+    );
+  }
+}
+
+class _MetricPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isDark;
+
+  const _MetricPill({required this.icon, required this.label, required this.value, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade800 : DesignTokens.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? Colors.grey.shade700 : DesignTokens.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: DesignTokens.primary),
+          const SizedBox(width: 4),
+          Text('$label: ', style: TextStyle(fontSize: 11, color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// SIMILAR PRODUCTS SECTION — Horizontal row of products in same category
+// ============================================================================
+
+class _SimilarProductsSection extends ConsumerWidget {
+  final String productId;
+  final int categoryId;
+
+  const _SimilarProductsSection({required this.productId, required this.categoryId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Skip if category is unset (0)
+    if (categoryId == 0) return const SizedBox.shrink();
+
+    final similarAsync = ref.watch(similarProductsProvider((excludeProductId: productId, categoryId: categoryId)));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return similarAsync.when(
+      data: (products) {
+        if (products.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Customers also bought',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : DesignTokens.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 220,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: products.length,
+                separatorBuilder: (context, i) => const SizedBox(width: 12),
+                itemBuilder: (context, idx) {
+                  final p = products[idx];
+                  return SizedBox(
+                    width: 150,
+                    child: ProductCard(
+                      productId: p.productId,
+                      product: p,
+                      userModel: null,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (err, st) => const SizedBox.shrink(),
     );
   }
 }

@@ -20,31 +20,10 @@ from schema_constants import (
     Collections,
     Fields,
 )
+from utils.db import get_db as _get_db
 from utils.function_options import DEFAULT_OPTIONS
 
 logger = logging.getLogger(__name__)
-
-_db = None
-_firestore = None
-
-
-def _get_db():
-    global _db, _firestore
-    if _db is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-        _db = fs.client()
-    return _db
-
-
-def _get_server_timestamp():
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore.SERVER_TIMESTAMP
 
 
 def _is_premium(uid: str) -> bool:
@@ -315,7 +294,7 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Push notification to the recipient
     recipient_id = seller_id if uid == buyer_id else buyer_id
     try:
-        from handlers.orders import send_push_notification
+        from services.push_service import send_push_notification
         sender_snap = db.collection(Collections.USERS).document(uid).get()
         sender_name = (sender_snap.to_dict() or {}).get(Fields.NAME, "Someone") if sender_snap.exists else "Someone"
         send_push_notification(

@@ -238,7 +238,11 @@ service cloud.firestore {
       match /cart/{itemId} {
         allow read: if isOwner(userId);
         allow create, update: if isOwner(userId) &&
-          request.resource.data.keys().hasOnly(['productId','quantity','createdAt']) &&
+          request.resource.data.keys().hasOnly([
+            'productId','quantity','createdAt',
+            'variantId','variantTitle','variantOptions','variantSku',
+            'buyerNote','priceSnapshot'
+          ]) &&
           request.resource.data.productId is string &&
           request.resource.data.quantity is int &&
           request.resource.data.quantity > 0 && request.resource.data.quantity <= 100 &&

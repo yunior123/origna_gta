@@ -94,7 +94,11 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
     try {
       // Use circuit breaker for external service calls
-      final cost = await _shippingCircuitBreaker.execute(() => calculateShippingCost(items, state.address));
+      final rawCost = await _shippingCircuitBreaker.execute(() => calculateShippingCost(items, state.address));
+
+      // Apply free shipping threshold — orders at or above $75 CAD get free standard shipping
+      final subtotalForThreshold = _ref.read(cartSubtotalProvider);
+      final cost = (subtotalForThreshold * 100).round() >= BusinessRules.freeShippingThresholdCents ? 0.0 : rawCost;
 
       // Determine if local delivery (check if any seller is within ~50km)
       final isLocal = await _checkLocalDelivery(items, state.address!);

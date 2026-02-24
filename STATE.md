@@ -1,10 +1,8 @@
 # STATE.md
 
-## Status: All audit findings from prior sessions resolved in commit 9fd1fab
 
-## Remaining / Deferred Items
 
-### Features (not bugs — need product decision before building):
+### Features 
 - `productdetails_screen.dart`: "Customers also bought" / Similar items section (Algolia query + horizontal ListView)
 - `productdetails_screen.dart`: Verified purchase badge + photo reviews on ratings (needs schema field `verifiedPurchase: bool`)
 - `productdetails_screen.dart`: Seller metrics row (avgResponseHours, avgShipDays, positiveRatePct from seller_metrics/{id})
@@ -14,7 +12,7 @@
 - `orders_screen.dart`: Abandoned cart recovery (Cloud Function on cart write + Mailjet via Cloud Tasks)
 - `checkout_screen.dart`: Order review step before Stripe external page
 
-### Medium Code Quality (low risk, can tackle in next session):
+### Medium Code Quality ():
 - `cron_jobs.py:301-316`: Auto-confirm cron doesn't write OrderEvent audit trail
 - `orders.py:2005-2009`: Payment-status email sends have no dedup (only orderStatus changes are deduped)
 - `cron_jobs.py:654-655`: Stock restore in _run_expired_authorizations uses pre-transaction order_data items

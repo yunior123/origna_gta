@@ -28,6 +28,7 @@ from schema_constants import (
     UserRoleValues,
 )
 from services.rate_limiter import RateLimiter
+from utils.db import get_db, get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS
 
 logger = logging.getLogger(__name__)
@@ -35,30 +36,6 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 # LAZY INITIALIZATION
 # ============================================================================
-
-_db = None
-_firestore = None
-
-
-def get_db():
-    """Get Firestore client (lazy initialization)."""
-    global _db, _firestore
-    if _db is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-        _db = fs.client()
-    return _db
-
-
-def get_server_timestamp():
-    """Get Firestore SERVER_TIMESTAMP (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore.SERVER_TIMESTAMP
 
 
 def _is_provider_configured(provider: str) -> tuple:

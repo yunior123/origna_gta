@@ -84,6 +84,17 @@ final productsProvider = FutureProvider.autoDispose.family<List<Product>, Produc
   return result.products;
 });
 
+/// ({@macro similarProductsParams}) — fetches up to 8 active products in the
+/// same category, excluding the current product. Used by the "Customers also
+/// bought" row on the product detail screen.
+final similarProductsProvider = FutureProvider.autoDispose.family<List<Product>, ({String excludeProductId, int categoryId})>(
+  (ref, params) async {
+    final repository = ref.watch(productRepositoryProvider);
+    final result = await repository.fetchProducts(categoryId: params.categoryId, pageSize: 12);
+    return result.products.where((p) => p.productId != params.excludeProductId).take(8).toList();
+  },
+);
+
 // ============================================================================
 // FAVORITES PROVIDER
 // ============================================================================

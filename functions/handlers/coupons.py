@@ -19,34 +19,11 @@ from schema_constants import (
     Fields,
     UserRoleValues,
 )
+from utils.db import get_db, get_firestore
 from utils.function_options import DEFAULT_OPTIONS
 from utils.helpers import create_success_response
 
 logger = logging.getLogger(__name__)
-
-_db = None
-_firestore = None
-
-
-def get_db():
-    """Get Firestore client (lazy initialization)."""
-    global _db, _firestore
-    if _db is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-        _db = fs.client()
-    return _db
-
-
-def get_firestore():
-    """Get Firestore module (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore
 
 
 # ---------------------------------------------------------------------------

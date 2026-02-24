@@ -15,20 +15,9 @@ from schema_constants import (
     LicenseStatusValues,
 )
 from services.rate_limiter import RateLimiter
+from utils.db import get_db
 
 logger = logging.getLogger(__name__)
-
-_db = None
-
-
-def get_db():
-    """Get Firestore client (lazy initialization)."""
-    global _db
-    if _db is None:
-        from firebase_admin import firestore as fs
-
-        _db = fs.client()
-    return _db
 
 
 # Regex for license key format validation (prevents DB lookup on garbage input)

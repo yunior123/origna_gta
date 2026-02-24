@@ -274,9 +274,6 @@ class _BuyerOrderCard extends ConsumerStatefulWidget {
 }
 
 class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
-  bool _isConfirming = false;
-  String? _confirmingItemId;
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -547,7 +544,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     final isDelivered = item.status == OrderStatusValues.delivered;
     final isRated = _isProductRated(item.productId);
     final isConfirmed = _isItemConfirmed(item);
-    final isConfirmingThis = _isConfirming && _confirmingItemId == item.productId;
+    final isConfirmingThis = ref.watch(buyerOrdersViewModelProvider.select((s) => s.confirmingItemId)) == item.productId;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -900,12 +897,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     final messenger = ScaffoldMessenger.of(context);
     final viewModel = ref.read(buyerOrdersViewModelProvider.notifier);
 
-    setState(() {
-      _isConfirming = true;
-      _confirmingItemId = item.productId;
-    });
-
-    final success = await viewModel.confirmReceipt(widget.order.orderId);
+    final success = await viewModel.confirmReceipt(widget.order.orderId, item.productId);
     if (!mounted) return;
 
     if (success) {
@@ -914,11 +906,6 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
       final error = ref.read(buyerOrdersViewModelProvider).errorMessage ?? 'orders.failed_confirm_receipt'.tr();
       messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
-
-    setState(() {
-      _isConfirming = false;
-      _confirmingItemId = null;
-    });
   }
 
   bool _isItemConfirmed(OrderItem item) => item.confirmedByBuyer;

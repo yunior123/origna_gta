@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -152,12 +153,7 @@ class NotificationService {
       final fcmToken = token ?? await _messaging.getToken();
       if (fcmToken != null) {
         final firestore = _container!.read(firestoreProvider);
-        // TODO: Replace base64 slice with sha256 once `crypto` package is added to pubspec.yaml.
-        // import 'package:crypto/crypto.dart';
-        // final tokenHash = sha256.convert(utf8.encode(fcmToken)).toString();
-        // Currently using URL-safe base64 of first 60 chars as a stable unique ID.
-        final tokenSlice = fcmToken.substring(0, fcmToken.length < 60 ? fcmToken.length : 60);
-        final tokenHash = base64Url.encode(utf8.encode(tokenSlice)).replaceAll('=', '');
+        final tokenHash = sha256.convert(utf8.encode(fcmToken)).toString();
         final platform = kIsWeb ? 'web' : defaultTargetPlatform.name.toLowerCase();
         await firestore
             .collection(Collections.users)

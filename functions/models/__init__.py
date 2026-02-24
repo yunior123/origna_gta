@@ -21,7 +21,6 @@ from .order import (
     Taxes,
 )
 from .order_event import OrderEvent
-from .return_request import ReturnRequest
 from .product import (
     InventoryConfig,
     Product,
@@ -30,6 +29,7 @@ from .product import (
     ShippingQuantityDiscount,
     SupplierInfo,
 )
+from .return_request import ReturnRequest
 from .user import (
     User,
     UserCreate,

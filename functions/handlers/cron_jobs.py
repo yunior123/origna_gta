@@ -8,6 +8,7 @@ Scheduled Cron Jobs
 """
 
 import logging
+import os
 from datetime import UTC, datetime, timedelta
 
 import stripe
@@ -28,6 +29,7 @@ from schema_constants import (
     DeliveryStatusValues,
     EmailConfig,
     Fields,
+    OrderEventTypes,
     OrderStatusValues,
     PaymentStatusValues,
     PayoutStatusValues,
@@ -38,41 +40,14 @@ from schema_constants import (
     SubscriptionStatusValues,
     UserRoleValues,
 )
+from utils.db import get_db, get_firestore, get_server_timestamp
 from utils.function_options import CRON_OPTIONS
+
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "https://www.orignagta.ca")
 
 logger = logging.getLogger(__name__)
 
 # stripe.api_key = STRIPE_SECRET_KEY  # Removed global assignment to prevent deploy crash
-
-# Lazy-loaded Firestore client and module
-_db = None
-_firestore_module = None
-
-
-def get_db():
-    """Get Firestore client with lazy initialization."""
-    global _db, _firestore_module
-    if _db is None:
-        from firebase_admin import firestore
-
-        _firestore_module = firestore
-        _db = firestore.client()
-    return _db
-
-
-def get_firestore():
-    """Get Firestore module with lazy initialization."""
-    global _firestore_module
-    if _firestore_module is None:
-        from firebase_admin import firestore
-
-        _firestore_module = firestore
-    return _firestore_module
-
-
-def get_server_timestamp():
-    """Get Firestore SERVER_TIMESTAMP with lazy initialization."""
-    return get_firestore().SERVER_TIMESTAMP
 
 
 def acquire_cron_lock(job_name: str, ttl_minutes: int = 30) -> bool:
@@ -297,22 +272,51 @@ def _run_auto_capture() -> None:
             logger.info(f"Order {order_id} item-level timestamp too recent ({latest_event_time}), skipping")
             continue
 
-        # Auto-confirm SHIPPED orders as DELIVERED after cutoff
+        # Auto-confirm SHIPPED orders as DELIVERED after cutoff (transactional to prevent race conditions)
         if order_data.get(Fields.ORDER_STATUS) == OrderStatusValues.SHIPPED:
-            items = order_data.get(Fields.ITEMS, [])
-            for item in items:
-                if item.get(Fields.STATUS) == DeliveryStatusValues.SHIPPED:
-                    item[Fields.STATUS] = DeliveryStatusValues.DELIVERED
-                    item[Fields.DELIVERED_AT] = datetime.now(UTC)
-            order_doc.reference.update(
-                {
-                    Fields.ITEMS: items,
-                    Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
-                    Fields.AUTO_CONFIRMED: True,
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                }
-            )
+            _confirm_now = datetime.now(UTC)
+
+            @get_firestore().transactional
+            def _try_auto_confirm(transaction, _doc=order_doc, _now=_confirm_now):
+                fresh = _doc.reference.get(transaction=transaction)
+                if not fresh.exists:
+                    return None
+                fresh_data = fresh.to_dict()
+                if fresh_data.get(Fields.ORDER_STATUS) != OrderStatusValues.SHIPPED:
+                    return None  # already confirmed by a concurrent cron run
+                items = fresh_data.get(Fields.ITEMS, [])
+                for item in items:
+                    if item.get(Fields.STATUS) == DeliveryStatusValues.SHIPPED:
+                        item[Fields.STATUS] = DeliveryStatusValues.DELIVERED
+                        item[Fields.DELIVERED_AT] = _now
+                transaction.update(
+                    _doc.reference,
+                    {
+                        Fields.ITEMS: items,
+                        Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                        Fields.AUTO_CONFIRMED: True,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    },
+                )
+                return items
+
+            try:
+                confirmed_items = _try_auto_confirm(get_db().transaction())
+            except Exception as e:
+                logger.error(f"Failed to auto-confirm order {order_id}: {e}")
+                continue
+
+            if confirmed_items is None:
+                logger.info(f"Order {order_id} skipped auto-confirm (already processed)")
+                continue
+
             order_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+            from models.order_event import OrderEvent
+            OrderEvent.write(
+                get_db(), order_id, OrderEventTypes.AUTO_CONFIRMED,
+                actor="system", actor_type="system",
+                from_status=OrderStatusValues.SHIPPED, to_status=OrderStatusValues.DELIVERED,
+            )
             logger.info(f"Auto-confirmed order {order_id} as delivered (was shipped, {AUTO_CONFIRM_DAYS}+ days)")
 
         try:
@@ -618,11 +622,11 @@ def _run_expired_authorizations() -> None:
         def try_expire_order(transaction, order_doc=order_doc, order_data=order_data):
             fresh_doc = order_doc.reference.get(transaction=transaction)
             if not fresh_doc.exists:
-                return "not_found", False
+                return "not_found", False, []
             fresh_data = fresh_doc.to_dict()
             current_status = fresh_data.get(Fields.ORDER_STATUS)
             if current_status not in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED]:
-                return f"invalid_status:{current_status}", False
+                return f"invalid_status:{current_status}", False, []
             stock_already_restored = fresh_data.get(Fields.STOCK_RESTORED, False)
             payment_status = (
                 PaymentStatusValues.AUTHORIZATION_EXPIRED
@@ -637,10 +641,10 @@ def _run_expired_authorizations() -> None:
                     Fields.UPDATED_AT: get_server_timestamp(),
                 },
             )
-            return "locked", stock_already_restored
+            return "locked", stock_already_restored, fresh_data.get(Fields.ITEMS, [])
 
         try:
-            expire_result, stock_already_restored = try_expire_order(get_db().transaction())
+            expire_result, stock_already_restored, fresh_items = try_expire_order(get_db().transaction())
             if expire_result != "locked":
                 logger.info(f"Order {order_id} cannot be expired: {expire_result}")
                 continue
@@ -654,7 +658,7 @@ def _run_expired_authorizations() -> None:
         else:
             # Use batch write for atomicity across multiple product stock updates
             stock_batch = get_db().batch()
-            for item in order_data.get(Fields.ITEMS, []):
+            for item in fresh_items:
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
                 stock_batch.update(
                     product_ref, {Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY])}
@@ -1439,13 +1443,13 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
   </ul>
   {f'<p style="color:#666; font-size:13px;">{more_label}</p>' if more_label else ""}
   <p style="margin-top:20px;">
-    <a href="https://orignagta.ca/cart" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
+    <a href="{APP_BASE_URL}/cart" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
       Complete your purchase
     </a>
   </p>
   <p style="color:#999; font-size:12px; margin-top:24px;">
     You are receiving this reminder because you opted in to marketing emails.<br>
-    <a href="https://orignagta.ca/settings/notifications" style="color:#999;">Unsubscribe</a> · Origna Ventures Inc.
+    <a href="{APP_BASE_URL}/settings/notifications" style="color:#999;">Unsubscribe</a> · Origna Ventures Inc.
   </p>
 </div>"""
 
@@ -1827,15 +1831,21 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
                 logger.error(f"sync_expired_subscriptions: failed for {uid}: {e}")
                 error_count += 1
 
-        # Fix orphaned isPremium=True with no subscription doc (batch read to avoid N+1)
-        premium_users = list(db.collection(Collections.USERS).where(Fields.IS_PREMIUM, "==", True).limit(100).stream())
-        if premium_users:
-            uid_list = [u.id for u in premium_users]
+        # Fix orphaned isPremium=True with no subscription doc — paginate through all premium users
+        orphan_batch = db.batch()
+        orphan_count = 0
+        cursor = None
+        while True:
+            q = db.collection(Collections.USERS).where(Fields.IS_PREMIUM, "==", True).limit(500)
+            if cursor is not None:
+                q = q.start_after(cursor)
+            page = list(q.stream())
+            if not page:
+                break
+            uid_list = [u.id for u in page]
             sub_refs = [db.collection(Collections.SUBSCRIPTIONS).document(uid) for uid in uid_list]
             sub_docs = db.get_all(sub_refs)
             sub_exists = {doc.id: doc.exists for doc in sub_docs}
-            orphan_batch = db.batch()
-            orphan_count = 0
             for uid in uid_list:
                 if not sub_exists.get(uid, False):
                     logger.warning(f"Clearing orphaned isPremium for user {uid}")
@@ -1850,8 +1860,11 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
                     )
                     orphan_count += 1
                     synced_count += 1
-            if orphan_count > 0:
-                orphan_batch.commit()
+            cursor = page[-1]
+            if len(page) < 500:
+                break
+        if orphan_count > 0:
+            orphan_batch.commit()
 
         logger.info(f"sync_expired_subscriptions: {synced_count} fixed, {error_count} errors")
     finally:
@@ -1895,6 +1908,19 @@ def _run_return_escalation() -> None:
             .stream()
         )
 
+        # Pre-fetch admin users once — reused for every escalated return (no N+1 per return)
+        try:
+            from services.push_service import send_push_notification
+            admin_doc_list = list(
+                db.collection(Collections.USERS)
+                .where(Fields.ROLES, "array_contains", UserRoleValues.ADMIN)
+                .limit(10)
+                .stream()
+            )
+        except Exception as prefetch_err:
+            logger.warning(f"Failed to pre-fetch admin docs: {prefetch_err}")
+            admin_doc_list = []
+
         for doc in stale_returns:
             return_id = doc.id
             return_data = doc.to_dict() or {}
@@ -1912,7 +1938,7 @@ def _run_return_escalation() -> None:
                 # Notify buyer
                 if buyer_id:
                     try:
-                        from handlers.orders import send_push_notification
+                        from services.push_service import send_push_notification
                         send_push_notification(
                             buyer_id,
                             "Return Request Escalated",
@@ -1922,16 +1948,9 @@ def _run_return_escalation() -> None:
                     except Exception as push_err:
                         logger.warning(f"Push to buyer failed for return {return_id}: {push_err}")
 
-                # Notify admins (fetch admin users)
+                # Notify admins using pre-fetched list (avoids N+1 query per return)
                 try:
-                    admin_docs = (
-                        db.collection(Collections.USERS)
-                        .where(Fields.ROLES, "array_contains", UserRoleValues.ADMIN)
-                        .limit(10)
-                        .stream()
-                    )
-                    from handlers.orders import send_push_notification
-                    for admin_doc in admin_docs:
+                    for admin_doc in admin_doc_list:
                         send_push_notification(
                             admin_doc.id,
                             "Return Escalated",

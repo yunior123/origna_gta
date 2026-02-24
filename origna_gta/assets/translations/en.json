@@ -783,13 +783,22 @@
     "tax_breakdown": "Tax Breakdown",
     "tax_estimate_label": "{name} (Est. {rate}%)",
     "cancellation_rights": "Under Ontario's Consumer Protection Act, you may cancel this order within 7 days of receiving it if the goods are defective or not as described.",
+    "buyer_protection_title": "Buyer Protection",
+    "buyer_protection_message": "If your order doesn't arrive or isn't as described, we'll help you get a refund.",
+    "buyer_protection_link": "Learn about our Buyer Protection policy",
     "errors": {
       "payment_failed": "Payment failed. Please try again.",
       "invalid_address": "Invalid shipping address.",
       "stock_issue": "Some items are out of stock.",
       "shipping_calc_failed": "Failed to calculate shipping",
       "shipping_unavailable": "Shipping calculation temporarily unavailable. Please try again."
-    }
+    },
+    "free_shipping_banner": "Spend {amount} more for free shipping!",
+    "order_review_title": "Review Your Order",
+    "order_review_subtitle": "Please review your order before proceeding to payment",
+    "order_review_confirm": "Confirm & Pay",
+    "order_review_items": "Items ({count})",
+    "order_review_shipping_to": "Ship To"
   },
   "orders": {
     "my_orders": "My Orders",

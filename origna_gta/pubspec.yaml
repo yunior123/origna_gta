@@ -60,6 +60,7 @@ dependencies:
   app_links: ^6.4.0
   image: ^4.7.2
   sentry_flutter: ^9.10.0
+  crypto: ^3.0.3
   flutter_riverpod: ^2.6.1
   collection: ^1.19.0
   flutter_launcher_icons: ^0.14.4

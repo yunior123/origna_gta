@@ -181,8 +181,6 @@ def index_product(product_id: str, product_data: dict, max_retries: int = AppCon
     Returns:
         True if successful, False otherwise
     """
-    import time
-
     try:
         client = _get_algolia_client()
     except RuntimeError:
@@ -209,10 +207,7 @@ def index_product(product_id: str, product_data: dict, max_retries: int = AppCon
             return True
         except Exception as e:
             last_error = e
-            wait = 2**attempt
             logger.warning(f"  ⚠️  Algolia index attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
-            if attempt < max_retries - 1:
-                time.sleep(wait)
 
     # All retries exhausted — log to dead letter queue
     _log_sync_failure(product_id, "index", str(last_error), max_retries)
@@ -232,8 +227,6 @@ def partial_update_product(product_id: str, fields: dict, max_retries: int = App
     Returns:
         True if successful, False otherwise
     """
-    import time
-
     try:
         client = _get_algolia_client()
     except RuntimeError:
@@ -256,10 +249,7 @@ def partial_update_product(product_id: str, fields: dict, max_retries: int = App
             return True
         except Exception as e:
             last_error = e
-            wait = 2**attempt
             logger.warning(f"  ⚠️  Algolia partial update attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
-            if attempt < max_retries - 1:
-                time.sleep(wait)
 
     _log_sync_failure(product_id, "partial_update", str(last_error), max_retries)
     return False
@@ -277,8 +267,6 @@ def delete_product(product_id: str, max_retries: int = AppConfig.ALGOLIA_MAX_RET
     Returns:
         True if successful, False otherwise
     """
-    import time
-
     try:
         client = _get_algolia_client()
     except RuntimeError:
@@ -294,10 +282,7 @@ def delete_product(product_id: str, max_retries: int = AppConfig.ALGOLIA_MAX_RET
             return True
         except Exception as e:
             last_error = e
-            wait = 2**attempt
             logger.warning(f"  ⚠️  Algolia delete attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
-            if attempt < max_retries - 1:
-                time.sleep(wait)
 
     # All retries exhausted — log to dead letter queue
     _log_sync_failure(product_id, "delete", str(last_error), max_retries)

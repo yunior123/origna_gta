@@ -158,10 +158,26 @@ class _CheckoutButton extends ConsumerWidget {
         child: ModernButton(
           key: const Key('checkout_place_order_button'),
           label: isProcessing ? 'common.processing'.tr() : 'checkout.place_order'.tr(),
-          onPressed: isDisabled ? null : () => _startCheckout(context, ref),
+          onPressed: isDisabled ? null : () => _showOrderReview(context, ref),
           isLoading: isProcessing,
           icon: Icons.payment,
         ),
+      ),
+    );
+  }
+
+  void _showOrderReview(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _OrderReviewSheet(
+        items: items,
+        subtotal: subtotal,
+        onConfirm: () {
+          Navigator.of(context).pop();
+          _startCheckout(context, ref);
+        },
       ),
     );
   }
@@ -278,6 +294,7 @@ class _CheckoutContent extends ConsumerWidget {
                   ),
                 ),
               ),
+              const _BuyerProtectionBanner(),
               _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: digitalTotal),
               _TermsText(),
               const SizedBox(height: 16),
@@ -316,6 +333,8 @@ class _CheckoutContent extends ConsumerWidget {
                   _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
                   SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl)),
                   if (hasPhysicalItems) ...[
+                    _FreeShippingBanner(subtotal: subtotal),
+                    const SizedBox(height: 12),
                     const _DeliveryOptionsSection(),
                     const SizedBox(height: 28),
                   ] else ...[
@@ -345,6 +364,7 @@ class _CheckoutContent extends ConsumerWidget {
               ),
             ),
           ),
+          const _BuyerProtectionBanner(),
           _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: totalWithTax),
           _TermsText(),
           const SizedBox(height: 16),
@@ -910,6 +930,65 @@ class _PaymentProviderSection extends StatelessWidget {
   }
 }
 
+class _BuyerProtectionBanner extends StatelessWidget {
+  const _BuyerProtectionBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('checkout_buyer_protection_banner'),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: DesignTokens.success.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: DesignTokens.success.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.verified_user_outlined, color: DesignTokens.success, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'checkout.buyer_protection_title'.tr(),
+                  style: TextStyle(color: DesignTokens.success, fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'checkout.buyer_protection_message'.tr(),
+                  style: TextStyle(color: DesignTokens.success.withValues(alpha: 0.85), fontSize: 12, height: 1.4),
+                ),
+                const SizedBox(height: 6),
+                Semantics(
+                  link: true,
+                  label: 'link-buyer-protection',
+                  child: GestureDetector(
+                    onTap: () => launchUrl(Uri.parse('https://www.orignagta.ca/buyer-protection'), mode: LaunchMode.externalApplication),
+                    child: Text(
+                      'checkout.buyer_protection_link'.tr(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: DesignTokens.success,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                        decorationColor: DesignTokens.success,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SecurityInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -941,6 +1020,293 @@ class _SecurityInfo extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ============================================================================
+// FREE SHIPPING THRESHOLD BANNER
+// ============================================================================
+
+/// Shows "Spend $X.XX more for free shipping!" when subtotal is below the threshold.
+/// Disappears when shipping is already free or the threshold is reached.
+class _FreeShippingBanner extends ConsumerWidget {
+  final double subtotal;
+
+  const _FreeShippingBanner({required this.subtotal});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final shippingCost = ref.watch(checkoutStateProvider.select((s) => s.shippingCost));
+    final isCalculating = ref.watch(checkoutStateProvider.select((s) => s.isCalculatingShipping));
+
+    if (isCalculating || shippingCost == 0) return const SizedBox.shrink();
+
+    const thresholdCents = BusinessRules.freeShippingThresholdCents;
+    final subtotalCents = (subtotal * 100).round();
+    final remainingCents = thresholdCents - subtotalCents;
+    if (remainingCents <= 0) return const SizedBox.shrink();
+
+    final remaining = remainingCents / 100.0;
+    final progress = (subtotalCents / thresholdCents).clamp(0.0, 1.0);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [DesignTokens.tertiary.withValues(alpha: 0.12), DesignTokens.success.withValues(alpha: 0.10)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: DesignTokens.tertiary.withValues(alpha: 0.35), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_shipping_outlined, size: 17, color: DesignTokens.tertiary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'checkout.free_shipping_banner'.tr(namedArgs: {'amount': '\$${remaining.toStringAsFixed(2)}'}),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.tertiary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: DesignTokens.outlineVariant,
+              valueColor: AlwaysStoppedAnimation<Color>(DesignTokens.tertiary),
+              minHeight: 5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ORDER REVIEW SHEET
+// ============================================================================
+
+/// Bottom sheet shown before Stripe redirect — lets the user review the full order.
+class _OrderReviewSheet extends ConsumerWidget {
+  final List<CartItemDetailModel> items;
+  final double subtotal;
+  final VoidCallback onConfirm;
+
+  const _OrderReviewSheet({required this.items, required this.subtotal, required this.onConfirm});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(checkoutStateProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final couponDiscount = state.couponDiscountCents / 100.0;
+    final effectiveSubtotal = (subtotal - couponDiscount).clamp(0.0, double.infinity);
+    final province = state.address?.state ?? ProvinceCodeValues.ontario;
+    final taxRate = getTaxRate(province);
+    final tax = (effectiveSubtotal + state.shippingCost) * taxRate;
+    final total = effectiveSubtotal + state.shippingCost + tax;
+
+    final bgColor = isDark ? const Color(0xFF1A1A2E) : Colors.white;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      expand: false,
+      builder: (_, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, -4))],
+        ),
+        child: Column(
+          children: [
+            // Drag handle
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: DesignTokens.outline.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(2)),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+              child: Row(
+                children: [
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [DesignTokens.primary, DesignTokens.secondary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ).createShader(bounds),
+                    child: Text(
+                      'checkout.order_review_title'.tr(),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text('checkout.order_review_subtitle'.tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+            ),
+            const Divider(height: 1),
+            // Scrollable content
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.all(20),
+                children: [
+                  // Items
+                  Text(
+                    'checkout.order_review_items'.tr(namedArgs: {'count': '${items.length}'}),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  ...items.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: item.imageUrls.isNotEmpty
+                                ? Image.network(
+                                    item.imageUrls.first,
+                                    width: 56,
+                                    height: 56,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => _ItemImagePlaceholder(),
+                                  )
+                                : _ItemImagePlaceholder(),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 2),
+                                Text('×${item.quantity}', style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                              ],
+                            ),
+                          ),
+                          Text('\$${(item.price * item.quantity).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Shipping address
+                  if (state.address != null) ...[
+                    const Divider(height: 24),
+                    Text('checkout.order_review_shipping_to'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    GlassContainer(
+                      child: Text(
+                        state.address!.formattedAddress,
+                        style: TextStyle(fontSize: 14, height: 1.5, color: isDark ? DesignTokens.outline : DesignTokens.textPrimary),
+                      ),
+                    ),
+                  ],
+                  // Price breakdown
+                  const Divider(height: 24),
+                  _buildPriceLine('cart.subtotal'.tr(), subtotal),
+                  if (couponDiscount > 0)
+                    _buildCouponLine(state.couponCode, couponDiscount),
+                  _buildPriceLine('checkout.estimated_shipping'.tr(), state.shippingCost),
+                  _buildPriceLine(
+                    'checkout.tax_estimate_label'.tr(namedArgs: {'name': 'Tax', 'rate': (taxRate * 100).toStringAsFixed(2)}),
+                    tax,
+                  ),
+                  const Divider(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('checkout.estimated_total'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: DesignTokens.primary)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text('checkout.tax_confirm_notice'.tr(), style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic)),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+            // Confirm & Pay button
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 16),
+              child: Semantics(
+                button: true,
+                label: 'btn-confirm-pay',
+                child: ModernButton(
+                  key: const Key('checkout_confirm_pay_button'),
+                  label: 'checkout.order_review_confirm'.tr(),
+                  onPressed: onConfirm,
+                  icon: Icons.payment,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriceLine(String label, double amount) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(child: Text(label, style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary))),
+          Text('\$${amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCouponLine(String? code, double discount) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_offer_rounded, size: 14, color: DesignTokens.success),
+              const SizedBox(width: 4),
+              Text(code != null ? 'Coupon ($code)' : 'Coupon', style: const TextStyle(fontSize: 14, color: DesignTokens.success)),
+            ],
+          ),
+          Text('-\$${discount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: DesignTokens.success, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small placeholder shown when a product image fails to load or is unavailable.
+class _ItemImagePlaceholder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(color: DesignTokens.outlineVariant, borderRadius: BorderRadius.circular(8)),
+      child: Icon(Icons.image_outlined, size: 24, color: DesignTokens.textDisabled),
     );
   }
 }

@@ -48,127 +48,33 @@ from services.email_service import (
     get_seller_notification_email,
     send_email,
 )
+from services.push_service import send_push_notification
+from utils.db import get_db, get_firestore, get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS, FIRESTORE_TRIGGER_OPTIONS
 from utils.helpers import create_success_response, is_valid_order_status_transition
 
 logger = logging.getLogger(__name__)
 
-# stripe.api_key = STRIPE_SECRET_KEY  # Removed global assignment
-_db = None
-_firestore = None
 
-
-def get_db():
-    """Get Firestore client (lazy initialization)."""
-    global _db, _firestore
-    if _db is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-        _db = fs.client()
-    return _db
-
-
-def get_server_timestamp():
-    """Get Firestore SERVER_TIMESTAMP (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore.SERVER_TIMESTAMP
-
-
-def get_firestore():
-    """Get Firestore module (lazy initialization)."""
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore
-
-
-def send_push_notification(user_id: str, title: str, body: str, data: dict | None = None) -> bool:
-    """
-    Send FCM push notification to all active devices for a user.
-    Reads tokens from users/{uid}/fcm_tokens subcollection (multi-device support).
-    Falls back to legacy fcmToken field on user doc if subcollection is empty.
-    On UnregisteredError per token, removes the stale token doc atomically.
-    Returns True if at least one message succeeded, False otherwise.
-    """
-    try:
-        from firebase_admin import messaging
-    except ImportError:
-        logger.warning("firebase_admin.messaging not available — push skipped")
-        return False
-
-    try:
-        user_ref = get_db().collection(Collections.USERS).document(user_id)
-        user_doc = user_ref.get()
-        if not user_doc.exists:
-            return False
-
-        user_data = user_doc.to_dict() or {}
-
-        # Respect opt-out preference
-        if not user_data.get(Fields.PUSH_ENABLED, True):
-            return False
-
-        # Collect all tokens from subcollection (multi-device)
-        token_docs = list(user_ref.collection(Collections.FCM_TOKENS).stream())
-        tokens_with_refs: list[tuple[str, object]] = [
-            (d.to_dict().get("token", ""), d.reference)
-            for d in token_docs
-            if d.to_dict().get("token")
-        ]
-
-        # Pre-subcollection FCM path: for accounts before fcm_tokens subcollection was added
-        if not tokens_with_refs:
-            legacy_token = user_data.get(Fields.FCM_TOKEN)
-            if legacy_token:
-                tokens_with_refs = [(legacy_token, None)]
-
-        if not tokens_with_refs:
-            return False
-
-        token_list = [t for t, _ in tokens_with_refs]
-        msg = messaging.MulticastMessage(
-            tokens=token_list,
-            notification=messaging.Notification(title=title, body=body),
-            data={k: str(v) for k, v in (data or {}).items()},
-        )
-        batch_response = messaging.send_each_for_multicast(msg)
-
-        success = False
-        for idx, response in enumerate(batch_response.responses):
-            if response.success:
-                success = True
-            elif response.exception:
-                err_str = str(response.exception)
-                if "registration-token-not-registered" in err_str or "invalid-registration-token" in err_str:
-                    # Remove stale token
-                    _, token_ref = tokens_with_refs[idx]
-                    try:
-                        if token_ref:
-                            token_ref.delete()
-                        else:
-                            # Legacy field — clear it
-                            from firebase_admin.firestore import SERVER_TIMESTAMP
-                            user_ref.update({
-                                Fields.FCM_TOKEN: None,
-                                Fields.FCM_TOKEN_UPDATED_AT: SERVER_TIMESTAMP,
-                            })
-                        logger.info(f"Removed stale FCM token for user {user_id}")
-                    except Exception as del_err:
-                        logger.warning(f"Failed to remove stale FCM token: {del_err}")
-
-        if success:
-            logger.info(f"Push sent to user {user_id} ({batch_response.success_count}/{len(token_list)} tokens)")
-        return success
-    except Exception as e:
-        logger.warning(f"FCM push failed for user {user_id}: {e}")
-        return False
+def _restore_stock_to_batch(batch, items: list) -> None:
+    """Add stock restore operations for physical items to an existing Firestore batch."""
+    for item in items:
+        if item.get(Fields.IS_DIGITAL, False):
+            continue
+        product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+        stock_patch: dict = {
+            Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
+            Fields.UPDATED_AT: get_server_timestamp(),
+        }
+        fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
+        if fulfillment_wh:
+            stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(item[Fields.QUANTITY])
+            inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+            batch.set(inv_ref, {
+                Fields.AVAILABLE_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
+                Fields.LAST_SYNCED_AT: get_server_timestamp(),
+            }, merge=True)
+        batch.update(product_ref, stock_patch)
 
 
 
@@ -808,23 +714,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
     cancel_batch = get_db().batch()
 
     if not order_data.get(Fields.STOCK_RESTORED, False):
-        for item in order_data[Fields.ITEMS]:
-            product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-            stock_patch: dict = {
-                Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
-                Fields.UPDATED_AT: get_server_timestamp(),
-            }
-            # Restore per-warehouse stock to keep warehouseStock map in sync
-            fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
-            if fulfillment_wh:
-                stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(item[Fields.QUANTITY])
-                # Also restore inventoryLevels subcollection
-                inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
-                cancel_batch.set(inv_ref, {
-                    Fields.AVAILABLE_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
-                    Fields.LAST_SYNCED_AT: get_server_timestamp(),
-                }, merge=True)
-            cancel_batch.update(product_ref, stock_patch)
+        _restore_stock_to_batch(cancel_batch, order_data[Fields.ITEMS])
 
     cancel_batch.update(
         order_ref,
@@ -1192,7 +1082,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Record refund event
     OrderEvent.write(
         get_db(), order_id, OrderEventTypes.REFUND_ISSUED,
-        actor=user_id, actor_type="admin",
+        actor=user_id, actor_type="seller" if is_item_seller else "admin",
         metadata={"productId": product_id, "refundAmountCents": refund_amount_cents, "refundId": refund.id},
     )
 
@@ -1483,25 +1373,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Restore stock atomically with order cancellation in a batch
         reject_batch = get_db().batch()
-        for item in items_to_restore:
-            # Skip stock restore for digital items — unlimited stock, never decremented
-            if item.get(Fields.IS_DIGITAL, False):
-                continue
-            product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-            stock_patch: dict = {
-                Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
-                Fields.UPDATED_AT: get_server_timestamp(),
-            }
-            # Restore per-warehouse stock to keep warehouseStock map in sync
-            fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
-            if fulfillment_wh:
-                stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(item[Fields.QUANTITY])
-                inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
-                reject_batch.set(inv_ref, {
-                    Fields.AVAILABLE_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
-                    Fields.LAST_SYNCED_AT: get_server_timestamp(),
-                }, merge=True)
-            reject_batch.update(product_ref, stock_patch)
+        _restore_stock_to_batch(reject_batch, items_to_restore)
         reject_batch.commit()
         order_ref.update({Fields.STOCK_RESTORED: True, Fields.UPDATED_AT: get_server_timestamp()})
 
@@ -1829,6 +1701,15 @@ def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
+    from services.rate_limiter import RateLimiter
+
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action="approve_return_request", max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", msg)
+
     user_id = req.auth.uid
     data = req.data
     return_id = data.get(Fields.RETURN_ID)
@@ -1888,7 +1769,10 @@ def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
         if "received" not in ReturnStatusValues.VALID_TRANSITIONS.get(current_status, set()):
             raise https_fn.HttpsError("failed-precondition", f"Cannot mark received from status '{current_status}'")
         new_status = ReturnStatusValues.RECEIVED
-        return_ref.update({
+
+        # Atomic batch: status update + stock restore
+        received_batch = get_db().batch()
+        received_batch.update(return_ref, {
             Fields.RETURN_STATUS: new_status,
             Fields.UPDATED_AT: get_server_timestamp(),
         })
@@ -1896,10 +1780,11 @@ def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Restore stock now that physical return is confirmed
         product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
         qty = return_data.get(Fields.QUANTITY, 1)
-        product_ref.update({
+        received_batch.update(product_ref, {
             Fields.STOCK_QUANTITY: get_firestore().Increment(qty),
             Fields.UPDATED_AT: get_server_timestamp(),
         })
+        received_batch.commit()
 
         # Notify buyer
         send_push_notification(
@@ -1926,6 +1811,15 @@ def reject_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    from services.rate_limiter import RateLimiter
+
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action="reject_return_request", max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     from utils.helpers import sanitized_text
 
@@ -1984,6 +1878,33 @@ def _handle_payment_status_email(order_id: str, after_data: dict, payment_status
     """Send refund notification emails when paymentStatus changes."""
     if payment_status not in (PaymentStatusValues.REFUNDED, PaymentStatusValues.PARTIALLY_REFUNDED):
         return
+
+    # Dedup guard: skip if email for this payment status was already sent
+    dedup_key = f"payment_email:{payment_status}"
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    from firebase_admin import firestore as _fs_ps_dedup
+    from google.cloud.firestore_v1 import transaction as _ps_txn_mod
+
+    @_ps_txn_mod.transactional
+    def _claim_payment_email_slot(txn):
+        fresh = order_ref.get(transaction=txn)
+        if not fresh.exists:
+            return False
+        sent = (fresh.to_dict() or {}).get(Fields.NOTIFICATIONS_SENT, [])
+        if dedup_key in sent:
+            return False
+        txn.update(order_ref, {Fields.NOTIFICATIONS_SENT: _fs_ps_dedup.ArrayUnion([dedup_key])})
+        return True
+
+    try:
+        claimed = _claim_payment_email_slot(get_db().transaction())
+    except Exception as flag_err:
+        logger.warning(f"Failed to claim payment email slot for {order_id}/{payment_status}: {flag_err}")
+        claimed = False
+    if not claimed:
+        logger.info(f"Payment status email already sent for order {order_id} status={payment_status}, skipping")
+        return
+
     user_id = after_data.get(Fields.USER_ID)
     if not buyer_email:
         try:

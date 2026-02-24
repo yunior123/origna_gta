@@ -1,6 +1,3 @@
-/// Sentinel value used to distinguish "not provided" from "explicitly set to null".
-const _loginSentinel = Object();
-
 class LoginState {
   final bool isLoading;
   final bool isLogin;
@@ -10,8 +7,6 @@ class LoginState {
   final String? errorMessage;
   final String? successMessage;
   final bool isSuccess;
-  final int failedAttempts;
-  final DateTime? lockoutUntil;
 
   LoginState({
     this.isLoading = false,
@@ -22,8 +17,6 @@ class LoginState {
     this.errorMessage,
     this.successMessage,
     this.isSuccess = false,
-    this.failedAttempts = 0,
-    this.lockoutUntil,
   });
 
   LoginState copyWith({
@@ -35,8 +28,6 @@ class LoginState {
     String? errorMessage,
     String? successMessage,
     bool? isSuccess,
-    int? failedAttempts,
-    Object? lockoutUntil = _loginSentinel,
   }) {
     return LoginState(
       isLoading: isLoading ?? this.isLoading,
@@ -47,8 +38,6 @@ class LoginState {
       errorMessage: errorMessage,
       successMessage: successMessage,
       isSuccess: isSuccess ?? this.isSuccess,
-      failedAttempts: failedAttempts ?? this.failedAttempts,
-      lockoutUntil: lockoutUntil == _loginSentinel ? this.lockoutUntil : lockoutUntil as DateTime?,
     );
   }
 }

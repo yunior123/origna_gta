@@ -67,6 +67,15 @@ class FirebaseUserRepository implements UserRepository {
   }
 
   @override
+  Future<void> updateNotificationPreferences(String userId, {bool? notifyNewProducts, bool? notifyTrending}) async {
+    final updates = <String, dynamic>{};
+    if (notifyNewProducts != null) updates[Fields.notifyNewProducts] = notifyNewProducts;
+    if (notifyTrending != null) updates[Fields.notifyTrending] = notifyTrending;
+    if (updates.isEmpty) return;
+    await _firestore.collection(Collections.users).doc(userId).update(updates);
+  }
+
+  @override
   Future<void> updatePreferredLanguage(String userId, String lang) async {
     final callable = _functions.httpsCallable('update_user_profile');
     final response = await callable.call({Fields.preferredLanguage: lang});
@@ -177,6 +186,7 @@ abstract class UserRepository {
   Future<void> setDefaultBuyerAddress(String addressId);
 
   Future<void> updateBuyerAddress(String addressId, Address address);
+  Future<void> updateNotificationPreferences(String userId, {bool? notifyNewProducts, bool? notifyTrending});
   Future<void> updatePreferredLanguage(String userId, String lang);
   // Address Book
   Stream<List<Address>> watchAddresses(String userId);

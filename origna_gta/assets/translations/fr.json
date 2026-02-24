@@ -784,13 +784,22 @@
     "tax_breakdown": "Détail des taxes",
     "tax_estimate_label": "{name} (Est. {rate}%)",
     "cancellation_rights": "En vertu de la Loi sur la protection du consommateur de l'Ontario, vous pouvez annuler cette commande dans les 7 jours suivant sa réception si les produits sont défectueux ou non conformes à la description.",
+    "buyer_protection_title": "Protection de l'acheteur",
+    "buyer_protection_message": "Si votre commande n'arrive pas ou n'est pas conforme à la description, nous vous aiderons à obtenir un remboursement.",
+    "buyer_protection_link": "En savoir plus sur notre politique de protection de l'acheteur",
     "errors": {
       "payment_failed": "Le paiement a échoué. Veuillez réessayer.",
       "invalid_address": "Adresse de livraison invalide.",
       "stock_issue": "Certains articles sont en rupture de stock.",
       "shipping_calc_failed": "Impossible de calculer les frais de livraison",
       "shipping_unavailable": "Le calcul de la livraison est temporairement indisponible. Veuillez réessayer."
-    }
+    },
+    "free_shipping_banner": "Dépensez {amount} de plus pour la livraison gratuite !",
+    "order_review_title": "Vérifier votre commande",
+    "order_review_subtitle": "Veuillez vérifier votre commande avant de procéder au paiement",
+    "order_review_confirm": "Confirmer et payer",
+    "order_review_items": "Articles ({count})",
+    "order_review_shipping_to": "Livrer à"
   },
   "orders": {
     "my_orders": "Mes commandes",

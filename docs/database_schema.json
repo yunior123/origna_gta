@@ -2024,6 +2024,12 @@
           "type": "timestamp",
           "required": false,
           "description": "N-03: When the seller replied"
+        },
+        "verifiedPurchase": {
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "True when the reviewer has a confirmed delivered order for this product"
         }
       }
     },
@@ -2272,6 +2278,22 @@
           "type": "timestamp",
           "required": true,
           "description": "When these metrics were last computed"
+        },
+        "avgShipDays": {
+          "type": "number",
+          "required": false,
+          "description": "Average days from order confirmed to shipped (30-day avg). Null for new sellers."
+        },
+        "positiveRatePct": {
+          "type": "number",
+          "required": false,
+          "description": "Percentage of ratings that are 4 or 5 stars (0–100). Null for new sellers."
+        },
+        "totalReviews": {
+          "type": "integer",
+          "required": false,
+          "default": 0,
+          "description": "Total number of reviews the seller has received across all products"
         }
       }
     },

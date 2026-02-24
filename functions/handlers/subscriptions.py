@@ -22,31 +22,11 @@ from schema_constants import (
     Fields,
     SubscriptionStatusValues,
 )
+from utils.db import get_db as _get_db
+from utils.db import get_server_timestamp as _get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS
 
 logger = logging.getLogger(__name__)
-
-_db = None
-_firestore = None
-
-
-def _get_db():
-    global _db, _firestore
-    if _db is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-        _db = fs.client()
-    return _db
-
-
-def _get_server_timestamp():
-    global _firestore
-    if _firestore is None:
-        from firebase_admin import firestore as fs
-
-        _firestore = fs
-    return _firestore.SERVER_TIMESTAMP
 
 
 def _stripe_init() -> None:

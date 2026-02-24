@@ -60,14 +60,11 @@ class SubscriptionViewModel extends StateNotifier<SubscriptionState> {
   Future<void> updateNotificationPreferences({bool? notifyNewProducts, bool? notifyTrending}) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    final updates = <String, dynamic>{};
-    if (notifyNewProducts != null) updates[Fields.notifyNewProducts] = notifyNewProducts;
-    if (notifyTrending != null) updates[Fields.notifyTrending] = notifyTrending;
-    if (updates.isEmpty) return;
-    // SECURITY: Firestore rules must restrict this update to only these two fields.
-    // Rule: allow update: if request.resource.data.diff(resource.data).affectedKeys()
-    //   .hasOnly(['notifyNewProducts', 'notifyTrending'])
-    await _ref.read(firestoreProvider).collection(Collections.users).doc(uid).update(updates);
+    await _ref.read(userRepositoryProvider).updateNotificationPreferences(
+      uid,
+      notifyNewProducts: notifyNewProducts,
+      notifyTrending: notifyTrending,
+    );
   }
 
   void clearCheckoutUrl() => state = state.copyWith(clearCheckoutUrl: true);
