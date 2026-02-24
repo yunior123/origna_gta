@@ -453,6 +453,20 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to cleanup stock_notifications for deleted product {product_id}: {e}")
 
+    # Clean up favorites entries across all users for this product
+    try:
+        fav_refs = list(
+            get_db().collection_group(Collections.FAVORITES).where(Fields.PRODUCT_ID, "==", product_id).limit(500).stream()
+        )
+        if fav_refs:
+            batch = get_db().batch()
+            for fav in fav_refs:
+                batch.delete(fav.reference)
+            batch.commit()
+            logger.info(f"Cleaned up {len(fav_refs)} favorites for deleted product {product_id}")
+    except Exception as e:
+        logger.error(f"Failed to cleanup favorites for deleted product {product_id}: {e}")
+
     return create_success_response({"message": "Product deleted successfully"})
 
 
@@ -554,19 +568,6 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not product_in_order:
         raise https_fn.HttpsError("invalid-argument", "Product not in this order")
 
-    # Check if this specific order has already been rated (one rating per order)
-    existing_ratings_query = (
-        get_db()
-        .collection(Collections.PRODUCT_RATINGS)
-        .where(Fields.ORDER_ID, "==", order_id)
-        .limit(1)
-    )
-
-    existing_ratings = list(existing_ratings_query.stream())
-
-    if existing_ratings:
-        raise https_fn.HttpsError("already-exists", "This order has already been rated")
-
     # Build rating doc (pre-assembled — written atomically inside transaction below)
     rating_doc: dict = {
         Fields.PRODUCT_ID: product_id,
@@ -575,17 +576,31 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.RATING: rating,
         Fields.REVIEW: review,
         Fields.CREATED_AT: get_server_timestamp(),
+        Fields.HELPFUL_COUNT: 0,
+        Fields.HELPFUL_VOTER_IDS: [],
     }
     if review_image_urls:
         rating_doc[Fields.REVIEW_IMAGE_URLS] = review_image_urls
 
-    # Atomically: write the rating doc AND update the product average in one transaction.
-    # This prevents orphaned ratings (no average update) or stale averages (no rating doc).
+    # Atomically: check for duplicate, write the rating doc AND update the product average in one transaction.
+    # Moving the duplicate check inside the transaction prevents race conditions.
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
     new_rating_ref = get_db().collection(Collections.PRODUCT_RATINGS).document()  # Pre-generate doc ref
+    _txn_error: dict = {}
 
-    @_firestore.transactional
     def update_rating_transaction(transaction):
+        # Duplicate guard inside transaction (prevents race condition)
+        existing = list(
+            get_db()
+            .collection(Collections.PRODUCT_RATINGS)
+            .where(Fields.ORDER_ID, "==", order_id)
+            .limit(1)
+            .stream()
+        )
+        if existing:
+            _txn_error["err"] = https_fn.HttpsError("already-exists", "This order has already been rated")
+            return None, None
+
         product_doc = product_ref.get(transaction=transaction)
         if not product_doc.exists:
             return None, None
@@ -603,8 +618,16 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         transaction.update(product_ref, {Fields.RATING: new_average, Fields.RATING_COUNT: new_rating_count})
         return new_average, new_rating_count
 
+    # Ensure _firestore is initialized before using transactional decorator
+    if _firestore is None:
+        from firebase_admin import firestore as _fs
+        globals()["_firestore"] = _fs
+    txn_fn = _firestore.transactional(update_rating_transaction)
     transaction = get_db().transaction()
-    new_average, new_rating_count = update_rating_transaction(transaction)
+    new_average, new_rating_count = txn_fn(transaction)
+
+    if "err" in _txn_error:
+        raise _txn_error["err"]
 
     if new_average is not None:
         # Sync updated rating to Algolia so sort-by-rating returns correct results
@@ -845,10 +868,9 @@ def on_product_created(event: firestore_fn.Event) -> None:
         logger.info(f"No data for product {product_id}")
         return
 
-    # Only index active products
-    if product_data.get(Fields.LIFECYCLE_STATUS) not in ProductLifecycleStatusValues.BUYER_VISIBLE:
-        logger.info(f"Product {product_id} is not active, skipping indexing")
-        return
+    # NOTE: Do NOT skip validation based on lifecycleStatus. All newly created
+    # products (draft, under_review, etc.) must pass validation before approval.
+    # Algolia indexing only happens after admin approval via admin_approve_product.
 
     # ── SECURITY: SERVER-SIDE VALIDATION (products written from Flutter) ──
     from utils.helpers import sanitized_text
@@ -1792,6 +1814,19 @@ def on_product_deleted(event: firestore_fn.Event) -> None:
         logger.info(f"Cleaned up {len(subs)} stock_notifications for deleted product {product_id}")
     except Exception as e:
         logger.error(f"Failed to cleanup stock_notifications for hard-deleted product {product_id}: {e}")
+
+    try:
+        fav_refs = list(
+            get_db().collection_group(Collections.FAVORITES).where(Fields.PRODUCT_ID, "==", product_id).limit(500).stream()
+        )
+        if fav_refs:
+            batch = get_db().batch()
+            for fav in fav_refs:
+                batch.delete(fav.reference)
+            batch.commit()
+            logger.info(f"Cleaned up {len(fav_refs)} favorites for hard-deleted product {product_id}")
+    except Exception as e:
+        logger.error(f"Failed to cleanup favorites for hard-deleted product {product_id}: {e}")
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -3119,10 +3154,16 @@ def vote_review_helpful(req: https_fn.CallableRequest) -> dict[str, Any]:
             _error["err"] = https_fn.HttpsError("invalid-argument", "Rating does not belong to the specified product")
             return
 
-        # Prevent self-voting
+        # Prevent self-voting on your own review
         reviewer_uid = rating_data.get(Fields.USER_ID) or rating_data.get("userId")
         if reviewer_uid == user_id:
             _error["err"] = https_fn.HttpsError("permission-denied", "Users cannot vote on their own reviews")
+            return
+
+        # Prevent sellers from voting on reviews for their own products
+        product_snap = db.collection(Collections.PRODUCTS).document(product_id).get(transaction=transaction)
+        if product_snap.exists and product_snap.to_dict().get(Fields.SELLER_ID) == user_id:
+            _error["err"] = https_fn.HttpsError("permission-denied", "Sellers cannot vote on reviews for their own products")
             return
 
         voter_ids: list = list(rating_data.get(Fields.HELPFUL_VOTER_IDS, []))

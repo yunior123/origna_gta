@@ -188,9 +188,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                             text: TextSpan(
                                               style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary, height: 1.4),
                                               children: [
-                                                const TextSpan(text: 'I agree to the '),
+                                                TextSpan(text: 'auth.agree_to_prefix'.tr()),
                                                 TextSpan(
-                                                  text: 'Terms & Conditions',
+                                                  text: 'auth.terms_conditions'.tr(),
                                                   style: const TextStyle(
                                                     color: DesignTokens.primary,
                                                     fontWeight: FontWeight.w600,
@@ -198,9 +198,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                                   ),
                                                   recognizer: TapGestureRecognizer()..onTap = () => openTermsOfService(context),
                                                 ),
-                                                const TextSpan(text: ' and '),
+                                                TextSpan(text: 'auth.and_conjunction'.tr()),
                                                 TextSpan(
-                                                  text: 'Privacy Policy',
+                                                  text: 'auth.privacy_policy_link'.tr(),
                                                   style: const TextStyle(
                                                     color: DesignTokens.primary,
                                                     fontWeight: FontWeight.w600,
@@ -271,6 +271,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                   email: _emailController.text.trim(),
                                   password: _passwordController.text.trim(),
                                   name: !state.isLogin ? _nameController.text.trim() : null,
+                                  marketingOptIn: !state.isLogin ? state.marketingOptIn : false,
                                 );
                               }
                             },

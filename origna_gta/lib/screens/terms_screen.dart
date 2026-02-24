@@ -359,7 +359,7 @@ class _TermsBodyState extends State<_TermsBody> {
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 200),
                       child: Text(
-                        'Last updated ${DateTime.now().year}  •  ${_sections.length} sections',
+                        'Last updated February 2026  •  ${_sections.length} sections',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.55),
                           fontSize: 13,

@@ -184,6 +184,9 @@ Future<bool> addToCart({
       .doc(user.uid)
       .collection(Collections.cart);
 
+  // Use productId as deterministic cart doc ID so we can transactionally read it.
+  final cartItemRef = cartRef.doc(productId);
+
   try {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       // Check product stock before adding to cart
@@ -197,10 +200,10 @@ Future<bool> addToCart({
       final productData = productSnapshot.data()!;
       final stockQuantity = productData[Fields.stockQuantity] as int? ?? 0;
 
-      // Query for existing productId in cart
-      final existing = await cartRef.where(Fields.productId, isEqualTo: productId).get();
-      final currentQty = existing.docs.isNotEmpty
-          ? (existing.docs.first.data()[Fields.quantity] as num?)?.toInt() ?? 0
+      // Read existing cart item with deterministic ID — safe inside transaction.
+      final existingSnapshot = await transaction.get(cartItemRef);
+      final currentQty = existingSnapshot.exists
+          ? (existingSnapshot.data()?[Fields.quantity] as num?)?.toInt() ?? 0
           : 0;
       final newTotalQty = currentQty + quantity;
 
@@ -212,12 +215,11 @@ Future<bool> addToCart({
         );
       }
 
-      if (existing.docs.isNotEmpty) {
-        transaction.update(existing.docs.first.reference, {Fields.quantity: newTotalQty});
+      if (existingSnapshot.exists) {
+        transaction.update(cartItemRef, {Fields.quantity: newTotalQty});
       } else {
-        final newDocRef = cartRef.doc(); // Auto-generated ID
         transaction.set(
-          newDocRef,
+          cartItemRef,
           CartModel(
             productId: productId,
             quantity: quantity,

@@ -133,6 +133,9 @@ def send_push_notification(user_id: str, title: str, body: str, data: dict | Non
         return False
 
 
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def confirm_order_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Buyer confirms order receipt, triggering payment capture and seller payouts.
 

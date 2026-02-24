@@ -51,7 +51,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
   LoginViewModel(this._ref) : super(LoginState());
 
-  Future<void> handleAuth({required String email, required String password, String? name}) async {
+  Future<void> handleAuth({required String email, required String password, String? name, bool marketingOptIn = false}) async {
     if (state.isLoading) return;
 
     final now = DateTime.now();
@@ -107,7 +107,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
           return;
         }
       } else {
-        await repository.registerWithEmail(email, password, name ?? 'User');
+        await repository.registerWithEmail(email, password, name ?? 'User', marketingOptIn: marketingOptIn);
         
         // SECURITY FIX: Force logout and require email verification before login
         // BYPASS for integration tests/dev

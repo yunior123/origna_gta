@@ -77,7 +77,7 @@ class EnvConfig {
   String get baseUrl {
     switch (environment) {
       case AppEnvironment.emulator:
-        return 'http://localhost:5005';
+        return 'http://localhost:5001';
       case AppEnvironment.dev:
         return 'https://orignagta-dev.web.app';
       case AppEnvironment.staging:

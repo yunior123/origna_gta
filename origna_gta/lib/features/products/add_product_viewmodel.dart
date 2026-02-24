@@ -77,8 +77,16 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(errorMessage: 'product.please_enter_name'.tr());
       return;
     }
+    if (name.trim().length > 200) {
+      state = state.copyWith(errorMessage: 'product.name_too_long'.tr());
+      return;
+    }
     if (description.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'product.please_enter_description'.tr());
+      return;
+    }
+    if (description.trim().length > 5000) {
+      state = state.copyWith(errorMessage: 'product.description_too_long'.tr());
       return;
     }
     if (price <= 0) {

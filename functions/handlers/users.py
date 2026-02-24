@@ -108,7 +108,7 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         # === LEGAL COMPLIANCE — server-only (CASL / PIPEDA / Law 25) ===
         Fields.DATA_PROCESSING_CONSENT: True,
         Fields.EMAIL_CONSENT: True,
-        Fields.MARKETING_OPT_IN: False,  # CASL: explicit opt-in required, default off
+    Fields.MARKETING_OPT_IN: bool(data.get(Fields.MARKETING_OPT_IN, False)),  # CASL: explicit opt-in required
         Fields.CONSENT_TIMESTAMP: server_ts,
         Fields.TERMS_ACCEPTED_AT: server_ts,
         Fields.PRIVACY_ACCEPTED_AT: server_ts,

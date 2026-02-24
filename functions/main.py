@@ -44,6 +44,11 @@ try:
 except Exception:
     pass  # Fail silently — worst case, the original bug remains
 
+# Initialize Firebase Admin SDK BEFORE any handler imports — handlers may call
+# firestore.client() or firebase_admin.auth at import time.
+if not firebase_admin._apps:
+    firebase_admin.initialize_app()
+
 # ===============================================
 # PAYMENT HANDLERS - STRIPE
 # ===============================================
@@ -194,10 +199,6 @@ from handlers.users import (  # noqa: E402
 # The checkout flow (payment_stripe.py) imports directly from services.shipping_service.
 # ===============================================
 from services.shipping_service import calculate_shipping_cost  # noqa: E402, F811
-
-# Only initialize if not already initialized (for testing)
-if not firebase_admin._apps:
-    firebase_admin.initialize_app()
 
 # Initialize Sentry for production error monitoring
 from config import init_sentry  # noqa: E402

@@ -120,7 +120,7 @@ class CaptureMethod:
 # ============================================================================
 
 PLATFORM_FEE_RATIO = 0.025  # 2.5% platform fee as ratio (0.025 = 2.5/100)
-PLATFORM_FEE_PERCENT = PLATFORM_FEE_RATIO  # Alias used by payment handlers
+# NOTE: Do not use PLATFORM_FEE_PERCENT — it was a misleading alias for a ratio, not a percent.
 
 # Premium subscription — $7.86 CAD/month (no platform fee for premium buyers)
 PREMIUM_MONTHLY_PRICE_CAD = 7.86
@@ -410,7 +410,7 @@ def init_sentry():
             dsn=dsn,
             integrations=[FlaskIntegration()],
             traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
-            environment="production",
+            environment=CURRENT_ENV.value,
             release=os.environ.get("K_REVISION", "unknown"),
             # Scrub sensitive data
             send_default_pii=False,

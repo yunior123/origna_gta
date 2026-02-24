@@ -40,9 +40,12 @@ UNSUBSCRIBE_URL = CURRENT_ENV.get_unsubscribe_url()
 # HMAC secret for signed unsubscribe tokens (prevents unauthorized unsubscription)
 # Loaded from GCP Secret Manager in production, from .env in emulator
 _raw_unsub_secret = get_unsubscribe_hmac_secret()
-_UNSUBSCRIBE_SECRET = (
-    _raw_unsub_secret if isinstance(_raw_unsub_secret, str) and _raw_unsub_secret else "origna-unsub-default-dev-key"
-)
+if not (isinstance(_raw_unsub_secret, str) and _raw_unsub_secret):
+    if IS_EMULATOR:
+        _raw_unsub_secret = "origna-unsub-default-dev-key"
+    else:
+        raise RuntimeError("UNSUBSCRIBE_HMAC_SECRET is not configured — cannot start email service in non-emulator env")
+_UNSUBSCRIBE_SECRET = _raw_unsub_secret
 
 
 # ============================================================
@@ -740,7 +743,7 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
         </td></tr>
 
         <!-- CASL-COMPLIANT FOOTER with GST/HST (Excise Tax Act) -->
-        {_casl_compliant_footer(include_gst=True, lang=lang)}
+        {_casl_compliant_footer(include_gst=True, lang=lang, recipient_email=order_data.get(Fields.CUSTOMER_EMAIL, ''))}
 
         </table>
         </td></tr>
@@ -1218,7 +1221,7 @@ def get_order_shipped_email(
     content += _price_summary_block(subtotal, shipping, taxes, total, lang)
     content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.track_order", lang))
 
-    return _email_wrapper("Order Shipped", content, include_gst=True, lang=lang)
+    return _email_wrapper("Order Shipped", content, include_gst=True, lang=lang, recipient_email=order_data.get(Fields.CUSTOMER_EMAIL, ''))
 
 
 def get_order_in_transit_email(order_data: dict, order_id: str, lang: str = "en") -> str:
@@ -1282,7 +1285,7 @@ def get_order_in_transit_email(order_data: dict, order_id: str, lang: str = "en"
 
     content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.track_order", lang))
 
-    return _email_wrapper("Order In Transit", content, include_gst=False, lang=lang)
+    return _email_wrapper("Order In Transit", content, include_gst=False, lang=lang, recipient_email=order_data.get(Fields.CUSTOMER_EMAIL, ''))
 
 
 def get_order_delivered_email(order_data: dict, order_id: str, lang: str = "en") -> str:
@@ -1346,7 +1349,7 @@ def get_order_delivered_email(order_data: dict, order_id: str, lang: str = "en")
 
     content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.confirm_receipt", lang), "#10B981")
 
-    return _email_wrapper("Order Delivered", content, include_gst=True, lang=lang)
+    return _email_wrapper("Order Delivered", content, include_gst=True, lang=lang, recipient_email=order_data.get(Fields.CUSTOMER_EMAIL, ''))
 
 
 def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = "Unknown", lang: str = "en") -> str:
@@ -1400,7 +1403,7 @@ def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = "Un
     content += _items_summary_table(items, lang)
     content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
 
-    return _email_wrapper("Order Cancelled", content, include_gst=False, lang=lang)
+    return _email_wrapper("Order Cancelled", content, include_gst=False, lang=lang, recipient_email=order_data.get(Fields.CUSTOMER_EMAIL, ''))
 
 
 def get_order_processing_email(order_data: dict, order_id: str, lang: str = "en") -> str:
@@ -1454,7 +1457,7 @@ def get_order_processing_email(order_data: dict, order_id: str, lang: str = "en"
     content += _price_summary_block(subtotal, shipping, taxes, total, lang)
     content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_order", lang))
 
-    return _email_wrapper("Order Processing", content, include_gst=True, lang=lang)
+    return _email_wrapper("Order Processing", content, include_gst=True, lang=lang, recipient_email=order_data.get(Fields.CUSTOMER_EMAIL, ''))
 
 
 def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cents: int = 0, lang: str = "en") -> str:

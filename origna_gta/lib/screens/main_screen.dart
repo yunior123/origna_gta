@@ -32,6 +32,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   Widget build(BuildContext context) {
     final userProfileAsync = ref.watch(userProfileProvider);
 
+    // Reset timeout flag once data arrives so future reloads work correctly
+    ref.listen(userProfileProvider, (_, next) {
+      if ((next.hasValue || next.hasError) && _timedOut) {
+        setState(() => _timedOut = false);
+      }
+    });
+
     // If profile loading takes too long, show HomeScreen without profile data
     // User remains logged in (Firebase Auth), just without Firestore profile
     if (_timedOut && userProfileAsync.isLoading) {

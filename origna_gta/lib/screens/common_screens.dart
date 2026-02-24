@@ -142,8 +142,15 @@ class AuthRequiredGate extends ConsumerWidget {
             ),
           );
         }
-        // Gate: block suspended users from all protected routes
-        final userProfile = ref.watch(userProfileProvider).valueOrNull;
+        // Gate: block suspended users from all protected routes.
+        // Wait for profile to load before granting access — null profile is not a pass.
+        final userProfileAsync = ref.watch(userProfileProvider);
+        if (userProfileAsync.isLoading) {
+          return const Scaffold(
+            body: Center(child: ModernLoadingIndicator(centered: false)),
+          );
+        }
+        final userProfile = userProfileAsync.valueOrNull;
         if (userProfile?.suspended == true) {
           return Container(
             decoration: BoxDecoration(

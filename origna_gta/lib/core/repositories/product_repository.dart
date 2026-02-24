@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -59,11 +60,12 @@ class FirebaseProductRepository implements ProductRepository {
                 .get()),
           );
 
-          // Primary (first) warehouse for city/province/country
+          // Primary warehouse: prefer the default, fall back to first
           final primaryData = warehouseDocs
               .where((d) => d.exists)
               .map((d) => d.data()!)
-              .firstOrNull;
+              .firstWhereOrNull((d) => d[Fields.isDefault] == true) ??
+          warehouseDocs.where((d) => d.exists).map((d) => d.data()!).firstOrNull;
           if (primaryData != null) {
             final addr = primaryData['address'] as Map<String, dynamic>?;
             firestoreData[Fields.shipFromCity] = addr?[Fields.city];
@@ -160,7 +162,8 @@ class FirebaseProductRepository implements ProductRepository {
           final primaryData = warehouseDocs
               .where((d) => d.exists)
               .map((d) => d.data()!)
-              .firstOrNull;
+              .firstWhereOrNull((d) => d[Fields.isDefault] == true) ??
+          warehouseDocs.where((d) => d.exists).map((d) => d.data()!).firstOrNull;
           if (primaryData != null) {
             final addr = primaryData['address'] as Map<String, dynamic>?;
             firestoreData[Fields.shipFromCity] = addr?[Fields.city];

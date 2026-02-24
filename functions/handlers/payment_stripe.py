@@ -22,7 +22,7 @@ from config import (
     BASE_URL,
     CATEGORY_TAX_CODE_MAP,
     IS_EMULATOR,
-    PLATFORM_FEE_PERCENT,
+    PLATFORM_FEE_RATIO,
     STRIPE_TAX_CODE_BASIC_GROCERIES,
     STRIPE_TAX_CODE_CHILDRENS_CLOTHING,
     STRIPE_TAX_CODE_GENERAL,
@@ -547,6 +547,9 @@ def _coupon_min_order_met(coupon_data: dict, actual_subtotal_cents: int) -> bool
 
 
 
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Creates a Stripe Checkout session with server-side validation.
 
@@ -1331,7 +1334,7 @@ def _coupon_min_order_met(coupon_data: dict, actual_subtotal_cents: int) -> bool
         # P-03 FIX: Read from subscriptions/{uid} instead of cached isPremium to prevent race condition
         Fields.PLATFORM_FEE_TOTAL_CENTS: 0
         if _check_premium_from_sub(user_id)
-        else round(discounted_subtotal_cents * PLATFORM_FEE_PERCENT),
+        else round(discounted_subtotal_cents * PLATFORM_FEE_RATIO),
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
         Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
@@ -2236,7 +2239,14 @@ def process_session_expired(session: dict) -> str | None:
                 _firestore = fs
             for item in order_data.get(Fields.ITEMS, []):
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(item[Fields.QUANTITY])})
+                qty = item[Fields.QUANTITY]
+                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(qty)})
+                fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
+                if fulfillment_wh:
+                    transaction.update(
+                        product_ref,
+                        {f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}": _firestore.Increment(qty)},
+                    )
 
         transaction.update(
             order_ref,
@@ -2653,6 +2663,8 @@ def process_dispute_created(dispute: dict) -> str | None:
     )
 
     reversed_count = 0
+    order_doc = None  # initialized before loop to prevent UnboundLocalError if no order found
+    order_id = None
     for order_doc in orders:
         order_id = order_doc.id
 
@@ -3151,6 +3163,24 @@ def process_refund_failed(refund: dict) -> None:
         }
     )
 
+    # Flag the order as requiring manual review so admins can action it
+    if charge_id:
+        orders = (
+            get_db()
+            .collection(Collections.ORDERS)
+            .where(Fields.CHARGE_ID, "==", charge_id)
+            .limit(1)
+            .get()
+        )
+        for order_doc in orders:
+            order_doc.reference.update(
+                {
+                    Fields.REQUIRES_MANUAL_REVIEW: True,
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                }
+            )
+            logger.warning(f"🚨 Refund failed for order {order_doc.id} — flagged for manual review")
+
 
 def process_account_updated(account: dict) -> None:
     """
@@ -3517,7 +3547,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                 stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
                 subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 1)
                 fee_rate = (
-                    (stored_fee_total / subtotal_cents) if stored_fee_total and subtotal_cents else PLATFORM_FEE_PERCENT
+                    (stored_fee_total / subtotal_cents) if stored_fee_total and subtotal_cents else PLATFORM_FEE_RATIO
                 )
 
                 sellers_total = {}
@@ -3757,7 +3787,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Prevents config manipulation between checkout and capture.
         stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
         stored_fee_rate = (
-            (stored_fee_total / order_data.get(Fields.SUBTOTAL_CENTS, 1)) if stored_fee_total else PLATFORM_FEE_PERCENT
+            (stored_fee_total / order_data.get(Fields.SUBTOTAL_CENTS, 1)) if stored_fee_total else PLATFORM_FEE_RATIO
         )
 
         for seller_id, amount_cents in sellers_total_cents.items():

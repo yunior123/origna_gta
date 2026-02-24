@@ -17,7 +17,7 @@ from config import (
     AUTHORIZATION_VALID_DAYS,
     AUTO_CONFIRM_DAYS,
     IS_EMULATOR,
-    PLATFORM_FEE_PERCENT,
+    PLATFORM_FEE_RATIO,
     get_stripe_secret_key,
 )
 from schema_constants import (
@@ -337,7 +337,7 @@ def _run_auto_capture() -> None:
             order_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 1)
 
             stored_fee_rate = (
-                (stored_fee_total / order_subtotal) if stored_fee_total and order_subtotal > 0 else PLATFORM_FEE_PERCENT
+                (stored_fee_total / order_subtotal) if stored_fee_total and order_subtotal > 0 else PLATFORM_FEE_RATIO
             )
 
             current_order_success_count = 0  # Track successful transfers for this order

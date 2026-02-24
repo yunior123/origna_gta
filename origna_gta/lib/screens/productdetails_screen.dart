@@ -795,7 +795,7 @@ class _ImageDots extends ConsumerWidget {
 
 /// Stream of up to 10 most recent product ratings, ordered by createdAt desc.
 final _productRatingsProvider = StreamProvider.autoDispose.family<List<Map<String, dynamic>>, String>(
-  (ref, productId) => FirebaseFirestore.instance
+  (ref, productId) => ref.watch(firestoreProvider)
       .collection(Collections.productRatings)
       .where(Fields.productId, isEqualTo: productId)
       .orderBy(Fields.createdAt, descending: true)

@@ -322,13 +322,13 @@ service cloud.firestore {
           'cost', 'supplierSku', 'supplierUrl',
           // Multi-warehouse fields
           'sellerSku', 'warehouseIds', 'warehouseStock', 'shipFromCity', 'shipFromProvince',
-          // Trending (Admin only normally, but allowed here if they bypass)
-          'isTrending', 'trendingAt'
+          'shipFromCountry', 'shipFromCountries'
+          // Note: isTrending/trendingAt are admin-only; removed from seller create allowlist
         ]) &&
         isStringWithLen(request.resource.data.name, 2, 120) &&
         isStringWithLen(request.resource.data.description, 10, 4000) &&
         (!request.resource.data.keys().hasAny(['sellerAddress']) || isValidSellerAddress(request.resource.data.sellerAddress)) &&
-        request.resource.data.lifecycleStatus in ['draft', 'under_review', 'active'] &&
+        request.resource.data.lifecycleStatus in ['draft', 'under_review'] &&
         request.resource.data.price > 0);
       // Admin-only: lightweight update for just isTrending / trendingAt (no full doc validation needed)
       allow update: if isAdmin() &&
@@ -350,7 +350,8 @@ service cloud.firestore {
             'cost', 'supplierSku', 'supplierUrl',
             // Multi-warehouse fields
             'sellerSku', 'warehouseIds', 'warehouseStock', 'shipFromCity', 'shipFromProvince',
-            // Admin-only toggles
+            'shipFromCountry', 'shipFromCountries',
+            // Admin-only toggles (not editable by sellers)
             'isTrending', 'trendingAt'
           ]) &&
           // Never allow ratings from client updates
@@ -498,8 +499,8 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.askerId == request.auth.uid
         && hasActivePremium(request.auth.uid)
-        && request.resource.data.question.size() >= 10
-        && request.resource.data.question.size() <= 500;
+        && request.resource.data.questionText.size() >= 10
+        && request.resource.data.questionText.size() <= 500;
       allow update: if false;  // answers written by backend only
       allow delete: if isAdmin();  // admins can purge abusive content
     }
@@ -537,10 +538,13 @@ service cloud.firestore {
     // ================================================================
     match /product_ratings/{ratingId} {
       allow read: if isAuthenticated();
-      allow create, delete: if false;
-      // N-03: Seller may update ONLY sellerReply + sellerReplyAt on their own product's rating
+      allow create: if false;
+      allow delete: if isAdmin();
+      // N-03: Seller may update ONLY sellerReply + sellerReplyAt on their own product's rating,
+      // and only if no reply exists yet (once-only guard).
       allow update: if request.auth != null &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sellerReply', 'sellerReplyAt']) &&
+        (!('sellerReply' in resource.data) || resource.data.sellerReply == null) &&
         get(/databases/$(database)/documents/products/$(resource.data.productId)).data.sellerId == request.auth.uid;
       // N-04: helpfulCount and helpfulVoterIds are backend-only (handled via Cloud Function)
     }

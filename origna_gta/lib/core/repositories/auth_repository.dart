@@ -24,8 +24,9 @@ abstract class AuthRepository {
   Future<UserCredential> registerWithEmail(
     String email,
     String password,
-    String name,
-  );
+    String name, {
+    bool marketingOptIn = false,
+  });
   Future<void> sendEmailVerification();
   Future<void> sendPasswordResetEmail(String email);
   Future<UserCredential> signInWithEmail(String email, String password);
@@ -42,6 +43,9 @@ class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
+
+  // Holds marketingOptIn captured at registration time until doc is created after email verification
+  static final Map<String, bool> _pendingMarketingOptIn = {};
 
   FirebaseAuthRepository(this._auth, this._firestore, this._functions);
 
@@ -114,8 +118,9 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<UserCredential> registerWithEmail(
     String email,
     String password,
-    String name,
-  ) async {
+    String name, {
+    bool marketingOptIn = false,
+  }) async {
     final trimmedEmail = email.trim().toLowerCase();
 
     if (!_emailRegex.hasMatch(trimmedEmail)) {
@@ -135,6 +140,10 @@ class FirebaseAuthRepository implements AuthRepository {
     if (userCredential.user != null) {
       await userCredential.user!.updateDisplayName(name);
       if (kDebugMode) debugPrint('✅ Display name "$name" saved to Firebase Auth profile');
+      // Cache marketingOptIn so it can be passed to create_user_profile after email verification
+      if (marketingOptIn) {
+        _pendingMarketingOptIn[userCredential.user!.uid] = true;
+      }
     }
 
     // AUTO-SEND VERIFICATION EMAIL after registration
@@ -400,9 +409,11 @@ class FirebaseAuthRepository implements AuthRepository {
       // SECURITY: All legal-compliance fields (CASL/PIPEDA/Law 25) are set server-side.
       // The server controls dataProcessingConsent, emailConsent, consentTimestamp, etc.
       final callable = _functions.httpsCallable('create_user_profile');
+      final marketingOptIn = _pendingMarketingOptIn.remove(user.uid) ?? false;
       await callable.call<Map<String, dynamic>>({
         Fields.name: name ?? user.displayName ?? 'User',
         Fields.preferredLanguage: _deviceLanguage(),
+        Fields.marketingOptIn: marketingOptIn,
       });
     } else {
       final data = docSnapshot.data();

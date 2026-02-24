@@ -33,7 +33,8 @@ final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
 final checkoutTotalProvider = Provider.autoDispose<double>((ref) {
   final checkoutState = ref.watch(checkoutStateProvider);
   final subtotal = ref.watch(cartSubtotalProvider);
-  return subtotal + checkoutState.taxAmount + checkoutState.shippingCost;
+  final couponDiscount = checkoutState.couponDiscountCents / 100.0;
+  return subtotal + checkoutState.taxAmount + checkoutState.shippingCost - couponDiscount;
 });
 
 final _algoliaCircuitBreaker = CircuitBreakerRegistry.get('algolia_search', config: CircuitBreakerConfig.searchDefault);
