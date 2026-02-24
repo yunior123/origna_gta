@@ -178,6 +178,7 @@ from handlers.products import (  # noqa: E402
     update_warehouse,
     upload_product_images,
     upload_review_images,
+    delete_product_images,
     vote_review_helpful,
 )
 from handlers.coupons import (  # noqa: E402
@@ -262,6 +263,7 @@ __all__ = [
     # Products
     "upload_product_images",
     "upload_review_images",
+    "delete_product_images",
     "delete_product",
     "submit_product_rating",
     "configure_algolia",

@@ -245,6 +245,98 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 
 @https_fn.on_call(secrets=[APP_SECRETS_PARAM])
+def delete_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Deletes product images from Cloudflare R2 by their public URLs.
+    Used by the Flutter client to clean up orphaned images after a partial
+    upload failure in a batch operation.
+
+    Security:
+    - Authenticated sellers/admins only
+    - URLs must start with CDN_BASE_URL (prevents deleting arbitrary files)
+    - Keys must be under the products/ or {env}/products/ path prefix
+
+    Request data:
+        publicUrls: List[str] — public CDN URLs to delete (max 10)
+
+    Returns:
+        {success: True, deleted: int, failed: int}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    public_urls = data.get("publicUrls", [])
+
+    if not isinstance(public_urls, list) or len(public_urls) == 0:
+        raise https_fn.HttpsError("invalid-argument", "publicUrls must be a non-empty list")
+    if len(public_urls) > 10:
+        raise https_fn.HttpsError("invalid-argument", "Maximum 10 images per delete call")
+
+    # Verify seller/admin role
+    user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError("not-found", "User not found")
+    user_data = user_doc.to_dict() or {}
+    if user_data.get(Fields.SUSPENDED, False):
+        raise https_fn.HttpsError("permission-denied", "Account is suspended")
+    roles = user_data.get(Fields.ROLES, [])
+    if UserRoleValues.SELLER not in roles and UserRoleValues.ADMIN not in roles:
+        raise https_fn.HttpsError("permission-denied", "Seller role required")
+
+    # Get R2 credentials
+    r2_creds = get_r2_credentials()
+    r2_access_key = r2_creds.get("access_key")
+    r2_secret_key = r2_creds.get("secret_key")
+    r2_account_id = r2_creds.get("account_id")
+
+    if not all([r2_access_key, r2_secret_key, r2_account_id]):
+        raise https_fn.HttpsError("failed-precondition", "R2 credentials not configured")
+
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
+        aws_access_key_id=r2_access_key,
+        aws_secret_access_key=r2_secret_key,
+        config=Config(signature_version="s3v4"),
+        region_name="auto",
+    )
+    bucket_name = R2Config.BUCKET_NAME
+    cdn_prefix = CDN_BASE_URL + "/"
+
+    # Valid key prefixes (environment-scoped to products only — cannot delete user images etc.)
+    valid_prefixes = ("products/", "emulator/products/", "dev/products/", "staging/products/")
+
+    deleted = 0
+    failed = 0
+
+    for url in public_urls:
+        if not isinstance(url, str) or not url.startswith(cdn_prefix):
+            logger.warning(f"delete_product_images: skipping invalid URL from user {user_id}: {url[:80]}")
+            failed += 1
+            continue
+
+        key = url[len(cdn_prefix):]
+
+        # SECURITY: Only allow deletion of product image keys
+        if not any(key.startswith(p) for p in valid_prefixes):
+            logger.warning(f"delete_product_images: blocked key outside products/ scope: {key[:80]}")
+            failed += 1
+            continue
+
+        try:
+            s3_client.delete_object(Bucket=bucket_name, Key=key)
+            deleted += 1
+            logger.info(f"delete_product_images: deleted {key} for user {user_id}")
+        except Exception as e:
+            logger.error(f"delete_product_images: failed to delete {key}: {e}")
+            failed += 1
+
+    return create_success_response({"deleted": deleted, "failed": failed})
+
+
+@https_fn.on_call(secrets=[APP_SECRETS_PARAM])
 def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Generates presigned URLs for uploading review images to Cloudflare R2.

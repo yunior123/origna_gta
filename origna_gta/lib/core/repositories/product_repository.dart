@@ -437,6 +437,16 @@ class FirebaseProductRepository implements ProductRepository {
     final results = await Future.wait(uploadFutures);
     final urls = results.whereType<String>().toList();
     if (urls.length != images.length) {
+      // Partial failure — clean up successfully uploaded images to avoid R2 orphans
+      if (urls.isNotEmpty) {
+        try {
+          await _functions
+              .httpsCallable(CloudFunctionEndpoints.deleteProductImages)
+              .call({'publicUrls': urls});
+        } catch (_) {
+          // Best-effort cleanup; ignore errors so the original error is surfaced
+        }
+      }
       throw Exception('product.image_upload_failed'.tr());
     }
     return urls;

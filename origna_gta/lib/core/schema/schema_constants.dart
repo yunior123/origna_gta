@@ -211,6 +211,7 @@ abstract final class CloudFunctionEndpoints {
   static const deleteProduct = 'delete_product';
   static const uploadProductImages = 'upload_product_images';
   static const uploadReviewImages = 'upload_review_images';
+  static const deleteProductImages = 'delete_product_images';
   static const submitProductRating = 'submit_product_rating';
   // Review helpfulness (N-04)
   static const voteReviewHelpful = 'vote_review_helpful';
