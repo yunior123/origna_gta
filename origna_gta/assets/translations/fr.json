@@ -423,7 +423,8 @@
     "remove_favorite": "Retirer des favoris",
     "loading_favorites": "Chargement des favoris...",
     "unable_to_load": "Impossible de charger les favoris",
-    "update_failed": "Échec de la mise à jour des favoris"
+    "update_failed": "Échec de la mise à jour des favoris",
+    "items_unavailable": "{count} article(s) sauvegardé(s) sont actuellement indisponibles"
   },
   "nav": {
     "home": "Accueil",
@@ -508,6 +509,12 @@
     "local_delivery_subtitle": "Restreindre aux acheteurs dans un rayon de 50 km",
     "perishable_item": "Article périssable",
     "perishable_subtitle": "Nourriture, fleurs, etc. (Nécessite le jour même)",
+    "product_condition": "État du produit",
+    "condition_new": "Neuf",
+    "condition_like_new": "Comme neuf",
+    "condition_good": "Bon état",
+    "condition_fair": "État acceptable",
+    "condition_for_parts": "Pour pièces",
     "ship_days": "Jours d'expédition",
     "ships_from": "Expédié de",
     "length_cm": "L (cm)",

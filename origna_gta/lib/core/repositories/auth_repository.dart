@@ -3,7 +3,6 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -44,7 +43,10 @@ class FirebaseAuthRepository implements AuthRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
 
-  // Holds marketingOptIn captured at registration time until doc is created after email verification
+  // Holds marketingOptIn captured at registration time until doc is created after email verification.
+  // NOTE: This in-memory map is cleared after the CF call in _createUserDocumentIfNeeded.
+  // Limitation: entries leak if the process is killed before email verification completes.
+  // This is acceptable given the low frequency and the small data size.
   static final Map<String, bool> _pendingMarketingOptIn = {};
 
   FirebaseAuthRepository(this._auth, this._firestore, this._functions);
@@ -167,12 +169,8 @@ class FirebaseAuthRepository implements AuthRepository {
           debugPrint('');
         }
       } catch (e) {
-        if (kDebugMode) {
-          debugPrint(
-            '⚠️  Failed to send verification email during registration: $e',
-          );
-        }
-        // Don't fail registration if email send fails - user can request resend later
+        // Email verification send failed - user can resend from login screen
+        debugPrint('Failed to send verification email: $e');
       }
     }
 
@@ -415,14 +413,7 @@ class FirebaseAuthRepository implements AuthRepository {
         Fields.preferredLanguage: _deviceLanguage(),
         Fields.marketingOptIn: marketingOptIn,
       });
-    } else {
-      final data = docSnapshot.data();
-      final roles = List<String>.from(data?[Fields.roles] ?? const []);
-      if (!roles.contains(UserRoles.buyer)) {
-        await userDoc.update({
-          Fields.roles: FieldValue.arrayUnion([UserRoles.buyer]),
-        });
-      }
     }
+    // If doc already exists, roles are managed server-side by the CF — no direct write here.
   }
 }

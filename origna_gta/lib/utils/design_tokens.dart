@@ -47,6 +47,12 @@ class DesignTokens {
   static const Color warningText = Color(0xFF92400E); // WCAG AA: ~7:1 on white (for text)
   static const Color error = Color(0xFFEF4444); // Red
   static const Color info = Color(0xFF3B82F6); // Blue
+  static const Color statusShipped = Color(0xFF06B6D4); // Cyan — shipped status
+  static const Color statusInTransit = Color(0xFF14B8A6); // Teal — in-transit status
+
+  // Timeline inactive step colors
+  static const Color timelineInactiveDark = Color(0xFF3A3A50);
+  static const Color timelineInactiveLight = Color(0xFFE0E4EE);
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [primary, secondary]);

@@ -42,7 +42,7 @@ class TestSameDayDelivery(unittest.TestCase):
                 Fields.DELIVERY_OPTIONS: [
                     {
                         Fields.TYPE: DeliveryTypeValues.SAME_DAY,
-                        Fields.COST: 0.0,  # Base cost usually calculated dynamically
+                        Fields.COST_CENTS: 0,  # Base cost usually calculated dynamically
                         "isEnabled": True,
                     }
                 ],

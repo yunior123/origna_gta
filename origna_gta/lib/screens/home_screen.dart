@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,13 +53,15 @@ class _AddProductButton extends ConsumerWidget {
 
     final userCanAccess = isSeller || isAdmin;
 
-    debugPrint(
-      '🔍 _AddProductButton.build() → isSeller=$isSeller, isAdmin=$isAdmin, userCanAccess=$userCanAccess',
-    );
+    if (kDebugMode) {
+      debugPrint(
+        '🔍 _AddProductButton.build() → isSeller=$isSeller, isAdmin=$isAdmin, userCanAccess=$userCanAccess',
+      );
+    }
 
     // Show only for sellers/admins to match Firestore rules.
     if (!userCanAccess) {
-      debugPrint('🔍 User cannot access → returning shrink()');
+      if (kDebugMode) debugPrint('🔍 User cannot access → returning shrink()');
       return const SizedBox.shrink();
     }
 
@@ -68,7 +71,7 @@ class _AddProductButton extends ConsumerWidget {
 
     // Must match Firestore rules: admin OR verified seller.
     final canAddProducts = isAdmin || isVerified;
-    debugPrint('🔍 isVerified=$isVerified, canAddProducts=$canAddProducts');
+    if (kDebugMode) debugPrint('🔍 isVerified=$isVerified, canAddProducts=$canAddProducts');
 
     return IconButton(
       key: const Key('home_add_product_button'),

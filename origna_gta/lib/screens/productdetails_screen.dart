@@ -1229,6 +1229,8 @@ class _QASection extends ConsumerStatefulWidget {
 class _QASectionState extends ConsumerState<_QASection> {
   bool _showAll = false;
 
+  static const String _subscriptionPrice = r'CAD $7.86/month';
+
   @override
   Widget build(BuildContext context) {
     final qaAsync = ref.watch(qaListProvider(widget.productId));
@@ -1281,9 +1283,9 @@ class _QASectionState extends ConsumerState<_QASection> {
                               gradient: DesignTokens.primaryGradient,
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
-                              'Premium',
-                              style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
+                            child: Text(
+                              'subscription.premium_label'.tr(),
+                              style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
                             ),
                           ),
                         ],
@@ -1304,7 +1306,7 @@ class _QASectionState extends ConsumerState<_QASection> {
             );
           },
           loading: () => const Center(child: ModernLoadingIndicator()),
-          error: (e, _) => Text('Error loading Q&A: $e', style: const TextStyle(color: DesignTokens.error)),
+          error: (e, _) => Text('errors.something_went_wrong'.tr(), style: const TextStyle(color: DesignTokens.error)),
         ),
       ],
     );
@@ -1346,9 +1348,9 @@ class _QASectionState extends ConsumerState<_QASection> {
                         gradient: DesignTokens.primaryGradient,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
-                        'Premium',
-                        style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
+                      child: Text(
+                        'subscription.premium_label'.tr(),
+                        style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],
@@ -1375,7 +1377,7 @@ class _QASectionState extends ConsumerState<_QASection> {
         child: PremiumPaywallWidget(
           featureName: 'Ask Questions',
           description:
-              'Post questions on any product Q&A board. Upgrade to Premium to unlock Q&A, seller chat, and more — only CAD \$7.86/month.',
+              'Post questions on any product Q&A board. Upgrade to Premium to unlock Q&A, seller chat, and more — only $_subscriptionPrice.',
         ),
       ),
     );

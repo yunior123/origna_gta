@@ -1,4 +1,3 @@
-````markdown
 ---
 name: uiux-expert
 description: >
@@ -587,5 +586,3 @@ After each session, update agent memory with:
 - Performance optimizations applied
 
 Check memory before starting to avoid re-auditing already-fixed screens.
-
-````

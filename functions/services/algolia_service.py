@@ -468,8 +468,15 @@ def delete_products_from_algolia(product_ids: list[str]) -> int:
     Returns:
         Number of successfully deleted products
     """
-    deleted = 0
-    for pid in product_ids:
-        if delete_product(pid):
-            deleted += 1
-    return deleted
+    if not product_ids:
+        return 0
+    try:
+        client = _get_algolia_client()
+        _run_async(client.delete_objects(index_name=_get_index_name(), object_ids=product_ids))
+        logger.info(f"  ✅ Batch deleted {len(product_ids)} products from Algolia (index={_get_index_name()})")
+        return len(product_ids)
+    except Exception as e:
+        logger.error(f"  ❌ Algolia batch delete failed: {e}")
+        for pid in product_ids:
+            _log_sync_failure(pid, "delete", str(e), 1)
+        return 0

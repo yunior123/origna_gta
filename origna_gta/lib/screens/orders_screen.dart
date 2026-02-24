@@ -47,9 +47,9 @@ _StatusConfig _orderStatusConfig(OrderStatus status) {
     case OrderStatus.processing:
       return _StatusConfig(color: DesignTokens.primary, icon: Icons.autorenew, label: 'orders.status.processing'.tr(), description: 'orders.status.processing_desc'.tr());
     case OrderStatus.shipped:
-      return _StatusConfig(color: const Color(0xFF06B6D4), icon: Icons.local_shipping, label: 'orders.status.shipped'.tr(), description: 'orders.status.shipped_desc'.tr());
+      return _StatusConfig(color: DesignTokens.statusShipped, icon: Icons.local_shipping, label: 'orders.status.shipped'.tr(), description: 'orders.status.shipped_desc'.tr());
     case OrderStatus.inTransit:
-      return _StatusConfig(color: const Color(0xFF14B8A6), icon: Icons.flight_takeoff, label: 'orders.status.in_transit'.tr(), description: 'orders.status.in_transit_desc'.tr());
+      return _StatusConfig(color: DesignTokens.statusInTransit, icon: Icons.flight_takeoff, label: 'orders.status.in_transit'.tr(), description: 'orders.status.in_transit_desc'.tr());
     case OrderStatus.delivered:
       return _StatusConfig(color: DesignTokens.success, icon: Icons.check_circle, label: 'orders.status.delivered'.tr(), description: 'orders.status.delivered_desc'.tr());
     case OrderStatus.cancelled:
@@ -74,9 +74,9 @@ _StatusConfig _itemStatusConfig(String status) {
   } else if (status == OrderStatusValues.processing) {
     return _StatusConfig(color: DesignTokens.primary, icon: Icons.autorenew, label: 'orders.status.processing'.tr(), description: 'orders.status.processing_desc'.tr());
   } else if (status == OrderStatusValues.shipped) {
-    return _StatusConfig(color: const Color(0xFF06B6D4), icon: Icons.local_shipping, label: 'orders.status.shipped'.tr(), description: 'orders.status.shipped_desc'.tr());
+    return _StatusConfig(color: DesignTokens.statusShipped, icon: Icons.local_shipping, label: 'orders.status.shipped'.tr(), description: 'orders.status.shipped_desc'.tr());
   } else if (status == OrderStatusValues.inTransit) {
-    return _StatusConfig(color: const Color(0xFF14B8A6), icon: Icons.flight_takeoff, label: 'orders.status.in_transit'.tr(), description: 'orders.status.in_transit_desc'.tr());
+    return _StatusConfig(color: DesignTokens.statusInTransit, icon: Icons.flight_takeoff, label: 'orders.status.in_transit'.tr(), description: 'orders.status.in_transit_desc'.tr());
   } else if (status == OrderStatusValues.delivered) {
     return _StatusConfig(color: DesignTokens.success, icon: Icons.check_circle, label: 'orders.status.delivered'.tr(), description: 'orders.status.delivered_desc'.tr());
   } else if (status == OrderStatusValues.refunded) {
@@ -381,10 +381,11 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
               )),
 
           // ─── DELIVERY ADDRESS ───────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: _buildAddressSection(order.shippingAddress, isDark),
-          ),
+          if (order.shippingAddress != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: _buildAddressSection(order.shippingAddress!, isDark),
+            ),
 
           // ─── DELIVERY INSTRUCTIONS ───────────────────────────
           if (order.deliveryInstructions != null && order.deliveryInstructions!.isNotEmpty)
@@ -597,20 +598,20 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [const Color(0xFF06B6D4).withValues(alpha: 0.12), const Color(0xFF06B6D4).withValues(alpha: 0.04)],
+                            colors: [DesignTokens.statusShipped.withValues(alpha: 0.12), DesignTokens.statusShipped.withValues(alpha: 0.04)],
                           ),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFF06B6D4).withValues(alpha: 0.2)),
+                          border: Border.all(color: DesignTokens.statusShipped.withValues(alpha: 0.2)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.qr_code_2, size: 14, color: Color(0xFF06B6D4)),
+                            const Icon(Icons.qr_code_2, size: 14, color: DesignTokens.statusShipped),
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
                                 item.trackingNumber!,
-                                style: const TextStyle(fontSize: 11, color: Color(0xFF06B6D4), fontWeight: FontWeight.w600),
+                                style: const TextStyle(fontSize: 11, color: DesignTokens.statusShipped, fontWeight: FontWeight.w600),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -1010,15 +1011,15 @@ class _OrderStatusTimeline extends StatelessWidget {
   static const _stepColors = [
     DesignTokens.info, // confirmed - blue
     DesignTokens.primary, // processing - primary
-    Color(0xFF06B6D4), // shipped - cyan
-    Color(0xFF14B8A6), // in transit - teal
+    DesignTokens.statusShipped,  // shipped - cyan
+    DesignTokens.statusInTransit, // in transit - teal
     DesignTokens.success, // delivered - green
   ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final inactiveColor = isDark ? const Color(0xFF3A3A50) : const Color(0xFFE0E4EE);
+    final inactiveColor = isDark ? DesignTokens.timelineInactiveDark : DesignTokens.timelineInactiveLight;
 
     return SizedBox(
       height: 70,
@@ -1246,14 +1247,14 @@ class _DigitalItemActions extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(128),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.502),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (item.licenseKey != null) ...[
-            const Text('License Key', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            Text('orders.license_key'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             Row(
               children: [
@@ -1265,7 +1266,7 @@ class _DigitalItemActions extends ConsumerWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.copy, size: 18),
-                  tooltip: 'Copy',
+                  tooltip: 'common.copy'.tr(),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: item.licenseKey!));
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1313,7 +1314,8 @@ class _SoftwareDownloadLinksState extends ConsumerState<_SoftwareDownloadLinks> 
       final result = await functions
           .httpsCallable('generate_software_download_session')
           .call({'licenseKey': widget.item.licenseKey, 'platform': platform});
-      final downloadUrl = result.data['downloadUrl'] as String;
+      final downloadUrl = result.data['downloadUrl'] as String?;
+      if (downloadUrl == null) throw Exception('Download URL not available');
       await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
@@ -1340,7 +1342,7 @@ class _SoftwareDownloadLinksState extends ConsumerState<_SoftwareDownloadLinks> 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Download', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        Text('common.download'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         Wrap(
           spacing: 8,
@@ -1384,7 +1386,8 @@ class _BookDownloadButtonState extends ConsumerState<_BookDownloadButton> {
       final result = await functions
           .httpsCallable('generate_book_download_session')
           .call({'licenseKey': widget.item.licenseKey});
-      final downloadUrl = result.data['downloadUrl'] as String;
+      final downloadUrl = result.data['downloadUrl'] as String?;
+      if (downloadUrl == null) throw Exception('Download URL not available');
       await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
@@ -1403,7 +1406,7 @@ class _BookDownloadButtonState extends ConsumerState<_BookDownloadButton> {
       icon: _loading
           ? const SizedBox(width: 16, height: 16, child: ModernLoadingIndicator.small())
           : const Icon(Icons.download_outlined, size: 16),
-      label: const Text('Download Book'),
+      label: Text('orders.download_book'.tr()),
       onPressed: _loading ? null : _download,
     );
   }

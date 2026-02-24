@@ -488,24 +488,24 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     final standardOpt = _findOption(
       p.deliveryOptions,
       'standard',
-      SellerDeliveryOption(type: 'standard', description: 'product.standard_delivery'.tr(), cost: 0.0, estimatedDays: 5),
+      SellerDeliveryOption(type: 'standard', description: 'product.standard_delivery'.tr(), costCents: 0, estimatedDays: 5),
     );
     final expressOpt = _findOption(
       p.deliveryOptions,
       'express',
-      SellerDeliveryOption(type: 'express', description: 'product.express_delivery'.tr(), cost: 9.99, estimatedDays: 2),
+      SellerDeliveryOption(type: 'express', description: 'product.express_delivery'.tr(), costCents: 999, estimatedDays: 2),
     );
     final sameDayOpt = _findOption(
       p.deliveryOptions,
       'same_day',
-      SellerDeliveryOption(type: 'same_day', description: 'product.same_day_delivery'.tr(), cost: 14.99, estimatedDays: 0),
+      SellerDeliveryOption(type: 'same_day', description: 'product.same_day_delivery'.tr(), costCents: 1499, estimatedDays: 0),
     );
 
     _standardDaysController = TextEditingController(text: standardOpt.estimatedDays.toString());
-    _standardPriceController = TextEditingController(text: standardOpt.cost.toStringAsFixed(2));
+    _standardPriceController = TextEditingController(text: (standardOpt.costCents / 100.0).toStringAsFixed(2));
     _expressDaysController = TextEditingController(text: expressOpt.estimatedDays.toString());
-    _expressPriceController = TextEditingController(text: expressOpt.cost.toStringAsFixed(2));
-    _sameDayPriceController = TextEditingController(text: sameDayOpt.cost.toStringAsFixed(2));
+    _expressPriceController = TextEditingController(text: (expressOpt.costCents / 100.0).toStringAsFixed(2));
+    _sameDayPriceController = TextEditingController(text: (sameDayOpt.costCents / 100.0).toStringAsFixed(2));
   }
 
   Widget _buildAddressSuggestions(EditProductState state, EditProductViewModel viewModel) {
@@ -819,7 +819,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         ? [ShippingQuantityDiscount(minQuantity: 10, discountType: DiscountTypeValues.flatRate, discountValue: 0, label: 'product.free_shipping_10_plus_label'.tr())]
         : <ShippingQuantityDiscount>[];
     final existingQuantityDiscounts = [...baseQuantityDiscounts, ...freeAt10Discount];
-    final existingAdditionalItemCost = existingStandard?.additionalItemCost ?? existingExpress?.additionalItemCost ?? 0.0;
+    final existingAdditionalItemCostCents = existingStandard?.additionalItemCostCents ?? existingExpress?.additionalItemCostCents ?? 0;
     final existingMaxItems = existingStandard?.maxItemsPerShipment ?? existingExpress?.maxItemsPerShipment ?? 0;
 
     List<SellerDeliveryOption> deliveryOptions;
@@ -827,7 +827,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       deliveryOptions = <SellerDeliveryOption>[];
     } else if (state.isLocalDeliveryOnly) {
       // Bug #2: Inject pickup option for local-only products
-      deliveryOptions = [SellerDeliveryOption(type: 'pickup', description: 'product.local_pickup_only'.tr(), estimatedDays: 0, cost: 0.0)];
+      deliveryOptions = [SellerDeliveryOption(type: 'pickup', description: 'product.local_pickup_only'.tr(), estimatedDays: 0, costCents: 0)];
     } else {
       deliveryOptions = <SellerDeliveryOption>[
         if (state.standardEnabled)
@@ -835,9 +835,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             type: 'standard',
             description: 'product.standard_delivery'.tr(),
             estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
-            cost: double.tryParse(_standardPriceController.text) ?? 0.0,
+            costCents: ((double.tryParse(_standardPriceController.text) ?? 0.0) * 100).round(),
             quantityDiscounts: existingQuantityDiscounts,
-            additionalItemCost: existingAdditionalItemCost,
+            additionalItemCostCents: existingAdditionalItemCostCents,
             maxItemsPerShipment: existingMaxItems,
           ),
         if (state.expressEnabled)
@@ -845,9 +845,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             type: 'express',
             description: 'product.express_delivery'.tr(),
             estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
-            cost: double.tryParse(_expressPriceController.text) ?? 9.99,
+            costCents: ((double.tryParse(_expressPriceController.text) ?? 9.99) * 100).round(),
             quantityDiscounts: existingQuantityDiscounts,
-            additionalItemCost: existingAdditionalItemCost,
+            additionalItemCostCents: existingAdditionalItemCostCents,
             maxItemsPerShipment: existingMaxItems,
           ),
         if (state.sameDayEnabled)
@@ -855,7 +855,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             type: 'same_day',
             description: 'product.same_day_delivery'.tr(),
             estimatedDays: 0,
-            cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
+            costCents: ((double.tryParse(_sameDayPriceController.text) ?? 14.99) * 100).round(),
           ),
       ];
     }

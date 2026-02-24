@@ -33,6 +33,7 @@ from config import (
     get_stripe_secret_key,
     get_stripe_webhook_secret,
 )
+from models.order_event import OrderEvent
 from schema_constants import (
     ApiKeys,
     AppConfig,
@@ -58,7 +59,6 @@ from schema_constants import (
     ValidationLimits,
     WebhookStatusValues,
 )
-from models.order_event import OrderEvent
 from services.email_service import _t as _email_t
 from services.email_service import get_order_confirmation_email, get_seller_notification_email, send_email
 from services.pdf_invoice_service import generate_invoice_pdf
@@ -700,6 +700,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     seller_profiles_cache = {}  # Cache seller_profiles docs to avoid N+1 reads
     warehouse_cache: dict[str, dict] = {}  # key: "sellerId:warehouseId" → warehouse data
 
+    # Batch-read all product docs to avoid N+1
+    product_refs = [get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID]) for item in items]
+    _product_docs_batch = {doc.id: doc for doc in get_db().get_all(product_refs)}
+
     for item in items:
         # Check quantity limits
         item_quantity = item.get(Fields.QUANTITY, 0)
@@ -712,8 +716,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
 
         # Fetch product from Firestore for server-side validation
-        product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-        product_doc = product_ref.get()
+        product_doc = _product_docs_batch.get(item[Fields.PRODUCT_ID])
 
         if not product_doc.exists:
             raise https_fn.HttpsError("not-found", f"Product {item[Fields.PRODUCT_ID]} not found")
@@ -1370,6 +1373,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.TAX_EXEMPT: is_tax_exempt,
         Fields.ITEM_TAXES: item_taxes,
         Fields.PREFERRED_LANGUAGE: user_data.get(Fields.PREFERRED_LANGUAGE, "en"),
+        "platformFeeRatio": PLATFORM_FEE_RATIO,
     }
 
     # SECURITY FIX (CRITICAL-014): Snapshot seller Stripe account IDs at checkout.
@@ -2892,7 +2896,11 @@ def process_dispute_created(dispute: dict) -> str | None:
                     if max_reversible < payout_net:
                         reversal_kwargs[Fields.AMOUNT] = max_reversible
 
-                reversal = stripe.Transfer.create_reversal(transfer_id, **reversal_kwargs)
+                reversal = stripe.Transfer.create_reversal(
+                    transfer_id,
+                    **reversal_kwargs,
+                    idempotency_key=f"dispute_reversal_{dispute.get('id')}_{transfer_id}",
+                )
 
                 # Mark payout as reversed with cumulative tracking
                 reversal_amount = reversal_kwargs.get(Fields.AMOUNT, payout_net)
@@ -3973,7 +3981,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # AUDIT FIX (CRITICAL-001): Use fee rate stored at checkout, not current config.
         # Prevents config manipulation between checkout and capture.
-        stored_fee_rate = PLATFORM_FEE_RATIO  # snapshot at checkout, not computed post-hoc
+        stored_fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
 
         for seller_id, amount_cents in sellers_total_cents.items():
             # Platform fee in cents — use stored rate from checkout, fallback to config

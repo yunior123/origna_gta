@@ -3,6 +3,8 @@
 1. CHAIN OF VERIFICATION: First answer the question. Second, list at least 3 ways your answer could be wrong. Third, verify your concern and update your answer. 
 2. Using the word legacy is forbidden, no legacy code in app since its new and the launch is in 10-25 days
 3. website for production is www.orignagta.ca Note: .com is not used for now
+4. Forbidden to defer or skip task
+5. Make sure that all code comply with canadian and international laws
 ## RULES
 
 0. **Logic first** — 50+ adversarial scenarios, predict and architect like Magnus Carlsen. Think: malicious seller, buyer, race conditions.

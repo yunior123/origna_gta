@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -26,15 +27,16 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
       // Step 2: Store tracking number if provided
       if (trackingNumber.isNotEmpty) {
         try {
-          // Update the first item with tracking info (seller ships entire order)
+          // Update ALL items with tracking info — seller ships the entire order as one shipment
           await repository.updateItemStatus(
             orderId,
             OrderItemIdValues.all,
-            OrderStatusValues.shipped,
+            DeliveryStatusValues.shipped,
             trackingNumber: trackingNumber,
           );
-        } catch (_) {
-          // Non-critical: shipping + capture succeeded, tracking is best-effort
+        } catch (e) {
+          // Non-critical tracking write failed — log for visibility
+          debugPrint('sellerOrders: tracking update failed: $e');
         }
       }
 

@@ -307,7 +307,8 @@ class Fields:
     ESTIMATED_SHIP_DAYS = "estimatedShipDays"
     DELIVERY_OPTIONS = "deliveryOptions"
     ESTIMATED_DAYS = "estimatedDays"
-    COST = "cost"
+    COST = "cost"  # kept for shipping estimate dicts; for SellerDeliveryOption use COST_CENTS
+    COST_CENTS = "costCents"
     MINIMUM_ORDER_QUANTITY = "minimumOrderQuantity"
     FREE_SHIPPING = "freeShipping"
     TAX_CODE = "taxCode"
@@ -341,6 +342,7 @@ class Fields:
     NOTIFY_TRENDING = "notifyTrending"  # bool — opt-in: notify on trending products
     FCM_TOKEN = "fcmToken"  # str — Firebase Cloud Messaging device token
     FCM_TOKEN_UPDATED_AT = "fcmTokenUpdatedAt"  # datetime — last FCM token update
+    FCM_TOKEN_KEY = "token"  # Field name inside fcm_tokens subcollection docs
 
     # === TRENDING PRODUCT FIELDS ===
     TRENDING_SCORE = "trendingScore"  # int — computed trending score
@@ -373,11 +375,13 @@ class Fields:
     SHIPPING_DAYS = "shippingDays"
     HAS_TRACKING = "hasTracking"
     MAX_ITEMS_PER_SHIPMENT = "maxItemsPerShipment"
-    ADDITIONAL_ITEM_COST = "additionalItemCost"
+    ADDITIONAL_ITEM_COST = "additionalItemCost"  # kept for legacy; for SellerDeliveryOption use ADDITIONAL_ITEM_COST_CENTS
+    ADDITIONAL_ITEM_COST_CENTS = "additionalItemCostCents"
     QUANTITY_DISCOUNTS = "quantityDiscounts"
     DISCOUNT_TYPE = "discountType"
     DISCOUNT_VALUE = "discountValue"
     MIN_QUANTITY = "minQuantity"
+    AVAILABLE_NATIONWIDE = "availableNationwide"
 
     SUPPLIER = "supplier"
     INVENTORY = "inventory"
@@ -425,6 +429,7 @@ class Fields:
     SELLER_PAYOUTS = "sellerPayouts"
     SELLER_STRIPE_ACCOUNTS = "sellerStripeAccounts"
     PLATFORM_FEE_TOTAL_CENTS = "platformFeeTotalCents"
+    PLATFORM_FEE_RATIO = "platformFeeRatio"  # Stored at checkout for capture-time fee rate
     PAYOUT_STATUS = "payoutStatus"
     RATINGS = "ratings"
     REFUND_AMOUNT = "refundAmount"
@@ -712,6 +717,12 @@ class Fields:
 # =============================================================================
 # ENUM VALUES - Valid values for enum fields
 # =============================================================================
+
+
+class OrderItemIdValues:
+    """Special sentinel values for order item ID parameters."""
+
+    ALL = "all"
 
 
 class OrderStatusValues:
@@ -1571,6 +1582,12 @@ class ApiKeys:
     CONFIGURED = "configured"
     MISSING_KEYS = "missingKeys"
     ENABLED_PROVIDERS = "enabledProviders"
+    ACTION = "action"
+    APPROVE = "approve"
+    MARK_RECEIVED = "mark_received"
+    EXPECTED_COST_CENTS = "expectedCostCents"
+    LICENSE_KEY = "licenseKey"
+    PLATFORM = "platform"
 
 
 class ErrorCodeValues:

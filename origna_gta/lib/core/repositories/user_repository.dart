@@ -33,7 +33,8 @@ class FirebaseUserRepository implements UserRepository {
   @override
   Future<SellerAccountStatus> getSellerAccountStatus(String userId) async {
     final doc = await _firestore.collection(Collections.users).doc(userId).get();
-    return _parseSellerStatus(doc.data());
+    final spDoc = await _firestore.collection(Collections.sellerProfiles).doc(userId).get();
+    return _parseSellerStatus(doc.data(), spDoc.data());
   }
 
   @override
@@ -89,18 +90,21 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId) {
-    return _firestore.collection(Collections.users).doc(userId).snapshots().map((doc) {
-      return _parseSellerStatus(doc.data());
+    // Combine users doc (for roles) with seller_profiles doc (for Stripe status fields).
+    return _firestore.collection(Collections.users).doc(userId).snapshots().asyncMap((doc) async {
+      final spDoc = await _firestore.collection(Collections.sellerProfiles).doc(userId).get();
+      return _parseSellerStatus(doc.data(), spDoc.data());
     });
   }
 
-  SellerAccountStatus _parseSellerStatus(Map<String, dynamic>? data) {
-    final roles = List<String>.from(data?[Fields.roles] ?? const []);
+  // userData: from users/{uid} (roles). spData: from seller_profiles/{uid} (Stripe status fields).
+  SellerAccountStatus _parseSellerStatus(Map<String, dynamic>? userData, Map<String, dynamic>? spData) {
+    final roles = List<String>.from(userData?[Fields.roles] ?? const []);
     final isSeller = roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin);
-    final chargesEnabled = data?[Fields.chargesEnabled] == true;
-    final payoutsEnabled = data?[Fields.payoutsEnabled] == true;
-    final onboardingCompleted = data?[Fields.onboardingCompleted] == true;
-    final pendingRequirements = List<String>.from(data?[Fields.pendingRequirements] ?? const []);
+    final chargesEnabled = spData?[Fields.chargesEnabled] == true;
+    final payoutsEnabled = spData?[Fields.payoutsEnabled] == true;
+    final onboardingCompleted = spData?[Fields.onboardingCompleted] == true;
+    final pendingRequirements = List<String>.from(spData?[Fields.pendingRequirements] ?? const []);
     return SellerAccountStatus(
       isSeller: isSeller,
       chargesEnabled: chargesEnabled && payoutsEnabled,

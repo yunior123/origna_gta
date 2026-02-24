@@ -50,8 +50,8 @@ class FirebaseOrderRepository implements OrderRepository {
       Fields.orderId: orderId,
       Fields.productId: itemId,
       ApiKeys.newStatus: status,
-      Fields.trackingNumber: ?trackingNumber,
-      Fields.carrier: ?carrier,
+      ...(trackingNumber != null ? {Fields.trackingNumber: trackingNumber} : {}),
+      ...(carrier != null ? {Fields.carrier: carrier} : {}),
     });
   }
 

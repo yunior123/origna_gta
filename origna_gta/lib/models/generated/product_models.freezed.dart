@@ -1773,12 +1773,12 @@ mixin _$SellerDeliveryOption {
 /// Delivery type: 'standard', 'express', 'same_day', etc.
  String get type;/// Human-readable description
  String get description;/// Shipping cost in dollars
- double get cost;/// Estimated delivery days
+ int get costCents;/// Estimated delivery days
  int get estimatedDays;/// Optional quantity-based discounts for this delivery option
  List<ShippingQuantityDiscount> get quantityDiscounts;/// Maximum items before shipping cost increases (0 = no limit)
  int get maxItemsPerShipment;/// Additional cost per item after maxItemsPerShipment (0 = free per-item)
- double get additionalItemCost;/// Whether this option is available for international orders
- bool get availableInternational;
+ int get additionalItemCostCents;/// Whether this option is available for international orders
+ bool get availableNationwide;
 /// Create a copy of SellerDeliveryOption
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1791,16 +1791,16 @@ $SellerDeliveryOptionCopyWith<SellerDeliveryOption> get copyWith => _$SellerDeli
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SellerDeliveryOption&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.estimatedDays, estimatedDays) || other.estimatedDays == estimatedDays)&&const DeepCollectionEquality().equals(other.quantityDiscounts, quantityDiscounts)&&(identical(other.maxItemsPerShipment, maxItemsPerShipment) || other.maxItemsPerShipment == maxItemsPerShipment)&&(identical(other.additionalItemCost, additionalItemCost) || other.additionalItemCost == additionalItemCost)&&(identical(other.availableInternational, availableInternational) || other.availableInternational == availableInternational));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SellerDeliveryOption&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&(identical(other.costCents, costCents) || other.costCents == costCents)&&(identical(other.estimatedDays, estimatedDays) || other.estimatedDays == estimatedDays)&&const DeepCollectionEquality().equals(other.quantityDiscounts, quantityDiscounts)&&(identical(other.maxItemsPerShipment, maxItemsPerShipment) || other.maxItemsPerShipment == maxItemsPerShipment)&&(identical(other.additionalItemCostCents, additionalItemCostCents) || other.additionalItemCostCents == additionalItemCostCents)&&(identical(other.availableNationwide, availableNationwide) || other.availableNationwide == availableNationwide));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,description,cost,estimatedDays,const DeepCollectionEquality().hash(quantityDiscounts),maxItemsPerShipment,additionalItemCost,availableInternational);
+int get hashCode => Object.hash(runtimeType,type,description,costCents,estimatedDays,const DeepCollectionEquality().hash(quantityDiscounts),maxItemsPerShipment,additionalItemCostCents,availableNationwide);
 
 @override
 String toString() {
-  return 'SellerDeliveryOption(type: $type, description: $description, cost: $cost, estimatedDays: $estimatedDays, quantityDiscounts: $quantityDiscounts, maxItemsPerShipment: $maxItemsPerShipment, additionalItemCost: $additionalItemCost, availableInternational: $availableInternational)';
+  return 'SellerDeliveryOption(type: $type, description: $description, costCents: $costCents, estimatedDays: $estimatedDays, quantityDiscounts: $quantityDiscounts, maxItemsPerShipment: $maxItemsPerShipment, additionalItemCostCents: $additionalItemCostCents, availableNationwide: $availableNationwide)';
 }
 
 
@@ -1811,7 +1811,7 @@ abstract mixin class $SellerDeliveryOptionCopyWith<$Res>  {
   factory $SellerDeliveryOptionCopyWith(SellerDeliveryOption value, $Res Function(SellerDeliveryOption) _then) = _$SellerDeliveryOptionCopyWithImpl;
 @useResult
 $Res call({
- String type, String description, double cost, int estimatedDays, List<ShippingQuantityDiscount> quantityDiscounts, int maxItemsPerShipment, double additionalItemCost, bool availableInternational
+ String type, String description, int costCents, int estimatedDays, List<ShippingQuantityDiscount> quantityDiscounts, int maxItemsPerShipment, int additionalItemCostCents, bool availableNationwide
 });
 
 
@@ -1828,16 +1828,16 @@ class _$SellerDeliveryOptionCopyWithImpl<$Res>
 
 /// Create a copy of SellerDeliveryOption
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? description = null,Object? cost = null,Object? estimatedDays = null,Object? quantityDiscounts = null,Object? maxItemsPerShipment = null,Object? additionalItemCost = null,Object? availableInternational = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? description = null,Object? costCents = null,Object? estimatedDays = null,Object? quantityDiscounts = null,Object? maxItemsPerShipment = null,Object? additionalItemCostCents = null,Object? availableNationwide = null,}) {
   return _then(_self.copyWith(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,cost: null == cost ? _self.cost : cost // ignore: cast_nullable_to_non_nullable
-as double,estimatedDays: null == estimatedDays ? _self.estimatedDays : estimatedDays // ignore: cast_nullable_to_non_nullable
+as String,costCents: null == costCents ? _self.costCents : costCents // ignore: cast_nullable_to_non_nullable
+as int,estimatedDays: null == estimatedDays ? _self.estimatedDays : estimatedDays // ignore: cast_nullable_to_non_nullable
 as int,quantityDiscounts: null == quantityDiscounts ? _self.quantityDiscounts : quantityDiscounts // ignore: cast_nullable_to_non_nullable
 as List<ShippingQuantityDiscount>,maxItemsPerShipment: null == maxItemsPerShipment ? _self.maxItemsPerShipment : maxItemsPerShipment // ignore: cast_nullable_to_non_nullable
-as int,additionalItemCost: null == additionalItemCost ? _self.additionalItemCost : additionalItemCost // ignore: cast_nullable_to_non_nullable
-as double,availableInternational: null == availableInternational ? _self.availableInternational : availableInternational // ignore: cast_nullable_to_non_nullable
+as int,additionalItemCostCents: null == additionalItemCostCents ? _self.additionalItemCostCents : additionalItemCostCents // ignore: cast_nullable_to_non_nullable
+as int,availableNationwide: null == availableNationwide ? _self.availableNationwide : availableNationwide // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -1923,10 +1923,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String type,  String description,  double cost,  int estimatedDays,  List<ShippingQuantityDiscount> quantityDiscounts,  int maxItemsPerShipment,  double additionalItemCost,  bool availableInternational)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String type,  String description,  int costCents,  int estimatedDays,  List<ShippingQuantityDiscount> quantityDiscounts,  int maxItemsPerShipment,  int additionalItemCostCents,  bool availableNationwide)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SellerDeliveryOption() when $default != null:
-return $default(_that.type,_that.description,_that.cost,_that.estimatedDays,_that.quantityDiscounts,_that.maxItemsPerShipment,_that.additionalItemCost,_that.availableInternational);case _:
+return $default(_that.type,_that.description,_that.costCents,_that.estimatedDays,_that.quantityDiscounts,_that.maxItemsPerShipment,_that.additionalItemCostCents,_that.availableNationwide);case _:
   return orElse();
 
 }
@@ -1944,10 +1944,10 @@ return $default(_that.type,_that.description,_that.cost,_that.estimatedDays,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String type,  String description,  double cost,  int estimatedDays,  List<ShippingQuantityDiscount> quantityDiscounts,  int maxItemsPerShipment,  double additionalItemCost,  bool availableInternational)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String type,  String description,  int costCents,  int estimatedDays,  List<ShippingQuantityDiscount> quantityDiscounts,  int maxItemsPerShipment,  int additionalItemCostCents,  bool availableNationwide)  $default,) {final _that = this;
 switch (_that) {
 case _SellerDeliveryOption():
-return $default(_that.type,_that.description,_that.cost,_that.estimatedDays,_that.quantityDiscounts,_that.maxItemsPerShipment,_that.additionalItemCost,_that.availableInternational);case _:
+return $default(_that.type,_that.description,_that.costCents,_that.estimatedDays,_that.quantityDiscounts,_that.maxItemsPerShipment,_that.additionalItemCostCents,_that.availableNationwide);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1964,10 +1964,10 @@ return $default(_that.type,_that.description,_that.cost,_that.estimatedDays,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String type,  String description,  double cost,  int estimatedDays,  List<ShippingQuantityDiscount> quantityDiscounts,  int maxItemsPerShipment,  double additionalItemCost,  bool availableInternational)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String type,  String description,  int costCents,  int estimatedDays,  List<ShippingQuantityDiscount> quantityDiscounts,  int maxItemsPerShipment,  int additionalItemCostCents,  bool availableNationwide)?  $default,) {final _that = this;
 switch (_that) {
 case _SellerDeliveryOption() when $default != null:
-return $default(_that.type,_that.description,_that.cost,_that.estimatedDays,_that.quantityDiscounts,_that.maxItemsPerShipment,_that.additionalItemCost,_that.availableInternational);case _:
+return $default(_that.type,_that.description,_that.costCents,_that.estimatedDays,_that.quantityDiscounts,_that.maxItemsPerShipment,_that.additionalItemCostCents,_that.availableNationwide);case _:
   return null;
 
 }
@@ -1979,7 +1979,7 @@ return $default(_that.type,_that.description,_that.cost,_that.estimatedDays,_tha
 @JsonSerializable()
 
 class _SellerDeliveryOption implements SellerDeliveryOption {
-  const _SellerDeliveryOption({this.type = DeliveryTypeValues.standard, this.description = '', this.cost = 0.0, this.estimatedDays = 3, final  List<ShippingQuantityDiscount> quantityDiscounts = const [], this.maxItemsPerShipment = 0, this.additionalItemCost = 0.0, this.availableInternational = true}): _quantityDiscounts = quantityDiscounts;
+  const _SellerDeliveryOption({this.type = DeliveryTypeValues.standard, this.description = '', this.costCents = 0, this.estimatedDays = 3, final  List<ShippingQuantityDiscount> quantityDiscounts = const [], this.maxItemsPerShipment = 0, this.additionalItemCostCents = 0, this.availableNationwide = true}): _quantityDiscounts = quantityDiscounts;
   factory _SellerDeliveryOption.fromJson(Map<String, dynamic> json) => _$SellerDeliveryOptionFromJson(json);
 
 /// Delivery type: 'standard', 'express', 'same_day', etc.
@@ -1987,7 +1987,7 @@ class _SellerDeliveryOption implements SellerDeliveryOption {
 /// Human-readable description
 @override@JsonKey() final  String description;
 /// Shipping cost in dollars
-@override@JsonKey() final  double cost;
+@override@JsonKey() final  int costCents;
 /// Estimated delivery days
 @override@JsonKey() final  int estimatedDays;
 /// Optional quantity-based discounts for this delivery option
@@ -2002,9 +2002,9 @@ class _SellerDeliveryOption implements SellerDeliveryOption {
 /// Maximum items before shipping cost increases (0 = no limit)
 @override@JsonKey() final  int maxItemsPerShipment;
 /// Additional cost per item after maxItemsPerShipment (0 = free per-item)
-@override@JsonKey() final  double additionalItemCost;
+@override@JsonKey() final  int additionalItemCostCents;
 /// Whether this option is available for international orders
-@override@JsonKey() final  bool availableInternational;
+@override@JsonKey() final  bool availableNationwide;
 
 /// Create a copy of SellerDeliveryOption
 /// with the given fields replaced by the non-null parameter values.
@@ -2019,16 +2019,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SellerDeliveryOption&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.estimatedDays, estimatedDays) || other.estimatedDays == estimatedDays)&&const DeepCollectionEquality().equals(other._quantityDiscounts, _quantityDiscounts)&&(identical(other.maxItemsPerShipment, maxItemsPerShipment) || other.maxItemsPerShipment == maxItemsPerShipment)&&(identical(other.additionalItemCost, additionalItemCost) || other.additionalItemCost == additionalItemCost)&&(identical(other.availableInternational, availableInternational) || other.availableInternational == availableInternational));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SellerDeliveryOption&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&(identical(other.costCents, costCents) || other.costCents == costCents)&&(identical(other.estimatedDays, estimatedDays) || other.estimatedDays == estimatedDays)&&const DeepCollectionEquality().equals(other._quantityDiscounts, _quantityDiscounts)&&(identical(other.maxItemsPerShipment, maxItemsPerShipment) || other.maxItemsPerShipment == maxItemsPerShipment)&&(identical(other.additionalItemCostCents, additionalItemCostCents) || other.additionalItemCostCents == additionalItemCostCents)&&(identical(other.availableNationwide, availableNationwide) || other.availableNationwide == availableNationwide));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,description,cost,estimatedDays,const DeepCollectionEquality().hash(_quantityDiscounts),maxItemsPerShipment,additionalItemCost,availableInternational);
+int get hashCode => Object.hash(runtimeType,type,description,costCents,estimatedDays,const DeepCollectionEquality().hash(_quantityDiscounts),maxItemsPerShipment,additionalItemCostCents,availableNationwide);
 
 @override
 String toString() {
-  return 'SellerDeliveryOption(type: $type, description: $description, cost: $cost, estimatedDays: $estimatedDays, quantityDiscounts: $quantityDiscounts, maxItemsPerShipment: $maxItemsPerShipment, additionalItemCost: $additionalItemCost, availableInternational: $availableInternational)';
+  return 'SellerDeliveryOption(type: $type, description: $description, costCents: $costCents, estimatedDays: $estimatedDays, quantityDiscounts: $quantityDiscounts, maxItemsPerShipment: $maxItemsPerShipment, additionalItemCostCents: $additionalItemCostCents, availableNationwide: $availableNationwide)';
 }
 
 
@@ -2039,7 +2039,7 @@ abstract mixin class _$SellerDeliveryOptionCopyWith<$Res> implements $SellerDeli
   factory _$SellerDeliveryOptionCopyWith(_SellerDeliveryOption value, $Res Function(_SellerDeliveryOption) _then) = __$SellerDeliveryOptionCopyWithImpl;
 @override @useResult
 $Res call({
- String type, String description, double cost, int estimatedDays, List<ShippingQuantityDiscount> quantityDiscounts, int maxItemsPerShipment, double additionalItemCost, bool availableInternational
+ String type, String description, int costCents, int estimatedDays, List<ShippingQuantityDiscount> quantityDiscounts, int maxItemsPerShipment, int additionalItemCostCents, bool availableNationwide
 });
 
 
@@ -2056,16 +2056,16 @@ class __$SellerDeliveryOptionCopyWithImpl<$Res>
 
 /// Create a copy of SellerDeliveryOption
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? description = null,Object? cost = null,Object? estimatedDays = null,Object? quantityDiscounts = null,Object? maxItemsPerShipment = null,Object? additionalItemCost = null,Object? availableInternational = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? description = null,Object? costCents = null,Object? estimatedDays = null,Object? quantityDiscounts = null,Object? maxItemsPerShipment = null,Object? additionalItemCostCents = null,Object? availableNationwide = null,}) {
   return _then(_SellerDeliveryOption(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,cost: null == cost ? _self.cost : cost // ignore: cast_nullable_to_non_nullable
-as double,estimatedDays: null == estimatedDays ? _self.estimatedDays : estimatedDays // ignore: cast_nullable_to_non_nullable
+as String,costCents: null == costCents ? _self.costCents : costCents // ignore: cast_nullable_to_non_nullable
+as int,estimatedDays: null == estimatedDays ? _self.estimatedDays : estimatedDays // ignore: cast_nullable_to_non_nullable
 as int,quantityDiscounts: null == quantityDiscounts ? _self._quantityDiscounts : quantityDiscounts // ignore: cast_nullable_to_non_nullable
 as List<ShippingQuantityDiscount>,maxItemsPerShipment: null == maxItemsPerShipment ? _self.maxItemsPerShipment : maxItemsPerShipment // ignore: cast_nullable_to_non_nullable
-as int,additionalItemCost: null == additionalItemCost ? _self.additionalItemCost : additionalItemCost // ignore: cast_nullable_to_non_nullable
-as double,availableInternational: null == availableInternational ? _self.availableInternational : availableInternational // ignore: cast_nullable_to_non_nullable
+as int,additionalItemCostCents: null == additionalItemCostCents ? _self.additionalItemCostCents : additionalItemCostCents // ignore: cast_nullable_to_non_nullable
+as int,availableNationwide: null == availableNationwide ? _self.availableNationwide : availableNationwide // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

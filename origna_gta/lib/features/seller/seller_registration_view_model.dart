@@ -76,7 +76,10 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
     await _continueOnboarding();
   }
 
-  /// Opens the Stripe Express Dashboard
+  /// Opens the Stripe Express Dashboard.
+  /// TODO: Replace with a dynamic Stripe login link from CF 'create_stripe_login_link'.
+  /// Static URLs don't work for Express accounts — need:
+  ///   stripe.Account.create_login_link(account_id) called server-side.
   Future<void> openStripeDashboard() async {
     if (!_canProceed()) return;
     

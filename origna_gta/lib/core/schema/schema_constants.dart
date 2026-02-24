@@ -119,6 +119,12 @@ abstract final class ApiKeys {
   static const allItemsShipped = 'allItemsShipped';
   static const approvalRequired = 'approvalRequired';
   static const cartSubtotalCents = 'cartSubtotalCents';
+  static const action = 'action';
+  static const approve = 'approve';
+  static const markReceived = 'mark_received';
+  static const expectedCostCents = 'expectedCostCents';
+  static const licenseKey = 'licenseKey';
+  static const platform = 'platform';
 }
 
 /// Business rule constants
@@ -485,6 +491,7 @@ abstract final class Fields {
   static const customerId = 'customerId';
   static const fcmToken = 'fcmToken';
   static const fcmTokenUpdatedAt = 'fcmTokenUpdatedAt';
+  static const fcmTokenKey = 'token'; // Field name inside fcm_tokens subcollection docs
   static const lastCheckoutSession = 'lastCheckoutSession';
   static const lastOrderId = 'lastOrderId';
   static const lastCheckoutTimestamp = 'lastCheckoutTimestamp';
@@ -651,6 +658,7 @@ abstract final class Fields {
   static const autoCaptured = 'autoCaptured';
   static const sellerPayouts = 'sellerPayouts';
   static const platformFeeTotalCents = 'platformFeeTotalCents';
+  static const platformFeeRatio = 'platformFeeRatio'; // Stored at checkout for capture-time fee rate
   static const payoutStatus = 'payoutStatus';
   static const ratings = 'ratings';
   static const orderRefundCents = 'refundAmountCents';
@@ -789,7 +797,8 @@ abstract final class Fields {
   static const shippingDays = 'shippingDays';
   static const hasTracking = 'hasTracking';
   static const maxItemsPerShipment = 'maxItemsPerShipment';
-  static const additionalItemCost = 'additionalItemCost';
+  static const additionalItemCostCents = 'additionalItemCostCents';
+  static const availableNationwide = 'availableNationwide';
   static const quantityDiscounts = 'quantityDiscounts';
   static const discountType = 'discountType';
   static const discountValue = 'discountValue';

@@ -42,6 +42,7 @@ class AddProductState {
   final bool hasVariants;
   final List<VariantOption> variantOptions;
   final List<ProductVariantEntry> variants;
+  final String? condition; // ProductConditionValues: new|like_new|good|fair|for_parts
 
   AddProductState({
     this.isLoading = false,
@@ -77,6 +78,7 @@ class AddProductState {
     this.hasVariants = false,
     this.variantOptions = const [],
     this.variants = const [],
+    this.condition,
   });
 
   /// Use `clearError()` to explicitly set errorMessage to null.
@@ -115,6 +117,7 @@ class AddProductState {
     bool? hasVariants,
     List<VariantOption>? variantOptions,
     List<ProductVariantEntry>? variants,
+    Object? condition = _sentinel,
   }) {
     return AddProductState(
       isLoading: isLoading ?? this.isLoading,
@@ -150,6 +153,7 @@ class AddProductState {
       hasVariants: hasVariants ?? this.hasVariants,
       variantOptions: variantOptions ?? this.variantOptions,
       variants: variants ?? this.variants,
+      condition: condition == _sentinel ? this.condition : condition as String?,
     );
   }
 }

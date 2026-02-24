@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -29,7 +28,7 @@ class NotificationService {
   StreamSubscription? _tokenSubscription;
   ProviderSubscription? _authSubscription;
 
-  late ProviderContainer _container;
+  ProviderContainer? _container; // Nullable: set during initialize(), null-guarded in saveTokenToFirestore
 
   /// Global key to show foreground notification SnackBars without BuildContext.
   static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
@@ -68,15 +67,10 @@ class NotificationService {
 
     final messaging = _messaging;
 
-    // Restore prior-granted permission state without re-prompting
-    final currentSettings = await messaging.getNotificationSettings();
-    final alreadyGranted = currentSettings.authorizationStatus == AuthorizationStatus.authorized ||
-        currentSettings.authorizationStatus == AuthorizationStatus.provisional;
-
-    if (alreadyGranted) {
-      // Don't call setGranted(true) here — wait for requestPermission() to confirm.
-      // This prevents a brief true→false flicker if the user revoked permissions.
-    }
+    // Restore prior-granted permission state without re-prompting.
+    // The alreadyGranted check is intentionally not used to call setGranted(true) here —
+    // we wait for requestPermission() below to confirm, avoiding a true→false flicker
+    // if the user revoked permissions between sessions.
 
     // Request permissions (no-ops if already granted on iOS)
     final settings = await messaging.requestPermission(
@@ -107,7 +101,7 @@ class NotificationService {
       });
 
       // Listen for auth state changes to save token when user logs in
-      _authSubscription = _container.listen(userIdProvider, (previous, next) {
+      _authSubscription = _container!.listen(userIdProvider, (previous, next) {
         if (next != null && next != previous) {
           saveTokenToFirestore();
         }
@@ -115,10 +109,10 @@ class NotificationService {
     } else {
       debugPrint('User declined or has not accepted notification permissions');
       // Write opt-out preference so backend skips push for this user
-      final userId = _container.read(userIdProvider);
+      final userId = _container!.read(userIdProvider);
       if (userId != null) {
         try {
-          final firestore = _container.read(firestoreProvider);
+          final firestore = _container!.read(firestoreProvider);
           await firestore.collection(Collections.users).doc(userId).set(
             {Fields.pushEnabled: false},
             SetOptions(merge: true),
@@ -150,15 +144,19 @@ class NotificationService {
   /// so multiple devices work independently.
   @visibleForTesting
   Future<void> saveTokenToFirestore({String? token}) async {
-    final userId = _container.read(userIdProvider);
+    if (_container == null) return;
+    final userId = _container!.read(userIdProvider);
     if (userId == null) return;
 
     try {
       final fcmToken = token ?? await _messaging.getToken();
       if (fcmToken != null) {
-        final firestore = _container.read(firestoreProvider);
-        // Key by URL-safe base64 of first 60 chars — stable unique ID without extra deps
-        final tokenSlice = fcmToken.substring(0, min(60, fcmToken.length));
+        final firestore = _container!.read(firestoreProvider);
+        // TODO: Replace base64 slice with sha256 once `crypto` package is added to pubspec.yaml.
+        // import 'package:crypto/crypto.dart';
+        // final tokenHash = sha256.convert(utf8.encode(fcmToken)).toString();
+        // Currently using URL-safe base64 of first 60 chars as a stable unique ID.
+        final tokenSlice = fcmToken.substring(0, fcmToken.length < 60 ? fcmToken.length : 60);
         final tokenHash = base64Url.encode(utf8.encode(tokenSlice)).replaceAll('=', '');
         final platform = kIsWeb ? 'web' : defaultTargetPlatform.name.toLowerCase();
         await firestore

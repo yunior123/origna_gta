@@ -149,7 +149,7 @@ class _CheckoutButton extends ConsumerWidget {
     return Container(
       padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.textPrimary : Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.textPrimary : DesignTokens.surface,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -8))],
       ),
       child: Semantics(
@@ -870,7 +870,7 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
                     key: const Key('checkout_apply_coupon_button'),
                     onPressed: isLoading ? null : () => _apply(notifier),
                     style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: isLoading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('common.apply'.tr()),
+                    child: isLoading ? const SizedBox(width: 18, height: 18, child: ModernLoadingIndicator(strokeWidth: 2)) : Text('common.apply'.tr()),
                   ),
           ],
         ),

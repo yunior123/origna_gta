@@ -29,7 +29,7 @@ _COMMON_FOOTER = """
 
 ## 📋 Required Output Format
 
-**Be maximally concise. Every word must save the engineer tokens, not cost them.**
+**Be maximally concise. Every word must save the engineer tokens, not cost them. **
 
 For each finding, output exactly this block — nothing more:
 
@@ -621,6 +621,134 @@ FLOW_INSTRUCTIONS: dict[str, str] = {
 9. **SKU collision prevention** — imported products use `sellerSku = supplierSku`; dedup enforced across imports.
 10. **Seller authorization** — seller can only import products for their own account; no cross-seller imports.
 """,
+
+    "logic_audit": """\
+# Audit: Logic & Business Rules (Full Stack)
+
+## What to Audit
+1. **Race conditions** — concurrent stock reservation, coupon redemption, and payment capture all use atomic Firestore transactions.
+2. **State machine violations** — order and payment status transitions follow valid paths; no skipped states.
+3. **Idempotency** — all payment and transfer operations are idempotent; duplicate events don't double-process.
+4. **Authorization checks** — every handler validates the caller is the correct role (buyer, seller, admin) for the operation.
+5. **Price integrity** — backend re-fetches product price from Firestore; never trusts client-sent amounts.
+6. **Self-purchase prevention** — `sellerId != buyerId` enforced in all purchase paths.
+7. **Stock consistency** — `stockQuantity` at product level equals sum of all warehouse inventory levels.
+8. **Cross-stack field parity** — Dart models and Python models have identical field names and types.
+9. **Cron job isolation** — one failing record in a batch does not abort the rest; errors logged per record.
+10. **Error propagation** — errors returned to caller with correct HTTP status; no silent failures that leave data in inconsistent state.
+""",
+
+    "cross_stack_audit": """\
+# Audit: Cross-Stack Frontend ↔ Backend Boundary
+
+## What to Audit
+1. **Request payload format** — frontend sends exactly the fields the backend handler expects; no extra or missing fields.
+2. **Field name consistency** — every field name in Dart models matches its Python model counterpart (camelCase vs snake_case mapping correct).
+3. **Enum value consistency** — all enum values in `schema_constants.dart` exactly match `schema_constants.py`; no stale values.
+4. **Response parsing** — Dart `fromJson`/`fromFirestore` factories handle all fields the backend writes; no unhandled nulls.
+5. **Error contract** — backend error response shape matches what frontend error handlers expect.
+6. **Auth token forwarding** — frontend sends Firebase ID token; backend verifies it before any operation.
+7. **Timestamp handling** — Firestore `Timestamp` correctly converted on both sides; no epoch/millisecond mismatches.
+8. **Collection path constants** — Dart `CollectionPaths` and Python collection name strings match exactly.
+9. **Model version drift** — no field added to Python model but missing from Dart model or vice versa.
+10. **Null safety** — optional fields marked as nullable on both sides; no forced non-null on potentially missing fields.
+""",
+
+    "frontend_audit": """\
+# Audit: Frontend Riverpod Providers & ViewModels
+
+## What to Audit
+1. **ref.watch vs ref.read** — `ref.watch` used in build methods; `ref.read` used in callbacks and event handlers only.
+2. **Error state coverage** — every async provider exposes error state; screens show meaningful error UI, not blank or crash.
+3. **Loading state coverage** — every async operation shows loading indicator; no silent pending states.
+4. **Premium gate consistency** — all premium features guarded by `isPremium` check before display AND before action.
+5. **BuildContext async safety** — no `BuildContext` passed to async methods; context resolved before any `await`.
+6. **Provider disposal** — providers that allocate resources (streams, timers) implement `onDispose` or `AutoDispose`.
+7. **State reset** — viewmodel state reset when navigating away from forms; no stale data on re-entry.
+8. **Deferred UI readiness** — deferred features check backend readiness flag before enabling UI; no premature access.
+9. **Navigation guard** — unauthenticated users redirected before accessing protected screens; no flash of protected content.
+10. **No business logic in screens** — screens delegate all logic to viewmodels; no direct Firestore/API calls from screen widgets.
+""",
+
+    "performance_audit": """\
+# Audit: Performance & Query Efficiency
+
+## What to Audit
+1. **N+1 Firestore reads** — list screens batch-fetch documents; no per-item individual reads in loops.
+2. **Unbounded queries** — all Firestore queries have `.limit()` applied; no collection scans.
+3. **Missing indexes** — `firestore.indexes.json` covers all compound queries used in handlers; no missing composite index.
+4. **Algolia call frequency** — Algolia sync calls batched on product update; no per-field individual updates.
+5. **Cloud Function cold start** — heavy imports moved to module level; no top-level I/O blocking initialization.
+6. **Flutter widget rebuilds** — widgets consuming providers are narrowly scoped; no full-tree rebuilds on partial state changes.
+7. **ListView optimization** — all long lists use `ListView.builder`; no `ListView(children:)` with large arrays.
+8. **Image caching** — product images use `cached_network_image` with `cacheWidth`/`cacheHeight`; no full-res decode.
+9. **Provider over-watching** — `select()` used when only a subset of provider state is needed by a widget.
+10. **Firestore pagination** — cursor-based pagination (`startAfterDocument`) used for all list endpoints; no offset pagination.
+""",
+
+    "refactor_audit": """\
+# Audit: Code Quality & Refactoring Opportunities
+
+## What to Audit
+1. **Code duplication** — logic repeated across handlers or viewmodels should be extracted to shared utilities or base classes.
+2. **Dead code** — unused functions, commented-out blocks, and unreachable branches should be removed.
+3. **Oversized functions** — functions exceeding 80 lines should be decomposed into smaller, named helpers.
+4. **Magic strings** — hardcoded field names, collection names, or status values should reference `schema_constants`.
+5. **Wrong abstraction layer** — business logic in screens, UI logic in viewmodels, or data access in handlers are architectural violations.
+6. **Inconsistent error handling** — mix of try/catch and uncaught exceptions; error handling should follow a consistent pattern.
+7. **Coupling** — tight coupling between unrelated modules; introduce interfaces or repository patterns where needed.
+8. **Test coverage gaps** — critical paths (payment, order state transitions) without corresponding test coverage.
+9. **Naming inconsistency** — function/variable names that don't follow project conventions (camelCase Dart, snake_case Python).
+10. **TODOs and FIXMEs** — outstanding TODO comments that represent known bugs or deferred work should be triaged.
+""",
+
+    "cost_audit": """\
+# Audit: API & Infrastructure Cost Efficiency
+
+## What to Audit
+1. **Algolia search calls** — search called only on user interaction (debounced); no polling or on-every-keystroke calls.
+2. **Algolia index writes** — product sync batched; no per-field individual index updates; inactive products deleted from index not just filtered.
+3. **Email send rate** — email service not called redundantly; order status change emails deduplicated via event_id.
+4. **Firestore read efficiency** — projections used where full documents are not needed; `select()` on large documents.
+5. **Cloud Function invocations** — cron jobs check for work before doing heavy processing; early exit on empty batches.
+6. **Stripe API calls** — no redundant PaymentIntent retrievals; cached where safe within a single request.
+7. **R2/Cloudflare storage** — temporary images cleaned up on product deletion; no orphaned blobs.
+8. **Memory allocation** — Cloud Functions memory allocation matches actual peak usage; no over-provisioned functions.
+9. **Shipping service calls** — shipping cost calculation cached per session; not recalculated on every page load.
+10. **Subscription polling** — premium status checked from cached Firestore field; no Stripe API call on every auth check.
+""",
+
+    "code_comments_audit": """\
+# Audit: Code Comments & Documentation Quality
+
+## What to Audit
+1. **Stale TODO comments** — TODOs referencing known fixes that have since been implemented should be removed.
+2. **Missing docstrings** — public functions, classes, and methods in both Python and Dart lack docstrings; add them.
+3. **Misleading comments** — comments that describe what the code does (not why) or that contradict the actual logic.
+4. **Complex logic explanation** — non-obvious algorithms (fee calculation, state machine transitions, retry logic) need inline explanation.
+5. **Magic number explanation** — numeric constants without context (timeouts, limits, ratios) should have comments explaining their origin.
+6. **Deprecated code markers** — code paths kept for backward compatibility should be marked with deprecation notice and removal plan.
+7. **Security-sensitive sections** — auth checks, signature verification, and idempotency logic should have comments explaining the security invariant.
+8. **Cross-stack coupling notes** — where Dart and Python models must stay in sync, add a comment referencing the counterpart file.
+9. **Cron job documentation** — each cron job should have a header comment explaining its trigger frequency and purpose.
+10. **Error handling rationale** — non-obvious error handling choices (swallowing exceptions, retry logic) should explain why.
+""",
+
+    "rival_audit": """\
+# Audit: Competitive Intelligence & Feature Gap Analysis
+
+## What to Audit
+1. **Checkout UX** — compare OrignaGTA checkout flow to Amazon/Shopify; identify friction points and missing trust signals.
+2. **Product discovery** — compare search, filter, and recommendation UX to AliExpress/Etsy; identify missing discovery features.
+3. **Seller onboarding** — compare seller registration and product listing flow to Shopify/eBay; identify unnecessary friction.
+4. **Order management** — compare buyer and seller order tracking UX to Amazon/Walmart; identify missing status visibility.
+5. **Trust signals** — compare review system, seller ratings, and return policy display to established marketplaces.
+6. **Mobile UX** — compare mobile responsiveness and touch interactions to top e-commerce apps.
+7. **Premium feature value** — compare subscription tier value proposition to similar SaaS marketplace platforms.
+8. **Shipping transparency** — compare shipping cost and delivery estimate display to Amazon Prime / Shopify markets.
+9. **Cart and wishlist** — compare cart abandonment recovery and wishlist features to top platforms.
+10. **Canadian market fit** — features specific to Canadian buyers (French, CAD, local shipping) vs. global competitors.
+""",
 }
 
 # ── Workflow → files map ────────────────────────────────────────────────────
@@ -1156,6 +1284,151 @@ FLOWS: dict[str, list[str]] = {
         "functions/schema_constants.py",
         "origna_gta/lib/core/schema/schema_constants.dart",
         "docs/json_schemas/individual/Product.json",
+    ],
+
+    # ── CROSS-CUTTING AUDIT FLOWS ─────────────────────────────────────────────
+
+    "logic_audit": [
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/orders.py",
+        "functions/handlers/cron_jobs.py",
+        "functions/handlers/products.py",
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "origna_gta/lib/features/orders/buyer_orders_viewmodel.dart",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "origna_gta/lib/models/generated/order_models.dart",
+        "origna_gta/lib/models/generated/product_models.dart",
+        "functions/models/order.py",
+        "functions/models/product.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "docs/database_schema.json",
+        "firestore.rules",
+    ],
+
+    "cross_stack_audit": [
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "functions/handlers/payment_stripe.py",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "functions/handlers/orders.py",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "functions/handlers/products.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "functions/schema_constants.py",
+        "origna_gta/lib/models/generated/order_models.dart",
+        "functions/models/order.py",
+        "origna_gta/lib/models/generated/product_models.dart",
+        "functions/models/product.py",
+        "origna_gta/lib/models/generated/user_models.dart",
+        "functions/models/user.py",
+        "origna_gta/lib/models/generated/base_models.dart",
+        "functions/models/base.py",
+    ],
+
+    "frontend_audit": [
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "origna_gta/lib/features/orders/buyer_orders_viewmodel.dart",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "origna_gta/lib/features/products/edit_product_viewmodel.dart",
+        "origna_gta/lib/features/auth/auth_provider.dart",
+        "origna_gta/lib/features/subscription/subscription_provider.dart",
+        "origna_gta/lib/core/providers.dart",
+        "origna_gta/lib/screens/home_screen.dart",
+        "origna_gta/lib/screens/checkout_screen.dart",
+        "origna_gta/lib/screens/orders_screen.dart",
+        "origna_gta/lib/screens/productdetails_screen.dart",
+        "origna_gta/lib/widgets/premium_paywall_widget.dart",
+        "origna_gta/lib/widgets/modern_product_card.dart",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "docs/database_schema.json",
+    ],
+
+    "performance_audit": [
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/orders.py",
+        "functions/handlers/products.py",
+        "functions/services/algolia_service.py",
+        "functions/config.py",
+        "functions/schema_constants.py",
+        "firestore.indexes.json",
+        "origna_gta/lib/features/home/home_viewmodel.dart",
+        "origna_gta/lib/core/repositories/algolia_product_repository.dart",
+        "origna_gta/lib/core/repositories/product_repository.dart",
+        "origna_gta/lib/core/repositories/order_repository.dart",
+        "origna_gta/lib/core/providers.dart",
+        "origna_gta/lib/screens/home_screen.dart",
+        "origna_gta/lib/widgets/modern_product_card.dart",
+        "docs/database_schema.json",
+    ],
+
+    "refactor_audit": [
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/orders.py",
+        "functions/handlers/products.py",
+        "functions/handlers/admin.py",
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "origna_gta/lib/screens/addproduct_screen.dart",
+        "origna_gta/lib/screens/checkout_screen.dart",
+        "origna_gta/lib/screens/orders_screen.dart",
+        "origna_gta/lib/utils/design_tokens.dart",
+        "origna_gta/lib/core/providers.dart",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "docs/database_schema.json",
+    ],
+
+    "cost_audit": [
+        "functions/config.py",
+        "functions/handlers/payment_stripe.py",
+        "functions/services/algolia_service.py",
+        "functions/services/email_service.py",
+        "functions/services/shipping_service.py",
+        "functions/handlers/products.py",
+        "functions/handlers/cron_jobs.py",
+        "functions/handlers/subscriptions.py",
+        "functions/main.py",
+        "origna_gta/lib/core/repositories/algolia_product_repository.dart",
+        "origna_gta/lib/services/algolia_service.dart",
+        "origna_gta/lib/core/providers.dart",
+        "firestore.indexes.json",
+        "docs/database_schema.json",
+    ],
+
+    "code_comments_audit": [
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/orders.py",
+        "functions/handlers/products.py",
+        "functions/handlers/admin.py",
+        "functions/handlers/cron_jobs.py",
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "origna_gta/lib/core/repositories/product_repository.dart",
+        "origna_gta/lib/core/repositories/order_repository.dart",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "functions/models/order.py",
+        "functions/models/product.py",
+    ],
+
+    "rival_audit": [
+        "docs/database_schema.json",
+        "origna_gta/lib/screens/home_screen.dart",
+        "origna_gta/lib/screens/productdetails_screen.dart",
+        "origna_gta/lib/screens/checkout_screen.dart",
+        "origna_gta/lib/screens/orders_screen.dart",
+        "origna_gta/lib/widgets/modern_product_card.dart",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "origna_gta/lib/screens/seller_orders_screen.dart",
+        "origna_gta/lib/screens/profile_screen.dart",
+        "origna_gta/lib/features/subscription/subscription_provider.dart",
+        "functions/schema_constants.py",
+        "STATE.md",
     ],
 }
 

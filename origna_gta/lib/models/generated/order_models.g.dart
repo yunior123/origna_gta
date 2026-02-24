@@ -11,8 +11,8 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   userId: json['userId'] as String,
   version: (json['version'] as num?)?.toInt() ?? 1,
   schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
-  customerId: json['customerId'] as String,
-  customerEmail: json['customerEmail'] as String,
+  customerId: json['customerId'] as String?,
+  customerEmail: json['customerEmail'] as String?,
   items: (json['items'] as List<dynamic>)
       .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -27,15 +27,15 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   paymentStatus:
       $enumDecodeNullable(_$PaymentStatusEnumMap, json['paymentStatus']) ??
       PaymentStatus.awaitingPayment,
-  shippingAddress: Address.fromJson(
-    json['shippingAddress'] as Map<String, dynamic>,
-  ),
+  shippingAddress: json['shippingAddress'] == null
+      ? null
+      : Address.fromJson(json['shippingAddress'] as Map<String, dynamic>),
   createdAt: DateTime.parse(json['createdAt'] as String),
   currency: json['currency'] as String? ?? BusinessRules.defaultCurrency,
   sellerIds:
       (json['sellerIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
-  stripeSessionId: json['stripeSessionId'] as String,
+  stripeSessionId: json['stripeSessionId'] as String?,
   shippingApprovalStatus:
       $enumDecodeNullable(
         _$ShippingApprovalStatusEnumMap,
@@ -240,9 +240,9 @@ _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
       .map((e) => e as String)
       .toList(),
   sellerId: json['sellerId'] as String,
-  sellerAddress: Address.fromJson(
-    json['sellerAddress'] as Map<String, dynamic>,
-  ),
+  sellerAddress: json['sellerAddress'] == null
+      ? null
+      : Address.fromJson(json['sellerAddress'] as Map<String, dynamic>),
   status: json['status'] as String? ?? DeliveryStatusValues.pending,
   trackingNumber: json['trackingNumber'] as String?,
   carrier: json['carrier'] as String?,

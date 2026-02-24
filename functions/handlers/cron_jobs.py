@@ -31,7 +31,6 @@ from schema_constants import (
     OrderStatusValues,
     PaymentStatusValues,
     PayoutStatusValues,
-    ProductApprovalStatusValues,
     ProductLifecycleStatusValues,
     ReturnStatusValues,
     SecurityAlertTypes,
@@ -180,7 +179,8 @@ def _run_auto_capture() -> None:
         .collection(Collections.ORDERS)
         .where(Fields.ORDER_STATUS, "==", OrderStatusValues.DELIVERED)
         .where(Fields.PAYMENT_STATUS, "in", [PaymentStatusValues.CAPTURED, PaymentStatusValues.AUTHORIZED])
-        .where(Fields.UPDATED_AT, "<=", cutoff_date)
+        # NOTE: Requires composite Firestore index on orderStatus + deliveredAt
+        .where(Fields.DELIVERED_AT, "<=", cutoff_date)
         .limit(250)
         .stream()
     )
@@ -373,7 +373,9 @@ def _run_auto_capture() -> None:
                     # SECURITY FIX: Check chargesEnabled (not payoutsEnabled) for consistency
                     # with capture_payment. Also check seller is not suspended.
                     seller_suspended = seller_data.get(Fields.SUSPENDED, False)
-                    seller_charges_ok = seller_data.get(Fields.CHARGES_ENABLED, False)
+                    # chargesEnabled lives in seller_profiles, not users
+                    sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
+                    seller_charges_ok = (sp_doc.to_dict() or {}).get(Fields.CHARGES_ENABLED, False) if sp_doc.exists else False
 
                     if seller_suspended:
                         logger.warning(f"⚠️ Skipping auto-payout to suspended seller {seller_id} for order {order_id}")
@@ -1350,79 +1352,84 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
 
     logger.info("Running send_abandoned_cart_emails cron job")
 
-    now_utc = datetime.now(UTC)
-    cooldown_cutoff = now_utc - timedelta(hours=72)
-    checkout_cutoff = now_utc - timedelta(hours=24)
-    sent_count = 0
-    skipped_count = 0
+    if not acquire_cron_lock("send_abandoned_cart_emails"):
+        logger.info("send_abandoned_cart_emails: already running, skipping")
+        return
 
-    # Fetch users who opted into marketing and haven't been emailed in 3 days
-    users_query = get_db().collection(Collections.USERS).where(Fields.MARKETING_OPT_IN, "==", True).limit(500)
+    try:
+        now_utc = datetime.now(UTC)
+        cooldown_cutoff = now_utc - timedelta(hours=72)
+        checkout_cutoff = now_utc - timedelta(hours=24)
+        sent_count = 0
+        skipped_count = 0
 
-    for user_doc in users_query.stream():
-        user_data = user_doc.to_dict() or {}
-        user_id = user_doc.id
-        user_email = user_data.get(Fields.EMAIL)
+        # Fetch users who opted into marketing and haven't been emailed in 3 days
+        users_query = get_db().collection(Collections.USERS).where(Fields.MARKETING_OPT_IN, "==", True).limit(500)
 
-        if not user_email:
-            continue
+        for user_doc in users_query.stream():
+            user_data = user_doc.to_dict() or {}
+            user_id = user_doc.id
+            user_email = user_data.get(Fields.EMAIL)
 
-        # 3-day cooldown check
-        last_abandon_email = user_data.get(Fields.LAST_CART_ABANDON_EMAIL_AT)
-        if last_abandon_email:
-            if hasattr(last_abandon_email, "tzinfo") and last_abandon_email.tzinfo is None:
-                last_abandon_email = last_abandon_email.replace(tzinfo=UTC)
-            if last_abandon_email > cooldown_cutoff:
+            if not user_email:
+                continue
+
+            # 3-day cooldown check
+            last_abandon_email = user_data.get(Fields.LAST_CART_ABANDON_EMAIL_AT)
+            if last_abandon_email:
+                if hasattr(last_abandon_email, "tzinfo") and last_abandon_email.tzinfo is None:
+                    last_abandon_email = last_abandon_email.replace(tzinfo=UTC)
+                if last_abandon_email > cooldown_cutoff:
+                    skipped_count += 1
+                    continue
+
+            # Skip if checked out recently (< 24h ago)
+            last_checkout = user_data.get(Fields.LAST_CHECKOUT_TIMESTAMP)
+            if last_checkout:
+                if hasattr(last_checkout, "tzinfo") and last_checkout.tzinfo is None:
+                    last_checkout = last_checkout.replace(tzinfo=UTC)
+                if last_checkout > checkout_cutoff:
+                    skipped_count += 1
+                    continue
+
+            # Check cart subcollection
+            cart_items = list(
+                get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART).limit(10).stream()
+            )
+
+            if not cart_items:
+                continue
+
+            # Verify at least one cart item is still active — batch fetch all product docs
+            active_product_names: list[str] = []
+            product_ids = [
+                (cart_doc.to_dict() or {}).get(Fields.PRODUCT_ID) or cart_doc.id
+                for cart_doc in cart_items
+            ]
+            product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_ids]
+            product_docs = get_db().get_all(product_refs)
+            for product_doc in product_docs:
+                if product_doc.exists:
+                    pd = product_doc.to_dict() or {}
+                    if pd.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE and pd.get(Fields.STOCK_QUANTITY, 0) > 0:
+                        active_product_names.append(pd.get(Fields.NAME, "an item"))
+                if len(active_product_names) >= 3:
+                    break
+
+            if not active_product_names:
                 skipped_count += 1
                 continue
 
-        # Skip if checked out recently (< 24h ago)
-        last_checkout = user_data.get(Fields.LAST_CHECKOUT_TIMESTAMP)
-        if last_checkout:
-            if hasattr(last_checkout, "tzinfo") and last_checkout.tzinfo is None:
-                last_checkout = last_checkout.replace(tzinfo=UTC)
-            if last_checkout > checkout_cutoff:
-                skipped_count += 1
-                continue
-
-        # Check cart subcollection
-        cart_items = list(
-            get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART).limit(10).stream()
-        )
-
-        if not cart_items:
-            continue
-
-        # Verify at least one cart item is still active — batch fetch all product docs
-        active_product_names: list[str] = []
-        product_ids = [
-            (cart_doc.to_dict() or {}).get(Fields.PRODUCT_ID) or cart_doc.id
-            for cart_doc in cart_items
-        ]
-        product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_ids]
-        product_docs = get_db().get_all(product_refs)
-        for product_doc in product_docs:
-            if product_doc.exists:
-                pd = product_doc.to_dict() or {}
-                if pd.get(Fields.IS_ACTIVE) and pd.get(Fields.STOCK_QUANTITY, 0) > 0:
-                    active_product_names.append(pd.get(Fields.NAME, "an item"))
-            if len(active_product_names) >= 3:
-                break
-
-        if not active_product_names:
-            skipped_count += 1
-            continue
-
-        # Build simple abandoned cart email
-        product_list_html = "".join(f"<li>{name}</li>" for name in active_product_names)
-        more_label = (
-            f" (and {len(cart_items) - len(active_product_names)} more)"
-            if len(cart_items) > len(active_product_names)
-            else ""
-        )
-        display_name = user_data.get(Fields.NAME) or "there"
-        subject = "You left something in your cart — Origna"
-        html = f"""
+            # Build simple abandoned cart email
+            product_list_html = "".join(f"<li>{name}</li>" for name in active_product_names)
+            more_label = (
+                f" (and {len(cart_items) - len(active_product_names)} more)"
+                if len(cart_items) > len(active_product_names)
+                else ""
+            )
+            display_name = user_data.get(Fields.NAME) or "there"
+            subject = "You left something in your cart — Origna"
+            html = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #5B30F6;">Your cart is waiting 🛒</h2>
   <p>Hi {display_name},</p>
@@ -1442,16 +1449,18 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
   </p>
 </div>"""
 
-        try:
-            send_email(user_email, subject, html)
-            get_db().collection(Collections.USERS).document(user_id).update(
-                {Fields.LAST_CART_ABANDON_EMAIL_AT: now_utc}
-            )
-            sent_count += 1
-        except Exception as e:
-            logger.error(f"Failed to send abandoned cart email to user {user_id}: {e}")
+            try:
+                send_email(user_email, subject, html)
+                get_db().collection(Collections.USERS).document(user_id).update(
+                    {Fields.LAST_CART_ABANDON_EMAIL_AT: now_utc}
+                )
+                sent_count += 1
+            except Exception as e:
+                logger.error(f"Failed to send abandoned cart email to user {user_id}: {e}")
 
-    logger.info(f"send_abandoned_cart_emails done: {sent_count} sent, {skipped_count} skipped")
+        logger.info(f"send_abandoned_cart_emails done: {sent_count} sent, {skipped_count} skipped")
+    finally:
+        release_cron_lock("send_abandoned_cart_emails")
 
 
 def _compute_avg_response_time(seller_id: str, window_start: object) -> float:
@@ -1659,82 +1668,85 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
     Tags top-20 as isTrending=True, clears old trending flags.
     Sends FCM to premium users with notifyTrending=True.
     """
-
-    now = datetime.now(UTC)
-    _window_start = now - timedelta(hours=TRENDING_WINDOW_HOURS)  # noqa: F841
-
     db = get_db()
     logger.info("compute_trending_products started")
 
-    # Fetch all active approved products
-    products_query = (
-        db.collection(Collections.PRODUCTS)
-        .where(Fields.IS_ACTIVE, "==", True)
-        .where(Fields.APPROVAL_STATUS, "==", ProductApprovalStatusValues.APPROVED)
-        .stream()
-    )
+    if not acquire_cron_lock("compute_trending_products"):
+        logger.info("compute_trending_products: already running, skipping")
+        return
 
-    scored: list[tuple[int, str, str, str]] = []  # (score, productId, name, imageUrl)
+    try:
+        now = datetime.now(UTC)
+        _window_start = now - timedelta(hours=TRENDING_WINDOW_HOURS)  # noqa: F841
 
-    for prod_snap in products_query:
-        data = prod_snap.to_dict() or {}
-        view_count = data.get(Fields.VIEW_COUNT, 0) or 0
-        purchase_count = data.get(Fields.PURCHASE_COUNT, 0) or 0
-        # Favorite count is not stored on product doc yet; use 0 until we track it
-        score = view_count + purchase_count * TRENDING_PURCHASE_WEIGHT
-        if score > 0:
-            images = data.get(Fields.IMAGE_URLS) or []
-            image_url = images[0] if images else None
-            scored.append((score, prod_snap.id, data.get(Fields.NAME, ""), image_url))
-
-    # Sort descending and take top N
-    scored.sort(key=lambda x: x[0], reverse=True)
-    top_ids = {item[1] for item in scored[:TRENDING_TOP_N]}
-    top_products = scored[:TRENDING_TOP_N]
-
-    batch = db.batch()
-    op_count = 0
-
-    # Mark top-N as trending
-    for _score, prod_id, _name, _img in top_products:
-        ref = db.collection(Collections.PRODUCTS).document(prod_id)
-        batch.update(
-            ref,
-            {
-                Fields.IS_TRENDING: True,
-                Fields.TRENDING_AT: now,
-                Fields.TRENDING_SCORE: _score,
-            },
+        # Fetch all active products (Fix: use LIFECYCLE_STATUS instead of deprecated IS_ACTIVE)
+        products_query = (
+            db.collection(Collections.PRODUCTS)
+            .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
+            .stream()
         )
-        op_count += 1
-        if op_count % 400 == 0:
-            batch.commit()
-            batch = db.batch()
 
-    # Clear trending from products that dropped out of top-N
-    old_trending = db.collection(Collections.PRODUCTS).where(Fields.IS_TRENDING, "==", True).stream()
-    cleared = 0
-    for snap in old_trending:
-        if snap.id not in top_ids:
+        scored: list[tuple[int, str, str, str]] = []  # (score, productId, name, imageUrl)
+        old_trending_ids: set[str] = set()  # IDs of products currently marked trending (avoids second scan)
+
+        for prod_snap in products_query:
+            data = prod_snap.to_dict() or {}
+            if data.get(Fields.IS_TRENDING):
+                old_trending_ids.add(prod_snap.id)
+            view_count = data.get(Fields.VIEW_COUNT, 0) or 0
+            purchase_count = data.get(Fields.PURCHASE_COUNT, 0) or 0
+            # Favorite count is not stored on product doc yet; use 0 until we track it
+            score = view_count + purchase_count * TRENDING_PURCHASE_WEIGHT
+            if score > 0:
+                images = data.get(Fields.IMAGE_URLS) or []
+                image_url = images[0] if images else None
+                scored.append((score, prod_snap.id, data.get(Fields.NAME, ""), image_url))
+
+        # Sort descending and take top N
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top_ids = {item[1] for item in scored[:TRENDING_TOP_N]}
+        top_products = scored[:TRENDING_TOP_N]
+
+        batch = db.batch()
+        op_count = 0
+
+        # Mark top-N as trending
+        for _score, prod_id, _name, _img in top_products:
+            ref = db.collection(Collections.PRODUCTS).document(prod_id)
             batch.update(
-                snap.reference,
+                ref,
                 {
-                    Fields.IS_TRENDING: False,
-                    Fields.TRENDING_SCORE: snap.to_dict().get(Fields.TRENDING_SCORE, 0),
+                    Fields.IS_TRENDING: True,
+                    Fields.TRENDING_AT: now,
+                    Fields.TRENDING_SCORE: _score,
                 },
             )
-            cleared += 1
             op_count += 1
             if op_count % 400 == 0:
                 batch.commit()
                 batch = db.batch()
 
-    batch.commit()
-    logger.info(f"Trending: {len(top_products)} products marked trending, {cleared} cleared")
+        # Clear trending from products that dropped out of top-N
+        # Uses IDs collected during the first scan — avoids a second Firestore query
+        cleared = 0
+        for prod_id in old_trending_ids:
+            if prod_id not in top_ids:
+                ref = db.collection(Collections.PRODUCTS).document(prod_id)
+                batch.update(ref, {Fields.IS_TRENDING: False})
+                cleared += 1
+                op_count += 1
+                if op_count % 400 == 0:
+                    batch.commit()
+                    batch = db.batch()
 
-    # Notify premium users who opted in
-    if top_products:
-        _notify_trending_products(db, top_products[:5])  # notify about top 5
+        batch.commit()
+        logger.info(f"Trending: {len(top_products)} products marked trending, {cleared} cleared")
+
+        # Notify premium users who opted in
+        if top_products:
+            _notify_trending_products(db, top_products[:5])  # notify about top 5
+    finally:
+        release_cron_lock("compute_trending_products")
 
 
 def _notify_trending_products(db, top_products: list[tuple]) -> None:
@@ -1784,6 +1796,7 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
 
     try:
         import stripe as stripe_lib
+
         from handlers.subscriptions import _sync_subscription
 
         stripe_lib.api_key = get_stripe_secret_key()

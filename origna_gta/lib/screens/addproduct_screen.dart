@@ -76,6 +76,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   bool _allowBackorder = false;
   bool _lowStockAlertEnabled = false;
   bool _hasAttemptedSubmit = false;
+  bool _discountTierError = false; // true when 5+ tier discount < 3+ tier discount
 
   String? _selectedSubcategory;
   String? _selectedCategoryId;
@@ -370,6 +371,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       'Seller SKU',
                                       'Your internal product code (Stock Keeping Unit). Two listings with the same SKU from your store will be merged — helps prevent duplicate products on the platform.',
                                     ),
+                                    if (!state.isDigital) ...[
+                                      const SizedBox(height: 16),
+                                      _buildConditionSelector(state, viewModel),
+                                    ],
                                   ],
                                 ),
                                 const SizedBox(height: 16),
@@ -821,6 +826,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     _fadeController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _fadeController.forward();
+    _shippingDiscount3Controller.addListener(_validateDiscountTiers);
+    _shippingDiscount5Controller.addListener(_validateDiscountTiers);
+  }
+
+  void _validateDiscountTiers() {
+    final d3 = double.tryParse(_shippingDiscount3Controller.text);
+    final d5 = double.tryParse(_shippingDiscount5Controller.text);
+    final hasError = d3 != null && d5 != null && d5 < d3;
+    if (hasError != _discountTierError) setState(() => _discountTierError = hasError);
   }
 
   Widget _buildAddressSuggestions(AddProductState state, AddProductViewModel viewModel) {
@@ -972,7 +986,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
     // Bug #2: Local-only products need a pickup delivery option
     if (state.isLocalDeliveryOnly) {
-      return [SellerDeliveryOption(type: DeliveryTypeValues.pickup, description: 'product.local_pickup_only'.tr(), estimatedDays: 0, cost: 0.0)];
+      return [SellerDeliveryOption(type: DeliveryTypeValues.pickup, description: 'product.local_pickup_only'.tr(), estimatedDays: 0, costCents: 0)];
     }
 
     final quantityDiscounts = <ShippingQuantityDiscount>[];
@@ -1007,7 +1021,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       );
     }
 
-    final additionalItemCost = double.tryParse(_additionalItemCostController.text) ?? 0.0;
+    final additionalItemCostCents = ((double.tryParse(_additionalItemCostController.text) ?? 0.0) * 100).round();
     final maxItems = int.tryParse(_maxItemsPerShipmentController.text) ?? 0;
 
     return [
@@ -1016,9 +1030,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           type: DeliveryTypeValues.standard,
           description: 'product.standard_delivery'.tr(),
           estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
-          cost: double.tryParse(_standardPriceController.text) ?? 0.0,
+          costCents: ((double.tryParse(_standardPriceController.text) ?? 0.0) * 100).round(),
           quantityDiscounts: quantityDiscounts,
-          additionalItemCost: additionalItemCost,
+          additionalItemCostCents: additionalItemCostCents,
           maxItemsPerShipment: maxItems,
         ),
       if (state.expressEnabled)
@@ -1026,9 +1040,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           type: DeliveryTypeValues.express,
           description: 'product.express_delivery'.tr(),
           estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
-          cost: double.tryParse(_expressPriceController.text) ?? 9.99,
+          costCents: ((double.tryParse(_expressPriceController.text) ?? 9.99) * 100).round(),
           quantityDiscounts: quantityDiscounts,
-          additionalItemCost: additionalItemCost,
+          additionalItemCostCents: additionalItemCostCents,
           maxItemsPerShipment: maxItems,
         ),
       if (state.sameDayEnabled)
@@ -1036,9 +1050,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           type: DeliveryTypeValues.sameDay,
           description: 'product.same_day_delivery'.tr(),
           estimatedDays: 0,
-          cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
+          costCents: ((double.tryParse(_sameDayPriceController.text) ?? 14.99) * 100).round(),
           quantityDiscounts: quantityDiscounts,
-          additionalItemCost: additionalItemCost,
+          additionalItemCostCents: additionalItemCostCents,
           maxItemsPerShipment: maxItems,
         ),
     ];
@@ -1477,6 +1491,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           _buildShippingDiscountTier(label: 'product.three_plus_items'.tr(), controller: _shippingDiscount3Controller, hint: '20'),
           const SizedBox(height: 8),
           _buildShippingDiscountTier(label: 'product.five_plus_items'.tr(), controller: _shippingDiscount5Controller, hint: '50'),
+          if (_discountTierError) ...[
+            const SizedBox(height: 6),
+            Text('product.discount_validation'.tr(), style: TextStyle(color: DesignTokens.error, fontSize: 12)),
+          ],
           const SizedBox(height: 8),
           _buildGlassToggle(
             label: 'product.ten_plus_free'.tr(),
@@ -1673,6 +1691,49 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
+  Widget _buildConditionSelector(AddProductState state, AddProductViewModel viewModel) {
+    const conditions = [
+      (ProductConditionValues.newCondition, 'product.condition_new'),
+      (ProductConditionValues.likeNew, 'product.condition_like_new'),
+      (ProductConditionValues.good, 'product.condition_good'),
+      (ProductConditionValues.fair, 'product.condition_fair'),
+      (ProductConditionValues.forParts, 'product.condition_for_parts'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.grade_rounded, size: 16, color: DesignTokens.textSecondary),
+            const SizedBox(width: 6),
+            Text('product.product_condition'.tr(), style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(width: 4),
+            Text('common.optional'.tr(), style: TextStyle(color: DesignTokens.textDisabled, fontSize: 12)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: conditions.map(((String, String) entry) {
+            final (value, labelKey) = entry;
+            final selected = state.condition == value;
+            return ChoiceChip(
+              label: Text(labelKey.tr(), style: TextStyle(fontSize: 12, color: selected ? Colors.white : DesignTokens.textPrimary, fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
+              selected: selected,
+              onSelected: (_) => viewModel.setCondition(selected ? null : value),
+              selectedColor: DesignTokens.primary,
+              backgroundColor: DesignTokens.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: selected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.3))),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              showCheckmark: false,
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSubmitButton(AddProductState state, AddProductViewModel viewModel) {
     return Semantics(
       button: true,
@@ -1696,18 +1757,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               onTap: state.isLoading
                   ? null
                   : () {
-                      // FIX: Validate discount tiers before form validation
-                      final discount3 = double.tryParse(_shippingDiscount3Controller.text);
-                      final discount5 = double.tryParse(_shippingDiscount5Controller.text);
-                      if (discount3 != null && discount5 != null && discount5 < discount3) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('product.discount_validation'.tr()), backgroundColor: DesignTokens.error));
-                        return;
-                      }
                       if (!_hasAttemptedSubmit) {
                         setState(() => _hasAttemptedSubmit = true);
                       }
+                      // Discount tier cross-field error is shown inline; block submit if invalid.
+                      if (_discountTierError) return;
                       // Clear previous error before re-validation
                       viewModel.clearError();
                       if (!_formKey.currentState!.validate()) {

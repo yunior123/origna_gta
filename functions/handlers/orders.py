@@ -14,6 +14,7 @@ import stripe
 from firebase_functions import firestore_fn, https_fn
 
 from config import get_stripe_secret_key
+from models.order_event import OrderEvent
 from schema_constants import (
     ApiKeys,
     BusinessRules,
@@ -29,7 +30,6 @@ from schema_constants import (
     ShippingApprovalStatusValues,
     UserRoleValues,
 )
-from models.order_event import OrderEvent
 from services.email_service import (
     _t as _email_t,
 )
@@ -123,7 +123,7 @@ def send_push_notification(user_id: str, title: str, body: str, data: dict | Non
             if d.to_dict().get("token")
         ]
 
-        # Fallback to legacy single-token field for users who haven't updated app yet
+        # Pre-subcollection FCM path: for accounts before fcm_tokens subcollection was added
         if not tokens_with_refs:
             legacy_token = user_data.get(Fields.FCM_TOKEN)
             if legacy_token:
@@ -252,7 +252,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("not-found", "Order not found")
 
     order_data = order_doc.to_dict()
-    old_status = order_data[Fields.ORDER_STATUS]
+    old_status = order_data.get(Fields.ORDER_STATUS, OrderStatusValues.PENDING)
 
     # Block updates on archived orders
     if order_data.get(Fields.ARCHIVED, False):
@@ -269,7 +269,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     is_admin = UserRoleValues.ADMIN in user_data.get(Fields.ROLES, [])
 
     # Check if user is seller for any item in order
-    seller_items = [item for item in order_data[Fields.ITEMS] if item[Fields.SELLER_ID] == user_id]
+    seller_items = [item for item in order_data.get(Fields.ITEMS, []) if item[Fields.SELLER_ID] == user_id]
     is_seller = len(seller_items) > 0
 
     if not (is_admin or is_seller):
@@ -286,7 +286,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # For multi-seller orders, a seller can only affect status if they own ALL items
         # or they should use update_item_status instead
-        all_seller_ids = set(item[Fields.SELLER_ID] for item in order_data[Fields.ITEMS])
+        all_seller_ids = set(item[Fields.SELLER_ID] for item in order_data.get(Fields.ITEMS, []))
         if len(all_seller_ids) > 1:
             raise https_fn.HttpsError(
                 "failed-precondition",
@@ -838,7 +838,19 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.UPDATED_AT: get_server_timestamp(),
         },
     )
-    cancel_batch.commit()
+    try:
+        cancel_batch.commit()
+    except Exception as batch_err:
+        logger.error(f"cancel_order batch commit failed for {order_id}: {batch_err}")
+        try:
+            order_ref.update({
+                Fields.PAYMENT_STATUS: payment_status,  # restore original
+                Fields.REQUIRES_MANUAL_REVIEW: True,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+        except Exception as restore_err:
+            logger.error(f"Failed to restore payment_status for {order_id}: {restore_err}")
+        raise https_fn.HttpsError("internal", "Order state update failed. Please contact support.") from batch_err
 
     # Record cancellation event
     OrderEvent.write(
@@ -1057,6 +1069,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
         fresh_items = fresh_data.get(Fields.ITEMS, [])
 
         # Re-verify item not already refunded (protect against concurrent requests)
+        found_item = None
         for idx, it in enumerate(fresh_items):
             if it[Fields.PRODUCT_ID] == product_id:
                 if it.get(Fields.STATUS) == DeliveryStatusValues.REFUNDED:
@@ -1072,13 +1085,16 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                 fresh_items[idx][Fields.REFUND_REASON] = reason
                 fresh_items[idx][Fields.REFUND_AMOUNT_CENTS] = refund_amount_cents
                 fresh_items[idx][Fields.REFUND_ID] = refund.id
+                found_item = it
                 break
+        if found_item is None:
+            raise https_fn.HttpsError("not-found", f"Product {product_id} not found in fresh order")
 
         transaction.update(order_ref, {Fields.ITEMS: fresh_items, Fields.UPDATED_AT: get_server_timestamp()})
         # Digital products have unlimited stock — never decrement, never restore.
         # Physical products: restore immediately on refund here.
         # (Returns go through approve_return_request for stock restore instead.)
-        is_digital = it.get(Fields.IS_DIGITAL, False)
+        is_digital = found_item.get(Fields.IS_DIGITAL, False)
         if not is_digital:
             transaction.update(
                 product_ref,
@@ -1087,6 +1103,17 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                     Fields.UPDATED_AT: get_server_timestamp(),
                 },
             )
+            # Restore warehouse-level inventory
+            fulfillment_wh = found_item.get(Fields.FULFILLMENT_WAREHOUSE_ID) if found_item else None
+            if fulfillment_wh and not is_digital:
+                transaction.update(product_ref, {
+                    f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}": get_firestore().Increment(item_quantity),
+                })
+                inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+                transaction.set(inv_ref, {
+                    Fields.AVAILABLE_QUANTITY: get_firestore().Increment(item_quantity),
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                }, merge=True)
         return "refunded"
 
     txn_result = _apply_refund_atomically(get_db().transaction())
@@ -1447,7 +1474,6 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                     Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
                     Fields.PAYMENT_STATUS: cancel_payment_status,
                     Fields.CANCELLATION_REASON: "Buyer rejected shipping cost",
-                    Fields.STOCK_RESTORED: True,
                     Fields.UPDATED_AT: get_server_timestamp(),
                 },
             )
@@ -1477,6 +1503,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                 }, merge=True)
             reject_batch.update(product_ref, stock_patch)
         reject_batch.commit()
+        order_ref.update({Fields.STOCK_RESTORED: True, Fields.UPDATED_AT: get_server_timestamp()})
 
     return create_success_response({ApiKeys.APPROVED: approved})
 

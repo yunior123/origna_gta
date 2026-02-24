@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
@@ -70,25 +71,65 @@ class FavoritesScreen extends ConsumerWidget {
               );
             }
 
+            final available = products.where((p) => p.lifecycleStatus == ProductLifecycleStatusValues.active).toList();
+            final unavailable = products.where((p) => p.lifecycleStatus != ProductLifecycleStatusValues.active).toList();
+            final displayList = [...available, ...unavailable];
+
             return Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 900),
-                child: GridView.builder(
-                  padding: const EdgeInsets.all(DesignTokens.spacing16),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: getCrossAxisCount(context),
-                    crossAxisSpacing: DesignTokens.spacing12,
-                    mainAxisSpacing: DesignTokens.spacing12,
-                    childAspectRatio: _getCardAspectRatio(context),
-                  ),
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-                    return FadeSlideIn(
-                      delay: Duration(milliseconds: 50 * index),
-                      child: ProductCard(productId: product.productId, product: product, userModel: userModel),
-                    );
-                  },
+                child: CustomScrollView(
+                  slivers: [
+                    if (unavailable.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Container(
+                          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: DesignTokens.warning.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.warning),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'favorites.items_unavailable'.tr(namedArgs: {'count': '${unavailable.length}'}),
+                                  style: TextStyle(color: DesignTokens.warning, fontSize: 13, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    SliverPadding(
+                      padding: const EdgeInsets.all(DesignTokens.spacing16),
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: getCrossAxisCount(context),
+                          crossAxisSpacing: DesignTokens.spacing12,
+                          mainAxisSpacing: DesignTokens.spacing12,
+                          childAspectRatio: _getCardAspectRatio(context),
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final product = displayList[index];
+                            final isUnavailable = product.lifecycleStatus != ProductLifecycleStatusValues.active;
+                            return FadeSlideIn(
+                              delay: Duration(milliseconds: 50 * index),
+                              child: Opacity(
+                                opacity: isUnavailable ? 0.45 : 1.0,
+                                child: ProductCard(productId: product.productId, product: product, userModel: userModel),
+                              ),
+                            );
+                          },
+                          childCount: displayList.length,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );

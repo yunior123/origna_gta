@@ -351,7 +351,7 @@ _SellerDeliveryOption _$SellerDeliveryOptionFromJson(
 ) => _SellerDeliveryOption(
   type: json['type'] as String? ?? DeliveryTypeValues.standard,
   description: json['description'] as String? ?? '',
-  cost: (json['cost'] as num?)?.toDouble() ?? 0.0,
+  costCents: (json['costCents'] as num?)?.toInt() ?? 0,
   estimatedDays: (json['estimatedDays'] as num?)?.toInt() ?? 3,
   quantityDiscounts:
       (json['quantityDiscounts'] as List<dynamic>?)
@@ -361,8 +361,9 @@ _SellerDeliveryOption _$SellerDeliveryOptionFromJson(
           .toList() ??
       const [],
   maxItemsPerShipment: (json['maxItemsPerShipment'] as num?)?.toInt() ?? 0,
-  additionalItemCost: (json['additionalItemCost'] as num?)?.toDouble() ?? 0.0,
-  availableInternational: json['availableInternational'] as bool? ?? true,
+  additionalItemCostCents:
+      (json['additionalItemCostCents'] as num?)?.toInt() ?? 0,
+  availableNationwide: json['availableNationwide'] as bool? ?? true,
 );
 
 Map<String, dynamic> _$SellerDeliveryOptionToJson(
@@ -370,12 +371,12 @@ Map<String, dynamic> _$SellerDeliveryOptionToJson(
 ) => <String, dynamic>{
   'type': instance.type,
   'description': instance.description,
-  'cost': instance.cost,
+  'costCents': instance.costCents,
   'estimatedDays': instance.estimatedDays,
   'quantityDiscounts': instance.quantityDiscounts,
   'maxItemsPerShipment': instance.maxItemsPerShipment,
-  'additionalItemCost': instance.additionalItemCost,
-  'availableInternational': instance.availableInternational,
+  'additionalItemCostCents': instance.additionalItemCostCents,
+  'availableNationwide': instance.availableNationwide,
 };
 
 _SellerWarehouse _$SellerWarehouseFromJson(Map<String, dynamic> json) =>

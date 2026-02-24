@@ -36,7 +36,7 @@ OrderItem _parseOrderItem(dynamic raw) {
     quantity: _safeInt(map[Fields.quantity], 1),
     imageUrls: _safeStringList(map[Fields.imageUrls]),
     sellerId: _safeString(map[Fields.sellerId]),
-    sellerAddress: _safeAddress(map[Fields.sellerAddress]),
+    sellerAddress: map[Fields.sellerAddress] != null ? _safeAddress(map[Fields.sellerAddress]) : null,
     status: _safeString(
       (map[Fields.status] == null || map[Fields.status].toString().isEmpty) ? map[Fields.deliveryStatus] : map[Fields.status],
       DeliveryStatusValues.pending,
@@ -166,8 +166,8 @@ abstract class Order with _$Order {
     required String userId,
     @Default(1) int version,
     @Default(1) int schemaVersion,
-    required String customerId,
-    required String customerEmail,
+    String? customerId,
+    String? customerEmail,
     required List<OrderItem> items,
     // All money in integer cents
     required int totalAmountCents,
@@ -177,11 +177,11 @@ abstract class Order with _$Order {
     required Taxes taxes,
     @Default(OrderStatus.pending) OrderStatus orderStatus,
     @Default(PaymentStatus.awaitingPayment) PaymentStatus paymentStatus,
-    required Address shippingAddress,
+    Address? shippingAddress,
     required DateTime createdAt,
     @Default(BusinessRules.defaultCurrency) String currency,
     @Default([]) List<String> sellerIds,
-    required String stripeSessionId,
+    String? stripeSessionId,
     // Shipping approval
     @Default(ShippingApprovalStatus.notRequired) ShippingApprovalStatus shippingApprovalStatus,
     @Default(false) bool shippingApprovalRequired,
@@ -348,8 +348,8 @@ abstract class Order with _$Order {
       userId: _safeString(data[Fields.userId]),
       version: _safeInt(data[Fields.version], 1),
       schemaVersion: _safeInt(data[Fields.schemaVersion], 1),
-      customerId: _safeString(data[Fields.customerId]),
-      customerEmail: _safeString(data[Fields.customerEmail]),
+      customerId: data[Fields.customerId] != null ? _safeString(data[Fields.customerId]) : null,
+      customerEmail: data[Fields.customerEmail] != null ? _safeString(data[Fields.customerEmail]) : null,
       items: items,
       totalAmountCents: totalAmountCents,
       subtotalCents: subtotalCents,
@@ -358,11 +358,11 @@ abstract class Order with _$Order {
       taxes: taxes,
       orderStatus: parseOrderStatus(data[Fields.orderStatus]),
       paymentStatus: parsePaymentStatus(data[Fields.paymentStatus]),
-      shippingAddress: _safeAddress(rawAddress),
+      shippingAddress: data[Fields.shippingAddress] != null ? _safeAddress(rawAddress) : null,
       createdAt: _parseDateTime(data[Fields.createdAt]) ?? DateTime.now(),
       currency: _safeString(data[Fields.currency], BusinessRules.defaultCurrency),
       sellerIds: _safeStringList(data[Fields.sellerIds]),
-      stripeSessionId: _safeString(data[Fields.stripeSessionId]),
+      stripeSessionId: data[Fields.stripeSessionId] != null ? _safeString(data[Fields.stripeSessionId]) : null,
       shippingApprovalStatus: parseShippingApprovalStatus(data[Fields.shippingApprovalStatus]),
       shippingApprovalRequired: _safeBool(data[Fields.shippingApprovalRequired]),
       actualShippingCents: _safeInt(data[Fields.actualShippingCents]),
@@ -467,7 +467,7 @@ abstract class OrderItem with _$OrderItem {
     required int quantity,
     required List<String> imageUrls,
     required String sellerId,
-    required Address sellerAddress,
+    Address? sellerAddress,
     // Per-item status tracking
     @Default(DeliveryStatusValues.pending) String status, // 'pending' | 'shipped' | 'delivered' | 'refunded'
     String? trackingNumber,
@@ -584,10 +584,10 @@ abstract class Taxes with _$Taxes {
 
   factory Taxes.fromJson(Map<String, dynamic> json) {
     return Taxes(
-      gst: (json[Fields.gst] ?? json[Fields.GST] ?? 0.0).toDouble(),
-      pst: (json[Fields.pst] ?? json[Fields.PST] ?? 0.0).toDouble(),
-      hst: (json[Fields.hst] ?? json[Fields.HST] ?? 0.0).toDouble(),
-      qst: (json[Fields.qst] ?? json[Fields.QST] ?? 0.0).toDouble(),
+      gst: (json[Fields.GST] ?? 0.0).toDouble(),
+      pst: (json[Fields.PST] ?? 0.0).toDouble(),
+      hst: (json[Fields.HST] ?? 0.0).toDouble(),
+      qst: (json[Fields.QST] ?? 0.0).toDouble(),
     );
   }
 

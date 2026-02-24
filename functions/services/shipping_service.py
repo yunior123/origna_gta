@@ -362,15 +362,15 @@ def _calculate_delivery_option_cost(option: dict, quantity: int) -> float:
     Calculate shipping cost for a delivery option.
 
     Supports:
-    - Canonical schema: {type, cost, quantityDiscounts, maxItemsPerShipment, additionalItemCost}
+    - Canonical schema: {type, costCents, quantityDiscounts, maxItemsPerShipment, additionalItemCostCents}
     - Alternate schema: {speed, isEnabled, price}
     """
     qty = max(1, int(quantity or 1))
 
     # Canonical schema
-    if Fields.COST in option or Fields.TYPE in option:
+    if Fields.COST_CENTS in option or Fields.TYPE in option:
         try:
-            base_cost = float(option.get(Fields.COST, 0) or 0)
+            base_cost = float(option.get(Fields.COST_CENTS, 0) or 0) / 100.0
         except (TypeError, ValueError):
             base_cost = 0.0
 
@@ -380,7 +380,7 @@ def _calculate_delivery_option_cost(option: dict, quantity: int) -> float:
             max_items = 0
 
         try:
-            additional_item_cost = float(option.get(Fields.ADDITIONAL_ITEM_COST, 0) or 0)
+            additional_item_cost = float(option.get(Fields.ADDITIONAL_ITEM_COST_CENTS, 0) or 0) / 100.0
         except (TypeError, ValueError):
             additional_item_cost = 0.0
 

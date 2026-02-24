@@ -652,6 +652,29 @@
         }
       ],
       "comment": "Back-in-stock notify: query variant-scoped pending subs"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "deliveredAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "FIX 2026-02-24: Index for auto_capture cron \u2014 query by deliveredAt instead of updatedAt to avoid field-update reset"
     }
   ],
   "fieldOverrides": []

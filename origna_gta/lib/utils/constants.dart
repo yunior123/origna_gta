@@ -339,27 +339,27 @@ class ShippingQuantityDiscount {
 class SellerDeliveryOption {
   final String type; // pickup | standard | express | same_day | custom
   final String description;
-  final double cost; // Base cost in CAD
+  final int costCents; // Base cost in cents (CAD)
   final int estimatedDays;
   final List<ShippingQuantityDiscount> quantityDiscounts;
   final int maxItemsPerShipment; // 0 = no limit
-  final double additionalItemCost;
-  final bool availableInternational;
+  final int additionalItemCostCents;
+  final bool availableNationwide;
 
   const SellerDeliveryOption({
     required this.type,
     required this.description,
-    required this.cost,
+    required this.costCents,
     required this.estimatedDays,
     this.quantityDiscounts = const [],
     this.maxItemsPerShipment = 0,
-    this.additionalItemCost = 0.0,
-    this.availableInternational = true,
+    this.additionalItemCostCents = 0,
+    this.availableNationwide = true,
   });
 
   static SellerDeliveryOption? fromMap(Map<String, dynamic> map) {
-    // New schema
-    if (map.containsKey('type') || map.containsKey('cost')) {
+    // New schema (costCents)
+    if (map.containsKey('type') || map.containsKey('costCents')) {
       final rawDiscounts = map['quantityDiscounts'];
       final discounts = rawDiscounts is List
           ? rawDiscounts.whereType<Map>().map((d) => ShippingQuantityDiscount.fromMap(d.cast<String, dynamic>())).toList()
@@ -368,12 +368,12 @@ class SellerDeliveryOption {
       return SellerDeliveryOption(
         type: map['type'] as String? ?? '',
         description: map['description'] as String? ?? '',
-        cost: (map['cost'] as num?)?.toDouble() ?? 0.0,
+        costCents: (map['costCents'] as num?)?.toInt() ?? 0,
         estimatedDays: (map['estimatedDays'] as num?)?.toInt() ?? 0,
         quantityDiscounts: discounts,
         maxItemsPerShipment: (map['maxItemsPerShipment'] as num?)?.toInt() ?? 0,
-        additionalItemCost: (map['additionalItemCost'] as num?)?.toDouble() ?? 0.0,
-        availableInternational: map['availableInternational'] as bool? ?? true,
+        additionalItemCostCents: (map['additionalItemCostCents'] as num?)?.toInt() ?? 0,
+        availableNationwide: map['availableNationwide'] as bool? ?? true,
       );
     }
 
@@ -383,13 +383,13 @@ class SellerDeliveryOption {
 
     final altSpeed = map['speed'] as String? ?? DeliverySpeed.standard.value;
     final altDays = (map['estimatedDays'] as num?)?.toInt() ?? 5;
-    final altPrice = (map['price'] as num?)?.toDouble() ?? 0.0;
+    final altPriceCents = ((map['price'] as num?)?.toDouble() ?? 0.0 * 100).round();
 
     final displayName = DeliverySpeed.fromValue(altSpeed).displayName;
     return SellerDeliveryOption(
       type: altSpeed,
       description: '$displayName Delivery',
-      cost: altPrice,
+      costCents: altPriceCents,
       estimatedDays: altDays,
     );
   }
@@ -401,13 +401,16 @@ class SellerDeliveryOption {
     return '$estimatedDays days';
   }
 
+  double get costDollars => costCents / 100.0;
+  double get additionalItemCostDollars => additionalItemCostCents / 100.0;
+
   /// Get price display text
-  String get priceText => cost == 0 ? 'Free' : '\$${cost.toStringAsFixed(2)}';
+  String get priceText => costCents == 0 ? 'Free' : '\$${costDollars.toStringAsFixed(2)}';
 
   /// Calculate effective shipping cost for a given quantity.
   /// Mirrors backend `ShippingQuantityDiscount` logic.
   double calculateCostForQuantity(int quantity) {
-    if (quantity <= 0) return cost;
+    if (quantity <= 0) return costDollars;
 
     ShippingQuantityDiscount? bestDiscount;
     for (final discount in quantityDiscounts) {
@@ -418,12 +421,12 @@ class SellerDeliveryOption {
       }
     }
 
-    var baseCost = cost;
+    var baseCost = costDollars;
 
     // Apply per-item costs if applicable
     if (maxItemsPerShipment > 0 && quantity > maxItemsPerShipment) {
       final extraItems = quantity - maxItemsPerShipment;
-      baseCost += extraItems * additionalItemCost;
+      baseCost += extraItems * additionalItemCostDollars;
     }
 
     // Apply quantity discount
@@ -446,19 +449,19 @@ class SellerDeliveryOption {
   Map<String, dynamic> toMap() => {
     'type': type,
     'description': description,
-    'cost': cost,
+    'costCents': costCents,
     'estimatedDays': estimatedDays,
     if (quantityDiscounts.isNotEmpty) 'quantityDiscounts': quantityDiscounts.map((d) => d.toMap()).toList(),
     if (maxItemsPerShipment != 0) 'maxItemsPerShipment': maxItemsPerShipment,
-    if (additionalItemCost != 0.0) 'additionalItemCost': additionalItemCost,
-    if (!availableInternational) 'availableInternational': availableInternational,
+    if (additionalItemCostCents != 0) 'additionalItemCostCents': additionalItemCostCents,
+    if (!availableNationwide) 'availableNationwide': availableNationwide,
   };
 
   /// Create default options for a new product
   static List<SellerDeliveryOption> defaultOptions() => [
-    const SellerDeliveryOption(type: 'standard', description: 'Standard Delivery', cost: 0.0, estimatedDays: 5),
-    const SellerDeliveryOption(type: 'express', description: 'Express Delivery', cost: 9.99, estimatedDays: 2),
-    const SellerDeliveryOption(type: 'same_day', description: 'Same Day Delivery', cost: 14.99, estimatedDays: 0),
+    const SellerDeliveryOption(type: 'standard', description: 'Standard Delivery', costCents: 0, estimatedDays: 5),
+    const SellerDeliveryOption(type: 'express', description: 'Express Delivery', costCents: 999, estimatedDays: 2),
+    const SellerDeliveryOption(type: 'same_day', description: 'Same Day Delivery', costCents: 1499, estimatedDays: 0),
   ];
 }
 

@@ -422,7 +422,8 @@
     "remove_favorite": "Remove from favorites",
     "loading_favorites": "Loading favorites...",
     "unable_to_load": "Unable to load favorites",
-    "update_failed": "Failed to update favorites"
+    "update_failed": "Failed to update favorites",
+    "items_unavailable": "{count} saved item(s) are currently unavailable"
   },
   "nav": {
     "home": "Home",
@@ -507,6 +508,12 @@
     "local_delivery_subtitle": "Restrict to buyers within 50km",
     "perishable_item": "Perishable Item",
     "perishable_subtitle": "Food, flowers, etc. (Requires same-day)",
+    "product_condition": "Product Condition",
+    "condition_new": "New",
+    "condition_like_new": "Like New",
+    "condition_good": "Good",
+    "condition_fair": "Fair",
+    "condition_for_parts": "For Parts",
     "ship_days": "Ship Days",
     "ships_from": "Ships From",
     "length_cm": "L (cm)",

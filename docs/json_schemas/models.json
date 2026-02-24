@@ -294,14 +294,14 @@
       },
       "description": "Seller-specific delivery options with quantity-based pricing",
       "example": {
-        "additionalItemCost": 1.5,
-        "availableInternational": true,
-        "cost": 5.99,
+        "availableNationwide": true,
         "description": "Standard shipping",
         "estimatedDays": 5,
         "maxItemsPerShipment": 10,
         "quantityDiscounts": [],
-        "type": "standard"
+        "type": "standard",
+        "costCents": 599,
+        "additionalItemCostCents": 150
       },
       "properties": {
         "type": {
@@ -315,12 +315,6 @@
           "minLength": 1,
           "title": "Description",
           "type": "string"
-        },
-        "cost": {
-          "description": "Base cost in CAD",
-          "minimum": 0,
-          "title": "Cost",
-          "type": "number"
         },
         "estimatedDays": {
           "description": "Estimated delivery days",
@@ -344,24 +338,30 @@
           "title": "Maxitemspershipment",
           "type": "integer"
         },
-        "additionalItemCost": {
-          "default": 0.0,
-          "description": "Additional cost per item after maxItemsPerShipment",
-          "minimum": 0,
-          "title": "Additionalitemcost",
-          "type": "number"
-        },
-        "availableInternational": {
+        "availableNationwide": {
           "default": true,
           "description": "Whether option is available for international suppliers",
           "title": "Availableinternational",
           "type": "boolean"
+        },
+        "costCents": {
+          "description": "Base cost in cents (CAD)",
+          "minimum": 0,
+          "title": "Cost",
+          "type": "integer"
+        },
+        "additionalItemCostCents": {
+          "default": 0.0,
+          "description": "Additional cost in cents per item after maxItemsPerShipment",
+          "minimum": 0,
+          "title": "Additionalitemcost",
+          "type": "integer"
         }
       },
       "required": [
         "type",
         "description",
-        "cost",
+        "costCents",
         "estimatedDays"
       ],
       "title": "SellerDeliveryOption",
@@ -546,14 +546,14 @@
         "SellerDeliveryOption": {
           "description": "Seller-specific delivery options with quantity-based pricing",
           "example": {
-            "additionalItemCost": 1.5,
-            "availableInternational": true,
-            "cost": 5.99,
+            "availableNationwide": true,
             "description": "Standard shipping",
             "estimatedDays": 5,
             "maxItemsPerShipment": 10,
             "quantityDiscounts": [],
-            "type": "standard"
+            "type": "standard",
+            "costCents": 599,
+            "additionalItemCostCents": 150
           },
           "properties": {
             "type": {
@@ -567,12 +567,6 @@
               "minLength": 1,
               "title": "Description",
               "type": "string"
-            },
-            "cost": {
-              "description": "Base cost in CAD",
-              "minimum": 0,
-              "title": "Cost",
-              "type": "number"
             },
             "estimatedDays": {
               "description": "Estimated delivery days",
@@ -596,24 +590,30 @@
               "title": "Maxitemspershipment",
               "type": "integer"
             },
-            "additionalItemCost": {
-              "default": 0.0,
-              "description": "Additional cost per item after maxItemsPerShipment",
-              "minimum": 0,
-              "title": "Additionalitemcost",
-              "type": "number"
-            },
-            "availableInternational": {
+            "availableNationwide": {
               "default": true,
               "description": "Whether option is available for international suppliers",
               "title": "Availableinternational",
               "type": "boolean"
+            },
+            "costCents": {
+              "description": "Base cost in cents (CAD)",
+              "minimum": 0,
+              "title": "Cost",
+              "type": "integer"
+            },
+            "additionalItemCostCents": {
+              "default": 0.0,
+              "description": "Additional cost in cents per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "integer"
             }
           },
           "required": [
             "type",
             "description",
-            "cost",
+            "costCents",
             "estimatedDays"
           ],
           "title": "SellerDeliveryOption",
@@ -1235,14 +1235,14 @@
         "SellerDeliveryOption": {
           "description": "Seller-specific delivery options with quantity-based pricing",
           "example": {
-            "additionalItemCost": 1.5,
-            "availableInternational": true,
-            "cost": 5.99,
+            "availableNationwide": true,
             "description": "Standard shipping",
             "estimatedDays": 5,
             "maxItemsPerShipment": 10,
             "quantityDiscounts": [],
-            "type": "standard"
+            "type": "standard",
+            "costCents": 599,
+            "additionalItemCostCents": 150
           },
           "properties": {
             "type": {
@@ -1256,12 +1256,6 @@
               "minLength": 1,
               "title": "Description",
               "type": "string"
-            },
-            "cost": {
-              "description": "Base cost in CAD",
-              "minimum": 0,
-              "title": "Cost",
-              "type": "number"
             },
             "estimatedDays": {
               "description": "Estimated delivery days",
@@ -1285,24 +1279,30 @@
               "title": "Maxitemspershipment",
               "type": "integer"
             },
-            "additionalItemCost": {
-              "default": 0.0,
-              "description": "Additional cost per item after maxItemsPerShipment",
-              "minimum": 0,
-              "title": "Additionalitemcost",
-              "type": "number"
-            },
-            "availableInternational": {
+            "availableNationwide": {
               "default": true,
               "description": "Whether option is available for international suppliers",
               "title": "Availableinternational",
               "type": "boolean"
+            },
+            "costCents": {
+              "description": "Base cost in cents (CAD)",
+              "minimum": 0,
+              "title": "Cost",
+              "type": "integer"
+            },
+            "additionalItemCostCents": {
+              "default": 0.0,
+              "description": "Additional cost in cents per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "integer"
             }
           },
           "required": [
             "type",
             "description",
-            "cost",
+            "costCents",
             "estimatedDays"
           ],
           "title": "SellerDeliveryOption",
@@ -1466,7 +1466,7 @@
           "type": "object"
         }
       },
-      "description": "Model for creating new products\n(excludes productId and createdAt which are generated)\nSellers can be from any country — no country restriction on seller addresses",
+      "description": "Model for creating new products\n(excludes productId and createdAt which are generated)\nSellers can be from any country \u2014 no country restriction on seller addresses",
       "properties": {
         "name": {
           "maxLength": 120,
@@ -1824,14 +1824,14 @@
         "SellerDeliveryOption": {
           "description": "Seller-specific delivery options with quantity-based pricing",
           "example": {
-            "additionalItemCost": 1.5,
-            "availableInternational": true,
-            "cost": 5.99,
+            "availableNationwide": true,
             "description": "Standard shipping",
             "estimatedDays": 5,
             "maxItemsPerShipment": 10,
             "quantityDiscounts": [],
-            "type": "standard"
+            "type": "standard",
+            "costCents": 599,
+            "additionalItemCostCents": 150
           },
           "properties": {
             "type": {
@@ -1845,12 +1845,6 @@
               "minLength": 1,
               "title": "Description",
               "type": "string"
-            },
-            "cost": {
-              "description": "Base cost in CAD",
-              "minimum": 0,
-              "title": "Cost",
-              "type": "number"
             },
             "estimatedDays": {
               "description": "Estimated delivery days",
@@ -1874,24 +1868,30 @@
               "title": "Maxitemspershipment",
               "type": "integer"
             },
-            "additionalItemCost": {
-              "default": 0.0,
-              "description": "Additional cost per item after maxItemsPerShipment",
-              "minimum": 0,
-              "title": "Additionalitemcost",
-              "type": "number"
-            },
-            "availableInternational": {
+            "availableNationwide": {
               "default": true,
               "description": "Whether option is available for international suppliers",
               "title": "Availableinternational",
               "type": "boolean"
+            },
+            "costCents": {
+              "description": "Base cost in cents (CAD)",
+              "minimum": 0,
+              "title": "Cost",
+              "type": "integer"
+            },
+            "additionalItemCostCents": {
+              "default": 0.0,
+              "description": "Additional cost in cents per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "integer"
             }
           },
           "required": [
             "type",
             "description",
-            "cost",
+            "costCents",
             "estimatedDays"
           ],
           "title": "SellerDeliveryOption",
@@ -2723,14 +2723,14 @@
         "SellerDeliveryOption": {
           "description": "Seller-specific delivery options with quantity-based pricing",
           "example": {
-            "additionalItemCost": 1.5,
-            "availableInternational": true,
-            "cost": 5.99,
+            "availableNationwide": true,
             "description": "Standard shipping",
             "estimatedDays": 5,
             "maxItemsPerShipment": 10,
             "quantityDiscounts": [],
-            "type": "standard"
+            "type": "standard",
+            "costCents": 599,
+            "additionalItemCostCents": 150
           },
           "properties": {
             "type": {
@@ -2744,12 +2744,6 @@
               "minLength": 1,
               "title": "Description",
               "type": "string"
-            },
-            "cost": {
-              "description": "Base cost in CAD",
-              "minimum": 0,
-              "title": "Cost",
-              "type": "number"
             },
             "estimatedDays": {
               "description": "Estimated delivery days",
@@ -2773,24 +2767,30 @@
               "title": "Maxitemspershipment",
               "type": "integer"
             },
-            "additionalItemCost": {
-              "default": 0.0,
-              "description": "Additional cost per item after maxItemsPerShipment",
-              "minimum": 0,
-              "title": "Additionalitemcost",
-              "type": "number"
-            },
-            "availableInternational": {
+            "availableNationwide": {
               "default": true,
               "description": "Whether option is available for international suppliers",
               "title": "Availableinternational",
               "type": "boolean"
+            },
+            "costCents": {
+              "description": "Base cost in cents (CAD)",
+              "minimum": 0,
+              "title": "Cost",
+              "type": "integer"
+            },
+            "additionalItemCostCents": {
+              "default": 0.0,
+              "description": "Additional cost in cents per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "integer"
             }
           },
           "required": [
             "type",
             "description",
-            "cost",
+            "costCents",
             "estimatedDays"
           ],
           "title": "SellerDeliveryOption",
@@ -3568,14 +3568,14 @@
         "SellerDeliveryOption": {
           "description": "Seller-specific delivery options with quantity-based pricing",
           "example": {
-            "additionalItemCost": 1.5,
-            "availableInternational": true,
-            "cost": 5.99,
+            "availableNationwide": true,
             "description": "Standard shipping",
             "estimatedDays": 5,
             "maxItemsPerShipment": 10,
             "quantityDiscounts": [],
-            "type": "standard"
+            "type": "standard",
+            "costCents": 599,
+            "additionalItemCostCents": 150
           },
           "properties": {
             "type": {
@@ -3589,12 +3589,6 @@
               "minLength": 1,
               "title": "Description",
               "type": "string"
-            },
-            "cost": {
-              "description": "Base cost in CAD",
-              "minimum": 0,
-              "title": "Cost",
-              "type": "number"
             },
             "estimatedDays": {
               "description": "Estimated delivery days",
@@ -3618,24 +3612,30 @@
               "title": "Maxitemspershipment",
               "type": "integer"
             },
-            "additionalItemCost": {
-              "default": 0.0,
-              "description": "Additional cost per item after maxItemsPerShipment",
-              "minimum": 0,
-              "title": "Additionalitemcost",
-              "type": "number"
-            },
-            "availableInternational": {
+            "availableNationwide": {
               "default": true,
               "description": "Whether option is available for international suppliers",
               "title": "Availableinternational",
               "type": "boolean"
+            },
+            "costCents": {
+              "description": "Base cost in cents (CAD)",
+              "minimum": 0,
+              "title": "Cost",
+              "type": "integer"
+            },
+            "additionalItemCostCents": {
+              "default": 0.0,
+              "description": "Additional cost in cents per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "integer"
             }
           },
           "required": [
             "type",
             "description",
-            "cost",
+            "costCents",
             "estimatedDays"
           ],
           "title": "SellerDeliveryOption",

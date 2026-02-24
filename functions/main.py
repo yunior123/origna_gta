@@ -160,6 +160,7 @@ from handlers.products import (  # noqa: E402
     answer_review,
     ask_product_question,
     bulk_update_products,
+    deactivate_supplier_platform,
     configure_algolia,
     create_warehouse,
     delete_product,
@@ -290,6 +291,8 @@ __all__ = [
     "vote_review_helpful",
     # Bulk seller operations (N-08)
     "bulk_update_products",
+    # Admin supplier platform deactivation
+    "deactivate_supplier_platform",
     # Coupon / promo codes (N-07)
     "apply_coupon",
     "admin_create_coupon",

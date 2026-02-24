@@ -290,7 +290,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     # AUDIT FIX: Rate limit seller suspension
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action="suspend_seller", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=admin_id, action="suspend_seller", max_requests=10, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1191,11 +1191,12 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Anonymize user data
     user_ref = get_db().collection(Collections.USERS).document(user_id)
-    user_doc = user_ref.get()
-    user_data = user_doc.to_dict() if user_doc.exists else {}
+
+    # GDPR: stripeAccountId lives in seller_profiles, not users
+    sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(user_id).get()
+    stripe_account_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID) if sp_doc.exists else None
 
     # GDPR: Delete Stripe Connect account before anonymizing Firestore
-    stripe_account_id = user_data.get(Fields.STRIPE_ACCOUNT_ID)
     if stripe_account_id:
         try:
             stripe.Account.delete(stripe_account_id)
@@ -1241,11 +1242,6 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.CUSTOMER_ID: get_delete_field(),
             Fields.BANK_DETAILS: get_delete_field(),
             Fields.PHONE_NUMBER: get_delete_field(),
-            Fields.MFA_SECRET: get_delete_field(),
-            Fields.MFA_SECRET_TEMP: get_delete_field(),
-            Fields.MFA_BACKUP_CODES: get_delete_field(),
-            Fields.MFA_BACKUP_CODES_TEMP: get_delete_field(),
-            Fields.MFA_BACKUP_CODES_SALT: get_delete_field(),
             Fields.DELETED: True,
             Fields.DELETED_AT: get_server_timestamp(),
         }
@@ -1255,6 +1251,12 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     security_ref = get_db().collection(Collections.USER_SECURITY).document(user_id)
     if security_ref.get().exists:
         security_ref.delete()
+
+    # GDPR: Delete seller profile if exists
+    sp_ref = get_db().collection(Collections.SELLER_PROFILES).document(user_id)
+    if sp_ref.get().exists:
+        sp_ref.delete()
+        logger.info(f"GDPR: Deleted seller_profiles/{user_id}")
 
     # GDPR FIX: Anonymize orders collection (unlink from user but keep for accounting)
     # Create anonymized identifier that can't be reversed
@@ -1757,6 +1759,7 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         refund = stripe.Refund.create(
             payment_intent=payment_intent_id,
             reason="requested_by_customer",
+            idempotency_key=f"admin_refund_{order_id}",
             metadata={"admin_id": admin_id, "order_id": order_id, "reason": reason},
         )
     except stripe.error.StripeError as e:

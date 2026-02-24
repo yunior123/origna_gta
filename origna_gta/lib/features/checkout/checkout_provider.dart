@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-
-import 'package:flutter/foundation.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -149,7 +147,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         final defaultAddress = addresses.firstWhere((a) => a.isDefault, orElse: () => addresses.first);
         state = state.copyWith(address: defaultAddress);
       } else {
-        // Fallback to legacy address if addresses subcollection is empty
+        // Fallback: read address from user profile (addresses subcollection was empty)
         final user = await _userRepository.getUserProfile(userId);
         if (user?.address != null) {
           state = state.copyWith(address: user!.address);
@@ -368,6 +366,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     return earthRadiusKm * c;
   }
 
+  /// Max distance for local delivery option
+  static const double _localDeliveryRadiusKm = 50.0;
+
   /// Check if buyer is within local delivery range (~50km) of sellers
   Future<bool> _checkLocalDelivery(List<CartItemDetailModel> items, Address buyerAddress) async {
     if (buyerAddress.latitude == null || buyerAddress.longitude == null) {
@@ -378,16 +379,14 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     for (final item in items) {
       final sellerAddr = item.sellerAddress;
       if (sellerAddr.latitude == null || sellerAddr.longitude == null) {
-        // Seller geo coordinates missing — skip item, can't confirm local delivery distance
-        debugPrint('[checkout_localDelivery] product ${item.productId}: seller address missing geo coords, skipping');
-        continue;
+        return false; // Unknown distance = not local delivery
       }
 
       // Simple distance check using Haversine approximation
       final distance = _calculateDistanceKm(buyerAddress.latitude!, buyerAddress.longitude!, sellerAddr.latitude!, sellerAddr.longitude!);
 
-      if (distance > 50) {
-        return false; // Not local if any seller is > 50km away
+      if (distance > _localDeliveryRadiusKm) {
+        return false; // Not local if any seller is beyond local delivery radius
       }
     }
     return true;

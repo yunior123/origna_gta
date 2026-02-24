@@ -38,6 +38,7 @@ from schema_constants import (
     Fields,
     OrderStatusValues,
     ProductLifecycleStatusValues,
+    SupplierTypeValues,
     UserRoleValues,
     WarehouseTypeValues,
 )
@@ -111,7 +112,7 @@ def _generate_product_slug(title: str) -> str:
 # CORS is configured in DEFAULT_OPTIONS via function_options.py
 
 
-@https_fn.on_call(secrets=[APP_SECRETS_PARAM])
+@https_fn.on_call(secrets=[APP_SECRETS_PARAM], **DEFAULT_OPTIONS)
 def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Generates presigned URLs for uploading product images to Cloudflare R2.
@@ -149,10 +150,12 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.ROLES, []
     ):
         raise https_fn.HttpsError("permission-denied", "Seller role required")
-    if not user_data.get(Fields.ONBOARDING_COMPLETED, False) and UserRoleValues.ADMIN not in user_data.get(
-        Fields.ROLES, []
-    ):
-        raise https_fn.HttpsError("failed-precondition", "Please complete seller onboarding before uploading products")
+    if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
+        # SECURITY: Verify onboarding from seller_profiles (authoritative source)
+        sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(user_id).get()
+        sp_data = sp_doc.to_dict() if sp_doc.exists else {}
+        if not sp_data.get(Fields.ONBOARDING_COMPLETED, False):
+            raise https_fn.HttpsError("failed-precondition", "Please complete seller onboarding before uploading products")
 
     # AUDIT FIX: Rate limit image uploads
     from services.rate_limiter import RateLimiter
@@ -369,8 +372,8 @@ def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_id = req.auth.uid
 
     # Photo reviews are a premium-only feature
-    _user_doc = get_db().collection(Collections.USERS).document(user_id).get()
-    if not _user_doc.exists or not _user_doc.to_dict().get(Fields.IS_PREMIUM, False):
+    from utils.premium_check import is_premium_authoritative
+    if not is_premium_authoritative(user_id, db=get_db()):
         raise https_fn.HttpsError(
             "permission-denied", "Photo reviews are a premium feature. Upgrade to add photos to your reviews."
         )
@@ -629,8 +632,8 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         if len(review_image_urls_raw) > 3:
             raise https_fn.HttpsError("invalid-argument", "Maximum 3 review images allowed")
         # Photo reviews require premium — verify before accepting URLs
-        _user_doc = get_db().collection(Collections.USERS).document(user_id).get()
-        if not _user_doc.exists or not _user_doc.to_dict().get(Fields.IS_PREMIUM, False):
+        from utils.premium_check import is_premium_authoritative
+        if not is_premium_authoritative(user_id, db=get_db()):
             raise https_fn.HttpsError(
                 "permission-denied", "Photo reviews are a premium feature. Upgrade to add photos to your reviews."
             )
@@ -1388,7 +1391,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             Fields.TYPE: DeliveryTypeValues.PICKUP,
             Fields.DESCRIPTION: "Local Pickup",
             Fields.ESTIMATED_DAYS: 0,
-            Fields.COST: 0.0,
+            Fields.COST_CENTS: 0,
         }
         patches[Fields.DELIVERY_OPTIONS] = [pickup_option] + delivery_options
         logger.info(f"FIX: Product {product_id} is local-only but missing pickup option → patching")
@@ -1399,7 +1402,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             Fields.TYPE: DeliveryTypeValues.STANDARD,
             Fields.DESCRIPTION: "Standard Delivery",
             Fields.ESTIMATED_DAYS: 5,
-            Fields.COST: 0.0,
+            Fields.COST_CENTS: 0,
         }
         patches[Fields.DELIVERY_OPTIONS] = [standard_option]
         logger.info(f"FIX: Product {product_id} has no delivery options → adding standard")
@@ -1548,7 +1551,7 @@ def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
     <tr><td style="padding:6px 0; color:#666;">Price</td><td>CAD ${price:.2f}</td></tr>
   </table>
   <p style="margin-top:20px;">
-    <a href="https://orignagta.ca/admin" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
+    <a href="{CURRENT_ENV.get_base_url()}/admin" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
       Review in Admin Panel
     </a>
   </p>
@@ -3746,4 +3749,88 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
                 except Exception as alg_err:
                     logger.error(f"bulk_update_products: Algolia re-index failed for {act_pid}: {alg_err}")
 
+    return create_success_response({"updated": updated, "skipped": skipped})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def deactivate_supplier_platform(req: https_fn.CallableRequest) -> dict:
+    """Admin-only: bulk-pause all active products from a specific supplier platform.
+
+    Payload: { "supplierType": "<SupplierTypeValues>" }
+    Returns: { "updated": N, "skipped": M }
+    """
+    user_id = req.auth.uid if req.auth else None
+    if not user_id:
+        raise https_fn.HttpsError(https_fn.FunctionsErrorCode.UNAUTHENTICATED, "Authentication required")
+
+    # Admin-only gate
+    user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError(https_fn.FunctionsErrorCode.NOT_FOUND, "User not found")
+    user_data = user_doc.to_dict() or {}
+    if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError(https_fn.FunctionsErrorCode.PERMISSION_DENIED, "Admin access required")
+
+    supplier_type = (req.data or {}).get("supplierType", "").strip()
+    if not supplier_type:
+        raise https_fn.HttpsError(https_fn.FunctionsErrorCode.INVALID_ARGUMENT, "supplierType is required")
+
+    # Validate supplier type
+    valid_types = {v for k, v in vars(SupplierTypeValues).items() if not k.startswith("_")}
+    if supplier_type not in valid_types:
+        raise https_fn.HttpsError(https_fn.FunctionsErrorCode.INVALID_ARGUMENT, f"Invalid supplierType: {supplier_type}")
+
+    # Query active products with matching supplier.type (Firestore supports dot notation)
+    products_ref = get_db().collection(Collections.PRODUCTS)
+    query = (
+        products_ref
+        .where("supplier.type", "==", supplier_type)
+        .where(Fields.IS_ACTIVE, "==", True)
+        .limit(500)
+    )
+
+    updated = 0
+    skipped = 0
+    cursor = None
+
+    while True:
+        docs = list(query.start_after(cursor).stream()) if cursor else list(query.stream())
+
+        if not docs:
+            break
+
+        batch = get_db().batch()
+        algolia_ids = []
+        for doc in docs:
+            data = doc.to_dict() or {}
+            lifecycle = data.get(Fields.LIFECYCLE_STATUS)
+            if lifecycle in {ProductLifecycleStatusValues.ARCHIVED, ProductLifecycleStatusValues.PAUSED}:
+                skipped += 1
+                continue
+            batch.update(doc.reference, {
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+                Fields.IS_ACTIVE: False,
+                Fields.UPDATED_AT: datetime.now(UTC),
+            })
+            algolia_ids.append(doc.id)
+            updated += 1
+
+        if algolia_ids:
+            batch.commit()
+            # Remove from Algolia search index
+            for pid in algolia_ids:
+                try:
+                    algolia_partial_update(pid, {
+                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+                        Fields.IS_ACTIVE: False,
+                    })
+                except Exception as alg_err:
+                    logger.error(f"deactivate_supplier_platform: Algolia update failed for {pid}: {alg_err}")
+
+        # Pagination: if we got < 500 docs, we're done
+        if len(docs) < 500:
+            break
+        cursor = docs[-1]
+
+    logger.info(f"deactivate_supplier_platform: admin={user_id} supplier_type={supplier_type} updated={updated} skipped={skipped}")
     return create_success_response({"updated": updated, "skipped": skipped})

@@ -64,6 +64,9 @@ class SubscriptionViewModel extends StateNotifier<SubscriptionState> {
     if (notifyNewProducts != null) updates[Fields.notifyNewProducts] = notifyNewProducts;
     if (notifyTrending != null) updates[Fields.notifyTrending] = notifyTrending;
     if (updates.isEmpty) return;
+    // SECURITY: Firestore rules must restrict this update to only these two fields.
+    // Rule: allow update: if request.resource.data.diff(resource.data).affectedKeys()
+    //   .hasOnly(['notifyNewProducts', 'notifyTrending'])
     await _ref.read(firestoreProvider).collection(Collections.users).doc(uid).update(updates);
   }
 

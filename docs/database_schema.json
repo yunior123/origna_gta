@@ -681,10 +681,10 @@
               "required": true,
               "description": "Description of delivery option"
             },
-            "cost": {
+            "costCents": {
               "type": "number",
               "required": true,
-              "description": "Base cost in CAD"
+              "description": "Base cost in cents (CAD)"
             },
             "estimatedDays": {
               "type": "number",
@@ -723,12 +723,12 @@
               "default": 0,
               "description": "Max items before cost increases (0 = no limit)"
             },
-            "additionalItemCost": {
+            "additionalItemCostCents": {
               "type": "number",
               "default": 0,
-              "description": "Additional cost per item after maxItemsPerShipment"
+              "description": "Additional cost in cents per item after maxItemsPerShipment"
             },
-            "availableInternational": {
+            "availableNationwide": {
               "type": "boolean",
               "default": true,
               "description": "Whether option is available for international suppliers"

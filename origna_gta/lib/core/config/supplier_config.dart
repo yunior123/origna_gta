@@ -391,8 +391,8 @@ final Map<String, SupplierPlatformConfig> supplierPlatforms = {
   ),
 
   // ============== CANADA LOCAL ==============
-  'local_canada': const SupplierPlatformConfig(
-    id: 'local_canada',
+  'local': const SupplierPlatformConfig(
+    id: 'local',
     displayName: 'Local Canadian Supplier',
     region: 'Canada',
     country: 'Canada',

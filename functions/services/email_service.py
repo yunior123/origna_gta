@@ -31,6 +31,20 @@ logger = logging.getLogger(__name__)
 # Allow real email sending in emulator mode for E2E testing
 FORCE_REAL_EMAIL = os.environ.get("FORCE_REAL_EMAIL", "false").lower() == "true"
 
+# Mailjet client singleton — lazy initialized to avoid cold-start failures
+_mailjet_client = None
+
+
+def _get_mailjet() -> "Client":
+    """Lazy-initialize the Mailjet client as a singleton."""
+    global _mailjet_client
+    if _mailjet_client is None:
+        _mailjet_client = Client(
+            auth=(get_mailjet_api_key(), get_mailjet_secret_key()),
+            version=EmailConfig.MAILJET_API_VERSION,
+        )
+    return _mailjet_client
+
 # Dynamic base URL for email links — Environment-aware
 APP_BASE_URL = CURRENT_ENV.get_base_url()
 
@@ -379,10 +393,10 @@ def _casl_compliant_footer(include_gst: bool = False, lang: str = "en", recipien
 
 def _log_email_for_testing(to_email: str, subject: str, html_body: str) -> None:
     """Log an email to Firestore so E2E tests can verify it was "sent" in the emulator/dev."""
-    from config import Environment, CURRENT_ENV
+    from config import CURRENT_ENV, Environment
     if CURRENT_ENV in (Environment.PRODUCTION, Environment.STAGING):
         return
-        
+
     from firebase_admin import firestore
     try:
         db = firestore.client()
@@ -1806,16 +1820,14 @@ def send_email(
     """
     try:
         _log_email_for_testing(to_email, subject, html_content)
-        
+
         if (IS_EMULATOR and not FORCE_REAL_EMAIL) or not get_mailjet_api_key():
             logger.info(f"\U0001f4e7 [EMULATOR] Would send email to {to_email}: {subject}")
             if attachments:
                 logger.info(f"   📎 With {len(attachments)} attachment(s): {[a.get('Filename') for a in attachments]}")
             return True
 
-        mailjet = Client(
-            auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION
-        )
+        mailjet = _get_mailjet()
 
         to_field: dict = {"Email": to_email}
         if to_name:

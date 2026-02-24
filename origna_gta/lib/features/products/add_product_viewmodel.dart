@@ -345,6 +345,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         hasVariants: state.hasVariants,
         variants: state.hasVariants ? state.variants.map((v) => v.toMap()).toList() : const [],
         variantOptions: state.hasVariants ? state.variantOptions.map((o) => o.toMap()).toList() : const [],
+        condition: state.isDigital ? null : state.condition,
       );
 
       await productRepository.createProductAtomic(
@@ -393,6 +394,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
   void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
+
+  void setCondition(String? condition) => state = state.copyWith(condition: condition);
 
   void setDigitalType(String? type) => state = state.copyWith(digitalType: type);
 

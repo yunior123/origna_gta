@@ -496,9 +496,12 @@ Map<String, dynamic> sanitizeProductForFirestore(
 
   // productId is derived from document id; avoid storing a client-controlled field.
   data.remove(Fields.productId);
-  // ratingCount and rating are server-managed via rating events; do not allow client write on create.
+  // ratingCount and rating are server-managed via rating events; do not allow client write.
   data.remove(Fields.ratingCount);
   data.remove(Fields.rating);
+  // sellerId and lifecycleStatus are server-controlled; strip to prevent client overwrite.
+  data.remove(Fields.sellerId);
+  data.remove(Fields.lifecycleStatus);
 
   // Firestore rules expect sellerAddress.apartment to be null OR non-empty string.
   // Address model defaults apartment to '', so normalize empty values to null.

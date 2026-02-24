@@ -72,28 +72,28 @@ class SellerDeliveryOption(BaseModel):
             "example": {
                 Fields.TYPE: "standard",
                 Fields.DESCRIPTION: "Standard shipping",
-                "cost": 5.99,
+                "costCents": 599,
                 "estimatedDays": 5,
                 "quantityDiscounts": [],
                 "maxItemsPerShipment": 10,
-                "additionalItemCost": 1.50,
-                "availableInternational": True,
+                "additionalItemCostCents": 150,
+                "availableNationwide": True,
             }
         }
     )
 
     type: str = Field(..., description="Delivery type: pickup, standard, express, same_day")
     description: str = Field(..., min_length=1, max_length=200, description="Description of delivery option")
-    cost: float = Field(..., ge=0, description="Base cost in CAD")
+    costCents: int = Field(..., ge=0, description="Base shipping cost in cents (CAD)")
     estimatedDays: int = Field(..., ge=0, le=90, description="Estimated delivery days")
     quantityDiscounts: list[ShippingQuantityDiscount] = Field(
         default_factory=list, description="Quantity-based shipping discounts"
     )
     maxItemsPerShipment: int = Field(default=0, ge=0, description="Max items before cost increases (0 = no limit)")
-    additionalItemCost: float = Field(
-        default=0.0, ge=0, description="Additional cost per item after maxItemsPerShipment"
+    additionalItemCostCents: int = Field(
+        default=0, ge=0, description="Additional cost per item after maxItemsPerShipment, in cents"
     )
-    availableInternational: bool = Field(
+    availableNationwide: bool = Field(
         default=False, description="Whether this delivery option ships anywhere in Canada (vs local-only)"
     )
 

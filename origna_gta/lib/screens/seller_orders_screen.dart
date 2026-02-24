@@ -263,7 +263,7 @@ class _SellerOrderCard extends ConsumerWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      order.shippingAddress.formattedAddress,
+                      order.shippingAddress?.formattedAddress ?? '',
                       style: TextStyle(fontSize: 12, color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary),
                     ),
                   ),

@@ -342,7 +342,7 @@ abstract class SellerDeliveryOption with _$SellerDeliveryOption {
     @Default('') String description,
 
     /// Shipping cost in dollars
-    @Default(0.0) double cost,
+    @Default(0) int costCents,
 
     /// Estimated delivery days
     @Default(3) int estimatedDays,
@@ -354,10 +354,10 @@ abstract class SellerDeliveryOption with _$SellerDeliveryOption {
     @Default(0) int maxItemsPerShipment,
 
     /// Additional cost per item after maxItemsPerShipment (0 = free per-item)
-    @Default(0.0) double additionalItemCost,
+    @Default(0) int additionalItemCostCents,
 
     /// Whether this option is available for international orders
-    @Default(true) bool availableInternational,
+    @Default(true) bool availableNationwide,
   }) = _SellerDeliveryOption;
 
   factory SellerDeliveryOption.fromJson(Map<String, dynamic> json) => _$SellerDeliveryOptionFromJson(json);
@@ -547,7 +547,7 @@ extension ProductExtension on Product {
 extension SellerDeliveryOptionExtension on SellerDeliveryOption {
   /// Calculate the effective shipping cost for a given quantity
   double calculateCostForQuantity(int quantity) {
-    if (quantity <= 0) return cost;
+    if (quantity <= 0) return costCents / 100.0;
 
     // Find the best applicable discount
     ShippingQuantityDiscount? bestDiscount;
@@ -559,12 +559,12 @@ extension SellerDeliveryOptionExtension on SellerDeliveryOption {
       }
     }
 
-    double baseCost = cost;
+    double baseCost = costCents / 100.0;
 
     // Apply per-item costs if applicable
     if (maxItemsPerShipment > 0 && quantity > maxItemsPerShipment) {
       final extraItems = quantity - maxItemsPerShipment;
-      baseCost += extraItems * additionalItemCost;
+      baseCost += extraItems * (additionalItemCostCents / 100.0);
     }
 
     // Apply quantity discount
