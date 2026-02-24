@@ -220,6 +220,29 @@
       "comment": "OPTIMIZATION 2026-02-03: Index for check_expired_authorizations cron job"
     },
     {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "FIX 2026-02-24: Index for check_expired_authorizations — orderStatus first (Sentry FailedPrecondition ff460a32)"
+    },
+    {
       "collectionGroup": "product_ratings",
       "queryScope": "COLLECTION",
       "fields": [
@@ -681,10 +704,9 @@
       "queryScope": "COLLECTION",
       "fields": [
         {"fieldPath": "userId", "order": "ASCENDING"},
-        {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
         {"fieldPath": "productIds", "arrayConfig": "CONTAINS"}
       ],
-      "comment": "Chat gate query: buyer must have ordered this specific product from this seller"
+      "comment": "Chat gate query: buyer must have ordered this specific product (userId + productIds array_contains)"
     }
   ],
   "fieldOverrides": []

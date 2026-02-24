@@ -1,4 +1,4 @@
-// playwright.config.dev.ts — Dev environment (local hosting or dev Firebase)
+// playwright.config.dev.ts — Dev environment (orignagta-dev Firebase)
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
@@ -14,7 +14,7 @@ export default defineConfig({
   expect: { timeout: 15 * 1000 },
   use: {
     actionTimeout: 15 * 1000,
-    baseURL: process.env.E2E_TARGET_URL ?? 'http://localhost:5005',
+    baseURL: process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     bypassCSP: true,

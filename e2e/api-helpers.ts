@@ -5,9 +5,9 @@
  * Every spec file MUST import from here — no copy-paste allowed.
  *
  * Covers:
- *   - Firebase Auth Emulator sign-in (with fail-fast on missing seeds)
- *   - Firebase Functions Emulator callable invocation
- *   - Firestore Emulator REST API (read, write, patch, delete, list)
+ *   - Firebase Auth sign-in (Cloud Auth for dev/staging/production)
+ *   - Firebase Functions callable invocation
+ *   - Firestore REST API (read, write, patch, delete, list)
  *   - Firestore value conversion (toFsVal / parseVal / parseDoc)
  *   - Checkout payload builders
  *   - Order lifecycle helpers
@@ -21,44 +21,36 @@
 // CONFIGURATION — Environment-aware URLs
 // ════════════════════════════════════════════════════════════════════
 
-// Detect test environment: 'emulator' (default), 'dev', 'staging', 'production'
-const TEST_ENV = (process.env.TEST_ENVIRONMENT || 'emulator').toLowerCase();
+// Detect test environment: 'dev' (default), 'staging', 'production'
+const TEST_ENV = (process.env.TEST_ENVIRONMENT || 'dev').toLowerCase();
 
 // Build environment-specific URLs
 const getEnvironmentConfig = () => {
   switch (TEST_ENV) {
-    case 'dev':
-      return {
-        auth: 'https://identitytoolkit.googleapis.com',  // Cloud Auth
-        firestore: 'https://firestore.googleapis.com',    // Cloud Firestore
-        functions: 'https://us-central1-orignagta-dev.cloudfunctions.net',
-        webApp: 'https://orignagta-dev.web.app',
-        projectId: 'orignagta-dev',
-      };
     case 'staging':
       return {
-        auth: 'https://identitytoolkit.googleapis.com',  // Cloud Auth
-        firestore: 'https://firestore.googleapis.com',    // Cloud Firestore
+        auth: 'https://identitytoolkit.googleapis.com',
+        firestore: 'https://firestore.googleapis.com',
         functions: 'https://us-central1-orignagta-staging.cloudfunctions.net',
         webApp: 'https://orignagta-staging.web.app',
         projectId: 'orignagta-staging',
       };
     case 'production':
       return {
-        auth: 'https://identitytoolkit.googleapis.com',  // Cloud Auth
-        firestore: 'https://firestore.googleapis.com',    // Cloud Firestore
+        auth: 'https://identitytoolkit.googleapis.com',
+        firestore: 'https://firestore.googleapis.com',
         functions: 'https://us-central1-orignagta.cloudfunctions.net',
         webApp: 'https://orignagta.web.app',
         projectId: 'orignagta',
       };
-    case 'emulator':
+    case 'dev':
     default:
       return {
-        auth: 'http://localhost:9099',
-        firestore: 'http://localhost:8080',
-        functions: 'http://localhost:5001',
-        webApp: 'http://localhost:5005',
-        projectId: 'orignagta',
+        auth: 'https://identitytoolkit.googleapis.com',
+        firestore: 'https://firestore.googleapis.com',
+        functions: 'https://us-central1-orignagta-dev.cloudfunctions.net',
+        webApp: 'https://orignagta-dev.web.app',
+        projectId: 'orignagta-dev',
       };
   }
 };

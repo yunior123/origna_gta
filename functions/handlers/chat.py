@@ -87,11 +87,11 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     if seller_id == buyer_id:
         raise https_fn.HttpsError("permission-denied", "You cannot chat with yourself.")
 
-    # Require an existing order: buyer must have purchased from this seller
+    # Require an existing order: buyer must have purchased this specific product
+    # (productId uniquely identifies the seller — no need for double array_contains)
     order_query = (
         db.collection(Collections.ORDERS)
         .where(Fields.USER_ID, "==", buyer_id)
-        .where(Fields.SELLER_IDS, "array_contains", seller_id)
         .where(Fields.PRODUCT_IDS, "array_contains", product_id)
         .limit(1)
         .get()
