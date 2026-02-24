@@ -5,6 +5,7 @@ Optimized for FREE TIER - minimal resource usage, reasonable timeouts
 
 from firebase_functions import options
 
+from config import APP_SECRETS_PARAM
 from schema_constants import AppConfig
 
 # Canonical CORS policy — applied to all on_call functions
@@ -16,15 +17,20 @@ _CORS = options.CorsOptions(
 # Region — Canada (Montreal) for PIPEDA data-residency compliance + <5ms latency from GTA
 _REGION = "northamerica-northeast1"
 
+# APP_SECRETS mounted into every Cloud Run service so _secrets() can read from Secret Manager.
+_SECRETS = [APP_SECRETS_PARAM]
+
 # Default: 256MB memory, 60s timeout (Firebase defaults - FREE TIER friendly)
 DEFAULT_OPTIONS = {
     "cors": _CORS,
     "region": _REGION,
+    "secrets": _SECRETS,
 }
 
 # Firestore triggers: No CORS (not HTTP-accessible). Used by on_document_*
 FIRESTORE_TRIGGER_OPTIONS: dict = {
     "region": _REGION,
+    "secrets": _SECRETS,
 }
 
 # Firestore triggers for payment-adjacent collections (orders, payouts).
@@ -33,12 +39,14 @@ FIRESTORE_PAYMENT_TRIGGER_OPTIONS: dict = {
     "memory": options.MemoryOption.MB_512,
     "timeout_sec": 120,
     "region": _REGION,
+    "secrets": _SECRETS,
 }
 
-# Webhooks: 256MB memory, 90s timeout (Stripe retries on timeout, need margin)
+# Webhooks: 90s timeout (Stripe retries on timeout, need margin)
 WEBHOOK_OPTIONS = {
     "timeout_sec": 90,
     "region": _REGION,
+    "secrets": _SECRETS,
 }
 
 # Payment on_call handlers: 120s timeout (Stripe API calls + DB writes can be slow)
@@ -46,10 +54,12 @@ PAYMENT_OPTIONS = {
     "cors": _CORS,
     "timeout_sec": 120,
     "region": _REGION,
+    "secrets": _SECRETS,
 }
 
 # Cron jobs: 256MB memory, 300s timeout (batch processing up to 500 orders)
 CRON_OPTIONS = {
     "timeout_sec": 300,
     "region": _REGION,
+    "secrets": _SECRETS,
 }

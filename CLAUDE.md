@@ -6,6 +6,8 @@
 4. Forbidden to defer or skip task
 5. Make sure that all code comply with canadian and international laws
 6. use as many team agents and agents as needed to solve the issues.
+7. If playwright tests or cloud functions deployement take too long ex 1h, it means that something is wrong. So we stop and analyze what went wrong to start over if needed and fix it.
+8. env , env.local , etc and service account keys cannot be deployed to cloud functions
 
 ## RULES
 0. this is so bad, really terrible, the app has not launched yet and your are having into consideration legacy code that leads to confusion, no legacy handling in the code, if you add a new feature you never have into consideration backward compatibility since we have not lanuched yet. Listen to me, never, never, never do that, put it really deep into your brain. When exploring the code always fix all code that has into account older, deprecated, legacy things. 

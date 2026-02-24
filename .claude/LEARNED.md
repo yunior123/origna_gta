@@ -467,3 +467,54 @@ Python had `SELLER_METRICS_BREACH = "seller_metrics_breach"` but Dart `SecurityA
 ```bash
 firebase deploy --only functions --set-env-vars RELAXED_RATE_LIMITS=true --project orignagta-dev
 ```
+
+---
+
+## Region Migration + Stripe Webhook 500 Fix (Feb 2026 — Session 8)
+
+### Root cause: GOOGLE_APPLICATION_CREDENTIALS= in deployed env files
+`functions/.env.orignagta-staging` and `functions/.env.orignagta` both had `GOOGLE_APPLICATION_CREDENTIALS=` (empty string). Python's `google.auth._default.default()` treats an empty string in `os.environ` as a file path, tries to load it, crashes → Firebase Admin SDK fails to init → **every** Cloud Function returned HTTP 500.
+
+**Fix:** Remove `GOOGLE_APPLICATION_CREDENTIALS` from ALL deployed `.env.*` files. It must only live in `functions/.env.local` (which Firebase CLI never uploads). Cloud Run uses Workload Identity / ADC automatically.
+
+### email_service.py blocked deploy
+`email_service.py` had module-level `RuntimeError` if `UNSUBSCRIBE_HMAC_SECRET` was empty. Firebase CLI spawns a local Python process during `firebase deploy` to introspect `functions.yaml` — Secret Manager is unreachable locally → crash → deploy blocked.
+
+**Fix:** Made HMAC secret validation lazy via `_get_unsubscribe_secret()` called on first actual use, not at import time.
+
+### APP_SECRETS_PARAM must be in every function's decorator
+Firebase Functions v2 (Cloud Run) only mounts secrets if `secrets=[APP_SECRETS_PARAM]` appears in the function decorator options. Without it, `APP_SECRETS_PARAM.value` returns `""` at runtime even after credentials fix. Added to ALL 6 option dicts in `function_options.py`.
+
+### Region migration: us-central1 → northamerica-northeast1
+All 91 original functions were deployed in `us-central1` (functions had been deployed before `_REGION = "northamerica-northeast1"` was added to `function_options.py`). Firebase treats a region change as a new function. Migration procedure:
+1. Run `firebase deploy --only functions` — Firebase creates new in `northamerica-northeast1`, asks to delete `us-central1` orphans → answer **Y**.
+2. For partial deploys (targeting specific functions): `firebase deploy --only "functions:func_name_1,functions:func_name_2"` — uses **Python underscore names**, not camelCase.
+3. After all environments migrated, update `firebase.json` hosting rewrites to `"region": "northamerica-northeast1"` (was `us-central1`) for `get_book_redirect` and `get_software_redirect`.
+
+### Stripe webhook URLs after region migration
+After migrating to `northamerica-northeast1`, update all Stripe webhook endpoint URLs:
+- Test/staging: `stripe webhook_endpoints update <we_id> --url="https://northamerica-northeast1-<project>.cloudfunctions.net/stripe_webhook"`
+- Production (live key): Use `--api-key=<live_sk_key>` — read live key from Secret Manager: `gcloud secrets versions access latest --secret="APP_SECRETS" --project=orignagta | python3 -c "import sys,json; print(json.load(sys.stdin)['stripe']['secret_key'].strip())"`
+- Prod endpoint ID: `we_1SuPX4PPD6r8xGIzXKV0MOKr` → was pointing to `us-central1-orignagta.cloudfunctions.net/stripe_webhook`
+
+### Webhook health check
+`curl -s -o /dev/null -w "%{http_code}" -X POST <webhook_url> -H "Content-Type: application/json" -d '{}'`
+Expect **400** (bad signature rejection) = function is alive. **500** = crash at startup (credentials/secrets issue). **404** = wrong region URL.
+
+### Playwright staging: Flutter FORCE_SEMANTICS required
+- `playwright.config.staging.ts` points to `https://orignagta-staging.web.app`
+- Staging uses **profile** build — semantics are stripped unless `--dart-define=FORCE_SEMANTICS=true`
+- `main.dart` enables semantics if `kDebugMode || const bool.fromEnvironment('FORCE_SEMANTICS')`
+- Build + deploy staging web: `bash scripts/build/build_staging.sh web && firebase deploy --only hosting --project orignagta-staging`
+- `playwright.config.dev.ts` defaults to `http://localhost:5005` (local dev server), not a hosted URL
+
+### Firebase function filter format
+`firebase deploy --only "functions:my_function_name"` uses **Python underscore names** (e.g. `activate_license`), NOT camelCase (`activateLicense`). Wrong format gives: `Error: No function matches the filter: default:activateLicense`.
+
+### Container image cleanup policy
+When deploying to a new region for the first time, Firebase CLI asks: "How many days to keep container images before deletion?" → Answer **7** days to avoid accumulating images (small monthly bill).
+
+### functions/.env.local vs .env
+- `.env.local` — local only, NEVER deployed by Firebase CLI. Keep `GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json` here.
+- `.env` — deployed to ALL environments. Must NOT have `GOOGLE_APPLICATION_CREDENTIALS`.
+- `.env.orignagta-staging`, `.env.orignagta` — environment-specific overrides, deployed. Must NOT have `GOOGLE_APPLICATION_CREDENTIALS`.

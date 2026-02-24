@@ -53,14 +53,24 @@ APP_BASE_URL = CURRENT_ENV.get_base_url()
 UNSUBSCRIBE_URL = CURRENT_ENV.get_unsubscribe_url()
 
 # HMAC secret for signed unsubscribe tokens (prevents unauthorized unsubscription)
-# Loaded from GCP Secret Manager in production, from .env in emulator
-_raw_unsub_secret = get_unsubscribe_hmac_secret()
-if not (isinstance(_raw_unsub_secret, str) and _raw_unsub_secret):
-    if IS_EMULATOR:
-        _raw_unsub_secret = "origna-unsub-default-dev-key"
-    else:
-        raise RuntimeError("UNSUBSCRIBE_HMAC_SECRET is not configured — cannot start email service in non-emulator env")
-_UNSUBSCRIBE_SECRET = _raw_unsub_secret
+# Loaded from GCP Secret Manager in production, from .env in emulator.
+# Validated lazily (on first use) so Firebase CLI analysis can load the module without
+# Secret Manager access during `firebase deploy`.
+_UNSUBSCRIBE_SECRET: str | None = None
+
+
+def _get_unsubscribe_secret() -> str:
+    """Return the HMAC secret, validating it on first use."""
+    global _UNSUBSCRIBE_SECRET
+    if _UNSUBSCRIBE_SECRET is None:
+        raw = get_unsubscribe_hmac_secret()
+        if not (isinstance(raw, str) and raw):
+            if IS_EMULATOR:
+                raw = "origna-unsub-default-dev-key"
+            else:
+                raise RuntimeError("UNSUBSCRIBE_HMAC_SECRET is not configured — cannot send emails in non-emulator env")
+        _UNSUBSCRIBE_SECRET = raw
+    return _UNSUBSCRIBE_SECRET
 
 
 # ============================================================
@@ -351,7 +361,7 @@ def _t(key: str, lang: str) -> str:
 def _generate_unsubscribe_token(email: str) -> str:
     """Generate an HMAC-SHA256 token for secure unsubscribe links.
     Prevents attackers from unsubscribing arbitrary emails."""
-    return hmac.new(_UNSUBSCRIBE_SECRET.encode(), email.lower().encode(), hashlib.sha256).hexdigest()[:32]
+    return hmac.new(_get_unsubscribe_secret().encode(), email.lower().encode(), hashlib.sha256).hexdigest()[:32]
 
 
 def _get_signed_unsubscribe_url(email: str) -> str:

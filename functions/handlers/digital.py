@@ -16,6 +16,7 @@ from schema_constants import (
 )
 from services.rate_limiter import RateLimiter
 from utils.db import get_db
+from utils.function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +240,7 @@ def _revoke_digital_licenses_for_order(order_id: str) -> int:
 # ── Cloud Function endpoints ──────────────────────────────────────────────────
 
 
-@https_fn.on_request(cors=True)
+@https_fn.on_request(cors=True, **WEBHOOK_OPTIONS)
 def activate_license(req: https_fn.Request) -> https_fn.Response:
     """POST /activate_license — supports authenticated and unauthenticated callers.
     Body: { licenseKey, deviceId, platform }  OR Firebase callable wrapper: { data: {...} }
@@ -329,7 +330,7 @@ def activate_license(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": {"code": "internal_error", "message": "Internal error"}}), status=500, content_type="application/json")
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def deactivate_license(req: https_fn.CallableRequest) -> dict:
     """Authenticated: buyer removes a device from their license."""
     if not req.auth:
@@ -351,7 +352,7 @@ def deactivate_license(req: https_fn.CallableRequest) -> dict:
         raise https_fn.HttpsError("invalid-argument", code) from e
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def generate_book_download_session(req: https_fn.CallableRequest) -> dict:
     """Authenticated: generates a 15-min single-use redirect token for a book."""
     if not req.auth:
@@ -374,7 +375,7 @@ def generate_book_download_session(req: https_fn.CallableRequest) -> dict:
         raise https_fn.HttpsError("invalid-argument", code) from e
 
 
-@https_fn.on_request()
+@https_fn.on_request(**WEBHOOK_OPTIONS)
 def get_book_redirect(req: https_fn.Request) -> https_fn.Response:
     """GET /dl?t={token} — public redirect, no auth.
     Single-use, 15-min expiry. bookSourceUrl never sent to client.
@@ -489,7 +490,7 @@ def _get_software_redirect_impl(token: str) -> str:
     return url
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def generate_software_download_session(req: https_fn.CallableRequest) -> dict:
     """Authenticated: generates a 15-min single-use redirect token for a software build.
     Request: { licenseKey: string, platform: "macos"|"windows"|"linux" }
@@ -519,7 +520,7 @@ def generate_software_download_session(req: https_fn.CallableRequest) -> dict:
         raise https_fn.HttpsError(fn_code, msg) from e
 
 
-@https_fn.on_request()
+@https_fn.on_request(**WEBHOOK_OPTIONS)
 def get_software_redirect(req: https_fn.Request) -> https_fn.Response:
     """GET /sdl?t={token} — public redirect, no auth.
     Single-use, 15-min expiry. Seller's download URL never exposed to client.
@@ -549,7 +550,7 @@ def get_software_redirect(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response("Internal error", status=500)
 
 
-@https_fn.on_request(cors=True)
+@https_fn.on_request(cors=True, **WEBHOOK_OPTIONS)
 def verify_license(req: https_fn.Request) -> https_fn.Response:
     """POST /verify_license — no auth. App periodically re-verifies license.
     Same as activate (idempotent re-activation updates lastVerifiedAt).

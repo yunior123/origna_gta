@@ -68,12 +68,12 @@
       {
         "source": "/dl",
         "function": "get_book_redirect",
-        "region": "us-central1"
+        "region": "northamerica-northeast1"
       },
       {
         "source": "/sdl",
         "function": "get_software_redirect",
-        "region": "us-central1"
+        "region": "northamerica-northeast1"
       },
       {
         "source": "**",

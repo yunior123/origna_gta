@@ -90,7 +90,7 @@ def _generate_product_slug(title: str) -> str:
 # CORS is configured in DEFAULT_OPTIONS via function_options.py
 
 
-@https_fn.on_call(secrets=[APP_SECRETS_PARAM], **DEFAULT_OPTIONS)
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Generates presigned URLs for uploading product images to Cloudflare R2.
@@ -237,7 +237,7 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("internal", "Failed to generate upload URLs. Please try again.") from e
 
 
-@https_fn.on_call(secrets=[APP_SECRETS_PARAM])
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def delete_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Deletes product images from Cloudflare R2 by their public URLs.
@@ -329,7 +329,7 @@ def delete_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     return create_success_response({"deleted": deleted, "failed": failed})
 
 
-@https_fn.on_call(secrets=[APP_SECRETS_PARAM])
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Generates presigned URLs for uploading review images to Cloudflare R2.
@@ -936,7 +936,7 @@ def _derive_ship_from_fields(seller_id: str, product_data: dict) -> dict:
 
 
 
-@https_fn.on_call(secrets=[APP_SECRETS_PARAM])
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Atomically uploads product images to Cloudflare R2 and creates the product
