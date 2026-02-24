@@ -392,7 +392,7 @@ final Map<String, SupplierPlatformConfig> supplierPlatforms = {
 
   // ============== CANADA LOCAL ==============
   'local_canada': const SupplierPlatformConfig(
-    id: 'local',
+    id: 'local_canada',
     displayName: 'Local Canadian Supplier',
     region: 'Canada',
     country: 'Canada',
@@ -556,7 +556,7 @@ class SupplierPlatformConfig {
     this.supportedCurrencies = const ['USD', 'CAD'],
     this.defaultCurrency = 'USD',
     this.icon = Icons.store,
-    this.color = Colors.blue,
+    this.color = DesignTokens.primary,
     this.websiteUrl,
     this.description = '',
     this.isInternational = true,

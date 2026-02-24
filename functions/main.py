@@ -179,6 +179,7 @@ from handlers.products import (  # noqa: E402
     upload_product_images,
     upload_review_images,
     delete_product_images,
+    create_product_atomic,
     vote_review_helpful,
 )
 from handlers.coupons import (  # noqa: E402
@@ -264,6 +265,7 @@ __all__ = [
     "upload_product_images",
     "upload_review_images",
     "delete_product_images",
+    "create_product_atomic",
     "delete_product",
     "submit_product_rating",
     "configure_algolia",

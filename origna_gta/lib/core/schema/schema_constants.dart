@@ -135,7 +135,7 @@ abstract final class BusinessRules {
   static const maxShippingCostCad = 500; // $500 CAD absolute maximum shipping cost
   static const sellerDisputeRateThreshold = 0.05; // 5% dispute rate triggers health alert
   static const sellerRefundRateThreshold = 0.10; // 10% refund rate threshold
-  static const sellerCancelRateThreshold = 0.10; // 10% cancel rate threshold
+  static const maxProductImages = 5; // Maximum number of images per product listing
   static const trendingTopN = 20; // Number of products to mark as trending
   static const trendingWindowHours = 24; // Rolling window for trending calculation
   static const trendingPurchaseWeight = 3; // Weight for purchase events
@@ -220,6 +220,7 @@ abstract final class CloudFunctionEndpoints {
   static const uploadProductImages = 'upload_product_images';
   static const uploadReviewImages = 'upload_review_images';
   static const deleteProductImages = 'delete_product_images';
+  static const createProductAtomic = 'create_product_atomic';
   static const submitProductRating = 'submit_product_rating';
   // Review helpfulness (N-04)
   static const voteReviewHelpful = 'vote_review_helpful';
@@ -556,6 +557,7 @@ abstract final class Fields {
   static const sellerName = 'sellerName'; // Seller display name snapshotted at purchase time
   static const warehouseIds = 'warehouseIds';
   static const warehouseStock = 'warehouseStock';
+  static const warehouseStockMap = 'warehouseStockMap'; // per-warehouse stock allocation: {warehouseId: qty}
   static const fulfillmentWarehouseId = 'fulfillmentWarehouseId'; // TASK 02: warehouse used to fulfill order item
   static const shipFromCity = 'shipFromCity';
   static const shipFromProvince = 'shipFromProvince';
@@ -756,6 +758,9 @@ abstract final class Fields {
   static const isRead = 'read';
   static const buyerUnreadCount = 'buyerUnreadCount';
   static const sellerUnreadCount = 'sellerUnreadCount';
+  static const firstBuyerMessageAt = 'firstBuyerMessageAt';
+  static const firstSellerReplyAt = 'firstSellerReplyAt';
+  static const firstReplyHours = 'firstReplyHours';
 
   // === DELIVERY FIELDS ===
   static const deliveryInstructions = 'deliveryInstructions';

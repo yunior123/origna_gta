@@ -68,8 +68,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   final _maxItemsPerShipmentController = TextEditingController(text: '0');
 
   // State
-  String _selectedSupplierType = 'aliexpress';
-  String _selectedSupplierCurrency = 'USD';
+  String _selectedSupplierType = SupplierTypeValues.aliexpress;
+  String _selectedSupplierCurrency = SupplierCurrencyValues.usd;
   bool _hasTracking = false;
   bool _inventoryManaged = true;
   bool _trackQuantity = true;
@@ -186,14 +186,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                         icon: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                          child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                          child: const Icon(Icons.arrow_back_rounded, color: DesignTokens.textOnPrimary, size: 20),
                         ),
                       ),
                       Expanded(
                         child: Text(
                           key: const Key('addproduct_screen_title'),
                           'product.new_product'.tr(),
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.3),
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: DesignTokens.textOnPrimary, letterSpacing: 0.3),
                         ),
                       ),
                       // Step indicator
@@ -209,7 +209,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                               height: 8,
                               margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
                               decoration: BoxDecoration(
-                                color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.3),
+                                color: isActive ? DesignTokens.textOnPrimary : Colors.white.withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             );
@@ -611,7 +611,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       items: getSupplierDropdownItems(),
                                       onChanged: (v) {
                                         setState(() {
-                                          _selectedSupplierType = v ?? 'other';
+                                          _selectedSupplierType = v ?? SupplierTypeValues.other;
                                           final config = getSupplierConfig(v);
                                           if (!config.supportedCurrencies.contains(_selectedSupplierCurrency)) {
                                             _selectedSupplierCurrency = config.defaultCurrency;
@@ -655,7 +655,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                             items: getSupplierConfig(
                                               _selectedSupplierType,
                                             ).supportedCurrencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                                            onChanged: (v) => setState(() => _selectedSupplierCurrency = v ?? 'USD'),
+                                            onChanged: (v) => setState(() => _selectedSupplierCurrency = v ?? SupplierCurrencyValues.usd),
                                           ),
                                         ),
                                       ],
@@ -828,7 +828,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       key: const Key('addproduct_address_suggestions'),
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: DesignTokens.textOnPrimary,
         borderRadius: BorderRadius.circular(14),
         boxShadow: DesignTokens.shadowLg,
         border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.2)),
@@ -933,7 +933,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       key: key,
       duration: DesignTokens.durationNormal,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: DesignTokens.textOnPrimary,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: DesignTokens.outlineVariant),
         boxShadow: DesignTokens.shadowSm,
@@ -949,7 +949,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               gradient: const LinearGradient(colors: [DesignTokens.secondary, DesignTokens.primary]),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: Colors.white, size: 20),
+            child: Icon(icon, color: DesignTokens.textOnPrimary, size: 20),
           ),
           title: Text(
             title,
@@ -972,7 +972,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
     // Bug #2: Local-only products need a pickup delivery option
     if (state.isLocalDeliveryOnly) {
-      return [SellerDeliveryOption(type: 'pickup', description: 'product.local_pickup_only'.tr(), estimatedDays: 0, cost: 0.0)];
+      return [SellerDeliveryOption(type: DeliveryTypeValues.pickup, description: 'product.local_pickup_only'.tr(), estimatedDays: 0, cost: 0.0)];
     }
 
     final quantityDiscounts = <ShippingQuantityDiscount>[];
@@ -982,7 +982,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       quantityDiscounts.add(
         ShippingQuantityDiscount(
           minQuantity: 3,
-          discountType: 'percent',
+          discountType: DiscountTypeValues.percent,
           discountValue: discount3,
           label: 'product.shipping_discount_label'.tr(namedArgs: {'percent': discount3.toStringAsFixed(0), 'qty': '3'}),
         ),
@@ -994,7 +994,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       quantityDiscounts.add(
         ShippingQuantityDiscount(
           minQuantity: 5,
-          discountType: 'percent',
+          discountType: DiscountTypeValues.percent,
           discountValue: discount5,
           label: 'product.shipping_discount_label'.tr(namedArgs: {'percent': discount5.toStringAsFixed(0), 'qty': '5'}),
         ),
@@ -1003,7 +1003,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
     if (state.freeShippingAt10Plus) {
       quantityDiscounts.add(
-        ShippingQuantityDiscount(minQuantity: 10, discountType: 'flat_rate', discountValue: 0, label: 'product.free_shipping_10_plus_label'.tr()),
+        ShippingQuantityDiscount(minQuantity: 10, discountType: DiscountTypeValues.flatRate, discountValue: 0, label: 'product.free_shipping_10_plus_label'.tr()),
       );
     }
 
@@ -1013,7 +1013,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     return [
       if (state.standardEnabled)
         SellerDeliveryOption(
-          type: 'standard',
+          type: DeliveryTypeValues.standard,
           description: 'product.standard_delivery'.tr(),
           estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
           cost: double.tryParse(_standardPriceController.text) ?? 0.0,
@@ -1023,7 +1023,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ),
       if (state.expressEnabled)
         SellerDeliveryOption(
-          type: 'express',
+          type: DeliveryTypeValues.express,
           description: 'product.express_delivery'.tr(),
           estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
           cost: double.tryParse(_expressPriceController.text) ?? 9.99,
@@ -1033,7 +1033,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ),
       if (state.sameDayEnabled)
         SellerDeliveryOption(
-          type: 'same_day',
+          type: DeliveryTypeValues.sameDay,
           description: 'product.same_day_delivery'.tr(),
           estimatedDays: 0,
           cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
@@ -1532,7 +1532,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       child: AnimatedContainer(
         duration: DesignTokens.durationNormal,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: DesignTokens.textOnPrimary,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: _activeStep == index ? DesignTokens.primary.withValues(alpha: 0.3) : DesignTokens.outlineVariant,
@@ -1553,7 +1553,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(12)),
-                    child: Icon(icon, color: Colors.white, size: 20),
+                    child: Icon(icon, color: DesignTokens.textOnPrimary, size: 20),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -1612,7 +1612,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               suffixText: 'product.percent_off'.tr(),
               isDense: true,
               filled: true,
-              fillColor: Colors.white,
+              fillColor: DesignTokens.surface,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -1755,7 +1755,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                           description: _descriptionController.text.trim(),
                           price: double.tryParse(_priceController.text.trim()) ?? 0,
                           compareAtPrice: _compareAtPriceController.text.trim().isEmpty ? null : double.tryParse(_compareAtPriceController.text.trim()),
-                          stock: int.tryParse(_stockController.text.trim()) ?? 0,
+                          // When warehouses are selected, stock is the sum of warehouseStockMap — never trust the text field
+                          stock: state.selectedWarehouseIds.isEmpty
+                              ? (int.tryParse(_stockController.text.trim()) ?? 0)
+                              : 0, // overridden by warehouseStockMap sum in VM
                           categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
                           subcategory: _selectedSubcategory,
                           street: _streetController.text.trim(),
@@ -1780,15 +1783,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     },
               child: Center(
                 child: state.isLoading
-                    ? const ModernLoadingIndicator(size: 24, strokeWidth: 2.5, color: Colors.white, centered: false)
+                    ? const ModernLoadingIndicator(size: 24, strokeWidth: 2.5, color: DesignTokens.textOnPrimary, centered: false)
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 20),
+                          const Icon(Icons.rocket_launch_rounded, color: DesignTokens.textOnPrimary, size: 20),
                           const SizedBox(width: 10),
                           Text(
                             'product.publish_product'.tr(),
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.textOnPrimary, letterSpacing: 0.5),
                           ),
                         ],
                       ),
@@ -2232,7 +2235,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         key: const Key('addproduct_success_snackbar'),
         content: Row(
           children: [
-            Icon(Icons.hourglass_top_rounded, color: Colors.white, size: 20),
+            Icon(Icons.hourglass_top_rounded, color: DesignTokens.textOnPrimary, size: 20),
             SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -2240,7 +2243,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('product.under_review_title'.tr(), style: TextStyle(fontWeight: FontWeight.w700)),
-                  Text('product.under_review_subtitle'.tr(), style: TextStyle(fontSize: 12, color: Colors.white70)),
+                  Text('product.under_review_subtitle'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.textOnPrimary.withValues(alpha: 0.7))),
                 ],
               ),
             ),
@@ -2265,7 +2268,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: DesignTokens.textOnPrimary,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
         ),
@@ -2594,7 +2597,7 @@ class _VariantRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: DesignTokens.textOnPrimary,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.15)),
       ),

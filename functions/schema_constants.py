@@ -264,6 +264,7 @@ class Fields:
     SELLER_SKU = "sellerSku"
     WAREHOUSE_IDS = "warehouseIds"
     WAREHOUSE_STOCK = "warehouseStock"
+    WAREHOUSE_STOCK_MAP = "warehouseStockMap"  # per-warehouse stock allocation: {warehouseId: qty}
     FULFILLMENT_WAREHOUSE_ID = "fulfillmentWarehouseId"  # TASK 02: warehouse used to fulfill this order item
     SHIP_FROM_CITY = "shipFromCity"
     SHIP_FROM_PROVINCE = "shipFromProvince"
@@ -365,6 +366,9 @@ class Fields:
     IS_READ = "read"  # bool — message read by recipient
     BUYER_UNREAD_COUNT = "buyerUnreadCount"  # int — unread messages for buyer
     SELLER_UNREAD_COUNT = "sellerUnreadCount"  # int — unread messages for seller
+    FIRST_BUYER_MESSAGE_AT = "firstBuyerMessageAt"  # datetime — when buyer sent first message
+    FIRST_SELLER_REPLY_AT = "firstSellerReplyAt"  # datetime — when seller sent first reply
+    FIRST_REPLY_HOURS = "firstReplyHours"  # float — hours from first buyer msg to seller first reply
     DELIVERY_INSTRUCTIONS = "deliveryInstructions"
     SHIPPING_DAYS = "shippingDays"
     HAS_TRACKING = "hasTracking"

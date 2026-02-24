@@ -94,7 +94,7 @@ class SellerDeliveryOption(BaseModel):
         default=0.0, ge=0, description="Additional cost per item after maxItemsPerShipment"
     )
     availableInternational: bool = Field(
-        default=False, description="Whether option is available nationwide across Canada"
+        default=False, description="Whether this delivery option ships anywhere in Canada (vs local-only)"
     )
 
     @field_validator("type")
@@ -352,6 +352,9 @@ class Product(BaseModel):
         description="Seller's unique product identifier — enforced unique per seller at write time",
     )
     warehouseIds: list[str] | None = Field(default=None, description="IDs of seller warehouses this product ships from")
+    warehouseStockMap: dict[str, int] | None = Field(
+        default=None, description="Per-warehouse stock allocation: {warehouseId: qty}. Sum equals stockQuantity."
+    )
     # Denormalized for O(1) card rendering — set from default/primary warehouse on write
     shipFromCity: str | None = Field(
         default=None, max_length=100, description="City of primary shipping warehouse (denormalized)"
@@ -527,7 +530,7 @@ class ProductCreate(BaseModel):
     imageUrls: list[str] = Field(..., min_length=1, max_length=5)
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address | None = Field(
-        default=None, description="Legacy single-address; required if warehouseIds is not provided"
+        default=None, description="Seller address; required if warehouseIds is not provided"
     )
     categoryId: int = Field(..., ge=CategoryIds.MIN, le=CategoryIds.MAX)
     stockQuantity: int = Field(..., ge=0)
@@ -549,6 +552,7 @@ class ProductCreate(BaseModel):
     # Multi-warehouse support
     sellerSku: str | None = Field(default=None, max_length=100)
     warehouseIds: list[str] | None = Field(default=None)
+    warehouseStockMap: dict[str, int] | None = Field(default=None)
     shipFromCity: str | None = Field(default=None, max_length=100)
     shipFromProvince: str | None = Field(default=None, max_length=10)
     shipFromCountry: str | None = Field(default=None, max_length=100)
@@ -565,9 +569,14 @@ class ProductCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_shipping_source(self) -> "ProductCreate":
-        """Require either sellerAddress or warehouseIds"""
-        if not self.isDigital and not self.sellerAddress and not self.warehouseIds:
-            raise ValueError("A product must have either a sellerAddress or at least one warehouseId")
+        """Require either sellerAddress or warehouseIds — not both, not neither"""
+        if not self.isDigital:
+            has_addr = bool(self.sellerAddress)
+            has_wh = bool(self.warehouseIds)
+            if has_addr and has_wh:
+                raise ValueError("Provide either sellerAddress OR warehouseIds, not both")
+            if not has_addr and not has_wh:
+                raise ValueError("A product must have either a sellerAddress or at least one warehouseId")
         return self
 
     @field_validator("sellerAddress")

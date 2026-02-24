@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
@@ -7,13 +9,22 @@ import 'package:origna_gta/models/generated/models.dart';
 // FILTER STATE PROVIDERS
 // ============================================================================
 
-/// Full product details for all favorites
+/// Full product details for all favorites — chunked into 30-ID batches and
+/// fetched in parallel to avoid Firestore's whereIn limit.
 final favoritedProductsProvider = FutureProvider.autoDispose<List<Product>>((ref) async {
   final favoriteIds = ref.watch(favoritesProvider).valueOrNull ?? {};
   if (favoriteIds.isEmpty) return [];
 
   final repository = ref.watch(productRepositoryProvider);
-  return repository.fetchProductsByIds(favoriteIds.toList());
+  final ids = favoriteIds.toList();
+
+  // Chunk into 30-ID batches (Firestore whereIn limit)
+  final chunks = [
+    for (var i = 0; i < ids.length; i += 30) ids.sublist(i, min(i + 30, ids.length)),
+  ];
+  // Fetch chunks in parallel
+  final results = await Future.wait(chunks.map((c) => repository.fetchProductsByIds(c)));
+  return results.expand((x) => x).toList();
 });
 
 /// Favorites controller

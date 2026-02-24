@@ -7,6 +7,7 @@ Product Management Handlers
 - Rating submission
 """
 
+import base64 as _base64
 import html as _html
 import logging
 import re
@@ -22,6 +23,8 @@ from firebase_functions import firestore_fn, https_fn
 
 from config import (
     APP_SECRETS_PARAM,
+    CURRENT_ENV,
+    Environment,
     R2Config,
     get_geoapify_api_key,
     get_r2_credentials,
@@ -39,7 +42,8 @@ from schema_constants import (
     WarehouseTypeValues,
 )
 from services.algolia_service import delete_product as algolia_delete_product
-from services.algolia_service import index_product, partial_update_product as algolia_partial_update
+from services.algolia_service import index_product
+from services.algolia_service import partial_update_product as algolia_partial_update
 from utils.function_options import DEFAULT_OPTIONS, FIRESTORE_TRIGGER_OPTIONS
 from utils.helpers import create_success_response
 
@@ -63,6 +67,7 @@ MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB absolute max
 
 _db = None
 _firestore = None
+_r2_creds: dict | None = None  # Module-level cache to avoid repeated Secret Manager hits
 
 
 def get_db():
@@ -84,6 +89,14 @@ def get_server_timestamp():
 
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
+
+
+def _get_cached_r2_credentials() -> dict:
+    """Get R2 credentials with module-level caching to avoid Secret Manager on every call."""
+    global _r2_creds
+    if _r2_creds is None:
+        _r2_creds = get_r2_credentials()
+    return _r2_creds
 
 
 def _generate_product_slug(title: str) -> str:
@@ -188,7 +201,7 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
 
     # Get R2 credentials based on environment
-    r2_creds = get_r2_credentials()
+    r2_creds = _get_cached_r2_credentials()
     r2_access_key = r2_creds.get("access_key")
     r2_secret_key = r2_creds.get("secret_key")
     r2_account_id = r2_creds.get("account_id")
@@ -285,7 +298,7 @@ def delete_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("permission-denied", "Seller role required")
 
     # Get R2 credentials
-    r2_creds = get_r2_credentials()
+    r2_creds = _get_cached_r2_credentials()
     r2_access_key = r2_creds.get("access_key")
     r2_secret_key = r2_creds.get("secret_key")
     r2_account_id = r2_creds.get("account_id")
@@ -387,7 +400,7 @@ def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         if ext not in ALLOWED_EXTENSIONS:
             raise https_fn.HttpsError("invalid-argument", f"Invalid file extension '.{ext}'")
 
-    r2_creds = get_r2_credentials()
+    r2_creds = _get_cached_r2_credentials()
     r2_access_key = r2_creds.get("access_key")
     r2_secret_key = r2_creds.get("secret_key")
     r2_account_id = r2_creds.get("account_id")
@@ -946,6 +959,219 @@ def _derive_ship_from_fields(seller_id: str, product_data: dict) -> dict:
 
 
 
+@https_fn.on_call(secrets=[APP_SECRETS_PARAM])
+def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Atomically uploads product images to Cloudflare R2 and creates the product
+    document in Firestore in a single backend operation.
+
+    Eliminates client-side orchestration — images and product doc are committed
+    together. On any R2 or Firestore failure, uploaded images are cleaned up
+    automatically.
+
+    Security:
+    - Authenticated sellers only
+    - Seller onboarding must be complete
+    - imageUrls, productId, sellerId, lifecycleStatus, createdAt are always set server-side
+    - Max 5 images, each max 10MB, magic-byte validated
+
+    Request data:
+        productData: dict  — serialized product fields (imageUrls/productId ignored, set server-side)
+        images: list[{data: str (base64), contentType: str}]  — max 5
+        testImageUrls: list[str]  — (emulator/dev only) placeholder URLs when images is empty
+
+    Returns:
+        { productId: str, imageUrls: list[str], success: True }
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+
+    # Seller role + onboarding check
+    user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError("not-found", "User not found")
+    user_data = user_doc.to_dict() or {}
+    if user_data.get(Fields.SUSPENDED, False):
+        raise https_fn.HttpsError("permission-denied", "Your account is suspended")
+    roles = user_data.get(Fields.ROLES, [])
+    if UserRoleValues.SELLER not in roles and UserRoleValues.ADMIN not in roles:
+        raise https_fn.HttpsError("permission-denied", "Seller role required")
+    if not user_data.get(Fields.ONBOARDING_COMPLETED, False) and UserRoleValues.ADMIN not in roles:
+        raise https_fn.HttpsError("failed-precondition", "Please complete seller onboarding before uploading products")
+
+    # Rate limit
+    from services.rate_limiter import RateLimiter
+
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action="create_product", max_requests=5, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", msg)
+
+    data = req.data
+    product_data: dict = dict(data.get("productData") or {})
+    images_raw = data.get("images", [])
+    test_image_urls = data.get("testImageUrls", [])
+
+    if not product_data:
+        raise https_fn.HttpsError("invalid-argument", "productData is required")
+    if not isinstance(images_raw, list):
+        raise https_fn.HttpsError("invalid-argument", "images must be a list")
+    if len(images_raw) > 5:
+        raise https_fn.HttpsError("invalid-argument", "Maximum 5 images allowed")
+
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    MIME_TO_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
+
+    # Decode and validate all images upfront — fail fast before touching R2
+    decoded_images: list[tuple[bytes, str]] = []
+    for i, img_item in enumerate(images_raw):
+        content_type = img_item.get("contentType", "image/jpeg")
+        if content_type not in ALLOWED_MIME_TYPES:
+            raise https_fn.HttpsError("invalid-argument", f"Image {i}: invalid content type '{content_type}'")
+        try:
+            img_bytes = _base64.b64decode(img_item.get("data", ""))
+        except Exception as exc:
+            raise https_fn.HttpsError("invalid-argument", f"Image {i}: invalid base64 data") from exc
+        if not img_bytes:
+            raise https_fn.HttpsError("invalid-argument", f"Image {i}: empty data")
+        if len(img_bytes) > MAX_IMAGE_BYTES:
+            raise https_fn.HttpsError("invalid-argument", f"Image {i} exceeds 10 MB limit")
+        # Magic bytes validation
+        if not any(img_bytes[: len(magic)] == magic for magic in IMAGE_MAGIC_BYTES):
+            raise https_fn.HttpsError("invalid-argument", f"Image {i}: not a recognized image format")
+        decoded_images.append((img_bytes, content_type))
+
+    # Determine image_urls: real R2 upload or dev/emulator placeholder
+    uploaded_keys: list[str] = []
+    image_urls: list[str] = []
+
+    if not decoded_images:
+        # Accept placeholder URLs only in emulator or dev environments
+        is_non_prod = CURRENT_ENV in (Environment.EMULATOR, Environment.DEV)
+        if test_image_urls and isinstance(test_image_urls, list) and is_non_prod:
+            image_urls = [str(u) for u in test_image_urls[:5]]
+        else:
+            raise https_fn.HttpsError("invalid-argument", "At least one product image is required")
+    else:
+        r2_creds = _get_cached_r2_credentials()
+        r2_access_key = r2_creds.get("access_key")
+        r2_secret_key = r2_creds.get("secret_key")
+        r2_account_id = r2_creds.get("account_id")
+        if not all([r2_access_key, r2_secret_key, r2_account_id]):
+            raise https_fn.HttpsError("failed-precondition", "R2 credentials not configured")
+
+        s3_client = boto3.client(
+            "s3",
+            endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
+            aws_access_key_id=r2_access_key,
+            aws_secret_access_key=r2_secret_key,
+            config=Config(signature_version="s3v4"),
+            region_name="auto",
+        )
+        bucket_name = R2Config.BUCKET_NAME
+
+        try:
+            for img_bytes, content_type in decoded_images:
+                ext = MIME_TO_EXT[content_type]
+                key = R2Config.get_image_path("products", f"{uuid.uuid4()}.{ext}")
+                s3_client.put_object(
+                    Bucket=bucket_name,
+                    Key=key,
+                    Body=img_bytes,
+                    ContentType=content_type,
+                    ContentDisposition="inline",
+                )
+                uploaded_keys.append(key)
+                image_urls.append(f"{CDN_BASE_URL}/{key}")
+        except Exception as e:
+            # Cleanup partial uploads before raising
+            import contextlib
+            for key in uploaded_keys:
+                with contextlib.suppress(Exception):
+                    s3_client.delete_object(Bucket=bucket_name, Key=key)
+            logger.error(f"create_product_atomic: R2 upload failed for user {user_id}: {e}")
+            raise https_fn.HttpsError("internal", "Failed to upload images. Please try again.") from e
+
+    # Override server-controlled fields — NEVER trust client values for these
+    product_data[Fields.IMAGE_URLS] = image_urls
+    product_data[Fields.SELLER_ID] = user_id
+    # Set under_review directly — the on_product_created trigger only handles edge cases now
+    product_data[Fields.LIFECYCLE_STATUS] = ProductLifecycleStatusValues.UNDER_REVIEW
+    product_data[Fields.CREATED_AT] = get_server_timestamp()
+    product_data[Fields.UPDATED_AT] = get_server_timestamp()
+    product_data.pop(Fields.PRODUCT_ID, None)  # Generated server-side below
+    product_data.pop("rating", None)
+    product_data.pop("ratingCount", None)
+
+    # Normalize apartment: empty string → null (Firestore rules requirement)
+    seller_address = product_data.get(Fields.SELLER_ADDRESS)
+    if isinstance(seller_address, dict) and seller_address.get("apartment") == "":
+        seller_address["apartment"] = None
+
+    # Pre-write SKU uniqueness check — prevents race conditions from being silently masked by the trigger
+    seller_sku = product_data.get(Fields.SELLER_SKU)
+    if seller_sku:
+        existing = (
+            get_db()
+            .collection(Collections.PRODUCTS)
+            .where(Fields.SELLER_ID, "==", user_id)
+            .where(Fields.SELLER_SKU, "==", seller_sku)
+            .where(Fields.LIFECYCLE_STATUS, "!=", ProductLifecycleStatusValues.ARCHIVED)
+            .limit(1)
+            .get()
+        )
+        if existing:
+            raise https_fn.HttpsError(
+                "already-exists", f"A product with SKU \"{seller_sku}\" already exists. Use a unique seller SKU."
+            )
+
+    # Warehouse address validation — ensure all warehouse docs exist and have complete addresses
+    warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
+    for wid in warehouse_ids:
+        w_doc = (
+            get_db()
+            .collection(Collections.USERS)
+            .document(user_id)
+            .collection(Collections.WAREHOUSES)
+            .document(wid)
+            .get()
+        )
+        if not w_doc.exists:
+            raise https_fn.HttpsError("not-found", f"Warehouse '{wid}' not found. Please update your warehouse selection.")
+        addr = (w_doc.to_dict() or {}).get("address", {})
+        if not addr.get("city") or not addr.get("country"):
+            raise https_fn.HttpsError(
+                "invalid-argument", f"Warehouse '{wid}' has an incomplete address (city and country are required)."
+            )
+
+    # Warehouse denormalization (reuses existing helper)
+    ship_from = _derive_ship_from_fields(user_id, product_data)
+    product_data.update(ship_from)
+
+    # Generate product ID server-side and write to Firestore atomically
+    product_ref = get_db().collection(Collections.PRODUCTS).document()
+    product_id = product_ref.id
+    product_data[Fields.PRODUCT_ID] = product_id
+
+    try:
+        product_ref.set(product_data)
+    except Exception as e:
+        # Cleanup uploaded images before surfacing the error
+        import contextlib
+        for key in uploaded_keys:
+            with contextlib.suppress(Exception):
+                s3_client.delete_object(Bucket=bucket_name, Key=key)
+        logger.error(f"create_product_atomic: Firestore write failed for user {user_id}: {e}")
+        raise https_fn.HttpsError("internal", "Failed to create product. Please try again.") from e
+
+    logger.info(f"create_product_atomic: product {product_id} created by {user_id} with {len(image_urls)} image(s)")
+    return create_success_response({Fields.PRODUCT_ID: product_id, "imageUrls": image_urls})
+
+
 @firestore_fn.on_document_created(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_product_created(event: firestore_fn.Event) -> None:
     """
@@ -1257,18 +1483,21 @@ def on_product_created(event: firestore_fn.Event) -> None:
             )
             return
 
-    # ── ADMIN APPROVAL GATE: All products land in under_review ──
+    # ── ADMIN APPROVAL GATE ──
     # Products are NOT indexed to Algolia until an admin explicitly approves them.
-    # The admin_approve_product callable sets lifecycleStatus=active and triggers indexing.
-    try:
-        get_db().collection(Collections.PRODUCTS).document(product_id).update(
-            {
-                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.UNDER_REVIEW,
-            }
-        )
-        logger.info(f"Product {product_id} set to under_review — awaiting admin approval")
-    except Exception as e:
-        logger.error(f"Failed to set approval status for {product_id}: {e}")
+    # create_product_atomic already sets lifecycleStatus=under_review — only set it here
+    # as a safety net for products that somehow arrive in draft state (e.g., older path or direct write).
+    current_status = product_data.get(Fields.LIFECYCLE_STATUS)
+    if current_status == ProductLifecycleStatusValues.DRAFT:
+        try:
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.UNDER_REVIEW}
+            )
+            logger.info(f"Product {product_id} advanced draft→under_review — awaiting admin approval")
+        except Exception as e:
+            logger.error(f"Failed to set approval status for {product_id}: {e}")
+    else:
+        logger.info(f"Product {product_id} already at {current_status} — no status change needed")
 
     # ── NOTIFY ALL ADMINS ──
     try:
@@ -1293,12 +1522,16 @@ def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
     price = product_data.get(Fields.PRICE, 0)
     product_type_label = f"Digital ({digital_type})" if is_digital else "Physical"
 
+    # Escape user-controlled values before inserting into HTML to prevent email injection
+    safe_product_name = _html.escape(str(product_name))
+    safe_seller_id = _html.escape(str(seller_id))
+
     # Fetch all admin users
     admin_docs = (
         get_db().collection(Collections.USERS).where(Fields.ROLES, "array-contains", UserRoleValues.ADMIN).get()
     )
 
-    subject = f"[Origna] New Product Pending Review: {product_name}"
+    subject = f"[Origna] New Product Pending Review: {safe_product_name}"
     for admin_doc in admin_docs:
         admin_data = admin_doc.to_dict() or {}
         admin_email = admin_data.get(Fields.EMAIL)
@@ -1308,10 +1541,10 @@ def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #5B30F6;">New Product Pending Review</h2>
   <table style="width:100%; border-collapse:collapse;">
-    <tr><td style="padding:6px 0; color:#666; width:140px;">Product Name</td><td style="font-weight:bold;">{product_name}</td></tr>
-    <tr><td style="padding:6px 0; color:#666;">Product ID</td><td><code>{product_id}</code></td></tr>
-    <tr><td style="padding:6px 0; color:#666;">Seller ID</td><td><code>{seller_id}</code></td></tr>
-    <tr><td style="padding:6px 0; color:#666;">Type</td><td>{product_type_label}</td></tr>
+    <tr><td style="padding:6px 0; color:#666; width:140px;">Product Name</td><td style="font-weight:bold;">{safe_product_name}</td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Product ID</td><td><code>{_html.escape(product_id)}</code></td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Seller ID</td><td><code>{safe_seller_id}</code></td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Type</td><td>{_html.escape(product_type_label)}</td></tr>
     <tr><td style="padding:6px 0; color:#666;">Price</td><td>CAD ${price:.2f}</td></tr>
   </table>
   <p style="margin-top:20px;">
@@ -1365,29 +1598,11 @@ def _send_product_rejection_email(seller_email: str, product_name: str, reason: 
 
 
 def _notify_premium_users_new_product(product_data: dict, product_id: str) -> None:
-    """Send FCM push to premium users with notifyNewProducts=True (max 500)."""
+    """Send FCM push to premium users with notifyNewProducts=True (paginated to handle >500)."""
     try:
         from firebase_admin import messaging
     except ImportError:
         logger.warning("firebase_admin.messaging not available")
-        return
-
-    users_query = (
-        get_db()
-        .collection(Collections.USERS)
-        .where(Fields.IS_PREMIUM, "==", True)
-        .where(Fields.NOTIFY_NEW_PRODUCTS, "==", True)
-        .limit(500)
-        .stream()
-    )
-
-    tokens = []
-    for user in users_query:
-        token = (user.to_dict() or {}).get(Fields.FCM_TOKEN)
-        if token:
-            tokens.append(token)
-
-    if not tokens:
         return
 
     product_name = product_data.get(Fields.NAME, "New Product")
@@ -1401,13 +1616,46 @@ def _notify_premium_users_new_product(product_data: dict, product_id: str) -> No
     if image_url:
         notification_kwargs["image"] = image_url
 
-    msg = messaging.MulticastMessage(
-        tokens=tokens,
-        notification=messaging.Notification(**notification_kwargs),
-        data={"type": "new_product", "productId": product_id, "screen": f"/product/{product_id}"},
-    )
-    response = messaging.send_each_for_multicast(msg)
-    logger.info(f"New product FCM sent: {response.success_count} ok, {response.failure_count} failed")
+    total_success = 0
+    total_failure = 0
+    last_doc = None
+
+    while True:
+        query = (
+            get_db()
+            .collection(Collections.USERS)
+            .where(Fields.IS_PREMIUM, "==", True)
+            .where(Fields.NOTIFY_NEW_PRODUCTS, "==", True)
+            .limit(500)
+        )
+        if last_doc:
+            query = query.start_after(last_doc)
+
+        docs = list(query.stream())
+        if not docs:
+            break
+
+        tokens = []
+        for user in docs:
+            token = (user.to_dict() or {}).get(Fields.FCM_TOKEN)
+            if token:
+                tokens.append(token)
+
+        if tokens:
+            msg = messaging.MulticastMessage(
+                tokens=tokens,
+                notification=messaging.Notification(**notification_kwargs),
+                data={"type": "new_product", "productId": product_id, "screen": f"/product/{product_id}"},
+            )
+            response = messaging.send_each_for_multicast(msg)
+            total_success += response.success_count
+            total_failure += response.failure_count
+
+        last_doc = docs[-1]
+        if len(docs) < 500:
+            break  # Last page
+
+    logger.info(f"New product FCM sent: {total_success} ok, {total_failure} failed")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1477,18 +1725,17 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     )
 
-    # Index to Algolia now that it's approved
+    # Index to Algolia now that it's approved — re-fetch fresh doc to include all trigger patches
+    algolia_warning = None
     try:
-        product_data.update(
-            {
-                "id": product_id,
-                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
-            }
-        )
-        index_product(product_id, product_data)
+        fresh_doc = product_ref.get()
+        fresh_data = fresh_doc.to_dict() or {} if fresh_doc.exists else product_data
+        fresh_data[Fields.LIFECYCLE_STATUS] = ProductLifecycleStatusValues.ACTIVE
+        index_product(product_id, fresh_data)
         logger.info(f"Product {product_id} indexed to Algolia after admin approval")
     except Exception as e:
         logger.error(f"Algolia indexing failed after approval for {product_id}: {e}")
+        algolia_warning = "Product approved but Algolia indexing failed — product may not appear in search immediately"
 
     # Email seller
     seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
@@ -1506,7 +1753,10 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to send new product FCM for {product_id}: {e}")
 
-    return create_success_response({}, message="Product approved and now live")
+    return create_success_response(
+        {} if not algolia_warning else {"algoliaWarning": algolia_warning},
+        message=algolia_warning if algolia_warning else "Product approved and now live",
+    )
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -3170,8 +3420,8 @@ def answer_review(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
-    from utils.helpers import sanitized_text
     from services.rate_limiter import RateLimiter
+    from utils.helpers import sanitized_text
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
@@ -3347,7 +3597,8 @@ def vote_review_helpful(req: https_fn.CallableRequest) -> dict[str, Any]:
 def _track_price_history(product_id: str, before_data: dict, after_data: dict) -> None:
     """
     N-06: Append a price history entry when price or compareAtPrice changes.
-    Keeps the last 30 entries — trims the oldest if the array grows beyond that.
+    Uses ArrayUnion for the append to avoid read-modify-write race conditions.
+    A separate scheduled job or trigger handles trimming to 30 entries.
 
     NOTE: Uses datetime.now(UTC).isoformat() — NOT get_server_timestamp() —
     because server timestamps CANNOT be nested inside ArrayUnion payloads.
@@ -3368,21 +3619,9 @@ def _track_price_history(product_id: str, before_data: dict, after_data: dict) -
         "changedAt": datetime.now(UTC).isoformat(),
     }
 
-    # Fetch current priceHistory to enforce 30-entry limit
     prod_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
-    prod_snap = prod_ref.get()
-    if not prod_snap.exists:
-        return
-
-    existing: list = list((prod_snap.to_dict() or {}).get(Fields.PRICE_HISTORY, []))
-    existing.append(new_entry)
-
-    if len(existing) > 30:
-        # Trim oldest entries, keep last 30
-        existing = existing[-30:]
-        prod_ref.update({Fields.PRICE_HISTORY: existing})
-    else:
-        prod_ref.update({Fields.PRICE_HISTORY: ArrayUnion([new_entry])})
+    # Always use ArrayUnion — avoids race conditions from concurrent updates
+    prod_ref.update({Fields.PRICE_HISTORY: ArrayUnion([new_entry])})
 
     logger.info(f"Price history recorded for product {product_id}: {before_price} -> {after_price}")
 
@@ -3462,6 +3701,7 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
         if action == "pause":
             batch.update(prod_ref, {
                 Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+                Fields.IS_ACTIVE: False,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             updated += 1
@@ -3474,6 +3714,7 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
                 continue
             batch.update(prod_ref, {
                 Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+                Fields.IS_ACTIVE: True,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             activated_ids.append(pid)
@@ -3482,6 +3723,7 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
         elif action == "archive":
             batch.update(prod_ref, {
                 Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ARCHIVED,
+                Fields.IS_ACTIVE: False,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             updated += 1
@@ -3497,7 +3739,10 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
                     if act_snap and act_snap.exists:
                         act_data = act_snap.to_dict() or {}
                         act_data[Fields.LIFECYCLE_STATUS] = ProductLifecycleStatusValues.ACTIVE
-                        algolia_partial_update(act_pid, {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE})
+                        algolia_partial_update(act_pid, {
+                            Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+                            Fields.IS_ACTIVE: True,
+                        })
                 except Exception as alg_err:
                     logger.error(f"bulk_update_products: Algolia re-index failed for {act_pid}: {alg_err}")
 

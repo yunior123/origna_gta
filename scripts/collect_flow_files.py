@@ -5,7 +5,9 @@ into Desktop/origna_flows/<flow_name>/ for AI review.
 
 Rules:
   - CLAUDE.md is prepended to every flow for AI context.
-  - Max 18 files per flow folder. Extra files are concatenated into _overflow.md.
+  - Max 18 primary files per flow folder (+ INSTRUCTIONS.md + optional _overflow.md = 20 total).
+  - Extra files are concatenated into _overflow.md.
+  - Total combined content is capped at MAX_TOTAL_BYTES to respect Claude.ai's context limit.
 
 Usage:
     python scripts/collect_flow_files.py
@@ -16,7 +18,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DESKTOP = Path.home() / "Desktop" / "origna_flows"
-MAX_FILES_PER_FLOW = 18  # includes CLAUDE.md (INSTRUCTIONS.md does NOT count toward limit)
+MAX_FILES_PER_FLOW = 18  # includes CLAUDE.md; +INSTRUCTIONS.md +_overflow.md = 20 total max
+MAX_TOTAL_BYTES = 700_000  # 700 KB ≈ 175K tokens — safely under Claude Sonnet 4.6's 200K token context on claude.ai
 
 # CLAUDE.md is auto-injected into every flow as the first file
 _CLAUDE = "CLAUDE.md"
@@ -957,6 +960,7 @@ FLOWS: dict[str, list[str]] = {
         "origna_gta/lib/core/repositories/location_repository.dart",
         # Backend
         "functions/handlers/users.py",
+        "functions/handlers/addresses.py",
         "functions/models/user.py",
         # Schema / Rules
         "functions/schema_constants.py",
@@ -1156,12 +1160,14 @@ FLOWS: dict[str, list[str]] = {
 }
 
 
-def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int]:
-    """Copy files for a flow into Desktop/origna_flows/<flow_name>/. Returns (copied, missing).
+def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
+    """Copy files for a flow into Desktop/origna_flows/<flow_name>/. Returns (copied, missing, total_bytes).
 
     - Writes INSTRUCTIONS.md (does NOT count toward MAX_FILES_PER_FLOW).
     - CLAUDE.md is always prepended as the first file.
     - If total files exceed MAX_FILES_PER_FLOW, excess files are concatenated into _overflow.md.
+    - Total content is capped at MAX_TOTAL_BYTES to respect Claude.ai's context limit.
+    - Folder will have at most 20 files: 18 primary + INSTRUCTIONS.md + _overflow.md.
     """
     dest_root = DESKTOP / flow_name
     if dest_root.exists():
@@ -1170,19 +1176,21 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int]:
 
     # Write INSTRUCTIONS.md (not counted in file limit)
     instructions_body = FLOW_INSTRUCTIONS.get(flow_name, "")
-    (dest_root / "INSTRUCTIONS.md").write_text(
-        instructions_body + _COMMON_FOOTER, encoding="utf-8"
-    )
+    instructions_text = instructions_body + _COMMON_FOOTER
+    (dest_root / "INSTRUCTIONS.md").write_text(instructions_text, encoding="utf-8")
+
+    total_bytes = len(instructions_text.encode("utf-8"))
 
     # Always prepend CLAUDE.md
     all_files = [_CLAUDE] + [f for f in file_paths if f != _CLAUDE]
 
     # Split into normal (first MAX_FILES_PER_FLOW) and overflow
     primary = all_files[:MAX_FILES_PER_FLOW]
-    overflow = all_files[MAX_FILES_PER_FLOW:]
+    overflow = list(all_files[MAX_FILES_PER_FLOW:])
 
     copied = 0
     missing = 0
+    deferred: list[str] = []  # primary files bumped to overflow due to size limit
 
     for rel in primary:
         src = REPO_ROOT / rel
@@ -1190,15 +1198,22 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int]:
             print(f"  ⚠️  MISSING: {rel}")
             missing += 1
             continue
+        file_bytes = src.stat().st_size
+        # Always include CLAUDE.md; defer others if size cap would be exceeded
+        if rel != _CLAUDE and total_bytes + file_bytes > MAX_TOTAL_BYTES:
+            deferred.append(rel)
+            continue
         dest = dest_root / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dest)
+        total_bytes += file_bytes
         copied += 1
 
-    # Concatenate overflow files into _overflow.md
-    if overflow:
+    # Concatenate overflow + deferred files into _overflow.md
+    all_overflow = deferred + overflow
+    if all_overflow:
         overflow_parts: list[str] = []
-        for rel in overflow:
+        for rel in all_overflow:
             src = REPO_ROOT / rel
             if not src.exists():
                 print(f"  ⚠️  MISSING (overflow): {rel}")
@@ -1208,7 +1223,24 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int]:
                 content = src.read_text(encoding="utf-8", errors="replace")
             except Exception as e:
                 content = f"[Error reading file: {e}]"
+            header = f"## FILE: {rel}\n\n```\n"
+            footer = "\n```\n"
+            chunk_bytes = len((header + content + footer).encode("utf-8"))
+            if total_bytes + chunk_bytes > MAX_TOTAL_BYTES:
+                # Truncate content to fit within remaining budget
+                header_b = header.encode("utf-8")
+                trunc_footer = b"\n[TRUNCATED -- size limit reached]\n```\n"
+                remaining = MAX_TOTAL_BYTES - total_bytes - len(header_b) - len(trunc_footer)
+                if remaining < 20:
+                    break  # no room left — stop adding overflow files
+                truncated = content.encode("utf-8")[:remaining].decode("utf-8", errors="ignore")
+                part = header + truncated + "\n[TRUNCATED — size limit reached]\n```\n"
+                overflow_parts.append(part)
+                total_bytes += len(part.encode("utf-8"))
+                copied += 1
+                break  # stop after truncated entry
             overflow_parts.append(f"## FILE: {rel}\n\n```\n{content}\n```\n")
+            total_bytes += chunk_bytes
             copied += 1
 
         if overflow_parts:
@@ -1219,7 +1251,8 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int]:
                 encoding="utf-8",
             )
 
-    return copied, missing
+    folder_files = sum(1 for f in dest_root.rglob("*") if f.is_file())  # actual files to upload to Claude.ai
+    return copied, missing, total_bytes, folder_files
 
 
 def main() -> None:
@@ -1228,17 +1261,17 @@ def main() -> None:
     total_missing = 0
 
     for flow, files in FLOWS.items():
-        copied, missing = copy_flow(flow, files)
+        copied, missing, flow_bytes, folder_files = copy_flow(flow, files)
         status = "✅" if missing == 0 else "⚠️ "
-        n_primary = min(len(files) + 1, MAX_FILES_PER_FLOW)  # +1 for CLAUDE.md
-        overflow_count = max(0, len(files) + 1 - MAX_FILES_PER_FLOW)
-        overflow_note = f"  (+{overflow_count} in _overflow.md)" if overflow_count else ""
-        print(f"{status} {flow:<35}  {copied} files copied  ({missing} missing){overflow_note}")
+        size_kb = flow_bytes / 1024
+        size_note = f"  📦 {size_kb:.0f} KB" + ("  ⚠️ NEAR LIMIT" if flow_bytes > MAX_TOTAL_BYTES * 0.95 else "")
+        print(f"{status} {flow:<35}  {folder_files}/20 files  ({missing} missing){size_note}")
         total_copied += copied
         total_missing += missing
 
     print(f"\nDone — {total_copied} files copied, {total_missing} missing across {len(FLOWS)} flows.")
     print(f"📁 Open: {DESKTOP}")
+    print(f"ℹ️  Size cap: {MAX_TOTAL_BYTES // 1024} KB per flow  |  Max files: {MAX_FILES_PER_FLOW} primary + INSTRUCTIONS.md + _overflow.md = 20 total")
 
 
 if __name__ == "__main__":

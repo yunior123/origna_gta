@@ -117,6 +117,12 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
       const [],
   subcategory: json['subcategory'] as String?,
   condition: json['condition'] as String?,
+  warehouseStockMap: (json['warehouseStockMap'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, (e as num).toInt()),
+  ),
+  updatedAt: json['updatedAt'] == null
+      ? null
+      : DateTime.parse(json['updatedAt'] as String),
 );
 
 Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
@@ -176,6 +182,8 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'variantOptions': instance.variantOptions,
   'subcategory': instance.subcategory,
   'condition': instance.condition,
+  'warehouseStockMap': instance.warehouseStockMap,
+  'updatedAt': instance.updatedAt?.toIso8601String(),
 };
 
 _ProductCreate _$ProductCreateFromJson(

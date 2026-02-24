@@ -70,8 +70,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     // Bug #27: Prevent double-submit
     if (state.isLoading) return;
 
-    final isDevOrTestRun =
-        const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'dev';
+    final isDevOrTestRun = const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'dev' ||
+        const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'emulator';
 
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'product.please_enter_name'.tr());
@@ -101,7 +101,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(errorMessage: 'product.price_limit_exceeded'.tr());
       return;
     }
-    if (compareAtPrice != null && compareAtPrice <= price) {
+    if (compareAtPrice != null && compareAtPrice - price < 0.50) {
       state = state.copyWith(errorMessage: 'product.compare_at_price_must_be_higher'.tr());
       return;
     }
@@ -238,34 +238,35 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       final provinceTrimmed = state.selectedProvince.trim();
       final postalTrimmed = postalCode.trim().toUpperCase();
 
-      // AUDIT FIX: Upload images FIRST to prevent orphan Firestore documents.
-      // If image upload fails, no product document is created.
-      // Generate a temporary product ID for the image path
-      final tempProductId = _ref.read(productRepositoryProvider).generateProductId();
-      List<String> urls;
+      // Atomic: compress images then delegate both upload + Firestore write to backend.
+      // On any failure the backend cleans up R2 automatically — no orphan images.
+      List<Uint8List> compressedImages = [];
+      List<String>? testImageUrls;
 
       if (state.imageModels.isEmpty && isDevOrTestRun) {
         final stamp = DateTime.now().millisecondsSinceEpoch;
-        urls = <String>['https://picsum.photos/seed/origna-$stamp/800/800'];
+        testImageUrls = ['https://picsum.photos/seed/origna-$stamp/800/800'];
       } else {
-        final compressedImages = await _compressImages(state.imageModels);
+        compressedImages = await _compressImages(state.imageModels);
         if (compressedImages.isEmpty) {
           throw Exception('Failed to compress images. Please try different images.');
-        }
-
-        urls = await productRepository.uploadImages(compressedImages, tempProductId);
-
-        if (urls.isEmpty) {
-          throw Exception('Failed to upload images. Please check your connection and try again.');
         }
       }
 
       final useWarehouses = state.selectedWarehouseIds.isNotEmpty;
       if (useWarehouses) {
-        final allHaveStock = state.selectedWarehouseIds.every((id) => state.warehouseStockMap.containsKey(id));
-        final totalStock = state.warehouseStockMap.values.fold(0, (a, b) => a + b);
-        if (state.warehouseStockMap.isEmpty || !allHaveStock || totalStock == 0) {
+        if (state.warehouseStockMap.isEmpty) {
           state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_stock_required'.tr());
+          return;
+        }
+        final allHaveStock = state.selectedWarehouseIds.every((id) => state.warehouseStockMap.containsKey(id));
+        if (!allHaveStock) {
+          state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_stock_all_required'.tr());
+          return;
+        }
+        final totalStock = state.warehouseStockMap.values.fold(0, (a, b) => a + b);
+        if (totalStock == 0) {
+          state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_total_stock_zero'.tr());
           return;
         }
       }
@@ -278,15 +279,16 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         return;
       }
 
+      // Build the product model — imageUrls and productId are set server-side
       final product = models.Product(
-        productId: tempProductId,
+        productId: '',
         sellerId: uid,
         name: name,
         keywords: generateSearchKeywords(name),
         stockQuantity: effectiveStock,
         price: price,
         compareAtPrice: compareAtPrice,
-        imageUrls: urls,
+        imageUrls: const [],
         sellerAddress: useWarehouses
             ? null
             : models.Address(
@@ -309,7 +311,13 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         widthCm: state.isDigital ? null : width,
         heightCm: state.isDigital ? null : height,
         isLocalDeliveryOnly: state.isDigital ? false : state.isLocalDeliveryOnly,
-        estimatedShipDays: sanitizedDeliveryOptions.isNotEmpty ? sanitizedDeliveryOptions.first.estimatedDays : 0,
+        estimatedShipDays: () {
+          // Use the 'standard' option's estimatedDays as the canonical shipping time.
+          // Fall back to first available, then 0 if none exist.
+          if (sanitizedDeliveryOptions.isEmpty) return 0;
+          final standard = sanitizedDeliveryOptions.where((o) => o.type == DeliveryTypeValues.standard).firstOrNull;
+          return standard?.estimatedDays ?? sanitizedDeliveryOptions.first.estimatedDays;
+        }(),
         taxCode: taxCode,
         deliveryOptions: sanitizedDeliveryOptions,
         isPerishable: state.isDigital ? false : state.isPerishable,
@@ -333,12 +341,17 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         sellerSku: state.sellerSku,
         subcategory: subcategory,
         warehouseIds: useWarehouses ? state.selectedWarehouseIds : null,
+        warehouseStockMap: useWarehouses ? state.warehouseStockMap : null,
         hasVariants: state.hasVariants,
         variants: state.hasVariants ? state.variants.map((v) => v.toMap()).toList() : const [],
         variantOptions: state.hasVariants ? state.variantOptions.map((o) => o.toMap()).toList() : const [],
       );
 
-      await productRepository.addProductWithId(tempProductId, product);
+      await productRepository.createProductAtomic(
+        product,
+        compressedImages,
+        testImageUrls: testImageUrls,
+      );
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'AddProductViewModel.addProduct');

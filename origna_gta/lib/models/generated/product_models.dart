@@ -192,6 +192,13 @@ abstract class Product with _$Product {
 
     /// Product condition: new, like_new, good, fair, for_parts
     String? condition,
+
+    /// Per-warehouse stock allocation map: {warehouseId: stockQty}
+    /// Sum of values equals stockQuantity. Used for multi-warehouse inventory routing.
+    Map<String, int>? warehouseStockMap,
+
+    /// Server-controlled last-updated timestamp
+    DateTime? updatedAt,
   }) = _Product;
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
@@ -205,7 +212,21 @@ abstract class Product with _$Product {
       _ => DateTime.now(),
     };
 
-    return Product.fromJson({...data, 'productId': doc.id, 'createdAt': parsedCreatedAt.toIso8601String()});
+    final rawUpdatedAt = data[Fields.updatedAt];
+    final DateTime? parsedUpdatedAt = switch (rawUpdatedAt) {
+      Timestamp t => t.toDate(),
+      DateTime d => d,
+      String s => DateTime.tryParse(s),
+      _ => null,
+    };
+
+    final jsonMap = <String, dynamic>{
+      ...data,
+      'productId': doc.id,
+      'createdAt': parsedCreatedAt.toIso8601String(),
+      if (parsedUpdatedAt != null) 'updatedAt': parsedUpdatedAt.toIso8601String(),
+    };
+    return Product.fromJson(jsonMap);
   }
 
   factory Product.fromJson(Map<String, dynamic> json) => _$ProductFromJson(json);

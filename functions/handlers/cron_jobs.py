@@ -1454,6 +1454,35 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
     logger.info(f"send_abandoned_cart_emails done: {sent_count} sent, {skipped_count} skipped")
 
 
+def _compute_avg_response_time(seller_id: str, window_start: object) -> float:
+    """
+    Compute average first-reply time (hours) for a seller over the given window.
+
+    Reads chat threads where the seller replied (firstSellerReplyAt >= window_start)
+    and averages the pre-computed firstReplyHours field set by send_message.
+
+    Returns 0.0 if the seller has no replied threads in the window.
+    """
+    try:
+        chats = (
+            get_db()
+            .collection(Collections.CHATS)
+            .where(Fields.SELLER_ID, "==", seller_id)
+            .where(Fields.FIRST_SELLER_REPLY_AT, ">=", window_start)
+            .limit(200)
+            .stream()
+        )
+        hours_list = []
+        for cd in chats:
+            val = cd.to_dict().get(Fields.FIRST_REPLY_HOURS)
+            if isinstance(val, (int, float)):
+                hours_list.append(val)
+        return round(sum(hours_list) / len(hours_list), 4) if hours_list else 0.0
+    except Exception as e:
+        logger.warning(f"_compute_avg_response_time failed for seller {seller_id}: {e}")
+        return 0.0
+
+
 @scheduler_fn.on_schedule(schedule="every 168 hours", **CRON_OPTIONS)  # weekly
 def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
     """
@@ -1510,7 +1539,7 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                     Fields.REFUND_RATE: 0.0,
                     Fields.CANCELLATION_RATE: 0.0,
                     Fields.LATE_SHIPMENT_RATE: 0.0,
-                    Fields.AVG_RESPONSE_TIME_HOURS: 0.0,
+                    Fields.AVG_RESPONSE_TIME_HOURS: _compute_avg_response_time(seller_id, window_start),
                     Fields.TOTAL_ORDERS_30D: 0,
                     Fields.TOTAL_REVENUE_CENTS_30D: 0,
                     Fields.COMPUTED_AT: now_utc,
@@ -1575,7 +1604,7 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                 Fields.REFUND_RATE: round(refund_rate, 4),
                 Fields.CANCELLATION_RATE: round(cancel_rate, 4),
                 Fields.LATE_SHIPMENT_RATE: round(late_rate, 4),
-                Fields.AVG_RESPONSE_TIME_HOURS: 0.0,  # TODO: implement response time tracking
+                Fields.AVG_RESPONSE_TIME_HOURS: _compute_avg_response_time(seller_id, window_start),
                 Fields.TOTAL_ORDERS_30D: total_orders,
                 Fields.TOTAL_REVENUE_CENTS_30D: total_revenue_cents,
                 Fields.COMPUTED_AT: now_utc,

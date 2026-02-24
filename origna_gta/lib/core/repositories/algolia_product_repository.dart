@@ -17,42 +17,15 @@ class AlgoliaProductRepository implements ProductRepository {
   AlgoliaProductRepository(this._algoliaService, this._firestore, this._functions);
 
   @override
+  @Deprecated('Use createProductAtomic() instead — bypasses server validation.')
   Future<String> addProduct(Product product) async {
-    if (kDebugMode) {
-      debugPrint('REPO: [AlgoliaProductRepository] Attempting to add product...');
-    }
-    try {
-      // AUDIT FIX: Sanitize product data before Firestore write (removes client-controlled productId, normalizes timestamps)
-      final firestoreData = sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
-      final docRef = await _firestore.collection(Collections.products).add(firestoreData);
-      if (kDebugMode) debugPrint('REPO: Local write returned ID: ${docRef.id}');
-
-      // Force server synchronization verification
-      if (kDebugMode) debugPrint('REPO: Verifying server persistence...');
-      final serverDoc = await docRef.get(const GetOptions(source: Source.server));
-
-      if (!serverDoc.exists) {
-        if (kDebugMode) {
-          debugPrint('REPO: CRITICAL ERROR - Document not found on server immediately after write!');
-        }
-        // Throwing ensures the UI/Test treats this as a failure
-        throw FirebaseException(plugin: 'cloud_firestore', code: 'sync-failed', message: 'Write succeeded locally but failed to persist to server.');
-      }
-
-      if (kDebugMode) debugPrint('REPO: Server verification SUCCESS.');
-      return docRef.id;
-    } catch (e) {
-      if (kDebugMode) debugPrint('REPO: addProduct FAILED: $e');
-      rethrow;
-    }
+    throw UnsupportedError('addProduct() is disabled. Use createProductAtomic().');
   }
 
   @override
+  @Deprecated('Use createProductAtomic() instead — bypasses server validation.')
   Future<void> addProductWithId(String productId, Product product) async {
-    if (kDebugMode) debugPrint('REPO: [AlgoliaProductRepository] Adding product with ID: $productId');
-    // AUDIT FIX: Sanitize product data before Firestore write
-    final firestoreData = sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
-    await _firestore.collection(Collections.products).doc(productId).set(firestoreData);
+    throw UnsupportedError('addProductWithId() is disabled. Use createProductAtomic().');
   }
 
   @override
@@ -199,6 +172,11 @@ class AlgoliaProductRepository implements ProductRepository {
   @override
   Future<List<String>> uploadReviewImages(List<Uint8List> images, String userId) async {
     throw UnimplementedError('Review image upload should be handled by FirebaseProductRepository');
+  }
+
+  @override
+  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls}) async {
+    throw UnimplementedError('createProductAtomic should be handled by FirebaseProductRepository');
   }
 
   @override

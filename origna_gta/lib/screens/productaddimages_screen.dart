@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -24,6 +25,15 @@ class _ProductAddImagesState extends State<ProductAddImages> {
   }
 
   @override
+  void didUpdateWidget(covariant ProductAddImages oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync internal list when parent passes new images (e.g., after edit screen loads saved images)
+    if (widget.imageModels != oldWidget.imageModels) {
+      setState(() => _imageModels = List<ImageModel>.from(widget.imageModels));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,10 +46,10 @@ class _ProductAddImagesState extends State<ProductAddImages> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: _imageModels.length >= 5 ? DesignTokens.warning : DesignTokens.textSecondary,
+                color: _imageModels.length >= BusinessRules.maxProductImages ? DesignTokens.warning : DesignTokens.textSecondary,
               ),
             ),
-            if (_imageModels.length >= 5) ...[
+            if (_imageModels.length >= BusinessRules.maxProductImages) ...[
               const SizedBox(width: 6),
               Icon(Icons.check_circle_rounded, size: 16, color: DesignTokens.success),
             ],
@@ -70,7 +80,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                 );
               }),
               // Add button
-              if (_imageModels.length < 5)
+              if (_imageModels.length < BusinessRules.maxProductImages)
                 Semantics(
                   button: true,
                   label: 'btn-add-photo',
@@ -120,7 +130,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
   Future<void> _pickImage() async {
     final messenger = ScaffoldMessenger.of(context);
 
-    if (_imageModels.length >= 5) {
+    if (_imageModels.length >= BusinessRules.maxProductImages) {
       messenger.showSnackBar(
         SnackBar(
           content:  Row(
@@ -193,13 +203,17 @@ class _ImageTile extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(isPrimary ? 14 : 15),
-            child: Image.memory(
-              imageModel.bytes,
-              width: 110,
-              height: 110,
-              fit: BoxFit.cover,
-              cacheWidth: 110,
-              cacheHeight: 110,
+            child: Semantics(
+              image: true,
+              label: isPrimary ? 'product-image-cover' : 'product-image-${index + 1}',
+              child: Image.memory(
+                imageModel.bytes,
+                width: 110,
+                height: 110,
+                fit: BoxFit.cover,
+                cacheWidth: 110,
+                cacheHeight: 110,
+              ),
             ),
           ),
         ),

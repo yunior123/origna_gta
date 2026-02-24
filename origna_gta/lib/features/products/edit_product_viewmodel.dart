@@ -172,7 +172,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       state = state.copyWith(errorMessage: 'Price cannot exceed \$100,000');
       return;
     }
-    if (compareAtPrice != null && compareAtPrice <= price) {
+    if (compareAtPrice != null && compareAtPrice - price < 0.50) {
       state = state.copyWith(errorMessage: 'product.compare_at_price_must_be_higher'.tr());
       return;
     }

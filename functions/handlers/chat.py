@@ -286,14 +286,29 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Update thread: last message + increment recipient's unread counter
     recipient_unread_field = Fields.SELLER_UNREAD_COUNT if uid == buyer_id else Fields.BUYER_UNREAD_COUNT
-    db.collection(Collections.CHATS).document(chat_id).update(
-        {
-            Fields.LAST_MESSAGE: text[:100],
-            Fields.LAST_MESSAGE_AT: now,
-            Fields.UPDATED_AT: now,
-            recipient_unread_field: firestore.Increment(1),
-        }
-    )
+    thread_update: dict = {
+        Fields.LAST_MESSAGE: text[:100],
+        Fields.LAST_MESSAGE_AT: now,
+        Fields.UPDATED_AT: now,
+        recipient_unread_field: firestore.Increment(1),
+    }
+
+    # Response time tracking:
+    # • Buyer's first message → record firstBuyerMessageAt (once only)
+    # • Seller's first reply after a buyer message → record firstSellerReplyAt + firstReplyHours
+    if uid == buyer_id and not chat_data.get(Fields.FIRST_BUYER_MESSAGE_AT):
+        thread_update[Fields.FIRST_BUYER_MESSAGE_AT] = now
+    elif uid == seller_id and not chat_data.get(Fields.FIRST_SELLER_REPLY_AT):
+        first_buyer_msg_at = chat_data.get(Fields.FIRST_BUYER_MESSAGE_AT)
+        if first_buyer_msg_at is not None:
+            # Normalize timezone before diff
+            if hasattr(first_buyer_msg_at, "tzinfo") and first_buyer_msg_at.tzinfo is None:
+                first_buyer_msg_at = first_buyer_msg_at.replace(tzinfo=UTC)
+            delta_hours = (now - first_buyer_msg_at).total_seconds() / 3600
+            thread_update[Fields.FIRST_SELLER_REPLY_AT] = now
+            thread_update[Fields.FIRST_REPLY_HOURS] = round(max(delta_hours, 0.0), 4)
+
+    db.collection(Collections.CHATS).document(chat_id).update(thread_update)
 
     logger.info(f"Message sent in chat {chat_id} by user {uid}")
 

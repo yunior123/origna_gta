@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -19,215 +18,82 @@ class FirebaseProductRepository implements ProductRepository {
   FirebaseProductRepository(this._firestore, this._functions);
 
   @override
+  @Deprecated(
+    'Use createProductAtomic() instead — addProduct() bypasses server-controlled fields '
+    '(sellerId validation, lifecycleStatus=under_review, SKU dedup). '
+    'Will be removed before launch.',
+  )
   Future<String> addProduct(Product product) async {
-    if (kDebugMode) {
-      debugPrint('REPO: Attempting to add product: ${product.name}');
-    }
-    try {
-      final firestoreData = sanitizeProductForFirestore(
-        product.toJson(),
-        ensureDateCreated: true,
-      );
-
-      // Pre-write sellerSku uniqueness check (safety net; on_product_created trigger is 2nd layer)
-      final sellerSku = product.sellerSku;
-      if (sellerSku != null && sellerSku.isNotEmpty) {
-        final existing = await _firestore
-            .collection(Collections.products)
-            .where(Fields.sellerId, isEqualTo: product.sellerId)
-            .where(Fields.sellerSku, isEqualTo: sellerSku)
-            .limit(1)
-            .get();
-        if (existing.docs.isNotEmpty) {
-          throw Exception(
-            'A product with SKU "$sellerSku" already exists. '
-            'Use a unique seller SKU per product.',
-          );
-        }
-      }
-
-      // Denormalize shipFrom fields from warehouses for O(1) card rendering
-      final warehouseIds = product.warehouseIds;
-      if (warehouseIds != null && warehouseIds.isNotEmpty) {
-        try {
-          // Fetch all warehouse docs in parallel
-          final warehouseDocs = await Future.wait(
-            warehouseIds.map((wId) => _firestore
-                .collection(Collections.users)
-                .doc(product.sellerId)
-                .collection(Collections.warehouses)
-                .doc(wId)
-                .get()),
-          );
-
-          // Primary warehouse: prefer the default, fall back to first
-          final primaryData = warehouseDocs
-              .where((d) => d.exists)
-              .map((d) => d.data()!)
-              .firstWhereOrNull((d) => d[Fields.isDefault] == true) ??
-          warehouseDocs.where((d) => d.exists).map((d) => d.data()!).firstOrNull;
-          if (primaryData != null) {
-            final addr = primaryData['address'] as Map<String, dynamic>?;
-            firestoreData[Fields.shipFromCity] = addr?[Fields.city];
-            firestoreData[Fields.shipFromProvince] = addr?[Fields.state];
-            firestoreData[Fields.shipFromCountry] = addr?[Fields.country];
-          }
-
-          // All unique countries across every warehouse
-          final countries = warehouseDocs
-              .where((d) => d.exists)
-              .map((d) => (d.data()!['address'] as Map<String, dynamic>?)?[Fields.country] as String?)
-              .whereType<String>()
-              .toSet()
-              .toList();
-          if (countries.isNotEmpty) {
-            firestoreData[Fields.shipFromCountries] = countries;
-          }
-        } catch (e) {
-          AppError.log(e, context: 'addProduct.warehouseDenorm');
-        }
-      }
-
-      final docRef = await _firestore
-          .collection(Collections.products)
-          .add(firestoreData);
-      if (kDebugMode) {
-        debugPrint(
-          'REPO: Product added successfully locally with ID: ${docRef.id}',
-        );
-      }
-
-      // Debug-only server verification to confirm write persisted
-      if (kDebugMode) {
-        try {
-          debugPrint('REPO: [FirebaseProductRepository] Verifying write from SERVER...');
-          final docSnapshot = await docRef.get(const GetOptions(source: Source.server));
-          if (docSnapshot.exists) {
-            debugPrint('REPO: SERVER VERIFICATION SUCCESS!');
-          } else {
-            debugPrint('REPO: SERVER VERIFICATION FAILED: Document does not exist on server.');
-          }
-        } catch (e) {
-          debugPrint('REPO: SERVER VERIFICATION ERROR: $e');
-        }
-      }
-
-      return docRef.id;
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('REPO: Error adding product: $e');
-      }
-      rethrow;
-    }
+    throw UnsupportedError(
+      'addProduct() is disabled. Use createProductAtomic() to create products '
+      'through the server-validated Cloud Function.',
+    );
   }
 
   @override
+  @Deprecated(
+    'Use createProductAtomic() instead — addProductWithId() bypasses server-controlled fields. '
+    'Will be removed before launch.',
+  )
   Future<void> addProductWithId(String productId, Product product) async {
-    if (kDebugMode) debugPrint('REPO: Adding product with ID: $productId');
-    final firestoreData = sanitizeProductForFirestore(
-      product.toJson(),
-      ensureDateCreated: true,
+    throw UnsupportedError(
+      'addProductWithId() is disabled. Use createProductAtomic() to create products '
+      'through the server-validated Cloud Function.',
     );
-    try {
-      // SKU uniqueness check (same as addProduct — safety net before write)
-      final sellerSku = product.sellerSku;
-      if (sellerSku != null && sellerSku.isNotEmpty) {
-        final existing = await _firestore
-            .collection(Collections.products)
-            .where(Fields.sellerId, isEqualTo: product.sellerId)
-            .where(Fields.sellerSku, isEqualTo: sellerSku)
-            .limit(1)
-            .get();
-        if (existing.docs.isNotEmpty) {
-          throw Exception(
-            'A product with SKU "$sellerSku" already exists. '
-            'Use a unique seller SKU per product.',
-          );
-        }
-      }
-
-      // Denormalize shipFrom fields from warehouses for O(1) card rendering
-      final warehouseIds = product.warehouseIds;
-      if (warehouseIds != null && warehouseIds.isNotEmpty) {
-        try {
-          final warehouseDocs = await Future.wait(
-            warehouseIds.map((wId) => _firestore
-                .collection(Collections.users)
-                .doc(product.sellerId)
-                .collection(Collections.warehouses)
-                .doc(wId)
-                .get()),
-          );
-
-          final primaryData = warehouseDocs
-              .where((d) => d.exists)
-              .map((d) => d.data()!)
-              .firstWhereOrNull((d) => d[Fields.isDefault] == true) ??
-          warehouseDocs.where((d) => d.exists).map((d) => d.data()!).firstOrNull;
-          if (primaryData != null) {
-            final addr = primaryData['address'] as Map<String, dynamic>?;
-            firestoreData[Fields.shipFromCity] = addr?[Fields.city];
-            firestoreData[Fields.shipFromProvince] = addr?[Fields.state];
-            firestoreData[Fields.shipFromCountry] = addr?[Fields.country];
-          }
-
-          final countries = warehouseDocs
-              .where((d) => d.exists)
-              .map((d) => (d.data()!['address'] as Map<String, dynamic>?)?[Fields.country] as String?)
-              .whereType<String>()
-              .toSet()
-              .toList();
-          if (countries.isNotEmpty) {
-            firestoreData[Fields.shipFromCountries] = countries;
-          }
-        } catch (_) {
-          // Non-fatal — card falls back gracefully
-        }
-      }
-
-      if (kDebugMode) {
-        final currentUser = FirebaseAuth.instance.currentUser;
-        debugPrint(
-          'REPO: addProductWithId auth uid=${currentUser?.uid} email=${currentUser?.email}',
-        );
-        debugPrint(
-          'REPO: addProductWithId payload sellerId=${firestoreData[Fields.sellerId]} state=${(firestoreData[Fields.sellerAddress] as Map?)?['state']} apartment=${(firestoreData[Fields.sellerAddress] as Map?)?['apartment']} keys=${firestoreData.keys.toList()}',
-        );
-      }
-
-      final docRef = _firestore.collection(Collections.products).doc(productId);
-      await docRef.set(firestoreData);
-
-      // Debug-only server verification
-      if (kDebugMode) {
-        try {
-          final docSnapshot = await docRef.get(const GetOptions(source: Source.server));
-          if (docSnapshot.exists) {
-            debugPrint('REPO: Product added with predetermined ID: $productId');
-          } else {
-            debugPrint('REPO: SERVER VERIFICATION FAILED: Document does not exist on server.');
-          }
-        } catch (e) {
-          debugPrint('REPO: SERVER VERIFICATION ERROR: $e');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        if (e is FirebaseException) {
-          debugPrint(
-            'REPO: addProductWithId FirebaseException code=${e.code} message=${e.message}',
-          );
-        } else {
-          debugPrint('REPO: addProductWithId error: $e');
-        }
-      }
-      rethrow;
-    }
   }
 
   @override
   String generateProductId() {
     return _firestore.collection(Collections.products).doc().id;
+  }
+
+  @override
+  Future<String> createProductAtomic(
+    Product product,
+    List<Uint8List> imageBytes, {
+    List<String>? testImageUrls,
+  }) async {
+    final productJson = product.toJson()
+      ..remove(Fields.productId)
+      ..remove(Fields.imageUrls)
+      ..remove(Fields.createdAt)
+      ..remove(Fields.rating)
+      ..remove(Fields.ratingCount);
+
+    // Normalize apartment: empty string → null (matches sanitizeProductForFirestore)
+    final sellerAddress = productJson[Fields.sellerAddress];
+    if (sellerAddress is Map) {
+      final addr = Map<String, dynamic>.from(sellerAddress.cast<String, dynamic>());
+      if (addr['apartment'] is String && (addr['apartment'] as String).trim().isEmpty) {
+        addr['apartment'] = null;
+      }
+      productJson[Fields.sellerAddress] = addr;
+    }
+
+    final images = imageBytes
+        .map((bytes) => {
+              'data': base64Encode(bytes),
+              'contentType': 'image/jpeg',
+            })
+        .toList();
+
+    final payload = <String, dynamic>{
+      'productData': productJson,
+      'images': images,
+    };
+    if (testImageUrls != null && testImageUrls.isNotEmpty) {
+      payload['testImageUrls'] = testImageUrls;
+    }
+
+    final result = await _functions
+        .httpsCallable(CloudFunctionEndpoints.createProductAtomic)
+        .call(payload);
+
+    final productId = result.data[Fields.productId] as String?;
+    if (productId == null || productId.isEmpty) {
+      throw Exception('create_product_atomic returned no productId');
+    }
+    return productId;
   }
 
   @override
@@ -419,6 +285,50 @@ class FirebaseProductRepository implements ProductRepository {
     Map<String, dynamic> data,
   ) async {
     final sanitized = sanitizeProductForFirestore(data);
+
+    // Re-denormalize shipFrom fields when warehouseIds are updated
+    final rawWarehouseIds = data[Fields.warehouseIds];
+    if (rawWarehouseIds is List && rawWarehouseIds.isNotEmpty) {
+      final sellerId = data[Fields.sellerId] as String?;
+      if (sellerId != null && sellerId.isNotEmpty) {
+        try {
+          final warehouseIds = rawWarehouseIds.cast<String>();
+          final warehouseDocs = await Future.wait(
+            warehouseIds.map((wId) => _firestore
+                .collection(Collections.users)
+                .doc(sellerId)
+                .collection(Collections.warehouses)
+                .doc(wId)
+                .get()),
+          );
+
+          final primaryData = warehouseDocs
+              .where((d) => d.exists)
+              .map((d) => d.data()!)
+              .firstWhereOrNull((d) => d[Fields.isDefault] == true) ??
+              warehouseDocs.where((d) => d.exists).map((d) => d.data()!).firstOrNull;
+          if (primaryData != null) {
+            final addr = primaryData['address'] as Map<String, dynamic>?;
+            sanitized[Fields.shipFromCity] = addr?[Fields.city];
+            sanitized[Fields.shipFromProvince] = addr?[Fields.state];
+            sanitized[Fields.shipFromCountry] = addr?[Fields.country];
+          }
+
+          final countries = warehouseDocs
+              .where((d) => d.exists)
+              .map((d) => (d.data()!['address'] as Map<String, dynamic>?)?[Fields.country] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          if (countries.isNotEmpty) {
+            sanitized[Fields.shipFromCountries] = countries;
+          }
+        } catch (e) {
+          AppError.log(e, context: 'updateProduct.warehouseDenorm');
+        }
+      }
+    }
+
     await _firestore
         .collection(Collections.products)
         .doc(productId)
@@ -472,10 +382,13 @@ class FirebaseProductRepository implements ProductRepository {
     int index,
   ) async {
     const maxRetries = 3;
+    // Derive MIME type and extension from magic bytes
+    final mimeType = _detectImageMimeType(bytes);
+    final ext = mimeType.split('/').last.replaceFirst('jpeg', 'jpg');
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         final fileName =
-            "product_${productId}_${index}_${DateTime.now().millisecondsSinceEpoch}.jpg";
+            "product_${productId}_${index}_${DateTime.now().millisecondsSinceEpoch}.$ext";
         final urlInfo = await getUploadUrlInfo(fileName);
 
         if (urlInfo == null) throw Exception('Could not get upload URL');
@@ -484,7 +397,7 @@ class FirebaseProductRepository implements ProductRepository {
             .put(
               Uri.parse(urlInfo['uploadUrl']!),
               body: bytes,
-              headers: {"Content-Type": "image/jpeg"},
+              headers: {"Content-Type": mimeType},
             )
             .timeout(const Duration(seconds: 30));
 
@@ -498,6 +411,30 @@ class FirebaseProductRepository implements ProductRepository {
       }
     }
     return null;
+  }
+
+  /// Detect image MIME type from magic bytes header.
+  static String _detectImageMimeType(Uint8List bytes) {
+    if (bytes.length < 4) return 'image/jpeg';
+    // PNG: 89 50 4E 47
+    if (bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) {
+      return 'image/png';
+    }
+    // JPEG: FF D8 FF
+    if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) {
+      return 'image/jpeg';
+    }
+    // WebP: RIFF????WEBP
+    if (bytes.length >= 12 &&
+        bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 &&
+        bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50) {
+      return 'image/webp';
+    }
+    // GIF: GIF8
+    if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x38) {
+      return 'image/gif';
+    }
+    return 'image/jpeg'; // default fallback
   }
 
   @override
@@ -601,6 +538,7 @@ Map<String, dynamic> sanitizeProductForFirestore(
 abstract class ProductRepository {
   Future<String> addProduct(Product product);
   Future<void> addProductWithId(String productId, Product product);
+  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls});
   Future<void> deleteProduct(String productId);
   Future<Product?> fetchProductById(String productId);
   Future<ProductQueryResult> fetchProducts({
