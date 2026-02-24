@@ -213,16 +213,28 @@ def redeem_coupon(code: str, user_id: str, order_id: str = "") -> None:
         data = snap.to_dict() or {}
         used_count = int(data.get(Fields.USED_COUNT, 0))
 
+        # Re-check global limit inside transaction to prevent race condition
+        max_uses_total = data.get(Fields.MAX_USES_TOTAL)
+        if max_uses_total is not None and used_count >= int(max_uses_total):
+            logger.warning(f"redeem_coupon: coupon {code} already at max uses ({max_uses_total}) — aborting")
+            return
+
+        # Re-check per-user limit inside transaction
+        use_snap = use_ref.get(transaction=transaction)
+        max_uses_per_user = int(data.get(Fields.MAX_USES_PER_USER, 1))
+        user_count = int(use_snap.to_dict().get("useCount", 0)) if use_snap.exists else 0
+        if user_count >= max_uses_per_user:
+            logger.warning(f"redeem_coupon: user {user_id} already at per-user limit for coupon {code} — aborting")
+            return
+
         # Increment global counter
         transaction.update(coupon_ref, {
             Fields.USED_COUNT: used_count + 1,
         })
 
         # Record per-user usage in subcollection
-        use_snap = use_ref.get(transaction=transaction)
         if use_snap.exists:
-            prev_count = int(use_snap.to_dict().get("useCount", 0))
-            transaction.update(use_ref, {"useCount": prev_count + 1, "lastUsedAt": fs.SERVER_TIMESTAMP})
+            transaction.update(use_ref, {"useCount": user_count + 1, "lastUsedAt": fs.SERVER_TIMESTAMP})
         else:
             transaction.set(use_ref, {"useCount": 1, "usedAt": fs.SERVER_TIMESTAMP, "lastUsedAt": fs.SERVER_TIMESTAMP})
 

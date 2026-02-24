@@ -332,7 +332,7 @@ def _run_auto_capture() -> None:
                 item_status = item.get(Fields.STATUS, DeliveryStatusValues.PENDING)
                 if item_status == DeliveryStatusValues.DELIVERED:
                     seller_id = item[Fields.SELLER_ID]
-                    item_price_cents = item.get(Fields.PRICE_CENTS) or item.get(Fields.PRICE, 0)  # already in cents
+                    item_price_cents = round(item.get(Fields.PRICE, 0) * 100)  # price is dollar float → convert to cents
                     item_total_cents = item_price_cents * item[Fields.QUANTITY]
                     sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
 
