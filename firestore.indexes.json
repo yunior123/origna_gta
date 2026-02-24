@@ -707,6 +707,25 @@
         {"fieldPath": "productIds", "arrayConfig": "CONTAINS"}
       ],
       "comment": "Chat gate query: buyer must have ordered this specific product (userId + productIds array_contains)"
+    },
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "currentPeriodEnd",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "FIX 2026-02-24: Index for sync_expired_subscriptions cron — status + currentPeriodEnd (Sentry 7b41a9fb)"
     }
   ],
   "fieldOverrides": []
