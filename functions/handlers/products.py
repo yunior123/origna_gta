@@ -2569,14 +2569,21 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
     now_utc = datetime.now(UTC)
 
     if has_variants:
-        # Find variants that just transitioned 0 → >0 and fire their subscriptions.
-        before_variants = before_data.get(Fields.VARIANTS) or {}
-        after_variants = after_data.get(Fields.VARIANTS) or {}
+        # variants is a list[dict] — key by variantId for before/after comparison.
+        before_variants_raw = before_data.get(Fields.VARIANTS) or []
+        after_variants_raw = after_data.get(Fields.VARIANTS) or []
+        before_by_id: dict[str, dict] = {
+            v.get(Fields.VARIANT_ID, ""): v for v in before_variants_raw if isinstance(v, dict)
+        }
+        after_by_id: dict[str, dict] = {
+            v.get(Fields.VARIANT_ID, ""): v for v in after_variants_raw if isinstance(v, dict)
+        }
         restocked_keys: list[str] = [
             vk
-            for vk, vdata in after_variants.items()
-            if (before_variants.get(vk) or {}).get(Fields.STOCK_QUANTITY, 0) == 0
+            for vk, vdata in after_by_id.items()
+            if (before_by_id.get(vk) or {}).get(Fields.STOCK_QUANTITY, 0) == 0
             and (vdata or {}).get(Fields.STOCK_QUANTITY, 0) > 0
+            and vk
         ]
         if not restocked_keys:
             return

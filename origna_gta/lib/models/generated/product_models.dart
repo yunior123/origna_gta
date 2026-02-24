@@ -481,9 +481,11 @@ extension ProductExtension on Product {
     final shippingDays = supplier?.shippingDays;
     if (shippingDays != null && shippingDays.contains('-')) {
       final parts = shippingDays.split('-');
-      final min = int.tryParse(parts[0].trim()) ?? 7;
-      final max = int.tryParse(parts[1].trim()) ?? 21;
-      return (minDays: min, maxDays: max);
+      if (parts.length >= 2) {
+        final min = int.tryParse(parts[0].trim()) ?? 7;
+        final max = int.tryParse(parts[1].trim()) ?? 21;
+        return (minDays: min, maxDays: max);
+      }
     }
 
     // Otherwise use supplier type defaults

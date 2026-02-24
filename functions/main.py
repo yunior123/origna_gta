@@ -120,11 +120,14 @@ from handlers.digital import (  # noqa: E402
 # ORDER HANDLERS
 # ===============================================
 from handlers.orders import (  # noqa: E402
+    approve_return_request,
     approve_shipping_cost,
     cancel_order,
     confirm_order_receipt,
+    create_return_request,
     on_order_status_changed,
     refund_order_item,
+    reject_return_request,
     update_item_status,
     update_order_status,
     update_shipping_cost,
@@ -298,6 +301,9 @@ __all__ = [
     "approve_shipping_cost",
     "update_shipping_cost",
     "on_order_status_changed",
+    "create_return_request",
+    "approve_return_request",
+    "reject_return_request",
     # Admin
     "update_user_roles",
     "suspend_seller",

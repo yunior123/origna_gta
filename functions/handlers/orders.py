@@ -25,6 +25,7 @@ from schema_constants import (
     OrderStatusValues,
     PaymentStatusValues,
     PayoutStatusValues,
+    ReturnStatusValues,
     ShippingApprovalStatusValues,
     UserRoleValues,
 )
@@ -735,6 +736,9 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError(
                 "internal", "Order cancellation failed: payment release unsuccessful. Flagged for manual review."
             ) from e
+    else:
+        # No payment or payment in a non-refundable state — mark as cancelled
+        new_payment_status = PaymentStatusValues.CANCELLED
 
     # AUDIT FIX: Atomic batch — stock restore + final cancel status in ONE commit
     # Prevents double-restore if process crashes between stock restore and status update
@@ -1008,13 +1012,17 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                 break
 
         transaction.update(order_ref, {Fields.ITEMS: fresh_items, Fields.UPDATED_AT: get_server_timestamp()})
-        transaction.update(
-            product_ref,
-            {
-                Fields.STOCK_QUANTITY: get_firestore().Increment(item_quantity),
-                Fields.UPDATED_AT: get_server_timestamp(),
-            },
-        )
+        # Only restore stock immediately for digital products.
+        # Physical products require a confirmed return — stock is restored in approve_return_request.
+        is_digital = it.get(Fields.IS_DIGITAL, False)
+        if is_digital:
+            transaction.update(
+                product_ref,
+                {
+                    Fields.STOCK_QUANTITY: get_firestore().Increment(item_quantity),
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                },
+            )
         return "refunded"
 
     txn_result = _apply_refund_atomically(get_db().transaction())
@@ -1558,6 +1566,304 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         order_ref.update(update_data)
 
     return create_success_response({ApiKeys.APPROVAL_REQUIRED: approval_required})
+
+
+# ─────────────────────────────── RETURN REQUESTS ──────────────────────────────
+
+def _assert_within_return_window(item_data: dict) -> None:
+    """Shared helper — raises if the return window has expired."""
+    delivered_at = item_data.get(Fields.DELIVERED_AT)
+    if delivered_at:
+        if isinstance(delivered_at, str):
+            delivered_at = datetime.fromisoformat(delivered_at)
+        if hasattr(delivered_at, "tzinfo") and delivered_at.tzinfo is None:
+            delivered_at = delivered_at.replace(tzinfo=UTC)
+        elapsed = (datetime.now(UTC) - delivered_at).days
+        if elapsed > BusinessRules.RETURN_WINDOW_DAYS:
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                f"Return window expired. Returns must be requested within {BusinessRules.RETURN_WINDOW_DAYS} days of delivery.",
+            )
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def create_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Creates a return request for a delivered physical order item.
+
+    Request data:
+        orderId: Order ID
+        productId: Product ID being returned
+        returnReason: Buyer's reason (required, max 1000 chars)
+
+    Returns:
+        {success: True, returnId: str}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    from services.rate_limiter import RateLimiter
+
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action="create_return_request", max_requests=5, window_minutes=10, fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", msg)
+
+    from utils.helpers import sanitized_text
+
+    buyer_id = req.auth.uid
+    data = req.data
+    order_id = data.get(Fields.ORDER_ID)
+    product_id = data.get(Fields.PRODUCT_ID)
+    return_reason = sanitized_text(data.get(Fields.RETURN_REASON, ""))[:1000]
+
+    if not order_id or not product_id:
+        raise https_fn.HttpsError("invalid-argument", "orderId and productId required")
+    if not return_reason.strip():
+        raise https_fn.HttpsError("invalid-argument", "returnReason is required")
+
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+    if not order_doc.exists:
+        raise https_fn.HttpsError("not-found", "Order not found")
+
+    order_data = order_doc.to_dict()
+
+    if order_data.get(Fields.USER_ID) != buyer_id:
+        raise https_fn.HttpsError("permission-denied", "You can only return items from your own orders")
+
+    # Find item
+    item_data = None
+    for item in order_data.get(Fields.ITEMS, []):
+        if item.get(Fields.PRODUCT_ID) == product_id:
+            item_data = item
+            break
+    if item_data is None:
+        raise https_fn.HttpsError("not-found", "Item not found in this order")
+
+    if item_data.get(Fields.IS_DIGITAL, False):
+        raise https_fn.HttpsError("invalid-argument", "Digital products cannot be returned")
+
+    if item_data.get(Fields.STATUS) not in (DeliveryStatusValues.DELIVERED, DeliveryStatusValues.CONFIRMED):
+        raise https_fn.HttpsError("failed-precondition", "Item must be delivered before requesting a return")
+
+    _assert_within_return_window(item_data)
+
+    # Check for existing active return request
+    existing = (
+        get_db()
+        .collection(Collections.RETURN_REQUESTS)
+        .where(Fields.ORDER_ID, "==", order_id)
+        .where(Fields.PRODUCT_ID, "==", product_id)
+        .where(Fields.BUYER_ID, "==", buyer_id)
+        .limit(1)
+        .get()
+    )
+    for doc in existing:
+        ex_status = doc.to_dict().get(Fields.RETURN_STATUS)
+        if ex_status not in (ReturnStatusValues.REJECTED, ReturnStatusValues.REFUNDED):
+            raise https_fn.HttpsError("already-exists", "A return request already exists for this item")
+
+    return_ref = get_db().collection(Collections.RETURN_REQUESTS).document()
+    return_id = return_ref.id
+    now_utc = datetime.now(UTC)
+
+    return_doc = {
+        Fields.RETURN_ID: return_id,
+        Fields.ORDER_ID: order_id,
+        Fields.CART_ITEM_ID: item_data.get(Fields.CART_ITEM_ID, ""),
+        Fields.BUYER_ID: buyer_id,
+        Fields.SELLER_ID: item_data.get(Fields.SELLER_ID, ""),
+        Fields.PRODUCT_ID: product_id,
+        Fields.PRODUCT_NAME: item_data.get(Fields.NAME, ""),
+        Fields.QUANTITY: item_data.get(Fields.QUANTITY, 1),
+        Fields.RETURN_STATUS: ReturnStatusValues.REQUESTED,
+        Fields.RETURN_REASON: return_reason,
+        Fields.REQUESTED_AT: now_utc,
+        Fields.UPDATED_AT: now_utc,
+    }
+    return_ref.set(return_doc)
+
+    # Notify seller via push
+    seller_id = item_data.get(Fields.SELLER_ID)
+    if seller_id:
+        send_push_notification(
+            seller_id,
+            "Return Request",
+            f"A buyer has requested a return for order #{order_id[:8].upper()}",
+            data={"type": "return_request", "orderId": order_id, "returnId": return_id},
+        )
+
+    return create_success_response({Fields.RETURN_ID: return_id})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Seller or admin approves a return request.
+    Transitions: requested → approved.
+    Restores stock after physical item confirmed received (received → refunded).
+
+    Request data:
+        returnId: Return request ID
+        action: 'approve' | 'mark_received'  (seller) or 'reject' (redirects to reject_return_request)
+        returnTrackingNumber: Optional tracking number for label
+        returnAdminNote: Optional note
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    return_id = data.get(Fields.RETURN_ID)
+    action = data.get("action", "approve")
+
+    if not return_id:
+        raise https_fn.HttpsError("invalid-argument", "returnId required")
+
+    # Validate permissions — must be seller or admin
+    user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError("not-found", "User not found")
+    user_data = user_doc.to_dict()
+    is_admin = UserRoleValues.ADMIN in (user_data.get(Fields.ROLES) or [])
+
+    return_ref = get_db().collection(Collections.RETURN_REQUESTS).document(return_id)
+    return_doc = return_ref.get()
+    if not return_doc.exists:
+        raise https_fn.HttpsError("not-found", "Return request not found")
+
+    return_data = return_doc.to_dict()
+    seller_id = return_data.get(Fields.SELLER_ID)
+    buyer_id = return_data.get(Fields.BUYER_ID)
+    order_id = return_data.get(Fields.ORDER_ID)
+    product_id = return_data.get(Fields.PRODUCT_ID)
+    current_status = return_data.get(Fields.RETURN_STATUS)
+
+    if not is_admin and user_id != seller_id:
+        raise https_fn.HttpsError("permission-denied", "Only the seller or admin can approve return requests")
+
+    # State machine
+    if action == "approve":
+        if current_status not in ReturnStatusValues.VALID_TRANSITIONS or "approved" not in ReturnStatusValues.VALID_TRANSITIONS.get(current_status, set()):
+            raise https_fn.HttpsError("failed-precondition", f"Cannot approve return in status '{current_status}'")
+        new_status = ReturnStatusValues.APPROVED
+        tracking_number = data.get(Fields.RETURN_TRACKING_NUMBER)
+        admin_note = data.get(Fields.RETURN_ADMIN_NOTE)
+        patches: dict = {
+            Fields.RETURN_STATUS: new_status,
+            Fields.UPDATED_AT: get_server_timestamp(),
+        }
+        if tracking_number:
+            patches[Fields.RETURN_TRACKING_NUMBER] = tracking_number
+        if admin_note:
+            patches[Fields.RETURN_ADMIN_NOTE] = admin_note
+        return_ref.update(patches)
+
+        # Notify buyer
+        send_push_notification(
+            buyer_id,
+            "Return Approved",
+            "Your return request has been approved. Please ship the item back.",
+            data={"type": "return_approved", "orderId": order_id, "returnId": return_id},
+        )
+
+    elif action == "mark_received":
+        if "received" not in ReturnStatusValues.VALID_TRANSITIONS.get(current_status, set()):
+            raise https_fn.HttpsError("failed-precondition", f"Cannot mark received from status '{current_status}'")
+        new_status = ReturnStatusValues.RECEIVED
+        return_ref.update({
+            Fields.RETURN_STATUS: new_status,
+            Fields.UPDATED_AT: get_server_timestamp(),
+        })
+
+        # Restore stock now that physical return is confirmed
+        product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+        qty = return_data.get(Fields.QUANTITY, 1)
+        product_ref.update({
+            Fields.STOCK_QUANTITY: get_firestore().Increment(qty),
+            Fields.UPDATED_AT: get_server_timestamp(),
+        })
+
+        # Notify buyer
+        send_push_notification(
+            buyer_id,
+            "Return Received",
+            "Seller has confirmed receipt of your returned item. Refund will be processed shortly.",
+            data={"type": "return_received", "orderId": order_id, "returnId": return_id},
+        )
+    else:
+        raise https_fn.HttpsError("invalid-argument", f"Invalid action '{action}'. Use 'approve' or 'mark_received'")
+
+    return create_success_response({Fields.RETURN_STATUS: new_status, Fields.RETURN_ID: return_id})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def reject_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Seller or admin rejects a return request.
+    Transitions: requested → rejected OR approved → rejected.
+
+    Request data:
+        returnId: Return request ID
+        returnAdminNote: Rejection reason (required)
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    from utils.helpers import sanitized_text
+
+    user_id = req.auth.uid
+    data = req.data
+    return_id = data.get(Fields.RETURN_ID)
+    rejection_note = sanitized_text(data.get(Fields.RETURN_ADMIN_NOTE, ""))[:1000]
+
+    if not return_id:
+        raise https_fn.HttpsError("invalid-argument", "returnId required")
+    if not rejection_note.strip():
+        raise https_fn.HttpsError("invalid-argument", "returnAdminNote (rejection reason) is required")
+
+    user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError("not-found", "User not found")
+    user_data = user_doc.to_dict()
+    is_admin = UserRoleValues.ADMIN in (user_data.get(Fields.ROLES) or [])
+
+    return_ref = get_db().collection(Collections.RETURN_REQUESTS).document(return_id)
+    return_doc = return_ref.get()
+    if not return_doc.exists:
+        raise https_fn.HttpsError("not-found", "Return request not found")
+
+    return_data = return_doc.to_dict()
+    seller_id = return_data.get(Fields.SELLER_ID)
+    buyer_id = return_data.get(Fields.BUYER_ID)
+    order_id = return_data.get(Fields.ORDER_ID)
+    current_status = return_data.get(Fields.RETURN_STATUS)
+
+    if not is_admin and user_id != seller_id:
+        raise https_fn.HttpsError("permission-denied", "Only the seller or admin can reject return requests")
+
+    if ReturnStatusValues.REJECTED not in ReturnStatusValues.VALID_TRANSITIONS.get(current_status, set()):
+        raise https_fn.HttpsError("failed-precondition", f"Cannot reject return in status '{current_status}'")
+
+    return_ref.update({
+        Fields.RETURN_STATUS: ReturnStatusValues.REJECTED,
+        Fields.RETURN_ADMIN_NOTE: rejection_note,
+        Fields.RESOLVED_AT: get_server_timestamp(),
+        Fields.UPDATED_AT: get_server_timestamp(),
+    })
+
+    # Notify buyer
+    send_push_notification(
+        buyer_id,
+        "Return Rejected",
+        "Your return request has been reviewed. Please contact support if you have questions.",
+        data={"type": "return_rejected", "orderId": order_id, "returnId": return_id},
+    )
+
+    return create_success_response({Fields.RETURN_STATUS: ReturnStatusValues.REJECTED, Fields.RETURN_ID: return_id})
 
 
 def _handle_payment_status_email(order_id: str, after_data: dict, payment_status: str, buyer_email: str | None = None) -> None:

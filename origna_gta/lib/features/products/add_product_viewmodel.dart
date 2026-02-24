@@ -77,7 +77,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(errorMessage: 'product.please_enter_name'.tr());
       return;
     }
-    if (name.trim().length > 200) {
+    if (name.trim().length > 120) {
       state = state.copyWith(errorMessage: 'product.name_too_long'.tr());
       return;
     }
@@ -85,7 +85,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(errorMessage: 'product.please_enter_description'.tr());
       return;
     }
-    if (description.trim().length > 5000) {
+    if (description.trim().length < 10) {
+      state = state.copyWith(errorMessage: 'product.description_too_short'.tr());
+      return;
+    }
+    if (description.trim().length > 4000) {
       state = state.copyWith(errorMessage: 'product.description_too_long'.tr());
       return;
     }
@@ -114,8 +118,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(errorMessage: 'product.select_category'.tr());
       return;
     }
-    // Bug #4: Skip address validation for digital products (no shipping needed)
-    if (!state.isDigital) {
+    // Bug #4: Skip address validation for digital products or when warehouses are selected
+    if (!state.isDigital && state.selectedWarehouseIds.isEmpty) {
       if (street.trim().isEmpty || city.trim().isEmpty || postalCode.trim().isEmpty || state.selectedProvince.trim().isEmpty) {
         state = state.copyWith(errorMessage: 'product.address_required'.tr());
         return;
@@ -257,16 +261,26 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       }
 
       final useWarehouses = state.selectedWarehouseIds.isNotEmpty;
-      if (useWarehouses && state.warehouseStockMap.isEmpty) {
-        state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_stock_required'.tr());
-        return;
+      if (useWarehouses) {
+        final allHaveStock = state.selectedWarehouseIds.every((id) => state.warehouseStockMap.containsKey(id));
+        final totalStock = state.warehouseStockMap.values.fold(0, (a, b) => a + b);
+        if (state.warehouseStockMap.isEmpty || !allHaveStock || totalStock == 0) {
+          state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_stock_required'.tr());
+          return;
+        }
       }
       // When using warehouses, stock = sum of all warehouseStockMap values
       final effectiveStock = useWarehouses ? state.warehouseStockMap.values.fold(0, (a, b) => a + b) : stock;
 
+      final uid = _ref.read(userIdProvider);
+      if (uid == null) {
+        state = state.copyWith(isLoading: false, errorMessage: 'errors.auth_expired'.tr());
+        return;
+      }
+
       final product = models.Product(
         productId: tempProductId,
-        sellerId: _ref.read(userIdProvider)!,
+        sellerId: uid,
         name: name,
         keywords: generateSearchKeywords(name),
         stockQuantity: effectiveStock,

@@ -479,12 +479,18 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
 
         seller_address = seller_items[0].get(Fields.SELLER_ADDRESS)
         if not seller_address or not isinstance(seller_address, dict):
-            logger.warning(f"⚠️ Skipping seller {seller_id}: Missing or invalid seller address")
-            continue
-
-        seller_lat = seller_address.get(Fields.LATITUDE)
-        seller_lon = seller_address.get(Fields.LONGITUDE)
-        seller_state = seller_address.get(Fields.STATE, "ON")
+            # Warehouse-based products: use denormalized shipFromProvince instead of sellerAddress
+            ship_from_province = seller_items[0].get(Fields.SHIP_FROM_PROVINCE)
+            if not ship_from_province:
+                logger.warning(f"⚠️ Skipping seller {seller_id}: Missing seller address and shipFromProvince")
+                continue
+            seller_lat = None
+            seller_lon = None
+            seller_state = ship_from_province
+        else:
+            seller_lat = seller_address.get(Fields.LATITUDE)
+            seller_lon = seller_address.get(Fields.LONGITUDE)
+            seller_state = seller_address.get(Fields.STATE, "ON")
         buyer_state = buyer_address.get(Fields.STATE, "ON")
 
         chargeable_items = [i for i in seller_items if not i.get(Fields.FREE_SHIPPING) and not i.get(Fields.IS_DIGITAL)]

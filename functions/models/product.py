@@ -13,6 +13,7 @@ from schema_constants import (
     DiscountTypeValues,
     Fields,
     ProductApprovalStatusValues,
+    ProductConditionValues,
     ProductLifecycleStatusValues,
     ProductStatusValues,
     SupplierCurrencyValues,
@@ -412,12 +413,31 @@ class Product(BaseModel):
             raise ValueError(f"Invalid lifecycleStatus: {v}. Must be one of: {ProductLifecycleStatusValues.ALL}")
         return v
 
+    @field_validator("categoryId")
+    @classmethod
+    def validate_category_id(cls, v: int) -> int:
+        if v not in CategoryIds.ALL:
+            raise ValueError(f"Invalid categoryId: {v}. Must be one of: {CategoryIds.ALL}")
+        return v
+
+    @field_validator("condition")
+    @classmethod
+    def validate_condition(cls, v: str | None) -> str | None:
+        if v is not None and v not in ProductConditionValues.ALL:
+            raise ValueError(f"Invalid condition: {v}. Must be one of: {ProductConditionValues.ALL}")
+        return v
+
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
         """Reject HTML/script injection in product names"""
         if re.search(r"[<>]", v):
             raise ValueError("Name contains disallowed characters")
+        dangerous_patterns = ["javascript:", "data:text/html", "vbscript:", "expression("]
+        v_lower = v.lower()
+        for pattern in dangerous_patterns:
+            if pattern in v_lower:
+                raise ValueError("Name contains disallowed content")
         return v
 
     @field_validator("imageUrls")
@@ -432,12 +452,6 @@ class Product(BaseModel):
     @field_validator("description")
     @classmethod
     def validate_description(cls, v: str) -> str:
-        """Validate description doesn't contain disallowed HTML/script content"""
-        # Reject any HTML tags or dangerous patterns
-        if re.search(r"<[^>]*>", v):
-            raise ValueError("Description contains disallowed HTML content")
-        dangerous_patterns = ["javascript:", "data:text/html", "vbscript:", "expression("]
-        v_lower = v.lower()
         for pattern in dangerous_patterns:
             if pattern in v_lower:
                 raise ValueError("Description contains disallowed content")
@@ -568,6 +582,11 @@ class ProductCreate(BaseModel):
         """Reject HTML/script injection in product names"""
         if re.search(r"[<>]", v):
             raise ValueError("Name contains disallowed characters")
+        dangerous_patterns = ["javascript:", "data:text/html", "vbscript:", "expression("]
+        v_lower = v.lower()
+        for pattern in dangerous_patterns:
+            if pattern in v_lower:
+                raise ValueError("Name contains disallowed content")
         return v
 
     @field_validator("imageUrls")

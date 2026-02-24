@@ -200,8 +200,8 @@ class _SellerOrderCard extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final sellerTotal = sellerItems.fold<double>(0.0, (acc, item) => acc + (item.price * item.quantity));
-    // Platform fee is computed by the backend — always use server-provided value
-    final platformFee = order.platformFeeTotal;
+    // Per-seller fee = seller's own subtotal × platform fee rate (not the full order fee)
+    final platformFee = sellerTotal * (BusinessRules.platformFeePercent / 100.0);
     final sellerNet = sellerTotal - platformFee;
 
     return Container(
@@ -389,18 +389,25 @@ class _SellerOrderCard extends ConsumerWidget {
         contentPadding: EdgeInsets.zero,
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(DesignTokens.radius8),
-          child: Image.network(
-            item.imageUrls.first,
-            width: 44,
-            height: 44,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius8)),
-              child: Icon(Icons.image_outlined, color: DesignTokens.textDisabled, size: 20),
-            ),
-          ),
+          child: item.imageUrls.isNotEmpty
+              ? Image.network(
+                  item.imageUrls.first,
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius8)),
+                    child: Icon(Icons.image_outlined, color: DesignTokens.textDisabled, size: 20),
+                  ),
+                )
+              : Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius8)),
+                  child: Icon(Icons.image_outlined, color: DesignTokens.textDisabled, size: 20),
+                ),
         ),
         title: Row(
           children: [

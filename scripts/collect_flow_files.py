@@ -5,7 +5,7 @@ into Desktop/origna_flows/<flow_name>/ for AI review.
 
 Rules:
   - CLAUDE.md is prepended to every flow for AI context.
-  - Max 20 files per flow folder. Extra files are concatenated into _overflow.md.
+  - Max 18 files per flow folder. Extra files are concatenated into _overflow.md.
 
 Usage:
     python scripts/collect_flow_files.py
@@ -16,7 +16,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DESKTOP = Path.home() / "Desktop" / "origna_flows"
-MAX_FILES_PER_FLOW = 20  # includes CLAUDE.md (INSTRUCTIONS.md does NOT count toward limit)
+MAX_FILES_PER_FLOW = 18  # includes CLAUDE.md (INSTRUCTIONS.md does NOT count toward limit)
 
 # CLAUDE.md is auto-injected into every flow as the first file
 _CLAUDE = "CLAUDE.md"
@@ -155,6 +155,49 @@ State machine: `pending → confirmed → processing → shipped → in_transit 
 - **Auto-confirm** — 7 days after `shippedAt` timestamp; uses Firestore server timestamp comparison.
 - **Expired authorizations** — Within 7-day Stripe window; cancels order + voids auth + restores stock.
 - **Idempotency** — Cron re-run on same batch: each record checks state before acting; no double-processing.
+
+### 💰 Premium Auditor Patterns
+1. **Webhook → isPremium sync** — `checkout.session.completed` must atomically update BOTH subscription doc AND `user.isPremium`. If webhook fails mid-way, isPremium can be stale.
+2. **Frontend uses stream, not cache** — `PremiumPaywallWidget` must watch `subscriptionStreamProvider` (real-time), not `user.isPremium` alone (stale cache).
+3. **Client-side bypass impossible** — Backend endpoints that serve premium features must re-validate subscription status server-side; never trust `user.isPremium` from a client-sent payload.
+4. **Webhook idempotency** — Duplicate `customer.subscription.updated` events must not double-flip isPremium. Check `webhook_events` dedup.
+5. **Cancellation timing** — Cancellation should set `cancelAtPeriodEnd=true`; isPremium stays true until period ends, then cron flips it. Immediate revocation is a UX bug.
+6. **Reactivation flow** — Reactivation must update subscription doc status → isPremium = true in the SAME transaction. A reactivated user seeing a paywall is a revenue loss.
+7. **Expiry race condition** — If subscription expires exactly at checkout time, order must fail gracefully, not proceed at premium price.
+
+### 💸 Cost Monitor Patterns
+1. **Secret Manager per-invocation** — Secrets (`get_secret_*()`) must be cached in module-level globals. Re-fetching per request = $0.03/10k calls at scale.
+2. **Algolia over-indexing** — Only reindex when searchable fields change (name, description, price, category). Stock-only updates must use `partial_update_object`, never full `save_object`.
+3. **Stripe Tax caching** — `calculate_tax_with_stripe()` costs $0.50/call. Cache results per province + tax_code combo for the session; tax rates don't change hourly.
+4. **Firestore N+1** — Any loop calling `db.collection().document().get()` per item is an N+1. Use `get_all()` batch reads.
+5. **Geoapify caching** — Geocoding results must be cached on the address doc (`latitude`/`longitude` fields). Same address = same coordinates; never re-geocode.
+6. **Mailjet volume** — Free tier = 200/day. Combine order confirmation + receipt into 1 email. Seller notifications should batch (daily digest) not per-event.
+7. **R2 orphan cleanup** — Deleted/archived product images must be removed from Cloudflare R2. Orphaned images accumulate storage cost silently.
+8. **Cloud Function memory** — Default 256MB is wasteful for lightweight handlers. Audit each function's actual peak memory and right-size.
+
+### 🏆 Rival Agent Patterns
+1. **Standard checkout features** — Amazon/Shopify baseline: save-for-later, quantity limits with stock validation, address autocomplete, free-shipping threshold display. Flag missing items.
+2. **Order tracking UX** — Competitors show a timeline (placed → confirmed → shipped → delivered). Our order detail must have equivalent visual status timeline.
+3. **Seller trust signals** — eBay/Etsy: verified seller badge, response rate, avg ship time, positive feedback %. Flag if seller profile page lacks these.
+4. **Abandoned cart** — Shopify/Amazon send reminder after 1h + 24h. Check if we have any abandoned cart recovery (email or push).
+5. **Product discovery** — Competitors show "Customers also bought" / "Similar items". Flag if product detail page lacks recommendations.
+6. **Review system completeness** — Amazon standard: star histogram, photo reviews, verified purchase badge, sort by helpful/recent. Flag missing components.
+7. **Buyer protection visibility** — AliExpress/eBay prominently show buyer protection policy at checkout. Flag if we don't surface our dispute/refund policy before payment.
+8. **Mobile-first friction** — Temu/Shein optimize for <3 taps to checkout. Count taps from product detail → order confirmed; flag if >5.
+9. **Price anchoring** — Compare-at price (strikethrough) shown on product card/detail. Flag if `comparePriceCents` field exists but isn't displayed.
+10. **Wishlist / Save for later** — Every major platform has this. Flag if missing or incomplete.
+
+### 🎨 UI/UX Expert Patterns
+1. **DesignTokens only** — No `Color(0xFF...)`, no `Colors.*`, no `withOpacity()`. Every visual property from `DesignTokens`. `withOpacity()` → `Color.withValues(alpha:)`.
+2. **Loading = shimmer** — `CircularProgressIndicator` banned. Use `ShimmerLoading` for async content. `ModernLoadingIndicator` for page-level loads.
+3. **8pt spacing grid** — All padding/margin must be multiples of 4 (preferably 8). Misaligned spacing breaks visual rhythm.
+4. **Staggered list entrance** — Lists loaded async must use `StaggeredList` or `AnimatedListItem`. Content appearing instantly without animation feels cheap.
+5. **Empty states designed** — Every list/collection that can be empty must have: icon + message + CTA (e.g. "No orders yet → Start Shopping"). Raw empty list = unfinished.
+6. **`MaterialPageRoute` banned** — Use `SlidePageRoute` / named routes. Raw `MaterialPageRoute` breaks deep links and looks dated.
+7. **`IconButton` needs tooltip** — Every `IconButton` must have `tooltip:` for accessibility AND to appear in screen reader audits.
+8. **Responsive at 4 breakpoints** — 320px / 480px / 768px / 1024px+. Use `ResponsiveLayout` widget. Fixed-width containers that overflow on mobile are CRITICAL.
+9. **Glass effects placement** — `GlassAppBar`, `GlassCard` for nav/floating elements only. Never wrap body text or list items in glass — it kills readability.
+10. **Semantic labels on images** — Every `Image` must be wrapped in `Semantics(label: '...')`. Decorative images use `ExcludeSemantics`.
 """
 
 # ── Per-flow audit instructions ─────────────────────────────────────────────

@@ -107,6 +107,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     final viewModel = ref.read(addProductViewModelProvider.notifier);
 
     ref.listen(addProductViewModelProvider, (previous, next) {
+      if (previous?.isSuccess == true) return; // prevent double-fire
       if (next.isSuccess) {
         _onSuccess();
       } else if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
@@ -2198,6 +2199,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 
   void _onSuccess() {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         key: const Key('addproduct_success_snackbar'),

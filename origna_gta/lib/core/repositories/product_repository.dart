@@ -337,9 +337,10 @@ class FirebaseProductRepository implements ProductRepository {
     String query,
   ) async {
     final String apiKey = ConfigService().geoapifyKey;
+    final encodedQuery = Uri.encodeQueryComponent(query);
     final response = await http.get(
       Uri.parse(
-        'https://api.geoapify.com/v1/geocode/autocomplete?text=$query&filter=countrycode:ca&apiKey=$apiKey',
+        'https://api.geoapify.com/v1/geocode/autocomplete?text=$encodedQuery&filter=countrycode:ca&apiKey=$apiKey',
       ),
     );
     if (response.statusCode == 200) {
