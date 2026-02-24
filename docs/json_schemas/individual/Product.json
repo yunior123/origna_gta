@@ -636,6 +636,30 @@
       "title": "Isdigital",
       "type": "boolean"
     },
+    "digitalType": {
+      "anyOf": [{"type": "string", "enum": ["software", "book"]}, {"type": "null"}],
+      "default": null,
+      "description": "Type of digital product (software or book)",
+      "title": "Digitaltype"
+    },
+    "digitalBuilds": {
+      "anyOf": [{"type": "object", "additionalProperties": {"type": "string"}}, {"type": "null"}],
+      "default": null,
+      "description": "Map of platform to download URL for software builds",
+      "title": "Digitalbuilds"
+    },
+    "bookSourceUrl": {
+      "anyOf": [{"type": "string"}, {"type": "null"}],
+      "default": null,
+      "description": "Source URL for book downloads",
+      "title": "Booksourceurl"
+    },
+    "deviceLimit": {
+      "anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}],
+      "default": null,
+      "description": "Max devices for software license activation",
+      "title": "Devicelimit"
+    },
     "taxCode": {
       "anyOf": [
         {

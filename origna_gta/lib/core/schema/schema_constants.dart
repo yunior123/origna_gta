@@ -132,6 +132,14 @@ abstract final class BusinessRules {
   static const allowedShippingCountries = {'Canada', 'CA'};
   static const ordersPageSize = 50; // Initial load limit for order lists — cursor pagination planned
   static const favoritesPageSize = 50; // Max favorites streamed per query — pagination planned
+  static const maxShippingCostCad = 500; // $500 CAD absolute maximum shipping cost
+  static const sellerDisputeRateThreshold = 0.05; // 5% dispute rate triggers health alert
+  static const sellerRefundRateThreshold = 0.10; // 10% refund rate threshold
+  static const sellerCancelRateThreshold = 0.10; // 10% cancel rate threshold
+  static const trendingTopN = 20; // Number of products to mark as trending
+  static const trendingWindowHours = 24; // Rolling window for trending calculation
+  static const trendingPurchaseWeight = 3; // Weight for purchase events
+  static const trendingFavoriteWeight = 1; // Weight for favorite events
   // Sellers can be from any country — no country restriction on seller addresses
 
   /// Tax rates by province
@@ -684,6 +692,16 @@ abstract final class Fields {
   static const searchKeywords = 'searchKeywords';
   static const deactivationReason = 'deactivationReason';
   static const retries = 'retries';
+
+  // === NOTIFICATIONS / PUSH / ACTOR ===
+  static const notificationsSent = 'notificationsSent';
+  static const pushEnabled = 'pushEnabled';
+  static const lastActorId = 'lastActorId';
+  static const isSeller = 'isSeller';
+  static const hasDispute = 'hasDispute';
+  static const sellerAmountCents = 'sellerAmountCents';
+  static const escalatedAt = 'escalatedAt';
+  static const escalationReason = 'escalationReason';
 
   // === TAX FIELDS (new) ===
   static const itemTaxes = 'itemTaxes';

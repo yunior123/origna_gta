@@ -41,23 +41,21 @@ class FirebaseCartRepository implements CartRepository {
     if (quantity < minCartItemQuantity) return;
     final cartRef = _cartRef(userId);
 
-    await _firestore.runTransaction((transaction) async {
-      // Query for existing productId+variantId combo
-      Query<Map<String, dynamic>> query = cartRef.where(Fields.productId, isEqualTo: productId);
-      if (variantId != null) {
-        query = query.where(Fields.variantId, isEqualTo: variantId);
-      }
-      final existing = await query.get();
+    // Use deterministic doc ID (productId + variantId) so we can do an atomic
+    // document read inside the transaction instead of a non-transactional query.
+    final docId = variantId != null ? '${productId}_$variantId' : productId;
 
-      if (existing.docs.isNotEmpty) {
-        final doc = existing.docs.first;
-        final currentQty = (doc.data()[Fields.quantity] as num?)?.toInt() ?? 0;
+    await _firestore.runTransaction((transaction) async {
+      final docRef = cartRef.doc(docId);
+      final existing = await transaction.get(docRef);
+
+      if (existing.exists) {
+        final currentQty = (existing.data()![Fields.quantity] as num?)?.toInt() ?? 0;
         final newQty = (currentQty + quantity).clamp(minCartItemQuantity, maxCartItemQuantity);
-        transaction.update(doc.reference, {Fields.quantity: newQty});
+        transaction.update(docRef, {Fields.quantity: newQty});
       } else {
-        final newDocRef = cartRef.doc(); // Auto-generated ID
         final clampedQty = quantity.clamp(minCartItemQuantity, maxCartItemQuantity);
-        transaction.set(newDocRef, CartModel(
+        transaction.set(docRef, CartModel(
           productId: productId,
           quantity: clampedQty,
           createdAt: DateTime.now(),

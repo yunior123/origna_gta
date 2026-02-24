@@ -11,9 +11,10 @@ import 'package:origna_gta/features/notifications/notification_provider.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 /// Background message handler — top-level function required by FCM.
-/// Must be outside of any class.
+/// Must be outside of any class. Exported so main.dart can register it
+/// before runApp (FCM requires this to happen at app startup).
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Firebase is already initialized by the OS before this runs.
   // Log receipt; local notification display requires flutter_local_notifications (future task).
   debugPrint('Background FCM message received: ${message.messageId}');
@@ -22,6 +23,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class NotificationService {
   static final NotificationService instance = NotificationService._internal();
 
+  bool _initialized = false;
   StreamSubscription? _tokenSubscription;
   ProviderSubscription? _authSubscription;
 
@@ -56,6 +58,10 @@ class NotificationService {
     // Skip if on web (FCM requires VAPID key setup on Web, keeping this mobile-only)
     if (kIsWeb) return;
 
+    // Guard against double-initialization (e.g., hot-reload or multiple calls)
+    if (_initialized) return;
+    _initialized = true;
+
     _container = ProviderScope.containerOf(ref.context);
 
     final messaging = _messaging;
@@ -66,7 +72,8 @@ class NotificationService {
         currentSettings.authorizationStatus == AuthorizationStatus.provisional;
 
     if (alreadyGranted) {
-      ref.read(notificationPermissionProvider.notifier).setGranted(true);
+      // Don't call setGranted(true) here — wait for requestPermission() to confirm.
+      // This prevents a brief true→false flicker if the user revoked permissions.
     }
 
     // Request permissions (no-ops if already granted on iOS)
@@ -107,8 +114,8 @@ class NotificationService {
       debugPrint('User declined or has not accepted notification permissions');
     }
 
-    // Set up background handler
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    // Background handler is registered in main.dart before runApp — not here.
+    // FCM requires onBackgroundMessage to be called at app startup.
 
     // Foreground messages handler — show SnackBar for real-time order updates
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {

@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -23,21 +22,8 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
     try {
       // Step 1: Update shipping cost
       await repository.updateShippingCost(orderId, actualShipping, 'Actual carrier cost');
-      
-      // Step 2: Capture payment — if this fails, shipping is updated but payment not captured.
-      // The seller can retry capture separately. Cron job auto_capture_confirmed_receipts
-      // will also catch it if receipt is confirmed.
-      try {
-        await repository.capturePayment(orderId);
-      } catch (captureError) {
-        state = state.copyWith(
-          isLoading: false,
-          errorMessage: AppError.getMessage(captureError, 'seller.shipping_capture_failed'.tr()),
-        );
-        return;
-      }
 
-      // Step 3: Store tracking number if provided
+      // Step 2: Store tracking number if provided
       if (trackingNumber.isNotEmpty) {
         try {
           // Update the first item with tracking info (seller ships entire order)

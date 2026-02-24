@@ -35,6 +35,7 @@ from services.email_service import (
 )
 from services.email_service import (
     get_order_cancelled_email,
+    get_order_confirmation_email,
     get_order_delivered_email,
     get_order_in_transit_email,
     get_order_partially_refunded_email,
@@ -257,6 +258,15 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError(
                 "failed-precondition",
                 "Multi-seller order: use update_item_status to update per-item status instead of order-level status.",
+            )
+
+    # Block sellers from manually shipping digital orders (instant delivery on capture)
+    if new_status == OrderStatusValues.SHIPPED:
+        digital_items = [i for i in seller_items if i.get(Fields.IS_DIGITAL, False)]
+        if digital_items:
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                "Digital products cannot be manually shipped — delivery is instant on payment capture.",
             )
 
     # SHIPPING APPROVAL GATE: Block shipping if approval is pending
@@ -530,7 +540,9 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         current_order_status = fresh_data.get(Fields.ORDER_STATUS)
 
         if all_delivered and current_order_status != OrderStatusValues.DELIVERED:
-            update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+            if fresh_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
+                update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+            # If payment not yet captured, leave order in current status (will be set DELIVERED after capture)
         elif (
             all_shipped
             and not all_delivered
@@ -783,7 +795,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Record cancellation event
     OrderEvent.write(
         get_db(), order_id, OrderEventTypes.CANCELLATION_CONFIRMED,
-        actor=user_id, actor_type="buyer" if user_id == order_data.get(Fields.USER_ID) else "admin",
+        actor=user_id, actor_type="buyer" if user_id == order_data.get(Fields.USER_ID) else ("seller" if is_seller else "admin"),
         from_status=current_status, to_status=OrderStatusValues.CANCELLED,
         metadata={"reason": reason, "refunded": refunded},
     )
@@ -1015,10 +1027,11 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                 break
 
         transaction.update(order_ref, {Fields.ITEMS: fresh_items, Fields.UPDATED_AT: get_server_timestamp()})
-        # Only restore stock immediately for digital products.
-        # Physical products require a confirmed return — stock is restored in approve_return_request.
+        # Digital products have unlimited stock — never decrement, never restore.
+        # Physical products: restore immediately on refund here.
+        # (Returns go through approve_return_request for stock restore instead.)
         is_digital = it.get(Fields.IS_DIGITAL, False)
-        if is_digital:
+        if not is_digital:
             transaction.update(
                 product_ref,
                 {
@@ -1204,8 +1217,11 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             old_shipping_cost_cents = fresh_data.get(Fields.SHIPPING_COST_CENTS, 0)
 
             # SECURITY: Validate shipping cost bounds
+            # For free-shipping orders, use an absolute max cap (e.g. $500 CAD) instead of
+            # percentage-of-zero which would always be 0, blocking all valid approvals.
+            _ABSOLUTE_MAX_SHIPPING_CENTS = 50000  # $500 CAD hard cap
             if old_shipping_cost_cents == 0:
-                max_allowed_cents = 0
+                max_allowed_cents = _ABSOLUTE_MAX_SHIPPING_CENTS
             else:
                 max_allowed_cents = round(old_shipping_cost_cents * (1 + SHIPPING_APPROVAL_THRESHOLD))
             if new_shipping_cost_cents > max_allowed_cents:
@@ -1261,6 +1277,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.TOTAL_AMOUNT_CENTS: new_total_cents,
                 f"{Fields.SHIPPING_APPROVAL}.{Fields.STATUS}": ShippingApprovalStatusValues.APPROVED,
                 f"{Fields.SHIPPING_APPROVAL}.{Fields.RESPONDED_AT}": get_server_timestamp(),
+                Fields.SHIPPING_APPROVAL_STATUS: ShippingApprovalStatusValues.APPROVED,
                 Fields.UPDATED_AT: get_server_timestamp(),
             }
             if updated_taxes:
@@ -1314,68 +1331,88 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         approve_with_tax_recalc(transaction)
     else:
-        # Buyer rejected, cancel order
-        cancel_payment_status = order_data.get(Fields.PAYMENT_STATUS)
+        # Buyer rejected — re-read payment_status inside a transaction to avoid stale data
+        from firebase_admin import firestore as fs
 
-        # Release buyer funds depending on capture mode:
-        # - AUTHORIZED (manual-capture): cancel the PaymentIntent
-        # - CAPTURED (auto-capture): issue a full refund
-        payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
-        if payment_intent_id and cancel_payment_status == PaymentStatusValues.AUTHORIZED:
-            try:
-                stripe.PaymentIntent.cancel(
-                    payment_intent_id,
-                    cancellation_reason="requested_by_customer",
-                )
-                cancel_payment_status = PaymentStatusValues.CANCELLED
-            except stripe.error.StripeError as e:
-                logger.error(f"PaymentIntent cancel failed on shipping rejection: {str(e)}")
-        elif payment_intent_id and cancel_payment_status == PaymentStatusValues.CAPTURED:
-            # Auto-capture mode: refund the full captured amount
-            try:
-                stripe.Refund.create(
-                    payment_intent=payment_intent_id,
-                    reason="requested_by_customer",
-                    metadata={Fields.ORDER_ID: order_id, "reason": "shipping_cost_rejected"},
-                    idempotency_key=f"shipping_reject_refund_{order_id}",
-                )
-                cancel_payment_status = PaymentStatusValues.REFUNDED
-            except stripe.error.StripeError as e:
-                logger.error(f"Refund failed on shipping rejection (captured order): {str(e)}")
-                order_ref.update(
-                    {
-                        Fields.REQUIRES_MANUAL_REVIEW: True,
-                        Fields.MANUAL_REVIEW_REASON: (
-                            f"Refund failed after shipping cost rejection: {type(e).__name__}. "
-                            "Buyer funds remain captured. Manual refund required."
-                        ),
-                        Fields.UPDATED_AT: get_server_timestamp(),
-                    }
-                )
-                raise https_fn.HttpsError(
-                    "internal",
-                    "Shipping rejected but refund failed. Flagged for manual review.",
-                ) from e
+        reject_txn = get_db().transaction()
 
-        # AUDIT FIX: Use atomic batch for order cancel + stock restore
-        # Prevents stock leakage if process crashes between order update and stock restore
+        @fs.transactional
+        def _reject_shipping_transactional(txn):
+            fresh_doc = order_ref.get(transaction=txn)
+            if not fresh_doc.exists:
+                raise https_fn.HttpsError("not-found", "Order not found")
+            fresh_data = fresh_doc.to_dict()
+
+            fresh_approval = fresh_data.get(Fields.SHIPPING_APPROVAL, {})
+            if fresh_approval.get(Fields.STATUS) != ShippingApprovalStatusValues.PENDING:
+                raise https_fn.HttpsError("failed-precondition", "No pending shipping approval")
+
+            cancel_payment_status = fresh_data.get(Fields.PAYMENT_STATUS)
+            payment_intent_id = fresh_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+
+            # Release buyer funds depending on capture mode:
+            # - AUTHORIZED (manual-capture): cancel the PaymentIntent
+            # - CAPTURED (auto-capture): issue a full refund
+            if payment_intent_id and cancel_payment_status == PaymentStatusValues.AUTHORIZED:
+                try:
+                    stripe.PaymentIntent.cancel(
+                        payment_intent_id,
+                        cancellation_reason="requested_by_customer",
+                    )
+                    cancel_payment_status = PaymentStatusValues.CANCELLED
+                except stripe.error.StripeError as e:
+                    logger.error(f"PaymentIntent cancel failed on shipping rejection: {str(e)}")
+            elif payment_intent_id and cancel_payment_status == PaymentStatusValues.CAPTURED:
+                # Auto-capture mode: refund the full captured amount
+                try:
+                    stripe.Refund.create(
+                        payment_intent=payment_intent_id,
+                        reason="requested_by_customer",
+                        metadata={Fields.ORDER_ID: order_id, "reason": "shipping_cost_rejected"},
+                        idempotency_key=f"shipping_reject_refund_{order_id}",
+                    )
+                    cancel_payment_status = PaymentStatusValues.REFUNDED
+                except stripe.error.StripeError as e:
+                    logger.error(f"Refund failed on shipping rejection (captured order): {str(e)}")
+                    txn.update(
+                        order_ref,
+                        {
+                            Fields.REQUIRES_MANUAL_REVIEW: True,
+                            Fields.MANUAL_REVIEW_REASON: (
+                                f"Refund failed after shipping cost rejection: {type(e).__name__}. "
+                                "Buyer funds remain captured. Manual refund required."
+                            ),
+                            Fields.UPDATED_AT: get_server_timestamp(),
+                        },
+                    )
+                    raise https_fn.HttpsError(
+                        "internal",
+                        "Shipping rejected but refund failed. Flagged for manual review.",
+                    ) from e
+
+            txn.update(
+                order_ref,
+                {
+                    f"{Fields.SHIPPING_APPROVAL}.{Fields.STATUS}": ShippingApprovalStatusValues.REJECTED,
+                    f"{Fields.SHIPPING_APPROVAL}.{Fields.RESPONDED_AT}": get_server_timestamp(),
+                    Fields.SHIPPING_APPROVAL_STATUS: ShippingApprovalStatusValues.REJECTED,
+                    Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+                    Fields.PAYMENT_STATUS: cancel_payment_status,
+                    Fields.CANCELLATION_REASON: "Buyer rejected shipping cost",
+                    Fields.STOCK_RESTORED: True,
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                },
+            )
+            return fresh_data.get(Fields.ITEMS, [])
+
+        items_to_restore = _reject_shipping_transactional(reject_txn)
+
+        # Restore stock atomically with order cancellation in a batch
         reject_batch = get_db().batch()
-
-        reject_batch.update(
-            order_ref,
-            {
-                f"{Fields.SHIPPING_APPROVAL}.{Fields.STATUS}": ShippingApprovalStatusValues.REJECTED,
-                f"{Fields.SHIPPING_APPROVAL}.{Fields.RESPONDED_AT}": get_server_timestamp(),
-                Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
-                Fields.PAYMENT_STATUS: cancel_payment_status,
-                Fields.CANCELLATION_REASON: "Buyer rejected shipping cost",
-                Fields.STOCK_RESTORED: True,
-                Fields.UPDATED_AT: get_server_timestamp(),
-            },
-        )
-
-        # Restore stock atomically with order cancellation
-        for item in order_data[Fields.ITEMS]:
+        for item in items_to_restore:
+            # Skip stock restore for digital items — unlimited stock, never decremented
+            if item.get(Fields.IS_DIGITAL, False):
+                continue
             product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
             stock_patch: dict = {
                 Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
@@ -1391,7 +1428,6 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                     Fields.LAST_SYNCED_AT: get_server_timestamp(),
                 }, merge=True)
             reject_batch.update(product_ref, stock_patch)
-
         reject_batch.commit()
 
     return create_success_response({ApiKeys.APPROVED: approved})
@@ -1924,15 +1960,15 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         return
 
     # DEDUP GUARD: at-least-once trigger — skip if already sent for this transition
-    flag_field = f"notificationSentFor_{new_status}"
-    if after_data.get(flag_field):
+    if new_status in after_data.get(Fields.NOTIFICATIONS_SENT, []):
         logger.info(f"Notification already sent for order {order_id} status={new_status}, skipping")
         return
 
     # Atomically mark notification as sent before dispatching (prevents duplicate sends on retry)
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     try:
-        order_ref.update({flag_field: True})
+        from firebase_admin import firestore as _fs_dedup
+        order_ref.update({Fields.NOTIFICATIONS_SENT: _fs_dedup.ArrayUnion([new_status])})
     except Exception as flag_err:
         logger.warning(f"Failed to set dedup flag for {order_id}/{new_status}: {flag_err}")
 
@@ -1960,7 +1996,20 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
     oid_short = order_id[:8]
 
     try:
-        if new_status == OrderStatusValues.PROCESSING:
+        if new_status == OrderStatusValues.CONFIRMED:
+            # Order confirmed — send confirmation email + push to buyer
+            confirmed_html = get_order_confirmation_email(after_data, order_id, lang=lang)
+            send_email(
+                to_email=buyer_email,
+                subject=_email_t("sub.confirmed", lang).replace("{oid}", oid_short),
+                html_content=confirmed_html,
+            )
+            send_push_notification(
+                user_id, "Order Confirmed!", f"Your order #{oid_short} has been confirmed",
+                data={"type": "order_status", "orderId": order_id, "status": new_status},
+            )
+
+        elif new_status == OrderStatusValues.PROCESSING:
             processing_html = get_order_processing_email(after_data, order_id, lang=lang)
             send_email(
                 to_email=buyer_email,
@@ -1972,7 +2021,14 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 data={"type": "order_status", "orderId": order_id, "status": new_status},
             )
 
-            # Clean up stock_notifications for purchased products so buyer is not re-notified
+        # Clean up stock_notifications when order reaches a terminal/confirmed state
+        # so the buyer is not re-notified about products they already purchased
+        if new_status in {
+            OrderStatusValues.CONFIRMED,
+            OrderStatusValues.PROCESSING,
+            OrderStatusValues.CANCELLED,
+            OrderStatusValues.FAILED,
+        }:
             try:
                 product_ids = list({item.get(Fields.PRODUCT_ID) for item in after_data.get(Fields.ITEMS, []) if item.get(Fields.PRODUCT_ID)})
                 if product_ids:
@@ -2194,12 +2250,14 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
     oid_short = order_id[:8] if order_id else "?"
 
     # Dedup guard: skip if already notified for this transition
-    flag_field = f"notificationSentFor_{new_status}"
-    if after_data.get(flag_field):
+    if new_status in after_data.get(Fields.NOTIFICATIONS_SENT, []):
         return
 
     try:
-        get_db().collection(Collections.RETURN_REQUESTS).document(return_id).update({flag_field: True})
+        from firebase_admin import firestore as _fs_rr_dedup
+        get_db().collection(Collections.RETURN_REQUESTS).document(return_id).update(
+            {Fields.NOTIFICATIONS_SENT: _fs_rr_dedup.ArrayUnion([new_status])}
+        )
     except Exception as e:
         logger.warning(f"Failed to set notification flag for return {return_id}: {e}")
 

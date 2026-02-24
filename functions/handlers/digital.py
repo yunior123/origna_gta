@@ -37,6 +37,12 @@ _TOKEN_RE = re.compile(r"^tok_[a-f0-9]+$")  # relaxed for tests (hex suffix leng
 
 APP_BASE_URL = "https://app.origna.com"
 
+try:
+    from config import BASE_URL as _BASE_URL
+    APP_BASE_URL = _BASE_URL
+except Exception:
+    pass  # fallback to hardcoded URL above
+
 
 # ── Internal implementations (pure functions, testable without HTTP context) ──
 
@@ -81,7 +87,7 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
                 "licenseKey": license_key,
                 "activatedAt": act.get("activatedAt"),
                 Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
-                "downloadUrls": {p: url for p, url in builds.items()} if builds else None,
+                "platforms": list(builds.keys()) if builds else [],
             }
 
     # Check device limit
@@ -105,7 +111,7 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
         "licenseKey": license_key,
         "activatedAt": now.isoformat(),
         Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
-        "downloadUrls": {p: url for p, url in builds.items()} if builds else None,
+        "platforms": list(builds.keys()) if builds else [],
     }
 
 
@@ -180,21 +186,28 @@ def _get_book_redirect_impl(token: str) -> str:
         raise ValueError("not_found")
 
     data = doc.to_dict()
-    if data.get("used"):
-        raise ValueError("already_used")
-
-    expires_at = data.get("expiresAt")
     now = datetime.now(UTC)
-    # Handle both Firestore Timestamp and Python datetime
-    if hasattr(expires_at, "tzinfo"):
-        expires_dt = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=UTC)
-    else:
-        expires_dt = expires_at
-    if expires_dt < now:
-        raise ValueError("expired")
 
-    # Mark as used (best-effort — in production use a transaction for atomicity)
-    token_ref.update({"used": True, "usedAt": now})
+    # Atomically mark token as used — prevents double-use on concurrent requests
+    from firebase_admin import firestore as _fs_tok
+
+    @_fs_tok.transactional
+    def _mark_used(txn, ref):
+        snap = ref.get(transaction=txn)
+        tok_data = snap.to_dict() or {}
+        if tok_data.get("used"):
+            raise ValueError("already_used")
+        expires_at = tok_data.get("expiresAt")
+        if hasattr(expires_at, "tzinfo"):
+            expires_dt = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=UTC)
+        else:
+            expires_dt = expires_at
+        if expires_dt is not None and expires_dt < now:
+            raise ValueError("expired")
+        txn.update(ref, {"used": True, "usedAt": now})
+        return tok_data
+
+    data = _mark_used(db.transaction(), token_ref)
 
     book_url = data.get(Fields.BOOK_SOURCE_URL, "")
     if not book_url:
@@ -214,19 +227,23 @@ def _revoke_digital_licenses_for_order(order_id: str) -> int:
     licenses = db.collection(Collections.LICENSES).where(Fields.ORDER_ID, "==", order_id).stream()
     count = 0
     now = datetime.now(UTC)
+    batch = db.batch()
     for lic_doc in licenses:
         lic = lic_doc.to_dict()
         if lic.get(Fields.STATUS) == LicenseStatusValues.ACTIVE:
-            lic_doc.reference.update(
+            batch.update(
+                lic_doc.reference,
                 {
                     Fields.STATUS: LicenseStatusValues.REVOKED,
                     "revokedAt": now,
                     "revokedReason": "refunded",
                     Fields.UPDATED_AT: now,
-                }
+                },
             )
             count += 1
             logger.info(f"License {lic_doc.id} revoked for order {order_id} (refund)")
+    if count > 0:
+        batch.commit()
     return count
 
 

@@ -688,6 +688,16 @@ class Fields:
     SCHEMA_VERSION = "schemaVersion"  # Schema layout version for migration tracking
     SELLER_NAME = "sellerName"  # Seller display name snapshotted at purchase time
 
+    # === NOTIFICATIONS / PUSH / ACTOR ===
+    NOTIFICATIONS_SENT = "notificationsSent"  # ArrayUnion of status values already notified
+    PUSH_ENABLED = "pushEnabled"  # bool — user opted into push notifications
+    LAST_ACTOR_ID = "lastActorId"  # uid of last actor on order
+    IS_SELLER = "isSeller"  # bool flag on users doc
+    HAS_DISPUTE = "hasDispute"  # bool on order doc
+    SELLER_AMOUNT_CENTS = "sellerAmountCents"  # per-payout cents
+    ESCALATED_AT = "escalatedAt"  # timestamp when return was escalated
+    ESCALATION_REASON = "escalationReason"  # reason for escalation
+
     # === API REQUEST/RESPONSE FIELDS ===
     FILE_NAME = "fileName"
     UPLOAD_URL = "uploadUrl"
@@ -1385,6 +1395,18 @@ class BusinessRules:
     # Order archival
     ARCHIVE_AFTER_DAYS = 30
     FIRESTORE_BATCH_LIMIT = 500
+    MAX_SHIPPING_COST_CAD = 500  # $500 CAD absolute maximum shipping cost
+
+    # Seller health thresholds
+    SELLER_DISPUTE_RATE_THRESHOLD = 0.05  # 5% dispute rate triggers seller health alert
+    SELLER_REFUND_RATE_THRESHOLD = 0.10   # 10% refund rate threshold
+    SELLER_CANCEL_RATE_THRESHOLD = 0.10   # 10% cancel rate threshold
+
+    # Trending product constants
+    TRENDING_TOP_N = 20              # Number of products to mark as trending
+    TRENDING_WINDOW_HOURS = 24       # Rolling window for trending calculation
+    TRENDING_PURCHASE_WEIGHT = 3     # Weight for purchase events
+    TRENDING_FAVORITE_WEIGHT = 1     # Weight for favorite events
 
     # Algolia monitoring
     ALGOLIA_SYNC_MISMATCH_THRESHOLD = 0.05  # 5%

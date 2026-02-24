@@ -7,14 +7,15 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 /// Tracks local subscription state for back-in-stock notifications.
 /// On first use, fetches the real subscription state from Firestore.
 final stockNotificationNotifierProvider =
-    StateNotifierProvider.family<StockNotificationNotifier, AsyncValue<bool>, String>(
-  (ref, productId) => StockNotificationNotifier(productId)..init(),
+    StateNotifierProvider.family<StockNotificationNotifier, AsyncValue<bool>, ({String productId, String? variantKey})>(
+  (ref, args) => StockNotificationNotifier(args.productId, args.variantKey)..init(),
 );
 
 class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
   final String productId;
+  final String? variantKey;
 
-  StockNotificationNotifier(this.productId) : super(const AsyncValue.loading());
+  StockNotificationNotifier(this.productId, this.variantKey) : super(const AsyncValue.loading());
 
   /// Checks Firestore for an existing subscription so the UI reflects the
   /// real state even if the user subscribed in a previous session.
@@ -25,12 +26,14 @@ class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
         state = const AsyncValue.data(false);
         return;
       }
-      final snap = await FirebaseFirestore.instance
+      var query = FirebaseFirestore.instance
           .collection(Collections.stockNotifications)
           .where(Fields.userId, isEqualTo: uid)
-          .where(Fields.productId, isEqualTo: productId)
-          .limit(1)
-          .get();
+          .where(Fields.productId, isEqualTo: productId);
+      if (variantKey != null) {
+        query = query.where(Fields.variantKey, isEqualTo: variantKey);
+      }
+      final snap = await query.limit(1).get();
       state = AsyncValue.data(snap.docs.isNotEmpty);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -41,9 +44,11 @@ class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
     state = const AsyncValue.loading();
     try {
       final functions = FirebaseFunctions.instance;
+      final payload = {Fields.productId: productId};
+      if (variantKey != null) payload[Fields.variantKey] = variantKey!;
       await functions
           .httpsCallable(CloudFunctionEndpoints.subscribeStockNotification)
-          .call({Fields.productId: productId});
+          .call(payload);
       state = const AsyncValue.data(true);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -54,9 +59,11 @@ class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
     state = const AsyncValue.loading();
     try {
       final functions = FirebaseFunctions.instance;
+      final payload = {Fields.productId: productId};
+      if (variantKey != null) payload[Fields.variantKey] = variantKey!;
       await functions
           .httpsCallable(CloudFunctionEndpoints.unsubscribeStockNotification)
-          .call({Fields.productId: productId});
+          .call(payload);
       state = const AsyncValue.data(false);
     } catch (e, st) {
       state = AsyncValue.error(e, st);

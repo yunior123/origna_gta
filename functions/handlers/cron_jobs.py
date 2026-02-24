@@ -93,8 +93,11 @@ def acquire_cron_lock(job_name: str, ttl_minutes: int = 30) -> bool:
         if doc.exists:
             lock_data = doc.to_dict()
             locked_at = lock_data.get(Fields.LOCKED_AT)
-            if locked_at and locked_at > cutoff:
-                return False  # Lock is still held by another instance
+            if locked_at:
+                if hasattr(locked_at, "tzinfo") and locked_at.tzinfo is None:
+                    locked_at = locked_at.replace(tzinfo=UTC)
+                if locked_at > cutoff:
+                    return False  # Lock is still held by another instance
         transaction.set(
             lock_ref,
             {
@@ -190,7 +193,7 @@ def _run_auto_capture() -> None:
         .collection(Collections.ORDERS)
         .where(Fields.ORDER_STATUS, "==", OrderStatusValues.SHIPPED)
         .where(Fields.PAYMENT_STATUS, "in", [PaymentStatusValues.CAPTURED, PaymentStatusValues.AUTHORIZED])
-        .where(Fields.UPDATED_AT, "<=", cutoff_date)
+        .where(Fields.SHIPPED_AT, "<=", cutoff_date)
         .limit(250)
         .stream()
     )
@@ -329,7 +332,7 @@ def _run_auto_capture() -> None:
                 item_status = item.get(Fields.STATUS, DeliveryStatusValues.PENDING)
                 if item_status == DeliveryStatusValues.DELIVERED:
                     seller_id = item[Fields.SELLER_ID]
-                    item_price_cents = round(item[Fields.PRICE] * 100)
+                    item_price_cents = item.get(Fields.PRICE_CENTS) or item.get(Fields.PRICE, 0)  # already in cents
                     item_total_cents = item_price_cents * item[Fields.QUANTITY]
                     sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
 
@@ -342,6 +345,7 @@ def _run_auto_capture() -> None:
                 (stored_fee_total / order_subtotal) if stored_fee_total and order_subtotal > 0 else PLATFORM_FEE_RATIO
             )
 
+            expected_seller_count = len(sellers_total_cents)
             current_order_success_count = 0  # Track successful transfers for this order
 
             for seller_id, amount_cents in sellers_total_cents.items():
@@ -404,8 +408,20 @@ def _run_auto_capture() -> None:
                                 )
                                 continue
 
-                            # Create PENDING payout record BEFORE Stripe transfer
-                            payout_ref = get_db().collection(Collections.PAYOUTS).document()
+                            # Create PENDING payout record BEFORE Stripe transfer (idempotent)
+                            existing_payouts = list(
+                                get_db()
+                                .collection(Collections.PAYOUTS)
+                                .where(Fields.ORDER_ID, "==", order_id)
+                                .where(Fields.SELLER_ID, "==", seller_id)
+                                .limit(1)
+                                .get()
+                            )
+                            payout_ref = (
+                                existing_payouts[0].reference
+                                if existing_payouts
+                                else get_db().collection(Collections.PAYOUTS).document()
+                            )
                             payout_ref.set(
                                 {
                                     Fields.ORDER_ID: order_id,
@@ -474,7 +490,7 @@ def _run_auto_capture() -> None:
                                     }
                                 )
 
-            if current_order_success_count > 0:
+            if current_order_success_count == expected_seller_count and current_order_success_count > 0:
                 payout_count += 1
                 logger.info(f"Auto-payout completed for order {order_id} ({current_order_success_count} transfers)")
 
@@ -482,6 +498,19 @@ def _run_auto_capture() -> None:
                 order_doc.reference.update(
                     {
                         Fields.PAYOUT_STATUS: PayoutStatusValues.COMPLETED,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
+            elif current_order_success_count > 0:
+                payout_count += 1
+                logger.warning(
+                    f"Partial payout for order {order_id} ({current_order_success_count}/{expected_seller_count} transfers)"
+                )
+                order_doc.reference.update(
+                    {
+                        Fields.PAYOUT_STATUS: PayoutStatusValues.PARTIAL,
+                        Fields.REQUIRES_MANUAL_REVIEW: True,
+                        Fields.MANUAL_REVIEW_REASON: f"Partial payout: {current_order_success_count}/{expected_seller_count} sellers paid",
                         Fields.UPDATED_AT: get_server_timestamp(),
                     }
                 )
@@ -500,7 +529,7 @@ def _run_auto_capture() -> None:
                 }
             )
 
-    logger.error(f"Auto-payout completed: {payout_count} paid out, {failed_count} failed")
+    logger.info(f"Auto-payout completed: {payout_count} paid out, {failed_count} failed")
 
 
 @scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
@@ -560,55 +589,54 @@ def _run_expired_authorizations() -> None:
         order_data = order_doc.to_dict()
         order_id = order_doc.id
 
-        # For stale unpaid orders, simply mark as expired and restore stock
+        # FIX 1: Cancel Stripe authorization BEFORE marking EXPIRED in Firestore
+        if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED:
+            pi_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+            if pi_id:
+                try:
+                    logger.info(f"Cancelling stale authorization for order {order_id} (PI: {pi_id})")
+                    stripe.api_key = get_stripe_secret_key()
+                    stripe.PaymentIntent.cancel(pi_id)
+                except Exception as cancel_err:
+                    logger.warning(f"⚠️ Failed to cancel Stripe PI {pi_id} for expired order {order_id}: {cancel_err}")
+
+        # FIX 2: Check STOCK_RESTORED from fresh doc inside transaction
         @get_firestore().transactional
-        def try_expire_order(transaction, order_doc=order_doc):
+        def try_expire_order(transaction, order_doc=order_doc, order_data=order_data):
             fresh_doc = order_doc.reference.get(transaction=transaction)
             if not fresh_doc.exists:
-                return "not_found"
+                return "not_found", False
             fresh_data = fresh_doc.to_dict()
             current_status = fresh_data.get(Fields.ORDER_STATUS)
             if current_status not in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED]:
-                return f"invalid_status:{current_status}"
+                return f"invalid_status:{current_status}", False
+            stock_already_restored = fresh_data.get(Fields.STOCK_RESTORED, False)
+            payment_status = (
+                PaymentStatusValues.AUTHORIZATION_EXPIRED
+                if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED
+                else PaymentStatusValues.SESSION_EXPIRED
+            )
             transaction.update(
                 order_doc.reference,
                 {
                     Fields.ORDER_STATUS: OrderStatusValues.EXPIRED,
-                    Fields.PAYMENT_STATUS: PaymentStatusValues.SESSION_EXPIRED,
+                    Fields.PAYMENT_STATUS: payment_status,
                     Fields.UPDATED_AT: get_server_timestamp(),
                 },
             )
-            return "locked"
+            return "locked", stock_already_restored
 
         try:
-            expire_result = try_expire_order(get_db().transaction())
+            expire_result, stock_already_restored = try_expire_order(get_db().transaction())
             if expire_result != "locked":
                 logger.info(f"Order {order_id} cannot be expired: {expire_result}")
                 continue
-
-            # CRITICAL FIX (CRITICAL-002): Cancel Stripe authorization if present
-            if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED:
-                pi_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
-                if pi_id:
-                    try:
-                        # Cancel the PaymentIntent in Stripe to release funds
-                        logger.info(f"Cancelling stale authorization for order {order_id} (PI: {pi_id})")
-                        stripe.api_key = get_stripe_secret_key()
-                        stripe.PaymentIntent.cancel(pi_id)
-                        order_doc.reference.update(
-                            {
-                                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZATION_EXPIRED,
-                                Fields.UPDATED_AT: get_server_timestamp(),
-                            }
-                        )
-                    except Exception as cancel_err:
-                        logger.warning(f"⚠️ Failed to cancel Stripe PI {pi_id} for expired order {order_id}: {cancel_err}")
         except Exception as e:
             logger.warning(f"⚠️ Failed to lock order {order_id} for expiry: {str(e)}")
             continue
 
-        # Skip if stock already restored (idempotency)
-        if order_data.get(Fields.STOCK_RESTORED, False):
+        # Use fresh stock_already_restored from transaction (Fix 2)
+        if stock_already_restored:
             logger.info(f"Stock already restored for expired order {order_id}")
         else:
             # Use batch write for atomicity across multiple product stock updates
@@ -654,45 +682,59 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running auto_archive_old_orders cron job")
 
-    cutoff_date = datetime.now(UTC) - timedelta(days=BusinessRules.ARCHIVE_AFTER_DAYS)
+    if not acquire_cron_lock("auto_archive_old_orders"):
+        logger.info("auto_archive_old_orders: lock held, skipping")
+        return
 
-    # Limit to 200 orders per run and use batch
-    # NOTE: We cannot filter 'archived == False' because Firestore doesn't match
-    # documents where the field doesn't exist. Instead, we query without the filter
-    # and skip already-archived orders in the loop.
-    orders = (
-        get_db()
-        .collection(Collections.ORDERS)
-        .where(
-            Fields.ORDER_STATUS,
-            "in",
-            [OrderStatusValues.DELIVERED, OrderStatusValues.CANCELLED],
+    try:
+        cutoff_date = datetime.now(UTC) - timedelta(days=BusinessRules.ARCHIVE_AFTER_DAYS)
+
+        # Limit to 200 orders per run and use batch
+        # NOTE: We cannot filter 'archived == False' because Firestore doesn't match
+        # documents where the field doesn't exist. Instead, we query without the filter
+        # and skip already-archived orders in the loop.
+        orders = (
+            get_db()
+            .collection(Collections.ORDERS)
+            .where(
+                Fields.ORDER_STATUS,
+                "in",
+                [OrderStatusValues.DELIVERED, OrderStatusValues.CANCELLED],
+            )
+            .where(Fields.UPDATED_AT, "<=", cutoff_date)
+            .limit(200)
+            .stream()
         )
-        .where(Fields.UPDATED_AT, "<=", cutoff_date)
-        .limit(200)
-        .stream()
-    )
 
-    archived_count = 0
-    batch = get_db().batch()
+        archived_count = 0
+        batch = get_db().batch()
 
-    for order_doc in orders:
-        if order_doc.to_dict().get(Fields.ARCHIVED, False):
-            continue
+        for order_doc in orders:
+            if order_doc.to_dict().get(Fields.ARCHIVED, False):
+                continue
 
-        batch.update(order_doc.reference, {Fields.ARCHIVED: True, Fields.ARCHIVED_AT: get_server_timestamp()})
-        archived_count += 1
+            batch.update(
+                order_doc.reference,
+                {
+                    Fields.ARCHIVED: True,
+                    Fields.ARCHIVED_AT: get_server_timestamp(),
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                },
+            )
+            archived_count += 1
 
-        # Commit every 500 operations
-        if archived_count % 500 == 0:
+            # Commit every 500 operations
+            if archived_count % 500 == 0:
+                batch.commit()
+                batch = get_db().batch()
+
+        # Commit remaining
+        if archived_count % 500 != 0:
             batch.commit()
-            batch = get_db().batch()
 
-    # Commit remaining
-    if archived_count % 500 != 0:
-        batch.commit()
-
-    logger.info(f"Archive completed: {archived_count} orders archived")
+        logger.info(f"Archive completed: {archived_count} orders archived")
+    finally:
+        release_cron_lock("auto_archive_old_orders")
 
 
 @scheduler_fn.on_schedule(schedule="every 15 minutes", **CRON_OPTIONS)
@@ -880,7 +922,7 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
             last_modified = obj.get("LastModified")
 
             # Safety: skip recently uploaded files (race condition with active uploads)
-            if last_modified and last_modified.replace(tzinfo=None) > cutoff:
+            if last_modified and last_modified > cutoff:
                 continue
 
             if key not in referenced_keys:
@@ -1085,6 +1127,11 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
     from handlers.products import _get_seller_email, _send_product_rejection_email
 
     logger.info("Starting weekly digital product URL revalidation")
+
+    if not acquire_cron_lock("revalidate_digital_product_urls"):
+        logger.info("revalidate_digital_product_urls: lock held, skipping")
+        return
+
     checked = 0
     deactivated = 0
 
@@ -1147,6 +1194,7 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
             logger.warning(f"Deactivated product {product_id} — dead URLs: {dead}")
 
     logger.info(f"Digital URL revalidation done: {checked} checked, {deactivated} deactivated")
+    release_cron_lock("revalidate_digital_product_urls")
 
 
 @scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
@@ -1181,6 +1229,10 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     now_utc = datetime.now(UTC)
     alert_cooldown = timedelta(hours=23)
 
+    # First pass: collect products needing alerts and unique seller IDs
+    products_needing_alert = []
+    unique_seller_ids: set = set()
+
     for doc in query.stream():
         checked_count += 1
         data = doc.to_dict() or {}
@@ -1207,16 +1259,29 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
         if last_alert and (now_utc - last_alert) < alert_cooldown:
             continue
 
-        # Send email to seller
         seller_id = data.get(Fields.SELLER_ID)
         if not seller_id:
             continue
 
-        seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
-        if not seller_doc.exists:
+        products_needing_alert.append((doc, data, stock, threshold))
+        unique_seller_ids.add(seller_id)
+
+    # Batch-read all seller docs to avoid N+1
+    seller_data_map: dict = {}
+    if unique_seller_ids:
+        seller_refs = [get_db().collection(Collections.USERS).document(sid) for sid in unique_seller_ids]
+        for seller_snap in get_db().get_all(seller_refs):
+            if seller_snap.exists:
+                seller_data_map[seller_snap.id] = seller_snap.to_dict() or {}
+
+    # Second pass: send low stock alert emails
+    for doc, data, stock, threshold in products_needing_alert:
+        seller_id = data.get(Fields.SELLER_ID)
+        seller_info = seller_data_map.get(seller_id)
+        if not seller_info:
             continue
 
-        seller_email = (seller_doc.to_dict() or {}).get(Fields.EMAIL)
+        seller_email = seller_info.get(Fields.EMAIL)
         if not seller_email:
             continue
 
@@ -1404,13 +1469,13 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
     CANCEL_THRESHOLD = 0.10
 
     # Get all sellers
-    sellers_query = get_db().collection(Collections.USERS).where("roles", "array_contains", "seller").limit(500)
+    sellers_query = get_db().collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.SELLER).limit(500)
 
     for seller_doc in sellers_query.stream():
         seller_id = seller_doc.id
         seller_data = seller_doc.to_dict() or {}
 
-        if not seller_data.get("isSeller") and "seller" not in (seller_data.get("roles") or []):
+        if not seller_data.get(Fields.IS_SELLER) and UserRoleValues.SELLER not in (seller_data.get(Fields.ROLES) or []):
             continue
 
         # Fetch orders for this seller in the last 30 days
@@ -1457,17 +1522,17 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
 
             if status == OrderStatusValues.CANCELLED:
                 cancelled += 1
-            if payment_status == "refunded":
+            if payment_status == PaymentStatusValues.REFUNDED:
                 refunded += 1
 
             # Revenue: sum payout amounts for this seller
-            payouts = od.get("sellerPayouts") or []
+            payouts = od.get(Fields.SELLER_PAYOUTS) or []
             for payout in payouts:
                 if isinstance(payout, dict) and payout.get(Fields.SELLER_ID) == seller_id:
-                    total_revenue_cents += payout.get("sellerAmountCents", 0)
+                    total_revenue_cents += payout.get(Fields.SELLER_AMOUNT_CENTS, 0)
 
             # Dispute: check if order has an associated dispute in webhook_events
-            if od.get("hasDispute"):
+            if od.get(Fields.HAS_DISPUTE):
                 disputed += 1
 
             # Late shipment: shipped > estimatedShipDays after order
@@ -1588,6 +1653,7 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
     top_products = scored[:TRENDING_TOP_N]
 
     batch = db.batch()
+    op_count = 0
 
     # Mark top-N as trending
     for _score, prod_id, _name, _img in top_products:
@@ -1600,6 +1666,10 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
                 Fields.TRENDING_SCORE: _score,
             },
         )
+        op_count += 1
+        if op_count % 400 == 0:
+            batch.commit()
+            batch = db.batch()
 
     # Clear trending from products that dropped out of top-N
     old_trending = db.collection(Collections.PRODUCTS).where(Fields.IS_TRENDING, "==", True).stream()
@@ -1614,6 +1684,10 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
                 },
             )
             cleared += 1
+            op_count += 1
+            if op_count % 400 == 0:
+                batch.commit()
+                batch = db.batch()
 
     batch.commit()
     logger.info(f"Trending: {len(top_products)} products marked trending, {cleared} cleared")
@@ -1707,16 +1781,24 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
             sub_refs = [db.collection(Collections.SUBSCRIPTIONS).document(uid) for uid in uid_list]
             sub_docs = db.get_all(sub_refs)
             sub_exists = {doc.id: doc.exists for doc in sub_docs}
+            orphan_batch = db.batch()
+            orphan_count = 0
             for uid in uid_list:
                 if not sub_exists.get(uid, False):
                     logger.warning(f"Clearing orphaned isPremium for user {uid}")
-                    db.collection(Collections.USERS).document(uid).update({
-                        Fields.IS_PREMIUM: False,
-                        Fields.PREMIUM_EXPIRES_AT: None,
-                        Fields.STRIPE_SUBSCRIPTION_ID: None,
-                        Fields.UPDATED_AT: now,
-                    })
+                    orphan_batch.update(
+                        db.collection(Collections.USERS).document(uid),
+                        {
+                            Fields.IS_PREMIUM: False,
+                            Fields.PREMIUM_EXPIRES_AT: None,
+                            Fields.STRIPE_SUBSCRIPTION_ID: None,
+                            Fields.UPDATED_AT: now,
+                        },
+                    )
+                    orphan_count += 1
                     synced_count += 1
+            if orphan_count > 0:
+                orphan_batch.commit()
 
         logger.info(f"sync_expired_subscriptions: {synced_count} fixed, {error_count} errors")
     finally:
@@ -1771,8 +1853,8 @@ def _run_return_escalation() -> None:
                 doc.reference.update({
                     Fields.RETURN_STATUS: ReturnStatusValues.ESCALATED,
                     Fields.UPDATED_AT: now,
-                    "escalatedAt": now,
-                    "escalationReason": f"No seller response after {BusinessRules.RETURN_ESCALATION_DAYS} days",
+                    Fields.ESCALATED_AT: now,
+                    Fields.ESCALATION_REASON: f"No seller response after {BusinessRules.RETURN_ESCALATION_DAYS} days",
                 })
 
                 # Notify buyer

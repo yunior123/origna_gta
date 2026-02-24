@@ -316,6 +316,30 @@
           "description": "Whether this item is a digital product",
           "title": "Isdigital",
           "type": "boolean"
+        },
+        "licenseKey": {
+          "anyOf": [{"type": "string"}, {"type": "null"}],
+          "default": null,
+          "description": "License key for digital product activation",
+          "title": "Licensekey"
+        },
+        "digitalUnlocked": {
+          "default": false,
+          "description": "Whether the digital license has been delivered to buyer",
+          "title": "Digitalunlocked",
+          "type": "boolean"
+        },
+        "digitalType": {
+          "anyOf": [{"type": "string", "enum": ["software", "book"]}, {"type": "null"}],
+          "default": null,
+          "description": "Type of digital item",
+          "title": "Digitaltype"
+        },
+        "digitalBuilds": {
+          "anyOf": [{"type": "object", "additionalProperties": {"type": "string"}}, {"type": "null"}],
+          "default": null,
+          "description": "Map of platform to download URL (snapshot from product)",
+          "title": "Digitalbuilds"
         }
       },
       "required": [

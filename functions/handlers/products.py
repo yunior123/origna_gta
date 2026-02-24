@@ -7,6 +7,7 @@ Product Management Handlers
 - Rating submission
 """
 
+import html as _html
 import logging
 import re
 import secrets
@@ -2663,6 +2664,7 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
     from services.email_service import send_email
 
     product_name = after_data.get(Fields.NAME, "A product you wanted")
+    safe_name = _html.escape(product_name)
     now_utc = datetime.now(UTC)
 
     if has_variants:
@@ -2688,26 +2690,32 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
             return
 
         for variant_key in restocked_keys:
-            subscriptions = (
+            base_query = (
                 get_db()
                 .collection(Collections.STOCK_NOTIFICATIONS)
                 .where(Fields.PRODUCT_ID, "==", product_id)
                 .where(Fields.VARIANT_KEY, "==", variant_key)
                 .where(Fields.NOTIFIED_AT, "==", None)
-                .limit(200)
-                .stream()
             )
             variant_url = f"https://orignagta.ca/products/{product_id}?variant={variant_key}"
-            for sub_doc in subscriptions:
-                sub_data = sub_doc.to_dict() or {}
-                email = sub_data.get(Fields.EMAIL)
-                if not email:
-                    continue
-                subject = f"🎉 Back in stock: {product_name} — Origna"
-                html = f"""
+            last_doc = None
+            while True:
+                q = base_query.limit(200)
+                if last_doc:
+                    q = q.start_after(last_doc)
+                batch_docs = list(q.stream())
+                if not batch_docs:
+                    break
+                for sub_doc in batch_docs:
+                    sub_data = sub_doc.to_dict() or {}
+                    email = sub_data.get(Fields.EMAIL)
+                    if not email:
+                        continue
+                    subject = f"🎉 Back in stock: {safe_name} — Origna"
+                    html_body = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #5B30F6;">It's back! 🎉</h2>
-  <p><strong>{product_name}</strong> (the variant you wanted) is back in stock on Origna.</p>
+  <p><strong>{safe_name}</strong> (the variant you wanted) is back in stock on Origna.</p>
   <p style="margin-top:20px;">
     <a href="{variant_url}"
        style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
@@ -2720,33 +2728,40 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
     Origna Ventures Inc.
   </p>
 </div>"""
-                try:
-                    send_email(email, subject, html)
-                    sub_doc.reference.update({Fields.NOTIFIED_AT: now_utc})
-                except Exception as e:
-                    logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
+                    try:
+                        send_email(email, subject, html_body)
+                        sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
+                    except Exception as e:
+                        logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
+                last_doc = batch_docs[-1]
         return
 
     # Non-variant product: fire for subscribers without a variantKey.
-    subscriptions = (
+    non_variant_query = (
         get_db()
         .collection(Collections.STOCK_NOTIFICATIONS)
         .where(Fields.PRODUCT_ID, "==", product_id)
+        .where(Fields.VARIANT_KEY, "==", "")
         .where(Fields.NOTIFIED_AT, "==", None)
-        .limit(200)
-        .stream()
     )
-
-    for sub_doc in subscriptions:
-        sub_data = sub_doc.to_dict() or {}
-        email = sub_data.get(Fields.EMAIL)
-        if not email:
-            continue
-        subject = f"🎉 Back in stock: {product_name} — Origna"
-        html = f"""
+    last_doc = None
+    while True:
+        q = non_variant_query.limit(200)
+        if last_doc:
+            q = q.start_after(last_doc)
+        batch_docs = list(q.stream())
+        if not batch_docs:
+            break
+        for sub_doc in batch_docs:
+            sub_data = sub_doc.to_dict() or {}
+            email = sub_data.get(Fields.EMAIL)
+            if not email:
+                continue
+            subject = f"🎉 Back in stock: {safe_name} — Origna"
+            html_body = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #5B30F6;">It's back! 🎉</h2>
-  <p><strong>{product_name}</strong> is back in stock on Origna.</p>
+  <p><strong>{safe_name}</strong> is back in stock on Origna.</p>
   <p style="margin-top:20px;">
     <a href="https://orignagta.ca/products/{product_id}"
        style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
@@ -2759,11 +2774,12 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
     Origna Ventures Inc.
   </p>
 </div>"""
-        try:
-            send_email(email, subject, html)
-            sub_doc.reference.update({Fields.NOTIFIED_AT: now_utc})
-        except Exception as e:
-            logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
+            try:
+                send_email(email, subject, html_body)
+                sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
+            except Exception as e:
+                logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
+        last_doc = batch_docs[-1]
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -2791,12 +2807,16 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
         raise https_fn.HttpsError("not-found", "Product not found")
     product_data = product_doc.to_dict() or {}
 
+    if product_data.get(Fields.SELLER_ID) == user_id:
+        raise https_fn.HttpsError("permission-denied", "Sellers cannot subscribe to their own product notifications")
+
     # When a variantKey is provided, check that specific variant's stock instead
     # of top-level stockQuantity, which would be > 0 if other variants are in stock.
     variant_key = data.get(Fields.VARIANT_KEY)
     if variant_key and product_data.get(Fields.HAS_VARIANTS):
-        variants = product_data.get(Fields.VARIANTS) or {}
-        variant_data = variants.get(variant_key) or {}
+        variants_raw = product_data.get(Fields.VARIANTS) or []
+        variants_by_key = {v.get(Fields.VARIANT_ID, ""): v for v in variants_raw if isinstance(v, dict)}
+        variant_data = variants_by_key.get(variant_key) or {}
         if variant_data.get(Fields.STOCK_QUANTITY, 0) > 0:
             raise https_fn.HttpsError("failed-precondition", "Variant is already in stock")
     elif product_data.get(Fields.STOCK_QUANTITY, 0) > 0:
@@ -2828,11 +2848,10 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
         Fields.USER_ID: user_id,
         Fields.EMAIL: user_email,
         Fields.NAME: product_data.get(Fields.NAME, ""),
+        Fields.VARIANT_KEY: variant_key or "",
         Fields.NOTIFIED_AT: None,
         Fields.CREATED_AT: get_server_timestamp(),
     }
-    if variant_key:
-        doc[Fields.VARIANT_KEY] = variant_key
     get_db().collection(Collections.STOCK_NOTIFICATIONS).add(doc)
     return create_success_response({"subscribed": True})
 
@@ -2854,15 +2873,17 @@ def unsubscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, A
     if not product_id:
         raise https_fn.HttpsError("invalid-argument", "productId required")
 
-    subscriptions = list(
+    variant_key = data.get(Fields.VARIANT_KEY)
+    query = (
         get_db()
         .collection(Collections.STOCK_NOTIFICATIONS)
         .where(Fields.PRODUCT_ID, "==", product_id)
         .where(Fields.USER_ID, "==", user_id)
         .where(Fields.NOTIFIED_AT, "==", None)
-        .limit(5)
-        .stream()
     )
+    if variant_key:
+        query = query.where(Fields.VARIANT_KEY, "==", variant_key)
+    subscriptions = list(query.limit(5).stream())
     for sub in subscriptions:
         sub.reference.delete()
 

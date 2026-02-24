@@ -5,6 +5,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import 'package:origna_gta/config/firebase_config_prod.dart';
 import 'package:origna_gta/config/firebase_config_staging.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:origna_gta/services/conf_services.dart';
+import 'package:origna_gta/services/notification_service.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
@@ -130,6 +132,12 @@ void main() {
       */
 
       await ConfigService().initialize();
+
+      // Register FCM background handler before runApp — FCM requires this to be
+      // called at app startup before any other Firebase Messaging calls.
+      if (!kIsWeb) {
+        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      }
 
       await SentryFlutter.init((options) {
         options.dsn = ConfigService().sentryDnsKey;

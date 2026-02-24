@@ -1781,6 +1781,16 @@ def get_return_request_rejected_email(return_data: dict, return_id: str, order_i
     """
     content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
     return _email_wrapper("Return Request Update", content, include_gst=False, lang=lang)
+
+
+def send_email(
+    to_email: str,
+    subject: str,
+    html_content: str,
+    from_email: str = EmailConfig.SUPPORT_EMAIL,
+    to_name: str | None = None,
+    attachments: list | None = None,
+) -> bool:
     """Send email using Mailjet — CASL compliant with List-Unsubscribe header
 
     Args:

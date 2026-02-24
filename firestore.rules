@@ -216,8 +216,12 @@ service cloud.firestore {
       // --- NOTIFICATIONS SUBCOLLECTION ---
       match /notifications/{notifId} {
         allow read: if isOwner(userId);
-        // Backend-only writes via Admin SDK
-        allow create, update, delete: if false;
+        // Allow owners to mark notifications as read only
+        allow update: if isOwner(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']) &&
+          request.resource.data.isRead == true;
+        // Backend-only creates and deletes
+        allow create, delete: if false;
       }
       
       // --- CART SUBCOLLECTION ---
@@ -486,7 +490,8 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       // Backend only handles creates via specific `subscribe_stock_notification` endpoint to ensure consistency
       allow create, update: if false;
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Deletes are also backend-only to ensure server-side logging and auditability
+      allow delete: if false;
     }
 
     // ================================================================
@@ -647,6 +652,19 @@ service cloud.firestore {
     // Single-use redirect tokens — backend creates, no client read.
     // ================================================================
     match /book_access_tokens/{token} {
+      // No client reads — token is consumed server-side via redirect
+      allow read, write: if false;
+    }
+
+    // ================================================================
+    // SOFTWARE_ACCESS_TOKENS COLLECTION
+    // Backend-only access tokens for software products.
+    // ================================================================
+    match /software_access_tokens/{token} {
+      allow read, write: if false;
+    }
+
+    match /software_access_tokens/{token} {
       // No client reads — token is consumed server-side via redirect
       allow read, write: if false;
     }

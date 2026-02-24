@@ -25,7 +25,7 @@ final checkoutStateProvider = StateNotifierProvider.autoDispose<CheckoutNotifier
 /// Computed provider for tax rate based on address
 final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
   final checkoutState = ref.watch(checkoutStateProvider);
-  if (checkoutState.address == null) return 0.13; // Default Ontario HST
+  if (checkoutState.address == null) return getTaxRate('ON'); // Default Ontario HST
   return getTaxRate(checkoutState.address!.state);
 });
 
@@ -37,7 +37,7 @@ final checkoutTotalProvider = Provider.autoDispose<double>((ref) {
   return subtotal + checkoutState.taxAmount + checkoutState.shippingCost - couponDiscount;
 });
 
-final _algoliaCircuitBreaker = CircuitBreakerRegistry.get('algolia_search', config: CircuitBreakerConfig.searchDefault);
+final _shippingCircuitBreaker = CircuitBreakerRegistry.get('shipping_calc', config: CircuitBreakerConfig.searchDefault);
 
 /// Circuit breakers for external service calls
 final _stripeCircuitBreaker = CircuitBreakerRegistry.get('stripe_checkout', config: CircuitBreakerConfig.paymentDefault);
@@ -96,7 +96,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
     try {
       // Use circuit breaker for external service calls
-      final cost = await _algoliaCircuitBreaker.execute(() => calculateShippingCost(items, state.address));
+      final cost = await _shippingCircuitBreaker.execute(() => calculateShippingCost(items, state.address));
 
       // Determine if local delivery (check if any seller is within ~50km)
       final isLocal = await _checkLocalDelivery(items, state.address!);
@@ -185,7 +185,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         ApiKeys.cartSubtotalCents: subtotalCents,
       });
       final data = (result.data as Map<Object?, Object?>).cast<String, dynamic>();
-      final discountCents = (data['discountAmountCents'] as num?)?.toInt() ?? 0;
+      final discountCents = (data[Fields.discountAmountCents] as num?)?.toInt() ?? 0;
       state = state.copyWith(couponCode: trimmed, couponDiscountCents: discountCents, isCouponLoading: false);
     } on FirebaseFunctionsException catch (e) {
       state = state.copyWith(isCouponLoading: false, couponError: e.message ?? 'Invalid coupon code');
@@ -269,6 +269,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
                 Fields.quantity: item.quantity,
                 Fields.sellerId: item.sellerId,
                 Fields.imageUrls: item.imageUrls,
+                if (item.buyerNote != null && item.buyerNote!.isNotEmpty)
+                  Fields.buyerNote: item.buyerNote,
               },
             )
             .toList(),
@@ -278,8 +280,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         Fields.deliverySpeed: state.deliverySpeed.value,
         // Delivery instructions for sellers
         Fields.deliveryInstructions: deliveryInstructions,
-        // Idempotency key — prevents double-charges on retry/race
-        ApiKeys.idempotencyKey: idempotencyKey,
         // Coupon code — backend validates and applies discount
         if (state.couponCode != null) Fields.couponCode: state.couponCode,
       };

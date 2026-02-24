@@ -451,7 +451,7 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
         ],
         _QuantitySelector(viewModel: widget.viewModel),
         const SizedBox(height: 24),
-        _AddToCartButton(productId: widget.product.productId, sellerId: widget.product.sellerId, stockQuantity: _effectiveStock),
+        _AddToCartButton(productId: widget.product.productId, sellerId: widget.product.sellerId, stockQuantity: _effectiveStock, variantKey: _matchedVariant?['variantId'] as String?),
       ],
     );
   }
@@ -461,8 +461,9 @@ class _AddToCartButton extends ConsumerStatefulWidget {
   final String productId;
   final String sellerId;
   final int stockQuantity;
+  final String? variantKey;
 
-  const _AddToCartButton({required this.productId, required this.sellerId, required this.stockQuantity});
+  const _AddToCartButton({required this.productId, required this.sellerId, required this.stockQuantity, this.variantKey});
 
   @override
   ConsumerState<_AddToCartButton> createState() => _AddToCartButtonState();
@@ -492,7 +493,7 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
 
     // Out of stock: show "Notify me when available" button
     if (widget.stockQuantity <= 0) {
-      final notifState = ref.watch(stockNotificationNotifierProvider(widget.productId));
+      final notifState = ref.watch(stockNotificationNotifierProvider((productId: widget.productId, variantKey: widget.variantKey)));
       final isSubscribed = notifState.value ?? false;
       final isLoading = notifState.isLoading;
       return Column(
@@ -559,8 +560,8 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
-    final notifier = ref.read(stockNotificationNotifierProvider(widget.productId).notifier);
-    final isSubscribed = ref.read(stockNotificationNotifierProvider(widget.productId)).value ?? false;
+    final notifier = ref.read(stockNotificationNotifierProvider((productId: widget.productId, variantKey: widget.variantKey)).notifier);
+    final isSubscribed = ref.read(stockNotificationNotifierProvider((productId: widget.productId, variantKey: widget.variantKey))).value ?? false;
     try {
       if (isSubscribed) {
         await notifier.unsubscribe();

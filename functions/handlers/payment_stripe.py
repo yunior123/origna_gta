@@ -301,6 +301,17 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
     stock_changes = []
     removed_products = []
 
+    # Batch read all product documents to avoid N+1 reads
+    _batch_refs = [
+        get_db().collection(Collections.PRODUCTS).document(item.get(Fields.PRODUCT_ID))
+        for item in items
+        if item.get(Fields.PRODUCT_ID)
+    ]
+    product_docs_map: dict = {}
+    if _batch_refs:
+        for _doc in get_db().get_all(_batch_refs):
+            product_docs_map[_doc.id] = _doc
+
     for item in items:
         product_id = item.get(Fields.PRODUCT_ID)
         client_price = item.get(Fields.PRICE, 0)
@@ -309,10 +320,8 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
         if not product_id:
             continue
 
-        product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
-        product_doc = product_ref.get()
-
-        if not product_doc.exists:
+        product_doc = product_docs_map.get(product_id)
+        if not product_doc or not product_doc.exists:
             removed_products.append({Fields.PRODUCT_ID: product_id})
             continue
 
@@ -688,6 +697,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     actual_subtotal = 0
     sellers = set()
     seller_cache = {}  # Cache seller docs to avoid N+1 reads
+    seller_profiles_cache = {}  # Cache seller_profiles docs to avoid N+1 reads
     warehouse_cache: dict[str, dict] = {}  # key: "sellerId:warehouseId" → warehouse data
 
     for item in items:
@@ -774,14 +784,20 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             seller_cache[seller_id] = seller_doc.to_dict() if seller_doc.exists else {}
         seller_data = seller_cache[seller_id]
 
+        if seller_id not in seller_profiles_cache:
+            sp_ref = get_db().collection(Collections.SELLER_PROFILES).document(seller_id)
+            sp_doc = sp_ref.get()
+            seller_profiles_cache[seller_id] = sp_doc.to_dict() if sp_doc.exists else {}
+        sp_data = seller_profiles_cache[seller_id]
+
         # Validate seller is active using cached data (avoids extra Firestore read)
         if not seller_data:
             raise https_fn.HttpsError("not-found", f"Seller {seller_id} not found")
         if seller_data.get(Fields.SUSPENDED, False):
             raise https_fn.HttpsError("permission-denied", f"Seller {seller_id} is suspended and cannot process orders")
-        if not seller_data.get(Fields.ONBOARDING_COMPLETED, False):
+        if not sp_data.get(Fields.ONBOARDING_COMPLETED, False):
             raise https_fn.HttpsError("failed-precondition", f"Seller {seller_id} has not completed onboarding")
-        if not seller_data.get(Fields.CHARGES_ENABLED, False):
+        if not sp_data.get(Fields.CHARGES_ENABLED, False):
             raise https_fn.HttpsError("failed-precondition", f"Seller {seller_id} is not approved to receive payments")
         seller_profile = seller_data.get(Fields.SELLER_PROFILE, {})
         if not isinstance(seller_profile, dict):
@@ -946,7 +962,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             delivery_instructions = delivery_instructions[: BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH]
 
         try:
-            shipping_cost_dollars = calculate_shipping_cost(validated_items, shipping_address, speed=delivery_speed)
+            physical_items = [i for i in validated_items if not i.get(Fields.IS_DIGITAL, False)]
+            shipping_cost_dollars = calculate_shipping_cost(physical_items, shipping_address, speed=delivery_speed)
             shipping_cost_cents = round(shipping_cost_dollars * 100)
         except ValueError as e:
             # UX FIX: Return specific validation error (e.g., Same Day distance limit)
@@ -1051,6 +1068,51 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Total in cents (discount reduces the subtotal component)
     total_amount_cents = discounted_subtotal_cents + shipping_cost_cents + tax_amount_cents
 
+    # IDEMPOTENCY: Check for duplicate order BEFORE reserving stock to avoid
+    # reserving stock for a request that will be returned as a duplicate.
+    recent_orders = (
+        get_db()
+        .collection(Collections.ORDERS)
+        .where(Fields.USER_ID, "==", user_id)
+        .where(Fields.ORDER_STATUS, "==", OrderStatusValues.PENDING)
+        .where(Fields.PAYMENT_STATUS, "==", PaymentStatusValues.AWAITING_PAYMENT)
+        .order_by(Fields.CREATED_AT, direction="DESCENDING")
+        .limit(1)
+        .get()
+    )
+
+    for recent_doc in recent_orders:
+        recent_data = recent_doc.to_dict()
+        # If same user created same-value order in last 60 seconds, return existing
+        recent_created = recent_data.get(Fields.CREATED_AT)
+        if recent_created and hasattr(recent_created, "timestamp"):
+            # Ensure timezone-aware comparison (emulator may return naive datetimes)
+            if hasattr(recent_created, "tzinfo") and recent_created.tzinfo is None:
+                recent_created = recent_created.replace(tzinfo=UTC)
+            age_seconds = (datetime.now(UTC) - recent_created).total_seconds()
+            if (
+                age_seconds < BusinessRules.ORDER_DEDUP_WINDOW_SECONDS
+                and recent_data.get(Fields.SUBTOTAL_CENTS) == actual_subtotal_cents
+            ):
+                existing_session_id = recent_data.get(Fields.STRIPE_SESSION_ID)
+                if existing_session_id:
+                    # Retrieve session URL so frontend can redirect
+                    try:
+                        existing_session = stripe.checkout.Session.retrieve(existing_session_id)
+                        checkout_url = existing_session.url
+                    except Exception:
+                        checkout_url = None
+
+                    if checkout_url:
+                        return {
+                            ApiKeys.SUCCESS: True,
+                            ApiKeys.SESSION_ID: existing_session_id,
+                            Fields.ORDER_ID: recent_doc.id,
+                            ApiKeys.CHECKOUT_URL: checkout_url,
+                            ApiKeys.DUPLICATE: True,
+                        }
+                    # Session expired/no URL — fall through to create new one
+
     # Reserve stock atomically using Firestore transactions
     # IMPORTANT: All reads MUST happen before any writes to avoid
     # "Attempted read after write in a transaction" errors
@@ -1147,6 +1209,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                     "resource-exhausted",
                     f"Stock changed: {product_data[Fields.NAME]} now has {current_stock} available",
                 )
+
+            if item.get(Fields.IS_DIGITAL, False):
+                # Digital products have unlimited stock — skip decrement
+                updates.append((product_refs[i], current_stock, {}))
+                inv_level_writes.append([])
+                continue
 
             qty = item[Fields.QUANTITY]
             new_total_stock = current_stock - qty
@@ -1253,51 +1321,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             validated_items[i][Fields.FULFILLMENT_WAREHOUSE_ID] = wh_id
 
     # Create order in Firestore — all amounts in cents
-    # IDEMPOTENCY: Check if user already has a recent pending order with same subtotal
-    # to prevent duplicate orders from client retries
-    recent_orders = (
-        get_db()
-        .collection(Collections.ORDERS)
-        .where(Fields.USER_ID, "==", user_id)
-        .where(Fields.ORDER_STATUS, "==", OrderStatusValues.PENDING)
-        .where(Fields.PAYMENT_STATUS, "==", PaymentStatusValues.AWAITING_PAYMENT)
-        .order_by(Fields.CREATED_AT, direction="DESCENDING")
-        .limit(1)
-        .get()
-    )
-
-    for recent_doc in recent_orders:
-        recent_data = recent_doc.to_dict()
-        # If same user created same-value order in last 60 seconds, return existing
-        recent_created = recent_data.get(Fields.CREATED_AT)
-        if recent_created and hasattr(recent_created, "timestamp"):
-            # Ensure timezone-aware comparison (emulator may return naive datetimes)
-            if hasattr(recent_created, "tzinfo") and recent_created.tzinfo is None:
-                recent_created = recent_created.replace(tzinfo=UTC)
-            age_seconds = (datetime.now(UTC) - recent_created).total_seconds()
-            if (
-                age_seconds < BusinessRules.ORDER_DEDUP_WINDOW_SECONDS
-                and recent_data.get(Fields.SUBTOTAL_CENTS) == actual_subtotal_cents
-            ):
-                existing_session_id = recent_data.get(Fields.STRIPE_SESSION_ID)
-                if existing_session_id:
-                    # Retrieve session URL so frontend can redirect
-                    try:
-                        existing_session = stripe.checkout.Session.retrieve(existing_session_id)
-                        checkout_url = existing_session.url
-                    except Exception:
-                        checkout_url = None
-
-                    if checkout_url:
-                        return {
-                            ApiKeys.SUCCESS: True,
-                            ApiKeys.SESSION_ID: existing_session_id,
-                            Fields.ORDER_ID: recent_doc.id,
-                            ApiKeys.CHECKOUT_URL: checkout_url,
-                            ApiKeys.DUPLICATE: True,
-                        }
-                    # Session expired/no URL — fall through to create new one
-
     order_ref = get_db().collection(Collections.ORDERS).document()
     order_id = order_ref.id
 
@@ -1353,11 +1376,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Prevents seller from swapping their Stripe account between checkout and capture.
     seller_account_snapshot = {}
     for sid in sellers:
-        if sid in seller_cache:
-            s_data = seller_cache[sid]
-            acct_id = s_data.get(Fields.STRIPE_ACCOUNT_ID)
-            if acct_id:
-                seller_account_snapshot[sid] = acct_id
+        # Read STRIPE_ACCOUNT_ID from seller_profiles (authoritative location)
+        acct_id = seller_profiles_cache.get(sid, {}).get(Fields.STRIPE_ACCOUNT_ID)
+        if not acct_id and sid in seller_cache:
+            acct_id = seller_cache[sid].get(Fields.STRIPE_ACCOUNT_ID)
+        if acct_id:
+            seller_account_snapshot[sid] = acct_id
     if seller_account_snapshot:
         order_data[Fields.SELLER_STRIPE_ACCOUNTS] = seller_account_snapshot
 
@@ -1424,7 +1448,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             client_reference_id=user_id,
             metadata={Fields.ORDER_ID: order_id, Fields.USER_ID: user_id},
             payment_intent_data={
-                "capture_method": "manual",
                 "metadata": {Fields.ORDER_ID: order_id},
             },
             # NOTE: automatic_tax disabled - we calculate tax server-side to avoid double taxation
@@ -1907,40 +1930,17 @@ def process_checkout_session_completed(session: dict) -> str | None:
             _restore_stock_and_cancel_order(order_id, order_data, f"Seller {seller_id} suspended")
             return f"Order {order_id} cancelled - seller suspended"
 
-    # Update order status
-    # AUDIT FIX (CRITICAL-001): Correctly reflect manual capture status.
-    # We mark as AUTHORIZED instead of CAPTURED because capture_method is manual.
-    # The actual capture happens in capture_payment (on delivery) or auto-capture cron.
+    # Update order status — auto-capture: payment is captured immediately at checkout
     pi_id = session.get("payment_intent")
 
-    # Initialize update data
+    # Initialize update data with CAPTURED status (auto-capture mode)
     update_data = {
         Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
         Fields.STRIPE_PAYMENT_INTENT_ID: pi_id,
+        Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        Fields.CAPTURED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
     }
-
-    # Verify PI status to be robust: if it's already captured (unlikely here but possible on retries),
-    # reflect that accurately. Otherwise, mark as AUTHORIZED.
-    if pi_id:
-        try:
-            # We fetch the PI to know its actual state (authorized vs captured)
-            pi = stripe.PaymentIntent.retrieve(pi_id)
-            if pi.status == "requires_capture":
-                update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.AUTHORIZED
-            elif pi.status in ["succeeded", "processing"]:
-                update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
-                update_data[Fields.CAPTURED_AT] = get_server_timestamp()
-            else:
-                # Fallback to AUTHORIZED if state is ambiguous but not failed
-                update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.AUTHORIZED
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to check PI status for order {order_id}: {e}")
-            update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.AUTHORIZED
-    else:
-        # No PI ID present (e.g. zero-amount order)
-        update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
-        update_data[Fields.CAPTURED_AT] = get_server_timestamp()
 
     order_ref.update(update_data)
 
@@ -2039,12 +2039,16 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
 
 def _clear_user_cart(user_id: str) -> None:
-    """Deletes all items from user's cart subcollection"""
+    """Deletes all items from user's cart subcollection using batched writes."""
     cart_ref = get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART)
-    cart_docs = cart_ref.stream()
-
-    for doc in cart_docs:
-        doc.reference.delete()
+    docs = list(cart_ref.stream())
+    if not docs:
+        return
+    for chunk_start in range(0, len(docs), 500):
+        batch = get_db().batch()
+        for doc in docs[chunk_start:chunk_start + 500]:
+            batch.delete(doc.reference)
+        batch.commit()
 
 
 def process_async_payment_succeeded(session: dict) -> str | None:
@@ -3183,13 +3187,30 @@ def process_refund_failed(refund: dict) -> None:
 
     # Flag the order as requiring manual review so admins can action it
     if charge_id:
-        orders = (
-            get_db()
-            .collection(Collections.ORDERS)
-            .where(Fields.CHARGE_ID, "==", charge_id)
-            .limit(1)
-            .get()
-        )
+        # Resolve payment_intent from charge (orders store PI id, not charge id)
+        pi_id_for_refund = None
+        try:
+            ensure_stripe_key()
+            charge_obj = stripe.Charge.retrieve(charge_id)
+            pi_id_for_refund = charge_obj.payment_intent
+        except Exception as e:
+            logger.warning(f"⚠️ Could not retrieve charge {charge_id} to find payment_intent: {type(e).__name__}")
+        if pi_id_for_refund:
+            orders = (
+                get_db()
+                .collection(Collections.ORDERS)
+                .where(Fields.STRIPE_PAYMENT_INTENT_ID, "==", pi_id_for_refund)
+                .limit(1)
+                .get()
+            )
+        else:
+            orders = (
+                get_db()
+                .collection(Collections.ORDERS)
+                .where(Fields.CHARGE_ID, "==", charge_id)
+                .limit(1)
+                .get()
+            )
         for order_doc in orders:
             order_doc.reference.update(
                 {
@@ -3630,34 +3651,33 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
                     # Attempt Stripe Transfer (may fail in emulator with fake accounts)
                     if charge_id:
-                        seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
-                        if seller_doc.exists:
-                            acct_id = seller_doc.to_dict().get(Fields.STRIPE_ACCOUNT_ID)
-                            if acct_id:
-                                try:
-                                    transfer = stripe.Transfer.create(
-                                        amount=net_amount_cents,
-                                        currency=BusinessRules.DEFAULT_CURRENCY,
-                                        destination=acct_id,
-                                        source_transaction=charge_id,
-                                        transfer_group=order_id,
-                                        metadata={Fields.ORDER_ID: order_id, Fields.SELLER_ID: seller_id},
-                                        idempotency_key=f"transfer_{order_id}_{seller_id}",
-                                    )
-                                    payout_ref.update(
-                                        {
-                                            Fields.STRIPE_TRANSFER_ID: transfer.id,
-                                            Fields.STATUS: PayoutStatusValues.COMPLETED,
-                                        }
-                                    )
-                                except Exception as transfer_err:
-                                    logger.warning(f"⚠️ Transfer to seller {seller_id} failed: {transfer_err}")
-                                    payout_ref.update(
-                                        {
-                                            Fields.STATUS: PayoutStatusValues.FAILED,
-                                            Fields.FAILURE_REASON: str(transfer_err),
-                                        }
-                                    )
+                        sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
+                        acct_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
+                        if acct_id:
+                            try:
+                                transfer = stripe.Transfer.create(
+                                    amount=net_amount_cents,
+                                    currency=BusinessRules.DEFAULT_CURRENCY,
+                                    destination=acct_id,
+                                    source_transaction=charge_id,
+                                    transfer_group=order_id,
+                                    metadata={Fields.ORDER_ID: order_id, Fields.SELLER_ID: seller_id},
+                                    idempotency_key=f"transfer_{order_id}_{seller_id}",
+                                )
+                                payout_ref.update(
+                                    {
+                                        Fields.STRIPE_TRANSFER_ID: transfer.id,
+                                        Fields.STATUS: PayoutStatusValues.COMPLETED,
+                                    }
+                                )
+                            except Exception as transfer_err:
+                                logger.warning(f"⚠️ Transfer to seller {seller_id} failed: {transfer_err}")
+                                payout_ref.update(
+                                    {
+                                        Fields.STATUS: PayoutStatusValues.FAILED,
+                                        Fields.FAILURE_REASON: str(transfer_err),
+                                    }
+                                )
         except Exception as payout_err:
             logger.warning(f"⚠️ Failed to create payout records for already-captured order {order_id}: {payout_err}")
 
@@ -3804,7 +3824,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # CRITICAL FIX: Resolve Charge ID from captured PaymentIntent.
         # Stripe Transfer.create requires a Charge ID (ch_xxx), NOT a PaymentIntent ID (pi_xxx).
-        charge_id = payment_intent.latest_charge
+        charge_id = payment_intent.latest_charge if isinstance(payment_intent.latest_charge, str) else (payment_intent.latest_charge.id if payment_intent.latest_charge else None)
         if not charge_id:
             raise https_fn.HttpsError(
                 "internal", f"No charge found after capturing PI {payment_intent_id}. Cannot create transfers."
@@ -3829,9 +3849,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
         # AUDIT FIX (CRITICAL-001): Use fee rate stored at checkout, not current config.
         # Prevents config manipulation between checkout and capture.
         stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
-        stored_fee_rate = (
-            (stored_fee_total / order_data.get(Fields.SUBTOTAL_CENTS, 1)) if stored_fee_total else PLATFORM_FEE_RATIO
-        )
+        stored_fee_rate = PLATFORM_FEE_RATIO  # snapshot at checkout, not computed post-hoc
 
         for seller_id, amount_cents in sellers_total_cents.items():
             # Platform fee in cents — use stored rate from checkout, fallback to config

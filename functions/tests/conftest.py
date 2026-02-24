@@ -847,17 +847,26 @@ class FirestoreMockBuilder:
         return self
 
     def add_seller(self, seller_id="seller_123", suspended=False, onboarded=True):
-        """Add a seller document"""
-        return self.add_document(
+        """Add a seller document (users/ + seller_profiles/ for cross-stack correctness)"""
+        # Base user doc (roles, suspension, email)
+        self.add_document(
             "users",
             seller_id,
             {
                 "roles": ["seller"],
                 "suspended": suspended,
+                "email": f"{seller_id}@example.com",
+                "isSeller": True,
+            },
+        )
+        # Stripe-specific fields live in seller_profiles/{uid}
+        return self.add_document(
+            "seller_profiles",
+            seller_id,
+            {
                 "onboardingCompleted": onboarded,
                 "chargesEnabled": True,
                 "payoutsEnabled": True,
-                "email": f"{seller_id}@example.com",
                 "stripeAccountId": f"acct_{seller_id}",
             },
         )

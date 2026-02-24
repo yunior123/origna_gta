@@ -599,6 +599,26 @@
         }
       ],
       "comment": "Seller's chat thread list ordered by most recent message"
+    },
+    {
+      "collectionGroup": "stock_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "productId", "order": "ASCENDING"},
+        {"fieldPath": "userId", "order": "ASCENDING"},
+        {"fieldPath": "notifiedAt", "order": "ASCENDING"}
+      ],
+      "comment": "Subscribe/unsubscribe: find existing sub for user+product"
+    },
+    {
+      "collectionGroup": "stock_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "productId", "order": "ASCENDING"},
+        {"fieldPath": "variantKey", "order": "ASCENDING"},
+        {"fieldPath": "notifiedAt", "order": "ASCENDING"}
+      ],
+      "comment": "Back-in-stock notify: query variant-scoped pending subs"
     }
   ],
   "fieldOverrides": []

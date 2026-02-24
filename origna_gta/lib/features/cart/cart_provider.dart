@@ -280,18 +280,8 @@ class CartController {
     final userId = _userId;
     if (userId == null) return false;
 
-    // Check stock availability before updating
-    if (newQuantity > 0) {
-      try {
-        final firestore = _ref.read(firestoreProvider);
-        final productDoc = await firestore.collection(Collections.products).doc(productId).get();
-        if (!productDoc.exists) return false;
-        final stockQuantity = (productDoc.data()?[Fields.stockQuantity] ?? 0) as int;
-        if (newQuantity > stockQuantity) return false;
-      } catch (e) {
-        // On error, allow the update — server-side validation will catch it at checkout
-      }
-    }
+    // Client-side stock check removed — it's non-transactional (race condition).
+    // Server-side validation at checkout is properly transactional and authoritative.
 
     final cartItemId = await _resolveCartItemId(userId, productId);
     if (cartItemId == null) return false;

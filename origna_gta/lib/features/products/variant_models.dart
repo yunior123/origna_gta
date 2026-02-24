@@ -33,6 +33,7 @@ class VariantOption {
 class ProductVariantEntry {
   static const _sentinel = Object();
 
+  final String variantId;
   final Map<String, String> optionValues;
   final int? priceCents;
   final int stockQuantity;
@@ -40,6 +41,7 @@ class ProductVariantEntry {
   final bool isActive;
 
   const ProductVariantEntry({
+    this.variantId = '',
     required this.optionValues,
     this.priceCents,
     this.stockQuantity = 0,
@@ -59,6 +61,7 @@ class ProductVariantEntry {
       priceCents = ((map['price'] as num).toDouble() * 100).round();
     }
     return ProductVariantEntry(
+      variantId: map['variantId'] as String? ?? '',
       optionValues: (map['optionValues'] as Map).cast<String, String>(),
       priceCents: priceCents,
       stockQuantity: (map['stockQuantity'] as int?) ?? 0,
@@ -68,6 +71,7 @@ class ProductVariantEntry {
   }
 
   Map<String, dynamic> toMap() => {
+        'variantId': variantId,
         'optionValues': optionValues,
         'priceCents': priceCents,
         'stockQuantity': stockQuantity,
@@ -76,6 +80,7 @@ class ProductVariantEntry {
       };
 
   ProductVariantEntry copyWith({
+    String? variantId,
     Map<String, String>? optionValues,
     Object? priceCents = _sentinel,
     int? stockQuantity,
@@ -83,6 +88,7 @@ class ProductVariantEntry {
     bool? isActive,
   }) {
     return ProductVariantEntry(
+      variantId: variantId ?? this.variantId,
       optionValues: optionValues ?? this.optionValues,
       priceCents: identical(priceCents, _sentinel) ? this.priceCents : priceCents as int?,
       stockQuantity: stockQuantity ?? this.stockQuantity,
@@ -94,6 +100,7 @@ class ProductVariantEntry {
   @override
   bool operator ==(Object other) =>
       other is ProductVariantEntry &&
+      other.variantId == variantId &&
       mapEquals(other.optionValues, optionValues) &&
       other.priceCents == priceCents &&
       other.stockQuantity == stockQuantity &&
@@ -101,5 +108,5 @@ class ProductVariantEntry {
       other.isActive == isActive;
 
   @override
-  int get hashCode => Object.hash(Object.hashAll(optionValues.entries.map((e) => '${e.key}=${e.value}')), priceCents, stockQuantity, sku, isActive);
+  int get hashCode => Object.hash(variantId, Object.hashAll(optionValues.entries.map((e) => '${e.key}=${e.value}')), priceCents, stockQuantity, sku, isActive);
 }
