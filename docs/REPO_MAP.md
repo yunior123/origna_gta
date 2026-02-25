@@ -152,17 +152,65 @@
 
 ---
 
-## 🧪 E2E Tests — `e2e/` (161+ tests)
+## 🧪 E2E Tests — `e2e/playwright_ui/` (27 spec files)
 
-| File | Tests | Coverage |
-|------|-------|----------|
-| `fullstack-e2e.spec.ts` | 37 | Core marketplace flow |
-| `payment-workflow-e2e.spec.ts` | 54 | Payment edge cases, multi-seller |
-| `regression-e2e.spec.ts` | 38 | Regression (statuses, schema, formula) |
-| `logic-failures-e2e.spec.ts` | 29 | Logic attack vectors (financial, state machine, permissions) |
-| `admin-email-test.spec.ts` | 3 | Real email delivery |
-| `mega-seed.ts` | — | Seed 75 users, 30 products, 20 carts |
-| `seed-emulator.ts` | — | Seed 25 users, 16 products |
+| File | Coverage |
+|------|----------|
+| `stripe-payment.spec.ts` | Stripe hosted checkout |
+| `buyer-flow.spec.ts` | Browse → cart → checkout → order |
+| `seller-flow.spec.ts` | List product → ship → payout |
+| `order-lifecycle.spec.ts` | Full order state machine |
+| `order-cancellation-refund.spec.ts` | Cancel + return + refund |
+| `shipping-approval.spec.ts` | Shipping cost approval |
+| `shipping-calculation.spec.ts` | Province/distance/weight pricing |
+| `checkout-validation.spec.ts` | Form validation + coupon codes |
+| `payment-edge-cases.spec.ts` | Declined card, 3DS, timeout |
+| `multi-seller-orders.spec.ts` | Cross-seller cart + auth checks |
+| `add-product-e2e.spec.ts` | Add product + images + warehouse |
+| `seller-product-management.spec.ts` | Edit/pause/archive products |
+| `seller-registration.spec.ts` | Stripe Connect onboarding |
+| `warehouse-multi-location.spec.ts` | Warehouse CRUD + default |
+| `digital-products-e2e.spec.ts` | Buy digital + license + download |
+| `premium-subscription.spec.ts` | Subscribe + paywall + cancel |
+| `favorites.spec.ts` | Toggle + list favorites |
+| `profile-management.spec.ts` | Profile + address CRUD |
+| `search-products.spec.ts` | Algolia search + filters |
+| `trending-products.spec.ts` | Trending section |
+| `admin-actions.spec.ts` | Admin product/user actions |
+| `admin-panel.spec.ts` | Admin panel tabs |
+| `admin-security.spec.ts` | Role enforcement + access control |
+| `edge-cases-security.spec.ts` | Self-purchase, price tamper, race |
+| `rate-limiting.spec.ts` | Rate limit enforcement |
+| `new-coverage-e2e.spec.ts` | Subscription + stock notifications |
+| `smoke-home-profile.spec.ts` | App smoke: home + profile |
+
+Shared helpers: `api-helpers.ts`, `flutter-helpers.ts`
+
+Run: `cd e2e && npx playwright test --config=playwright.config.dev.ts --workers=2`  
+Screenshots: auto-saved to `~/Desktop/origna-screenshots/dev/`
+
+---
+
+## 🗂️ origna_flows/ — AI Flow Context Bundles
+
+Repo-level docs providing Flutter selector maps and user journey context for AI test generation.
+
+| File | Content |
+|------|---------|
+| `origna_flows/SEMANTICS.md` | Flutter Key/label/role reference for every screen — use for Playwright selectors |
+| `origna_flows/FLOWS.md` | 15 step-by-step user journeys with test assertions and QA checklist |
+| `origna_flows/INSTRUCTIONS.md` | AI guide: environments, test accounts, selector rules, coverage gaps, patterns |
+
+**Generate flow bundles for Claude.ai:**
+```bash
+python3 scripts/collect_flow_files.py
+# → ~/Desktop/origna_flows/<flow_name>/  (62 flows)
+```
+
+| Flow type | Count | Purpose |
+|-----------|-------|---------|
+| Audit flows (`checkout_payment`, `security`, …) | 35 | Audit source code for bugs, security, schema sync |
+| Test flows (`test_stripe_payment`, …) | 27 | Audit/extend E2E Playwright specs |
 
 ---
 
@@ -170,6 +218,8 @@
 
 | Script | Purpose |
 |--------|---------|
+| `collect_flow_files.py` | Bundle source + test files into flow folders for Claude.ai (62 flows, ≤20 files each) |
+| `mega_seed_dev.py` | Seed orignagta-dev: 5 sellers, 30 products, 16 orders, returns, coupons, licenses |
 | `deploy_with_validation.sh` | Full deploy with pre-checks |
 | `deploy_rules.sh` | Deploy Firestore rules only |
 | `validate_schema_consistency.sh` | Check Python↔Dart↔JSON schema sync |

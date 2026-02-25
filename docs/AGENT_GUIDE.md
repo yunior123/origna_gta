@@ -34,6 +34,49 @@ Use subagents to keep the main context clean. They run in separate context windo
 
 ---
 
+## 🗂️ AI Flow Bundles — `origna_flows/` + `scripts/collect_flow_files.py`
+
+Use flow bundles to upload to Claude.ai for deep per-flow auditing without token waste.
+
+### Generate bundles
+```bash
+python3 scripts/collect_flow_files.py
+# → ~/Desktop/origna_flows/<flow_name>/  (62 flows, ≤20 files, ≤700 KB each)
+```
+
+### Two bundle types
+
+| Type | Example | Drop into Claude.ai and ask |
+|------|---------|-----------------------------|
+| **Audit flow** | `checkout_payment/` | "Audit this flow. Find all bugs, security issues, race conditions." |
+| **Test flow** | `test_stripe_payment/` | "Read the spec. Find gaps. Write new tests covering [scenario]." |
+
+### Every bundle contains
+1. `CLAUDE.md` — project-wide rules and anti-patterns
+2. `INSTRUCTIONS.md` — per-flow audit checklist (auto-generated)
+3. For **test flows**: spec file + `api-helpers.ts` + `flutter-helpers.ts` (highest priority)
+4. `origna_flows/SEMANTICS.md` — Flutter Key/label/role map → use for Playwright `getByRole` / `[aria-label]`
+5. `origna_flows/FLOWS.md` — 15 user journeys with test assertions
+6. Relevant source files (screens, viewmodels, handlers, schema)
+
+### 27 test-centered flows (one per spec)
+`test_add_product` · `test_admin_actions` · `test_admin_panel` · `test_admin_security` ·
+`test_buyer_flow` · `test_checkout_validation` · `test_digital_products` · `test_edge_cases_security` ·
+`test_favorites` · `test_multi_seller_orders` · `test_new_coverage` · `test_order_cancellation` ·
+`test_order_lifecycle` · `test_payment_edge_cases` · `test_premium_subscription` · `test_profile_management` ·
+`test_rate_limiting` · `test_search_products` · `test_seller_flow` · `test_seller_product_management` ·
+`test_seller_registration` · `test_shipping_approval` · `test_shipping_calculation` · `test_smoke_home_profile` ·
+`test_stripe_payment` · `test_trending_products` · `test_warehouse_multi_location`
+
+### Flutter selector rules (critical for test flows)
+- ✅ `getByRole('button', { name: /Add to Cart/i })` — buttons use text as label
+- ✅ `page.locator('[aria-label^="product-card-"]')` — containers use `aria-label` attribute
+- ✅ `page.locator('[aria-label="key-name"]')` — Semantics(label:) → aria-label attribute
+- ❌ NEVER search by display text like `getByText('No Platform Fee')` — not in Flutter's DOM
+- ❌ `fill()` never works in Flutter Web — always use `pressSequentially()`
+
+---
+
 ## 📚 Workflow-Indexed File Reading (RAG Chunking)
 
 **CRITICAL: Never edit a file in isolation. Always read the FULL file group for that workflow first.**

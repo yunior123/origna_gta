@@ -104,6 +104,61 @@ flutter drive --driver=test_driver/integration_test.dart \
 - Playwright parallelism:
   - `E2E_WORKERS` overrides the worker count (CI uses a conservative default).
   - `E2E_PROJECT` can force a single browser project (e.g. `chromium`).
+- Screenshots auto-saved to `~/Desktop/origna-screenshots/<env>/` after each run.
+
+### E2E Spec Files — `e2e/playwright_ui/` (27 specs)
+
+| Spec | Coverage |
+|------|----------|
+| `stripe-payment.spec.ts` | Stripe hosted checkout |
+| `buyer-flow.spec.ts` | Browse → cart → checkout → order |
+| `seller-flow.spec.ts` | List product → ship → payout |
+| `order-lifecycle.spec.ts` | Full order state machine |
+| `order-cancellation-refund.spec.ts` | Cancel + return + refund |
+| `shipping-approval.spec.ts` | Shipping cost approval |
+| `shipping-calculation.spec.ts` | Province/distance/weight pricing |
+| `checkout-validation.spec.ts` | Form validation + coupons |
+| `payment-edge-cases.spec.ts` | Declined card, 3DS |
+| `multi-seller-orders.spec.ts` | Cross-seller cart + auth |
+| `add-product-e2e.spec.ts` | Add product + images + warehouse |
+| `seller-product-management.spec.ts` | Edit/pause/archive products |
+| `seller-registration.spec.ts` | Stripe Connect onboarding |
+| `warehouse-multi-location.spec.ts` | Warehouse CRUD |
+| `digital-products-e2e.spec.ts` | Buy digital + license |
+| `premium-subscription.spec.ts` | Subscribe + paywall + cancel |
+| `favorites.spec.ts` | Toggle + list favorites |
+| `profile-management.spec.ts` | Profile + address CRUD |
+| `search-products.spec.ts` | Algolia search + filters |
+| `trending-products.spec.ts` | Trending section |
+| `admin-actions.spec.ts` | Admin product/user actions |
+| `admin-panel.spec.ts` | Admin panel tabs |
+| `admin-security.spec.ts` | Role enforcement |
+| `edge-cases-security.spec.ts` | Self-purchase, price tamper, race |
+| `rate-limiting.spec.ts` | Rate limit enforcement |
+| `new-coverage-e2e.spec.ts` | Subscription + stock notifications |
+| `smoke-home-profile.spec.ts` | App smoke tests |
+
+## origna_flows/ — AI Flow Context Bundles
+
+Source and test files bundled for Claude.ai per-flow auditing.
+
+```bash
+python3 scripts/collect_flow_files.py
+# → ~/Desktop/origna_flows/<flow_name>/  (62 flows, ≤20 files each)
+```
+
+| Type | Count | Purpose |
+|------|-------|---------|
+| Audit flows (`checkout_payment`, `security`, …) | 35 | Drop into Claude.ai → audit source code |
+| Test flows (`test_stripe_payment`, …) | 27 | Drop into Claude.ai → audit/extend E2E tests |
+
+Each test flow: spec file + `api-helpers.ts` + `flutter-helpers.ts` + `origna_flows/SEMANTICS.md` + supporting source.
+
+Repo docs (`origna_flows/`):
+- `SEMANTICS.md` — Flutter Key/label/role map for every screen
+- `FLOWS.md` — 15 user journeys with step-by-step test assertions
+- `INSTRUCTIONS.md` — Playwright patterns, selectors, coverage gaps, environments
+
 
 ## Flutter Web performance (release checklist)
 - Measure in profile mode:
