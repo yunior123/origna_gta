@@ -766,6 +766,365 @@ FLOW_INSTRUCTIONS: dict[str, str] = {
 9. **Cart and wishlist** — compare cart abandonment recovery and wishlist features to top platforms.
 10. **Canadian market fit** — features specific to Canadian buyers (French, CAD, local shipping) vs. global competitors.
 """,
+
+    # ── TEST-FLOW INSTRUCTIONS ────────────────────────────────────────────────
+    # For test-centered flows the instructions tell the AI HOW to work with the test file.
+
+    "test_add_product": """\
+# Test Flow: Add Product (E2E)
+
+## Context
+This flow contains the Playwright spec + all supporting source files for the Add Product screen.
+The `api-helpers.ts` and `flutter-helpers.ts` are the shared test utilities.
+`SEMANTICS.md` maps every Flutter Key/label used for selectors.
+
+## What to Do
+1. **Read** the spec file first to understand current test coverage.
+2. **Identify gaps** — what scenarios are NOT tested? (validation errors, image upload, warehouse selection, SKU conflict, digital toggle, etc.)
+3. **Write new tests** or extend existing ones directly in the spec file format.
+4. **Use Flutter selectors** from SEMANTICS.md — never search by display text.
+5. **Use helpers** — `getProductData()`, `createTestProduct()`, `loginAs()` from api-helpers.ts.
+6. Output full test blocks ready to paste into the spec file.
+""",
+
+    "test_admin_actions": """\
+# Test Flow: Admin Actions (E2E)
+
+## Context
+Admin-only operations: product approval/rejection, user banning, order intervention, seller verification.
+
+## What to Do
+1. Read the spec to understand current admin action coverage.
+2. Identify missing scenarios: audit log entries, admin self-protection, payment provider config.
+3. Extend tests — every admin action must verify backend state change (Firestore), not just UI.
+4. Use `loginAsAdmin()` helper. Non-admin access attempts must be tested with `loginAsSeller()`.
+5. Output full test blocks ready to paste.
+""",
+
+    "test_admin_panel": """\
+# Test Flow: Admin Panel (E2E)
+
+## Context
+Admin panel tabs: products queue, users, orders, sellers, security alerts.
+
+## What to Do
+1. Read the spec — identify which tabs have coverage and which are missing.
+2. Add tests for: product approve/reject lifecycle, user ban + session invalidation, security alert resolution.
+3. All assertions must check both UI state AND Firestore document state.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_admin_security": """\
+# Test Flow: Admin Security (E2E)
+
+## Context
+Security tests: unauthenticated access, role escalation, Firestore rule enforcement.
+
+## What to Do
+1. Read the spec — identify untested attack vectors.
+2. Add tests for: non-admin accessing admin routes (403), self-role-escalation, cross-user data access.
+3. Each test should make the forbidden call directly (via api-helpers fetch) and assert rejection.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_buyer_flow": """\
+# Test Flow: Buyer Flow (E2E)
+
+## Context
+Full buyer journey: browse → product detail → cart → checkout → order tracking.
+
+## What to Do
+1. Read the spec — trace the full happy path and identify edge cases not covered.
+2. Add tests for: out-of-stock handling, address validation, multiple addresses, coupon at checkout.
+3. Use `SEMANTICS.md` for all selectors — cart badge, checkout button, order status label keys.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_checkout_validation": """\
+# Test Flow: Checkout Validation (E2E)
+
+## Context
+Form validation at checkout: address, coupon codes, stock availability, price changes.
+
+## What to Do
+1. Read the spec — identify all validation paths currently tested.
+2. Add tests for: expired coupon, min-order coupon, invalid postal code, out-of-stock during checkout.
+3. Each validation error must assert the correct error message is displayed (use Semantics label keys).
+4. Output full test blocks ready to paste.
+""",
+
+    "test_digital_products": """\
+# Test Flow: Digital Products (E2E)
+
+## Context
+Digital product purchase: no shipping, license generation, download access.
+
+## What to Do
+1. Read the spec — identify what's tested vs missing.
+2. Add tests for: license key displayed after purchase, re-download works, no shipping address required.
+3. Verify order shows digital badge in orders list.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_edge_cases_security": """\
+# Test Flow: Edge Cases & Security (E2E)
+
+## Context
+Adversarial scenarios: self-purchase, price tampering, race conditions, auth bypass.
+
+## What to Do
+1. Read the spec — identify which attack vectors are tested.
+2. Add tests for any missing: concurrent checkout (stock race), coupon double-use, self-purchase API call.
+3. Each security test must call the backend directly (api-helpers) to bypass frontend guards.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_favorites": """\
+# Test Flow: Favorites (E2E)
+
+## Context
+Favorites: toggle, count badge, view favorites screen, handle deleted product.
+
+## What to Do
+1. Read the spec — what's covered?
+2. Add tests for: favorite from product detail, unfavorite, favorites list shows correct items.
+3. Edge case: favorite a product that gets deleted — assert graceful handling, no crash.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_multi_seller_orders": """\
+# Test Flow: Multi-Seller Orders (E2E)
+
+## Context
+Cart with products from multiple sellers: separate shipping, separate payouts, cross-seller auth.
+
+## What to Do
+1. Read the spec — what multi-seller scenarios are covered?
+2. Add tests for: seller A cannot see/modify seller B's order, separate shipping per seller, platform fee per seller.
+3. Use SEMANTICS.md for order grouping selectors.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_new_coverage": """\
+# Test Flow: New Coverage (E2E)
+
+## Context
+Tests for features added after initial E2E suite: subscription, stock notifications, advanced profile features.
+
+## What to Do
+1. Read the spec — understand what "new coverage" currently includes.
+2. Identify the biggest gaps vs FLOWS.md and INSTRUCTIONS.md coverage gaps section.
+3. Add complete new test blocks for uncovered areas.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_order_cancellation": """\
+# Test Flow: Order Cancellation & Refund (E2E)
+
+## Context
+Cancellation and return flows: buyer cancels, seller approves return, refund issued.
+
+## What to Do
+1. Read the spec — trace cancellation and return paths tested.
+2. Add tests for: cancel within window vs outside window, return approval/rejection, partial refund.
+3. Assert Firestore order status AND Stripe refund (via api-helpers Stripe call).
+4. Output full test blocks ready to paste.
+""",
+
+    "test_order_lifecycle": """\
+# Test Flow: Order Lifecycle (E2E)
+
+## Context
+Full order state machine: pending → confirmed → shipped → delivered, plus failure paths.
+
+## What to Do
+1. Read the spec — identify which state transitions are tested.
+2. Add tests for missing transitions: auto-confirm (mock cron), expired authorization, dispute.
+3. Each transition test must verify: UI state change + Firestore document + email trigger (if applicable).
+4. Output full test blocks ready to paste.
+""",
+
+    "test_payment_edge_cases": """\
+# Test Flow: Payment Edge Cases (E2E)
+
+## Context
+Payment failure scenarios: declined card, 3DS, network timeout, refund failure.
+
+## What to Do
+1. Read the spec — which payment failure paths are tested?
+2. Add tests for: card declined (4000 0000 0000 9995), 3DS required (4000 0025 0000 3155), Stripe test clock scenarios.
+3. Each failure must assert correct user-facing error message and order not created.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_premium_subscription": """\
+# Test Flow: Premium Subscription (E2E)
+
+## Context
+Subscription lifecycle: subscribe, use premium features, cancel, reactivate.
+
+## What to Do
+1. Read the spec — what subscription scenarios are tested?
+2. Add tests for: paywall shown to non-premium, premium features unlocked after subscribe, cancellation flow, chat access gate.
+3. Must verify BOTH `subscriptions/{uid}.status` AND `users/{uid}.isPremium` in Firestore.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_profile_management": """\
+# Test Flow: Profile Management (E2E)
+
+## Context
+Profile: display name, language, addresses (CRUD), default address.
+
+## What to Do
+1. Read the spec — what profile actions are tested?
+2. Add tests for: add Canadian address, set default, delete non-default, non-CA address rejected.
+3. Language preference change must persist to Firestore user doc.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_rate_limiting": """\
+# Test Flow: Rate Limiting (E2E)
+
+## Context
+Rate limit enforcement on sensitive endpoints: login, signup, checkout.
+
+## What to Do
+1. Read the spec — which endpoints are rate-limit tested?
+2. Add tests: exceed login rate limit → 429 response, rate limit resets after window.
+3. Note: dev environment uses `RELAXED_RATE_LIMITS=true` (100x multiplier) — tests must hit that higher limit.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_search_products": """\
+# Test Flow: Search Products (E2E)
+
+## Context
+Algolia-powered search: text search, category filter, price range, sort by.
+
+## What to Do
+1. Read the spec — what search scenarios are covered?
+2. Add tests for: search with no results (empty state), category filter, inactive product excluded from results.
+3. Use SEMANTICS.md for search input key and product card selectors.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_seller_flow": """\
+# Test Flow: Seller Flow (E2E)
+
+## Context
+Seller journey: list product, view orders, mark shipped, receive payout.
+
+## What to Do
+1. Read the spec — what seller actions are tested?
+2. Add tests for: seller cannot see other sellers' orders, mark shipped with tracking number, shipping approval workflow.
+3. Use SEMANTICS.md for seller order screen selectors.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_seller_product_management": """\
+# Test Flow: Seller Product Management (E2E)
+
+## Context
+Product CRUD for sellers: create, edit, pause, archive, delete.
+
+## What to Do
+1. Read the spec — what product management actions are tested?
+2. Add tests for: pause/unpause product, archive, edit price, edit stock, SKU conflict on edit.
+3. Every change must be verified in Firestore AND Algolia index (via api-helpers).
+4. Output full test blocks ready to paste.
+""",
+
+    "test_seller_registration": """\
+# Test Flow: Seller Registration (E2E)
+
+## Context
+Seller onboarding: form, Stripe Connect Express, role assignment.
+
+## What to Do
+1. Read the spec — what registration steps are tested?
+2. Add tests for: incomplete form → error, Stripe Connect redirect, seller role assigned after completion.
+3. Verify `seller_profiles/{uid}` created in Firestore, `isSeller=true` on user doc.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_shipping_approval": """\
+# Test Flow: Shipping Approval (E2E)
+
+## Context
+Shipping cost approval workflow: seller submits actual cost, buyer approves/rejects.
+
+## What to Do
+1. Read the spec — what approval scenarios are tested?
+2. Add tests for: buyer approves → order proceeds to capture; buyer rejects → order cancelled and refunded.
+3. Verify payment status transitions in Firestore.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_shipping_calculation": """\
+# Test Flow: Shipping Calculation (E2E)
+
+## Context
+Dynamic shipping cost calculation based on seller location, buyer address, and product weight.
+
+## What to Do
+1. Read the spec — what calculation scenarios are tested?
+2. Add tests for: different provinces (ON vs BC vs QC), express vs standard, free shipping threshold.
+3. Assert the calculated amount matches expected formula from shipping_service.py rules.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_smoke_home_profile": """\
+# Test Flow: Smoke — Home & Profile (E2E)
+
+## Context
+Smoke tests: app loads, home screen shows products, profile accessible after login.
+
+## What to Do
+1. Read the spec — what smoke checks are in place?
+2. Add critical smoke assertions missing: search bar present, cart icon present, bottom nav items, profile data loaded.
+3. These tests should be FAST (< 30s) — no checkout, no payment.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_stripe_payment": """\
+# Test Flow: Stripe Payment (E2E)
+
+## Context
+Full Stripe payment flow via Stripe hosted checkout: card entry, 3DS, success redirect.
+
+## What to Do
+1. Read the spec — what payment scenarios go through Stripe's UI?
+2. Add tests for: successful payment with 4242 card, failure with 4000...9995 card, order created correctly.
+3. Use `fillStripeCheckout()` helper from api-helpers.ts — do NOT re-implement Stripe form filling.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_trending_products": """\
+# Test Flow: Trending Products (E2E)
+
+## Context
+Trending/featured products section on home screen powered by Algolia.
+
+## What to Do
+1. Read the spec — what trending product scenarios are tested?
+2. Add tests for: trending section visible, clicking a trending product navigates to detail, empty state handled.
+3. Use SEMANTICS.md for trending section container key.
+4. Output full test blocks ready to paste.
+""",
+
+    "test_warehouse_multi_location": """\
+# Test Flow: Warehouse Multi-Location (E2E)
+
+## Context
+Seller warehouse management: add warehouse, set default, assign product stock per warehouse.
+
+## What to Do
+1. Read the spec — what warehouse scenarios are tested?
+2. Add tests for: add warehouse → shows in list, set as default, per-warehouse stock on product creation.
+3. Verify `users/{uid}/warehouses/{warehouseId}` Firestore path and `seller_profiles` update.
+4. Output full test blocks ready to paste.
+""",
 }
 
 # ── Workflow → files map ────────────────────────────────────────────────────
@@ -1478,6 +1837,570 @@ FLOWS: dict[str, list[str]] = {
         "functions/schema_constants.py",
         "STATE.md",
     ],
+
+    # ── TEST-CENTERED FLOWS — one per Playwright spec file ───────────────────
+    # Each flow has the spec + helpers as the PRIMARY files, supporting source
+    # files second, and origna_flows docs for Flutter selector context.
+    # Purpose: drop into Claude.ai and ask it to audit, extend, or fix the test.
+
+    "test_add_product": [
+        "e2e/playwright_ui/add-product-e2e.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/addproduct_screen.dart",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "origna_gta/lib/features/products/add_product_state.dart",
+        "origna_gta/lib/features/seller/warehouses_viewmodel.dart",
+        "origna_gta/lib/core/repositories/product_repository.dart",
+        "functions/handlers/products.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_admin_actions": [
+        "e2e/playwright_ui/admin-actions.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/features/admin/admin_actions_viewmodel.dart",
+        "origna_gta/lib/features/admin/admin_panel_screen.dart",
+        "origna_gta/lib/features/admin/admin_providers.dart",
+        "functions/handlers/admin.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "firestore.rules",
+    ],
+
+    "test_admin_panel": [
+        "e2e/playwright_ui/admin-panel.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/features/admin/admin_panel_screen.dart",
+        "origna_gta/lib/features/admin/admin_providers.dart",
+        "origna_gta/lib/features/admin/tabs/admin_products_tab.dart",
+        "origna_gta/lib/features/admin/tabs/admin_users_tab.dart",
+        "origna_gta/lib/features/admin/tabs/admin_orders_tab.dart",
+        "functions/handlers/admin.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "firestore.rules",
+    ],
+
+    "test_admin_security": [
+        "e2e/playwright_ui/admin-security.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "firestore.rules",
+        "functions/handlers/admin.py",
+        "functions/services/rate_limiter.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "origna_gta/lib/features/auth/auth_provider.dart",
+    ],
+
+    "test_buyer_flow": [
+        "e2e/playwright_ui/buyer-flow.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/home_screen.dart",
+        "origna_gta/lib/screens/productdetails_screen.dart",
+        "origna_gta/lib/screens/cart_screen.dart",
+        "origna_gta/lib/screens/checkout_screen.dart",
+        "origna_gta/lib/screens/orders_screen.dart",
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/orders.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_checkout_validation": [
+        "e2e/playwright_ui/checkout-validation.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/checkout_screen.dart",
+        "origna_gta/lib/screens/cart_screen.dart",
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "origna_gta/lib/features/checkout/checkout_state.dart",
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/coupons.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_digital_products": [
+        "e2e/playwright_ui/digital-products-e2e.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/productdetails_screen.dart",
+        "origna_gta/lib/screens/orders_screen.dart",
+        "origna_gta/lib/models/generated/product_models.dart",
+        "origna_gta/lib/models/generated/order_models.dart",
+        "functions/handlers/digital.py",
+        "functions/handlers/orders.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_edge_cases_security": [
+        "e2e/playwright_ui/edge-cases-security.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "firestore.rules",
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/orders.py",
+        "functions/services/rate_limiter.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_favorites": [
+        "e2e/playwright_ui/favorites.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/favorites_screen.dart",
+        "origna_gta/lib/screens/productdetails_screen.dart",
+        "origna_gta/lib/core/repositories/product_repository.dart",
+        "functions/handlers/products.py",
+        "firestore.rules",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_multi_seller_orders": [
+        "e2e/playwright_ui/multi-seller-orders.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/orders_screen.dart",
+        "origna_gta/lib/screens/seller_orders_screen.dart",
+        "origna_gta/lib/features/orders/buyer_orders_viewmodel.dart",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "functions/handlers/orders.py",
+        "functions/handlers/payment_stripe.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_new_coverage": [
+        "e2e/playwright_ui/new-coverage-e2e.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/subscription_screen.dart",
+        "origna_gta/lib/screens/profile_screen.dart",
+        "origna_gta/lib/screens/home_screen.dart",
+        "origna_gta/lib/features/subscription/subscription_provider.dart",
+        "functions/handlers/subscriptions.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_order_cancellation": [
+        "e2e/playwright_ui/order-cancellation-refund.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/orders_screen.dart",
+        "origna_gta/lib/features/orders/buyer_orders_viewmodel.dart",
+        "origna_gta/lib/models/generated/order_models.dart",
+        "origna_gta/lib/models/generated/return_request_models.dart",
+        "functions/handlers/orders.py",
+        "functions/handlers/payment_stripe.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_order_lifecycle": [
+        "e2e/playwright_ui/order-lifecycle.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/orders_screen.dart",
+        "origna_gta/lib/screens/seller_orders_screen.dart",
+        "origna_gta/lib/features/orders/buyer_orders_viewmodel.dart",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "origna_gta/lib/models/generated/order_models.dart",
+        "functions/handlers/orders.py",
+        "functions/handlers/payment_stripe.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_payment_edge_cases": [
+        "e2e/playwright_ui/payment-edge-cases.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/checkout_screen.dart",
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "origna_gta/lib/features/checkout/checkout_state.dart",
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/orders.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_premium_subscription": [
+        "e2e/playwright_ui/premium-subscription.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/subscription_screen.dart",
+        "origna_gta/lib/screens/subscription_cancel_screen.dart",
+        "origna_gta/lib/screens/subscription_success_screen.dart",
+        "origna_gta/lib/features/subscription/subscription_provider.dart",
+        "origna_gta/lib/widgets/premium_paywall_widget.dart",
+        "functions/handlers/subscriptions.py",
+        "functions/handlers/payment_stripe.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_profile_management": [
+        "e2e/playwright_ui/profile-management.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/profile_screen.dart",
+        "origna_gta/lib/screens/addressmanagement_screen.dart",
+        "origna_gta/lib/screens/editaddress_screen.dart",
+        "origna_gta/lib/features/profile/profile_viewmodel.dart",
+        "origna_gta/lib/features/profile/address_viewmodel.dart",
+        "functions/handlers/users.py",
+        "functions/handlers/addresses.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_rate_limiting": [
+        "e2e/playwright_ui/rate-limiting.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "functions/services/rate_limiter.py",
+        "functions/handlers/admin.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "firestore.rules",
+    ],
+
+    "test_search_products": [
+        "e2e/playwright_ui/search-products.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/home_screen.dart",
+        "origna_gta/lib/features/home/home_viewmodel.dart",
+        "origna_gta/lib/features/home/home_state.dart",
+        "origna_gta/lib/core/repositories/algolia_product_repository.dart",
+        "origna_gta/lib/widgets/modern_product_card.dart",
+        "functions/services/algolia_service.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_seller_flow": [
+        "e2e/playwright_ui/seller-flow.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/seller_orders_screen.dart",
+        "origna_gta/lib/screens/addproduct_screen.dart",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "functions/handlers/orders.py",
+        "functions/handlers/products.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_seller_product_management": [
+        "e2e/playwright_ui/seller-product-management.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/addproduct_screen.dart",
+        "origna_gta/lib/screens/editproduct_screen.dart",
+        "origna_gta/lib/screens/seller_products_screen.dart",
+        "origna_gta/lib/features/products/add_product_viewmodel.dart",
+        "origna_gta/lib/features/products/edit_product_viewmodel.dart",
+        "origna_gta/lib/features/seller/seller_products_viewmodel.dart",
+        "functions/handlers/products.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_seller_registration": [
+        "e2e/playwright_ui/seller-registration.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/seller_registration_screen.dart",
+        "origna_gta/lib/screens/seller_setup_screen.dart",
+        "origna_gta/lib/features/seller/seller_registration_view_model.dart",
+        "origna_gta/lib/features/seller/seller_registration_state.dart",
+        "functions/handlers/admin.py",
+        "functions/handlers/payment_stripe.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_shipping_approval": [
+        "e2e/playwright_ui/shipping-approval.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/shipping_approval_screen.dart",
+        "origna_gta/lib/screens/seller_orders_screen.dart",
+        "origna_gta/lib/features/orders/shipping_approval_viewmodel.dart",
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
+        "functions/handlers/orders.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "origna_gta/lib/models/generated/order_models.dart",
+    ],
+
+    "test_shipping_calculation": [
+        "e2e/playwright_ui/shipping-calculation.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/checkout_screen.dart",
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "functions/services/shipping_service.py",
+        "functions/handlers/payment_stripe.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_smoke_home_profile": [
+        "e2e/playwright_ui/smoke-home-profile.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/home_screen.dart",
+        "origna_gta/lib/screens/profile_screen.dart",
+        "origna_gta/lib/screens/main_screen.dart",
+        "origna_gta/lib/features/home/home_viewmodel.dart",
+        "origna_gta/lib/features/profile/profile_viewmodel.dart",
+        "origna_gta/lib/features/auth/auth_provider.dart",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_stripe_payment": [
+        "e2e/playwright_ui/stripe-payment.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/checkout_screen.dart",
+        "origna_gta/lib/screens/payment_screens.dart",
+        "origna_gta/lib/screens/ordersuccess_screen.dart",
+        "origna_gta/lib/features/checkout/checkout_provider.dart",
+        "functions/handlers/payment_stripe.py",
+        "functions/handlers/orders.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_trending_products": [
+        "e2e/playwright_ui/trending-products.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/home_screen.dart",
+        "origna_gta/lib/features/home/home_viewmodel.dart",
+        "origna_gta/lib/core/repositories/algolia_product_repository.dart",
+        "origna_gta/lib/widgets/modern_product_card.dart",
+        "functions/services/algolia_service.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+    ],
+
+    "test_warehouse_multi_location": [
+        "e2e/playwright_ui/warehouse-multi-location.spec.ts",
+        "e2e/playwright_ui/api-helpers.ts",
+        "e2e/playwright_ui/flutter-helpers.ts",
+        "origna_flows/SEMANTICS.md",
+        "origna_flows/FLOWS.md",
+        "origna_flows/INSTRUCTIONS.md",
+        "origna_gta/lib/screens/seller/seller_warehouses_screen.dart",
+        "origna_gta/lib/features/seller/warehouses_viewmodel.dart",
+        "origna_gta/lib/models/generated/seller_profile_models.dart",
+        "functions/models/seller_profile.py",
+        "functions/handlers/admin.py",
+        "functions/schema_constants.py",
+        "origna_gta/lib/core/schema/schema_constants.dart",
+        "firestore.rules",
+    ],
+}
+
+# ── origna_flows docs always appended to every flow (E2E test context) ───────
+# These files live in the repo and provide Flutter semantics, user flows,
+# and Playwright testing instructions for the AI reviewing each flow.
+_ORIGNA_FLOWS_DOCS = [
+    "origna_flows/SEMANTICS.md",   # Flutter Key/label/role map for every screen
+    "origna_flows/FLOWS.md",       # 15 step-by-step user journeys with test assertions
+    "origna_flows/INSTRUCTIONS.md",  # AI agent guide: selectors, environments, patterns
+]
+
+# ── Per-flow E2E test spec files ──────────────────────────────────────────────
+# Maps each flow to the Playwright spec(s) that cover it.
+# These are appended AFTER the primary source files, before overflow.
+FLOW_SPECS: dict[str, list[str]] = {
+    "checkout_payment": [
+        "e2e/playwright_ui/stripe-payment.spec.ts",
+        "e2e/playwright_ui/checkout-validation.spec.ts",
+        "e2e/playwright_ui/payment-edge-cases.spec.ts",
+        "e2e/playwright_ui/shipping-calculation.spec.ts",
+        "e2e/playwright_ui/buyer-flow.spec.ts",
+    ],
+    "order_lifecycle": [
+        "e2e/playwright_ui/order-lifecycle.spec.ts",
+        "e2e/playwright_ui/multi-seller-orders.spec.ts",
+        "e2e/playwright_ui/shipping-approval.spec.ts",
+        "e2e/playwright_ui/buyer-flow.spec.ts",
+        "e2e/playwright_ui/seller-flow.spec.ts",
+    ],
+    "product_lifecycle": [
+        "e2e/playwright_ui/seller-product-management.spec.ts",
+        "e2e/playwright_ui/seller-flow.spec.ts",
+    ],
+    "add_product": [
+        "e2e/playwright_ui/add-product-e2e.spec.ts",
+    ],
+    "auth_seller_onboarding": [
+        "e2e/playwright_ui/seller-registration.spec.ts",
+    ],
+    "email_notifications": [
+        "e2e/playwright_ui/new-coverage-e2e.spec.ts",
+    ],
+    "search_discovery": [
+        "e2e/playwright_ui/search-products.spec.ts",
+        "e2e/playwright_ui/trending-products.spec.ts",
+    ],
+    "security": [
+        "e2e/playwright_ui/admin-security.spec.ts",
+        "e2e/playwright_ui/edge-cases-security.spec.ts",
+        "e2e/playwright_ui/rate-limiting.spec.ts",
+    ],
+    "seller_profile_warehouses": [
+        "e2e/playwright_ui/warehouse-multi-location.spec.ts",
+        "e2e/playwright_ui/seller-registration.spec.ts",
+    ],
+    "subscription_premium": [
+        "e2e/playwright_ui/premium-subscription.spec.ts",
+    ],
+    "return_requests": [
+        "e2e/playwright_ui/order-cancellation-refund.spec.ts",
+    ],
+    "admin_panel": [
+        "e2e/playwright_ui/admin-actions.spec.ts",
+        "e2e/playwright_ui/admin-panel.spec.ts",
+        "e2e/playwright_ui/admin-security.spec.ts",
+    ],
+    "profile_address": [
+        "e2e/playwright_ui/profile-management.spec.ts",
+        "e2e/playwright_ui/smoke-home-profile.spec.ts",
+    ],
+    "digital_products": [
+        "e2e/playwright_ui/digital-products-e2e.spec.ts",
+    ],
+    "coupons_discounts": [
+        "e2e/playwright_ui/checkout-validation.spec.ts",
+    ],
+    "favorites_seller_products": [
+        "e2e/playwright_ui/favorites.spec.ts",
+    ],
+    "app_bootstrap": [
+        "e2e/playwright_ui/smoke-home-profile.spec.ts",
+    ],
+    "logic_audit": [
+        "e2e/playwright_ui/buyer-flow.spec.ts",
+        "e2e/playwright_ui/seller-flow.spec.ts",
+        "e2e/playwright_ui/edge-cases-security.spec.ts",
+    ],
+    "cross_stack_audit": [
+        "e2e/playwright_ui/buyer-flow.spec.ts",
+        "e2e/playwright_ui/seller-flow.spec.ts",
+        "e2e/playwright_ui/multi-seller-orders.spec.ts",
+    ],
+    "frontend_audit": [
+        "e2e/playwright_ui/smoke-home-profile.spec.ts",
+        "e2e/playwright_ui/new-coverage-e2e.spec.ts",
+    ],
+    "performance_audit": [
+        "e2e/playwright_ui/search-products.spec.ts",
+        "e2e/playwright_ui/buyer-flow.spec.ts",
+    ],
+    "legacy_code_audit": [
+        "e2e/playwright_ui/new-coverage-e2e.spec.ts",
+        "e2e/playwright_ui/smoke-home-profile.spec.ts",
+    ],
+    "stock_notifications": [
+        "e2e/playwright_ui/new-coverage-e2e.spec.ts",
+    ],
 }
 
 
@@ -1486,6 +2409,7 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
 
     - Writes INSTRUCTIONS.md (does NOT count toward MAX_FILES_PER_FLOW).
     - CLAUDE.md is always prepended as the first file.
+    - E2E spec files from FLOW_SPECS + origna_flows docs appended after primary source files.
     - If total files exceed MAX_FILES_PER_FLOW, excess files are concatenated into _overflow.md.
     - Total content is capped at MAX_TOTAL_BYTES to respect Claude.ai's context limit.
     - Folder will have at most 20 files: 18 primary + INSTRUCTIONS.md + _overflow.md.
@@ -1502,8 +2426,16 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
 
     total_bytes = len(instructions_text.encode("utf-8"))
 
-    # Always prepend CLAUDE.md
-    all_files = [_CLAUDE] + [f for f in file_paths if f != _CLAUDE]
+    # Build file list: CLAUDE.md → E2E specs → source files → origna_flows docs
+    # Spec files get HIGH priority (right after CLAUDE.md) so they're never bumped to overflow.
+    spec_files = FLOW_SPECS.get(flow_name, [])
+    origna_docs = [f for f in _ORIGNA_FLOWS_DOCS if f not in file_paths]
+    seen: set[str] = set()
+    all_files: list[str] = []
+    for f in [_CLAUDE] + spec_files + list(file_paths) + origna_docs:
+        if f not in seen:
+            seen.add(f)
+            all_files.append(f)
 
     # Split into normal (first MAX_FILES_PER_FLOW) and overflow
     primary = all_files[:MAX_FILES_PER_FLOW]
