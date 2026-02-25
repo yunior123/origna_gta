@@ -8,8 +8,8 @@ import {
   signIn, callOk, callExpectError,
   fullCheckoutAndPay,
   waitForOrderStatus, getOrder, getProductStock,
-  getTestProduct, getSellerAuth,
-  TEST_ACCOUNTS,
+  getSellerAuth,
+  TEST_ACCOUNTS, TEST_UIDS, writeDoc, toFirestoreFields,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
@@ -21,10 +21,23 @@ test.describe('Order Cancellation & Refund', () => {
   let productSellerId: string;
 
   test.beforeAll(async () => {
-    const auth = await signIn(BUYER_EMAIL);
-    const product = await getTestProduct(auth.idToken, auth.localId);
-    productId = product.id;
-    productSellerId = product.sellerId;
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    // Create a DEDICATED product for cancellation tests (avoids stock races with other workers)
+    const pid = `e2e_cancel_${Date.now()}`;
+    await writeDoc(`products/${pid}`, toFirestoreFields({
+      sellerId: TEST_UIDS.SELLER,
+      sellerSku: `CANCEL-TEST-${Date.now()}`,
+      name: 'E2E Cancel Test Product',
+      description: 'Dedicated product for order cancellation E2E tests.',
+      price: 9.99,
+      lifecycleStatus: 'active',
+      stockQuantity: 200,
+      categoryId: 1,
+      imageUrls: ['https://picsum.photos/400'],
+      keywords: [],
+    }), adminAuth.idToken);
+    productId = pid;
+    productSellerId = TEST_UIDS.SELLER;
   });
 
   test('Buyer can cancel order before shipping', async ({ page }) => {

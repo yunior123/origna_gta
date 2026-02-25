@@ -980,26 +980,30 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton>
         builder: (context, child) {
           return Transform.rotate(
             angle: _rotationAnimation.value * 3.14159,
-            child: IconButton(
-              key: const Key('home_settings_button'),
-              tooltip: 'home.settings'.tr(),
-              icon: const Icon(Icons.settings_outlined, color: Colors.white),
-              onPressed: () {
-                _triggerAnimation();
-                if (user == null) {
-                  showLoginPrompt(
-                    context,
-                    text: "auth.sign_in_settings_required",
-                  );
-                  return;
-                }
-                Navigator.pushNamed(context, AppRoutes.profile);
+            child: Semantics(
+              label: 'btn-home-settings',
+              button: true,
+              child: IconButton(
+                key: const Key('home_settings_button'),
+                tooltip: 'home.settings'.tr(),
+                icon: const Icon(Icons.settings_outlined, color: Colors.white),
+                onPressed: () {
+                  _triggerAnimation();
+                  if (user == null) {
+                    showLoginPrompt(
+                      context,
+                      text: "auth.sign_in_settings_required",
+                    );
+                    return;
+                  }
+                  Navigator.pushNamed(context, AppRoutes.profile);
               },
             ),
-          );
-        },
-      ),
-    );
+          ),
+        );
+      },
+    ),
+  );
   }
 
   @override

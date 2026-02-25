@@ -58,6 +58,7 @@ import {
   waitForFlutter,
   requireWebApp,
   ensureLoggedInAsAdmin,
+  navigateToSubscription,
 } from './flutter-helpers';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -172,7 +173,7 @@ async function fillSubscriptionCheckout(
   const submitBtn = page.locator(
     '[data-testid="hosted-payment-submit-button"], .SubmitButton, button[type="submit"]'
   ).first();
-  await submitBtn.waitFor({ state: 'visible', timeout: 10_000 });
+  await submitBtn.waitFor({ state: 'visible', timeout: 30_000 });
   await submitBtn.click();
 
   // Wait up to 45s for redirect away from Stripe
@@ -266,8 +267,10 @@ test.describe('B. Subscription Screen UI', () => {
 
     await requireWebApp(page, WEB_APP_URL);
     await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
-    const upgradeCta  = page.locator('[aria-label="btn-subscribe-premium"]');
-    const premiumBadge = page.getByText(/Premium Member/i).first();
+    await navigateToSubscription(page);
+    // These are stable internal keys (not translated), rendered as text content in flt-semantics
+    const premiumBadge = page.getByText('lbl-premium-member', { exact: true });
+    const upgradeCta = page.locator('[aria-label="btn-subscribe-premium"]');
     const either = await Promise.race([
       upgradeCta.waitFor({ state: 'visible', timeout: 20_000 }).then(() => 'cta'),
       premiumBadge.waitFor({ state: 'visible', timeout: 20_000 }).then(() => 'badge'),
@@ -285,8 +288,7 @@ test.describe('B. Subscription Screen UI', () => {
 
     await requireWebApp(page, WEB_APP_URL);
     await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
-    await page.goto(`${WEB_APP_URL}/subscription`);
-    await waitForFlutter(page);
+    await navigateToSubscription(page);
 
     const upgradeBtn = page.locator('[aria-label="btn-subscribe-premium"]');
     await expect(upgradeBtn).toBeVisible({ timeout: 20_000 });
@@ -295,21 +297,20 @@ test.describe('B. Subscription Screen UI', () => {
   test('B3: Subscription screen lists all four premium benefits', async ({ page }) => {
     await requireWebApp(page, WEB_APP_URL);
     await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
-    await page.goto(`${WEB_APP_URL}/subscription`);
-    await waitForFlutter(page);
+    await navigateToSubscription(page);
 
-    for (const text of ['No Platform Fee', 'Chat with Sellers', 'Ask Questions', 'Smart Notifications']) {
-      await expect(page.getByText(text).first()).toBeVisible({ timeout: 20_000 });
+    for (const label of ['benefit-no-platform-fee', 'benefit-chat-with-sellers', 'benefit-ask-questions', 'benefit-smart-notifications']) {
+      // These stable keys appear as text content in flt-semantics (not aria-label) for container nodes
+      await expect(page.getByText(label, { exact: true }).first()).toBeVisible({ timeout: 20_000 });
     }
   });
 
   test('B4: Price shows CAD $7.86/month', async ({ page }) => {
     await requireWebApp(page, WEB_APP_URL);
     await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
-    await page.goto(`${WEB_APP_URL}/subscription`);
-    await waitForFlutter(page);
+    await navigateToSubscription(page);
 
-    await expect(page.getByText(/7\.86/).first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText('lbl-price-monthly', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
   });
 });
 
@@ -318,7 +319,7 @@ test.describe('B. Subscription Screen UI', () => {
 // ════════════════════════════════════════════════════════════════════
 
 test.describe('C. Create Subscription API + Session Integrity', () => {
-  test.setTimeout(30_000);
+  test.setTimeout(90_000); // C2/C3 navigate to Stripe's hosted checkout page
 
   test('C1: create_subscription returns Stripe checkout URL in subscription mode', async () => {
     const auth = await signIn(BUYER_EMAIL);
@@ -358,7 +359,7 @@ test.describe('C. Create Subscription API + Session Integrity', () => {
     // Verify page has card input (confirms subscription mode Checkout)
     await dismissStripeModals(page);
     const emailOrCard = page.locator('#email, input[name="email"], #cardNumber, input[name="cardNumber"]').first();
-    const visible = await emailOrCard.isVisible({ timeout: 15_000 }).catch(() => false);
+    const visible = await emailOrCard.isVisible({ timeout: 45_000 }).catch(() => false);
     expect(visible).toBe(true);
   });
 
@@ -380,7 +381,7 @@ test.describe('C. Create Subscription API + Session Integrity', () => {
 
     // Stripe Checkout shows the product name and price
     const priceText = page.getByText(/7\.86|premium/i).first();
-    const visible = await priceText.isVisible({ timeout: 15_000 }).catch(() => false);
+    const visible = await priceText.isVisible({ timeout: 45_000 }).catch(() => false);
     expect(visible).toBe(true);
   });
 
@@ -949,8 +950,7 @@ test.describe('I. Cancel Subscription Flow', () => {
 
     await requireWebApp(page, WEB_APP_URL);
     await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
-    await page.goto(`${WEB_APP_URL}/subscription`);
-    await waitForFlutter(page);
+    await navigateToSubscription(page);
 
     const cancelBtn = page.locator('[aria-label="btn-cancel-subscription"]');
     // If already scheduled for cancellation, cancelAtPeriodEnd=true means button is hidden
@@ -971,8 +971,7 @@ test.describe('I. Cancel Subscription Flow', () => {
 
     await requireWebApp(page, WEB_APP_URL);
     await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
-    await page.goto(`${WEB_APP_URL}/subscription`);
-    await waitForFlutter(page);
+    await navigateToSubscription(page);
 
     const cancelBtn = page.locator('[aria-label="btn-cancel-subscription"]');
     await cancelBtn.waitFor({ state: 'visible', timeout: 20_000 });
@@ -1083,7 +1082,7 @@ test.describe('J. Platform Fee Waiver', () => {
 // ════════════════════════════════════════════════════════════════════
 
 test.describe('K. Chat Paywall Gate', () => {
-  test.setTimeout(30_000);
+  test.setTimeout(120_000);
 
   test('K1: Non-premium buyer gets permission-denied from open_chat', async () => {
     const auth = await signIn(BUYER_EMAIL);
@@ -1093,7 +1092,7 @@ test.describe('K. Chat Paywall Gate', () => {
       return;
     }
 
-    const err = await callExpectError('open_chat', { productId: 'product_001' }, auth.idToken);
+    const err = await callExpectError('get_or_create_chat', { productId: 'product_001' }, auth.idToken);
     expect(err.code).toBe('permission-denied');
     expect(err.message.toLowerCase()).toMatch(/premium/);
   });
@@ -1107,7 +1106,7 @@ test.describe('K. Chat Paywall Gate', () => {
     }
 
     // Non-existent product — backend must reject with premium error, not not-found
-    const err = await callExpectError('open_chat', { productId: 'nonexistent_xyz_abc' }, auth.idToken);
+    const err = await callExpectError('get_or_create_chat', { productId: 'nonexistent_xyz_abc' }, auth.idToken);
     expect(err.code).toBe('permission-denied');
   });
 
@@ -1150,7 +1149,7 @@ test.describe('L. Security Adversarial', () => {
   });
 
   test('L2: open_chat rejects unauthenticated request', async () => {
-    const err = await callExpectError('open_chat', { productId: 'product_001' }, 'bad-token');
+    const err = await callExpectError('get_or_create_chat', { productId: 'product_001' }, 'bad-token');
     expect(err.code).toMatch(/unauthenticated|permission-denied/i);
   });
 

@@ -3067,7 +3067,7 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     if variant_key:
         existing_query = existing_query.where(Fields.VARIANT_KEY, "==", variant_key)
     if list(existing_query.limit(1).stream()):
-        return create_success_response({"alreadySubscribed": True})
+        return create_success_response({"subscribed": True})
 
     doc: dict[str, Any] = {
         Fields.PRODUCT_ID: product_id,

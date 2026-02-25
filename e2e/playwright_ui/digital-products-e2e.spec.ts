@@ -151,7 +151,7 @@ test.describe('B. Digital-Only Checkout', () => {
     // Verify order confirmation email was sent via _mail_logs
     const authAdmin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const emails = await verifyEmailSent(BUYER_EMAIL, authAdmin.idToken);
-    const orderEmail = emails.find(e => e.subject?.includes('Order Confirmed'));
+    const orderEmail = emails.find(e => e.subject?.includes('Order Confirm'));
     expect(orderEmail, 'Buyer should receive an order confirmation email').toBeTruthy();
   });
 
@@ -176,7 +176,7 @@ test.describe('B. Digital-Only Checkout', () => {
     // Verify order confirmation email
     const authAdmin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const emails = await verifyEmailSent(BUYER_EMAIL, authAdmin.idToken);
-    const orderEmail = emails.find(e => e.subject?.includes('Order Confirmed'));
+    const orderEmail = emails.find(e => e.subject?.includes('Order Confirm'));
     expect(orderEmail, 'Buyer should receive an order confirmation email for the book').toBeTruthy();
   });
 });
@@ -240,7 +240,7 @@ test.describe('C. Mixed Cart — Digital + Physical', () => {
     // Verify order confirmation email was sent via _mail_logs
     const authAdmin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const emails = await verifyEmailSent(BUYER_EMAIL, authAdmin.idToken);
-    const orderEmail = emails.find(e => e.subject?.includes('Order Confirmed'));
+    const orderEmail = emails.find(e => e.subject?.includes('Order Confirm'));
     expect(orderEmail, 'Buyer should receive an order confirmation email for mixed cart').toBeTruthy();
   });
 

@@ -19,9 +19,10 @@ export default defineConfig({
     actionTimeout: 15 * 1000,
     baseURL: process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app',
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    screenshot: 'on',
     bypassCSP: true,
   },
+  outputDir: `${process.env.HOME}/Desktop/origna-screenshots/emulator`,
 
   projects: [
     ...(runAllProjects

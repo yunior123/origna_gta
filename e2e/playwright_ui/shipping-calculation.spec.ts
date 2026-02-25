@@ -80,13 +80,13 @@ test.describe('Shipping Calculation', () => {
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `SHIP-TEST-${Date.now()}`,
       name: 'Shipping Test Product',
+      description: 'A test product for shipping calculation E2E tests.',
       price: 10.00,
       lifecycleStatus: 'active',
       stockQuantity: 50, // Guaranteed >= 3
       categoryId: 1,
-      imageUrls: [],
+      imageUrls: ['https://picsum.photos/400'],
       keywords: [],
-      rating: 0,
     }), adminAuth.idToken);
 
     const { data: data1 } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);

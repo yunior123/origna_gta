@@ -84,7 +84,7 @@ test.describe('Trending Products flows', () => {
         await waitForFlutter(page);
 
         // 6. Toggle the Trending Products switch
-        const trendingListTile = page.getByRole('switch', { name: /Trending Products/i }).first();
+        const trendingListTile = page.getByRole('switch', { name: /switch-notify-trending/i }).first();
         await expect(trendingListTile).toBeVisible();
         await trendingListTile.click();
 

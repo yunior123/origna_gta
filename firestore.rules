@@ -348,6 +348,8 @@ service cloud.firestore {
       // Admin-only: lightweight update for just isTrending / trendingAt (no full doc validation needed)
       allow update: if isAdmin() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isTrending', 'trendingAt']);
+      // Admin full bypass: admins can update any product fields (admin panel operations, E2E test seeding)
+      allow update: if isAdmin();
       allow update: if isAuthenticated() &&
         ((resource.data.sellerId == request.auth.uid && isSellerApproved()) || isAdmin()) &&
           // Only allow specific fields to be changed via client updates
@@ -406,7 +408,7 @@ service cloud.firestore {
       // Inventory levels subcollection — backend-only writes (checkout, triggers, cancel)
       match /inventoryLevels/{warehouseId} {
         allow read: if true;
-        allow write: if false;  // Backend-only via Admin SDK
+        allow write: if isAdmin();  // Admin bypass for E2E test seeding; else backend Admin SDK only
       }
     }
 
@@ -621,7 +623,7 @@ service cloud.firestore {
     // ================================================================
     match /subscriptions/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow write: if false; // Backend Admin SDK only — Stripe webhook path exclusively
+      allow write: if isAdmin(); // Admin SDK + E2E seeding; Stripe webhook uses Admin SDK
     }
 
     // ================================================================

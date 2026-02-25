@@ -20,6 +20,8 @@ import { Page, Locator, test, expect } from '@playwright/test';
 
 // ─── BILINGUAL PATTERNS ────────────────────────────────────────────
 const BTN_SETTINGS = /settings|paramètres/i;
+// Stable aria-label for the home settings button (language-independent)
+const BTN_SETTINGS_LABEL = 'btn-home-settings';
 const BTN_SIGN_IN = /sign\s*in|se\s*connecter|connexion/i;
 const BTN_CART = /cart|shopping|panier/i;
 const BTN_ADD_PRODUCT = /add\s*product|ajouter/i;
@@ -125,7 +127,7 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     // Click Settings — this reveals auth state:
     //   logged in  → navigates to /profile (no dialog)
     //   logged out → shows "Connexion requise" / "Login required" dialog
-    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
     await expect(settingsBtn).toBeAttached({ timeout: 20000 });
     await settingsBtn.click();
 
@@ -186,7 +188,7 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     await page.waitForTimeout(3000);
 
     // Verify login: Settings button should be visible (home screen loaded)
-    const verifySettingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    const verifySettingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
     await expect(verifySettingsBtn).toBeAttached({ timeout: 15000 });
 
     // Extra check: clicking Settings should navigate to /profile (not show dialog)
@@ -234,10 +236,32 @@ export async function navigateHome(page: Page, targetUrl: string): Promise<void>
     await waitForFlutter(page, 15000);
 }
 
+/**
+ * Navigate to the subscription screen in-app (auth-safe).
+ * Route: home → settings → profile → premium menu item → subscription.
+ * Never uses page.goto() which would kill Firebase Auth state.
+ */
+export async function navigateToSubscription(page: Page): Promise<void> {
+    // Go to profile screen via settings button
+    const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+    await expect(settingsBtn).toBeAttached({ timeout: 15000 });
+    await settingsBtn.click();
+    await page.waitForURL(/\/profile/i, { timeout: 20000 }).catch(() => { });
+
+    // Wait for profile-specific content — Flutter puts label text in node textContent not aria-label
+    // when child has text nodes, so use getByRole + name regex (stable identifier in textContent)
+    const premiumBtn = page.getByRole('button', { name: /menu-premium/i }).first();
+    await expect(premiumBtn).toBeAttached({ timeout: 30000 });
+
+    await premiumBtn.click();
+    await page.waitForURL(/\/subscription/i, { timeout: 20000 }).catch(() => { });
+    await waitForFlutter(page, 30000);
+}
+
 // ─── SIGN OUT HELPER ─────────────────────────────────────────────────
 
 export async function performSignOut(page: Page, targetUrl: string): Promise<void> {
-    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
     await settingsBtn.click();
     await page.waitForURL(/\/profile/i, { timeout: 20000 }).catch(() => { });
     await waitForFlutter(page, 30000);
@@ -250,7 +274,7 @@ export async function performSignOut(page: Page, targetUrl: string): Promise<voi
 
     // After sign-out, the app rebuilds to home (logged out).
     // Verify by clicking Settings — should show login dialog.
-    const homeSettingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    const homeSettingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
     await expect(homeSettingsBtn).toBeAttached({ timeout: 15000 });
     await homeSettingsBtn.click();
     await expect(

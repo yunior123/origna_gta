@@ -240,7 +240,7 @@
           "order": "ASCENDING"
         }
       ],
-      "comment": "FIX 2026-02-24: Index for check_expired_authorizations — orderStatus first (Sentry FailedPrecondition ff460a32)"
+      "comment": "FIX 2026-02-24: Index for check_expired_authorizations \u2014 orderStatus first (Sentry FailedPrecondition ff460a32)"
     },
     {
       "collectionGroup": "product_ratings",
@@ -703,8 +703,14 @@
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "userId", "order": "ASCENDING"},
-        {"fieldPath": "productIds", "arrayConfig": "CONTAINS"}
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productIds",
+          "arrayConfig": "CONTAINS"
+        }
       ],
       "comment": "Chat gate query: buyer must have ordered this specific product (userId + productIds array_contains)"
     },
@@ -725,7 +731,35 @@
           "order": "ASCENDING"
         }
       ],
-      "comment": "FIX 2026-02-24: Index for sync_expired_subscriptions cron — status + currentPeriodEnd (Sentry 7b41a9fb)"
+      "comment": "FIX 2026-02-24: Index for sync_expired_subscriptions cron \u2014 status + currentPeriodEnd (Sentry 7b41a9fb)"
+    },
+    {
+      "collectionGroup": "_mail_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "to",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sentAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "warehouses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isDefault",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

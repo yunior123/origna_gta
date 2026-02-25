@@ -78,6 +78,7 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
                 "activatedAt": act.get("activatedAt"),
                 Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
                 "platforms": list(builds.keys()) if builds else [],
+                "downloadUrls": builds if isinstance(builds, dict) else {},
             }
 
     # Check device limit
@@ -102,6 +103,7 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
         "activatedAt": now.isoformat(),
         Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
         "platforms": list(builds.keys()) if builds else [],
+        "downloadUrls": builds if isinstance(builds, dict) else {},
     }
 
 
@@ -240,7 +242,7 @@ def _revoke_digital_licenses_for_order(order_id: str) -> int:
 # ── Cloud Function endpoints ──────────────────────────────────────────────────
 
 
-@https_fn.on_request(cors=True, **WEBHOOK_OPTIONS)
+@https_fn.on_request(**WEBHOOK_OPTIONS)
 def activate_license(req: https_fn.Request) -> https_fn.Response:
     """POST /activate_license — supports authenticated and unauthenticated callers.
     Body: { licenseKey, deviceId, platform }  OR Firebase callable wrapper: { data: {...} }
@@ -550,7 +552,7 @@ def get_software_redirect(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response("Internal error", status=500)
 
 
-@https_fn.on_request(cors=True, **WEBHOOK_OPTIONS)
+@https_fn.on_request(**WEBHOOK_OPTIONS)
 def verify_license(req: https_fn.Request) -> https_fn.Response:
     """POST /verify_license — no auth. App periodically re-verifies license.
     Same as activate (idempotent re-activation updates lastVerifiedAt).

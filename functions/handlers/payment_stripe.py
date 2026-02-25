@@ -1337,7 +1337,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         line_items = []
         for item in validated_items:
-            product_data = {Fields.NAME: item[Fields.NAME], "images": item.get(Fields.IMAGE_URLS, [])[:1]}
+            product_data = {Fields.NAME: item[Fields.NAME], "images": [u for u in item.get(Fields.IMAGE_URLS, [])[:1] if u]}
 
             # Add tax code if available
             tax_code = CATEGORY_TAX_CODE_MAP.get(item.get(Fields.CATEGORY_ID, 0))

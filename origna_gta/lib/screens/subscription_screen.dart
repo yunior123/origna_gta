@@ -47,8 +47,12 @@ class SubscriptionScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBenefit(IconData icon, String title, String subtitle, bool isDark) {
-    return Padding(
+  Widget _buildBenefit(IconData icon, String title, String subtitle, bool isDark, {String? semanticsLabel}) {
+    return Semantics(
+      label: semanticsLabel,
+      container: true,
+      excludeSemantics: true,
+      child: Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,6 +79,7 @@ class SubscriptionScreen extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -104,25 +109,35 @@ class SubscriptionScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Text(
-            isPremium ? 'subscription.youre_premium_member'.tr() : 'subscription.upgrade_to_premium'.tr(),
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+          Semantics(
+            label: isPremium ? 'lbl-premium-member' : 'lbl-upgrade-to-premium',
+            container: true,
+            excludeSemantics: true,
+            child: Text(
+              isPremium ? 'subscription.youre_premium_member'.tr() : 'subscription.upgrade_to_premium'.tr(),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+            ),
           ),
           const SizedBox(height: 8),
-          Text(
-            isPremium ? 'subscription.enjoy_benefits'.tr() : 'subscription.price_monthly'.tr(),
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary),
+          Semantics(
+            label: isPremium ? 'lbl-enjoy-benefits' : 'lbl-price-monthly',
+            container: true,
+            excludeSemantics: true,
+            child: Text(
+              isPremium ? 'subscription.enjoy_benefits'.tr() : 'subscription.price_monthly'.tr(),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary),
+            ),
           ),
           const SizedBox(height: 32),
 
           // Benefits list
-          _buildBenefit(Icons.percent_rounded, 'subscription.no_platform_fee'.tr(), 'subscription.no_platform_fee_desc'.tr(), isDark),
-          _buildBenefit(Icons.chat_bubble_outline_rounded, 'subscription.chat_with_sellers'.tr(), 'subscription.chat_with_sellers_desc'.tr(), isDark),
-          _buildBenefit(Icons.question_answer_outlined, 'subscription.ask_questions'.tr(), 'subscription.ask_questions_desc'.tr(), isDark),
-          _buildBenefit(Icons.notifications_active_outlined, 'subscription.smart_notifications'.tr(), 'subscription.smart_notifications_desc'.tr(), isDark),
-          _buildBenefit(Icons.photo_camera_outlined, 'subscription.photo_reviews'.tr(), 'subscription.photo_reviews_desc'.tr(), isDark),
+          _buildBenefit(Icons.percent_rounded, 'subscription.no_platform_fee'.tr(), 'subscription.no_platform_fee_desc'.tr(), isDark, semanticsLabel: 'benefit-no-platform-fee'),
+          _buildBenefit(Icons.chat_bubble_outline_rounded, 'subscription.chat_with_sellers'.tr(), 'subscription.chat_with_sellers_desc'.tr(), isDark, semanticsLabel: 'benefit-chat-with-sellers'),
+          _buildBenefit(Icons.question_answer_outlined, 'subscription.ask_questions'.tr(), 'subscription.ask_questions_desc'.tr(), isDark, semanticsLabel: 'benefit-ask-questions'),
+          _buildBenefit(Icons.notifications_active_outlined, 'subscription.smart_notifications'.tr(), 'subscription.smart_notifications_desc'.tr(), isDark, semanticsLabel: 'benefit-smart-notifications'),
+          _buildBenefit(Icons.photo_camera_outlined, 'subscription.photo_reviews'.tr(), 'subscription.photo_reviews_desc'.tr(), isDark, semanticsLabel: 'benefit-photo-reviews'),
           const SizedBox(height: 24),
 
           if (isPremium) ...[
@@ -234,21 +249,53 @@ class SubscriptionScreen extends ConsumerWidget {
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
             ),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: notifyNew,
-            title: Text('subscription.new_products'.tr(), style: const TextStyle(fontSize: 14)),
-            subtitle: Text('subscription.new_products_desc'.tr(), style: const TextStyle(fontSize: 12)),
-            activeThumbColor: DesignTokens.primary,
-            onChanged: (val) => vm.updateNotificationPreferences(notifyNewProducts: val),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('subscription.new_products'.tr(), style: const TextStyle(fontSize: 14)),
+                      Text('subscription.new_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                Semantics(
+                  label: 'switch-notify-new-products',
+                  child: Switch.adaptive(
+                    value: notifyNew,
+                    onChanged: (val) => vm.updateNotificationPreferences(notifyNewProducts: val),
+                    activeColor: DesignTokens.primary,
+                  ),
+                ),
+              ],
+            ),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: notifyTrending,
-            title: Text('subscription.trending_products'.tr(), style: const TextStyle(fontSize: 14)),
-            subtitle: Text('subscription.trending_products_desc'.tr(), style: const TextStyle(fontSize: 12)),
-            activeThumbColor: DesignTokens.primary,
-            onChanged: (val) => vm.updateNotificationPreferences(notifyTrending: val),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('subscription.trending_products'.tr(), style: const TextStyle(fontSize: 14)),
+                      Text('subscription.trending_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                Semantics(
+                  label: 'switch-notify-trending',
+                  child: Switch.adaptive(
+                    value: notifyTrending,
+                    onChanged: (val) => vm.updateNotificationPreferences(notifyTrending: val),
+                    activeColor: DesignTokens.primary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

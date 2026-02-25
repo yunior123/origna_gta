@@ -16,7 +16,7 @@ const FIREBASE_API_KEY = 'REDACTED_SECRET';
 
 export const AUTH_URL = 'https://identitytoolkit.googleapis.com';
 export const FIRESTORE_URL = 'https://firestore.googleapis.com';
-export const FUNCTIONS_URL = 'https://us-central1-orignagta-dev.cloudfunctions.net';
+export const FUNCTIONS_URL = 'https://northamerica-northeast1-orignagta-dev.cloudfunctions.net';
 export const WEB_APP_URL = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
 export const PROJECT_ID = 'orignagta-dev';
 
@@ -64,12 +64,38 @@ export interface AuthData {
 // Auth token cache — avoids redundant signIn calls that hit Firebase quota
 const _authCache = new Map<string, { data: AuthData; expiresAt: number }>();
 
+// Disk-based token cache path (shared across all Playwright workers)
+const TOKEN_CACHE_FILE = '/tmp/origna_e2e_tokens.json';
+
+function _loadDiskTokens(): void {
+  try {
+    const { readFileSync } = require('fs');
+    const raw = JSON.parse(readFileSync(TOKEN_CACHE_FILE, 'utf8'));
+    for (const [k, v] of Object.entries(raw as Record<string, any>)) {
+      if (v.expiresAt > Date.now()) _authCache.set(k, v);
+    }
+  } catch { /* no cache yet */ }
+}
+
+function _saveDiskTokens(): void {
+  try {
+    const { writeFileSync } = require('fs');
+    const obj: Record<string, any> = {};
+    _authCache.forEach((v, k) => { obj[k] = v; });
+    writeFileSync(TOKEN_CACHE_FILE, JSON.stringify(obj));
+  } catch { /* ignore */ }
+}
+
+_loadDiskTokens();
+
 /**
  * Sign in to Firebase Auth via Identity Toolkit REST API.
- * Caches tokens for 50 minutes (Firebase tokens expire after 60 min).
+ * Caches tokens in memory AND on disk (shared across workers) for 50 minutes.
  */
 export async function signIn(email: string, password: string = DEFAULT_PASS): Promise<AuthData> {
   const cacheKey = `${email}:${password}`;
+  // Reload disk cache each call so workers share tokens
+  _loadDiskTokens();
   const cached = _authCache.get(cacheKey);
   if (cached && Date.now() < cached.expiresAt) return cached.data;
 
@@ -89,8 +115,10 @@ export async function signIn(email: string, password: string = DEFAULT_PASS): Pr
   }
 
   _authCache.set(cacheKey, { data: data as AuthData, expiresAt: Date.now() + 50 * 60_000 });
+  _saveDiskTokens();
   return data as AuthData;
 }
+
 
 // ════════════════════════════════════════════════════════════════════
 // FIRESTORE REST API — Read-only (no direct writes to dev)
@@ -251,9 +279,12 @@ export async function callOk(fn: string, data: any, token: string): Promise<any>
     const body = await callCallable(fn, data, token);
     if (body.error) {
       const msg = (body.error.message || '').toLowerCase();
-      if (msg.includes('rate limit') && attempt < 2) {
-        console.log(`⏳ Rate limited on ${fn}, waiting 65s... (attempt ${attempt + 1}/3)`);
-        await new Promise(r => setTimeout(r, 65_000));
+      const status = body.error.status;
+      // Retry on rate limit or transient server errors (cold start 500s)
+      if ((msg.includes('rate limit') || status === 500) && attempt < 2) {
+        const wait = status === 500 ? 5_000 : 65_000;
+        console.log(`⏳ ${status === 500 ? 'Server error' : 'Rate limited'} on ${fn}, waiting ${wait / 1000}s... (attempt ${attempt + 1}/3)`);
+        await new Promise(r => setTimeout(r, wait));
         continue;
       }
       throw new Error(`${fn} failed: ${body.error.message || JSON.stringify(body.error)}`);
@@ -882,7 +913,7 @@ export async function createDummyProduct(sellerUid: string, prefix: string, prod
   const id = productId ?? `test_dummy_${prefix}_${Date.now()}`;
   const productData = {
     sellerId: sellerUid,
-    sellerSku: `DUMMY-${prefix}-${Date.now()}`,
+    sellerSku: `DUMMY-${prefix}-STABLE`,
     name: `Dummy Test Product ${prefix}`,
     description: `A high-quality test product created for E2E testing purposes.`,
     price: 15.99,
@@ -891,8 +922,6 @@ export async function createDummyProduct(sellerUid: string, prefix: string, prod
     categoryId: 1,
     imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
     keywords: ['dummy', prefix],
-    rating: 0,
-    createdAt: new Date(),
     sellerAddress: {
       street: '100 University Ave',
       city: 'Toronto',
@@ -902,7 +931,7 @@ export async function createDummyProduct(sellerUid: string, prefix: string, prod
     }
   };
 
-  const ok = await writeDoc(`products/${id}`, toFirestoreFields(productData), adminAuth.idToken, false);
+  const ok = await writeDoc(`products/${id}`, toFirestoreFields(productData), adminAuth.idToken, true);
   if (!ok) throw new Error(`Failed to create dummy product for ${sellerUid}`);
 
   return {

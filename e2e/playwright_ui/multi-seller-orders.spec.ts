@@ -90,13 +90,15 @@ test.describe('Multi-Seller Orders', () => {
     const auth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 90_000);
 
-    // Seller A tries to update seller B's item — should fail
-    const sellerAuthA = await getSellerAuth(productA!.sellerId);
+    // Seller B (non-admin SELLER account) tries to update seller A's item — should fail
+    // Note: productA belongs to ADMIN (who has admin role), so we use the SELLER account
+    // trying to update ADMIN's item, not vice versa (admin bypasses the cross-seller check)
+    const sellerAuthB = await getSellerAuth(productB!.sellerId); // SELLER account (non-admin)
     const error = await callExpectError('update_item_status', {
       orderId: result.orderId,
-      productId: productB!.id,
+      productId: productA!.id,  // ADMIN's item — SELLER cannot update this
       newStatus: 'shipped',
-    }, sellerAuthA.idToken);
+    }, sellerAuthB.idToken);
 
     expect(error.code, 'Cross-seller update should be rejected').not.toBe('unexpected-success');
   });

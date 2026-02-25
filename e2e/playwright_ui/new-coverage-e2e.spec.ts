@@ -15,6 +15,7 @@ import {
   callOk,
   callExpectError,
   readDoc,
+  getDoc,
   writeDoc,
   deleteDoc,
   waitForOrderStatus,
@@ -23,6 +24,7 @@ import {
   getSellerAuth,
   fullCheckoutAndPay,
   fullMultiSellerCheckoutAndPay,
+  buildCheckoutPayload,
   FUNCTIONS_URL,
   TEST_ACCOUNTS,
   TEST_UIDS,
@@ -44,8 +46,8 @@ test.describe('1. Stock Notification Subscribe/Unsubscribe', () => {
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
     buyerUid = auth.localId;
-    const product = await getTestProduct(buyerToken, buyerUid);
-    productId = product.id;
+    // Use a dedicated out-of-stock product — subscribe_stock_notification requires stockQuantity=0
+    productId = 'product_oos_001';
   });
 
   test('1.1 Subscribe to out-of-stock notification', async () => {
@@ -127,7 +129,7 @@ test.describe('2. Digital Product Purchase → License Generation', () => {
     expect(digitalItem.licenseKey).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
 
     // License document in /licenses collection
-    const lic = await readDoc(`licenses/${digitalItem.licenseKey}`, auth.idToken);
+    const lic = await getDoc(`licenses/${digitalItem.licenseKey}`, auth.idToken);
     expect(lic, 'license doc must exist in Firestore').toBeTruthy();
     expect(lic.status).toBe('active');
     expect(lic.userId).toBe(auth.localId);
@@ -137,17 +139,14 @@ test.describe('2. Digital Product Purchase → License Generation', () => {
     // Verify no license is created for a pending payment intent that was never captured
     // We check that the licenseKey field is absent on an order still in pending_capture state
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
-    const payload = {
-      items: [{ productId: DIGITAL_PRODUCT_ID, quantity: 1 }],
-      buyerAddressId: null,
-    };
+    const { data: payload } = await buildCheckoutPayload(auth.localId, DIGITAL_PRODUCT_ID, 1, auth.idToken);
     const session = await callOk('create_checkout_session', payload, auth.idToken);
     expect(session.sessionId ?? session.clientSecret, 'checkout session created').toBeTruthy();
 
     // Order starts in pending_capture — no licenseKey expected yet
     const orderId = session.orderId;
     if (orderId) {
-      const order = await readDoc(`orders/${orderId}`, auth.idToken);
+      const order = await getDoc(`orders/${orderId}`, auth.idToken);
       const item = order?.items?.find?.((i: any) => i.productId === DIGITAL_PRODUCT_ID);
       if (item) {
         expect(item.licenseKey ?? null, 'licenseKey must be null before capture').toBeNull();
@@ -164,11 +163,13 @@ test.describe('3. Async Payment (Interac) Confirmation Flow', () => {
   test.setTimeout(60_000);
 
   let buyerToken: string;
+  let buyerUid: string;
   let productId: string;
 
   test.beforeAll(async () => {
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
+    buyerUid = auth.localId;
     const product = await getTestProduct(buyerToken, auth.localId);
     productId = product.id;
   });
@@ -176,26 +177,20 @@ test.describe('3. Async Payment (Interac) Confirmation Flow', () => {
   test('3.1 Checkout session can be created with interac_present payment method', async () => {
     // Interac is a bank-redirect async method; we verify the session creation succeeds
     // (actual payment confirmation requires a real Interac redirect, which we stub)
-    const payload = {
-      items: [{ productId, quantity: 1 }],
-      buyerAddressId: null,
-    };
+    const { data: payload } = await buildCheckoutPayload(buyerUid, productId, 1, buyerToken);
     const session = await callOk('create_checkout_session', payload, buyerToken);
     expect(session.sessionId ?? session.clientSecret ?? session.url, 'checkout session must be created').toBeTruthy();
   });
 
   test('3.2 Order created for async payment starts in pending_capture', async () => {
-    const payload = {
-      items: [{ productId, quantity: 1 }],
-      buyerAddressId: null,
-    };
+    const { data: payload } = await buildCheckoutPayload(buyerUid, productId, 1, buyerToken);
     const session = await callOk('create_checkout_session', payload, buyerToken);
     const orderId = session.orderId;
     if (orderId) {
-      const order = await readDoc(`orders/${orderId}`, buyerToken);
+      const order = await getDoc(`orders/${orderId}`, buyerToken);
       expect(
-        ['pending_capture', 'pending_payment', 'created'].includes(order?.status),
-        `Order status should be a pre-capture state, got: ${order?.status}`,
+        ['pending_capture', 'pending_payment', 'created', 'pending'].includes(order?.orderStatus),
+        `Order status should be a pre-capture state, got: ${order?.orderStatus}`,
       ).toBe(true);
     } else {
       // Session-based checkout: orderId is created on webhook receipt
@@ -207,10 +202,7 @@ test.describe('3. Async Payment (Interac) Confirmation Flow', () => {
     // We verify that calling the webhook handler with a stubbed event doesn't throw
     // This is a backend integration test via the test webhook endpoint (if available)
     // If no test webhook endpoint exists, verify the session creation path is clean
-    const payload = {
-      items: [{ productId, quantity: 1 }],
-      buyerAddressId: null,
-    };
+    const { data: payload } = await buildCheckoutPayload(buyerUid, productId, 1, buyerToken);
     const session = await callOk('create_checkout_session', payload, buyerToken);
     expect(session).toBeTruthy();
     // Order will eventually transition via webhook → confirmed when payment completes

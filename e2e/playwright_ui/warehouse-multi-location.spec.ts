@@ -15,6 +15,7 @@ import {
   signIn,
   callOk,
   readDoc,
+  getDoc,
   writeDoc,
   deleteDoc,
   toFirestoreFields,
@@ -24,6 +25,7 @@ import {
 } from './api-helpers';
 
 const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
+const ADMIN_EMAIL  = TEST_ACCOUNTS.ADMIN_EMAIL;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -60,7 +62,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // ────────────────────────────────────────────────────────────────────────────
   test('T1: seller creates a warehouse and it is persisted in Firestore', async ({ request }) => {
 
-    const { token, uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
+    const { idToken: token, localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
     const result = await createWarehouse(token, {
       label: 'Toronto Warehouse T1',
@@ -70,8 +72,8 @@ test.describe('Warehouse: multi-location seller flow', () => {
     expect(result).toHaveProperty('warehouseId');
     const wId: string = result.warehouseId;
 
-    // Verify persisted in Firestore
-    const doc = await readDoc(warehousePath(uid, wId));
+    // Verify persisted in Firestore (requires auth token — warehouse rules require isOwner)
+    const doc = await getDoc(warehousePath(uid, wId), token);
     expect(doc).not.toBeNull();
     expect(doc.label).toBe('Toronto Warehouse T1');
     expect(doc.type).toBe('warehouse');
@@ -87,7 +89,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // ────────────────────────────────────────────────────────────────────────────
   test('T2: seller can have multiple warehouses and list them all', async ({ request }) => {
 
-    const { token, uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
+    const { idToken: token, localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
     // Create two warehouses
     const [r1, r2] = await Promise.all([
@@ -117,36 +119,37 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // ────────────────────────────────────────────────────────────────────────────
   test('T3: duplicate sellerSku products cannot coexist — one is blocked on write', async ({ request }) => {
 
-    const { uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
+    const { localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
+    const { idToken: adminToken } = await signIn(ADMIN_EMAIL, DEFAULT_PASS);
 
     const skuValue = `UNIQUE-SKU-${Date.now()}`;
     const baseProduct = {
       sellerId: uid,
       sellerSku: skuValue,
       name: 'SKU Test Product',
+      description: 'A test product for SKU uniqueness testing.',
       price: 9.99,
-      lifecycleStatus: 'active',
+      lifecycleStatus: 'under_review',
       stockQuantity: 5,
       categoryId: 1,
       imageUrls: [],
       keywords: [],
-      rating: 0,
     };
 
-    // Write first product with this SKU — should be fine
+    // Write first product with this SKU using admin token (bypasses field whitelist)
     const prodId1 = `test_sku_1_${Date.now()}`;
-    const ok1 = await writeDoc(`products/${prodId1}`, toFirestoreFields(baseProduct));
+    const ok1 = await writeDoc(`products/${prodId1}`, toFirestoreFields(baseProduct), adminToken, false);
     expect(ok1).toBe(true);
 
-    const doc1 = await readDoc(`products/${prodId1}`);
+    const doc1 = await getDoc(`products/${prodId1}`, adminToken);
     expect(doc1.sellerSku).toBe(skuValue);
     expect(doc1.sellerId).toBe(uid);
 
     // Write second product with identical sellerId+sellerSku
     const prodId2 = `test_sku_2_${Date.now()}`;
-    await writeDoc(`products/${prodId2}`, toFirestoreFields({ ...baseProduct, name: 'Duplicate SKU Product' }));
+    await writeDoc(`products/${prodId2}`, toFirestoreFields({ ...baseProduct, name: 'Duplicate SKU Product' }), adminToken, false);
 
-    const doc2 = await readDoc(`products/${prodId2}`);
+    const doc2 = await getDoc(`products/${prodId2}`, adminToken);
     // The sellerSku and sellerId are persisted (Firestore direct write),
     // but the on_product_created trigger will fire and set lifecycleStatus='draft' on the duplicate.
     // In emulator unit tests this is verified by the trigger logic — here we verify
@@ -165,7 +168,8 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // ────────────────────────────────────────────────────────────────────────────
   test('T4: product document has shipFromCity and shipFromProvince after warehouse-based creation', async ({ request }) => {
 
-    const { token, uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
+    const { idToken: token, localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
+    const { idToken: adminToken } = await signIn(ADMIN_EMAIL, DEFAULT_PASS);
 
     // Create a warehouse first
     const whResult = await createWarehouse(token, {
@@ -187,19 +191,19 @@ test.describe('Warehouse: multi-location seller flow', () => {
     await writeDoc(`products/${productId}`, toFirestoreFields({
       sellerId: uid,
       name: 'Calgary Maple Syrup',
+      description: 'Premium Canadian maple syrup from Calgary.',
       price: 12.99,
-      lifecycleStatus: 'active',
+      lifecycleStatus: 'under_review',
       stockQuantity: 10,
       categoryId: 1,
       imageUrls: [],
       keywords: [],
-      rating: 0,
       warehouseIds: [wId],
       shipFromCity: 'Calgary',
       shipFromProvince: 'AB',
-    }));
+    }), adminToken, false);
 
-    const doc = await readDoc(`products/${productId}`);
+    const doc = await getDoc(`products/${productId}`, adminToken);
     expect(doc.shipFromCity).toBe('Calgary');
     expect(doc.shipFromProvince).toBe('AB');
     expect(doc.warehouseIds).toContain(wId);
@@ -215,7 +219,8 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // ────────────────────────────────────────────────────────────────────────────
   test('T5: inventoryLevels subcollection stores per-warehouse stock; stockQuantity equals sum', async ({ request }) => {
 
-    const { token, uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
+    const { idToken: token, localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
+    const { idToken: adminToken } = await signIn(ADMIN_EMAIL, DEFAULT_PASS);
 
     // Create two warehouses
     const [wh1, wh2] = await Promise.all([
@@ -235,25 +240,25 @@ test.describe('Warehouse: multi-location seller flow', () => {
     await writeDoc(`products/${productId}`, toFirestoreFields({
       sellerId: uid,
       name: 'Multi-Warehouse Widget',
+      description: 'A widget stocked across multiple warehouses.',
       price: 19.99,
-      lifecycleStatus: 'active',
+      lifecycleStatus: 'under_review',
       stockQuantity: totalStock,
       categoryId: 1,
       imageUrls: [],
       keywords: [],
-      rating: 0,
       warehouseIds: [wId1, wId2],
       shipFromCity: 'Winnipeg',
       shipFromProvince: 'MB',
-    }));
+    }), adminToken, false);
 
     // Write inventoryLevels subcollection docs (one per warehouse)
     await Promise.all([
-      writeDoc(`products/${productId}/inventoryLevels/${wId1}`, toFirestoreFields({ availableQuantity: stock1, warehouseId: wId1 })),
-      writeDoc(`products/${productId}/inventoryLevels/${wId2}`, toFirestoreFields({ availableQuantity: stock2, warehouseId: wId2 })),
+      writeDoc(`products/${productId}/inventoryLevels/${wId1}`, toFirestoreFields({ availableQuantity: stock1, warehouseId: wId1 }), adminToken, false),
+      writeDoc(`products/${productId}/inventoryLevels/${wId2}`, toFirestoreFields({ availableQuantity: stock2, warehouseId: wId2 }), adminToken, false),
     ]);
 
-    const doc = await readDoc(`products/${productId}`);
+    const doc = await getDoc(`products/${productId}`, adminToken);
     expect(doc.stockQuantity).toBe(totalStock);
     // warehouseStock map must NOT exist on product doc
     expect(doc.warehouseStock).toBeUndefined();

@@ -16,9 +16,10 @@ export default defineConfig({
     actionTimeout: 20 * 1000,
     baseURL: process.env.E2E_TARGET_URL ?? 'https://orignagta-staging.web.app',
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    screenshot: 'on',
     bypassCSP: true,
   },
+  outputDir: `${process.env.HOME}/Desktop/origna-screenshots/staging`,
   projects: [
     {
       name: 'chromium',
