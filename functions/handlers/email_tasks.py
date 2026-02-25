@@ -2,8 +2,9 @@
 Cloud Tasks handler for async email delivery.
 
 Registered in main.py as a Firebase Cloud Function task queue handler.
-Firebase CLI auto-creates the Cloud Tasks queue named 'send_email_task'
-on first deploy.
+Firebase CLI auto-creates the Cloud Tasks queue named 'sendEmailTask'
+on first deploy. Note: Cloud Tasks queue IDs cannot contain underscores,
+so camelCase is used here.
 
 Queue config:
   - Max 5 retries with exponential backoff (10s → 600s)
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
     region=_REGION,
     secrets=_SECRETS,
 )
-def send_email_task(req: tasks_fn.CallableRequest) -> None:
+def sendEmailTask(req: tasks_fn.CallableRequest) -> None:
     """Process a queued email — called by Cloud Tasks, never directly."""
     data = req.data
     to_email = data.get("to", "")
@@ -40,8 +41,8 @@ def send_email_task(req: tasks_fn.CallableRequest) -> None:
     html_content = data.get("html", "")
 
     if not to_email or not subject or not html_content:
-        logger.error(f"send_email_task: missing required fields in payload: {list(data.keys())}")
+        logger.error(f"sendEmailTask: missing required fields in payload: {list(data.keys())}")
         return
 
     send_email(to_email=to_email, subject=subject, html_content=html_content)
-    logger.info(f"send_email_task: delivered to {to_email} | event={data.get('event_type','')}")
+    logger.info(f"sendEmailTask: delivered to {to_email} | event={data.get('event_type','')}")

@@ -36,7 +36,7 @@ def enqueue_email_task(
     try:
         from firebase_admin import functions as admin_functions
 
-        queue = admin_functions.task_queue("send_email_task")
+        queue = admin_functions.task_queue("sendEmailTask")
         queue.enqueue(
             {
                 "to": to_email,

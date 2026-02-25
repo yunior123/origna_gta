@@ -156,7 +156,7 @@ from handlers.digital import (  # noqa: E402
 # ===============================================
 # EMAIL TASK QUEUE HANDLER (Cloud Tasks)
 # ===============================================
-from handlers.email_tasks import send_email_task  # noqa: E402
+from handlers.email_tasks import sendEmailTask  # noqa: E402
 
 # ===============================================
 # ORDER HANDLERS
@@ -401,7 +401,7 @@ __all__ = [
     "sync_expired_subscriptions",
     "escalate_stale_return_requests",
     # Cloud Tasks
-    "send_email_task",
+    "sendEmailTask",
     # Shipping
     "calculate_shipping_cost",
     # Digital products
