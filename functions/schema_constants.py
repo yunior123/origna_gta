@@ -369,6 +369,7 @@ class Fields:
     LAST_MESSAGE = "lastMessage"  # str — text of last message
     LAST_MESSAGE_AT = "lastMessageAt"  # datetime
     SENDER_ID = "senderId"
+    SENDER_DISPLAY_NAME = "senderDisplayName"  # str — denormalized at send time to avoid extra reads for push notifications
     MESSAGE_TEXT = "text"
     IS_READ = "read"  # bool — message read by recipient
     BUYER_UNREAD_COUNT = "buyerUnreadCount"  # int — unread messages for buyer
@@ -1021,6 +1022,7 @@ class SecurityAlertTypes:
     AUTH_DELETION_FAILED = "auth_deletion_failed"
     TOKEN_REVOCATION_FAILED = "token_revocation_failed"  # Suspension token revoke failed
     SELLER_METRICS_BREACH = "seller_metrics_breach"  # TASK 11
+    STRIPE_TAX_FALLBACK_GST = "stripe_tax_fallback_gst"  # Stripe Tax down for GST-exempt buyer
 
 
 class SeverityLevels:

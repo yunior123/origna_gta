@@ -1477,7 +1477,12 @@ def on_product_created(event: firestore_fn.Event) -> None:
         )
 
         if not has_local_or_same_day:
-            logger.warning(f"WARNING: Perishable product {product_id} should have local/same-day delivery")
+            logger.warning(f"Perishable product {product_id} rejected: no local/same-day delivery option")
+            _deactivate_with_email(
+                "Perishable products require local delivery, same-day delivery, or pickup option "
+                "(CFIA compliance — perishables cannot be shipped with standard/express options)"
+            )
+            return
 
     # ── DIGITAL URL VALIDATION: HTTPS-only enforcement ──
     if is_digital:

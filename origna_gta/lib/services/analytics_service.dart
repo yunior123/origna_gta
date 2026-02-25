@@ -39,7 +39,20 @@ class AnalyticsService {
 
   static Future<void> logSearch({required String searchTerm}) async {
     if (!_isEnabled) return;
-    await _analytics.logSearch(searchTerm: searchTerm);
+    // F-68: Redact potential PII before sending to analytics.
+    // Searches containing email addresses, long numeric sequences (order IDs, phone numbers),
+    // or explicit privacy markers are replaced with metadata only.
+    final redacted = _redactSearchTerm(searchTerm);
+    if (redacted == null) return; // Entirely PII — skip logging
+    await _analytics.logSearch(searchTerm: redacted);
+  }
+
+  static String? _redactSearchTerm(String term) {
+    // Contains @ → likely an email address
+    if (term.contains('@')) return null;
+    // 7+ consecutive digits → phone number or order ID
+    if (RegExp(r'\b\d{7,}\b').hasMatch(term)) return null;
+    return term;
   }
 
   static Future<void> logAddToCart({

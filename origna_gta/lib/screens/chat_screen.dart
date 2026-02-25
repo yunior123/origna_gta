@@ -297,35 +297,41 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        onLongPress: () {
-          Clipboard.setData(ClipboardData(text: message.text));
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('chat.message_copied'.tr()), duration: const Duration(seconds: 1)),
-          );
-        },
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
-          decoration: BoxDecoration(
-            color: isMe
-                ? DesignTokens.primary
-                : (isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant),
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(16),
-              topRight: const Radius.circular(16),
-              bottomLeft: Radius.circular(isMe ? 16 : 4),
-              bottomRight: Radius.circular(isMe ? 4 : 16),
+    final semanticLabel = isMe
+        ? 'chat-message-me: ${message.text}'
+        : 'chat-message-other: ${message.text}';
+    return Semantics(
+      label: semanticLabel,
+      child: Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: GestureDetector(
+          onLongPress: () {
+            Clipboard.setData(ClipboardData(text: message.text));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('chat.message_copied'.tr()), duration: const Duration(seconds: 1)),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+            decoration: BoxDecoration(
+              color: isMe
+                  ? DesignTokens.primary
+                  : (isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant),
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: Radius.circular(isMe ? 16 : 4),
+                bottomRight: Radius.circular(isMe ? 4 : 16),
+              ),
             ),
-          ),
-          child: Text(
-            message.text,
-            style: TextStyle(
-              color: isMe ? Colors.white : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
-              fontSize: 15,
+            child: Text(
+              message.text,
+              style: TextStyle(
+                color: isMe ? Colors.white : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                fontSize: 15,
+              ),
             ),
           ),
         ),

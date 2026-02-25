@@ -38,6 +38,16 @@ final mySellerChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref)
   return ref.watch(chatRepositoryProvider).sellerChatsStream(uid);
 });
 
+// ─── Unified chat inbox (buyer + seller merged, deduped, sorted) ───────────
+
+/// F-71: Single inbox for users who are both buyer and seller.
+/// Use this provider for the main chat inbox screen.
+final myAllChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) {
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return const Stream.empty();
+  return ref.watch(chatRepositoryProvider).allChatsStream(uid);
+});
+
 // ─── Chat ViewModel ────────────────────────────────────────────────────────
 
 class ChatState {

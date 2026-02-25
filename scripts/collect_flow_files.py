@@ -5,7 +5,7 @@ into Desktop/origna_flows/<flow_name>/ for AI review.
 
 Rules:
   - CLAUDE.md + any learned.md/LEARNED.md variants are prepended for AI context.
-  - Max 18 primary files per flow folder (+ INSTRUCTIONS.md + optional _overflow.md = 20 total).
+  - Max 8 primary files per flow folder (+ INSTRUCTIONS.md + optional _overflow.md = 10 total).
   - Extra files are concatenated into _overflow.md.
   - Total combined content is capped at MAX_TOTAL_BYTES to respect Claude.ai's context limit.
 
@@ -22,7 +22,8 @@ from time import perf_counter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DESKTOP = Path.home() / "Desktop" / "origna_flows"
-MAX_FILES_PER_FLOW = 18  # includes CLAUDE.md; +INSTRUCTIONS.md +_overflow.md = 20 total max
+MAX_FILES_PER_FLOW = 8  # includes CLAUDE.md; +INSTRUCTIONS.md +_overflow.md = 10 total max
+MAX_TOTAL_FILES_PER_FLOW = 10
 # Tuned up to avoid flow truncation in high-complexity bundles; can be overridden for tighter caps.
 MAX_TOTAL_BYTES = int(os.getenv("ORIGNA_FLOW_MAX_BYTES", "1500000"))
 
@@ -2453,7 +2454,7 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> FlowCopyResult:
     - E2E spec files from FLOW_SPECS + origna_flows docs appended after primary source files.
     - If total files exceed MAX_FILES_PER_FLOW, excess files are concatenated into _overflow.md.
     - Total content is capped at MAX_TOTAL_BYTES to respect Claude.ai's context limit.
-    - Folder will have at most 20 files: 18 primary + INSTRUCTIONS.md + _overflow.md.
+    - Folder will have at most 10 files: 8 primary + INSTRUCTIONS.md + _overflow.md.
     """
     dest_root = DESKTOP / flow_name
     if dest_root.exists():
@@ -2615,7 +2616,7 @@ def main() -> None:
         near_limit = "  ⚠️ NEAR LIMIT" if result.total_bytes > MAX_TOTAL_BYTES * 0.95 else ""
         trunc_note = "  ✂️ TRUNCATED" if result.truncated_overflow else ""
         print(
-            f"{status} {flow:<35}  {result.folder_file_count}/20 files  "
+            f"{status} {flow:<35}  {result.folder_file_count}/{MAX_TOTAL_FILES_PER_FLOW} files  "
             f"({result.missing_count} missing)  📦 {size_kb:.0f} KB"
             f"{near_limit}{trunc_note}"
         )
@@ -2627,7 +2628,10 @@ def main() -> None:
 
     print(f"\nDone — {total_copied} files copied, {total_missing} missing across {len(FLOWS)} flows.")
     print(f"📁 Open: {DESKTOP}")
-    print(f"ℹ️  Size cap: {MAX_TOTAL_BYTES // 1024} KB per flow  |  Max files: {MAX_FILES_PER_FLOW} primary + INSTRUCTIONS.md + _overflow.md = 20 total")
+    print(
+        f"ℹ️  Size cap: {MAX_TOTAL_BYTES // 1024} KB per flow  |  "
+        f"Max files: {MAX_FILES_PER_FLOW} primary + INSTRUCTIONS.md + _overflow.md = {MAX_TOTAL_FILES_PER_FLOW} total"
+    )
     print(f"🧾 Manifest: {DESKTOP / '_manifest.json'}")
 
 

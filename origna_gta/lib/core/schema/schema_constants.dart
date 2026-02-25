@@ -814,6 +814,7 @@ abstract final class Fields {
   static const lastMessage = 'lastMessage';
   static const lastMessageAt = 'lastMessageAt';
   static const senderId = 'senderId';
+  static const senderDisplayName = 'senderDisplayName'; // denormalized at send time
   static const messageText = 'text';
   static const isRead = 'read';
   static const buyerUnreadCount = 'buyerUnreadCount';
@@ -1451,6 +1452,7 @@ abstract final class SecurityAlertTypes {
   static const authDeletionFailed = 'auth_deletion_failed';
   static const tokenRevocationFailed = 'token_revocation_failed'; // Suspension token revoke failed
   static const sellerMetricsBreach = 'seller_metrics_breach'; // TASK 11
+  static const stripeTaxFallbackGst = 'stripe_tax_fallback_gst'; // Stripe Tax down for GST-exempt buyer
 }
 
 /// Security alert severity levels

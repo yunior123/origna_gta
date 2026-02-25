@@ -680,7 +680,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             Expanded(
               child: _EditDigitalTypeChip(
                 key: const Key('editproduct_digital_type_software'),
-                label: 'Software',
+                label: 'product.digital_type_software'.tr(),
                 icon: Icons.computer_outlined,
                 selected: state.digitalType == DigitalTypeValues.software,
                 onTap: () => viewModel.setDigitalType(DigitalTypeValues.software),
@@ -690,7 +690,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             Expanded(
               child: _EditDigitalTypeChip(
                 key: const Key('editproduct_digital_type_book'),
-                label: 'Book',
+                label: 'product.digital_type_book'.tr(),
                 icon: Icons.menu_book_outlined,
                 selected: state.digitalType == DigitalTypeValues.book,
                 onTap: () => viewModel.setDigitalType(DigitalTypeValues.book),
@@ -700,7 +700,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         ),
         if (state.digitalType == DigitalTypeValues.software) ...[
           const SizedBox(height: 16),
-          Text('Download Links', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'product.download_links'.tr(),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 4),
           _editUrlField(
             key: const Key('editproduct_macos_url'),
@@ -731,7 +734,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[
           const SizedBox(height: 16),
-          const Text('Re-enter the download URL to update it (not shown for security)', style: TextStyle(fontSize: 12, color: Colors.orange)),
+          Text(
+            'product.reenter_download_url_update'.tr(),
+            style: const TextStyle(fontSize: 12, color: Colors.orange),
+          ),
           const SizedBox(height: 6),
           _editUrlField(
             key: const Key('editproduct_book_url'),

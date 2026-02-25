@@ -814,6 +814,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     _fadeController.forward();
     _shippingDiscount3Controller.addListener(_validateDiscountTiers);
     _shippingDiscount5Controller.addListener(_validateDiscountTiers);
+    // F-58: Reset stale form data if screen is re-entered after a previous successful submission.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(addProductViewModelProvider.notifier).resetIfSuccess();
+    });
   }
 
   void _validateDiscountTiers() {
@@ -1110,7 +1114,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             Expanded(
               child: _DigitalTypeCard(
                 key: const Key('addproduct_digital_type_software'),
-                label: 'Software',
+                label: 'product.digital_type_software'.tr(),
                 icon: Icons.computer_outlined,
                 selected: state.digitalType == DigitalTypeValues.software,
                 onTap: () => viewModel.setDigitalType(DigitalTypeValues.software),
@@ -1120,7 +1124,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             Expanded(
               child: _DigitalTypeCard(
                 key: const Key('addproduct_digital_type_book'),
-                label: 'Book',
+                label: 'product.digital_type_book'.tr(),
                 icon: Icons.menu_book_outlined,
                 selected: state.digitalType == DigitalTypeValues.book,
                 onTap: () => viewModel.setDigitalType(DigitalTypeValues.book),
@@ -1130,7 +1134,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ),
         if (state.digitalType == DigitalTypeValues.software) ...[
           const SizedBox(height: 16),
-          Text('Download Links', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'product.download_links'.tr(),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'macOS (.dmg)',
@@ -1160,7 +1167,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[
           const SizedBox(height: 16),
-          Text('Book Download URL', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'product.book_download_url'.tr(),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'Download source URL',
@@ -1481,15 +1491,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             const SizedBox(height: 6),
             Text('product.discount_validation'.tr(), style: TextStyle(color: DesignTokens.error, fontSize: 12)),
           ],
-          const SizedBox(height: 8),
-          _buildGlassToggle(
-            label: 'product.ten_plus_free'.tr(),
-            icon: Icons.celebration_rounded,
-            value: state.freeShippingAt10Plus,
-            onChanged: viewModel.setFreeShippingAt10Plus,
-            infoTitle: 'product.bulk_free_shipping_title'.tr(),
-            infoBody: 'product.bulk_free_shipping_body'.tr(),
-          ),
+          // F-26: freeShippingAt10Plus removed — feature not fully implemented yet.
+          // The toggle was showing in UI but the value was never stored/used on the backend.
+          // Re-add when the bulk discount feature is fully designed and implemented.
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1645,7 +1649,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       key: Key('addproduct_subcategory_$catId'),
       initialValue: _selectedSubcategory,
       decoration: InputDecoration(
-        labelText: 'Subcategory (optional)',
+        labelText: 'product.subcategory_optional'.tr(),
         prefixIcon: const Icon(Icons.subdirectory_arrow_right_rounded, size: 20),
         filled: true,
         fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
@@ -1664,7 +1668,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
       ),
-      hint: Text('Select subcategory', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+      hint: Text(
+        'product.select_subcategory'.tr(),
+        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+      ),
       items: subcategories
           .map(
             (s) => DropdownMenuItem(

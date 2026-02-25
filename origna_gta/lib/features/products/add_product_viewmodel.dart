@@ -269,9 +269,19 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
           state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_total_stock_zero'.tr());
           return;
         }
+        // F-82: Reject negative per-warehouse stock
+        if (state.warehouseStockMap.values.any((qty) => qty < 0)) {
+          state = state.copyWith(isLoading: false, errorMessage: 'product.warehouse_stock_negative'.tr());
+          return;
+        }
       }
-      // When using warehouses, stock = sum of all warehouseStockMap values
-      final effectiveStock = useWarehouses ? state.warehouseStockMap.values.fold(0, (a, b) => a + b) : stock;
+      // F-53: When hasVariants, derive effective stock from variant quantities sum.
+      // When using warehouses, stock = sum of all warehouseStockMap values.
+      final effectiveStock = state.hasVariants
+          ? state.variants.fold(0, (int sum, v) => sum + (v.stockQuantity))
+          : useWarehouses
+              ? state.warehouseStockMap.values.fold(0, (a, b) => a + b)
+              : stock;
 
       final uid = _ref.read(userIdProvider);
       if (uid == null) {
@@ -571,6 +581,14 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   /// Bug #1: Allow ProductAddImages widget to sync images back to ViewModel
   void updateImages(List<ImageModel> images) => state = state.copyWith(imageModels: images);
+
+  /// F-58: Reset form state when re-entering the screen after a previous success.
+  /// Call from screen's initState if state.isSuccess == true.
+  void resetIfSuccess() {
+    if (state.isSuccess) {
+      state = AddProductState();
+    }
+  }
 
   Future<List<Uint8List>> _compressImages(List<ImageModel> imageModels) async {
     final results = <Uint8List>[];

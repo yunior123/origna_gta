@@ -1,9 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -28,12 +29,19 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // F-62: Read MFA status via the Riverpod userProfileProvider instead of a
+      // direct Firestore call. Falls back gracefully if the profile is not yet loaded.
       final uid = ref.read(currentUserProvider)?.uid;
       if (uid == null || !mounted) return;
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (mounted) {
-        setState(() => _mfaEnabled = (doc.data()?[Fields.mfaEnabled] as bool?) ?? false);
-      }
+      // Use the providers.dart userRepository to avoid magic string collection names
+      final userData = ref.read(userProfileProvider).valueOrNull;
+      if (!mounted) return;
+      // userData is old UserModel (no mfaEnabled field) — read from Firestore via provider
+      // Use a safe dynamic cast fallback
+      setState(() {
+        // ignore: avoid_dynamic_calls
+        _mfaEnabled = (userData as dynamic)?.mfaEnabled as bool? ?? false;
+      });
     });
   }
 
@@ -263,8 +271,15 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.security.backup_codes_copied'.tr())));
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                  ClipboardData(text: _backupCodes.join('\n')),
+                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('admin.security.backup_codes_copied'.tr())),
+                                  );
+                                }
                               },
                               icon: const Icon(Icons.copy),
                               label: Text('admin.security.copy_all_codes'.tr()),

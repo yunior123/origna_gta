@@ -297,7 +297,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         return CheckoutError(message: 'Operation cancelled');
       }
 
-      // Backend returns: {success, sessionId, orderId, checkoutUrl}
+      // Backend returns: {success, sessionId, orderId, checkoutUrl, taxAmountCents}
       // Handle duplicate order (idempotency) — backend may return existing session
       if (result[ApiKeys.duplicate] == true) {
         final checkoutUrl = result[ApiKeys.checkoutUrl] as String?;
@@ -315,6 +315,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final checkoutUrl = result[ApiKeys.checkoutUrl] as String;
       final orderId = result[Fields.orderId] as String;
       final sessionId = result[ApiKeys.sessionId] as String;
+      // F-77: server-calculated tax amount — use this in UI instead of client-side estimate
+      final serverTaxAmountCents = (result[Fields.taxAmountCents] as num?)?.toInt() ?? 0;
 
       await _orderRepository.updateLastSession(userId, sessionId, orderId);
 
@@ -322,7 +324,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         return CheckoutError(message: 'Operation cancelled');
       }
 
-      state = state.copyWith(isProcessing: false, clearIdempotencyKey: true);
+      state = state.copyWith(isProcessing: false, clearIdempotencyKey: true, serverTaxAmountCents: serverTaxAmountCents);
 
       // Invalidate cart so stale data doesn't persist after checkout
       _ref.invalidate(cartItemsProvider);

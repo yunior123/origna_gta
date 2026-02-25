@@ -263,6 +263,12 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("resource-exhausted", "Too many messages. Please slow down.")
 
     now = datetime.now(UTC)
+
+    # F-70: Read sender name once and denormalize into the message doc to avoid
+    # a separate Firestore read on every push notification sent.
+    sender_snap = db.collection(Collections.USERS).document(uid).get()
+    sender_name = (sender_snap.to_dict() or {}).get(Fields.NAME, "Someone") if sender_snap.exists else "Someone"
+
     msg_ref = (
         db.collection(Collections.CHATS)
         .document(chat_id)
@@ -272,6 +278,7 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     msg_ref.set(
         {
             Fields.SENDER_ID: uid,
+            Fields.SENDER_DISPLAY_NAME: sender_name,
             Fields.MESSAGE_TEXT: text,
             Fields.CREATED_AT: now,
             Fields.IS_READ: False,
@@ -306,12 +313,10 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     logger.info(f"Message sent in chat {chat_id} by user {uid}")
 
-    # Push notification to the recipient
+    # Push notification to the recipient — sender_name already fetched above (F-70).
     recipient_id = seller_id if uid == buyer_id else buyer_id
     try:
         from services.push_service import send_push_notification
-        sender_snap = db.collection(Collections.USERS).document(uid).get()
-        sender_name = (sender_snap.to_dict() or {}).get(Fields.NAME, "Someone") if sender_snap.exists else "Someone"
         send_push_notification(
             recipient_id,
             title=f"New message from {sender_name}",

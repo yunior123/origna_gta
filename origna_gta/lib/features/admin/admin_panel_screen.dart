@@ -277,7 +277,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                   }),
                   const Spacer(),
                   // Stats summary at bottom
-                  _AdminQuickStats(ref: ref),
+                  const _AdminQuickStats(),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -311,7 +311,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                       ),
                       const Spacer(),
                       Text(
-                        'Origna GTA Admin',
+                        'admin.header_brand'.tr(),
                         style: TextStyle(color: DesignTokens.textDisabled, fontSize: 13),
                       ),
                     ],
@@ -328,12 +328,11 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
   }
 }
 
-class _AdminQuickStats extends StatelessWidget {
-  final WidgetRef ref;
-  const _AdminQuickStats({required this.ref});
+class _AdminQuickStats extends ConsumerWidget {
+  const _AdminQuickStats();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final sellers = ref.watch(adminSellersProvider);
     final users = ref.watch(adminUsersProvider);
 

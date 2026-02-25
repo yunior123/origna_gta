@@ -28,8 +28,8 @@ from schema_constants import (
 class TestPaymentFlow(unittest.TestCase):
     """Tests for payment flow operations"""
 
-    # NOTE: test_capture_payment_multi_seller_bugfix removed - requires feature implementation
-    # to check PAID status before capture. See TODO in payment_stripe.py
+    # NOTE: test_capture_payment_multi_seller_bugfix removed until PAID-before-capture
+    # behavior is implemented and stabilized in capture_payment.
 
     @patch("handlers.payment_stripe.get_db")
     @patch("handlers.payment_stripe.get_rate_limiter")

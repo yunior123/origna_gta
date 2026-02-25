@@ -1110,8 +1110,8 @@ class _DigitalProductInfo extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 product.digitalType == DigitalTypeValues.software
-                    ? 'Desktop Software'
-                    : 'Digital Book',
+                    ? 'product.desktop_software'.tr()
+                    : 'product.digital_book'.tr(),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: DesignTokens.digital,
@@ -1121,7 +1121,10 @@ class _DigitalProductInfo extends StatelessWidget {
           ),
           if (builds.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const Text('Available for:', style: TextStyle(fontSize: 12)),
+            Text(
+              'product.available_for'.tr(),
+              style: const TextStyle(fontSize: 12),
+            ),
             const SizedBox(height: 4),
             Wrap(
               spacing: 6,
@@ -1579,7 +1582,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: const Text('Thanks for your feedback!'),
+            content: Text('product.helpful_vote_thanks'.tr()),
             backgroundColor: DesignTokens.success,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
@@ -1590,7 +1593,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Could not record vote. Please try again.'),
+            content: Text('product.helpful_vote_error'.tr()),
             backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),

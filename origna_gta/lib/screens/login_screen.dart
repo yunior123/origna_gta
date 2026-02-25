@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -139,7 +140,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                       if (value == null || value.isEmpty) {
                                         return 'auth.email_required'.tr();
                                       }
-                                      if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value)) {
+                                      if (!ValidationConstants.emailRegex.hasMatch(value)) {
                                         return 'auth.email_invalid'.tr();
                                       }
                                       return null;
@@ -414,7 +415,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                       decoration: InputDecoration(labelText: 'auth.email'.tr(), prefixIcon: Icon(Icons.email_outlined)),
                       validator: (value) {
                         if (value == null || value.isEmpty) return 'auth.please_enter_email'.tr();
-                        if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value)) return 'auth.enter_valid_email'.tr();
+                        if (!ValidationConstants.emailRegex.hasMatch(value)) return 'auth.enter_valid_email'.tr();
                         return null;
                       },
                     ),

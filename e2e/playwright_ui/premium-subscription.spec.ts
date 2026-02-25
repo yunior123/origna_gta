@@ -18,6 +18,9 @@
  *   J. Platform Fee Waiver
  *   K. Chat Paywall Gate
  *   L. Security Adversarial
+ *   M. Screen Rendering (Cancel + Success)
+ *   N. Reactivate Subscription
+ *   O. Webhook Edge Cases (payment_failed, renewal, past_due gate)
  *
  * Prerequisites:
  *   - Dev Firebase running (orignagta-dev)
@@ -35,6 +38,7 @@
  *   Disputed (later): 4000 0000 0000 0259
  */
 
+import { execSync } from 'child_process';
 import { test, expect, type Page } from '@playwright/test';
 import {
   signIn,
@@ -63,7 +67,6 @@ import {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
-const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
 
 const CARD_SUCCESS       = { number: '4242 4242 4242 4242', exp: '12/34', cvc: '123', name: 'Test Buyer', postalCode: 'M5V 3A8' };
 const CARD_DECLINED      = { number: '4000 0000 0000 0002', exp: '12/34', cvc: '123', name: 'Test Buyer', postalCode: 'M5V 3A8' };
@@ -73,6 +76,38 @@ const CARD_WRONG_CVC     = { number: '4000 0000 0000 0127', exp: '12/34', cvc: '
 const CARD_3DS           = { number: '4000 0025 0000 3155', exp: '12/34', cvc: '123', name: 'Test Buyer', postalCode: 'M5V 3A8' };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Fills Stripe card fields (inline or iframe-based Elements).
+ * Shared by fillSubscriptionCheckout and expandAndFillStripeCard.
+ * Returns true if card fields were found and filled.
+ */
+async function fillStripeCardFields(page: Page, card: typeof CARD_SUCCESS): Promise<boolean> {
+  const cardNumberInput = page.locator('#cardNumber, input[name="cardNumber"]').first();
+  const inlineVisible = await cardNumberInput.isVisible({ timeout: 10_000 }).catch(() => false);
+  if (inlineVisible) {
+    await cardNumberInput.fill(card.number);
+    const expInput = page.locator('#cardExpiry, input[name="cardExpiry"]').first();
+    const cvcInput = page.locator('#cardCvc, input[name="cardCvc"]').first();
+    if (await expInput.isVisible({ timeout: 3_000 }).catch(() => false)) await expInput.fill(card.exp);
+    if (await cvcInput.isVisible({ timeout: 3_000 }).catch(() => false)) await cvcInput.fill(card.cvc);
+    return true;
+  }
+  // Iframe-based Stripe Elements
+  for (const frame of page.frames()) {
+    if (!frame.url().includes('stripe')) continue;
+    const cardInput = frame.locator('input[name="cardnumber"], input[autocomplete="cc-number"]').first();
+    if (await cardInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await cardInput.fill(card.number);
+      const expIframe = frame.locator('input[name="exp-date"], input[autocomplete="cc-exp"]').first();
+      const cvcIframe = frame.locator('input[name="cvc"], input[autocomplete="cc-csc"]').first();
+      if (await expIframe.isVisible({ timeout: 2_000 }).catch(() => false)) await expIframe.fill(card.exp);
+      if (await cvcIframe.isVisible({ timeout: 2_000 }).catch(() => false)) await cvcIframe.fill(card.cvc);
+      return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Poll until subscriptions/{uid}.isPremium matches expected value, or timeout.
@@ -161,38 +196,14 @@ async function fillSubscriptionCheckout(
     }
   }
 
-  // 4. Fill card fields — try inline then iframe
-  const cardNumberInput = page.locator('#cardNumber, input[name="cardNumber"]').first();
-  const inlineCardVisible = await cardNumberInput.isVisible({ timeout: 10_000 }).catch(() => false);
-  if (inlineCardVisible) {
-    await cardNumberInput.fill(card.number);
-    const expInput = page.locator('#cardExpiry, input[name="cardExpiry"]').first();
-    const cvcInput = page.locator('#cardCvc, input[name="cardCvc"]').first();
-    if (await expInput.isVisible({ timeout: 3_000 }).catch(() => false)) await expInput.fill(card.exp);
-    if (await cvcInput.isVisible({ timeout: 3_000 }).catch(() => false)) await cvcInput.fill(card.cvc);
-  } else {
-    // Iframe-based Stripe Elements card fields
-    let filled = false;
-    for (const frame of page.frames()) {
-      if (!frame.url().includes('stripe')) continue;
-      const cardInput = frame.locator('input[name="cardnumber"], input[autocomplete="cc-number"]').first();
-      if (await cardInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await cardInput.fill(card.number);
-        const expIframe = frame.locator('input[name="exp-date"], input[autocomplete="cc-exp"]').first();
-        const cvcIframe = frame.locator('input[name="cvc"], input[autocomplete="cc-csc"]').first();
-        if (await expIframe.isVisible({ timeout: 2_000 }).catch(() => false)) await expIframe.fill(card.exp);
-        if (await cvcIframe.isVisible({ timeout: 2_000 }).catch(() => false)) await cvcIframe.fill(card.cvc);
-        filled = true;
-        break;
-      }
-    }
-    if (!filled) {
-      // Last resort: frameLocator approach
-      const stripeFrame = page.frameLocator('iframe[src*="stripe"]').first();
-      const fi = stripeFrame.locator('input[name="cardnumber"], input[autocomplete="cc-number"]').first();
-      if (await fi.isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await fi.fill(card.number);
-      }
+  // 4. Fill card fields (extracted helper handles inline + iframe + last resort)
+  const cardFilled = await fillStripeCardFields(page, card);
+  if (!cardFilled) {
+    // Last resort: frameLocator approach
+    const stripeFrame = page.frameLocator('iframe[src*="stripe"]').first();
+    const fi = stripeFrame.locator('input[name="cardnumber"], input[autocomplete="cc-number"]').first();
+    if (await fi.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await fi.fill(card.number);
     }
   }
 
@@ -262,34 +273,10 @@ async function expandAndFillStripeCard(page: Page, card: typeof CARD_SUCCESS): P
     await page.waitForTimeout(1_500);
   }
 
-  // Fill card fields — inline first, then iframe fallback
-  const cardNumberInput = page.locator('#cardNumber, input[name="cardNumber"]').first();
-  const inlineVisible = await cardNumberInput.isVisible({ timeout: 10_000 }).catch(() => false);
-  if (inlineVisible) {
-    await cardNumberInput.fill(card.number);
-    const expInput = page.locator('#cardExpiry, input[name="cardExpiry"]').first();
-    const cvcInput = page.locator('#cardCvc, input[name="cardCvc"]').first();
-    if (await expInput.isVisible({ timeout: 3_000 }).catch(() => false)) await expInput.fill(card.exp);
-    if (await cvcInput.isVisible({ timeout: 3_000 }).catch(() => false)) await cvcInput.fill(card.cvc);
-    return true;
-  }
-
-  // Iframe-based Stripe Elements
-  for (const frame of page.frames()) {
-    if (!frame.url().includes('stripe')) continue;
-    const cardInput = frame.locator('input[name="cardnumber"], input[autocomplete="cc-number"]').first();
-    if (await cardInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await cardInput.fill(card.number);
-      const expIframe = frame.locator('input[name="exp-date"], input[autocomplete="cc-exp"]').first();
-      const cvcIframe = frame.locator('input[name="cvc"], input[autocomplete="cc-csc"]').first();
-      if (await expIframe.isVisible({ timeout: 2_000 }).catch(() => false)) await expIframe.fill(card.exp);
-      if (await cvcIframe.isVisible({ timeout: 2_000 }).catch(() => false)) await cvcIframe.fill(card.cvc);
-      return true;
-    }
-  }
-
-  console.warn('expandAndFillStripeCard: card fields not found');
-  return false;
+  // Fill card fields (extracted helper handles inline + iframe)
+  const filled = await fillStripeCardFields(page, card);
+  if (!filled) console.warn('expandAndFillStripeCard: card fields not found');
+  return filled;
 }
 async function handle3DS(page: Page, approve: boolean): Promise<void> {
   const frame = page.frameLocator('iframe[name*="stripe-challenge"], iframe[src*="3ds2"]').first();
@@ -1018,7 +1005,7 @@ test.describe('I. Cancel Subscription Flow', () => {
   });
 
   test('I2: cancel_subscription returns not-found for non-subscriber', async () => {
-    const auth = await signIn(SELLER_EMAIL); // Seller should not be premium
+    const auth = await signIn(TEST_ACCOUNTS.SELLER_EMAIL); // Seller should not be premium
     const err = await callExpectError('cancel_subscription', {}, auth.idToken);
     // Either not-found (no subscription) or failed-precondition (not active)
     expect(err.code).toMatch(/not-found|failed-precondition/i);
@@ -1281,5 +1268,187 @@ test.describe('L. Security Adversarial', () => {
       const err = await callExpectError('cancel_subscription', {}, auth.idToken);
       expect(err.code).toMatch(/failed-precondition|already-exists|not-found/i);
     }
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════
+// M. Screen Rendering (Cancel + Success)
+// ════════════════════════════════════════════════════════════════════
+
+test.describe('M. Screen Rendering', () => {
+  test.setTimeout(120_000);
+
+  test('M1: SubscriptionCancelScreen renders after cancellation navigation', async ({ page }) => {
+    await requireWebApp(page, WEB_APP_URL);
+    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
+    await navigateToSubscription(page);
+
+    // Trigger cancel flow — button must be visible for a subscribed user
+    const cancelBtn = page.locator('[aria-label="btn-cancel-subscription"]');
+    const cancelVisible = await cancelBtn.isVisible({ timeout: 20_000 }).catch(() => false);
+    if (!cancelVisible) {
+      console.log('M1: Cancel button not visible — user may not be premium, skipping');
+      return;
+    }
+    await cancelBtn.click();
+    await page.waitForTimeout(1_000);
+
+    // Confirm dialog / cancel screen must appear
+    const cancelScreen = page.locator('[aria-label="subscription-cancel-screen"]');
+    const confirmBtn   = page.locator('[aria-label="btn-confirm-cancel-subscription"]');
+    const screenShown  = await Promise.race([
+      cancelScreen.waitFor({ state: 'visible', timeout: 15_000 }).then(() => true).catch(() => false),
+      confirmBtn.waitFor({ state: 'visible', timeout: 15_000 }).then(() => true).catch(() => false),
+    ]);
+    expect(screenShown, 'subscription-cancel-screen or confirm button must be visible').toBe(true);
+  });
+
+  test('M2: SubscriptionSuccessScreen renders at /subscription/success route', async ({ page }) => {
+    await requireWebApp(page, WEB_APP_URL);
+    await ensureLoggedInAsAdmin(page, WEB_APP_URL, BUYER_EMAIL, DEFAULT_PASS);
+    await page.goto(`${WEB_APP_URL}/subscription/success`);
+    await waitForFlutter(page);
+
+    // Flutter widget key exposed as aria-label via Semantics
+    const successScreen = page.locator('[aria-label="subscription-success-screen"]');
+    const successVisible = await successScreen.isVisible({ timeout: 20_000 }).catch(() => false);
+    if (!successVisible) {
+      // Fallback: look for any success-indicating label content
+      const successText = page.getByText(/lbl-subscription-success|subscription-success/i).first();
+      const textVisible  = await successText.isVisible({ timeout: 5_000 }).catch(() => false);
+      expect(textVisible, 'subscription-success-screen widget must be visible at /subscription/success').toBe(true);
+      return;
+    }
+    expect(successVisible).toBe(true);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════
+// N. Reactivate Subscription
+// ════════════════════════════════════════════════════════════════════
+
+test.describe('N. Reactivate Subscription', () => {
+  test.setTimeout(60_000);
+
+  test('N1: reactivate_subscription sets cancelAtPeriodEnd=false', async () => {
+    const auth = await signIn(BUYER_EMAIL);
+
+    // Precondition: subscription must exist and be pending cancellation
+    const statusResult = await callCallable('get_subscription_status', {}, auth.idToken);
+    const statusData = statusResult.result ?? statusResult;
+    if (!statusData.isPremium) {
+      console.log('N1: Buyer is not premium — skipping reactivation test');
+      return;
+    }
+    if (!statusData.cancelAtPeriodEnd) {
+      console.log('N1: cancelAtPeriodEnd is already false — skipping (not in pending-cancel state)');
+      return;
+    }
+
+    // Call reactivate_subscription
+    const result = await callCallable('reactivate_subscription', {}, auth.idToken);
+    const data = result.result ?? result;
+    expect(data.success).toBe(true);
+
+    // Verify Firestore subscription doc has cancelAtPeriodEnd=false
+    let subDoc: any = null;
+    for (let i = 0; i < 10; i++) {
+      subDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+      if (subDoc?.cancelAtPeriodEnd === false) break;
+      await new Promise(r => setTimeout(r, 2_000));
+    }
+    expect(subDoc?.cancelAtPeriodEnd).toBe(false);
+  });
+
+  test('N2: reactivate_subscription requires authentication', async () => {
+    const err = await callExpectError('reactivate_subscription', {}, 'bad-token');
+    expect(err.code).toMatch(/unauthenticated|permission-denied/i);
+  });
+
+  test('N3: reactivate_subscription returns not-found for non-subscriber', async () => {
+    // Use seller account (should never have a subscription)
+    const auth = await signIn(TEST_ACCOUNTS.SELLER_EMAIL);
+    const status = await callCallable('get_subscription_status', {}, auth.idToken);
+    if ((status.result ?? status).isPremium) {
+      console.log('N3: Seller unexpectedly has premium — skipping');
+      return;
+    }
+    const err = await callExpectError('reactivate_subscription', {}, auth.idToken);
+    expect(err.code).toMatch(/not-found|failed-precondition/i);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════
+// O. Webhook Edge Cases
+// ════════════════════════════════════════════════════════════════════
+
+test.describe('O. Webhook Edge Cases', () => {
+  test.setTimeout(60_000);
+
+  // TODO: Requires active Stripe CLI listener forwarding to dev webhook endpoint.
+  // Run: stripe listen --forward-to <DEV_FUNCTIONS_URL>/stripe_webhook
+  test.skip('O1: invoice.payment_failed → subscription status becomes past_due', async () => {
+    const auth = await signIn(BUYER_EMAIL);
+
+    // Trigger Stripe CLI test event
+    execSync('stripe trigger invoice.payment_failed', { stdio: 'ignore' });
+
+    // Wait 3s for webhook processing
+    await new Promise(r => setTimeout(r, 3_000));
+
+    // Poll Firestore until status is past_due (up to 20s)
+    let subDoc: any = null;
+    for (let i = 0; i < 10; i++) {
+      subDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+      if (subDoc?.status === 'past_due') break;
+      await new Promise(r => setTimeout(r, 2_000));
+    }
+    expect(subDoc?.status).toBe('past_due');
+  });
+
+  // TODO: Requires a real subscription advancing through a billing cycle in test mode.
+  // Use Stripe test clocks (https://stripe.com/docs/billing/testing/test-clocks) to simulate renewal.
+  test.skip('O2: invoice.payment_succeeded keeps isPremium=true and advances expiresAt', async () => {
+    const auth = await signIn(BUYER_EMAIL);
+
+    const beforeDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+    const beforeExpiry = beforeDoc?.currentPeriodEnd;
+
+    // Trigger successful invoice payment event
+    execSync('stripe trigger invoice.payment_succeeded', { stdio: 'ignore' });
+    await new Promise(r => setTimeout(r, 3_000));
+
+    // Verify isPremium still true
+    const statusResult = await callCallable('get_subscription_status', {}, auth.idToken);
+    const data = statusResult.result ?? statusResult;
+    expect(data.isPremium).toBe(true);
+
+    // Verify expiresAt advanced (currentPeriodEnd should be >= previous)
+    const afterDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+    if (beforeExpiry && afterDoc?.currentPeriodEnd) {
+      expect(afterDoc.currentPeriodEnd).toBeGreaterThanOrEqual(beforeExpiry);
+    }
+  });
+
+  // TODO: Requires seeding a user with past_due status in Firestore (or triggering it via CLI).
+  // Then verify premium-gated features (chat, fee waiver) are blocked.
+  test.skip('O3: past_due user loses premium access to gated features', async () => {
+    const auth = await signIn(BUYER_EMAIL);
+
+    // Precondition: user must be in past_due state
+    const subDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+    if (subDoc?.status !== 'past_due') {
+      console.log('O3: User is not in past_due state — test requires Stripe CLI setup');
+      return;
+    }
+
+    // past_due users must not have isPremium=true
+    const statusResult = await callCallable('get_subscription_status', {}, auth.idToken);
+    const data = statusResult.result ?? statusResult;
+    expect(data.isPremium).toBe(false);
+
+    // past_due user must get permission-denied from premium-gated endpoint
+    const err = await callExpectError('get_or_create_chat', { productId: 'product_001' }, auth.idToken);
+    expect(err.code).toBe('permission-denied');
   });
 });

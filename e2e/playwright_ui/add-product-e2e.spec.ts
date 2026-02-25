@@ -142,7 +142,7 @@ test.describe('PW IT Replica — Add Product Flow', () => {
         }
 
         // Return to home before sign-out (use goBack, not page.goto which kills auth)
-        await page.goBack();
+        await page.goto(`${TARGET_URL}/`);
         await waitForFlutter(page);
 
         // C080/C099: Sign-out
@@ -200,7 +200,7 @@ test.describe('PW Digital Products — Add Product', () => {
         // D01f: Field retains value
         await expect(macosField).toHaveValue(/releases\.example\.com/);
 
-        await page.goBack();
+        await page.goto(`${TARGET_URL}/`);
         await waitForFlutter(page);
         await performSignOut(page, TARGET_URL);
     });
@@ -251,7 +251,7 @@ test.describe('PW Digital Products — Add Product', () => {
         // D02f: Validate URL field value
         await expect(bookUrlField).toHaveValue(/storage\.example\.com/);
 
-        await page.goBack();
+        await page.goto(`${TARGET_URL}/`);
         await waitForFlutter(page);
         await performSignOut(page, TARGET_URL);
     });

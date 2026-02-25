@@ -263,6 +263,53 @@ def partial_update_product(product_id: str, fields: dict, max_retries: int = App
     return False
 
 
+def batch_partial_update_products(product_ids: list[str], fields: dict, max_retries: int = AppConfig.ALGOLIA_MAX_RETRIES) -> bool:
+    """
+    Batch partial-update the same fields on multiple Algolia records in a single HTTP request.
+    Use instead of looping partial_update_product for suspend/unsuspend operations.
+
+    Args:
+        product_ids: List of Firestore product IDs (objectIDs in Algolia)
+        fields: Dict of field names/values to set on every record (e.g., {"lifecycleStatus": "paused"})
+        max_retries: Number of retry attempts
+
+    Returns:
+        True if all records updated, False on final failure
+    """
+    if not product_ids:
+        return True
+    try:
+        client = _get_algolia_client()
+    except RuntimeError:
+        logger.warning("⚠️  Algolia not configured - skipping batch partial update")
+        return False
+
+    objects = [{"objectID": pid, **fields} for pid in product_ids]
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            from algoliasearch.search.models.batch_write_params import BatchWriteParams
+            from algoliasearch.search.models.batch_request import BatchRequest
+            from algoliasearch.search.models.action import Action
+
+            requests = [BatchRequest(action=Action.PARTIAL_UPDATE_OBJECT, body=obj) for obj in objects]
+            _run_async(
+                client.batch(
+                    index_name=_get_index_name(),
+                    batch_write_params=BatchWriteParams(requests=requests),
+                )
+            )
+            logger.info(f"  ✅ Batch partial-updated {len(product_ids)} products in Algolia: {list(fields.keys())}")
+            return True
+        except Exception as e:
+            last_error = e
+            logger.warning(f"  ⚠️  Algolia batch partial update attempt {attempt + 1}/{max_retries} failed: {e}")
+
+    _log_sync_failure("batch", "batch_partial_update", str(last_error), max_retries)
+    return False
+
+
 def delete_product(product_id: str, max_retries: int = AppConfig.ALGOLIA_MAX_RETRIES) -> bool:
     """
     Delete a product from Algolia index with retry + exponential backoff.

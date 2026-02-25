@@ -191,7 +191,8 @@
       "seller_not_found": "Vendeur non trouvé",
       "in_stock_count": "En stock ({count})",
       "low_stock_count": "Stock bas ({count})"
-    }
+    },
+    "header_brand": "Admin Origna GTA"
   },
   "common": {
     "cancel": "Annuler",
@@ -507,6 +508,18 @@
     "mark_sold_out": "Marquer comme épuisé",
     "digital_product": "Produit numérique (sans livraison)",
     "digital_subtitle": "Masquer les options de livraison et livrer numériquement",
+    "digital_type_software": "Logiciel",
+    "digital_type_book": "Livre",
+    "desktop_software": "Logiciel de bureau",
+    "digital_book": "Livre numérique",
+    "download_links": "Liens de téléchargement",
+    "book_download_url": "URL de téléchargement du livre",
+    "subcategory_optional": "Sous-catégorie (optionnelle)",
+    "select_subcategory": "Sélectionnez une sous-catégorie",
+    "available_for": "Disponible pour :",
+    "helpful_vote_thanks": "Merci pour votre retour !",
+    "helpful_vote_error": "Impossible d'enregistrer le vote. Veuillez réessayer.",
+    "reenter_download_url_update": "Saisissez de nouveau l'URL de téléchargement pour la mettre à jour (masquée pour des raisons de sécurité)",
     "local_delivery_only": "Livraison locale uniquement",
     "local_delivery_subtitle": "Restreindre aux acheteurs dans un rayon de 50 km",
     "perishable_item": "Article périssable",
@@ -1259,6 +1272,8 @@
     "start_shopping": "Commencer les achats"
   },
   "chat": {
-    "message_copied": "Message copié"
+    "message_copied": "Message copié",
+    "empty_state_no_messages": "Aucun message pour le moment. Dites bonjour ! 👋",
+    "send_message_cta": "Envoyer un message"
   }
 }

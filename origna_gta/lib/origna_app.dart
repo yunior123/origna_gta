@@ -476,9 +476,15 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (_) => _sessionTimeout.recordActivity(),
-      onPointerMove: (_) => _sessionTimeout.recordActivity(),
+    return Focus(
+      onKeyEvent: (_, __) {
+        _sessionTimeout.recordActivity();
+        return KeyEventResult.ignored; // Let key events propagate normally
+      },
+      child: Listener(
+        onPointerDown: (_) => _sessionTimeout.recordActivity(),
+        onPointerMove: (_) => _sessionTimeout.recordActivity(),
+        onPointerSignal: (_) => _sessionTimeout.recordActivity(), // mouse wheel / trackpad scroll
       child: MaterialApp(
         navigatorKey: _navigatorKey,
         scaffoldMessengerKey: NotificationService.scaffoldMessengerKey,
@@ -556,7 +562,8 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
           dividerTheme: DividerThemeData(color: DesignTokens.outlineVariant, thickness: 1, space: 1),
         ),
       ),
-    );
+    ), // Listener
+    ); // Focus
   }
 
   @override

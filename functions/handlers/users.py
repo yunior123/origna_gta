@@ -78,6 +78,14 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
     if lang not in LanguageValues.ALL:
         lang = LanguageValues.ENGLISH
 
+    # F-81: Accept consentMethod from client (google_oauth vs signup_form) for CASL compliance.
+    # Validate against allowlist — never trust client strings blindly.
+    consent_method_raw = data.get(Fields.CONSENT_METHOD, "")
+    if consent_method_raw in ("google_oauth", ConsentMethodValues.SIGNUP):
+        consent_method = consent_method_raw
+    else:
+        consent_method = ConsentMethodValues.SIGNUP  # Safe default
+
     server_ts = get_server_timestamp()
 
     user_ref.set({
@@ -94,7 +102,7 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CONSENT_TIMESTAMP: server_ts,
         Fields.TERMS_ACCEPTED_AT: server_ts,
         Fields.PRIVACY_ACCEPTED_AT: server_ts,
-        Fields.CONSENT_METHOD: ConsentMethodValues.SIGNUP,
+        Fields.CONSENT_METHOD: consent_method,
         Fields.PRIVACY_POLICY_VERSION: PolicyVersionValues.DEFAULT,
         Fields.TERMS_VERSION: PolicyVersionValues.DEFAULT,
     })

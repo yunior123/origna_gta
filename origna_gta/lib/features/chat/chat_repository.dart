@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -118,6 +119,44 @@ class ChatRepository {
         .orderBy(Fields.lastMessageAt, descending: true)
         .snapshots()
         .map((snap) => snap.docs.map(ChatThread.fromFirestore).toList());
+  }
+
+  /// F-71: Unified inbox that merges buyer and seller threads, sorted by lastMessageAt desc.
+  /// A user who is both buyer and seller (e.g. a seller's own test orders) sees all
+  /// conversations in one place without duplicate entries.
+  Stream<List<ChatThread>> allChatsStream(String userId) {
+    final controller = StreamController<List<ChatThread>>();
+    List<ChatThread> buyerThreads = [];
+    List<ChatThread> sellerThreads = [];
+
+    void emit() {
+      final merged = {...buyerThreads, ...sellerThreads}.toList()
+        ..sort((a, b) {
+          final at = a.lastMessageAt;
+          final bt = b.lastMessageAt;
+          if (at == null && bt == null) return 0;
+          if (at == null) return 1;
+          if (bt == null) return -1;
+          return bt.compareTo(at);
+        });
+      controller.add(merged);
+    }
+
+    final sub1 = userChatsStream(userId).listen(
+      (threads) { buyerThreads = threads; emit(); },
+      onError: controller.addError,
+    );
+    final sub2 = sellerChatsStream(userId).listen(
+      (threads) { sellerThreads = threads; emit(); },
+      onError: controller.addError,
+    );
+
+    controller.onCancel = () {
+      sub1.cancel();
+      sub2.cancel();
+    };
+
+    return controller.stream;
   }
 
   /// Send a message through the Cloud Function (sanitizes text server-side).

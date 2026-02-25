@@ -570,6 +570,13 @@ class ProductCreate(BaseModel):
     supplier: SupplierInfo | None = Field(default=None)
     inventory: InventoryConfig | None = Field(default=None)
 
+    # === Digital product fields ===
+    condition: str | None = Field(default=None, description="Product condition: new|like_new|good|fair|for_parts")
+    digitalType: str | None = Field(default=None, description="'software' or 'book' for digital products")
+    digitalBuilds: dict[str, str] | None = Field(default=None, description="Platform→download URL map for software")
+    bookSourceUrl: str | None = Field(default=None, description="R2 URL for book file (PDF/EPUB)")
+    deviceLimit: int | None = Field(default=None, ge=1, le=100, description="Max concurrent device licenses")
+
     @model_validator(mode="after")
     def validate_shipping_source(self) -> "ProductCreate":
         """Require either sellerAddress or warehouseIds — not both, not neither"""
@@ -627,7 +634,40 @@ class ProductCreate(BaseModel):
 
     @field_validator("lifecycleStatus")
     @classmethod
-    def validate_lifecycle_status(cls, v: str) -> str:
+    def validate_lifecycle_status_create(cls, v: str) -> str:
         if v not in ProductLifecycleStatusValues.ALL:
             raise ValueError(f"Invalid lifecycleStatus: {v}. Must be one of: {ProductLifecycleStatusValues.ALL}")
         return v
+
+    @field_validator("condition")
+    @classmethod
+    def validate_condition_create(cls, v: str | None) -> str | None:
+        if v is not None and v not in ProductConditionValues.ALL:
+            raise ValueError(f"Invalid condition: {v}. Must be one of: {ProductConditionValues.ALL}")
+        return v
+
+    @field_validator("digitalType")
+    @classmethod
+    def validate_digital_type_create(cls, v: str | None) -> str | None:
+        if v is not None and v not in ("software", "book"):
+            raise ValueError(f"digitalType must be 'software' or 'book', got '{v}'")
+        return v
+
+    @field_validator("bookSourceUrl")
+    @classmethod
+    def validate_book_source_url_create(cls, v: str | None) -> str | None:
+        if v is not None and not v.startswith("https://"):
+            raise ValueError("bookSourceUrl must start with https://")
+        return v
+
+    @model_validator(mode="after")
+    def validate_digital_consistency_create(self) -> "ProductCreate":
+        """Validate digital product fields are consistent."""
+        if self.isDigital:
+            if not self.digitalType or self.digitalType not in ("software", "book"):
+                raise ValueError("digitalType must be 'software' or 'book' when isDigital=True")
+            if self.digitalType == "software" and not self.digitalBuilds:
+                raise ValueError("digitalBuilds must have at least one platform URL for software products")
+            elif self.digitalType == "book" and not self.bookSourceUrl:
+                raise ValueError("bookSourceUrl is required for book products")
+        return self

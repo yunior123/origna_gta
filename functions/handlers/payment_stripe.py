@@ -453,6 +453,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
 
 # Helper to ensure stripe key is set before operations
 def ensure_stripe_key():
+    """Lazily initialize the Stripe API key from Secret Manager if not already set."""
     if not stripe.api_key:
         stripe.api_key = get_stripe_secret_key()
 
@@ -462,6 +463,14 @@ def ensure_stripe_key():
 # ---------------------------------------------------------------------------
 
 def _coupon_not_expired(coupon_data: dict) -> bool:
+    """Check whether a coupon is still within its validity period.
+
+    Args:
+        coupon_data: Coupon document dict from Firestore.
+
+    Returns:
+        True if the coupon has no expiry or has not yet expired.
+    """
     expires_at = coupon_data.get(Fields.EXPIRES_AT)
     if expires_at is None:
         return True
@@ -476,6 +485,15 @@ def _coupon_not_expired(coupon_data: dict) -> bool:
 
 
 def _coupon_within_limits(coupon_data: dict, user_id: str) -> bool:
+    """Check whether a coupon has not exceeded its global or per-user usage cap.
+
+    Args:
+        coupon_data: Coupon document dict from Firestore.
+        user_id: The UID of the buyer applying the coupon.
+
+    Returns:
+        True if both the global usage count and per-user count are within limits.
+    """
     max_uses_total = coupon_data.get(Fields.MAX_USES_TOTAL)
     used_count = int(coupon_data.get(Fields.USED_COUNT, 0))
     if max_uses_total is not None and used_count >= int(max_uses_total):
@@ -498,6 +516,15 @@ def _coupon_within_limits(coupon_data: dict, user_id: str) -> bool:
 
 
 def _coupon_seller_allowed(coupon_data: dict, sellers: set) -> bool:
+    """Check whether a coupon is valid for the sellers present in the cart.
+
+    Args:
+        coupon_data: Coupon document dict from Firestore.
+        sellers: Set of seller IDs from the buyer's current cart.
+
+    Returns:
+        True if the coupon is platform-wide (no sellerId) or belongs to a seller in the cart.
+    """
     coupon_seller_id = coupon_data.get(Fields.SELLER_ID)
     if coupon_seller_id is None:
         return True  # Platform-wide coupon
@@ -505,6 +532,15 @@ def _coupon_seller_allowed(coupon_data: dict, sellers: set) -> bool:
 
 
 def _coupon_min_order_met(coupon_data: dict, actual_subtotal_cents: int) -> bool:
+    """Check whether the cart subtotal meets the coupon's minimum order requirement.
+
+    Args:
+        coupon_data: Coupon document dict from Firestore.
+        actual_subtotal_cents: Buyer's cart subtotal in cents (already in cents).
+
+    Returns:
+        True if no minimum is configured or if the subtotal meets the threshold.
+    """
     min_order_cents = coupon_data.get(Fields.MIN_ORDER_CENTS)
     if min_order_cents is None:
         return True
@@ -956,6 +992,21 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 # IMPORTANT: Do NOT apply B2B exemption (GST-based) in fallback mode
                 # because we cannot validate the GST number without Stripe
                 logger.warning(f"⚠️ Stripe Tax API failed, falling back to manual calculation for user {user_id}")
+
+                # F-78: If user has a GST number, log a compliance alert — manual calc
+                # doesn't apply B2B exemption, creating retroactive tax liability risk.
+                if gst_number:
+                    try:
+                        get_db().collection(Collections.SECURITY_ALERTS).add({
+                            Fields.TYPE: SecurityAlertTypes.STRIPE_TAX_FALLBACK_GST,
+                            Fields.SEVERITY: SeverityLevels.HIGH,
+                            Fields.USER_ID: user_id,
+                            Fields.GST_NUMBER: gst_number,
+                            Fields.TIMESTAMP: get_server_timestamp(),
+                            Fields.RESOLVED: False,
+                        })
+                    except Exception:
+                        pass  # Non-blocking — alert failure must not affect checkout
 
                 # CRA: tax applies to amount actually paid (post-discount subtotal)
                 discount_ratio = discounted_subtotal_cents / actual_subtotal_cents if actual_subtotal_cents > 0 else 1.0
@@ -1438,6 +1489,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             ApiKeys.SESSION_ID: session.id,
             Fields.ORDER_ID: order_id,
             ApiKeys.CHECKOUT_URL: session.url,
+            Fields.TAX_AMOUNT_CENTS: tax_amount_cents,  # F-77: server-calculated tax so Flutter shows the real amount
         }
 
     except stripe.error.CardError as e:

@@ -179,14 +179,13 @@ class FirebaseProductRepository implements ProductRepository {
     if (productIds.isEmpty) return [];
 
     final List<Product> results = [];
-    // Firestore whereIn has a limit of 30 (previously 10, now 30 in some versions, but let's be safe with 10 or 30)
-    // Actually current limit is 30. Let's use 30.
+    // F-79: Fetch regardless of lifecycleStatus so inactive cart items show "unavailable"
+    // instead of silently disappearing from the buyer's cart.
     for (int i = 0; i < productIds.length; i += 30) {
       final chunk = productIds.skip(i).take(30).toList();
       final snapshot = await _firestore
           .collection(Collections.products)
           .where(FieldPath.documentId, whereIn: chunk)
-          .where(Fields.lifecycleStatus, isEqualTo: ProductLifecycleStatusValues.active)
           .get();
       results.addAll(
         snapshot.docs

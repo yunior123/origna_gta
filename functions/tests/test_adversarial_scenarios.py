@@ -245,17 +245,12 @@ class TestInventoryScenarios:
 
     def test_negative_stock_rejected(self, mock_firestore_client):
         """Scenario 27: Attempt to set negative stock quantity."""
-        # This test documents the expected behavior
-        # Currently NOT enforced - this is a GAP
+        from handlers.products import _is_valid_stock_quantity
 
-        # TODO: Add validation in products.py update handler
-        # product_data = {
-        #     'stockQuantity': -5,  # Invalid!
-        #     'name': 'Test Product',
-        #     'price': 10.0,
-        # }
-        # assert validation_fails(product_data)
-        pass
+        assert _is_valid_stock_quantity(0) is True
+        assert _is_valid_stock_quantity(5) is True
+        assert _is_valid_stock_quantity(-1) is False
+        assert _is_valid_stock_quantity("5") is False
 
     def test_local_delivery_out_of_province_blocked(self, mock_firestore_client):
         """Scenario 30: Order local-only product from different province."""

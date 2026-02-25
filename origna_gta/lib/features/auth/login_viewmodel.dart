@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/utils/env_config.dart';
 
@@ -231,10 +232,8 @@ class LoginViewModel extends StateNotifier<LoginState> {
     if (trimmedEmail.length > 254) {
       return 'auth.validation.email_too_long';
     }
-    
-    // Standard email regex
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-    if (!emailRegex.hasMatch(trimmedEmail)) {
+
+    if (!ValidationConstants.emailRegex.hasMatch(trimmedEmail)) {
       return 'auth.validation.email_invalid_validation';
     }
     

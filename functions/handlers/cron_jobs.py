@@ -372,23 +372,29 @@ def _run_auto_capture() -> None:
             expected_seller_count = len(sellers_total_cents)
             current_order_success_count = 0  # Track successful transfers for this order
 
+            # F-80: Batch-read all sellers for this order in two round-trips instead of 2N
+            seller_ids_for_order = list(sellers_total_cents.keys())
+            user_refs = [get_db().collection(Collections.USERS).document(sid) for sid in seller_ids_for_order]
+            sp_refs = [get_db().collection(Collections.SELLER_PROFILES).document(sid) for sid in seller_ids_for_order]
+            user_docs_batch = {doc.id: doc for doc in get_db().get_all(user_refs)} if user_refs else {}
+            sp_docs_batch = {doc.id: doc for doc in get_db().get_all(sp_refs)} if sp_refs else {}
+
             for seller_id, amount_cents in sellers_total_cents.items():
                 platform_fee_cents = round(amount_cents * stored_fee_rate)
                 net_amount_cents = amount_cents - platform_fee_cents
 
-                # Fix 3: Use snapshot of seller's Stripe account from time of checkout
-                # Prevents "Account Swap" attack where seller changes account after order to bypass limits
+                # Use snapshot of seller's Stripe account from time of checkout.
+                # Prevents "Account Swap" attack where seller changes account after order.
                 seller_stripe_accounts = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
                 stripe_account_id = seller_stripe_accounts.get(seller_id)
 
-                # Get seller's current profile for suspension check
-                seller_ref = get_db().collection(Collections.USERS).document(seller_id)
-                seller_doc = seller_ref.get()
+                # Use batch-read results for suspension and charges check
+                seller_doc = user_docs_batch.get(seller_id)
 
-                if seller_doc.exists:
+                if seller_doc and seller_doc.exists:
                     seller_data = seller_doc.to_dict()
 
-                    # Fallback to current profile if snapshot missing (backward compatibility)
+                    # Fallback to current profile if snapshot missing
                     if not stripe_account_id:
                         stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
                         if stripe_account_id:
@@ -397,9 +403,8 @@ def _run_auto_capture() -> None:
                     # SECURITY FIX: Check chargesEnabled (not payoutsEnabled) for consistency
                     # with capture_payment. Also check seller is not suspended.
                     seller_suspended = seller_data.get(Fields.SUSPENDED, False)
-                    # chargesEnabled lives in seller_profiles, not users
-                    sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
-                    seller_charges_ok = (sp_doc.to_dict() or {}).get(Fields.CHARGES_ENABLED, False) if sp_doc.exists else False
+                    sp_doc = sp_docs_batch.get(seller_id)
+                    seller_charges_ok = (sp_doc.to_dict() or {}).get(Fields.CHARGES_ENABLED, False) if sp_doc and sp_doc.exists else False
 
                     if seller_suspended:
                         logger.warning(f"⚠️ Skipping auto-payout to suspended seller {seller_id} for order {order_id}")

@@ -376,9 +376,8 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         if product_ids:
             try:
-                from services.algolia_service import partial_update_product
-                for pid in product_ids:
-                    partial_update_product(pid, {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED})
+                from services.algolia_service import batch_partial_update_products
+                batch_partial_update_products(product_ids, {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED})
             except Exception as algolia_err:
                 logger.error(f"WARNING: Algolia status sync failed during suspend: {algolia_err}")
 
@@ -664,9 +663,8 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if restored_product_ids:
         try:
-            from services.algolia_service import partial_update_product
-            for pid in restored_product_ids:
-                partial_update_product(pid, {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE})
+            from services.algolia_service import batch_partial_update_products
+            batch_partial_update_products(restored_product_ids, {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE})
         except Exception as algolia_err:
             logger.error(f"WARNING: Algolia status sync failed during unsuspend: {algolia_err}")
 
@@ -1631,17 +1629,30 @@ def export_my_data(req: https_fn.CallableRequest) -> dict[str, Any]:
     }
     user_export = {k: v for k, v in user_data.items() if k in exportable_fields}
 
-    # Collect orders
+    # Collect orders (paginated — PIPEDA requires complete export)
     orders = []
-    order_docs = get_db().collection(Collections.ORDERS).where(Fields.USER_ID, "==", user_id).limit(500).stream()
-    for order_doc in order_docs:
-        order_data = order_doc.to_dict()
-        order_data["orderId"] = order_doc.id
-        # Serialize datetime objects
-        for key, val in order_data.items():
-            if hasattr(val, "isoformat"):
-                order_data[key] = val.isoformat()
-        orders.append(order_data)
+    last_order_doc = None
+    while True:
+        query = (
+            get_db()
+            .collection(Collections.ORDERS)
+            .where(Fields.USER_ID, "==", user_id)
+            .order_by(Fields.CREATED_AT)
+            .limit(500)
+        )
+        if last_order_doc:
+            query = query.start_after(last_order_doc)
+        batch_docs = list(query.stream())
+        for order_doc in batch_docs:
+            order_data = order_doc.to_dict()
+            order_data["orderId"] = order_doc.id
+            for key, val in order_data.items():
+                if hasattr(val, "isoformat"):
+                    order_data[key] = val.isoformat()
+            orders.append(order_data)
+        if len(batch_docs) < 500:
+            break
+        last_order_doc = batch_docs[-1]
 
     # Collect favorites
     favorites = []

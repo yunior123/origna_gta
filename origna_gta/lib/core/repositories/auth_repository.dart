@@ -2,12 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
-
-// Hardened email validation matching login_screen.dart
-final _emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
 
 /// Returns the device's preferred language if it's one we support (en/fr), else 'en'.
 String _deviceLanguage() {
@@ -119,7 +117,7 @@ class FirebaseAuthRepository implements AuthRepository {
   }) async {
     final trimmedEmail = email.trim().toLowerCase();
 
-    if (!_emailRegex.hasMatch(trimmedEmail)) {
+    if (!ValidationConstants.emailRegex.hasMatch(trimmedEmail)) {
       throw FirebaseAuthException(
         code: 'invalid-email',
         message: 'Email format is invalid',
@@ -224,7 +222,7 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<void> sendPasswordResetEmail(String email) async {
     final trimmedEmail = email.trim().toLowerCase();
 
-    if (!_emailRegex.hasMatch(trimmedEmail)) {
+    if (!ValidationConstants.emailRegex.hasMatch(trimmedEmail)) {
       throw FirebaseAuthException(
         code: 'invalid-email',
         message: 'Email format is invalid',
@@ -256,7 +254,7 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<UserCredential> signInWithEmail(String email, String password) async {
     final trimmedEmail = email.trim().toLowerCase();
 
-    if (!_emailRegex.hasMatch(trimmedEmail)) {
+    if (!ValidationConstants.emailRegex.hasMatch(trimmedEmail)) {
       throw FirebaseAuthException(
         code: 'invalid-email',
         message: 'Email format is invalid',
@@ -417,10 +415,14 @@ class FirebaseAuthRepository implements AuthRepository {
       }
       // SECURITY: All legal-compliance fields (CASL/PIPEDA/Law 25) are set server-side.
       // The server controls dataProcessingConsent, emailConsent, consentTimestamp, etc.
+      // F-81: Pass sign-in provider so backend can stamp the correct consentMethod.
+      final providerData = user.providerData;
+      final isGoogle = providerData.any((p) => p.providerId == 'google.com');
       await callable.call<Map<String, dynamic>>({
         Fields.name: name ?? user.displayName ?? 'User',
         Fields.preferredLanguage: _deviceLanguage(),
         Fields.marketingOptIn: marketingOptIn,
+        Fields.consentMethod: isGoogle ? 'google_oauth' : 'signup_form',
       });
     }
     // If doc already exists, roles are managed server-side by the CF — no direct write here.

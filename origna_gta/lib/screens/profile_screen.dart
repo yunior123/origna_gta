@@ -903,7 +903,7 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('Email not verified yet. Check your inbox and click the verification link.'),
+                content: Text('profile.not_verified_error'.tr()),
                 backgroundColor: DesignTokens.warning,
                 behavior: SnackBarBehavior.floating,
               ),

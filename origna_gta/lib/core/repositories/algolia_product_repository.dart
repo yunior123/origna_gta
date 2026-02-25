@@ -85,10 +85,11 @@ class AlgoliaProductRepository implements ProductRepository {
     final List<Product> results = [];
     for (int i = 0; i < productIds.length; i += 30) {
       final chunk = productIds.skip(i).take(30).toList();
+      // F-79: No lifecycleStatus filter — inactive items show "unavailable" in cart.
       final snapshot = await _firestore
           .collection(Collections.products)
           .where(FieldPath.documentId, whereIn: chunk)
-          .where(Fields.lifecycleStatus, isEqualTo: ProductLifecycleStatusValues.active)          .get();
+          .get();
       results.addAll(snapshot.docs.map((doc) => Product.fromFirestore(doc)));
     }
     return results;

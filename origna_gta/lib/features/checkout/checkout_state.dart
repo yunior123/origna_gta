@@ -52,6 +52,9 @@ class CheckoutState {
   final int couponDiscountCents;
   final bool isCouponLoading;
   final String? couponError;
+  /// F-77: Server-calculated tax amount in cents returned from create_checkout_session.
+  /// Use this for display in the review screen instead of client-side estimates.
+  final int serverTaxAmountCents;
 
   const CheckoutState({
     this.address,
@@ -70,6 +73,7 @@ class CheckoutState {
     this.couponDiscountCents = 0,
     this.isCouponLoading = false,
     this.couponError,
+    this.serverTaxAmountCents = 0,
   });
 
   /// Total shipping cost including delivery speed surcharge
@@ -100,6 +104,7 @@ class CheckoutState {
     int? couponDiscountCents,
     bool? isCouponLoading,
     String? couponError,
+    int? serverTaxAmountCents,
     bool clearShippingError = false,
     bool clearCheckoutError = false,
     bool clearIdempotencyKey = false,
@@ -123,6 +128,7 @@ class CheckoutState {
       couponDiscountCents: clearCoupon ? 0 : (couponDiscountCents ?? this.couponDiscountCents),
       isCouponLoading: isCouponLoading ?? this.isCouponLoading,
       couponError: clearCouponError ? null : (couponError ?? this.couponError),
+      serverTaxAmountCents: serverTaxAmountCents ?? this.serverTaxAmountCents,
     );
   }
 }

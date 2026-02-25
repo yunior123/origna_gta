@@ -191,7 +191,8 @@
       "seller_not_found": "Seller not found",
       "in_stock_count": "In Stock ({count})",
       "low_stock_count": "Low Stock ({count})"
-    }
+    },
+    "header_brand": "Origna GTA Admin"
   },
   "common": {
     "cancel": "Cancel",
@@ -506,6 +507,18 @@
     "mark_sold_out": "Mark as Sold Out",
     "digital_product": "Digital Product (No Shipping)",
     "digital_subtitle": "Hide shipping options and deliver digitally",
+    "digital_type_software": "Software",
+    "digital_type_book": "Book",
+    "desktop_software": "Desktop Software",
+    "digital_book": "Digital Book",
+    "download_links": "Download Links",
+    "book_download_url": "Book Download URL",
+    "subcategory_optional": "Subcategory (optional)",
+    "select_subcategory": "Select subcategory",
+    "available_for": "Available for:",
+    "helpful_vote_thanks": "Thanks for your feedback!",
+    "helpful_vote_error": "Could not record vote. Please try again.",
+    "reenter_download_url_update": "Re-enter the download URL to update it (not shown for security)",
     "local_delivery_only": "Local Delivery Only",
     "local_delivery_subtitle": "Restrict to buyers within 50km",
     "perishable_item": "Perishable Item",
@@ -1258,6 +1271,8 @@
     "start_shopping": "Start Shopping"
   },
   "chat": {
-    "message_copied": "Message copied"
+    "message_copied": "Message copied",
+    "empty_state_no_messages": "No messages yet. Say hello! 👋",
+    "send_message_cta": "Send a message"
   }
 }
