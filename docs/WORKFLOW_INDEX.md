@@ -4,6 +4,28 @@
 
 ---
 
+## 🧪 E2E TEST CONTEXT
+
+For writing or auditing Playwright tests, always load the relevant **test flow bundle**:
+
+```bash
+python3 scripts/collect_flow_files.py
+# → ~/Desktop/origna_flows/test_<name>/
+```
+
+**Flutter selector rules** (non-negotiable):
+- `getByRole('button', { name: /label/i })` — buttons
+- `[aria-label="key-name"]` — Semantics containers, form fields
+- `pressSequentially()` always — `fill()` never works in Flutter Web
+- NEVER search by translated display text — it's not in the DOM
+
+**Playwright test files:** `e2e/playwright_ui/*.spec.ts` (27 specs)  
+**Shared helpers:** `e2e/playwright_ui/api-helpers.ts`, `flutter-helpers.ts`  
+**Selector map:** `origna_flows/SEMANTICS.md`  
+**User journeys:** `origna_flows/FLOWS.md`
+
+---
+
 ## 🛒 CHECKOUT & PAYMENT WORKFLOW
 
 **Summary:** Buyer adds items to cart → proceeds to checkout → enters address → payment intent created (Stripe) → authorization hold → order created → seller ships → payment captured.

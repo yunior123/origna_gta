@@ -59,6 +59,8 @@
 
 **Deep context (read when needed, NOT auto-loaded):** `docs/WORKFLOW_INDEX.md`, `docs/REPO_MAP.md`, `docs/AGENT_GUIDE.md`, `docs/SYMBOL_MAP.md`
 
+**E2E / test context:** `origna_flows/SEMANTICS.md` (Flutter selectors), `origna_flows/FLOWS.md` (user journeys), `origna_flows/INSTRUCTIONS.md` (Playwright patterns). Generate flow bundles: `python3 scripts/collect_flow_files.py`
+
 ---
 
 ## AGENT RULES
