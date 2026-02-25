@@ -3,9 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:shimmer/shimmer.dart';
@@ -96,7 +94,7 @@ class CartItemScreen extends StatelessWidget {
                             Icon(Icons.download_outlined, size: 11, color: DesignTokens.digital.withValues(alpha: 0.8)),
                             const SizedBox(width: 3),
                             Text(
-                              'Digital product — instant delivery',
+                              'cart.digital_instant_delivery'.tr(),
                               style: TextStyle(fontSize: 11, color: DesignTokens.digital.withValues(alpha: 0.8), fontWeight: FontWeight.w500),
                             ),
                           ],
@@ -212,9 +210,9 @@ class CartItemScreen extends StatelessWidget {
                     Consumer(
                       builder: (context, ref, _) {
                         return IconButton(
-                          tooltip: 'Save for Later',
+                          tooltip: 'cart.save_for_later'.tr(),
                           icon: Icon(Icons.bookmark_outline_rounded, color: DesignTokens.primary.withValues(alpha: 0.8), size: 20),
-                          onPressed: () => _saveForLater(context, ref),
+                          onPressed: () => _saveForLater(context, ref, productId),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           splashRadius: 18,
@@ -235,40 +233,16 @@ class CartItemScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _saveForLater(BuildContext context, WidgetRef ref) async {
-    final uid = ref.read(userIdProvider);
-    if (uid == null) return;
+  Future<void> _saveForLater(BuildContext context, WidgetRef ref, String productId) async {
     final messenger = ScaffoldMessenger.of(context);
-    try {
-      // 1. Save to favorites
-      await FirebaseFirestore.instance
-          .collection(Collections.users)
-          .doc(uid)
-          .collection(Collections.favorites)
-          .doc(productId)
-          .set({
-        Fields.productId: productId,
-        Fields.savedAt: FieldValue.serverTimestamp(),
-      });
-      // 2. Remove from cart
-      ref.read(cartControllerProvider).removeFromCart(productId);
-      if (context.mounted) {
-        messenger.showSnackBar(SnackBar(
-          content: const Text('Saved for later'),
-          backgroundColor: DesignTokens.success,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-        ));
-      }
-    } catch (e) {
-      if (context.mounted) {
-        messenger.showSnackBar(SnackBar(
-          content: const Text('Could not save for later. Please try again.'),
-          backgroundColor: DesignTokens.error,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-        ));
-      }
+    final success = await ref.read(cartControllerProvider).saveForLater(productId);
+    if (context.mounted) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(success ? 'cart.saved_for_later'.tr() : 'cart.save_for_later_error'.tr()),
+        backgroundColor: success ? DesignTokens.success : DesignTokens.error,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+      ));
     }
   }
 

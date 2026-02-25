@@ -475,10 +475,14 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         now_utc = datetime.now(UTC)
 
         if new_status == DeliveryStatusValues.SHIPPED:
+            if not tracking_number:
+                raise https_fn.HttpsError(
+                    "invalid-argument",
+                    "Tracking number is required when marking an item as shipped.",
+                )
             fresh_items[fresh_item_index][Fields.SHIPPED_AT] = now_utc
-            if tracking_number:
-                fresh_items[fresh_item_index][Fields.TRACKING_NUMBER] = tracking_number
-                fresh_items[fresh_item_index][Fields.CARRIER] = carrier or ""
+            fresh_items[fresh_item_index][Fields.TRACKING_NUMBER] = tracking_number
+            fresh_items[fresh_item_index][Fields.CARRIER] = carrier or ""
         elif new_status == DeliveryStatusValues.DELIVERED:
             fresh_items[fresh_item_index][Fields.DELIVERED_AT] = now_utc
 

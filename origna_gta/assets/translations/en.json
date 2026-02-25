@@ -740,7 +740,11 @@
     "invalid_quantity": "Invalid quantity",
     "product_not_found": "Product not found",
     "stock_limit_count": "Only {count} available in stock",
-    "updated": "Cart updated"
+    "updated": "Cart updated",
+    "saved_for_later": "Saved for later",
+    "save_for_later_error": "Could not save for later. Please try again.",
+    "save_for_later": "Save for later",
+    "digital_instant_delivery": "Digital product — instant delivery"
   },
   "checkout": {
     "checkout": "Checkout",

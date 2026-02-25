@@ -246,7 +246,11 @@ class PaymentCanceledScreen extends StatelessWidget {
                         label: 'payment.back_to_shopping'.tr(),
                         icon: Icons.shopping_bag_outlined,
                         onPressed: () {
-                          Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                          } else {
+                            Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                          }
                         },
                       ),
                     ),

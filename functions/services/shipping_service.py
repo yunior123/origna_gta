@@ -5,6 +5,7 @@ import requests
 from config import get_geoapify_api_key
 from schema_constants import (
     AppConfig,
+    BusinessRules,
     DeliveryTypeValues,
     DiscountTypeValues,
     Fields,
@@ -14,22 +15,10 @@ from schema_constants import (
 
 logger = logging.getLogger(__name__)
 
-# PERFORMANCE FIX: Cache province data in memory to avoid repeated dict construction
-# NOTE: NS changed from 0.15 to 0.14 on April 1, 2025 (CRA)
+# Derived from BusinessRules.TAX_RATES — single source of truth, prevents drift
 _TAX_RATES_CACHE = {
-    "AB": 0.05,
-    "BC": 0.12,
-    "MB": 0.12,
-    "NB": 0.15,
-    "NL": 0.15,
-    "NT": 0.05,
-    "NS": 0.14,
-    "NU": 0.05,
-    "ON": 0.13,
-    "PE": 0.15,
-    "QC": 0.14975,
-    "SK": 0.11,
-    "YT": 0.05,
+    prov: round(sum(v / 100.0 for v in rates.values()), 5)
+    for prov, rates in BusinessRules.TAX_RATES.items()
 }
 
 _ADJACENCY_CACHE = {

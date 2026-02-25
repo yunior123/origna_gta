@@ -5,11 +5,27 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
-class OrderSuccessScreen extends StatelessWidget {
+class OrderSuccessScreen extends StatefulWidget {
   final String orderId;
 
   const OrderSuccessScreen({super.key, required this.orderId});
+
+  @override
+  State<OrderSuccessScreen> createState() => _OrderSuccessScreenState();
+}
+
+class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Sentry.addBreadcrumb(Breadcrumb(
+      message: 'order_success',
+      data: {'orderId': widget.orderId},
+      timestamp: DateTime.now(),
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +92,7 @@ class OrderSuccessScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(DesignTokens.radius12),
                         ),
                         child: Text(
-                          'orders.order_id_label'.tr(namedArgs: {'id': orderId}),
+                          'orders.order_id_label'.tr(namedArgs: {'id': widget.orderId}),
                           style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                         ),
                       ),

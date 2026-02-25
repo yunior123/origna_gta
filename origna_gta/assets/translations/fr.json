@@ -741,7 +741,11 @@
     "invalid_quantity": "Quantité invalide",
     "product_not_found": "Produit non trouvé",
     "stock_limit_count": "Seulement {count} disponible(s) en stock",
-    "updated": "Panier mis à jour"
+    "updated": "Panier mis à jour",
+    "saved_for_later": "Sauvegardé pour plus tard",
+    "save_for_later_error": "Impossible de sauvegarder pour plus tard. Veuillez réessayer.",
+    "save_for_later": "Sauvegarder pour plus tard",
+    "digital_instant_delivery": "Produit numérique — livraison instantanée"
   },
   "checkout": {
     "checkout": "Payer",

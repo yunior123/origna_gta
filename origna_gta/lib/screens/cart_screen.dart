@@ -44,7 +44,7 @@ class CartScreen extends ConsumerWidget {
     final productIdsAsync = ref.watch(
       cartItemsProvider.select(
         (async) =>
-            async.whenData((items) => items.map((i) => i.productId).toList()),
+            async.whenData((items) => items.map((i) => i.cartItemId).toList()),
       ),
     );
 
@@ -154,12 +154,12 @@ class CartScreen extends ConsumerWidget {
                         ),
                         itemCount: productIds.length,
                         itemBuilder: (context, index) {
-                          final productId = productIds[index];
+                          final cartItemDocId = productIds[index];
                           return FadeSlideIn(
                             delay: Duration(milliseconds: 50 * index),
                             child: _CartItemWidget(
-                              key: ValueKey(productId),
-                              productId: productId,
+                              key: ValueKey(cartItemDocId),
+                              cartItemDocId: cartItemDocId,
                             ),
                           );
                         },
@@ -183,14 +183,14 @@ class CartScreen extends ConsumerWidget {
 
 /// Individual cart item widget - only rebuilds when THIS item's data changes
 class _CartItemWidget extends ConsumerWidget {
-  final String productId;
+  final String cartItemDocId;
 
-  const _CartItemWidget({super.key, required this.productId});
+  const _CartItemWidget({super.key, required this.cartItemDocId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch only this specific item's details via family provider
-    final itemAsync = ref.watch(cartItemDetailProvider(productId));
+    final itemAsync = ref.watch(cartItemDetailProvider(cartItemDocId));
 
     return itemAsync.when(
       loading: () => Container(
@@ -246,10 +246,10 @@ class _CartItemWidget extends ConsumerWidget {
       data: (item) {
         if (item == null) return const SizedBox.shrink();
         return CartItemScreen(
-          productId: productId,
+          productId: item.productId,
           item: item.toMap(),
           onRemove: () =>
-              ref.read(cartControllerProvider).removeFromCart(productId),
+              ref.read(cartControllerProvider).removeFromCart(item.productId),
         );
       },
     );
