@@ -30,6 +30,7 @@ from schema_constants import (
     OrderStatusValues,
     PaymentStatusValues,
     PayoutStatusValues,
+    ProductLifecycleStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
     UserRoleValues,
@@ -201,6 +202,13 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
         except Exception as revert_err:
             logger.critical(f"CRITICAL: Failed to revert roles after claims failure for {target_user_id}: {revert_err}")
+            get_db().collection(Collections.SECURITY_ALERTS).add({
+                Fields.TYPE: "role_sync_failure",
+                Fields.SEVERITY: "critical",
+                Fields.USER_ID: target_user_id,
+                Fields.TIMESTAMP: get_server_timestamp(),
+                Fields.RESOLVED: False,
+            })
         raise https_fn.HttpsError("internal", f"Role update failed during Auth sync: {e}") from e
 
     # Log security alert
@@ -294,6 +302,10 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     seller_data = seller_doc.to_dict()
 
+    # H-1: Cannot suspend an admin account via this endpoint
+    if UserRoleValues.ADMIN in seller_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError("permission-denied", "Cannot suspend an admin account via this endpoint.")
+
     # Deactivate products and cancel orders only if user has seller role
     is_seller = UserRoleValues.SELLER in seller_data.get(Fields.ROLES, [])
 
@@ -319,16 +331,21 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
             get_db()
             .collection(Collections.PRODUCTS)
             .where(Fields.SELLER_ID, "==", seller_id)
-            .where(Fields.IS_ACTIVE, "==", True)
+            .where(Fields.LIFECYCLE_STATUS, "in", [ProductLifecycleStatusValues.ACTIVE, ProductLifecycleStatusValues.APPROVED])
             .limit(500)
             .stream()
         )
 
         batch = get_db().batch()
         batch_count = 0
+        product_ids = []
 
         for product_doc in products:
-            batch.update(product_doc.reference, {Fields.IS_ACTIVE: False, Fields.SUSPENDED_AT: get_server_timestamp()})
+            batch.update(product_doc.reference, {
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+                Fields.SUSPENDED_AT: get_server_timestamp(),
+            })
+            product_ids.append(product_doc.id)
             product_count += 1
             batch_count += 1
 
@@ -339,6 +356,14 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         if batch_count > 0:
             batch.commit()
+
+        if product_ids:
+            try:
+                from services.algolia_service import partial_update_product
+                for pid in product_ids:
+                    partial_update_product(pid, {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED})
+            except Exception as algolia_err:
+                logger.error(f"WARNING: Algolia status sync failed during suspend: {algolia_err}")
 
         # Cancel all pending/confirmed orders (with safety limit).
         # Query uses the denormalized sellerIds array field — Firestore does not support
@@ -368,6 +393,11 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
                     product_id = item[Fields.PRODUCT_ID]
                     quantity = item[Fields.QUANTITY]
                     product_updates[product_id] = product_updates.get(product_id, 0) + quantity
+
+            # B-3: If multi-seller order, skip full cancellation to avoid impacting other sellers
+            seller_ids_in_order = order_data.get(Fields.SELLER_IDS, [seller_id])
+            if len([s for s in seller_ids_in_order if s]) > 1:
+                continue
 
             order_batch.update(
                 order_doc.reference,
@@ -513,6 +543,7 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     skipped_count = 0
     max_iterations = 20  # Safety limit to prevent infinite loops (max 10k products)
     iteration_count = 0
+    restored_product_ids = []
 
     while True:
         iteration_count += 1
@@ -527,7 +558,7 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
             get_db()
             .collection(Collections.PRODUCTS)
             .where(Fields.SELLER_ID, "==", seller_id)
-            .where(Fields.IS_ACTIVE, "==", False)
+            .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.PAUSED)
             .where(Fields.SUSPENDED_AT, "!=", None)
             .limit(500)
             .stream()
@@ -555,18 +586,28 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
                 batch.update(
                     product_doc.reference,
                     {
-                        Fields.IS_ACTIVE: True,
+                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
                         Fields.SUSPENDED_AT: get_delete_field(),
+                        "restoredAt": get_server_timestamp(),
                         Fields.UPDATED_AT: get_server_timestamp(),
                     },
                 )
+                restored_product_ids.append(product_doc.id)
                 product_count += 1
                 batch_count += 1
 
         if batch_count > 0:
             batch.commit()
         # Query now filters SUSPENDED_AT != None at DB level, so all fetched docs are reactivatable.
-        # The while loop converges naturally as reactivated products no longer match IS_ACTIVE=False.
+        # The while loop converges naturally as reactivated products no longer match PAUSED status.
+
+    if restored_product_ids:
+        try:
+            from services.algolia_service import partial_update_product
+            for pid in restored_product_ids:
+                partial_update_product(pid, {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE})
+        except Exception as algolia_err:
+            logger.error(f"WARNING: Algolia status sync failed during unsuspend: {algolia_err}")
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add(
@@ -738,17 +779,28 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
     if existing_mfa:
         raise https_fn.HttpsError("failed-precondition", "MFA is already enabled. Disable it first to re-enroll.")
 
-    # Save MFA secrets to user_security/{uid} (backend-only collection)
+    # AUDIT FIX: Race condition — use Firestore transaction to prevent concurrent enrollments
     security_ref = get_db().collection(Collections.USER_SECURITY).document(user_id)
-    security_ref.set(
-        {
-            Fields.MFA_SECRET_TEMP: encrypted_secret,
-            Fields.MFA_BACKUP_CODES_TEMP: hashed_backup_codes,
-            Fields.MFA_BACKUP_CODES_SALT: backup_codes_salt,
-            Fields.UPDATED_AT: get_server_timestamp(),
-        },
-        merge=True,
-    )
+
+    @get_firestore().transactional
+    def _enroll_mfa_txn(txn, sec_ref):
+        doc = sec_ref.get(transaction=txn)
+        data = doc.to_dict() or {}
+        if data.get(Fields.MFA_SECRET_TEMP):
+            raise https_fn.HttpsError("failed-precondition", "MFA already enabled or enrollment already in progress.")
+        txn.set(
+            sec_ref,
+            {
+                Fields.MFA_SECRET_TEMP: encrypted_secret,
+                Fields.MFA_BACKUP_CODES_TEMP: hashed_backup_codes,
+                Fields.MFA_BACKUP_CODES_SALT: backup_codes_salt,
+                "mfaEnrollStartedAt": get_server_timestamp(),
+                Fields.UPDATED_AT: get_server_timestamp(),
+            },
+            merge=True,
+        )
+
+    _enroll_mfa_txn(get_db().transaction(), security_ref)
 
     # Generate QR code URL
     totp = pyotp.TOTP(secret)
@@ -958,6 +1010,13 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Delete all MFA secrets from user_security
     if security_doc.exists:
         security_ref.delete()
+
+    get_db().collection(Collections.ADMIN_LOGS).add({
+        Fields.ACTION: "mfa_disabled",
+        Fields.ADMIN_ID: user_id,
+        Fields.TARGET_USER_ID: user_id,
+        Fields.TIMESTAMP: get_server_timestamp(),
+    })
 
     return create_success_response({Fields.MFA_ENABLED: False})
 
@@ -1276,6 +1335,9 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
                 product_doc.reference,
                 {
                     Fields.IS_ACTIVE: False,
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ARCHIVED,
+                    "archivedReason": "account_deleted",
+                    Fields.ARCHIVED_AT: get_server_timestamp(),
                     Fields.SELLER_ID: anonymized_id,
                     Fields.SELLER_NAME: "[Deleted Seller]",
                     Fields.SELLER_ADDRESS: get_delete_field(),
@@ -1720,7 +1782,7 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
     order_data = order_doc.to_dict()
 
     # Guard: only refundable statuses
-    _REFUNDABLE_STATUSES = {OrderStatusValues.DELIVERED, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING}
+    _REFUNDABLE_STATUSES = {OrderStatusValues.DELIVERED, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING, OrderStatusValues.SHIPPED}
     current_status = order_data.get(Fields.ORDER_STATUS)
     if current_status not in _REFUNDABLE_STATUSES:
         raise https_fn.HttpsError(
@@ -1741,6 +1803,26 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         )
     except stripe.StripeError as e:
         raise https_fn.HttpsError("internal", f"Stripe refund failed: {e}") from e
+
+    # C-2: Reverse seller Stripe transfers
+    for payout in order_data.get(Fields.SELLER_PAYOUTS, []):
+        transfer_id = payout.get(Fields.STRIPE_TRANSFER_ID)
+        if not transfer_id:
+            continue
+        try:
+            stripe.Transfer.create_reversal(
+                transfer_id,
+                amount=payout.get(Fields.AMOUNT_CENTS),
+                idempotency_key=f"reversal_{order_id}_{payout.get(Fields.SELLER_ID, '')}",
+            )
+        except stripe.error.InvalidRequestError as e:
+            get_db().collection(Collections.SECURITY_ALERTS).add({
+                Fields.TYPE: "reversal_failed",
+                Fields.STRIPE_TRANSFER_ID: transfer_id,
+                Fields.ORDER_ID: order_id,
+                Fields.ERROR_MESSAGE: str(e),
+                Fields.TIMESTAMP: get_server_timestamp(),
+            })
 
     # Restore stock atomically in Firestore transaction
     items = order_data.get(Fields.ITEMS, [])
@@ -1763,11 +1845,11 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_ref.update(
         {
+            Fields.ORDER_STATUS: OrderStatusValues.REFUNDED,
             Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED,
-            Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
             Fields.REFUNDED_AT: get_server_timestamp(),
+            Fields.REFUND_REASON: reason,
             Fields.CANCELLED_BY: admin_id,
-            Fields.CANCELLATION_REASON: reason,
             Fields.UPDATED_AT: get_server_timestamp(),
         }
     )

@@ -209,6 +209,13 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
 /** Generic alias for any user role — the underlying login is role-agnostic. */
 export const ensureLoggedIn = ensureLoggedInAsAdmin;
 
+/**
+ * Login helper for buyer tests — same underlying flow as ensureLoggedInAsAdmin
+ * but named to make explicit that no elevated roles are granted during login.
+ * The login function is purely credential-based and never modifies user roles.
+ */
+export const ensureLoggedInAsBuyer = ensureLoggedInAsAdmin;
+
 // ─── NAVIGATE HOME (auth-safe, no full page reload) ────────────────
 
 /**

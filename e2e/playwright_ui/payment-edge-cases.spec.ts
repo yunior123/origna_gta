@@ -72,11 +72,11 @@ test.describe('Payment Edge Cases', () => {
     // Should stay on Stripe page with a decline error message
     await page.waitForTimeout(10_000);
     expect(page.url()).toContain('checkout.stripe.com');
-    // Stripe shows an inline error after card decline
-    const errorEl = page.locator('[data-testid="error-message"], .Alert--error, .p-ErrorMessage, text=/declined|card number is incorrect|Your card/i').first();
-    const errorVisible = await errorEl.isVisible({ timeout: 5_000 }).catch(() => false);
-    // Stripe error message OR we stayed on checkout page (both indicate decline was processed)
-    expect(page.url().includes('checkout.stripe.com') || errorVisible).toBe(true);
+    // Stripe shows an inline error after card decline — assert it is actually visible
+    const errorEl = page.locator(
+      '[data-testid="error-message"], .Alert--error, [class*="Alert"][class*="error"], .p-ErrorMessage'
+    ).first();
+    await expect(errorEl).toBeVisible({ timeout: 15_000 });
   });
 
   test('3D Secure card triggers authentication challenge', async ({ page }) => {

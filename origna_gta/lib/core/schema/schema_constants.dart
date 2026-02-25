@@ -896,6 +896,8 @@ abstract final class Fields {
   static const reviewImageUrls = 'reviewImageUrls';
   static const reviewText = 'reviewText';
   static const verifiedPurchase = 'verifiedPurchase';
+  static const isFlagged = 'isFlagged';
+  static const hasPhotos = 'hasPhotos';
   static const notifiedAt = 'notifiedAt';
   static const subscribedAt = 'subscribedAt';
   static const questionText = 'question';
@@ -1011,6 +1013,8 @@ abstract final class Fields {
 
   // === N-03/N-04: Product ratings ===
   static const ratingId = 'ratingId';
+  static const reviewId = 'reviewId';
+  static const flagged = 'flagged';
 
   // === N-03: Seller reply to reviews ===
   static const sellerReply = 'sellerReply';

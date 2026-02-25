@@ -574,6 +574,8 @@ class Fields:
     REVIEW_IMAGE_URLS = "reviewImageUrls"
     REVIEW_TEXT = "reviewText"
     VERIFIED_PURCHASE = "verifiedPurchase"
+    IS_FLAGGED = "isFlagged"
+    HAS_PHOTOS = "hasPhotos"
     NOTIFIED_AT = "notifiedAt"
     SUBSCRIBED_AT = "subscribedAt"
     QUESTION_TEXT = "question"

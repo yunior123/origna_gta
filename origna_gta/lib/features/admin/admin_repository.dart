@@ -104,7 +104,7 @@ class FirebaseAdminRepository implements AdminRepository {
   Future<void> rejectProduct(String productId, String reason) async {
     await _functions.httpsCallable(CloudFunctionEndpoints.adminRejectProduct).call({
       Fields.productId: productId,
-      'reason': reason,
+      Fields.reason: reason,
     });
   }
 
@@ -182,28 +182,25 @@ class FirebaseAdminRepository implements AdminRepository {
   @override
   Stream<List<Map<String, dynamic>>> watchReviews({bool flaggedOnly = false, bool hasPhotosOnly = false, int limit = 100}) {
     Query query = _firestore.collection(Collections.productRatings).orderBy(Fields.createdAt, descending: true).limit(limit);
-    if (flaggedOnly) query = query.where('isFlagged', isEqualTo: true);
+    if (flaggedOnly) query = query.where(Fields.isFlagged, isEqualTo: true);
+    if (hasPhotosOnly) query = query.where(Fields.hasPhotos, isEqualTo: true);
     return query.snapshots().map((snapshot) {
-      final docs = snapshot.docs.map((doc) => <String, dynamic>{'id': doc.id, ...doc.data() as Map<String, dynamic>}).toList();
-      if (hasPhotosOnly) {
-        return docs.where((d) => (d[Fields.reviewImageUrls] as List?)?.isNotEmpty == true).toList();
-      }
-      return docs;
+      return snapshot.docs.map((doc) => <String, dynamic>{'id': doc.id, ...doc.data() as Map<String, dynamic>}).toList();
     });
   }
 
   @override
   Future<void> deleteReview(String reviewId) async {
-    await _functions.httpsCallable(CloudFunctionEndpoints.adminDeleteReview).call({'reviewId': reviewId});
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminDeleteReview).call({Fields.reviewId: reviewId});
   }
 
   @override
   Future<void> flagReview(String reviewId, {required bool flagged}) async {
-    await _functions.httpsCallable(CloudFunctionEndpoints.adminFlagReview).call({'reviewId': reviewId, 'flagged': flagged});
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminFlagReview).call({Fields.reviewId: reviewId, Fields.flagged: flagged});
   }
 
   @override
   Future<void> refundOrder(String orderId, {String reason = 'Admin refund'}) async {
-    await _functions.httpsCallable(CloudFunctionEndpoints.adminRefundOrder).call({'orderId': orderId, 'reason': reason});
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminRefundOrder).call({Fields.orderId: orderId, Fields.reason: reason});
   }
 }

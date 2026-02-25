@@ -101,7 +101,7 @@ class _ReviewCard extends ConsumerWidget {
     final userId = review[Fields.userId] as String? ?? '—';
     final productId = review[Fields.productId] as String? ?? '—';
     final imageUrls = (review[Fields.reviewImageUrls] as List?)?.cast<String>() ?? [];
-    final isFlagged = review['isFlagged'] as bool? ?? false;
+    final isFlagged = review[Fields.isFlagged] as bool? ?? false;
     final createdAt = review[Fields.createdAt];
 
     return Card(

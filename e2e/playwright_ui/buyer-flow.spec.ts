@@ -3,7 +3,7 @@ import {
     waitForFlutter,
     requireWebApp,
     checkSemantics,
-    ensureLoggedIn,
+    ensureLoggedInAsBuyer,
     performSignOut,
     BTN_SETTINGS,
     BTN_CART,
@@ -28,8 +28,8 @@ test.describe('PW IT Replica — Buyer Flow', () => {
         await waitForFlutter(page);
         await checkSemantics(page);
 
-        // B01: Login as buyer (role-agnostic login helper, no admin grants)
-        await ensureLoggedIn(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
+        // B01: Login as buyer (role-agnostic login — does NOT grant elevated roles)
+        await ensureLoggedInAsBuyer(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
 
         const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
         await expect(settingsBtn).toBeAttached();
@@ -129,7 +129,7 @@ test.describe('PW IT Replica — Buyer Flow', () => {
         const productCards = page.locator('[aria-label^="product-card-"]');
         for (let i = 0; i < 6; i++) {
             if ((await productCards.count()) > 0) break;
-            await page.mouse.wheel(0, 220);
+            await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.8));
             await page.waitForTimeout(400);
         }
         if ((await productCards.count()) > 0) {
@@ -144,5 +144,8 @@ test.describe('PW IT Replica — Buyer Flow', () => {
 
         // C080/C099: Sign-out
         await performSignOut(page, TARGET_URL);
+        // After sign-out the app rebuilds to the unauthenticated home/login state.
+        // The URL should reflect a non-authenticated route.
+        await expect(page).toHaveURL(/login|sign-in|\//, { timeout: 15_000 });
     });
 });

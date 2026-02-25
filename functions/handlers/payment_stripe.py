@@ -3564,10 +3564,6 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
     sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(user_id).get()
     account_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
 
-    # Fall back to users doc for backward safety (in case both are populated)
-    if not account_id:
-        account_id = (user_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
-
     if not account_id:
         raise https_fn.HttpsError(
             "failed-precondition",
@@ -3738,7 +3734,10 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             if len(existing_payouts) == 0:
                 items = order_data.get(Fields.ITEMS, [])
-                fee_rate = PLATFORM_FEE_RATIO
+                fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
+                _ac_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0)
+                _ac_discount = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
+                _ac_discount_ratio = (_ac_subtotal - _ac_discount) / _ac_subtotal if _ac_subtotal > 0 else 1.0
 
                 sellers_total = {}
                 for item in items:
@@ -3760,13 +3759,14 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                         logger.error(f"\u26a0\ufe0f Failed to retrieve PaymentIntent for charge_id: {pi_err}")
 
                 for seller_id, amount_cents in sellers_total.items():
-                    platform_fee_cents = round(amount_cents * fee_rate)
-                    net_amount_cents = amount_cents - platform_fee_cents
+                    adjusted_amount_cents = round(amount_cents * _ac_discount_ratio)
+                    platform_fee_cents = round(adjusted_amount_cents * fee_rate)
+                    net_amount_cents = adjusted_amount_cents - platform_fee_cents
                     payout_ref = get_db().collection(Collections.PAYOUTS).document(f"{order_id}_{seller_id}")
                     payout_data = {
                         Fields.ORDER_ID: order_id,
                         Fields.SELLER_ID: seller_id,
-                        Fields.AMOUNT_CENTS: amount_cents,
+                        Fields.AMOUNT_CENTS: adjusted_amount_cents,
                         Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
                         Fields.NET_AMOUNT_CENTS: net_amount_cents,
                         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
@@ -3975,11 +3975,16 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
         # AUDIT FIX (CRITICAL-001): Use fee rate stored at checkout, not current config.
         # Prevents config manipulation between checkout and capture.
         stored_fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
+        _cap_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0)
+        _cap_discount = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
+        discount_ratio = (_cap_subtotal - _cap_discount) / _cap_subtotal if _cap_subtotal > 0 else 1.0
 
         for seller_id, amount_cents in sellers_total_cents.items():
+            # Apply coupon discount proportionally before computing platform fee
+            adjusted_amount_cents = round(amount_cents * discount_ratio)
             # Platform fee in cents — use stored rate from checkout, fallback to config
-            platform_fee_cents = round(amount_cents * stored_fee_rate)
-            net_amount_cents = amount_cents - platform_fee_cents
+            platform_fee_cents = round(adjusted_amount_cents * stored_fee_rate)
+            net_amount_cents = adjusted_amount_cents - platform_fee_cents
 
             # SECURITY FIX (CRITICAL-014): Use snapshotted stripeAccountId from checkout.
             # Falls back to live lookup if snapshot not available (old orders).
@@ -4077,7 +4082,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                         payout_data = {
                             Fields.ORDER_ID: order_id,
                             Fields.SELLER_ID: seller_id,
-                            Fields.AMOUNT_CENTS: amount_cents,
+                            Fields.AMOUNT_CENTS: adjusted_amount_cents,
                             Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
                             Fields.NET_AMOUNT_CENTS: net_amount_cents,
                             Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,

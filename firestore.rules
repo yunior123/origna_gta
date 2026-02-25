@@ -451,7 +451,7 @@ service cloud.firestore {
         isValidOrderStateTransition(resource.data.orderStatus, request.resource.data.orderStatus) &&
         // CRITICAL: Whitelist updatable fields — prevent overwriting financial data, userId, paymentIntentId
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'orderStatus', 'paymentStatus', 'deliveryStatus',
+          'orderStatus', 'paymentStatus',
           'adminNote', 'updatedAt', 'cancelledAt', 'cancelledBy',
           'cancellationReason', 'confirmedAt', 'shippedAt',
           'trackingNumber', 'carrier', 'stockRestored',

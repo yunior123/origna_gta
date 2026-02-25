@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:math';
+import 'package:uuid/uuid.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -402,11 +402,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   /// - Random per attempt (prevents blocking legitimate repeat purchases)
   /// - Stored in state so immediate retries reuse the same key
   String _generateIdempotencyKey(String userId) {
-    final random = Random.secure();
-    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-    final nonce = base64UrlEncode(bytes).replaceAll('=', '');
     final ts = DateTime.now().millisecondsSinceEpoch;
-    return 'chk_${userId}_${ts}_$nonce';
+    return 'chk_${userId}_${ts}_${const Uuid().v4()}';
   }
 
   double _toRadians(double deg) => deg * pi / 180;

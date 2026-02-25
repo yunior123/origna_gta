@@ -2035,7 +2035,9 @@
           "required": false,
           "default": false,
           "description": "True when the reviewer has a confirmed delivered order for this product"
-        }
+        },
+        "isFlagged": { "type": "boolean", "default": false, "indexed": true },
+        "hasPhotos": { "type": "boolean", "default": false, "indexed": true }
       }
     },
     "coupons": {
