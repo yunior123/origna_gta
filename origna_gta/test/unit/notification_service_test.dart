@@ -59,11 +59,12 @@ void main() {
       // Call the method to save the token
       await NotificationService.instance.saveTokenToFirestore();
 
-      // Verify it was written to fake firestore
-      final userDoc = await fakeFirestore.collection(Collections.users).doc(testUid).get();
-      expect(userDoc.exists, true);
-      expect(userDoc.data()?[Fields.fcmToken], testToken);
-      expect(userDoc.data()?[Fields.fcmTokenUpdatedAt], isA<Timestamp>());
+      // Verify it was written to fcm_tokens subcollection
+      final tokenDocs = await fakeFirestore.collection(Collections.users).doc(testUid).collection(Collections.fcmTokens).get();
+      expect(tokenDocs.docs.isNotEmpty, true);
+      final tokenData = tokenDocs.docs.first.data();
+      expect(tokenData[Fields.fcmTokenKey], testToken);
+      expect(tokenData[Fields.fcmTokenUpdatedAt], isNotNull);
     });
   });
 }

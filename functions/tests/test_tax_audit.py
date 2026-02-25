@@ -43,6 +43,8 @@ module_mocks = {
     "firebase_functions.https_fn": mock_firebase_functions.https_fn,
     "firebase_functions.firestore_fn": mock_firebase_functions.firestore_fn,
     "firebase_functions.params": mock_firebase_functions.params,
+    "firebase_functions.options": mock_firebase_functions.options,
+    "firebase_functions.tasks_fn": mock_firebase_functions.tasks_fn,
     "firebase_admin": mock_firebase_admin,
     "firebase_admin.firestore": mock_firebase_admin.firestore,
     "firebase_admin.auth": mock_firebase_admin.auth,
