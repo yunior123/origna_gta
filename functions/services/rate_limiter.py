@@ -68,8 +68,13 @@ class RateLimiter:
                     data = doc.to_dict()
                     count = data.get(Fields.COUNT, 0)
 
-                    # Fix: Handle both timezone-aware (UTC) and naive timestamps
+                    # Handle missing or malformed first_request (treat as fresh window)
                     first_request = data.get(Fields.FIRST_REQUEST)
+                    if first_request is None:
+                        transaction.set(ref, {Fields.COUNT: 1, Fields.FIRST_REQUEST: now, Fields.LAST_REQUEST: now})
+                        return True, "OK"
+
+                    # Fix: Handle both timezone-aware (UTC) and naive timestamps
                     if first_request.tzinfo is None:
                         first_request = first_request.replace(tzinfo=UTC)
 

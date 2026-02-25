@@ -696,9 +696,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     seller_profiles_cache = {}  # Cache seller_profiles docs to avoid N+1 reads
     warehouse_cache: dict[str, dict] = {}  # key: "sellerId:warehouseId" → warehouse data
 
-    # Batch-read all product docs to avoid N+1
-    product_refs = [get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID]) for item in items]
-    _product_docs_batch = {doc.id: doc for doc in get_db().get_all(product_refs)}
+    # Pre-load unique product docs (dedup by product_id to avoid redundant reads)
+    _product_docs_batch: dict = {}
+    for _item in items:
+        _pid = _item.get(Fields.PRODUCT_ID)
+        if _pid and _pid not in _product_docs_batch:
+            _product_docs_batch[_pid] = get_db().collection(Collections.PRODUCTS).document(_pid).get()
 
     for item in items:
         # Check quantity limits
@@ -714,7 +717,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Fetch product from Firestore for server-side validation
         product_doc = _product_docs_batch.get(item[Fields.PRODUCT_ID])
 
-        if not product_doc.exists:
+        if product_doc is None or not product_doc.exists:
             raise https_fn.HttpsError("not-found", f"Product {item[Fields.PRODUCT_ID]} not found")
 
         product_data = product_doc.to_dict()
@@ -2104,14 +2107,12 @@ def process_checkout_session_completed(session: dict) -> str | None:
     # Products could be deactivated or sellers suspended between checkout and payment
     items = order_data.get(Fields.ITEMS, [])
 
-    # Batch-read all unique products and sellers in a single round-trip (avoids N+1)
+    # Read unique products and sellers (deduplicated)
     product_ids_in_items = list({item.get(Fields.PRODUCT_ID) for item in items if item.get(Fields.PRODUCT_ID)})
     seller_ids_in_items = list({item.get(Fields.SELLER_ID) for item in items if item.get(Fields.SELLER_ID)})
     db = get_db()
-    product_refs = [db.collection(Collections.PRODUCTS).document(pid) for pid in product_ids_in_items]
-    seller_refs = [db.collection(Collections.USERS).document(sid) for sid in seller_ids_in_items]
-    product_docs_map = {doc.id: doc for doc in db.get_all(product_refs)} if product_refs else {}
-    seller_docs_map = {doc.id: doc for doc in db.get_all(seller_refs)} if seller_refs else {}
+    product_docs_map = {pid: db.collection(Collections.PRODUCTS).document(pid).get() for pid in product_ids_in_items}
+    seller_docs_map = {sid: db.collection(Collections.USERS).document(sid).get() for sid in seller_ids_in_items}
 
     for item in items:
         product_id = item.get(Fields.PRODUCT_ID)

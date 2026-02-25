@@ -29,6 +29,7 @@
 8. **Changing one line → update EVERY file that line impacts** (Tests, Rules, Indexes, Schema, playwright tests, etc)
 9. **Bonus fixes are appreciated, suggetions can be added to state.md, claude.md must be updated on every session initialization** 
 10. ** 🤖 Specialized Agent Playbooks, when taking decision or applying or verifying that the issues and bonus features or issues are correct, spawn them all to verify that the answer is correct so that all is well orchestrated.
+11. if you add new features, make sure to add tests for that feature
 ---
 
 ## PROJECT

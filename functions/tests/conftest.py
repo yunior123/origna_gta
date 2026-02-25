@@ -324,6 +324,7 @@ def reset_handler_globals():
     """
     # Import handlers to reset their module-level globals
     from handlers import admin, orders, payment_stripe, products
+    from services import email_service
 
     # Reset module-level caches
     payment_stripe._db = None
@@ -333,6 +334,7 @@ def reset_handler_globals():
     orders._firestore = None
     admin._db = None
     admin._firestore = None
+    email_service._mailjet_client = None
 
     yield
 
@@ -344,6 +346,7 @@ def reset_handler_globals():
     orders._firestore = None
     admin._db = None
     admin._firestore = None
+    email_service._mailjet_client = None
 
 
 @pytest.fixture(scope="function", autouse=True)

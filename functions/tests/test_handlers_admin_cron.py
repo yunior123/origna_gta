@@ -157,8 +157,7 @@ class TestAdminHandlers:
 
         mock_db = Mock()
         mock_get_db.return_value = mock_db
-
-        # Mock user document with admin role
+        mock_db.transaction.return_value._max_attempts = 4
         mock_user_doc = Mock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {"userId": "admin_123", "roles": ["admin"], "email": "admin@example.com"}
@@ -248,6 +247,7 @@ class TestAdminHandlers:
 
         mock_db = Mock()
         mock_get_db.return_value = mock_db
+        mock_db.transaction.return_value._max_attempts = 4
 
         # Mock admin with recent MFA verification
         mock_admin_doc = Mock()
