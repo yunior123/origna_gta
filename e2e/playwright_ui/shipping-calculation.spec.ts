@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 import {
   signIn, callOk,
   buildCheckoutPayload,
-  readDoc, parseDoc, writeDoc, toFirestoreFields,
+  readDoc, parseDoc, writeDoc, deleteDoc, toFirestoreFields,
   getTestProduct, invalidateProductCache,
   TEST_ACCOUNTS, TEST_UIDS,
 } from './api-helpers';
@@ -16,7 +16,7 @@ import {
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 
 test.describe('Shipping Calculation', () => {
-  test.setTimeout(120_000);
+  test.setTimeout(60_000);
 
   let buyerAuth: Awaited<ReturnType<typeof signIn>>;
 
@@ -25,7 +25,7 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Checkout includes tax calculation for Ontario address', async () => {
-    invalidateProductCache();
+    await invalidateProductCache();
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     // Ensure Ontario address
@@ -39,16 +39,14 @@ test.describe('Shipping Calculation', () => {
     expect(order.subtotalCents).toBeGreaterThan(0);
     expect(order.taxAmountCents).toBeGreaterThan(0);
     expect(order.totalAmountCents).toBeGreaterThan(order.subtotalCents);
-    // Ontario HST is 13% — tax applies to subtotal + shipping, so effective rate on subtotal alone can exceed 13%
+    // Ontario HST is exactly 13% — pin to that rate (±1 cent rounding)
     const taxableBase = order.subtotalCents + (order.shippingCostCents || 0);
-    const expectedTaxMin = Math.floor(taxableBase * 0.10);
-    const expectedTaxMax = Math.ceil(taxableBase * 0.16);
-    expect(order.taxAmountCents).toBeGreaterThanOrEqual(expectedTaxMin);
-    expect(order.taxAmountCents).toBeLessThanOrEqual(expectedTaxMax);
+    expect(order.taxAmountCents).toBeGreaterThanOrEqual(Math.floor(taxableBase * 0.12));
+    expect(order.taxAmountCents).toBeLessThanOrEqual(Math.ceil(taxableBase * 0.14));
   });
 
   test('Order total = subtotal + tax + shipping', async () => {
-    invalidateProductCache();
+    await invalidateProductCache();
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 2, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
@@ -62,7 +60,7 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Currency is always CAD', async () => {
-    invalidateProductCache();
+    await invalidateProductCache();
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
@@ -82,25 +80,29 @@ test.describe('Shipping Calculation', () => {
       name: 'Shipping Test Product',
       description: 'A test product for shipping calculation E2E tests.',
       price: 10.00,
+      priceCents: 1000, // required by backend verify_cart_prices
       lifecycleStatus: 'active',
-      stockQuantity: 50, // Guaranteed >= 3
+      stockQuantity: 50,
       categoryId: 1,
       imageUrls: ['https://picsum.photos/400'],
       keywords: [],
     }), adminAuth.idToken);
 
-    const { data: data1 } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
-    const result1 = await callOk('create_checkout_session', data1, buyerAuth.idToken);
-    const order1 = parseDoc(await readDoc(`orders/${result1.orderId}`, buyerAuth.idToken));
+    try {
+      const { data: data1 } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+      const result1 = await callOk('create_checkout_session', data1, buyerAuth.idToken);
+      const order1 = parseDoc(await readDoc(`orders/${result1.orderId}`, buyerAuth.idToken));
 
-    const { data: data2 } = await buildCheckoutPayload(buyerAuth.localId, productId, 2, buyerAuth.idToken);
-    const result2 = await callOk('create_checkout_session', data2, buyerAuth.idToken);
-    const order2 = parseDoc(await readDoc(`orders/${result2.orderId}`, buyerAuth.idToken));
+      const { data: data2 } = await buildCheckoutPayload(buyerAuth.localId, productId, 2, buyerAuth.idToken);
+      const result2 = await callOk('create_checkout_session', data2, buyerAuth.idToken);
+      const order2 = parseDoc(await readDoc(`orders/${result2.orderId}`, buyerAuth.idToken));
 
-    // Subtotal for qty 2 should be ~2x qty 1 (within rounding)
-    expect(order2.subtotalCents).toBeGreaterThan(order1.subtotalCents);
-    const ratio = order2.subtotalCents / order1.subtotalCents;
-    expect(ratio).toBeGreaterThan(1.9);
-    expect(ratio).toBeLessThan(2.1);
+      // Pin exact values (product price is known: $10.00)
+      expect(order1.subtotalCents).toBe(1000);
+      expect(order2.subtotalCents).toBe(2000);
+    } finally {
+      // Always clean up the test product to avoid polluting dev Firestore
+      await deleteDoc(`products/${productId}`, adminAuth.idToken).catch(() => {});
+    }
   });
 });

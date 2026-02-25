@@ -71,7 +71,7 @@ test.describe('PW IT Replica — Buyer Flow', () => {
                     }
                     const saveBtn = page.locator('[aria-label^="btn-save-address"]').first();
                     const saveVisible = await saveBtn.isVisible({ timeout: 5000 }).catch(() => false);
-                    expect(saveVisible || true).toBeTruthy();
+                    expect(saveVisible, 'Save address button should be visible on add-address screen').toBe(true);
                 }
                 await page.goBack();
                 await waitForFlutter(page);
@@ -116,7 +116,7 @@ test.describe('PW IT Replica — Buyer Flow', () => {
                 await expect(placeOrder).toBeAttached({ timeout: 15000 });
 
                 const hasTax = (await page.getByText(/HST|GST|PST|QST/i).count()) > 0;
-                expect(hasTax || true).toBeTruthy();
+                expect(hasTax, 'Tax line (HST/GST/PST/QST) should appear on checkout summary for Canadian address').toBe(true);
 
                 await page.goBack();
                 await waitForFlutter(page);

@@ -389,7 +389,18 @@ abstract class SellerWarehouse with _$SellerWarehouse {
 
   factory SellerWarehouse.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    return SellerWarehouse.fromJson({...data, 'warehouseId': doc.id});
+    final rawCreatedAt = data['createdAt'];
+    final String? parsedCreatedAt = switch (rawCreatedAt) {
+      Timestamp t => t.toDate().toIso8601String(),
+      DateTime d => d.toIso8601String(),
+      String s => s,
+      _ => null,
+    };
+    return SellerWarehouse.fromJson({
+      ...data,
+      'warehouseId': doc.id,
+      if (parsedCreatedAt != null) 'createdAt': parsedCreatedAt,
+    });
   }
 
   factory SellerWarehouse.fromJson(Map<String, dynamic> json) => _$SellerWarehouseFromJson(json);

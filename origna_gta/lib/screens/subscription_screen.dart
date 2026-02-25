@@ -249,52 +249,64 @@ class SubscriptionScreen extends ConsumerWidget {
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('subscription.new_products'.tr(), style: const TextStyle(fontSize: 14)),
-                      Text('subscription.new_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
+          GestureDetector(
+            onTap: () => vm.updateNotificationPreferences(notifyNewProducts: !notifyNew),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('subscription.new_products'.tr(), style: const TextStyle(fontSize: 14)),
+                        Text('subscription.new_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
                   ),
-                ),
-                Semantics(
-                  label: 'switch-notify-new-products',
-                  child: Switch.adaptive(
-                    value: notifyNew,
-                    onChanged: (val) => vm.updateNotificationPreferences(notifyNewProducts: val),
-                    activeColor: DesignTokens.primary,
+                  Semantics(
+                    label: 'switch-notify-new-products',
+                    child: SizedBox(
+                      height: 28,
+                      child: Switch.adaptive(
+                        value: notifyNew,
+                        onChanged: (val) => vm.updateNotificationPreferences(notifyNewProducts: val),
+                        activeColor: DesignTokens.primary,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('subscription.trending_products'.tr(), style: const TextStyle(fontSize: 14)),
-                      Text('subscription.trending_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
+          GestureDetector(
+            onTap: () => vm.updateNotificationPreferences(notifyTrending: !notifyTrending),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('subscription.trending_products'.tr(), style: const TextStyle(fontSize: 14)),
+                        Text('subscription.trending_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
                   ),
-                ),
-                Semantics(
-                  label: 'switch-notify-trending',
-                  child: Switch.adaptive(
-                    value: notifyTrending,
-                    onChanged: (val) => vm.updateNotificationPreferences(notifyTrending: val),
-                    activeColor: DesignTokens.primary,
+                  Semantics(
+                    label: 'switch-notify-trending',
+                    child: SizedBox(
+                      height: 28,
+                      child: Switch.adaptive(
+                        value: notifyTrending,
+                        onChanged: (val) => vm.updateNotificationPreferences(notifyTrending: val),
+                        activeColor: DesignTokens.primary,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

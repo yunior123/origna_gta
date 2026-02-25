@@ -146,6 +146,9 @@ def cancel_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
     if status not in SubscriptionStatusValues.PREMIUM_ACTIVE:
         raise https_fn.HttpsError("failed-precondition", "Subscription is not active.")
 
+    if sub_data.get(Fields.CANCEL_AT_PERIOD_END):
+        raise https_fn.HttpsError("failed-precondition", "Subscription is already scheduled to cancel.")
+
     _stripe_init()
     try:
         stripe.Subscription.modify(stripe_sub_id, cancel_at_period_end=True)
@@ -210,9 +213,23 @@ def get_subscription_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         return {"isPremium": False, "status": None, "premiumExpiresAt": None}
 
     sub_data = sub_snap.to_dict() or {}
+    stripe_sub_id = sub_data.get(Fields.STRIPE_SUBSCRIPTION_ID)
+    period_end = sub_data.get(Fields.CURRENT_PERIOD_END)
+
+    # Self-heal: if period_end is missing but we have a Stripe sub ID, re-sync from Stripe
+    if not period_end and stripe_sub_id:
+        try:
+            _stripe_init()
+            live_sub = stripe.Subscription.retrieve(stripe_sub_id)
+            _sync_subscription(live_sub)
+            sub_snap = _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).get()
+            sub_data = sub_snap.to_dict() or {}
+            period_end = sub_data.get(Fields.CURRENT_PERIOD_END)
+        except Exception as e:
+            logger.warning(f"get_subscription_status: failed to re-sync sub {stripe_sub_id}: {e}")
+
     status = sub_data.get(Fields.STATUS)
     is_premium = status in SubscriptionStatusValues.PREMIUM_ACTIVE
-    period_end = sub_data.get(Fields.CURRENT_PERIOD_END)
 
     return {
         "isPremium": is_premium,
@@ -309,6 +326,22 @@ def _sync_subscription(sub: dict | stripe.Subscription) -> None:
     period_end_ts = sub.get("current_period_end") if isinstance(sub, dict) else sub.current_period_end
     period_start_ts = sub.get("current_period_start") if isinstance(sub, dict) else sub.current_period_start
     cancel_at_end = sub.get("cancel_at_period_end", False) if isinstance(sub, dict) else sub.cancel_at_period_end
+
+    # Newer Stripe API versions move current_period_* to subscription items
+    if period_end_ts is None:
+        try:
+            items = (sub.get("items", {}).get("data", []) if isinstance(sub, dict)
+                     else list(sub.items.data or []))
+            if items:
+                first_item = items[0]
+                if isinstance(first_item, dict):
+                    period_end_ts = first_item.get("current_period_end")
+                    period_start_ts = period_start_ts or first_item.get("current_period_start")
+                else:
+                    period_end_ts = getattr(first_item, "current_period_end", None)
+                    period_start_ts = period_start_ts or getattr(first_item, "current_period_start", None)
+        except Exception:
+            pass
 
     period_end = _ts_to_datetime(period_end_ts)
     period_start = _ts_to_datetime(period_start_ts)

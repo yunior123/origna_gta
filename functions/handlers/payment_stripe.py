@@ -617,6 +617,15 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError(
                 "invalid-argument", f"Invalid Canadian postal code format: {postal_code}"
             ) from err
+
+        # Validate province code against known Canadian provinces
+        province_code = shipping_address.get(Fields.STATE, "").upper()
+        if province_code not in BusinessRules.VALID_PROVINCES:
+            raise https_fn.HttpsError(
+                "invalid-argument",
+                f"Invalid Canadian province code: '{province_code}'. "
+                f"Must be one of: {', '.join(sorted(BusinessRules.VALID_PROVINCES))}",
+            )
     else:
         # All-digital: no physical address needed (worldwide sales).
         # Normalize province from optional address if provided (for tax display only).
@@ -1349,7 +1358,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                     "price_data": {
                         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
                         "product_data": product_data,
-                        "unit_amount": int(item[Fields.PRICE] * 100),  # Convert to cents
+                        "unit_amount": round(item[Fields.PRICE] * 100),  # Convert to cents (round to avoid float truncation)
                     },
                     Fields.QUANTITY: item[Fields.QUANTITY],
                 }

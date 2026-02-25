@@ -115,8 +115,12 @@ _COUNTRY_REGIONS = {
 
 
 def get_tax_rate(state_code: str) -> float:
-    """Get tax rate for a Canadian province by state code (cached)"""
-    return _TAX_RATES_CACHE.get(state_code, 0.13)
+    """Get tax rate for a Canadian province by state code (cached).
+    Raises ValueError for unknown province codes — callers must validate upstream."""
+    rate = _TAX_RATES_CACHE.get(state_code)
+    if rate is None:
+        raise ValueError(f"Unknown Canadian province code: '{state_code}'. Valid codes: {sorted(_TAX_RATES_CACHE.keys())}")
+    return rate
 
 
 def get_international_shipping_estimate(

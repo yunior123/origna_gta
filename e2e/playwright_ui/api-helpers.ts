@@ -252,27 +252,40 @@ export function toFsVal(v: any): any {
  * Call a Firebase Callable Function on the deployed dev environment.
  * Returns the raw response body.
  */
-export async function callCallable(fn: string, data: any, token: string): Promise<any> {
-  const res = await fetch(`${FUNCTIONS_URL}/${fn}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({ data }),
-  });
-  const text = await res.text();
+export async function callCallable(fn: string, data: any, token: string, timeoutMs = 20_000): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return JSON.parse(text);
-  } catch {
-    // Non-JSON response (e.g. HTML 404 for missing function)
-    return { error: { message: `Non-JSON response (${res.status}): ${text.substring(0, 200)}`, status: res.status >= 400 ? 'NOT_FOUND' : 'INTERNAL' } };
+    const res = await fetch(`${FUNCTIONS_URL}/${fn}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ data }),
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      // Non-JSON response (e.g. HTML 404 for missing function)
+      return { error: { message: `Non-JSON response (${res.status}): ${text.substring(0, 200)}`, status: res.status >= 400 ? 'NOT_FOUND' : 'INTERNAL' } };
+    }
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      return { error: { message: `Request timeout after ${timeoutMs}ms for ${fn}`, status: 'DEADLINE_EXCEEDED' } };
+    }
+    return { error: { message: err.message || String(err), status: 'INTERNAL' } };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 /**
  * Call a callable function and throw if it returns an error.
- * Auto-retries on rate limit (waits 65s then retries up to 3 times).
+ * Auto-retries on transient server errors (cold start 500s); does NOT block
+ * on rate-limit errors — those fail fast so tests don't hang.
  */
 export async function callOk(fn: string, data: any, token: string): Promise<any> {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -280,10 +293,10 @@ export async function callOk(fn: string, data: any, token: string): Promise<any>
     if (body.error) {
       const msg = (body.error.message || '').toLowerCase();
       const status = body.error.status;
-      // Retry on rate limit or transient server errors (cold start 500s)
-      if ((msg.includes('rate limit') || status === 500) && attempt < 2) {
-        const wait = status === 500 ? 5_000 : 65_000;
-        console.log(`⏳ ${status === 500 ? 'Server error' : 'Rate limited'} on ${fn}, waiting ${wait / 1000}s... (attempt ${attempt + 1}/3)`);
+      // Only retry on transient 500s (cold start); fail fast on rate limit
+      if (status === 500 && attempt < 2) {
+        const wait = 5_000;
+        console.log(`⏳ Server error on ${fn}, waiting ${wait / 1000}s... (attempt ${attempt + 1}/3)`);
         await new Promise(r => setTimeout(r, wait));
         continue;
       }
@@ -484,7 +497,44 @@ export async function pollDocField(
 }
 
 /**
- * Wait for order to reach a target status — polls Firestore.
+ * Simulate concurrent calls — useful for testing race conditions and idempotency.
+ */
+export async function simulateConcurrent(
+  fn: () => Promise<unknown>,
+  concurrency: number
+): Promise<{ succeeded: number; failed: number; errors: string[] }> {
+  const results = await Promise.allSettled(
+    Array.from({ length: concurrency }, fn)
+  );
+  const succeeded = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results.filter(r => r.status === 'rejected').length;
+  const errors = results
+    .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+    .map(r => r.reason?.message ?? String(r.reason));
+  return { succeeded, failed, errors };
+}
+
+/**
+ * Poll Firestore until condition is true (eventual consistency helper).
+ * Throws if condition is not met within timeout.
+ */
+export async function pollDoc<T>(
+  path: string,
+  condition: (data: T) => boolean,
+  token?: string,
+  { timeout = 10_000, interval = 500 } = {}
+): Promise<T> {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const doc = await readDoc(path, token);
+    const data = doc ? parseDoc(doc) as T : null;
+    if (data && condition(data)) return data;
+    await new Promise(r => setTimeout(r, interval));
+  }
+  throw new Error(`pollDoc timeout: condition not met for ${path} within ${timeout}ms`);
+}
+
+/**
  */
 export async function waitForOrderStatus(
   orderId: string,
@@ -517,6 +567,13 @@ export async function waitForOrderStatus(
  * Dismiss Stripe modals that may block the checkout form.
  */
 export async function dismissStripeModals(page: Page): Promise<void> {
+  // Handle "Pay without Link" button (Stripe Link OTP/authentication flow)
+  const payWithoutLink = page.locator('button:has-text("Pay without Link")').first();
+  if (await payWithoutLink.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await payWithoutLink.click().catch(() => { });
+    await page.waitForTimeout(1_000);
+  }
+
   const linkDismiss = page.locator(
     'button:has-text("Not now"), ' +
     'button:has-text("Pay another way"), ' +
@@ -818,15 +875,23 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
     let product: DiscoveredProduct | null = null;
     try {
       const fields = await getDoc(`products/${id}`, adminAuth.idToken);
-      if (fields && fields.lifecycleStatus === 'active' && (fields.stockQuantity ?? 0) > 0) {
-        product = {
-          id,
-          name: fields.name || `E2E Product ${prefix}`,
-          price: fields.price || 0,
-          sellerId: fields.sellerId || sellerUid,
-          stockQuantity: fields.stockQuantity,
-          lifecycleStatus: 'active',
-        };
+      if (fields && fields.lifecycleStatus === 'active') {
+        // Auto-restore stock if too low (tests decrement stock with each checkout)
+        const currentStock = fields.stockQuantity ?? 0;
+        if (currentStock < 10) {
+          await writeDoc(`products/${id}`, toFirestoreFields({ stockQuantity: 200 }), adminAuth.idToken, true);
+          fields.stockQuantity = 200;
+        }
+        if ((fields.stockQuantity ?? 0) > 0) {
+          product = {
+            id,
+            name: fields.name || `E2E Product ${prefix}`,
+            price: fields.price || 0,
+            sellerId: fields.sellerId || sellerUid,
+            stockQuantity: fields.stockQuantity,
+            lifecycleStatus: 'active',
+          };
+        }
       }
     } catch { /* will create below */ }
 

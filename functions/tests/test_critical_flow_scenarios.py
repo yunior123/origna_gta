@@ -1262,12 +1262,12 @@ class TestTaxCalculation:
             assert rate > 0, f"Province {province} has no tax rate!"
             assert rate <= 0.20, f"Province {province} rate {rate} seems too high"
 
-    def test_unknown_province_defaults_to_13(self):
-        """Scenario 82: Unknown province defaults to 13% (ON rate)."""
+    def test_unknown_province_raises_error(self):
+        """Scenario 82: Unknown province raises ValueError — no silent defaults."""
         from services.shipping_service import get_tax_rate
 
-        rate = get_tax_rate("XX")
-        assert rate == 0.13
+        with pytest.raises(ValueError, match="Unknown Canadian province code"):
+            get_tax_rate("XX")
 
     def test_alberta_lowest_tax(self):
         """Scenario 83: Alberta has lowest tax (5% GST only)."""

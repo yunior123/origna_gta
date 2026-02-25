@@ -36,7 +36,7 @@ For each finding, output exactly this block — nothing more:
 ```
 [SEVERITY] file/path.ext:LINE_NUMBER
 PROBLEM: one sentence — what is wrong and why it matters, backed by strong evidence.
-FIX: one sentence — exact change needed (field name, method, value, logic) +  section for code snippet demonstrating the fix.
+FIX: few sentences — exact change needed (field name, method, value, logic) +  section for code snippet demonstrating the fix, propose a few approches as per claude.md.
 ```
 
 Severity levels: `[CRITICAL]` · `[HIGH]` · `[MEDIUM]` · `[LOW]` · `[BONUS]`

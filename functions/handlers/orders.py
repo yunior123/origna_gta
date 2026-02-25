@@ -1213,7 +1213,10 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             if difference_cents != 0:
                 shipping_address = fresh_data.get(Fields.SHIPPING_ADDRESS, {})
                 state_code = shipping_address.get(Fields.STATE, BusinessRules.DEFAULT_PROVINCE)
-                shipping_tax_rate = get_tax_rate(state_code)
+                try:
+                    shipping_tax_rate = get_tax_rate(state_code)
+                except ValueError:
+                    shipping_tax_rate = get_tax_rate(BusinessRules.DEFAULT_PROVINCE)
                 tax_difference_cents = round(difference_cents * shipping_tax_rate)
 
                 # Update tax breakdown with shipping tax adjustment
@@ -1496,7 +1499,10 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         if difference_cents != 0:
             shipping_address = order_data.get(Fields.SHIPPING_ADDRESS, {})
             state_code = shipping_address.get(Fields.STATE, BusinessRules.DEFAULT_PROVINCE)
-            shipping_tax_rate = get_tax_rate(state_code)
+            try:
+                shipping_tax_rate = get_tax_rate(state_code)
+            except ValueError:
+                shipping_tax_rate = get_tax_rate(BusinessRules.DEFAULT_PROVINCE)
             tax_difference_cents = round(difference_cents * shipping_tax_rate)
 
             # Update tax breakdown with shipping tax adjustment

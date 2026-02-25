@@ -24,7 +24,7 @@ test.describe('Stripe Payment Flow', () => {
 
   test('Full checkout → Stripe payment → order confirmed', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    invalidateProductCache();
+    await invalidateProductCache();
     const product = await getTestProduct(auth.idToken, auth.localId);
 
     const result = await fullCheckoutAndPay(page, BUYER_EMAIL, product.id, 1);
@@ -39,7 +39,7 @@ test.describe('Stripe Payment Flow', () => {
 
   test('Order document has correct structure after payment', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    invalidateProductCache();
+    await invalidateProductCache();
     const product = await getTestProduct(auth.idToken, auth.localId);
 
     const { data } = await buildCheckoutPayload(auth.localId, product.id, 1, auth.idToken);
@@ -47,7 +47,6 @@ test.describe('Stripe Payment Flow', () => {
 
     await page.goto(result.checkoutUrl);
     await fillStripeCheckout(page, BUYER_EMAIL);
-    await page.waitForTimeout(5_000);
 
     const order = await waitForOrderStatus(result.orderId, ['confirmed', 'processing'], auth.idToken, 90_000);
     expect(order.orderId).toBe(result.orderId);
@@ -59,11 +58,14 @@ test.describe('Stripe Payment Flow', () => {
     expect(order.totalAmountCents).toBeGreaterThanOrEqual(order.subtotalCents);
     expect(order.shippingAddress).toBeTruthy();
     expect(order.customerEmail).toBeTruthy();
+    // Platform fee ratio must be stored at order creation time
+    expect(order.platformFeeRatio, 'platformFeeRatio must be 0.025').toBe(0.025);
+    expect(order.stripeSessionId, 'stripeSessionId must be stored').toBeTruthy();
   });
 
-  test('Stock decremented after successful payment', async ({ page }) => {
+  test('Stock decremented by exact ordered quantity after payment', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    invalidateProductCache();
+    await invalidateProductCache();
     const product = await getTestProduct(auth.idToken, auth.localId);
 
     const stockBefore = await getProductStock(product.id, auth.idToken);
@@ -71,12 +73,13 @@ test.describe('Stripe Payment Flow', () => {
     await waitForOrderStatus(result.orderId, ['confirmed', 'processing'], auth.idToken, 90_000);
 
     const stockAfter = await getProductStock(product.id, auth.idToken);
-    expect(stockAfter).toBeLessThan(stockBefore);
+    // Exact delta — not just "less than" (catches over-decrement bugs)
+    expect(stockAfter).toBe(stockBefore - 1);
   });
 
   test('Checkout URL redirects to Stripe hosted page', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    invalidateProductCache();
+    await invalidateProductCache();
     const product = await getTestProduct(auth.idToken, auth.localId);
 
     const { data } = await buildCheckoutPayload(auth.localId, product.id, 1, auth.idToken);
@@ -86,5 +89,16 @@ test.describe('Stripe Payment Flow', () => {
     await page.goto(result.checkoutUrl);
     await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
     expect(page.url()).toContain('checkout.stripe.com');
+  });
+
+  test('Duplicate checkout with same idempotency key returns same order', async () => {
+    const auth = await signIn(BUYER_EMAIL);
+    await invalidateProductCache();
+    const product = await getTestProduct(auth.idToken, auth.localId);
+    const { data } = await buildCheckoutPayload(auth.localId, product.id, 1, auth.idToken);
+
+    const r1 = await callOk('create_checkout_session', data, auth.idToken);
+    const r2 = await callOk('create_checkout_session', data, auth.idToken);
+    expect(r1.orderId, 'Duplicate checkout must return same orderId').toBe(r2.orderId);
   });
 });

@@ -72,10 +72,11 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
                 {"activations": activations, "updatedAt": now}
             )
             builds = lic.get(Fields.DIGITAL_BUILDS, {})
+            activated_at = act.get("activatedAt")
             return {
                 "approved": True,
                 "licenseKey": license_key,
-                "activatedAt": act.get("activatedAt"),
+                "activatedAt": activated_at.isoformat() if hasattr(activated_at, 'isoformat') else str(activated_at) if activated_at else None,
                 Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
                 "platforms": list(builds.keys()) if builds else [],
                 "downloadUrls": builds if isinstance(builds, dict) else {},

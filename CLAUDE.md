@@ -13,6 +13,8 @@
 11. everytime playwright tests are executed, save screen shots of the different views to desktop so that Yunior can see the views and give feedback related to ui ux and logic, etc.
 12. running playwright tests and fixing should be really fast, take screenshot of the tests while they are running then analyze them to see what is wrong and fix it.
 13. there are many mcp, cli tools that you can use, dont be shy. You can use them all without Yunior permission, he has already given you authorization.
+14. when given an audit with suggested fixes to implement make sure that is backed by evidence, the suggestions can be implemented by first we need to gather the all agents in the .claude/agents and see if there are better alternatives or we can just implement the fix in the suggested way.
+15. did you finish answering a question, then now,  search the web, github, reddit- the social media, stackoverflow, etc and try to improve a bit the suggested fixes, bonus, etc, add different ways of solving them for the ones that might have different ways. make sure that you answer like a pro.
 
 ## RULES
 0. this is so bad, really terrible, the app has not launched yet and your are having into consideration legacy code that leads to confusion, no legacy handling in the code, if you add a new feature you never have into consideration backward compatibility since we have not lanuched yet. Listen to me, never, never, never do that, put it really deep into your brain. When exploring the code always fix all code that has into account older, deprecated, legacy things. 

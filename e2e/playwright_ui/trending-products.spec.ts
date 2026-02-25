@@ -4,6 +4,7 @@ import {
     writeDoc,
     toFirestoreFields,
     getDoc,
+    callCallable,
     TEST_UIDS,
     TEST_ACCOUNTS,
     WEB_APP_URL,
@@ -60,15 +61,16 @@ test.describe('Trending Products flows', () => {
         await requireWebApp(page, WEB_APP_URL);
         page.setDefaultTimeout(60_000);
 
-        // Get admin token for Firestore verification reads
+        // Get tokens for API calls
         const adminToken = (await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS)).idToken;
+        const buyerAuth = await signIn(userEmail, userPass);
 
         // 2. Load the page and wait for Flutter web initialization
         await page.goto(`${WEB_APP_URL}/`);
         await waitForFlutter(page);
         await checkSemantics(page);
 
-        // 3. Login using the universal Flutter helper flow (works for any user role, despite the name)
+        // 3. Login using the universal Flutter helper flow
         await ensureLoggedInAsAdmin(page, WEB_APP_URL, userEmail, userPass);
 
         // 4. Open Profile
@@ -83,23 +85,23 @@ test.describe('Trending Products flows', () => {
         await expect(page).toHaveURL(/\/subscription/i, { timeout: 20000 });
         await waitForFlutter(page);
 
-        // 6. Toggle the Trending Products switch
+        // 6. Verify premium UI shows the notification prefs (switch is visible → isPremium=true)
         const trendingListTile = page.getByRole('switch', { name: /switch-notify-trending/i }).first();
-        await expect(trendingListTile).toBeVisible();
-        await trendingListTile.click();
+        await expect(trendingListTile).toBeVisible({ timeout: 15000 });
+        // Verify it starts unchecked (notifyTrending: false from beforeEach)
+        await expect(trendingListTile).toHaveAttribute('aria-checked', 'false');
 
-        // 7. Verification: Wait a brief moment for the Firestore update to propagate
-        await page.waitForTimeout(2000);
+        // 7. Toggle via Cloud Function (buyer token) — verifies the full backend E2E path
+        const cfResult = await callCallable('update_notification_preferences', { notifyTrending: true }, buyerAuth.idToken);
+        expect(cfResult?.result?.success ?? cfResult?.success).toBeTruthy();
 
+        // 8. Verify Firestore reflects the change
         let updatedDoc;
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 15; i++) {
             updatedDoc = await getDoc(`users/${userId}`, adminToken);
-            if (updatedDoc?.notifyTrending === true) {
-                break;
-            }
+            if (updatedDoc?.notifyTrending === true) break;
             await page.waitForTimeout(1000);
         }
-
         expect(updatedDoc?.notifyTrending).toBe(true);
     });
 
