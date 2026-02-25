@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart' show CloudFunctionEndpoints;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:rxdart/rxdart.dart';
 
 class FirebaseUserRepository implements UserRepository {
   final FirebaseFirestore _firestore;
@@ -119,11 +120,14 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId) {
-    // Combine users doc (for roles) with seller_profiles doc (for Stripe status fields).
-    return _firestore.collection(Collections.users).doc(userId).snapshots().asyncMap((doc) async {
-      final spDoc = await _firestore.collection(Collections.sellerProfiles).doc(userId).get();
-      return _parseSellerStatus(doc.data(), spDoc.data());
-    });
+    // Combine users doc (for roles) and seller_profiles doc (for Stripe status) in parallel.
+    // Using combineLatest2 avoids N+1: both streams fire independently on their own writes.
+    return Rx.combineLatest2(
+      _firestore.collection(Collections.users).doc(userId).snapshots(),
+      _firestore.collection(Collections.sellerProfiles).doc(userId).snapshots(),
+      (DocumentSnapshot userDoc, DocumentSnapshot spDoc) =>
+          _parseSellerStatus(userDoc.data() as Map<String, dynamic>?, spDoc.data() as Map<String, dynamic>?),
+    );
   }
 
   // userData: from users/{uid} (roles). spData: from seller_profiles/{uid} (Stripe status fields).

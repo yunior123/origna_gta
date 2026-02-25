@@ -64,7 +64,8 @@ test.describe('PW IT Replica — Buyer Flow', () => {
 
                 const streetField = page.getByRole('textbox', { name: /street|rue/i }).first();
                 if (await streetField.isVisible({ timeout: 10000 }).catch(() => false)) {
-                    await streetField.fill('100 Queen');
+                    await streetField.click();
+                    await streetField.pressSequentially('100 Queen', { delay: 30 });
                     const suggestion = page.locator('flt-semantics[role="button"]').nth(0);
                     if (await suggestion.isVisible({ timeout: 10000 }).catch(() => false)) {
                         await suggestion.click();

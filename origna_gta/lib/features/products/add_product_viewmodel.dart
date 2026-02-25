@@ -432,7 +432,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     freeShipping: value ? true : state.freeShipping,
     isPerishable: value ? false : state.isPerishable,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
-    standardEnabled: value ? false : state.standardEnabled, // Restore previous value when going back to physical
+    // Save standard delivery state when enabling digital; restore when disabling
+    savedStandardEnabled: value ? state.standardEnabled : state.savedStandardEnabled,
+    standardEnabled: value ? false : state.savedStandardEnabled,
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
     // Clear digital sub-fields when turning off

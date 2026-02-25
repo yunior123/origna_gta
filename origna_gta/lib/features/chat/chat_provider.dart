@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,14 +44,17 @@ class ChatState {
   final bool isLoading;
   final String? errorMessage;
   final String? chatId;
+  /// True when the current user is the seller of this product — they should use their seller inbox.
+  final bool isOwnProduct;
 
-  const ChatState({this.isLoading = false, this.errorMessage, this.chatId});
+  const ChatState({this.isLoading = false, this.errorMessage, this.chatId, this.isOwnProduct = false});
 
-  ChatState copyWith({bool? isLoading, String? errorMessage, String? chatId, bool clearError = false}) {
+  ChatState copyWith({bool? isLoading, String? errorMessage, String? chatId, bool? isOwnProduct, bool clearError = false}) {
     return ChatState(
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
       chatId: chatId ?? this.chatId,
+      isOwnProduct: isOwnProduct ?? this.isOwnProduct,
     );
   }
 }
@@ -63,8 +67,15 @@ final chatViewModelProvider =
 class ChatViewModel extends StateNotifier<ChatState> {
   final Ref _ref;
   final String _productId;
+  Timer? _markReadTimer;
 
   ChatViewModel(this._ref, this._productId) : super(const ChatState());
+
+  @override
+  void dispose() {
+    _markReadTimer?.cancel();
+    super.dispose();
+  }
 
   Future<void> openChat() async {
     if (state.chatId != null || state.isLoading) return;
@@ -73,7 +84,14 @@ class ChatViewModel extends StateNotifier<ChatState> {
       final chatId = await _ref.read(chatRepositoryProvider).getOrCreateChat(_productId);
       state = state.copyWith(isLoading: false, chatId: chatId);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
+      // Detect self-chat (seller viewing own product) and surface a clear UX state
+      final isSelfChat = e is FirebaseFunctionsException && e.code == 'permission-denied' &&
+          (e.message?.contains('yourself') ?? false);
+      state = state.copyWith(
+        isLoading: false,
+        isOwnProduct: isSelfChat,
+        errorMessage: isSelfChat ? null : _parseError(e),
+      );
     }
   }
 
@@ -89,6 +107,12 @@ class ChatViewModel extends StateNotifier<ChatState> {
     } finally {
       state = state.copyWith(isLoading: false);
     }
+  }
+
+  /// Debounced markRead — coalesces rapid message batches into a single Firestore write.
+  void markReadDebounced() {
+    _markReadTimer?.cancel();
+    _markReadTimer = Timer(const Duration(milliseconds: 500), () => markRead());
   }
 
   Future<void> markRead() async {

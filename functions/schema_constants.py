@@ -76,6 +76,7 @@ class Collections:
     # Security (backend-only)
     USER_SECURITY = "user_security"  # Backend-only MFA secrets — allow read: if false
     SELLER_PROFILES = "seller_profiles"  # Seller-only profile data — buyers never have this doc
+    SELLER_SKUS = "seller_skus"  # Collision docs for atomic SKU uniqueness: {sellerId}_{sku}
 
     # Premium & Chat
     SUBSCRIPTIONS = "subscriptions"  # top-level: subscriptions/{userId}
@@ -358,6 +359,7 @@ class Fields:
     CURRENT_PERIOD_START = "currentPeriodStart"  # datetime
     CURRENT_PERIOD_END = "currentPeriodEnd"  # datetime
     CANCEL_AT_PERIOD_END = "cancelAtPeriodEnd"  # bool
+    CANCEL_SCHEDULED_AT = "cancelScheduledAt"  # datetime — when cancellation was requested
 
     # === CHAT FIELDS ===
     CHAT_ID = "chatId"
@@ -825,6 +827,7 @@ class PaymentStatusValues:
     CAPTURING = "capturing"
     CANCELLING = "cancelling"
     EXPIRING = "expiring"
+    VOIDED = "voided"
 
     ALL: frozenset[str] = frozenset(
         {
@@ -1016,6 +1019,7 @@ class SecurityAlertTypes:
     TAX_EXEMPTION_PENDING_REVIEW = "tax_exemption_pending_review"
     SUSPICIOUS_TAX_EXEMPTION = "suspicious_tax_exemption"
     AUTH_DELETION_FAILED = "auth_deletion_failed"
+    TOKEN_REVOCATION_FAILED = "token_revocation_failed"  # Suspension token revoke failed
     SELLER_METRICS_BREACH = "seller_metrics_breach"  # TASK 11
 
 

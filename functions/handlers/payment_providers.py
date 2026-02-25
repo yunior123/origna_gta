@@ -12,6 +12,7 @@ Providers Supported:
 """
 
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Any, ClassVar
 
 from firebase_functions import https_fn
@@ -19,6 +20,7 @@ from firebase_functions import https_fn
 from schema_constants import (
     AdminActionValues,
     ApiKeys,
+    BusinessRules,
     Collections,
     Documents,
     Fields,
@@ -186,6 +188,21 @@ def require_provider_enabled(provider: str) -> None:
 # ============================================================================
 
 
+def _require_recent_mfa(admin_data: dict[str, Any]) -> None:
+    """Require admin to have verified MFA within the last 5 minutes (same policy as admin.py)."""
+    if not admin_data.get(Fields.MFA_ENABLED, False):
+        raise https_fn.HttpsError(
+            "failed-precondition", "Admin MFA is not enabled. Please enable MFA before performing sensitive operations."
+        )
+    last_mfa_verify = admin_data.get(Fields.LAST_MFA_VERIFY)
+    if not last_mfa_verify:
+        raise https_fn.HttpsError("permission-denied", "MFA verification required.")
+    now = datetime.now(UTC)
+    last_mfa_utc = last_mfa_verify.astimezone(UTC) if last_mfa_verify.tzinfo is not None else last_mfa_verify.replace(tzinfo=UTC)
+    if (now - last_mfa_utc) > timedelta(minutes=BusinessRules.MFA_VERIFICATION_VALIDITY_MINUTES):
+        raise https_fn.HttpsError("permission-denied", "MFA verification expired. Please verify again.")
+
+
 def _require_admin(req: https_fn.CallableRequest) -> tuple:
     """
     Validates admin permissions.
@@ -283,9 +300,10 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
     Returns:
         {success: True, provider: "stripe", enabled: true}
     """
-    admin_id, _ = _require_admin(req)
+    admin_id, admin_data = _require_admin(req)
 
-    # Rate limit: 5/min for admin writes (critical operation)
+    # MFA check — required for all destructive payment configuration changes
+    _require_recent_mfa(admin_data)
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=admin_id, action="update_payment_provider", max_requests=5, window_minutes=1, fail_closed=True

@@ -15,8 +15,12 @@ import {
  */
 
 const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? 'yr62813@gmail.com';
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
+// Require credentials via env vars — never fall back to hardcoded values
+const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  throw new Error('E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set in environment variables');
+}
 
 test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
     test.setTimeout(300_000);

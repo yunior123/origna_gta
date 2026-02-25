@@ -186,10 +186,10 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
             # Phase 2: Write ALL updates after all reads
             for ref, snapshot, qty in refs_and_snapshots:
                 if snapshot.exists:
-                    product_data = snapshot.to_dict()
-                    current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
-                    patch = {Fields.STOCK_QUANTITY: current_stock + qty}
-
+                    # Use server-side Increment — atomic even if this transaction is ever
+                    # removed or the decorator changes; avoids read-compute-write divergence.
+                    _firestore = get_firestore()
+                    patch = {Fields.STOCK_QUANTITY: _firestore.Increment(qty)}
                     transaction.update(ref, patch)
 
         transaction = get_db().transaction()
@@ -1323,7 +1323,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CREATED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
         Fields.CAPTURE_ATTEMPTS: 0,
-        Fields.EXPIRES_AT: datetime.now(UTC) + timedelta(days=AUTHORIZATION_VALID_DAYS),
+        # expiresAt is set in process_checkout_session_completed when Stripe authorizes,
+        # since the 7-day capture window starts at authorization (not order creation).
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
         Fields.DELIVERY_SPEED: delivery_speed,
@@ -1833,6 +1834,11 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
         net_amount_cents = adjusted_amount_cents - platform_fee_cents
 
         payout_ref = get_db().collection(Collections.PAYOUTS).document(f"{order_id}_{seller_id}")
+        # Skip if payout already COMPLETED — prevents webhook retry from resetting status
+        existing_payout = payout_ref.get()
+        if existing_payout.exists and (existing_payout.to_dict() or {}).get(Fields.STATUS) == PayoutStatusValues.COMPLETED:
+            logger.info(f"Payout {payout_ref.id} already COMPLETED — skipping")
+            continue
         payout_data = {
             Fields.ORDER_ID: order_id,
             Fields.SELLER_ID: seller_id,
@@ -1849,8 +1855,14 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
         # Attempt Stripe Transfer
         if charge_id:
             try:
-                sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
-                acct_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
+                # Use seller Stripe account snapshot from order (set at checkout) for security.
+                # This prevents account-swap attacks if seller changes their Connect account after checkout.
+                seller_stripe_accounts = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
+                acct_id = seller_stripe_accounts.get(seller_id)
+                if not acct_id:
+                    # Fallback: fetch from seller_profiles (for orders without snapshot)
+                    sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
+                    acct_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
                 if acct_id:
                     transfer = stripe.Transfer.create(
                         amount=net_amount_cents,
@@ -2041,15 +2053,24 @@ def process_checkout_session_completed(session: dict) -> str | None:
     # SECURITY FIX: Re-validate products before confirming order
     # Products could be deactivated or sellers suspended between checkout and payment
     items = order_data.get(Fields.ITEMS, [])
+
+    # Batch-read all unique products and sellers in a single round-trip (avoids N+1)
+    product_ids_in_items = list({item.get(Fields.PRODUCT_ID) for item in items if item.get(Fields.PRODUCT_ID)})
+    seller_ids_in_items = list({item.get(Fields.SELLER_ID) for item in items if item.get(Fields.SELLER_ID)})
+    db = get_db()
+    product_refs = [db.collection(Collections.PRODUCTS).document(pid) for pid in product_ids_in_items]
+    seller_refs = [db.collection(Collections.USERS).document(sid) for sid in seller_ids_in_items]
+    product_docs_map = {doc.id: doc for doc in db.get_all(product_refs)} if product_refs else {}
+    seller_docs_map = {doc.id: doc for doc in db.get_all(seller_refs)} if seller_refs else {}
+
     for item in items:
         product_id = item.get(Fields.PRODUCT_ID)
         seller_id = item.get(Fields.SELLER_ID)
 
         # Check product still exists and is active
-        product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
-        product_doc = product_ref.get()
+        product_doc = product_docs_map.get(product_id)
 
-        if not product_doc.exists:
+        if product_doc is None or not product_doc.exists:
             logger.warning(f"⚠️ Product {product_id} no longer exists, cancelling order {order_id}")
             _restore_stock_and_cancel_order(order_id, order_data, f"Product {product_id} removed")
             return f"Order {order_id} cancelled - product removed"
@@ -2061,9 +2082,8 @@ def process_checkout_session_completed(session: dict) -> str | None:
             return f"Order {order_id} cancelled - product deactivated"
 
         # Check seller not suspended
-        seller_ref = get_db().collection(Collections.USERS).document(seller_id)
-        seller_doc = seller_ref.get()
-        if seller_doc.exists and seller_doc.to_dict().get(Fields.SUSPENDED, False):
+        seller_doc = seller_docs_map.get(seller_id)
+        if seller_doc and seller_doc.exists and seller_doc.to_dict().get(Fields.SUSPENDED, False):
             logger.warning(f"⚠️ Seller {seller_id} suspended, cancelling order {order_id}")
             _restore_stock_and_cancel_order(order_id, order_data, f"Seller {seller_id} suspended")
             return f"Order {order_id} cancelled - seller suspended"
@@ -2072,11 +2092,13 @@ def process_checkout_session_completed(session: dict) -> str | None:
     pi_id = session.get("payment_intent")
 
     # Initialize update data with CAPTURED status (auto-capture mode)
+    # expiresAt stamped here (at Stripe authorization) so 7-day window is accurate
     update_data = {
         Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
         Fields.STRIPE_PAYMENT_INTENT_ID: pi_id,
         Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
         Fields.CAPTURED_AT: get_server_timestamp(),
+        Fields.EXPIRES_AT: datetime.now(UTC) + timedelta(days=AUTHORIZATION_VALID_DAYS),
         Fields.UPDATED_AT: get_server_timestamp(),
     }
 
@@ -2734,22 +2756,24 @@ def process_charge_refunded(charge: dict) -> str | None:
             logger.error(f"License revocation failed for order {order_id}: {revoke_err}")
 
         if is_full_refund:
+            _fs = get_firestore()
             order_ref.update(
                 {
                     Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED,
                     Fields.TRANSFERS_REVERSED: reversed_count,
-                    Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
+                    Fields.CUMULATIVE_REFUNDED_CENTS: _fs.Increment(amount_refunded),
                     Fields.REFUNDED_AT: get_server_timestamp(),
                     Fields.UPDATED_AT: get_server_timestamp(),
                 }
             )
             return f"Order {order_id} fully refunded, reversed {reversed_count} transfers"
         else:
+            _fs = get_firestore()
             order_ref.update(
                 {
                     Fields.PAYMENT_STATUS: PaymentStatusValues.PARTIALLY_REFUNDED,
                     Fields.PARTIAL_REFUND_AMOUNT_CENTS: amount_refunded,
-                    Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
+                    Fields.CUMULATIVE_REFUNDED_CENTS: _fs.Increment(amount_refunded),
                     Fields.TRANSFERS_REVERSED: reversed_count,
                     Fields.REFUNDED_AT: get_server_timestamp(),
                     Fields.UPDATED_AT: get_server_timestamp(),
@@ -3163,12 +3187,22 @@ def process_dispute_closed(dispute: dict) -> str | None:
                 )
 
                 re_transferred = 0
+                # Load the seller Stripe account snapshot stored at checkout time
+                seller_stripe_snapshot = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
                 for payout_doc in payouts:
                     payout_data = payout_doc.to_dict()
-                    seller_stripe_id = payout_data.get(Fields.STRIPE_ACCOUNT_ID)
+                    seller_id = payout_data.get(Fields.SELLER_ID, "")
                     reversed_cents = payout_data.get(Fields.CUMULATIVE_REVERSED_CENTS, 0)
 
+                    # Use checkout-time snapshot first — prevents seller swapping Stripe account
+                    seller_stripe_id = seller_stripe_snapshot.get(seller_id, {}).get(Fields.STRIPE_ACCOUNT_ID)
+                    if not seller_stripe_id:
+                        # Fall back to current seller profile only if snapshot missing
+                        sp = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
+                        seller_stripe_id = (sp.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID) if sp.exists else None
+
                     if not seller_stripe_id or reversed_cents <= 0:
+                        logger.warning(f"Dispute won re-transfer skipped for seller {seller_id}: no Stripe account or zero reversed_cents")
                         continue
 
                     try:
@@ -3742,6 +3776,16 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                 for item in items:
                     item_status = item.get(Fields.STATUS, DeliveryStatusValues.PENDING)
                     if item_status in (DeliveryStatusValues.DELIVERED, DeliveryStatusValues.SHIPPED):
+                        sid = item.get(Fields.SELLER_ID)
+                        if sid:
+                            amt = round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1)
+                            sellers_total[sid] = sellers_total.get(sid, 0) + amt
+
+                # If no items are in DELIVERED/SHIPPED state (e.g. auto-confirm without explicit shipping),
+                # fall back to all items — prevents zero-payout auto-capture.
+                if not sellers_total:
+                    logger.warning(f"Auto-capture {order_id}: no SHIPPED/DELIVERED items found — paying all items")
+                    for item in items:
                         sid = item.get(Fields.SELLER_ID)
                         if sid:
                             amt = round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1)

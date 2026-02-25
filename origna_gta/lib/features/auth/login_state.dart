@@ -1,3 +1,6 @@
+// Sentinel object: distinguishes "not provided" from explicit null in copyWith calls.
+const _omit = Object();
+
 class LoginState {
   final bool isLoading;
   final bool isLogin;
@@ -25,8 +28,8 @@ class LoginState {
     bool? obscurePassword,
     bool? acceptedTerms,
     bool? marketingOptIn,
-    String? errorMessage,
-    String? successMessage,
+    Object? errorMessage = _omit,
+    Object? successMessage = _omit,
     bool? isSuccess,
   }) {
     return LoginState(
@@ -35,8 +38,8 @@ class LoginState {
       obscurePassword: obscurePassword ?? this.obscurePassword,
       acceptedTerms: acceptedTerms ?? this.acceptedTerms,
       marketingOptIn: marketingOptIn ?? this.marketingOptIn,
-      errorMessage: errorMessage,
-      successMessage: successMessage,
+      errorMessage: identical(errorMessage, _omit) ? this.errorMessage : errorMessage as String?,
+      successMessage: identical(successMessage, _omit) ? this.successMessage : successMessage as String?,
       isSuccess: isSuccess ?? this.isSuccess,
     );
   }

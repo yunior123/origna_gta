@@ -239,6 +239,15 @@ Future<bool> addToCart({
     }
   } catch (e, stack) {
     AppError.log(e, stackTrace: stack, context: 'addToCart');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppError.getMessage(e)),
+          backgroundColor: DesignTokens.error,
+        ),
+      );
+    }
+    return false;
   }
   return true;
 }
@@ -704,9 +713,20 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context) async {
   try {
     await user.reload();
   } catch (e) {
-    // reload() can fail in emulator or flaky network — treat as verified
+    // reload() failed (network error on non-emulator env) — fail closed to protect verification gate
     debugPrint('checkEmailVerifiedOrPrompt: reload failed: $e');
-    return true;
+    if (!EnvConfig().isEmulator && context.mounted) {
+      showEmailVerificationDialog(
+        context,
+        onResend: () async {
+          try {
+            await FirebaseAuth.instance.currentUser?.sendEmailVerification();
+          } catch (_) {}
+        },
+      );
+      return false;
+    }
+    return true; // emulator: treat as verified
   }
   final freshUser = FirebaseAuth.instance.currentUser;
   if (freshUser != null && freshUser.emailVerified) {

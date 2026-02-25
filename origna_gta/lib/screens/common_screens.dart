@@ -150,6 +150,24 @@ class AuthRequiredGate extends ConsumerWidget {
             body: Center(child: ModernLoadingIndicator(centered: false)),
           );
         }
+        // Fail closed on error — never grant access when profile can't be loaded
+        if (userProfileAsync.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
+                    const SizedBox(height: 16),
+                    Text('auth.profile_load_error'.tr(), textAlign: TextAlign.center),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
         final userProfile = userProfileAsync.valueOrNull;
         if (userProfile?.suspended == true) {
           return Container(

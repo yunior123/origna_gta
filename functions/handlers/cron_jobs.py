@@ -816,17 +816,27 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
         mismatch_percent = abs(firestore_count - algolia_count) / firestore_count
 
         if mismatch_percent > BusinessRules.ALGOLIA_SYNC_MISMATCH_THRESHOLD:  # > 5% mismatch
-            get_db().collection(Collections.SECURITY_ALERTS).add(
-                {
-                    Fields.TYPE: SecurityAlertTypes.ALGOLIA_SYNC_ISSUE,
-                    Fields.SEVERITY: SeverityLevels.MEDIUM,
-                    Fields.FIRESTORE_COUNT: firestore_count,
-                    Fields.ALGOLIA_COUNT: algolia_count,
-                    Fields.MISMATCH_PERCENT: mismatch_percent * 100,
-                    Fields.TIMESTAMP: get_server_timestamp(),
-                    Fields.RESOLVED: False,
-                }
+            # Dedup: check for existing unresolved alert of same type before inserting
+            existing = (
+                get_db()
+                .collection(Collections.SECURITY_ALERTS)
+                .where(Fields.TYPE, "==", SecurityAlertTypes.ALGOLIA_SYNC_ISSUE)
+                .where(Fields.RESOLVED, "==", False)
+                .limit(1)
+                .get()
             )
+            if not existing:
+                get_db().collection(Collections.SECURITY_ALERTS).add(
+                    {
+                        Fields.TYPE: SecurityAlertTypes.ALGOLIA_SYNC_ISSUE,
+                        Fields.SEVERITY: SeverityLevels.MEDIUM,
+                        Fields.FIRESTORE_COUNT: firestore_count,
+                        Fields.ALGOLIA_COUNT: algolia_count,
+                        Fields.MISMATCH_PERCENT: mismatch_percent * 100,
+                        Fields.TIMESTAMP: get_server_timestamp(),
+                        Fields.RESOLVED: False,
+                    }
+                )
 
             logger.info(f"ALERT: Algolia sync mismatch: Firestore={firestore_count}, Algolia={algolia_count}")
         else:

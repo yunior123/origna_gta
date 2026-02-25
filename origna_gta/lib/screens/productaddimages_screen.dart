@@ -73,7 +73,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                     index: index,
                     isPrimary: index == 0,
                     onRemove: () {
-                      setState(() => _imageModels.remove(m));
+                      setState(() => _imageModels.removeAt(index));
                       widget.onImagesChanged?.call(List.unmodifiable(_imageModels));
                     },
                   ),

@@ -20,6 +20,7 @@ from schema_constants import (
     Collections,
     Fields,
     ProductLifecycleStatusValues,
+    ValidationLimits,
 )
 from utils.db import get_db as _get_db
 from utils.function_options import DEFAULT_OPTIONS
@@ -33,10 +34,15 @@ def _is_premium(uid: str) -> bool:
     return is_premium_authoritative(uid, db=_get_db())
 
 def _sanitize_text(text: str) -> str:
-    """Strip HTML/script injection from user text."""
+    """Strip HTML/script injection and off-platform contact info from user text."""
     text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
     text = re.sub(r'<[^>]+>', '', text)
     text = re.sub(r'javascript:', '', text, flags=re.IGNORECASE)
+    # Redact off-platform contact info to protect marketplace transaction flow
+    text = re.sub(r'\b[\w._%+\-]+@[\w.\-]+\.[a-zA-Z]{2,}\b', '[email removed]', text)
+    text = re.sub(r'\b(\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}\b', '[phone removed]', text)
+    text = re.sub(r'https?://[^\s]+', '[link removed]', text, flags=re.IGNORECASE)
+    text = re.sub(r'www\.[^\s]+', '[link removed]', text, flags=re.IGNORECASE)
     return text.strip()
 
 
@@ -219,10 +225,10 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Sanitize before any Firestore write
     text = _sanitize_text(raw_text)
-    if not text:
-        raise https_fn.HttpsError("invalid-argument", "Message text is empty after sanitization.")
-    if len(text) > 2000:
-        raise https_fn.HttpsError("invalid-argument", "Message text exceeds 2000 characters.")
+    if len(text.strip()) < ValidationLimits.MIN_MESSAGE_LENGTH:
+        raise https_fn.HttpsError("invalid-argument", "Message text is empty or too short.")
+    if len(text) > ValidationLimits.MAX_MESSAGE_LENGTH:
+        raise https_fn.HttpsError("invalid-argument", f"Message text exceeds {ValidationLimits.MAX_MESSAGE_LENGTH} characters.")
 
     db = _get_db()
     chat_snap = db.collection(Collections.CHATS).document(chat_id).get()

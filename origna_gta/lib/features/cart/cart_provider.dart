@@ -166,7 +166,7 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
       return results;
     },
     loading: () => [],
-    error: (e, st) => [],
+    error: (e, st) => throw e, // Rethrow so cart screen can show retry banner
   );
 });
 

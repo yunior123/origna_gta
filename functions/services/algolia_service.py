@@ -133,7 +133,15 @@ def format_product_for_algolia(product_id: str, product_data: dict | Product) ->
         # N-09: Variant metadata (for display, not stock)
         Fields.HAS_VARIANTS,
         Fields.VARIANT_OPTIONS,
+        # Buyer-facing fields: condition facet, price anchoring, trending sort, digital flag
+        Fields.CONDITION,
+        Fields.COMPARE_AT_PRICE,
+        Fields.IS_DIGITAL,
+        Fields.TRENDING_SCORE,
+        Fields.IS_TRENDING,
     ]
+    # SECURITY: fields intentionally excluded from Algolia (NEVER add these):
+    # bookSourceUrl, digitalBuilds, cost, supplierUrl, sellerSku — internal/sensitive only
     for field in optional_fields:
         if field in data:
             algolia_object[field] = data[field]

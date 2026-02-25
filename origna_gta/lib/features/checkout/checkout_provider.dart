@@ -285,6 +285,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         Fields.deliveryInstructions: deliveryInstructions,
         // Coupon code — backend validates and applies discount
         if (state.couponCode != null) Fields.couponCode: state.couponCode,
+        // Idempotency key — prevents duplicate orders on double-tap / network retry
+        ApiKeys.idempotencyKey: idempotencyKey,
       };
 
       // Use circuit breaker for Stripe checkout calls

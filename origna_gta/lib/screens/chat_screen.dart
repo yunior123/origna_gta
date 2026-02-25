@@ -70,7 +70,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: AppBarFactory.simple(title: widget.productTitle),
       body: Column(
         children: [
-          if (vmState.errorMessage != null && vmState.errorMessage!.contains('Premium'))
+          else if (vmState.isOwnProduct)
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.storefront, size: 48, color: DesignTokens.textSecondary),
+                      const SizedBox(height: 16),
+                      Text(
+                        'chat.own_product_title'.tr(),
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'chat.own_product_body'.tr(),
+                        style: TextStyle(color: DesignTokens.textSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else if (vmState.errorMessage != null && vmState.errorMessage!.contains('Premium'))
             Expanded(
               child: Center(
                 child: PremiumPaywallWidget(featureName: 'Chat with Sellers'),
@@ -99,6 +125,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               controller: _textController,
               focusNode: _inputFocusNode,
               isDark: isDark,
+              isSending: vmState.isLoading && vmState.chatId != null,
               onSend: () async {
                 final text = _textController.text.trim();
                 if (text.isEmpty) return;
@@ -107,7 +134,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   await ref.read(chatViewModelProvider(widget.productId).notifier).sendMessage(text);
                   WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
                 } catch (_) {
-                  _textController.text = text; // restore on failure
+                  // Only restore text if input is empty — don't overwrite what the user typed next
+                  if (_textController.text.trim().isEmpty) {
+                    _textController.text = text;
+                  }
                 }
               },
             ),
@@ -148,7 +178,7 @@ class _MessagesList extends ConsumerWidget {
         // Only scroll + markRead when new messages arrive (not on our own sends)
         if (nextCount > prevCount) {
           WidgetsBinding.instance.addPostFrameCallback((_) => onNewMessages());
-          ref.read(chatViewModelProvider(productId).notifier).markRead();
+          ref.read(chatViewModelProvider(productId).notifier).markReadDebounced();
         }
       }
     });
@@ -163,13 +193,13 @@ class _MessagesList extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'No messages yet. Say hello! 👋',
+                  'chat.empty_state_no_messages'.tr(),
                   style: TextStyle(color: DesignTokens.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: onFocusInput,
-                  child: const Text('Send a message'),
+                  child: Text('chat.send_message_cta'.tr()),
                 ),
               ],
             ),
@@ -308,9 +338,10 @@ class _MessageInput extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode? focusNode;
   final bool isDark;
+  final bool isSending;
   final VoidCallback onSend;
 
-  const _MessageInput({required this.controller, required this.isDark, required this.onSend, this.focusNode});
+  const _MessageInput({required this.controller, required this.isDark, required this.onSend, this.focusNode, this.isSending = false});
 
   @override
   Widget build(BuildContext context) {
@@ -345,7 +376,7 @@ class _MessageInput extends StatelessWidget {
                 fillColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surfaceVariant,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),
-              onSubmitted: (_) => onSend(),
+              onSubmitted: isSending ? null : (_) => onSend(),
             ),
           ),
           const SizedBox(width: 8),
@@ -355,7 +386,7 @@ class _MessageInput extends StatelessWidget {
             child: IconButton.filled(
               key: const Key('chat_send_button'),
               icon: const Icon(Icons.send_rounded),
-              onPressed: onSend,
+              onPressed: isSending ? null : onSend,
               tooltip: 'Send',
               style: IconButton.styleFrom(
                 backgroundColor: DesignTokens.primary,

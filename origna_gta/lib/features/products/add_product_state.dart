@@ -32,6 +32,7 @@ class AddProductState {
   final bool freeShippingAt10Plus; // Free shipping for 10+ item orders
   final bool savedExpressEnabled; // Saved state when free shipping toggled on
   final bool savedSameDayEnabled; // Saved state when free shipping toggled on
+  final bool savedStandardEnabled; // Saved state when digital mode toggled on
   final String? errorMessage;
   final bool isSuccess;
   // Multi-warehouse fields
@@ -70,6 +71,7 @@ class AddProductState {
     this.freeShippingAt10Plus = false,
     this.savedExpressEnabled = false,
     this.savedSameDayEnabled = false,
+    this.savedStandardEnabled = true,
     this.errorMessage,
     this.isSuccess = false,
     this.sellerSku,
@@ -109,6 +111,7 @@ class AddProductState {
     bool? freeShippingAt10Plus,
     bool? savedExpressEnabled,
     bool? savedSameDayEnabled,
+    bool? savedStandardEnabled,
     Object? errorMessage = _sentinel,
     bool? isSuccess,
     Object? sellerSku = _sentinel,
@@ -145,6 +148,7 @@ class AddProductState {
       freeShippingAt10Plus: freeShippingAt10Plus ?? this.freeShippingAt10Plus,
       savedExpressEnabled: savedExpressEnabled ?? this.savedExpressEnabled,
       savedSameDayEnabled: savedSameDayEnabled ?? this.savedSameDayEnabled,
+      savedStandardEnabled: savedStandardEnabled ?? this.savedStandardEnabled,
       errorMessage: errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
       isSuccess: isSuccess ?? this.isSuccess,
       sellerSku: sellerSku == _sentinel ? this.sellerSku : sellerSku as String?,

@@ -489,11 +489,16 @@ class Product(BaseModel):
 
     @model_validator(mode="after")
     def validate_compare_at_price(self) -> "Product":
-        """Ensure compareAtPrice is strictly greater than price when set (it represents the original/higher price)."""
-        if self.compareAtPrice is not None and self.compareAtPrice <= self.price:
-            raise ValueError(
-                "compareAtPrice must be greater than price (it represents the original, higher price before discount)"
-            )
+        """Ensure compareAtPrice is at least $0.50 above price (must represent a real discount)."""
+        if self.compareAtPrice is not None:
+            if self.compareAtPrice <= self.price:
+                raise ValueError(
+                    "compareAtPrice must be greater than price (it represents the original, higher price before discount)"
+                )
+            if (self.compareAtPrice - self.price) < 0.50:
+                raise ValueError(
+                    "compareAtPrice must be at least $0.50 above price to show a meaningful discount"
+                )
         return self
 
     @model_validator(mode="after")

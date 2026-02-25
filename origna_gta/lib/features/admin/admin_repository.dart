@@ -124,7 +124,7 @@ class FirebaseAdminRepository implements AdminRepository {
   Stream<List<OrderModel>> watchOrders({String? status, int limit = 50}) {
     Query query = _firestore.collection(Collections.orders).orderBy(Fields.createdAt, descending: true).limit(limit);
     if (status != null && status != FilterValues.all) {
-      query = query.where(Fields.paymentStatus, isEqualTo: status);
+      query = query.where(Fields.orderStatus, isEqualTo: status);
     }
     return query.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {

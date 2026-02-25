@@ -102,8 +102,7 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
             client_reference_id=uid,
             metadata={"uid": uid},
             subscription_data={"metadata": {"uid": uid}},
-            # Use 5-minute window idempotency to allow retry after session expiry
-            idempotency_key=f"premium_sub_{uid}_{datetime.now(UTC).strftime('%Y%m%d%H%M')}",
+            idempotency_key=f"premium_sub_{uid}",
         )
         # Cache session URL so we can recover it on IdempotencyError
         user_ref.update({
@@ -112,7 +111,7 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
         })
         return {"success": True, "checkoutUrl": session.url, "sessionId": session.id}
     except stripe.error.IdempotencyError as e:
-        # Same click within the same minute window — return cached session URL
+        # Double-tap or retry — return cached session URL to surface existing checkout
         logger.info(f"Idempotency hit for premium subscription {uid}: {e}")
         cached_url = (user_ref.get().to_dict() or {}).get(Fields.LAST_CHECKOUT_SESSION)
         if cached_url:
@@ -143,7 +142,10 @@ def cancel_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("not-found", "Subscription ID not found.")
 
     status = sub_data.get(Fields.STATUS, "")
-    if status not in SubscriptionStatusValues.PREMIUM_ACTIVE:
+    # past_due users must also be allowed to cancel — they are stuck in a failed payment
+    # loop and have the right to stop their subscription immediately.
+    cancellable_statuses = SubscriptionStatusValues.PREMIUM_ACTIVE | {SubscriptionStatusValues.PAST_DUE}
+    if status not in cancellable_statuses:
         raise https_fn.HttpsError("failed-precondition", "Subscription is not active.")
 
     if sub_data.get(Fields.CANCEL_AT_PERIOD_END):
@@ -155,6 +157,7 @@ def cancel_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
         _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).update(
             {
                 Fields.CANCEL_AT_PERIOD_END: True,
+                Fields.CANCEL_SCHEDULED_AT: _get_server_timestamp(),
                 Fields.UPDATED_AT: _get_server_timestamp(),
             }
         )
@@ -280,8 +283,15 @@ def handle_subscription_deleted(event: stripe.Event) -> None:
         merge=True,
     )
 
-    # Clear premium cache on user doc — in same batch to avoid partial writes
+    # Clear premium cache on user doc — in same batch to avoid partial writes.
+    # Use set+merge to safely handle the case where the user account was deleted
+    # but the subscription webhook fires afterward (avoids batch.update NOT_FOUND crash).
     user_ref = db.collection(Collections.USERS).document(uid)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        logger.warning(f"handle_subscription_deleted: user {uid} not found — skipping user doc update, still clearing sub doc")
+        batch.commit()
+        return
     batch.update(
         user_ref,
         {

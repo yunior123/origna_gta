@@ -429,7 +429,15 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   // Chat screen
   if (uri.path == AppRoutes.chat) {
     final args = settings.arguments as ChatArgs?;
-    if (args == null) {
+    // Support deep-link via URL query params: /chat?productId=X&productTitle=Y
+    final resolvedArgs = args ??
+        (uri.queryParameters.containsKey('productId')
+            ? ChatArgs(
+                productId: uri.queryParameters['productId']!,
+                productTitle: uri.queryParameters['productTitle'] ?? '',
+              )
+            : null);
+    if (resolvedArgs == null) {
       return SlidePageRoute(
         settings: const RouteSettings(name: '/'),
         page: const AuthWrapper(),
@@ -438,7 +446,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
-        child: ChatScreen(productId: args.productId, productTitle: args.productTitle),
+        child: ChatScreen(productId: resolvedArgs.productId, productTitle: resolvedArgs.productTitle),
       ),
     );
   }

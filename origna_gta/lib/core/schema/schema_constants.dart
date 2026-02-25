@@ -359,6 +359,7 @@ abstract final class Collections {
   static const userSecurity =
       'user_security'; // Backend-only MFA secrets — allow read: if false
   static const sellerProfiles = 'seller_profiles'; // Seller-only profile data
+  static const sellerSkus = 'seller_skus'; // Collision docs for atomic SKU uniqueness
 
   // Return tracking
   static const returnRequests = 'return_requests';
@@ -803,6 +804,7 @@ abstract final class Fields {
   static const currentPeriodStart = 'currentPeriodStart';
   static const currentPeriodEnd = 'currentPeriodEnd';
   static const cancelAtPeriodEnd = 'cancelAtPeriodEnd';
+  static const cancelScheduledAt = 'cancelScheduledAt'; // datetime — when cancellation was requested
 
   // === CHAT FIELDS ===
   static const chatId = 'chatId';
@@ -1218,6 +1220,7 @@ abstract final class PaymentStatusValues {
   static const capturing = 'capturing';
   static const cancelling = 'cancelling';
   static const expiring = 'expiring';
+  static const voided = 'voided';
 
   static const all = {
     awaitingPayment,
@@ -1235,6 +1238,7 @@ abstract final class PaymentStatusValues {
     capturing,
     cancelling,
     expiring,
+    voided,
   };
 }
 
@@ -1445,6 +1449,7 @@ abstract final class SecurityAlertTypes {
   static const taxExemptionPendingReview = 'tax_exemption_pending_review';
   static const suspiciousTaxExemption = 'suspicious_tax_exemption';
   static const authDeletionFailed = 'auth_deletion_failed';
+  static const tokenRevocationFailed = 'token_revocation_failed'; // Suspension token revoke failed
   static const sellerMetricsBreach = 'seller_metrics_breach'; // TASK 11
 }
 

@@ -20,6 +20,7 @@ import boto3
 import requests
 from botocore.config import Config
 from firebase_functions import firestore_fn, https_fn
+from pydantic import ValidationError
 
 from config import (
     CURRENT_ENV,
@@ -28,6 +29,7 @@ from config import (
     get_geoapify_api_key,
     get_r2_credentials,
 )
+from models.product import ProductCreate
 from schema_constants import (
     AppConfig,
     CategoryIds,
@@ -84,6 +86,11 @@ def _generate_product_slug(title: str) -> str:
     base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40]
     suffix = secrets.token_hex(2)  # 4 hex chars
     return f"{base}-{suffix}"
+
+
+def _is_valid_stock_quantity(stock: Any) -> bool:
+    """Return True only for numeric stock quantities that are >= 0."""
+    return isinstance(stock, (int, float)) and stock >= 0
 
 
 # CORS is configured in DEFAULT_OPTIONS via function_options.py
@@ -974,8 +981,13 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
     roles = user_data.get(Fields.ROLES, [])
     if UserRoleValues.SELLER not in roles and UserRoleValues.ADMIN not in roles:
         raise https_fn.HttpsError("permission-denied", "Seller role required")
-    if not user_data.get(Fields.ONBOARDING_COMPLETED, False) and UserRoleValues.ADMIN not in roles:
-        raise https_fn.HttpsError("failed-precondition", "Please complete seller onboarding before uploading products")
+    # Read onboarding status from seller_profiles (authoritative source per schema)
+    # NOTE: users/{uid}.onboardingCompleted is unreliable — sellers control that doc
+    if UserRoleValues.ADMIN not in roles:
+        sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(user_id).get()
+        sp_data = sp_doc.to_dict() if sp_doc.exists else {}
+        if not sp_data.get(Fields.ONBOARDING_COMPLETED, False):
+            raise https_fn.HttpsError("failed-precondition", "Please complete seller onboarding before uploading products")
 
     # Rate limit
     from services.rate_limiter import RateLimiter
@@ -1088,41 +1100,47 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
     if isinstance(seller_address, dict) and seller_address.get("apartment") == "":
         seller_address["apartment"] = None
 
-    # Pre-write SKU uniqueness check — prevents race conditions from being silently masked by the trigger
+    # Atomic SKU uniqueness check using a collision doc — prevents concurrent submissions
+    # with the same SKU from both passing the non-transactional query above.
     seller_sku = product_data.get(Fields.SELLER_SKU)
+    sku_collision_ref = None
     if seller_sku:
-        existing = (
-            get_db()
-            .collection(Collections.PRODUCTS)
-            .where(Fields.SELLER_ID, "==", user_id)
-            .where(Fields.SELLER_SKU, "==", seller_sku)
-            .where(Fields.LIFECYCLE_STATUS, "!=", ProductLifecycleStatusValues.ARCHIVED)
-            .limit(1)
-            .get()
-        )
-        if existing:
-            raise https_fn.HttpsError(
-                "already-exists", f"A product with SKU \"{seller_sku}\" already exists. Use a unique seller SKU."
-            )
+        sku_key = f"{user_id}_{seller_sku}"
+        sku_collision_ref = get_db().collection(Collections.SELLER_SKUS).document(sku_key)
+        try:
+            sku_collision_ref.create({
+                Fields.SELLER_ID: user_id,
+                Fields.SELLER_SKU: seller_sku,
+                Fields.CREATED_AT: get_server_timestamp(),
+            })
+        except Exception as sku_err:
+            # If AlreadyExists — another product holds this SKU
+            err_str = str(sku_err).lower()
+            if "already exists" in err_str or "exists" in err_str or "409" in err_str:
+                raise https_fn.HttpsError(
+                    "already-exists", f"A product with SKU \"{seller_sku}\" already exists. Use a unique seller SKU."
+                ) from sku_err
+            # Non-conflict error — log and fall through (SKU check was best-effort)
+            logger.warning(f"SKU collision doc creation error (non-fatal): {sku_err}")
 
     # Warehouse address validation — ensure all warehouse docs exist and have complete addresses
     warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
-    for wid in warehouse_ids:
-        w_doc = (
-            get_db()
-            .collection(Collections.USERS)
-            .document(user_id)
-            .collection(Collections.WAREHOUSES)
-            .document(wid)
-            .get()
-        )
-        if not w_doc.exists:
-            raise https_fn.HttpsError("not-found", f"Warehouse '{wid}' not found. Please update your warehouse selection.")
-        addr = (w_doc.to_dict() or {}).get("address", {})
-        if not addr.get("city") or not addr.get("country"):
-            raise https_fn.HttpsError(
-                "invalid-argument", f"Warehouse '{wid}' has an incomplete address (city and country are required)."
-            )
+    if warehouse_ids:
+        # Batch-read all warehouses in one round-trip instead of N sequential .get() calls
+        warehouse_refs = [
+            get_db().collection(Collections.USERS).document(user_id).collection(Collections.WAREHOUSES).document(wid)
+            for wid in warehouse_ids
+        ]
+        warehouse_docs = {doc.id: doc for doc in get_db().get_all(warehouse_refs)}
+        for wid in warehouse_ids:
+            w_doc = warehouse_docs.get(wid)
+            if w_doc is None or not w_doc.exists:
+                raise https_fn.HttpsError("not-found", f"Warehouse '{wid}' not found. Please update your warehouse selection.")
+            addr = (w_doc.to_dict() or {}).get("address", {})
+            if not addr.get("city") or not addr.get("country"):
+                raise https_fn.HttpsError(
+                    "invalid-argument", f"Warehouse '{wid}' has an incomplete address (city and country are required)."
+                )
 
     # Warehouse denormalization (reuses existing helper)
     ship_from = _derive_ship_from_fields(user_id, product_data)
@@ -1133,14 +1151,37 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
     product_id = product_ref.id
     product_data[Fields.PRODUCT_ID] = product_id
 
+    # Validate product data through Pydantic before writing — catches invalid condition,
+    # compareAtPrice, digitalType, XSS in name/description, and all field validators.
+    try:
+        validated = ProductCreate(**product_data)
+        # Replace product_data with validated (and coerced) values; re-add server timestamps
+        product_data = validated.model_dump(exclude_none=True)
+        product_data[Fields.CREATED_AT] = get_server_timestamp()
+        product_data[Fields.UPDATED_AT] = get_server_timestamp()
+        product_data[Fields.PRODUCT_ID] = product_id
+    except ValidationError as e:
+        # Surface the first validation error to the client with a clear message
+        first_error = e.errors()[0]
+        msg = first_error.get("msg", "Invalid product data")
+        logger.warning(f"create_product_atomic: Pydantic validation failed for user {user_id}: {msg}")
+        if sku_collision_ref is not None:
+            import contextlib
+            with contextlib.suppress(Exception):
+                sku_collision_ref.delete()
+        raise https_fn.HttpsError("invalid-argument", msg) from e
+
     try:
         product_ref.set(product_data)
     except Exception as e:
-        # Cleanup uploaded images before surfacing the error
+        # Cleanup uploaded images and SKU collision doc before surfacing the error
         import contextlib
         for key in uploaded_keys:
             with contextlib.suppress(Exception):
                 s3_client.delete_object(Bucket=bucket_name, Key=key)
+        if sku_collision_ref is not None:
+            with contextlib.suppress(Exception):
+                sku_collision_ref.delete()
         logger.error(f"create_product_atomic: Firestore write failed for user {user_id}: {e}")
         raise https_fn.HttpsError("internal", "Failed to create product. Please try again.") from e
 
@@ -1167,6 +1208,25 @@ def on_product_created(event: firestore_fn.Event) -> None:
 
     # ── SECURITY: SERVER-SIDE VALIDATION (products written from Flutter) ──
     from utils.helpers import sanitized_text
+
+    product_name = product_data.get(Fields.NAME, "")
+
+    def _deactivate_with_email(reason: str, status: str = ProductLifecycleStatusValues.DRAFT) -> None:
+        """Update product status and notify seller via email."""
+        update: dict = {
+            Fields.LIFECYCLE_STATUS: status,
+            Fields.DEACTIVATION_REASON: reason,
+        }
+        if status == ProductLifecycleStatusValues.REJECTED:
+            update[Fields.APPROVAL_REJECTION_REASON] = reason
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(update)
+        sid = product_data.get(Fields.SELLER_ID)
+        seller_email = _get_seller_email(sid)
+        if seller_email:
+            try:
+                _send_product_rejection_email(seller_email, product_name, reason)
+            except Exception as e:
+                logger.error(f"Failed to send deactivation email for {product_id}: {e}")
 
     # CRITICAL: Check if seller is suspended — deactivate product immediately
     seller_id = product_data.get(Fields.SELLER_ID)
@@ -1204,36 +1264,35 @@ def on_product_created(event: firestore_fn.Event) -> None:
                 f"SECURITY: Duplicate sellerSku '{seller_sku}' for seller {seller_id} — "
                 f"existing product(s): {duplicate_ids} — deactivating new product {product_id}"
             )
-            get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                {
-                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
-                    Fields.DEACTIVATION_REASON: f"Duplicate sellerSku: '{seller_sku}' already exists for this seller",
-                }
-            )
+            _deactivate_with_email(f"Duplicate sellerSku: '{seller_sku}' already exists for this seller")
             return
 
     # CRITICAL: Validate price > 0 and <= 100000 CAD
     price = product_data.get(Fields.PRICE)
     if price is None or not isinstance(price, (int, float)) or price <= 0 or price > 100000:
         logger.info(f"SECURITY: Product {product_id} has invalid price ({price}) — deactivating")
-        get_db().collection(Collections.PRODUCTS).document(product_id).update(
-            {
-                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
-                Fields.DEACTIVATION_REASON: f"Invalid price: {price}",
-            }
-        )
+        _deactivate_with_email(f"Invalid price: {price}")
+        return
+
+    # SECURITY: compareAtPrice must be at least $0.50 above price (prevents fake discount labels)
+    compare_at_price = product_data.get(Fields.COMPARE_AT_PRICE)
+    if compare_at_price is not None and isinstance(compare_at_price, (int, float)) and (compare_at_price <= price or (compare_at_price - price) < 0.50):
+        logger.info(f"SECURITY: Product {product_id} compareAtPrice gap too small ({compare_at_price} vs {price}) — deactivating")
+        _deactivate_with_email(f"compareAtPrice must be at least $0.50 above price (got gap of ${compare_at_price - price:.2f})")
+        return
+
+    # SECURITY: hasVariants=true requires at least one variant entry
+    has_variants = product_data.get(Fields.HAS_VARIANTS, False)
+    if has_variants and not (product_data.get(Fields.VARIANTS) or []):
+        logger.info(f"SECURITY: Product {product_id} has hasVariants=true but empty variants list — deactivating")
+        _deactivate_with_email("hasVariants is true but no variant entries provided")
         return
 
     # CRITICAL: Validate stock quantity >= 0
     stock = product_data.get(Fields.STOCK_QUANTITY, 0)
     if not isinstance(stock, (int, float)) or stock < 0:
         logger.info(f"SECURITY: Product {product_id} has invalid stock ({stock}) — deactivating")
-        get_db().collection(Collections.PRODUCTS).document(product_id).update(
-            {
-                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
-                Fields.DEACTIVATION_REASON: f"Invalid stock: {stock}",
-            }
-        )
+        _deactivate_with_email(f"Invalid stock: {stock}")
         return
 
     # Seller address validation — verify address exists via Geoapify geocoding
@@ -1246,12 +1305,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         country = seller_address.get(Fields.COUNTRY) or ""
         if not country:
             logger.info(f"SECURITY: Product {product_id} has empty seller country — deactivating")
-            get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                {
-                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
-                    Fields.DEACTIVATION_REASON: "Missing seller country",
-                }
-            )
+            _deactivate_with_email("Missing seller country")
             return
 
         # SECURITY: Validate address coordinates via Geoapify reverse geocoding
@@ -1261,18 +1315,18 @@ def on_product_created(event: firestore_fn.Event) -> None:
         seller_city = seller_address.get(Fields.CITY, "")
         seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
 
+        # In dev/emulator, skip lat/lng check to allow rapid product creation without geocoding
+        is_non_prod_env = CURRENT_ENV in (Environment.EMULATOR, Environment.DEV)
         if seller_lat is None or seller_lon is None:
-            logger.info(
-                f"SECURITY: Product {product_id} missing lat/lng — address not verified via Geoapify — REJECTING"
-            )
-            get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                {
-                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
-                    Fields.DEACTIVATION_REASON: "Address not verified via Geoapify (missing coordinates)",
-                }
-            )
-            return
-        else:
+            if is_non_prod_env:
+                logger.info(f"DEV: Product {product_id} missing lat/lng — skipping Geoapify validation in dev/emulator")
+            else:
+                logger.info(
+                    f"SECURITY: Product {product_id} missing lat/lng — address not verified via Geoapify — REJECTING"
+                )
+                _deactivate_with_email("Address not verified via Geoapify (missing coordinates)")
+                return
+        elif not is_non_prod_env:
             is_valid, error_reason = _verify_address_with_geoapify(
                 product_id,
                 seller_lat,
@@ -1284,12 +1338,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             )
             if not is_valid:
                 logger.info(f"SECURITY: Product {product_id} failed address verification: {error_reason} — REJECTING")
-                get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                    {
-                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
-                        Fields.DEACTIVATION_REASON: f"Address verification failed: {error_reason}",
-                    }
-                )
+                _deactivate_with_email(f"Address verification failed: {error_reason}")
                 return
 
     # CRITICAL: Sanitize text fields to prevent stored XSS
@@ -1305,12 +1354,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         or int(category_id) > CategoryIds.MAX
     ):
         logger.info(f"SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating")
-        get_db().collection(Collections.PRODUCTS).document(product_id).update(
-            {
-                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
-                Fields.DEACTIVATION_REASON: f"Invalid categoryId: {category_id}",
-            }
-        )
+        _deactivate_with_email(f"Invalid categoryId: {category_id}")
         return
     sanitized_name = sanitized_text(name)
     sanitized_desc = sanitized_text(description)
@@ -1383,7 +1427,9 @@ def on_product_created(event: firestore_fn.Event) -> None:
     # Derive shipFrom* fields from warehouse addresses or seller address
     seller_id = product_data.get(Fields.SELLER_ID)
     warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
-    if seller_id and (warehouse_ids or product_data.get(Fields.SELLER_ADDRESS)):
+    # Skip derivation if shipFromCountry already set by create_product_atomic (avoid duplicate reads)
+    ship_from_already_set = bool(product_data.get(Fields.SHIP_FROM_COUNTRY))
+    if seller_id and not ship_from_already_set and (warehouse_ids or product_data.get(Fields.SELLER_ADDRESS)):
         try:
             ship_from = _derive_ship_from_fields(seller_id, product_data)
             if ship_from:
@@ -1410,12 +1456,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     for img_url in image_urls:
         if isinstance(img_url, str) and img_url.startswith(CDN_BASE_URL) and not validate_image_magic_bytes(img_url):
             logger.warning(f"SECURITY: Product {product_id} has invalid image — deactivating: {img_url[:80]}")
-            get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                {
-                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.DRAFT,
-                    Fields.DEACTIVATION_REASON: "Image validation failed (invalid file type)",
-                }
-            )
+            _deactivate_with_email("Image validation failed (invalid file type)")
             return
 
     if is_perishable:
@@ -1450,13 +1491,8 @@ def on_product_created(event: firestore_fn.Event) -> None:
                 bad_urls.append(f"digitalBuilds.{platform}")
         if bad_urls:
             logger.warning(f"SECURITY: Product {product_id} has non-HTTPS digital URL(s): {bad_urls} — deactivating")
-            get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                {
-                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.REJECTED,
-                    Fields.DEACTIVATION_REASON: f"Digital download URLs must use HTTPS: {', '.join(bad_urls)}",
-                    Fields.APPROVAL_REJECTION_REASON: f"Download URLs must use HTTPS: {', '.join(bad_urls)}",
-                }
-            )
+            reason = f"Digital download URLs must use HTTPS: {', '.join(bad_urls)}"
+            _deactivate_with_email(reason, status=ProductLifecycleStatusValues.REJECTED)
             return
 
     # ── ADMIN APPROVAL GATE ──
@@ -1918,6 +1954,21 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             return
 
         if changed_fields and changed_fields.issubset(_SKIP_VALIDATION_FIELDS):
+            # Guardrail: stock-only updates may come from checkout/restore paths, but
+            # we still must reject invalid negative/non-numeric stock values.
+            if Fields.STOCK_QUANTITY in changed_fields:
+                stock = product_data.get(Fields.STOCK_QUANTITY, 0)
+                if not _is_valid_stock_quantity(stock):
+                    logger.info(
+                        f"SECURITY: Product {product_id} updated with invalid stock ({stock}) during stock-only update — deactivating"
+                    )
+                    get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                        {
+                            Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+                        }
+                    )
+                    return
+
             # Non-security-relevant update — re-index if active
             is_active = product_data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE
             if is_active:
@@ -1997,7 +2048,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
 
     # Validate stock quantity >= 0
     stock = product_data.get(Fields.STOCK_QUANTITY, 0)
-    if not isinstance(stock, (int, float)) or stock < 0:
+    if not _is_valid_stock_quantity(stock):
         logger.info(f"SECURITY: Product {product_id} updated with invalid stock ({stock}) — deactivating")
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {

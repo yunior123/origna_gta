@@ -50,20 +50,24 @@ test.describe('PW IT Replica — Add Product Flow', () => {
         // P01: Fill basic fields
         const nameInput = page.getByRole('textbox', { name: /product name|nom du produit/i }).first();
         await expect(nameInput).toBeVisible({ timeout: 20000 });
-        await nameInput.fill(p01Name);
+        await nameInput.click();
+        await nameInput.pressSequentially(p01Name, { delay: 30 });
 
         const descInput = page.getByRole('textbox', { name: /description/i }).first();
         if (await descInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await descInput.fill('Test description for E2E run');
+            await descInput.click();
+            await descInput.pressSequentially('Test description for E2E run', { delay: 30 });
         }
 
         const priceInput = page.getByRole('textbox', { name: /price|prix/i }).first();
         await expect(priceInput).toBeVisible({ timeout: 10000 });
-        await priceInput.fill('29.99');
+        await priceInput.click();
+        await priceInput.pressSequentially('29.99', { delay: 30 });
 
         const stockInput = page.getByRole('textbox', { name: /stock|quantit/i }).first();
         if (await stockInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await stockInput.fill('10');
+            await stockInput.click();
+            await stockInput.pressSequentially('10', { delay: 30 });
         }
 
         // Scroll to delivery section
@@ -107,7 +111,9 @@ test.describe('PW IT Replica — Add Product Flow', () => {
         }
 
         // P11: Validation — submit without name
-        await nameInput.fill('');
+        await nameInput.click();
+        await nameInput.press('Control+A');
+        await nameInput.press('Backspace');
 
         const publishBtn = page.locator('[aria-label^="btn-publish-product"]').first();
 
@@ -122,8 +128,12 @@ test.describe('PW IT Replica — Add Product Flow', () => {
         }
 
         // P12: Validation — zero price
-        await nameInput.fill(p12Name);
-        await priceInput.fill('0');
+        await nameInput.click();
+        await nameInput.press('Control+A');
+        await nameInput.pressSequentially(p12Name, { delay: 30 });
+        await priceInput.click();
+        await priceInput.press('Control+A');
+        await priceInput.pressSequentially('0', { delay: 30 });
 
         if (await publishBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
             await publishBtn.click();

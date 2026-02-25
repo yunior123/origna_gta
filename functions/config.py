@@ -82,8 +82,13 @@ elif PROJECT_ID == "orignagta-dev":
     CURRENT_ENV = Environment.DEV
 elif PROJECT_ID == "orignagta-staging":
     CURRENT_ENV = Environment.STAGING
-else:
+elif PROJECT_ID == "orignagta":
     CURRENT_ENV = Environment.PRODUCTION
+else:
+    raise RuntimeError(
+        f"Unknown GCP_PROJECT '{PROJECT_ID}'. Expected one of: orignagta, orignagta-dev, orignagta-staging. "
+        "Set GCP_PROJECT environment variable explicitly to avoid defaulting to PRODUCTION."
+    )
 
 
 def get_environment() -> Environment:

@@ -15,11 +15,11 @@ from schema_constants import Collections, Fields
 logger = logging.getLogger(__name__)
 
 # In emulator/dev mode, relax rate limits 100x for E2E test throughput.
-# Set RELAXED_RATE_LIMITS=true in Cloud Functions env to enable (dev/emulator only).
+# Set RELAXED_RATE_LIMITS=true in Cloud Functions env to enable (dev/emulator only — never staging/prod).
 _IS_EMULATOR = os.environ.get("FUNCTIONS_EMULATOR", "false").lower() == "true"
 _RELAXED_LIMITS = (
     os.environ.get("RELAXED_RATE_LIMITS", "false").lower() == "true"
-    and CURRENT_ENV != Environment.PRODUCTION
+    and CURRENT_ENV in (Environment.EMULATOR, Environment.DEV)  # Explicitly exclude staging/prod
 )
 _EMULATOR_RATE_MULTIPLIER = 100 if (_IS_EMULATOR or _RELAXED_LIMITS) else 1
 

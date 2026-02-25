@@ -43,7 +43,7 @@ test.describe('Seller Registration', () => {
       const isAcceptable = ['stripe', 'account', 'already', 'link'].some(
         e => msg.toLowerCase().includes(e)
       );
-      expect(isAcceptable || true, `Account link error: ${msg}`).toBeTruthy();
+      expect(isAcceptable, `Account link error: ${msg}`).toBeTruthy();
     } else {
       const data = result.result || result;
       // Should return a URL for Stripe onboarding

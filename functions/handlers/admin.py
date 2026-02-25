@@ -320,6 +320,23 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     )
 
+    # Revoke all active Firebase Auth tokens immediately — suspended seller should not
+    # retain JWT access for the remaining token lifetime (up to 1 hour).
+    try:
+        from firebase_admin import auth as firebase_auth
+        firebase_auth.revoke_refresh_tokens(seller_id)
+    except Exception as revoke_err:
+        logger.error(f"CRITICAL: Failed to revoke tokens for suspended seller {seller_id}: {revoke_err}")
+        get_db().collection(Collections.SECURITY_ALERTS).add({
+            Fields.TYPE: SecurityAlertTypes.TOKEN_REVOCATION_FAILED,
+            Fields.SEVERITY: SeverityLevels.CRITICAL,
+            Fields.ADMIN_ID: admin_id,
+            Fields.SELLER_ID: seller_id,
+            Fields.REASON: f"Token revocation failed during suspension: {revoke_err}",
+            Fields.TIMESTAMP: get_server_timestamp(),
+            Fields.RESOLVED: False,
+        })
+
     # Deactivate all seller's products and cancel orders only if user has seller role
     product_count = 0
     order_count = 0
@@ -419,6 +436,50 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         if order_batch_count > 0:
             order_batch.commit()
+
+        # Void AUTHORIZED PaymentIntents and refund CAPTURED orders for suspended seller
+        for order_doc in (
+            get_db()
+            .collection(Collections.ORDERS)
+            .where(Fields.SELLER_IDS, "array_contains", seller_id)
+            .where(Fields.ORDER_STATUS, "in", [OrderStatusValues.CANCELLED])
+            .where(Fields.PAYMENT_STATUS, "in", [
+                PaymentStatusValues.AUTHORIZED,
+                PaymentStatusValues.CAPTURED,
+            ])
+            .limit(200)
+            .stream()
+        ):
+            od = order_doc.to_dict()
+            pi_id = od.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+            if not pi_id:
+                continue
+            payment_status = od.get(Fields.PAYMENT_STATUS)
+            oid = order_doc.id
+            try:
+                if payment_status == PaymentStatusValues.AUTHORIZED:
+                    stripe.PaymentIntent.cancel(
+                        pi_id,
+                        idempotency_key=f"suspend_void_{oid}",
+                    )
+                    order_doc.reference.update({Fields.PAYMENT_STATUS: PaymentStatusValues.VOIDED, Fields.UPDATED_AT: get_server_timestamp()})
+                elif payment_status == PaymentStatusValues.CAPTURED:
+                    stripe.Refund.create(
+                        payment_intent=pi_id,
+                        reason="fraudulent",
+                        idempotency_key=f"suspend_refund_{oid}",
+                        metadata={"admin_id": admin_id, "order_id": oid, "reason": "seller suspended"},
+                    )
+                    order_doc.reference.update({Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED, Fields.UPDATED_AT: get_server_timestamp()})
+            except Exception as stripe_err:
+                logger.error(f"Stripe void/refund failed for order {oid} during suspension: {stripe_err}")
+                get_db().collection(Collections.SECURITY_ALERTS).add({
+                    Fields.TYPE: SecurityAlertTypes.REFUND_REVERSAL_FAILED,
+                    Fields.ORDER_ID: oid,
+                    Fields.ERROR_MESSAGE: str(stripe_err)[:500],
+                    Fields.TIMESTAMP: get_server_timestamp(),
+                    Fields.RESOLVED: False,
+                })
 
         # Restore stock in batch — all reads/writes happen atomically inside the transaction
         if product_updates:
@@ -693,8 +754,17 @@ def admin_update_product_stock(req: https_fn.CallableRequest) -> dict[str, Any]:
     product_data = product_doc.to_dict()
     old_quantity = product_data.get(Fields.STOCK_QUANTITY, 0)
 
-    # Update stock
-    product_ref.update({Fields.STOCK_QUANTITY: quantity, Fields.UPDATED_AT: get_server_timestamp()})
+    # Use Increment for absolute set inside a transaction to avoid race conditions with concurrent purchases.
+    # Admin sets an absolute value, but we must read-then-write atomically to correctly report old_quantity.
+    @get_firestore().transactional
+    def _update_stock_txn(txn, ref):
+        snap = ref.get(transaction=txn)
+        if not snap.exists:
+            raise https_fn.HttpsError("not-found", "Product not found")
+        txn.update(ref, {Fields.STOCK_QUANTITY: quantity, Fields.UPDATED_AT: get_server_timestamp()})
+        return (snap.to_dict() or {}).get(Fields.STOCK_QUANTITY, 0)
+
+    old_quantity = _update_stock_txn(get_db().transaction(), product_ref)
 
     logger.info(
         f"Admin {admin_id} updated stock for product {product_id}: {old_quantity} -> {quantity}. Reason: {reason}"
@@ -1466,7 +1536,8 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
                     }
                 )
 
-    # Delete cart, favorites, address book, notifications, warehouses, and metrics (subcollections, paginated)
+    # Delete cart, favorites, address book, notifications, warehouses, metrics, and FCM tokens (subcollections, paginated)
+    # FCM tokens are device identifiers = PII under PIPEDA — must be deleted for right to erasure.
     for sub_coll in [
         Collections.CART,
         Collections.FAVORITES,
@@ -1474,6 +1545,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         Collections.NOTIFICATIONS,
         Collections.WAREHOUSES,
         Collections.SELLER_METRICS,
+        Collections.FCM_TOKENS,
     ]:
         while True:
             docs = list(get_db().collection(Collections.USERS).document(user_id).collection(sub_coll).limit(500).stream())
@@ -1483,6 +1555,10 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             for doc in docs:
                 batch.delete(doc.reference)
             batch.commit()
+
+    # Delete the top-level subscription doc (not a subcollection — lives at subscriptions/{uid})
+    # Required for PIPEDA right to erasure and CASL records.
+    get_db().collection(Collections.SUBSCRIPTIONS).document(user_id).delete()
 
     # Delete Firebase Auth user
     try:
@@ -1740,7 +1816,7 @@ def admin_flag_review(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not review_ref.get().exists:
         raise https_fn.HttpsError("not-found", "Review not found")
 
-    review_ref.update({"isFlagged": flagged, Fields.UPDATED_AT: get_server_timestamp()})
+    review_ref.update({Fields.IS_FLAGGED: flagged, Fields.UPDATED_AT: get_server_timestamp()})
 
     get_db().collection(Collections.ADMIN_LOGS).add(
         {
@@ -1794,6 +1870,48 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not payment_intent_id:
         raise https_fn.HttpsError("failed-precondition", "Order has no payment intent — cannot refund")
 
+    # C-2: Reverse seller Stripe transfers BEFORE issuing buyer refund.
+    # Prevents double-loss: buyer refunded AND seller keeps money.
+    payout_docs = list(
+        get_db()
+        .collection(Collections.PAYOUTS)
+        .where(Fields.ORDER_ID, "==", order_id)
+        .where(Fields.STATUS, "==", PayoutStatusValues.COMPLETED)
+        .stream()
+    )
+    for payout_doc in payout_docs:
+        payout_data = payout_doc.to_dict()
+        transfer_id = payout_data.get(Fields.STRIPE_TRANSFER_ID)
+        if not transfer_id:
+            continue
+        try:
+            stripe.Transfer.create_reversal(
+                transfer_id,
+                idempotency_key=f"reversal_{order_id}_{payout_data.get(Fields.SELLER_ID, '')}",
+            )
+            payout_doc.reference.update({
+                Fields.STATUS: PayoutStatusValues.REVERSED,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+        except stripe.error.InvalidRequestError as e:
+            err_msg = str(e)
+            # "already_reversed" is acceptable — treat as success
+            if "already" in err_msg.lower():
+                continue
+            # Any other reversal failure: abort — do NOT refund buyer
+            get_db().collection(Collections.SECURITY_ALERTS).add({
+                Fields.TYPE: SecurityAlertTypes.REFUND_REVERSAL_FAILED,
+                Fields.STRIPE_TRANSFER_ID: transfer_id,
+                Fields.ORDER_ID: order_id,
+                Fields.ERROR_MESSAGE: f"{type(e).__name__}: {err_msg[:500]}",
+                Fields.TIMESTAMP: get_server_timestamp(),
+                Fields.RESOLVED: False,
+            })
+            raise https_fn.HttpsError(
+                "internal",
+                f"Transfer reversal failed for seller {payout_data.get(Fields.SELLER_ID)} — refund aborted to prevent double-loss."
+            ) from e
+
     try:
         refund = stripe.Refund.create(
             payment_intent=payment_intent_id,
@@ -1803,26 +1921,6 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         )
     except stripe.StripeError as e:
         raise https_fn.HttpsError("internal", f"Stripe refund failed: {e}") from e
-
-    # C-2: Reverse seller Stripe transfers
-    for payout in order_data.get(Fields.SELLER_PAYOUTS, []):
-        transfer_id = payout.get(Fields.STRIPE_TRANSFER_ID)
-        if not transfer_id:
-            continue
-        try:
-            stripe.Transfer.create_reversal(
-                transfer_id,
-                amount=payout.get(Fields.AMOUNT_CENTS),
-                idempotency_key=f"reversal_{order_id}_{payout.get(Fields.SELLER_ID, '')}",
-            )
-        except stripe.error.InvalidRequestError as e:
-            get_db().collection(Collections.SECURITY_ALERTS).add({
-                Fields.TYPE: "reversal_failed",
-                Fields.STRIPE_TRANSFER_ID: transfer_id,
-                Fields.ORDER_ID: order_id,
-                Fields.ERROR_MESSAGE: str(e),
-                Fields.TIMESTAMP: get_server_timestamp(),
-            })
 
     # Restore stock atomically in Firestore transaction
     items = order_data.get(Fields.ITEMS, [])
