@@ -126,6 +126,13 @@ test.describe('Checkout Validation', () => {
     expect(error.code, 'Over-limit quantity should be rejected').toBe('invalid-argument');
   });
 
+  test('Rejects negative quantity', async () => {
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    data.items[0].quantity = -1;
+    const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
+    expect(error.code, 'Negative quantity should be rejected').toBe('invalid-argument');
+  });
+
   test('Rejects self-purchase (buyer is the seller of the product)', async () => {
     // Get a product OWNED BY the seller (not excludeSellerId which filters them out)
     const sellerOwnProduct = await getSellerOwnProduct(sellerAuth.idToken);

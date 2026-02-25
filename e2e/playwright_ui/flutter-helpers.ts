@@ -206,6 +206,9 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     console.log(`   ✅ Login successful for ${email}`);
 }
 
+/** Generic alias for any user role — the underlying login is role-agnostic. */
+export const ensureLoggedIn = ensureLoggedInAsAdmin;
+
 // ─── NAVIGATE HOME (auth-safe, no full page reload) ────────────────
 
 /**

@@ -10,7 +10,7 @@ import {
   buildCheckoutPayload,
   fillStripeCheckout,
   fullCheckoutAndPay,
-  readDoc, parseDoc,
+  readDoc, parseDoc, listCollection,
   waitForOrderStatus,
   getOrder, getProductStock,
   getTestProduct, invalidateProductCache,
@@ -100,5 +100,40 @@ test.describe('Stripe Payment Flow', () => {
     const r1 = await callOk('create_checkout_session', data, auth.idToken);
     const r2 = await callOk('create_checkout_session', data, auth.idToken);
     expect(r1.orderId, 'Duplicate checkout must return same orderId').toBe(r2.orderId);
+  });
+
+  test('[BONUS] Order expiresAt is within 7-day authorization window', async ({ page }) => {
+    const auth = await signIn(BUYER_EMAIL);
+    await invalidateProductCache();
+    const product = await getTestProduct(auth.idToken, auth.localId);
+
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, product.id, 1);
+    const order = await waitForOrderStatus(result.orderId, ['confirmed', 'processing'], auth.idToken, 90_000);
+
+    if (order.expiresAt) {
+      // parseDoc returns timestamps as ISO strings; convert to unix seconds
+      const toSec = (ts: any): number =>
+        ts?._seconds ?? (typeof ts === 'string' ? Math.floor(new Date(ts).getTime() / 1000) : Number(ts));
+      const expiresSec = toSec(order.expiresAt);
+      const nowSec = Math.floor(Date.now() / 1000);
+      // expiresAt is set when the payment_intent.succeeded webhook fires (7 days from webhook time)
+      // Allow ±10 minutes tolerance for test execution time
+      expect(expiresSec, 'expiresAt must be ~7 days from now').toBeGreaterThanOrEqual(nowSec + 7 * 86_400 - 600);
+      expect(expiresSec, 'expiresAt must be ~7 days from now').toBeLessThanOrEqual(nowSec + 7 * 86_400 + 600);
+    }
+    // If expiresAt is absent, that's acceptable for auto-capture mode
+  });
+
+  test('[BONUS] Cart is cleared after successful order creation', async ({ page }) => {
+    const auth = await signIn(BUYER_EMAIL);
+    await invalidateProductCache();
+    const product = await getTestProduct(auth.idToken, auth.localId);
+
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, product.id, 1);
+    await waitForOrderStatus(result.orderId, ['confirmed', 'processing'], auth.idToken, 90_000);
+
+    // Cart items should be cleared after checkout session creation
+    const cartItems = await listCollection(`users/${auth.localId}/cart`, auth.idToken);
+    expect(cartItems.length, 'Cart must be empty after successful checkout').toBe(0);
   });
 });

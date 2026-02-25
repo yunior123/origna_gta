@@ -1321,6 +1321,10 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             # Release buyer funds depending on capture mode:
             # - AUTHORIZED (manual-capture): cancel the PaymentIntent
             # - CAPTURED (auto-capture): issue a full refund
+            # Guard against double-refund if order was already refunded (idempotency)
+            if cancel_payment_status in (PaymentStatusValues.REFUNDED, PaymentStatusValues.PARTIALLY_REFUNDED):
+                raise https_fn.HttpsError("failed-precondition", "Order already refunded")
+
             if payment_intent_id and cancel_payment_status == PaymentStatusValues.AUTHORIZED:
                 try:
                     stripe.PaymentIntent.cancel(

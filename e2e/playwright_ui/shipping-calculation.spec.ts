@@ -27,8 +27,9 @@ test.describe('Shipping Calculation', () => {
   test('Checkout includes tax calculation for Ontario address', async () => {
     await invalidateProductCache();
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
-    // Ensure Ontario address
+    // Use qty=4 to avoid 60s order dedup across repeated runs (unique subtotal for province tax tests)
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 4, buyerAuth.idToken);
+    // Ensure Ontario address explicitly
     data.shippingAddress.state = 'ON';
     data.shippingAddress.postalCode = 'M5V 3A8';
 
@@ -39,10 +40,11 @@ test.describe('Shipping Calculation', () => {
     expect(order.subtotalCents).toBeGreaterThan(0);
     expect(order.taxAmountCents).toBeGreaterThan(0);
     expect(order.totalAmountCents).toBeGreaterThan(order.subtotalCents);
-    // Ontario HST is exactly 13% — pin to that rate (±1 cent rounding)
+    // Ontario HST is exactly 13% — allow ±1 cent for rounding only
     const taxableBase = order.subtotalCents + (order.shippingCostCents || 0);
-    expect(order.taxAmountCents).toBeGreaterThanOrEqual(Math.floor(taxableBase * 0.12));
-    expect(order.taxAmountCents).toBeLessThanOrEqual(Math.ceil(taxableBase * 0.14));
+    const expected13pct = Math.round(taxableBase * 0.13);
+    expect(order.taxAmountCents, 'Ontario HST must be exactly 13%').toBeGreaterThanOrEqual(expected13pct - 1);
+    expect(order.taxAmountCents, 'Ontario HST must be exactly 13%').toBeLessThanOrEqual(expected13pct + 1);
   });
 
   test('Order total = subtotal + tax + shipping', async () => {
@@ -104,5 +106,41 @@ test.describe('Shipping Calculation', () => {
       // Always clean up the test product to avoid polluting dev Firestore
       await deleteDoc(`products/${productId}`, adminAuth.idToken).catch(() => {});
     }
+  });
+
+  test('Quebec address applies QST+GST tax rate (~14.975%)', async () => {
+    await invalidateProductCache();
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    // Use qty=5 to avoid 60s order dedup with Ontario/other tests (unique subtotal for province tax tests)
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 5, buyerAuth.idToken);
+    data.shippingAddress.state = 'QC';
+    data.shippingAddress.postalCode = 'H2X 1Y6';
+
+    const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
+    const order = parseDoc(await readDoc(`orders/${result.orderId}`, buyerAuth.idToken));
+
+    const taxableBase = order.subtotalCents + (order.shippingCostCents || 0);
+    // QC: GST 5% + QST 9.975% = 14.975% total
+    const expectedQC = Math.round(taxableBase * 0.14975);
+    expect(order.taxAmountCents, 'QC tax must be ~14.975%').toBeGreaterThanOrEqual(expectedQC - 2);
+    expect(order.taxAmountCents, 'QC tax must be ~14.975%').toBeLessThanOrEqual(expectedQC + 2);
+  });
+
+  test('Alberta address applies GST-only tax rate (5%)', async () => {
+    await invalidateProductCache();
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    // Use qty=6 to avoid 60s order dedup across repeated runs (unique subtotal for province tax tests)
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 6, buyerAuth.idToken);
+    data.shippingAddress.state = 'AB';
+    data.shippingAddress.postalCode = 'T2P 1J9';
+
+    const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
+    const order = parseDoc(await readDoc(`orders/${result.orderId}`, buyerAuth.idToken));
+
+    const taxableBase = order.subtotalCents + (order.shippingCostCents || 0);
+    // AB: GST only = 5%
+    const expected5pct = Math.round(taxableBase * 0.05);
+    expect(order.taxAmountCents, 'AB tax must be exactly 5% GST').toBeGreaterThanOrEqual(expected5pct - 1);
+    expect(order.taxAmountCents, 'AB tax must be exactly 5% GST').toBeLessThanOrEqual(expected5pct + 1);
   });
 });

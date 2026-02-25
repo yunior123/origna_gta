@@ -195,6 +195,19 @@ export async function deleteDoc(path: string, token?: string): Promise<boolean> 
   return res.ok;
 }
 
+/**
+ * List all documents in a Firestore collection path (REST list endpoint).
+ * Returns an array of parsed document objects. Returns [] if collection is empty.
+ */
+export async function listCollection(collectionPath: string, token?: string): Promise<any[]> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${FIRESTORE_BASE}/${collectionPath}`, { headers });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return (json.documents || []).map((doc: any) => parseDoc(doc));
+}
+
 // ════════════════════════════════════════════════════════════════════
 // FIRESTORE VALUE CONVERSION
 // ════════════════════════════════════════════════════════════════════

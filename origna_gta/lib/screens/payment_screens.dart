@@ -25,7 +25,7 @@ class OrderSuccessGate extends ConsumerStatefulWidget {
 }
 
 class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
-  static const _timeoutDuration = Duration(seconds: 45);
+  static const _timeoutDuration = Duration(seconds: 90);
   Timer? _timeoutTimer;
   bool _timedOut = false;
 

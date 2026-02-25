@@ -479,9 +479,11 @@ double getTaxRate(String province) {
 
 bool hasValidAddress(Address? address) {
   if (address == null) return false;
+  final stateCode = address.state.trim().toUpperCase();
   return address.street.trim().isNotEmpty &&
       address.city.trim().isNotEmpty &&
-      address.state.trim().isNotEmpty &&
+      stateCode.isNotEmpty &&
+      ProvinceCodeValues.all.contains(stateCode) &&
       address.postalCode.trim().isNotEmpty &&
       address.country.trim().isNotEmpty;
 }

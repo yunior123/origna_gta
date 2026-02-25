@@ -99,6 +99,17 @@ stripe.max_network_retries = BusinessRules.STRIPE_MAX_NETWORK_RETRIES
 # For v2, timeout is set per-request via stripe.api_requestor.APIRequestor
 _rate_limiter = None
 
+# Cache webhook secret to avoid Secret Manager reads on every webhook invocation
+_WEBHOOK_SECRET_CACHE: str | None = None
+
+
+def _get_webhook_secret() -> str:
+    global _WEBHOOK_SECRET_CACHE
+    if not _WEBHOOK_SECRET_CACHE:
+        _WEBHOOK_SECRET_CACHE = get_stripe_webhook_secret()
+    return _WEBHOOK_SECRET_CACHE
+
+
 # CORS is configured in DEFAULT_OPTIONS via function_options.py
 
 
@@ -279,10 +290,11 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             continue
 
-        # Check price change (> 1 cent tolerance)
-        db_price = round(product_data.get(Fields.PRICE, 0), 2)
-        client_price_r = round(client_price, 2)
-        if abs(db_price - client_price_r) > 0.01:
+        # Check price change — cents-based comparison avoids float precision issues
+        db_price = product_data.get(Fields.PRICE, 0)
+        db_price_cents = round(db_price * 100)
+        client_price_cents = round(client_price * 100)
+        if abs(db_price_cents - client_price_cents) > 1:
             price_changes.append(
                 {
                     Fields.PRODUCT_ID: product_id,
@@ -695,9 +707,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         db_price = product_data[Fields.PRICE]
         client_price = item[Fields.PRICE]
 
-        # Allow 1 cent tolerance for floating point errors
-        # AUDIT FIX: Return structured error with updated price so frontend can auto-refresh cart
-        if abs(db_price - client_price) > 0.01:
+        # Cents-based comparison avoids float precision issues (e.g., 19.99*100 = 1998.999...)
+        if abs(round(db_price * 100) - round(client_price * 100)) > 1:
             raise https_fn.HttpsError(
                 "invalid-argument",
                 f"Price changed for {product_data.get(Fields.NAME, item[Fields.PRODUCT_ID])}: "
@@ -1200,7 +1211,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                         fulfillment_warehouse_ids[i] = wh_id
                     remaining -= drain
                 if remaining > 0 and sorted_wh:
-                    # Backorder: last warehouse goes negative
+                    if not allow_backorder:
+                        raise https_fn.HttpsError(
+                            "resource-exhausted",
+                            f"Insufficient warehouse stock for {product_data.get(Fields.NAME, item[Fields.PRODUCT_ID])}",
+                        )
+                    # Backorder allowed: last warehouse goes negative
                     last_ref, last_wh_id, _ = sorted_wh[-1]
                     key = f"{Fields.WAREHOUSE_STOCK}.{last_wh_id}"
                     new_val = warehouse_patches.get(key, 0) - remaining
@@ -1524,7 +1540,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     try:
         # SECURITY FIX #3: Verify webhook signature (HMAC with timing-safe comparison)
-        event = stripe.Webhook.construct_event(payload, sig_header, get_stripe_webhook_secret())
+        event = stripe.Webhook.construct_event(payload, sig_header, _get_webhook_secret())
     except ValueError:
         logger.warning(f"⚠️ Stripe webhook invalid payload from IP: {client_ip[:10]}...")  # Sanitized
         return https_fn.Response("Invalid payload", status=400)
@@ -1792,6 +1808,18 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
     transfer_errors = []
     items = order_data.get(Fields.ITEMS, [])
 
+    # Use fee rate frozen at checkout time (not the current global config)
+    stored_fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
+
+    # Compute discount ratio so seller payouts reflect only collected amount
+    actual_subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 0)
+    discount_amount_cents = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
+    discount_ratio = (
+        (actual_subtotal_cents - discount_amount_cents) / actual_subtotal_cents
+        if actual_subtotal_cents > 0
+        else 1.0
+    )
+
     # Compute per-seller totals (price in dollars × 100 → cents, × quantity)
     sellers_total: dict[str, int] = {}
     for item in items:
@@ -1802,19 +1830,21 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
         sellers_total[sid] = sellers_total.get(sid, 0) + amt
 
     for seller_id, amount_cents in sellers_total.items():
-        platform_fee_cents = round(amount_cents * PLATFORM_FEE_RATIO)
-        net_amount_cents = amount_cents - platform_fee_cents
+        # Apply coupon discount proportionally before computing platform fee
+        adjusted_amount_cents = round(amount_cents * discount_ratio)
+        platform_fee_cents = round(adjusted_amount_cents * stored_fee_rate)
+        net_amount_cents = adjusted_amount_cents - platform_fee_cents
 
         payout_ref = get_db().collection(Collections.PAYOUTS).document(f"{order_id}_{seller_id}")
         payout_data = {
             Fields.ORDER_ID: order_id,
             Fields.SELLER_ID: seller_id,
-            Fields.AMOUNT_CENTS: amount_cents,
+            Fields.AMOUNT_CENTS: adjusted_amount_cents,
             Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
             Fields.NET_AMOUNT_CENTS: net_amount_cents,
             Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
             Fields.STATUS: PayoutStatusValues.PENDING,
-            Fields.FEE_RATE: PLATFORM_FEE_RATIO,
+            Fields.FEE_RATE: stored_fee_rate,
             Fields.CREATED_AT: get_server_timestamp(),
         }
         payout_ref.set(payout_data, merge=True)
@@ -2223,6 +2253,27 @@ def _add_stock_restore_to_batch(batch, order_data: dict) -> None:
         batch.update(product_ref, patch)
 
 
+def _add_stock_restore_to_transaction(transaction, order_data: dict) -> None:
+    """Adds stock increment operations to an existing transaction.
+
+    Handles stockQuantity, warehouseStock map, and inventoryLevels subcollection
+    so all three inventory signals stay in sync after payment failure/cancellation.
+    """
+    _fs = get_firestore()
+    for item in order_data.get(Fields.ITEMS, []):
+        product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+        qty = item[Fields.QUANTITY]
+        patch = {Fields.STOCK_QUANTITY: _fs.Increment(qty)}
+
+        fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID)
+        if fulfillment_wh:
+            patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = _fs.Increment(qty)
+
+        transaction.update(product_ref, patch)
+        # Note: inventoryLevels subcollection requires batch.set(merge=True) which
+        # is not supported in transactions. Synced via _restore_stock_for_order post-txn.
+
+
 def _restore_stock_for_order(order_data: dict) -> None:
     """Restores product stock after order cancellation using batch write for atomicity."""
     batch = get_db().batch()
@@ -2430,12 +2481,9 @@ def process_payment_intent_failed(payment_intent: dict) -> str | None:
 
         order_data = order_doc.to_dict()
 
-        # CRITICAL FIX: Restore stock on payment failure (atomic via transaction)
+        # CRITICAL FIX: Restore all stock fields (stockQuantity + warehouseStock) atomically
         if not order_data.get(Fields.STOCK_RESTORED, False):
-            _fs = get_firestore()
-            for item in order_data.get(Fields.ITEMS, []):
-                product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _fs.Increment(item[Fields.QUANTITY])})
+            _add_stock_restore_to_transaction(transaction, order_data)
 
         transaction.update(
             order_ref,
@@ -2480,12 +2528,9 @@ def process_payment_intent_canceled(payment_intent: dict) -> str | None:
         if current_status in terminal_states:
             return f"already_terminal:{current_status}"
 
-        # Restore stock idempotently (atomic via transaction)
+        # Restore stock idempotently — all three stock fields (stockQuantity + warehouseStock)
         if not order_data.get(Fields.STOCK_RESTORED, False):
-            _fs = get_firestore()
-            for item in order_data.get(Fields.ITEMS, []):
-                product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _fs.Increment(item[Fields.QUANTITY])})
+            _add_stock_restore_to_transaction(transaction, order_data)
 
         transaction.update(
             order_ref,
@@ -2834,6 +2879,11 @@ def process_dispute_created(dispute: dict) -> str | None:
                     # Full reversal — cap at max reversible
                     if max_reversible < payout_net:
                         reversal_kwargs[Fields.AMOUNT] = max_reversible
+
+                # Guard: skip zero-amount reversal to avoid Stripe API error
+                if reversal_kwargs.get(Fields.AMOUNT, payout_net) <= 0:
+                    logger.warning(f"Skipping zero-amount reversal for transfer {transfer_id}")
+                    continue
 
                 reversal = stripe.Transfer.create_reversal(
                     transfer_id,
@@ -3510,8 +3560,13 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not user_doc.exists:
         raise https_fn.HttpsError("not-found", "User not found")
 
-    user_data = user_doc.to_dict()
-    account_id = user_data.get(Fields.STRIPE_ACCOUNT_ID)
+    # CRITICAL FIX: Stripe account ID is stored in seller_profiles (not users doc)
+    sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(user_id).get()
+    account_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
+
+    # Fall back to users doc for backward safety (in case both are populated)
+    if not account_id:
+        account_id = (user_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
 
     if not account_id:
         raise https_fn.HttpsError(

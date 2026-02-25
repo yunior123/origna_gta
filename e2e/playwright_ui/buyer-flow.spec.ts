@@ -3,7 +3,7 @@ import {
     waitForFlutter,
     requireWebApp,
     checkSemantics,
-    ensureLoggedInAsAdmin,
+    ensureLoggedIn,
     performSignOut,
     BTN_SETTINGS,
     BTN_CART,
@@ -28,8 +28,8 @@ test.describe('PW IT Replica — Buyer Flow', () => {
         await waitForFlutter(page);
         await checkSemantics(page);
 
-        // B01: Login as buyer (returns on home page)
-        await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
+        // B01: Login as buyer (role-agnostic login helper, no admin grants)
+        await ensureLoggedIn(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
 
         const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
         await expect(settingsBtn).toBeAttached();
