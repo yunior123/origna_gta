@@ -5,6 +5,9 @@ import boto3
 import requests
 from botocore.config import Config
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import R2Config  # noqa: E402
+
 
 def test_credentials_directly():
     print("\n--- Testing Credentials Directly ---")

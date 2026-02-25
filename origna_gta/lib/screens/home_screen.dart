@@ -71,8 +71,9 @@ class _AddProductButton extends ConsumerWidget {
 
     // Must match Firestore rules: admin OR verified seller.
     final canAddProducts = isAdmin || isVerified;
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint('🔍 isVerified=$isVerified, canAddProducts=$canAddProducts');
+    }
 
     return IconButton(
       key: const Key('home_add_product_button'),

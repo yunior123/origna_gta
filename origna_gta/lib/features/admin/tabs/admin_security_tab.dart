@@ -272,11 +272,12 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed: () async {
+                                final messenger = ScaffoldMessenger.of(context);
                                 await Clipboard.setData(
                                   ClipboardData(text: _backupCodes.join('\n')),
                                 );
                                 if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     SnackBar(content: Text('admin.security.backup_codes_copied'.tr())),
                                   );
                                 }

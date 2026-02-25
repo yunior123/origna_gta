@@ -63,6 +63,7 @@ dependencies:
   sentry_flutter: ^9.10.0
   crypto: ^3.0.3
   flutter_riverpod: ^2.6.1
+  rxdart: ^0.28.0
   collection: ^1.19.0
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.7

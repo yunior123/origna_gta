@@ -399,6 +399,7 @@ abstract class SellerWarehouse with _$SellerWarehouse {
     return SellerWarehouse.fromJson({
       ...data,
       'warehouseId': doc.id,
+      // ignore: use_null_aware_elements — key is a string literal so ?key: value is invalid
       if (parsedCreatedAt != null) 'createdAt': parsedCreatedAt,
     });
   }

@@ -303,7 +303,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
                         stripe.PaymentIntent.capture(pi_id, idempotency_key=f"admin_capture_{order_id}")
                 except Exception as e:
                     logger.error(f"Admin-triggered capture failed for {order_id}: {e}")
-                    raise https_fn.HttpsError("internal", "Could not capture payment before marking delivered.")
+                    raise https_fn.HttpsError("internal", "Could not capture payment before marking delivered.") from e
 
     order_ref.update(update_data)
 

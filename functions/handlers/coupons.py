@@ -293,9 +293,8 @@ def admin_create_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     if discount_type == CouponDiscountTypeValues.PERCENT:
         if not (1 <= discount_value <= 100):
             raise https_fn.HttpsError("invalid-argument", "Percent discount must be between 1 and 100")
-    elif discount_type == CouponDiscountTypeValues.FIXED_CENTS:
-        if discount_value < 100:
-            raise https_fn.HttpsError("invalid-argument", "Fixed discount must be at least 100 cents ($1.00)")
+    elif discount_type == CouponDiscountTypeValues.FIXED_CENTS and discount_value < 100:
+        raise https_fn.HttpsError("invalid-argument", "Fixed discount must be at least 100 cents ($1.00)")
 
     min_order_cents = data.get(Fields.MIN_ORDER_CENTS)
     if min_order_cents is not None and (not isinstance(min_order_cents, int) or min_order_cents < 0):
@@ -321,7 +320,7 @@ def admin_create_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
         try:
             expires_at = datetime.fromisoformat(expires_at_raw.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
-            raise https_fn.HttpsError("invalid-argument", "expiresAt must be a valid ISO 8601 datetime string")
+            raise https_fn.HttpsError("invalid-argument", "expiresAt must be a valid ISO 8601 datetime string") from None
 
     # Check for duplicate
     coupon_ref = get_db().collection(Collections.COUPONS).document(code)

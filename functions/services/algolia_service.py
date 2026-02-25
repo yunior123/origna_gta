@@ -289,9 +289,9 @@ def batch_partial_update_products(product_ids: list[str], fields: dict, max_retr
 
     for attempt in range(max_retries):
         try:
-            from algoliasearch.search.models.batch_write_params import BatchWriteParams
-            from algoliasearch.search.models.batch_request import BatchRequest
             from algoliasearch.search.models.action import Action
+            from algoliasearch.search.models.batch_request import BatchRequest
+            from algoliasearch.search.models.batch_write_params import BatchWriteParams
 
             requests = [BatchRequest(action=Action.PARTIAL_UPDATE_OBJECT, body=obj) for obj in objects]
             _run_async(

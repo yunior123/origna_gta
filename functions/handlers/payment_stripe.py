@@ -996,7 +996,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 # F-78: If user has a GST number, log a compliance alert — manual calc
                 # doesn't apply B2B exemption, creating retroactive tax liability risk.
                 if gst_number:
-                    try:
+                    with contextlib.suppress(Exception):
                         get_db().collection(Collections.SECURITY_ALERTS).add({
                             Fields.TYPE: SecurityAlertTypes.STRIPE_TAX_FALLBACK_GST,
                             Fields.SEVERITY: SeverityLevels.HIGH,
@@ -1005,8 +1005,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                             Fields.TIMESTAMP: get_server_timestamp(),
                             Fields.RESOLVED: False,
                         })
-                    except Exception:
-                        pass  # Non-blocking — alert failure must not affect checkout
 
                 # CRA: tax applies to amount actually paid (post-discount subtotal)
                 discount_ratio = discounted_subtotal_cents / actual_subtotal_cents if actual_subtotal_cents > 0 else 1.0

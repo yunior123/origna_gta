@@ -271,7 +271,7 @@ class SubscriptionScreen extends ConsumerWidget {
                       child: Switch.adaptive(
                         value: notifyNew,
                         onChanged: (val) => vm.updateNotificationPreferences(notifyNewProducts: val),
-                        activeColor: DesignTokens.primary,
+                        activeThumbColor: DesignTokens.primary,
                       ),
                     ),
                   ),
@@ -301,7 +301,7 @@ class SubscriptionScreen extends ConsumerWidget {
                       child: Switch.adaptive(
                         value: notifyTrending,
                         onChanged: (val) => vm.updateNotificationPreferences(notifyTrending: val),
-                        activeColor: DesignTokens.primary,
+                        activeThumbColor: DesignTokens.primary,
                       ),
                     ),
                   ),

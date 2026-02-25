@@ -525,7 +525,7 @@ class _SellerCard extends ConsumerWidget {
   void _viewSellerProducts(BuildContext context, String sellerId, String name) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) =>
+        pageBuilder: (_, _, _) =>
             _SellerProductsScreen(sellerId: sellerId, sellerName: name),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curve = CurvedAnimation(

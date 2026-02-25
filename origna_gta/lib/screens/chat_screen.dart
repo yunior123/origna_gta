@@ -70,7 +70,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: AppBarFactory.simple(title: widget.productTitle),
       body: Column(
         children: [
-          else if (vmState.isOwnProduct)
+          if (vmState.isOwnProduct)
             Expanded(
               child: Center(
                 child: Padding(

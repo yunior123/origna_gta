@@ -477,7 +477,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   @override
   Widget build(BuildContext context) {
     return Focus(
-      onKeyEvent: (_, __) {
+      onKeyEvent: (_, _) {
         _sessionTimeout.recordActivity();
         return KeyEventResult.ignored; // Let key events propagate normally
       },
