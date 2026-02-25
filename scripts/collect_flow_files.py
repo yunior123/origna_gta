@@ -4,7 +4,7 @@ collect_flow_files.py — Copies relevant source files for each workflow
 into Desktop/origna_flows/<flow_name>/ for AI review.
 
 Rules:
-  - CLAUDE.md is prepended to every flow for AI context.
+  - CLAUDE.md + any learned.md/LEARNED.md variants are prepended for AI context.
   - Max 18 primary files per flow folder (+ INSTRUCTIONS.md + optional _overflow.md = 20 total).
   - Extra files are concatenated into _overflow.md.
   - Total combined content is capped at MAX_TOTAL_BYTES to respect Claude.ai's context limit.
@@ -28,6 +28,29 @@ MAX_TOTAL_BYTES = int(os.getenv("ORIGNA_FLOW_MAX_BYTES", "1500000"))
 
 # CLAUDE.md is auto-injected into every flow as the first file
 _CLAUDE = "CLAUDE.md"
+_LEARNED_CANDIDATES = (
+    "learned.md",
+    "LEARNED.md",
+    ".claude/learned.md",
+    ".claude/LEARNED.md",
+)
+
+
+def _resolve_learned_files() -> list[str]:
+    resolved_files: list[str] = []
+    seen_file_ids: set[tuple[int, int]] = set()
+    for rel in _LEARNED_CANDIDATES:
+        src = REPO_ROOT / rel
+        if not src.exists():
+            continue
+        # De-duplicate aliases (e.g., case-variant paths) that map to the same file.
+        stat = src.stat()
+        file_id = (stat.st_dev, stat.st_ino)
+        if file_id in seen_file_ids:
+            continue
+        seen_file_ids.add(file_id)
+        resolved_files.append(rel)
+    return resolved_files
 
 _COMMON_FOOTER = """
 ---
@@ -1817,7 +1840,6 @@ FLOWS: dict[str, list[str]] = {
         "origna_gta/lib/models/generated/product_models.dart",
         "origna_gta/lib/models/generated/user_models.dart",
         # Backend handlers
-        "functions/handlers/payment_stripe.py",
         "functions/handlers/orders.py",
         "functions/handlers/products.py",
         "functions/handlers/admin.py",
@@ -2427,7 +2449,7 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> FlowCopyResult:
     """Copy files for a flow into Desktop/origna_flows/<flow_name>/.
 
     - Writes INSTRUCTIONS.md (does NOT count toward MAX_FILES_PER_FLOW).
-    - CLAUDE.md is always prepended as the first file.
+    - CLAUDE.md + any learned.md/LEARNED.md variants (if present) are prepended first.
     - E2E spec files from FLOW_SPECS + origna_flows docs appended after primary source files.
     - If total files exceed MAX_FILES_PER_FLOW, excess files are concatenated into _overflow.md.
     - Total content is capped at MAX_TOTAL_BYTES to respect Claude.ai's context limit.
@@ -2445,13 +2467,15 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> FlowCopyResult:
 
     total_bytes = len(instructions_text.encode("utf-8"))
 
-    # Build file list: CLAUDE.md → E2E specs → source files → origna_flows docs
-    # Spec files get HIGH priority (right after CLAUDE.md) so they're never bumped to overflow.
+    # Build file list: CLAUDE.md (+ learned files if present) → E2E specs → source files → origna_flows docs
+    # Spec files get HIGH priority (right after injected context files) so they're never bumped to overflow.
     spec_files = FLOW_SPECS.get(flow_name, [])
+    learned_files = _resolve_learned_files()
+    injected_files = [_CLAUDE] + learned_files
     origna_docs = [f for f in _ORIGNA_FLOWS_DOCS if f not in file_paths]
     seen: set[str] = set()
     all_files: list[str] = []
-    for f in [_CLAUDE] + spec_files + list(file_paths) + origna_docs:
+    for f in injected_files + spec_files + list(file_paths) + origna_docs:
         if f not in seen:
             seen.add(f)
             all_files.append(f)
@@ -2464,6 +2488,7 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> FlowCopyResult:
     missing = 0
     missing_files: list[str] = []
     deferred: list[str] = []  # primary files bumped to overflow due to size limit
+    always_include = set(injected_files)
 
     for rel in primary:
         src = REPO_ROOT / rel
@@ -2473,8 +2498,8 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> FlowCopyResult:
             missing_files.append(rel)
             continue
         file_bytes = src.stat().st_size
-        # Always include CLAUDE.md; defer others if size cap would be exceeded
-        if rel != _CLAUDE and total_bytes + file_bytes > MAX_TOTAL_BYTES:
+        # Always include injected context files; defer others if size cap would be exceeded
+        if rel not in always_include and total_bytes + file_bytes > MAX_TOTAL_BYTES:
             deferred.append(rel)
             continue
         dest = dest_root / rel
