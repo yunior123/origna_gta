@@ -198,8 +198,13 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
+  /// Clears the applied coupon code, discount, and any coupon error from state.
   void removeCoupon() => state = state.copyWith(clearCoupon: true, clearCouponError: true);
 
+  /// Sets the active payment provider if [provider] is a recognised value.
+  ///
+  /// [provider] Currently only [PaymentProviderValues.stripe] is accepted;
+  /// any other value is silently ignored.
   void setPaymentProvider(String provider) {
     if (provider == PaymentProviderValues.stripe) {
       state = state.copyWith(paymentProvider: provider);

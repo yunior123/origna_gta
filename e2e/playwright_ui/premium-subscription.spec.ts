@@ -1353,7 +1353,7 @@ test.describe('N. Reactivate Subscription', () => {
     // Verify Firestore subscription doc has cancelAtPeriodEnd=false
     let subDoc: any = null;
     for (let i = 0; i < 10; i++) {
-      subDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+      subDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
       if (subDoc?.cancelAtPeriodEnd === false) break;
       await new Promise(r => setTimeout(r, 2_000));
     }
@@ -1399,7 +1399,7 @@ test.describe('O. Webhook Edge Cases', () => {
     // Poll Firestore until status is past_due (up to 20s)
     let subDoc: any = null;
     for (let i = 0; i < 10; i++) {
-      subDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+      subDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
       if (subDoc?.status === 'past_due') break;
       await new Promise(r => setTimeout(r, 2_000));
     }
@@ -1411,7 +1411,7 @@ test.describe('O. Webhook Edge Cases', () => {
   test.skip('O2: invoice.payment_succeeded keeps isPremium=true and advances expiresAt', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
-    const beforeDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+    const beforeDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
     const beforeExpiry = beforeDoc?.currentPeriodEnd;
 
     // Trigger successful invoice payment event
@@ -1424,7 +1424,7 @@ test.describe('O. Webhook Edge Cases', () => {
     expect(data.isPremium).toBe(true);
 
     // Verify expiresAt advanced (currentPeriodEnd should be >= previous)
-    const afterDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+    const afterDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
     if (beforeExpiry && afterDoc?.currentPeriodEnd) {
       expect(afterDoc.currentPeriodEnd).toBeGreaterThanOrEqual(beforeExpiry);
     }
@@ -1436,7 +1436,7 @@ test.describe('O. Webhook Edge Cases', () => {
     const auth = await signIn(BUYER_EMAIL);
 
     // Precondition: user must be in past_due state
-    const subDoc = await parseDoc(`subscriptions/${auth.localId}`, auth.idToken);
+    const subDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
     if (subDoc?.status !== 'past_due') {
       console.log('O3: User is not in past_due state — test requires Stripe CLI setup');
       return;

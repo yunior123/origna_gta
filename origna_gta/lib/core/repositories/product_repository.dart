@@ -48,6 +48,11 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Creates a product atomically via Cloud Function, uploading images to R2 storage.
+  ///
+  /// [imageBytes] are compressed JPEG bytes for each image; [testImageUrls] bypasses
+  /// upload in dev/emulator runs. Returns the Firestore document ID assigned server-side.
+  /// Throws [Exception] if the function returns no productId.
   Future<String> createProductAtomic(
     Product product,
     List<Uint8List> imageBytes, {
@@ -104,6 +109,9 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Fetches a single product by Firestore document ID.
+  ///
+  /// Returns null if the document does not exist or its [lifecycleStatus] is not `active`.
   Future<Product?> fetchProductById(String productId) async {
     final doc = await _firestore
         .collection(Collections.products)
@@ -129,6 +137,10 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Fetches a paginated list of active products with optional keyword and category filters.
+  ///
+  /// [lastDocument] is the pagination cursor returned by a previous call.
+  /// Returns [ProductQueryResult] containing the page of products, the new cursor, and [hasMore].
   Future<ProductQueryResult> fetchProducts({
     String? searchQuery,
     int? categoryId,
@@ -175,6 +187,11 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Batch-fetches products by ID, ignoring lifecycle status.
+  ///
+  /// Fetches in chunks of 30 to respect Firestore `whereIn` limits. Inactive products
+  /// are intentionally included so cart items can surface an "unavailable" state rather
+  /// than silently disappearing from the buyer's view (see F-79).
   Future<List<Product>> fetchProductsByIds(List<String> productIds) async {
     if (productIds.isEmpty) return [];
 
@@ -233,6 +250,10 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Submits a product rating (1–5) and optional review via Cloud Function.
+  ///
+  /// [orderId] scopes the rating to a verified purchase. [reviewImageUrls] and
+  /// [reviewText] are optional; omitting them submits a star-only rating.
   Future<void> submitRating(
     String orderId,
     String productId,
@@ -257,6 +278,10 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Toggles the favorite status of a product for the given user.
+  ///
+  /// Uses a Firestore transaction to prevent duplicate subcollection writes from rapid taps.
+  /// [userId] The authenticated user UID. [productId] The product to toggle.
   Future<void> toggleFavorite(String userId, String productId) async {
     final favRef = _firestore
         .collection(Collections.users)
@@ -335,6 +360,11 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Uploads product images to R2 and returns their public CDN URLs.
+  ///
+  /// [images] Raw JPEG bytes per image; [productId] is used to derive filenames.
+  /// Performs best-effort cleanup of any already-uploaded files on partial failure to
+  /// avoid R2 orphans. Throws [Exception] if any single image fails all retries.
   Future<List<String>> uploadImages(
     List<Uint8List> images,
     String productId,
@@ -362,6 +392,10 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Streams the set of product IDs the user has favorited, updating in real-time.
+  ///
+  /// [userId] The authenticated user UID.
+  /// Returns a [Stream] of product ID strings capped at [BusinessRules.favoritesPageSize].
   Stream<Set<String>> watchFavorites(String userId) {
     return _firestore
         .collection(Collections.users)

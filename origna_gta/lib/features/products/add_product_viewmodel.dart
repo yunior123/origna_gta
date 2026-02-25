@@ -34,6 +34,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void addImage(ImageModel image) => state = state.copyWith(imageModels: [...state.imageModels, image]);
 
+  /// Validates all inputs, compresses images, and creates the product via [createProductAtomic].
+  ///
+  /// Handles physical/digital products, warehouse stock, and variant configurations.
+  /// Updates [AddProductState.isLoading] during the operation and sets [isSuccess] on completion.
+  /// Errors are written to [AddProductState.errorMessage] rather than thrown.
   Future<void> addProduct({
     required String name,
     required String description,
@@ -377,6 +382,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   /// Clear error message to allow re-triggering SnackBar on next error
   void clearError() => state = state.copyWith(errorMessage: null);
 
+  /// Handles street input changes — triggers Geoapify address autocomplete.
+  ///
+  /// [value] The current street input string. Coordinates are invalidated on every
+  /// keystroke to prevent stale geolocation data from a prior suggestion (Bug #16).
   Future<void> onStreetChanged(String value) async {
     // Bug #16: Invalidate stale coordinates when user manually edits address
     clearCoordinates();
@@ -390,6 +399,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void removeImage(int index) => state = state.copyWith(imageModels: List<ImageModel>.from(state.imageModels)..removeAt(index));
 
+  /// Populates state with the parsed province, latitude, and longitude from a Geoapify suggestion.
+  ///
+  /// [suggestion] Raw feature map from the Geoapify autocomplete API response.
+  /// Sets [addressVerified] to true, which unblocks product form submission.
   void selectAddress(Map<String, dynamic> suggestion) {
     final details = parseAddressSuggestion(suggestion);
     state = state.copyWith(
@@ -437,6 +450,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
 
+  /// Toggles digital product mode, resetting delivery and perishable fields accordingly.
+  ///
+  /// [value] When true, delivery options are cleared and free shipping is forced on.
+  /// The current standard-delivery state is saved so it can be restored if digital mode is disabled.
   void toggleDigital(bool value) => state = state.copyWith(
     isDigital: value,
     freeShipping: value ? true : state.freeShipping,
@@ -456,6 +473,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     deviceLimit: value ? state.deviceLimit : null,
   );
 
+  /// Enables or disables free shipping, saving and restoring express/same-day state.
+  ///
+  /// [value] When true, express and same-day options are disabled (free = standard-only).
+  /// When false, previously saved express/same-day selections are restored.
   void toggleFreeShipping(bool value) {
     final effectiveValue = state.isDigital ? true : value;
     if (effectiveValue) {
@@ -474,6 +495,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
   }
 
+  /// Enables or disables variant mode, clearing all options and variants when disabled.
+  ///
+  /// [value] When false, [variantOptions] and [variants] are reset to empty lists.
   void toggleHasVariants(bool value) {
     if (value) {
       state = state.copyWith(hasVariants: true);
@@ -482,6 +506,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
   }
 
+  /// Adds a new variant option axis and regenerates all variant combinations.
+  ///
+  /// [name] The option axis label (e.g., "Color"). [values] The selectable values (e.g., ["Red", "Blue"]).
+  /// Existing variant price/stock/sku data is preserved where option values match.
   void addVariantOption(String name, List<String> values) {
     final options = List<VariantOption>.from(state.variantOptions);
     options.add(VariantOption(name: name, values: values));
