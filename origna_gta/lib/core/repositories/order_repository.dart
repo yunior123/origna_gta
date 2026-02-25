@@ -119,10 +119,15 @@ class FirebaseOrderRepository implements OrderRepository {
           constants.PaymentStatus.cancelled.value,
           constants.PaymentStatus.authorizationExpired.value,
         ])
-        .orderBy(Fields.createdAt, descending: true)
-        .limit(BusinessRules.ordersPageSize) // Pagination: limit initial load for scalability (100M+ users)
+        // NOTE: .orderBy(createdAt) is intentionally omitted — Firestore does not support
+        // arrayContains + whereIn + orderBy on a different field. Sort client-side instead.
+        .limit(BusinessRules.ordersPageSize)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
+        .map((snapshot) {
+          final orders = snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList();
+          orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return orders;
+        });
   }
 }
 

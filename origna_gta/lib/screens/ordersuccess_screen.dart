@@ -2,6 +2,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/services/analytics_service.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -9,8 +10,15 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 class OrderSuccessScreen extends StatefulWidget {
   final String orderId;
+  final double valueCad;
+  final int itemCount;
 
-  const OrderSuccessScreen({super.key, required this.orderId});
+  const OrderSuccessScreen({
+    super.key,
+    required this.orderId,
+    this.valueCad = 0,
+    this.itemCount = 0,
+  });
 
   @override
   State<OrderSuccessScreen> createState() => _OrderSuccessScreenState();
@@ -25,6 +33,11 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
       data: {'orderId': widget.orderId},
       timestamp: DateTime.now(),
     ));
+    AnalyticsService.logPurchase(
+      orderId: widget.orderId,
+      valueCad: widget.valueCad,
+      itemCount: widget.itemCount,
+    );
   }
 
   @override

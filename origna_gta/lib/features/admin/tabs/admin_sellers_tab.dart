@@ -20,7 +20,11 @@ class AdminSellersTab extends ConsumerWidget {
           error: (error, _) => _buildErrorState(),
           data: (sellers) {
             if (sellers.isEmpty) {
-              return AnimatedEmptyState(icon: Icons.store_outlined, title: 'admin.sellers.no_sellers'.tr(), subtitle: 'admin.sellers.no_sellers_desc'.tr());
+              return AnimatedEmptyState(
+                icon: Icons.store_outlined,
+                title: 'admin.sellers.no_sellers'.tr(),
+                subtitle: 'admin.sellers.no_sellers_desc'.tr(),
+              );
             }
 
             return Column(
@@ -58,12 +62,22 @@ class AdminSellersTab extends ConsumerWidget {
               color: DesignTokens.error.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.cloud_off_rounded, size: 40, color: DesignTokens.error),
+            child: Icon(
+              Icons.cloud_off_rounded,
+              size: 40,
+              color: DesignTokens.error,
+            ),
           ),
           const SizedBox(height: 16),
-          Text('admin.users.error_fetching'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(
+            'admin.users.error_fetching'.tr(),
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 4),
-          Text('admin.sellers.pull_to_refresh'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+          Text(
+            'admin.sellers.pull_to_refresh'.tr(),
+            style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+          ),
         ],
       ),
     );
@@ -85,18 +99,36 @@ class _SellersSummaryBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [DesignTokens.primary.withValues(alpha: 0.08), DesignTokens.secondary.withValues(alpha: 0.05)],
+          colors: [
+            DesignTokens.primary.withValues(alpha: 0.08),
+            DesignTokens.secondary.withValues(alpha: 0.05),
+          ],
         ),
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
-          _summaryChip(Icons.people_rounded, '$active', 'admin.sellers.summary_active'.tr(), DesignTokens.success),
+          _summaryChip(
+            Icons.people_rounded,
+            '$active',
+            'admin.sellers.summary_active'.tr(),
+            DesignTokens.success,
+          ),
           const SizedBox(width: 16),
-          _summaryChip(Icons.block_rounded, '$suspended', 'admin.sellers.summary_suspended'.tr(), DesignTokens.error),
+          _summaryChip(
+            Icons.block_rounded,
+            '$suspended',
+            'admin.sellers.summary_suspended'.tr(),
+            DesignTokens.error,
+          ),
           const SizedBox(width: 16),
-          _summaryChip(Icons.link_rounded, '$connected', 'admin.sellers.summary_stripe'.tr(), DesignTokens.info),
+          _summaryChip(
+            Icons.link_rounded,
+            '$connected',
+            'admin.sellers.summary_stripe'.tr(),
+            DesignTokens.info,
+          ),
         ],
       ),
     );
@@ -118,8 +150,21 @@ class _SellersSummaryBar extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(count, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: color)),
-              Text(label, style: TextStyle(fontSize: 10, color: DesignTokens.textSecondary)),
+              Text(
+                count,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: DesignTokens.textSecondary,
+                ),
+              ),
             ],
           ),
         ],
@@ -144,7 +189,9 @@ class _SellerCard extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -158,14 +205,25 @@ class _SellerCard extends ConsumerWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     gradient: isSuspended
-                        ? LinearGradient(colors: [DesignTokens.error, DesignTokens.error.withValues(alpha: 0.7)])
+                        ? LinearGradient(
+                            colors: [
+                              DesignTokens.error,
+                              DesignTokens.error.withValues(alpha: 0.7),
+                            ],
+                          )
                         : DesignTokens.primaryGradient,
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
                   ),
                   child: Center(
                     child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : 'admin.users.unknown_user'.tr()[0],
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+                      name.isNotEmpty
+                          ? name[0].toUpperCase()
+                          : 'admin.users.unknown_user'.tr()[0],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                      ),
                     ),
                   ),
                 ),
@@ -177,22 +235,45 @@ class _SellerCard extends ConsumerWidget {
                       Row(
                         children: [
                           Flexible(
-                            child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15), overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           if (isSuspended) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
-                                color: DesignTokens.error.withValues(alpha: 0.1),
+                                color: DesignTokens.error.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.pause_circle_filled_rounded, size: 12, color: DesignTokens.error),
+                                  Icon(
+                                    Icons.pause_circle_filled_rounded,
+                                    size: 12,
+                                    color: DesignTokens.error,
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text('admin.sellers.summary_suspended'.tr(), style: TextStyle(color: DesignTokens.error, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    'admin.sellers.summary_suspended'.tr(),
+                                    style: TextStyle(
+                                      color: DesignTokens.error,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -200,7 +281,13 @@ class _SellerCard extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 2),
-                      Text(email, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+                      Text(
+                        email,
+                        style: TextStyle(
+                          color: DesignTokens.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -214,19 +301,29 @@ class _SellerCard extends ConsumerWidget {
               children: [
                 // Stripe status chip
                 _infoChip(
-                  icon: stripeOnboarded ? Icons.check_circle_rounded : Icons.schedule_rounded,
-                  label: stripeOnboarded ? 'admin.sellers.stripe_connected'.tr() : 'admin.sellers.stripe_pending'.tr(),
-                  color: stripeOnboarded ? DesignTokens.success : DesignTokens.warning,
+                  icon: stripeOnboarded
+                      ? Icons.check_circle_rounded
+                      : Icons.schedule_rounded,
+                  label: stripeOnboarded
+                      ? 'admin.sellers.stripe_connected'.tr()
+                      : 'admin.sellers.stripe_pending'.tr(),
+                  color: stripeOnboarded
+                      ? DesignTokens.success
+                      : DesignTokens.warning,
                 ),
                 if (stripeAccountId != null)
                   _infoChip(
                     icon: Icons.tag_rounded,
-                    label: stripeAccountId.length > 14 ? '${stripeAccountId.substring(0, 14)}...' : stripeAccountId,
+                    label: stripeAccountId.length > 14
+                        ? '${stripeAccountId.substring(0, 14)}...'
+                        : stripeAccountId,
                     color: DesignTokens.textSecondary,
                   ),
                 _infoChip(
                   icon: Icons.calendar_today_rounded,
-                  label: 'admin.users.joined_date'.tr(namedArgs: {'date': _formatDate(createdAt)}),
+                  label: 'admin.users.joined_date'.tr(
+                    namedArgs: {'date': _formatDate(createdAt)},
+                  ),
                   color: DesignTokens.textSecondary,
                 ),
               ],
@@ -265,7 +362,12 @@ class _SellerCard extends ConsumerWidget {
     );
   }
 
-  Widget _actionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return Material(
       color: color.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(8),
@@ -279,7 +381,14 @@ class _SellerCard extends ConsumerWidget {
             children: [
               Icon(icon, size: 16, color: color),
               const SizedBox(width: 6),
-              Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -291,7 +400,11 @@ class _SellerCard extends ConsumerWidget {
     return DateFormat('MMM dd, yyyy').format(date);
   }
 
-  Widget _infoChip({required IconData icon, required String label, required Color color}) {
+  Widget _infoChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -303,17 +416,31 @@ class _SellerCard extends ConsumerWidget {
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 5),
-          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  void _suspendSeller(BuildContext context, WidgetRef ref, String userId, String name) {
+  void _suspendSeller(
+    BuildContext context,
+    WidgetRef ref,
+    String userId,
+    String name,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
         title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: DesignTokens.error),
@@ -321,21 +448,40 @@ class _SellerCard extends ConsumerWidget {
             Text('admin.sellers.suspend_seller_title'.tr()),
           ],
         ),
-        content: Text('admin.sellers.suspend_seller_confirm'.tr(namedArgs: {'name': name})),
+        content: Text(
+          'admin.sellers.suspend_seller_confirm'.tr(namedArgs: {'name': name}),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('common.cancel'.tr()),
+          ),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
-              final success = await ref.read(adminActionsViewModelProvider.notifier).setUserSuspended(userId, true);
+              final success = await ref
+                  .read(adminActionsViewModelProvider.notifier)
+                  .setUserSuspended(userId, true);
               if (!context.mounted) return;
               if (context.mounted) {
                 if (success) {
-                  messenger.showSnackBar(SnackBar(content: Text('admin.sellers.seller_suspended'.tr()), backgroundColor: DesignTokens.error));
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('admin.sellers.seller_suspended'.tr()),
+                      backgroundColor: DesignTokens.error,
+                    ),
+                  );
                 } else {
-                  final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.sellers.failed_suspend'.tr();
-                  messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+                  final error =
+                      ref.read(adminActionsViewModelProvider).errorMessage ??
+                      'admin.sellers.failed_suspend'.tr();
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(error),
+                      backgroundColor: DesignTokens.error,
+                    ),
+                  );
                 }
               }
             },
@@ -347,24 +493,54 @@ class _SellerCard extends ConsumerWidget {
     );
   }
 
-  void _unsuspendSeller(BuildContext context, WidgetRef ref, String userId, String name) async {
+  void _unsuspendSeller(
+    BuildContext context,
+    WidgetRef ref,
+    String userId,
+    String name,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final success = await ref.read(adminActionsViewModelProvider.notifier).setUserSuspended(userId, false);
+    final success = await ref
+        .read(adminActionsViewModelProvider.notifier)
+        .setUserSuspended(userId, false);
     if (context.mounted) {
       if (success) {
-        messenger.showSnackBar(SnackBar(content: Text('admin.sellers.seller_unsuspended'.tr()), backgroundColor: DesignTokens.success));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('admin.sellers.seller_unsuspended'.tr()),
+            backgroundColor: DesignTokens.success,
+          ),
+        );
       } else {
-        final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.sellers.failed_unsuspend'.tr();
-        messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+        final error =
+            ref.read(adminActionsViewModelProvider).errorMessage ??
+            'admin.sellers.failed_unsuspend'.tr();
+        messenger.showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
+        );
       }
     }
   }
 
   void _viewSellerProducts(BuildContext context, String sellerId, String name) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _SellerProductsScreen(sellerId: sellerId, sellerName: name),
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) =>
+            _SellerProductsScreen(sellerId: sellerId, sellerName: name),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curve = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).animate(curve),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 280),
       ),
     );
   }
@@ -374,14 +550,25 @@ class _SellerProductsScreen extends ConsumerWidget {
   final String sellerId;
   final String sellerName;
 
-  const _SellerProductsScreen({required this.sellerId, required this.sellerName});
+  const _SellerProductsScreen({
+    required this.sellerId,
+    required this.sellerName,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        flexibleSpace: Container(decoration: const BoxDecoration(gradient: DesignTokens.primaryGradient)),
-        title: Text('admin.sellers.seller_products_title'.tr(namedArgs: {'name': sellerName})),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: DesignTokens.primaryGradient,
+          ),
+        ),
+        title: Text(
+          'admin.sellers.seller_products_title'.tr(
+            namedArgs: {'name': sellerName},
+          ),
+        ),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
       ),
@@ -393,7 +580,11 @@ class _SellerProductsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.error_outline_rounded, size: 48, color: DesignTokens.error),
+                  Icon(
+                    Icons.error_outline_rounded,
+                    size: 48,
+                    color: DesignTokens.error,
+                  ),
                   const SizedBox(height: 12),
                   Text('admin.sellers.error_loading_products'.tr()),
                 ],
@@ -401,7 +592,11 @@ class _SellerProductsScreen extends ConsumerWidget {
             ),
             data: (products) {
               if (products.isEmpty) {
-                return AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: 'admin.sellers.no_products'.tr(), subtitle: 'admin.sellers.no_products_desc'.tr());
+                return AnimatedEmptyState(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'admin.sellers.no_products'.tr(),
+                  subtitle: 'admin.sellers.no_products_desc'.tr(),
+                );
               }
 
               return ListView.builder(
@@ -415,9 +610,16 @@ class _SellerProductsScreen extends ConsumerWidget {
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius12,
+                      ),
+                    ),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       leading: Container(
                         width: 42,
                         height: 42,
@@ -425,21 +627,43 @@ class _SellerProductsScreen extends ConsumerWidget {
                           color: DesignTokens.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(Icons.shopping_bag_rounded, color: DesignTokens.primary, size: 22),
+                        child: Icon(
+                          Icons.shopping_bag_rounded,
+                          color: DesignTokens.primary,
+                          size: 22,
+                        ),
                       ),
-                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      title: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       subtitle: Text(
                         '${'admin.sellers.stock_label'.tr(namedArgs: {'stock': stock.toString()})} • \$${price.toStringAsFixed(2)}',
-                        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                        style: TextStyle(
+                          color: DesignTokens.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                       trailing: stock == 0
                           ? Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: DesignTokens.error.withValues(alpha: 0.1),
+                                color: DesignTokens.error.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: Text('admin.sellers.out_of_stock'.tr(), style: TextStyle(fontSize: 11, color: DesignTokens.error, fontWeight: FontWeight.w600)),
+                              child: Text(
+                                'admin.sellers.out_of_stock'.tr(),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: DesignTokens.error,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             )
                           : null,
                     ),

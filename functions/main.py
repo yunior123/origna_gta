@@ -12,6 +12,7 @@ All Firebase Cloud Functions are organized by domain:
 
 # Firebase Admin SDK initialization
 # Stripe API key setup
+import logging
 import os
 
 import firebase_admin
@@ -23,6 +24,8 @@ import firebase_admin
 # See: https://github.com/firebase/firebase-functions-python/issues/187
 # ===============================================
 import stripe
+
+logger = logging.getLogger(__name__)
 
 _original_get_attributes = None
 
@@ -41,8 +44,10 @@ try:
 
     _original_get_attributes = _CE._get_attributes
     _CE._get_attributes = _patch_cloud_event_get_attributes
-except Exception:
-    pass  # Fail silently — worst case, the original bug remains
+except (ImportError, AttributeError, TypeError) as patch_err:
+    logger.warning(
+        f"CloudEvent monkey patch skipped; trigger authtype workaround inactive: {type(patch_err).__name__}"
+    )
 
 # ===============================================
 # MONKEY-PATCH: firebase-functions 0.4.x scheduler_fn uses strptime('%Y-%m-%dT%H:%M:%S%z')
@@ -51,6 +56,7 @@ except Exception:
 # ===============================================
 try:
     import datetime as _datetime_module
+
     import firebase_functions.scheduler_fn as _sched_fn_module
 
     class _DatetimeWithIsoFallback(_datetime_module.datetime):
@@ -62,8 +68,10 @@ try:
                 return _datetime_module.datetime.fromisoformat(date_string)
 
     _sched_fn_module._dt.datetime = _DatetimeWithIsoFallback
-except Exception:
-    pass  # Fail silently — worst case, the original bug remains
+except (ImportError, AttributeError, TypeError, ValueError) as patch_err:
+    logger.warning(
+        f"Scheduler datetime monkey patch skipped; microsecond fallback inactive: {type(patch_err).__name__}"
+    )
 
 # Initialize Firebase Admin SDK BEFORE any handler imports — handlers may call
 # firestore.client() or firebase_admin.auth at import time.
@@ -144,6 +152,11 @@ from handlers.digital import (  # noqa: E402
     get_software_redirect,
     verify_license,
 )
+
+# ===============================================
+# EMAIL TASK QUEUE HANDLER (Cloud Tasks)
+# ===============================================
+from handlers.email_tasks import send_email_task  # noqa: E402
 
 # ===============================================
 # ORDER HANDLERS
@@ -387,6 +400,8 @@ __all__ = [
     "compute_trending_products",
     "sync_expired_subscriptions",
     "escalate_stale_return_requests",
+    # Cloud Tasks
+    "send_email_task",
     # Shipping
     "calculate_shipping_cost",
     # Digital products

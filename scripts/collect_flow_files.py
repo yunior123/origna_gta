@@ -13,13 +13,18 @@ Usage:
     python scripts/collect_flow_files.py
 """
 
+import json
+import os
 import shutil
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from time import perf_counter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DESKTOP = Path.home() / "Desktop" / "origna_flows"
 MAX_FILES_PER_FLOW = 18  # includes CLAUDE.md; +INSTRUCTIONS.md +_overflow.md = 20 total max
-MAX_TOTAL_BYTES = 700_000  # 700 KB ≈ 175K tokens — safely under Claude Sonnet 4.6's 200K token context on claude.ai
+# Tuned up to avoid flow truncation in high-complexity bundles; can be overridden for tighter caps.
+MAX_TOTAL_BYTES = int(os.getenv("ORIGNA_FLOW_MAX_BYTES", "1500000"))
 
 # CLAUDE.md is auto-injected into every flow as the first file
 _CLAUDE = "CLAUDE.md"
@@ -2404,8 +2409,22 @@ FLOW_SPECS: dict[str, list[str]] = {
 }
 
 
-def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
-    """Copy files for a flow into Desktop/origna_flows/<flow_name>/. Returns (copied, missing, total_bytes).
+@dataclass
+class FlowCopyResult:
+    flow_name: str
+    copied_files: int
+    missing_count: int
+    missing_files: list[str]
+    total_bytes: int
+    folder_file_count: int
+    overflow_entries_written: int
+    deferred_primary_count: int
+    truncated_overflow: bool
+    omitted_due_size_count: int
+
+
+def copy_flow(flow_name: str, file_paths: list[str]) -> FlowCopyResult:
+    """Copy files for a flow into Desktop/origna_flows/<flow_name>/.
 
     - Writes INSTRUCTIONS.md (does NOT count toward MAX_FILES_PER_FLOW).
     - CLAUDE.md is always prepended as the first file.
@@ -2443,6 +2462,7 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
 
     copied = 0
     missing = 0
+    missing_files: list[str] = []
     deferred: list[str] = []  # primary files bumped to overflow due to size limit
 
     for rel in primary:
@@ -2450,6 +2470,7 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
         if not src.exists():
             print(f"  ⚠️  MISSING: {rel}")
             missing += 1
+            missing_files.append(rel)
             continue
         file_bytes = src.stat().st_size
         # Always include CLAUDE.md; defer others if size cap would be exceeded
@@ -2464,13 +2485,17 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
 
     # Concatenate overflow + deferred files into _overflow.md
     all_overflow = deferred + overflow
+    overflow_entries_written = 0
+    truncated_overflow = False
+    omitted_due_size_count = 0
     if all_overflow:
         overflow_parts: list[str] = []
-        for rel in all_overflow:
+        for idx, rel in enumerate(all_overflow):
             src = REPO_ROOT / rel
             if not src.exists():
                 print(f"  ⚠️  MISSING (overflow): {rel}")
                 missing += 1
+                missing_files.append(rel)
                 continue
             try:
                 content = src.read_text(encoding="utf-8", errors="replace")
@@ -2480,21 +2505,26 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
             footer = "\n```\n"
             chunk_bytes = len((header + content + footer).encode("utf-8"))
             if total_bytes + chunk_bytes > MAX_TOTAL_BYTES:
+                truncated_overflow = True
                 # Truncate content to fit within remaining budget
                 header_b = header.encode("utf-8")
                 trunc_footer = b"\n[TRUNCATED -- size limit reached]\n```\n"
                 remaining = MAX_TOTAL_BYTES - total_bytes - len(header_b) - len(trunc_footer)
                 if remaining < 20:
+                    omitted_due_size_count = len(all_overflow) - idx
                     break  # no room left — stop adding overflow files
                 truncated = content.encode("utf-8")[:remaining].decode("utf-8", errors="ignore")
                 part = header + truncated + "\n[TRUNCATED — size limit reached]\n```\n"
                 overflow_parts.append(part)
                 total_bytes += len(part.encode("utf-8"))
                 copied += 1
+                overflow_entries_written += 1
+                omitted_due_size_count = len(all_overflow) - idx - 1
                 break  # stop after truncated entry
             overflow_parts.append(f"## FILE: {rel}\n\n```\n{content}\n```\n")
             total_bytes += chunk_bytes
             copied += 1
+            overflow_entries_written += 1
 
         if overflow_parts:
             overflow_md = dest_root / "_overflow.md"
@@ -2505,32 +2535,81 @@ def copy_flow(flow_name: str, file_paths: list[str]) -> tuple[int, int, int]:
             )
 
     folder_files = sum(1 for f in dest_root.rglob("*") if f.is_file())  # actual files to upload to Claude.ai
-    return copied, missing, total_bytes, folder_files
+    return FlowCopyResult(
+        flow_name=flow_name,
+        copied_files=copied,
+        missing_count=missing,
+        missing_files=missing_files,
+        total_bytes=total_bytes,
+        folder_file_count=folder_files,
+        overflow_entries_written=overflow_entries_written,
+        deferred_primary_count=len(deferred),
+        truncated_overflow=truncated_overflow,
+        omitted_due_size_count=omitted_due_size_count,
+    )
+
+
+def write_manifest(results: list[FlowCopyResult], elapsed_seconds: float) -> None:
+    """Write structured run metadata for downstream audits."""
+    total_copied = sum(r.copied_files for r in results)
+    total_missing = sum(r.missing_count for r in results)
+    truncated_flows = sum(1 for r in results if r.truncated_overflow)
+    near_limit_flows = sum(1 for r in results if r.total_bytes > MAX_TOTAL_BYTES * 0.95)
+    payload = {
+        "summary": {
+            "flow_count": len(results),
+            "total_copied_files": total_copied,
+            "total_missing_files": total_missing,
+            "truncated_flows": truncated_flows,
+            "near_limit_flows": near_limit_flows,
+            "max_primary_files_per_flow": MAX_FILES_PER_FLOW,
+            "max_total_bytes_per_flow": MAX_TOTAL_BYTES,
+            "elapsed_seconds": round(elapsed_seconds, 3),
+        },
+        "flows": [asdict(r) for r in results],
+    }
+    manifest_path = DESKTOP / "_manifest.json"
+    manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 def main() -> None:
+    started = perf_counter()
     # Wipe the entire output folder first so renamed/deleted flows don't linger
     if DESKTOP.exists():
         shutil.rmtree(DESKTOP)
         print(f"🗑️  Removed old: {DESKTOP}")
     DESKTOP.mkdir(parents=True)
     print(f"📂 Output: {DESKTOP}\n")
-    total_copied = 0
-    total_missing = 0
+    results: list[FlowCopyResult] = []
 
     for flow, files in FLOWS.items():
-        copied, missing, flow_bytes, folder_files = copy_flow(flow, files)
-        status = "✅" if missing == 0 else "⚠️ "
-        size_kb = flow_bytes / 1024
-        size_note = f"  📦 {size_kb:.0f} KB" + ("  ⚠️ NEAR LIMIT" if flow_bytes > MAX_TOTAL_BYTES * 0.95 else "")
-        print(f"{status} {flow:<35}  {folder_files}/20 files  ({missing} missing){size_note}")
-        total_copied += copied
-        total_missing += missing
+        result = copy_flow(flow, files)
+        results.append(result)
+        status = "✅" if result.missing_count == 0 else "⚠️"
+        size_kb = result.total_bytes / 1024
+        near_limit = "  ⚠️ NEAR LIMIT" if result.total_bytes > MAX_TOTAL_BYTES * 0.95 else ""
+        trunc_note = "  ✂️ TRUNCATED" if result.truncated_overflow else ""
+        print(
+            f"{status} {flow:<35}  {result.folder_file_count}/20 files  "
+            f"({result.missing_count} missing)  📦 {size_kb:.0f} KB"
+            f"{near_limit}{trunc_note}"
+        )
+
+    elapsed = perf_counter() - started
+    total_copied = sum(r.copied_files for r in results)
+    total_missing = sum(r.missing_count for r in results)
+    write_manifest(results, elapsed)
 
     print(f"\nDone — {total_copied} files copied, {total_missing} missing across {len(FLOWS)} flows.")
     print(f"📁 Open: {DESKTOP}")
     print(f"ℹ️  Size cap: {MAX_TOTAL_BYTES // 1024} KB per flow  |  Max files: {MAX_FILES_PER_FLOW} primary + INSTRUCTIONS.md + _overflow.md = 20 total")
+    print(f"🧾 Manifest: {DESKTOP / '_manifest.json'}")
+
+
+def create_complete_flows() -> None:
+    """Backward-compatible alias used by older automation prompts."""
+    main()
 
 
 if __name__ == "__main__":
-    main()
+    create_complete_flows()

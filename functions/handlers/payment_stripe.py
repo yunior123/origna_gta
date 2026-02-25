@@ -61,6 +61,7 @@ from schema_constants import (
 )
 from services.email_service import _t as _email_t
 from services.email_service import get_order_confirmation_email, get_seller_notification_email, send_email
+from services.email_task import enqueue_email_task
 from services.pdf_invoice_service import generate_invoice_pdf
 from services.rate_limiter import RateLimiter
 from services.shipping_service import calculate_shipping_cost, get_tax_rate
@@ -438,12 +439,9 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
 
         # Check if Stripe applied reverse charge (B2B exemption)
         is_reverse_charge = False
-        try:
-            customer_details = getattr(calculation, "customer_details", None)
-            if customer_details:
-                is_reverse_charge = getattr(customer_details, "tax_exempt", None) == "reverse_charge"
-        except Exception:
-            pass
+        customer_details = getattr(calculation, "customer_details", None)
+        if customer_details:
+            is_reverse_charge = getattr(customer_details, "tax_exempt", None) == "reverse_charge"
 
         return tax_amount_cents, tax_breakdown, item_taxes, is_reverse_charge
 
@@ -1394,9 +1392,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
 
         # Add tax as line item (already in cents)
-        # NOTE: We calculate tax manually server-side
-        # Stripe automatic_tax is DISABLED to avoid double taxation
-        # TODO consider this automatic_tax
+        # NOTE: Tax is calculated manually server-side; Stripe automatic_tax remains
+        # disabled here to avoid double taxation in this checkout path.
         if tax_amount_cents > 0:
             line_items.append(
                 {
@@ -2956,8 +2953,8 @@ def process_dispute_created(dispute: dict) -> str | None:
                                 f"🚨 CRITICAL: Failed to suspend seller {seller_id_from_payout} after dispute reversal failure: {type(suspend_err).__name__}"
                             )
 
-            except Exception as e:
-                # Log failure but continue processing other transfers
+            except (stripe.error.StripeError, ValueError, TypeError, RuntimeError) as e:
+                # Log failure and continue processing other transfers
                 logger.warning(f"⚠️ Failed to reverse transfer {transfer_id}: {str(e)}")
                 alert_ref[1].update(
                     {
@@ -2998,7 +2995,7 @@ def process_dispute_created(dispute: dict) -> str | None:
                 if seller_doc.exists:
                     seller_email = seller_doc.to_dict().get(Fields.EMAIL)
                     if seller_email:
-                        send_email(
+                        enqueue_email_task(
                             to_email=seller_email,
                             subject="⚠️ Payment Dispute Received - Origna",
                             html_content=f"""
@@ -3011,6 +3008,8 @@ def process_dispute_created(dispute: dict) -> str | None:
                             <p>Please review your order records and prepare any evidence (shipping confirmation, delivery proof, communication) that may help resolve this dispute.</p>
                             <p>— Origna Team</p>
                             """,
+                            event_type="dispute_created",
+                            order_id=order_id,
                         )
     except Exception as e:
         logger.error(f"Failed to send dispute notification emails: {type(e).__name__}")

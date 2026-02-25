@@ -92,6 +92,19 @@ class FirebaseUserRepository implements UserRepository {
     }
   }
 
+  /// Records that the user accepted the terms of service.
+  /// Backend sets the server-side timestamp — client only sends a flag.
+  /// Fire-and-forget: do not await unless you need confirmation.
+  @override
+  Future<void> recordTermsAcceptance() async {
+    final callable = _functions.httpsCallable('update_user_profile');
+    final response = await callable.call({Fields.termsAcceptedAt: true});
+    final data = response.data as Map<String, dynamic>;
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Failed to record terms acceptance');
+    }
+  }
+
   // --- Address Book Methods ---
 
   @override
@@ -190,8 +203,8 @@ abstract class UserRepository {
   Future<void> deleteBuyerAddress(String addressId);
   Future<SellerAccountStatus> getSellerAccountStatus(String userId);
   Future<UserModel?> getUserProfile(String userId);
+  Future<void> recordTermsAcceptance();
   Future<void> setDefaultBuyerAddress(String addressId);
-
   Future<void> updateBuyerAddress(String addressId, Address address);
   Future<void> updateNotificationPreferences(String userId, {bool? notifyNewProducts, bool? notifyTrending});
   Future<void> updatePreferredLanguage(String userId, String lang);

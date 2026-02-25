@@ -25,9 +25,7 @@ class SellerIntegrationScreen extends ConsumerWidget {
         ),
         child: CustomScrollView(
           slivers: [
-            CustomAppBar(
-              title: 'Developer Integration Guide',
-            ),
+            CustomAppBar(title: 'Developer Integration Guide'),
             SliverPadding(
               padding: const EdgeInsets.all(20),
               sliver: SliverList(
@@ -79,9 +77,16 @@ class _IntroCard extends StatelessWidget {
             'required. Just a plain HTTPS POST from anywhere: Swift, Python, Electron, Unity.',
           ),
           const SizedBox(height: 12),
-          _StepRow(number: '1', text: 'Buyer enters their license key in your app'),
+          _StepRow(
+            number: '1',
+            text: 'Buyer enters their license key in your app',
+          ),
           _StepRow(number: '2', text: 'Your app calls POST /activate_license'),
-          _StepRow(number: '3', text: 'Origna verifies key, registers the device, returns product info'),
+          _StepRow(
+            number: '3',
+            text:
+                'Origna verifies key, registers the device, returns product info',
+          ),
           _StepRow(number: '4', text: 'Your app unlocks Pro features'),
         ],
       ),
@@ -100,14 +105,18 @@ class _HowItWorksCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SubHeading('activate_license — call on first run or when user enters key'),
+          _SubHeading(
+            'activate_license — call on first run or when user enters key',
+          ),
           _BodyText(
             'Registers the device (deviceId) against the license. '
             'Respects the device limit the seller configured. '
             'Idempotent — safe to call multiple times from the same device.',
           ),
           const SizedBox(height: 12),
-          _SubHeading('verify_license — call periodically (e.g. on app launch)'),
+          _SubHeading(
+            'verify_license — call periodically (e.g. on app launch)',
+          ),
           _BodyText(
             'Re-validates that the license is still active and not revoked (e.g. after a refund). '
             'Same request/response shape as activate. '
@@ -213,7 +222,9 @@ func activateLicense(key: String, platform: String = "macos") async throws -> Bo
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _BodyText('Paste this into your app. Uses IOKit to get the hardware UUID as a stable device identifier.'),
+          _BodyText(
+            'Paste this into your app. Uses IOKit to get the hardware UUID as a stable device identifier.',
+          ),
           const SizedBox(height: 10),
           _CodeBlock(_code),
           const SizedBox(height: 8),
@@ -298,9 +309,19 @@ class _BookIntegrationCard extends StatelessWidget {
             'the product. Origna handles access control, token expiry, and single-use enforcement.',
           ),
           const SizedBox(height: 12),
-          _StepRow(number: '✓', text: 'Buyer taps Download in their Origna order'),
-          _StepRow(number: '✓', text: 'Origna backend creates a 15-min token, URL stays server-side'),
-          _StepRow(number: '✓', text: 'Browser is redirected — buyer downloads directly'),
+          _StepRow(
+            number: '✓',
+            text: 'Buyer taps Download in their Origna order',
+          ),
+          _StepRow(
+            number: '✓',
+            text:
+                'Origna backend creates a 15-min token, URL stays server-side',
+          ),
+          _StepRow(
+            number: '✓',
+            text: 'Browser is redirected — buyer downloads directly',
+          ),
           _StepRow(number: '✓', text: 'Link expires and cannot be reused'),
         ],
       ),
@@ -318,11 +339,27 @@ class _ErrorCodesCard extends StatelessWidget {
       title: 'Error codes',
       child: Column(
         children: const [
-          _ErrorRow('not_found', 404, 'Key does not exist — buyer entered wrong key'),
+          _ErrorRow(
+            'not_found',
+            404,
+            'Key does not exist — buyer entered wrong key',
+          ),
           _ErrorRow('revoked', 403, 'License revoked (refund issued)'),
-          _ErrorRow('device_limit_exceeded', 403, 'Too many devices activated for this key'),
-          _ErrorRow('platform_not_supported', 403, 'Platform not included in this product'),
-          _ErrorRow('invalid_key_format', 400, 'Key format wrong — validate before calling'),
+          _ErrorRow(
+            'device_limit_exceeded',
+            403,
+            'Too many devices activated for this key',
+          ),
+          _ErrorRow(
+            'platform_not_supported',
+            403,
+            'Platform not included in this product',
+          ),
+          _ErrorRow(
+            'invalid_key_format',
+            400,
+            'Key format wrong — validate before calling',
+          ),
         ],
       ),
     );
@@ -340,11 +377,31 @@ class _SecurityCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _StepRow(number: '1', text: 'Use hardware UUID (IOKit / WMI) as deviceId — not a random UUID stored on disk'),
-          _StepRow(number: '2', text: 'Cache the activation result locally; re-verify on launch, not on every action'),
-          _StepRow(number: '3', text: 'If verify_license returns "revoked", disable Pro features immediately'),
-          _StepRow(number: '4', text: 'Set your device limit to 2–3 in the product listing to limit key sharing'),
-          _StepRow(number: '5', text: 'Never hardcode keys in your source — the buyer provides their own at runtime'),
+          _StepRow(
+            number: '1',
+            text:
+                'Use hardware UUID (IOKit / WMI) as deviceId — not a random UUID stored on disk',
+          ),
+          _StepRow(
+            number: '2',
+            text:
+                'Cache the activation result locally; re-verify on launch, not on every action',
+          ),
+          _StepRow(
+            number: '3',
+            text:
+                'If verify_license returns "revoked", disable Pro features immediately',
+          ),
+          _StepRow(
+            number: '4',
+            text:
+                'Set your device limit to 2–3 in the product listing to limit key sharing',
+          ),
+          _StepRow(
+            number: '5',
+            text:
+                'Never hardcode keys in your source — the buyer provides their own at runtime',
+          ),
         ],
       ),
     );
@@ -358,14 +415,20 @@ class _GuideCard extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _GuideCard({required this.icon, required this.title, required this.child});
+  const _GuideCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.surface.withValues(alpha: 0.7) : Colors.white,
+        color: isDark
+            ? DesignTokens.surface.withValues(alpha: 0.7)
+            : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.3)),
       ),
@@ -373,14 +436,21 @@ class _GuideCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(icon, size: 20, color: DesignTokens.primary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            ),
-          ]),
+          Row(
+            children: [
+              Icon(icon, size: 20, color: DesignTokens.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 14),
           child,
         ],
@@ -393,7 +463,11 @@ class _EndpointRow extends StatelessWidget {
   final String method;
   final String url;
   final String label;
-  const _EndpointRow({required this.method, required this.url, required this.label});
+  const _EndpointRow({
+    required this.method,
+    required this.url,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -412,25 +486,38 @@ class _EndpointRow extends StatelessWidget {
               color: DesignTokens.primary,
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(method,
-                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+            child: Text(
+              method,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(url,
-                style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    color: DesignTokens.primary)),
+            child: Text(
+              url,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: DesignTokens.primary,
+              ),
+            ),
           ),
           Tooltip(
             message: 'Copy URL',
             child: IconButton(
               icon: const Icon(Icons.copy, size: 16),
+              tooltip: 'Copy URL',
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: url));
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('URL copied'), duration: Duration(seconds: 2)),
+                  const SnackBar(
+                    content: Text('URL copied'),
+                    duration: Duration(seconds: 2),
+                  ),
                 );
               },
             ),
@@ -459,7 +546,11 @@ class _CodeBlock extends StatelessWidget {
           ),
           child: SelectableText(
             code,
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 12, height: 1.6),
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 12,
+              height: 1.6,
+            ),
           ),
         ),
         Positioned(
@@ -469,10 +560,14 @@ class _CodeBlock extends StatelessWidget {
             message: 'Copy code',
             child: IconButton(
               icon: const Icon(Icons.copy, size: 16),
+              tooltip: 'Copy code',
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: code));
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Copied'), duration: Duration(seconds: 2)),
+                  const SnackBar(
+                    content: Text('Copied'),
+                    duration: Duration(seconds: 2),
+                  ),
                 );
               },
             ),
@@ -504,15 +599,21 @@ class _StepRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Center(
-              child: Text(number,
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: DesignTokens.primary)),
+              child: Text(
+                number,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: DesignTokens.primary,
+                ),
+              ),
             ),
           ),
           Expanded(
-            child: Text(text, style: const TextStyle(fontSize: 14, height: 1.5)),
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
           ),
         ],
       ),
@@ -526,8 +627,14 @@ class _BodyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text,
-        style: TextStyle(fontSize: 14, height: 1.6, color: DesignTokens.textSecondary));
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 14,
+        height: 1.6,
+        color: DesignTokens.textSecondary,
+      ),
+    );
   }
 }
 
@@ -539,8 +646,10 @@ class _SubHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(text,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -556,13 +665,18 @@ class _InfoChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: DesignTokens.secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: DesignTokens.secondary.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: DesignTokens.secondary.withValues(alpha: 0.3),
+        ),
       ),
-      child: Text(text,
-          style: TextStyle(
-              fontSize: 12,
-              color: DesignTokens.secondary,
-              fontWeight: FontWeight.w500)),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          color: DesignTokens.secondary,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 }
@@ -588,11 +702,14 @@ class _ErrorRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Center(
-              child: Text('$status',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: DesignTokens.error)),
+              child: Text(
+                '$status',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: DesignTokens.error,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -600,14 +717,21 @@ class _ErrorRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(code,
-                    style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600)),
-                Text(description,
-                    style: TextStyle(
-                        fontSize: 13, color: DesignTokens.textSecondary)),
+                Text(
+                  code,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textSecondary,
+                  ),
+                ),
               ],
             ),
           ),

@@ -57,11 +57,22 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'admin.users.search_hint'.tr(),
-                  hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
-                  prefixIcon: Icon(Icons.search_rounded, color: DesignTokens.primary),
+                  hintStyle: TextStyle(
+                    color: DesignTokens.textDisabled,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: DesignTokens.primary,
+                  ),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: Icon(Icons.close_rounded, color: DesignTokens.textSecondary, size: 20),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: DesignTokens.textSecondary,
+                            size: 20,
+                          ),
+                          tooltip: 'common.clear'.tr(),
                           onPressed: () {
                             _searchController.clear();
                           },
@@ -73,7 +84,10 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -81,11 +95,20 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                 children: [
                   _filterChip('admin.users.filter_all'.tr(), 'all'),
                   const SizedBox(width: 6),
-                  _filterChip('admin.users.filter_sellers'.tr(), UserRoles.seller),
+                  _filterChip(
+                    'admin.users.filter_sellers'.tr(),
+                    UserRoles.seller,
+                  ),
                   const SizedBox(width: 6),
-                  _filterChip('admin.users.filter_admins'.tr(), UserRoles.admin),
+                  _filterChip(
+                    'admin.users.filter_admins'.tr(),
+                    UserRoles.admin,
+                  ),
                   const SizedBox(width: 6),
-                  _filterChip('admin.users.filter_buyers'.tr(), UserRoles.buyer),
+                  _filterChip(
+                    'admin.users.filter_buyers'.tr(),
+                    UserRoles.buyer,
+                  ),
                 ],
               ),
             ],
@@ -104,17 +127,30 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                     children: [
                       Container(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: DesignTokens.error.withValues(alpha: 0.1), shape: BoxShape.circle),
-                        child: Icon(Icons.cloud_off_rounded, size: 40, color: DesignTokens.error),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.error.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.cloud_off_rounded,
+                          size: 40,
+                          color: DesignTokens.error,
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      Text('admin.users.error_fetching'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        'admin.users.error_fetching'.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ],
                   ),
                 ),
                 data: (usersRaw) {
                   if (usersRaw.isEmpty) {
-                    return AnimatedEmptyState(icon: Icons.people_outline, title: 'admin.users.no_users_found'.tr());
+                    return AnimatedEmptyState(
+                      icon: Icons.people_outline,
+                      title: 'admin.users.no_users_found'.tr(),
+                    );
                   }
 
                   final users = usersRaw.where((data) {
@@ -122,11 +158,15 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                     final email = data.email.toLowerCase();
                     final roles = data.roles;
 
-                    final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery) || email.contains(_searchQuery);
+                    final matchesSearch =
+                        _searchQuery.isEmpty ||
+                        name.contains(_searchQuery) ||
+                        email.contains(_searchQuery);
                     final matchesRole = _roleFilter == 'all'
                         ? true
                         : _roleFilter == 'buyer'
-                        ? !roles.contains(UserRoles.seller) && !roles.contains(UserRoles.admin)
+                        ? !roles.contains(UserRoles.seller) &&
+                              !roles.contains(UserRoles.admin)
                         : roles.contains(_roleFilter);
 
                     return matchesSearch && matchesRole;
@@ -137,9 +177,16 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.filter_alt_off_rounded, size: 40, color: DesignTokens.outlineVariant),
+                          Icon(
+                            Icons.filter_alt_off_rounded,
+                            size: 40,
+                            color: DesignTokens.outlineVariant,
+                          ),
                           const SizedBox(height: 12),
-                          Text('admin.users.no_users_match'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+                          Text(
+                            'admin.users.no_users_match'.tr(),
+                            style: TextStyle(color: DesignTokens.textSecondary),
+                          ),
                         ],
                       ),
                     );
@@ -172,7 +219,9 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
           duration: DesignTokens.durationFast,
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? DesignTokens.primary : DesignTokens.surfaceVariant,
+            color: isSelected
+                ? DesignTokens.primary
+                : DesignTokens.surfaceVariant,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
@@ -198,7 +247,9 @@ class _UserCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final name = user.name.isNotEmpty ? user.name : 'admin.users.unknown_user'.tr();
+    final name = user.name.isNotEmpty
+        ? user.name
+        : 'admin.users.unknown_user'.tr();
     final email = user.email;
     final roles = user.roles;
     final isSuspended = user.suspended;
@@ -206,7 +257,9 @@ class _UserCard extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
@@ -217,14 +270,23 @@ class _UserCard extends ConsumerWidget {
               height: 40,
               decoration: BoxDecoration(
                 gradient: isSuspended
-                    ? LinearGradient(colors: [DesignTokens.error, DesignTokens.error.withValues(alpha: 0.7)])
+                    ? LinearGradient(
+                        colors: [
+                          DesignTokens.error,
+                          DesignTokens.error.withValues(alpha: 0.7),
+                        ],
+                      )
                     : DesignTokens.primaryGradient,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Text(
                   name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
@@ -237,51 +299,116 @@ class _UserCard extends ConsumerWidget {
                   Row(
                     children: [
                       Flexible(
-                        child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       const SizedBox(width: 6),
                       ...roles.map(
                         (role) => Padding(
                           padding: const EdgeInsets.only(left: 4),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: _roleColor(role).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               role,
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: _roleColor(role)),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _roleColor(role),
+                              ),
                             ),
                           ),
                         ),
                       ),
                       if (isSuspended) ...[
                         const SizedBox(width: 4),
-                        Icon(Icons.block_rounded, size: 14, color: DesignTokens.error),
+                        Icon(
+                          Icons.block_rounded,
+                          size: 14,
+                          color: DesignTokens.error,
+                        ),
                       ],
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(email, style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
-                  Text('admin.users.joined_date'.tr(namedArgs: {'date': _formatDate(createdAt)}), style: TextStyle(fontSize: 11, color: DesignTokens.textDisabled)),
+                  Text(
+                    email,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: DesignTokens.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    'admin.users.joined_date'.tr(
+                      namedArgs: {'date': _formatDate(createdAt)},
+                    ),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: DesignTokens.textDisabled,
+                    ),
+                  ),
                 ],
               ),
             ),
             // Actions
             PopupMenuButton<String>(
               onSelected: (value) => _handleAction(context, ref, value),
-              icon: Icon(Icons.more_vert_rounded, color: DesignTokens.textDisabled),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+              icon: Icon(
+                Icons.more_vert_rounded,
+                color: DesignTokens.textDisabled,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              ),
               itemBuilder: (context) => [
                 if (!roles.contains(UserRoles.seller))
-                  _menuItem('make_seller', Icons.store_rounded, 'admin.users.make_seller'.tr(), DesignTokens.primary),
-                if (roles.contains(UserRoles.seller) && !roles.contains(UserRoles.admin))
-                  _menuItem('remove_seller', Icons.store_rounded, 'admin.users.remove_seller'.tr(), DesignTokens.warning),
+                  _menuItem(
+                    'make_seller',
+                    Icons.store_rounded,
+                    'admin.users.make_seller'.tr(),
+                    DesignTokens.primary,
+                  ),
+                if (roles.contains(UserRoles.seller) &&
+                    !roles.contains(UserRoles.admin))
+                  _menuItem(
+                    'remove_seller',
+                    Icons.store_rounded,
+                    'admin.users.remove_seller'.tr(),
+                    DesignTokens.warning,
+                  ),
                 if (!roles.contains(UserRoles.admin))
-                  _menuItem('make_admin', Icons.admin_panel_settings_rounded, 'admin.users.make_admin'.tr(), DesignTokens.secondary),
-                if (!isSuspended) _menuItem('suspend', Icons.block_rounded, 'admin.users.suspend_user'.tr(), DesignTokens.error),
-                if (isSuspended) _menuItem('unsuspend', Icons.check_circle_rounded, 'admin.users.unsuspend_user'.tr(), DesignTokens.success),
+                  _menuItem(
+                    'make_admin',
+                    Icons.admin_panel_settings_rounded,
+                    'admin.users.make_admin'.tr(),
+                    DesignTokens.secondary,
+                  ),
+                if (!isSuspended)
+                  _menuItem(
+                    'suspend',
+                    Icons.block_rounded,
+                    'admin.users.suspend_user'.tr(),
+                    DesignTokens.error,
+                  ),
+                if (isSuspended)
+                  _menuItem(
+                    'unsuspend',
+                    Icons.check_circle_rounded,
+                    'admin.users.unsuspend_user'.tr(),
+                    DesignTokens.success,
+                  ),
               ],
             ),
           ],
@@ -301,36 +428,57 @@ class _UserCard extends ConsumerWidget {
 
     switch (action) {
       case 'make_seller':
-        success = await viewModel.updateUserRoles(user.uid, add: [UserRoles.seller]);
+        success = await viewModel.updateUserRoles(
+          user.uid,
+          add: [UserRoles.seller],
+        );
         break;
       case 'remove_seller':
-        success = await viewModel.updateUserRoles(user.uid, remove: [UserRoles.seller]);
+        success = await viewModel.updateUserRoles(
+          user.uid,
+          remove: [UserRoles.seller],
+        );
         break;
       case 'make_admin':
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            ),
             title: Row(
               children: [
-                Icon(Icons.admin_panel_settings_rounded, color: DesignTokens.secondary),
+                Icon(
+                  Icons.admin_panel_settings_rounded,
+                  color: DesignTokens.secondary,
+                ),
                 const SizedBox(width: 10),
                 Text('admin.users.make_admin'.tr()),
               ],
             ),
-            content: Text('admin.users.make_admin_confirm'.tr(args: [user.email])),
+            content: Text(
+              'admin.users.make_admin_confirm'.tr(args: [user.email]),
+            ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('common.cancel'.tr()),
+              ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                style: FilledButton.styleFrom(backgroundColor: DesignTokens.secondary),
+                style: FilledButton.styleFrom(
+                  backgroundColor: DesignTokens.secondary,
+                ),
                 child: Text('admin.users.confirm_grant_admin'.tr()),
               ),
             ],
           ),
         );
         if (confirmed != true) return;
-        success = await viewModel.updateUserRoles(user.uid, add: [UserRoles.admin]);
+        success = await viewModel.updateUserRoles(
+          user.uid,
+          add: [UserRoles.admin],
+        );
         break;
       case 'suspend':
         success = await viewModel.setUserSuspended(user.uid, true);
@@ -343,30 +491,63 @@ class _UserCard extends ConsumerWidget {
     if (!context.mounted) return;
     if (success) {
       switch (action) {
-
         case 'make_seller':
-          messenger.showSnackBar(SnackBar(content: Text('admin.users.user_is_seller'.tr()), backgroundColor: DesignTokens.success));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('admin.users.user_is_seller'.tr()),
+              backgroundColor: DesignTokens.success,
+            ),
+          );
           break;
         case 'remove_seller':
-          messenger.showSnackBar(SnackBar(content: Text('admin.users.seller_role_removed'.tr()), backgroundColor: DesignTokens.warning));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('admin.users.seller_role_removed'.tr()),
+              backgroundColor: DesignTokens.warning,
+            ),
+          );
           break;
         case 'make_admin':
-          messenger.showSnackBar(SnackBar(content: Text('admin.users.user_is_admin'.tr()), backgroundColor: DesignTokens.success));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('admin.users.user_is_admin'.tr()),
+              backgroundColor: DesignTokens.success,
+            ),
+          );
           break;
         case 'suspend':
-          messenger.showSnackBar(SnackBar(content: Text('admin.users.user_suspended'.tr()), backgroundColor: DesignTokens.warning));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('admin.users.user_suspended'.tr()),
+              backgroundColor: DesignTokens.warning,
+            ),
+          );
           break;
         case 'unsuspend':
-          messenger.showSnackBar(SnackBar(content: Text('admin.users.user_unsuspended'.tr()), backgroundColor: DesignTokens.success));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('admin.users.user_unsuspended'.tr()),
+              backgroundColor: DesignTokens.success,
+            ),
+          );
           break;
       }
     } else {
-      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.users.action_failed'.tr();
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+      final error =
+          ref.read(adminActionsViewModelProvider).errorMessage ??
+          'admin.users.action_failed'.tr();
+      messenger.showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
+      );
     }
   }
 
-  PopupMenuItem<String> _menuItem(String value, IconData icon, String label, Color color) {
+  PopupMenuItem<String> _menuItem(
+    String value,
+    IconData icon,
+    String label,
+    Color color,
+  ) {
     return PopupMenuItem(
       value: value,
       child: Row(

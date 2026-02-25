@@ -127,6 +127,13 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.UPDATED_AT: get_server_timestamp(),
     }
 
+    # Handle terms acceptance (e.g., user checked terms box during checkout)
+    # Server always sets the timestamp — client only sends a boolean flag.
+    if data.get(Fields.TERMS_ACCEPTED_AT) is True:
+        update_data[Fields.TERMS_ACCEPTED_AT] = get_server_timestamp()
+        update_data[Fields.CONSENT_METHOD] = ConsentMethodValues.CHECKBOX
+        update_data[Fields.TERMS_VERSION] = PolicyVersionValues.DEFAULT
+
     # Handle tax exemption update
     if Fields.TAX_EXEMPTION in data:
         # Rate limiting: 3 tax exemption changes per day per user

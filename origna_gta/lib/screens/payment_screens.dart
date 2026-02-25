@@ -60,7 +60,11 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
               : _ConfirmingPaymentView(message: 'payment.processing'.tr(), isDark: isDark);
         }
         _timeoutTimer?.cancel();
-        return OrderSuccessScreen(orderId: order.orderId);
+        return OrderSuccessScreen(
+          orderId: order.orderId,
+          valueCad: order.pendingTotal,
+          itemCount: order.items.length,
+        );
       },
     );
   }

@@ -67,9 +67,16 @@ class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.rate_review_rounded, size: 56, color: DesignTokens.textDisabled),
+                      Icon(
+                        Icons.rate_review_rounded,
+                        size: 56,
+                        color: DesignTokens.textDisabled,
+                      ),
                       const SizedBox(height: 12),
-                      Text('admin.reviews.no_reviews'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+                      Text(
+                        'admin.reviews.no_reviews'.tr(),
+                        style: TextStyle(color: DesignTokens.textSecondary),
+                      ),
                     ],
                   ),
                 );
@@ -78,7 +85,8 @@ class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   itemCount: reviews.length,
-                  itemBuilder: (context, index) => _ReviewCard(review: reviews[index]),
+                  itemBuilder: (context, index) =>
+                      _ReviewCard(review: reviews[index]),
                 ),
               );
             },
@@ -100,7 +108,8 @@ class _ReviewCard extends ConsumerWidget {
     final reviewText = review[Fields.review] as String? ?? '';
     final userId = review[Fields.userId] as String? ?? '—';
     final productId = review[Fields.productId] as String? ?? '—';
-    final imageUrls = (review[Fields.reviewImageUrls] as List?)?.cast<String>() ?? [];
+    final imageUrls =
+        (review[Fields.reviewImageUrls] as List?)?.cast<String>() ?? [];
     final isFlagged = review[Fields.isFlagged] as bool? ?? false;
     final createdAt = review[Fields.createdAt];
 
@@ -111,7 +120,9 @@ class _ReviewCard extends ConsumerWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         side: BorderSide(
-          color: isFlagged ? DesignTokens.error.withValues(alpha: 0.4) : DesignTokens.outlineVariant,
+          color: isFlagged
+              ? DesignTokens.error.withValues(alpha: 0.4)
+              : DesignTokens.outlineVariant,
         ),
       ),
       child: Padding(
@@ -124,16 +135,24 @@ class _ReviewCard extends ConsumerWidget {
               children: [
                 // Stars
                 Row(
-                  children: List.generate(5, (i) => Icon(
-                    i < rating ? Icons.star_rounded : Icons.star_border_rounded,
-                    color: DesignTokens.warning,
-                    size: 16,
-                  )),
+                  children: List.generate(
+                    5,
+                    (i) => Icon(
+                      i < rating
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      color: DesignTokens.warning,
+                      size: 16,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 if (isFlagged)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: DesignTokens.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
@@ -141,16 +160,30 @@ class _ReviewCard extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.flag_rounded, size: 12, color: DesignTokens.error),
+                        Icon(
+                          Icons.flag_rounded,
+                          size: 12,
+                          color: DesignTokens.error,
+                        ),
                         const SizedBox(width: 3),
-                        Text('admin.reviews.flagged'.tr(), style: TextStyle(fontSize: 11, color: DesignTokens.error, fontWeight: FontWeight.w600)),
+                        Text(
+                          'admin.reviews.flagged'.tr(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: DesignTokens.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 if (imageUrls.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: DesignTokens.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(4),
@@ -158,9 +191,20 @@ class _ReviewCard extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.photo_library_rounded, size: 12, color: DesignTokens.primary),
+                        Icon(
+                          Icons.photo_library_rounded,
+                          size: 12,
+                          color: DesignTokens.primary,
+                        ),
                         const SizedBox(width: 3),
-                        Text('${imageUrls.length}', style: TextStyle(fontSize: 11, color: DesignTokens.primary, fontWeight: FontWeight.w600)),
+                        Text(
+                          '${imageUrls.length}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: DesignTokens.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -168,22 +212,35 @@ class _ReviewCard extends ConsumerWidget {
                 const Spacer(),
                 // Action buttons
                 Tooltip(
-                  message: isFlagged ? 'admin.reviews.unflag'.tr() : 'admin.reviews.flag'.tr(),
+                  message: isFlagged
+                      ? 'admin.reviews.unflag'.tr()
+                      : 'admin.reviews.flag'.tr(),
                   child: IconButton(
                     key: Key('admin_review_flag_$reviewId'),
+                    tooltip: isFlagged
+                        ? 'admin.reviews.unflag'.tr()
+                        : 'admin.reviews.flag'.tr(),
                     icon: Icon(
                       isFlagged ? Icons.flag_rounded : Icons.flag_outlined,
-                      color: isFlagged ? DesignTokens.error : DesignTokens.textDisabled,
+                      color: isFlagged
+                          ? DesignTokens.error
+                          : DesignTokens.textDisabled,
                       size: 20,
                     ),
-                    onPressed: () => _toggleFlag(context, ref, reviewId, isFlagged),
+                    onPressed: () =>
+                        _toggleFlag(context, ref, reviewId, isFlagged),
                   ),
                 ),
                 Tooltip(
                   message: 'common.delete'.tr(),
                   child: IconButton(
                     key: Key('admin_review_delete_$reviewId'),
-                    icon: const Icon(Icons.delete_outline_rounded, color: DesignTokens.error, size: 20),
+                    tooltip: 'common.delete'.tr(),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: DesignTokens.error,
+                      size: 20,
+                    ),
                     onPressed: () => _confirmDelete(context, ref, reviewId),
                   ),
                 ),
@@ -193,15 +250,30 @@ class _ReviewCard extends ConsumerWidget {
             // Metadata
             Text(
               'Product: ${productId.length > 20 ? '${productId.substring(0, 20)}…' : productId}  •  User: ${userId.length > 20 ? '${userId.substring(0, 20)}…' : userId}',
-              style: const TextStyle(fontSize: 11, color: DesignTokens.textDisabled),
+              style: const TextStyle(
+                fontSize: 11,
+                color: DesignTokens.textDisabled,
+              ),
             ),
             if (reviewText.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Text(reviewText, style: const TextStyle(fontSize: 13, color: DesignTokens.textPrimary)),
+              Text(
+                reviewText,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: DesignTokens.textPrimary,
+                ),
+              ),
             ],
             if (createdAt != null) ...[
               const SizedBox(height: 4),
-              Text(createdAt.toString().substring(0, 19), style: const TextStyle(fontSize: 11, color: DesignTokens.textDisabled)),
+              Text(
+                createdAt.toString().substring(0, 19),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: DesignTokens.textDisabled,
+                ),
+              ),
             ],
           ],
         ),
@@ -209,24 +281,43 @@ class _ReviewCard extends ConsumerWidget {
     );
   }
 
-  Future<void> _toggleFlag(BuildContext context, WidgetRef ref, String reviewId, bool currentlyFlagged) async {
+  Future<void> _toggleFlag(
+    BuildContext context,
+    WidgetRef ref,
+    String reviewId,
+    bool currentlyFlagged,
+  ) async {
     try {
-      await ref.read(adminRepositoryProvider).flagReview(reviewId, flagged: !currentlyFlagged);
+      await ref
+          .read(adminRepositoryProvider)
+          .flagReview(reviewId, flagged: !currentlyFlagged);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${'common.error'.tr()}: $e'), backgroundColor: DesignTokens.error));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${'common.error'.tr()}: $e'),
+            backgroundColor: DesignTokens.error,
+          ),
+        );
       }
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, String reviewId) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    String reviewId,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('admin.reviews.delete_confirm_title'.tr()),
         content: Text('admin.reviews.delete_confirm_body'.tr()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('common.cancel'.tr()),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
@@ -239,11 +330,21 @@ class _ReviewCard extends ConsumerWidget {
     try {
       await ref.read(adminRepositoryProvider).deleteReview(reviewId);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.reviews.deleted'.tr()), backgroundColor: DesignTokens.success));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('admin.reviews.deleted'.tr()),
+            backgroundColor: DesignTokens.success,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${'common.error'.tr()}: $e'), backgroundColor: DesignTokens.error));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${'common.error'.tr()}: $e'),
+            backgroundColor: DesignTokens.error,
+          ),
+        );
       }
     }
   }

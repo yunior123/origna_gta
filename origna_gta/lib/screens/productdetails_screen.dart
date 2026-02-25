@@ -45,16 +45,28 @@ class ProductDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 80, color: DesignTokens.textDisabled),
+                  Icon(
+                    Icons.error_outline,
+                    size: 80,
+                    color: DesignTokens.textDisabled,
+                  ),
                   const SizedBox(height: 16),
-                  Text('product.not_found'.tr(), style: TextStyle(fontSize: 18, color: DesignTokens.textSecondary)),
+                  Text(
+                    'product.not_found'.tr(),
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: DesignTokens.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             );
           }
           // Trigger seller-metrics fetch once product is available
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(productDetailViewModelProvider.notifier).fetchSellerMetrics(product.sellerId);
+            ref
+                .read(productDetailViewModelProvider.notifier)
+                .fetchSellerMetrics(product.sellerId);
           });
           final imageUrls = product.imageUrls;
           return CustomScrollView(
@@ -64,14 +76,20 @@ class ProductDetailScreen extends ConsumerWidget {
                 pinned: true,
                 floating: true,
                 expandedHeight: 340,
-                backgroundColor: isDark ? DesignTokens.textPrimary : Colors.white,
+                backgroundColor: isDark
+                    ? DesignTokens.textPrimary
+                    : Colors.white,
                 actions: [
                   if (product.slug != null)
                     IconButton(
                       icon: const Icon(Icons.share_outlined),
                       tooltip: 'Share',
                       onPressed: () => SharePlus.instance.share(
-                        ShareParams(text: 'Check out ${product.name} on Origna!\n${envConfig.baseUrl}/p/${product.slug}', subject: product.name),
+                        ShareParams(
+                          text:
+                              'Check out ${product.name} on Origna!\n${envConfig.baseUrl}/p/${product.slug}',
+                          subject: product.name,
+                        ),
                       ),
                     ),
                 ],
@@ -81,7 +99,10 @@ class ProductDetailScreen extends ConsumerWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
+                        colors: [
+                          DesignTokens.primary.withValues(alpha: 0.1),
+                          DesignTokens.secondary.withValues(alpha: 0.1),
+                        ],
                       ),
                     ),
                     child: Stack(
@@ -93,29 +114,52 @@ class ProductDetailScreen extends ConsumerWidget {
                                 onPageChanged: viewModel.setImageIndex,
                                 itemBuilder: (context, index) {
                                   return Semantics(
-                                    label: 'Product image ${index + 1} of ${imageUrls.length}. Tap to view fullscreen',
+                                    label:
+                                        'Product image ${index + 1} of ${imageUrls.length}. Tap to view fullscreen',
                                     button: true,
                                     image: true,
                                     child: GestureDetector(
-                                      onTap: () => _showImageDialog(context, imageUrls, index),
+                                      onTap: () => _showImageDialog(
+                                        context,
+                                        imageUrls,
+                                        index,
+                                      ),
                                       child: SizedBox.expand(
                                         child: CachedNetworkImage(
                                           imageUrl: imageUrls[index],
                                           fit: BoxFit.cover,
-                                          placeholder: (context, url) => Shimmer.fromColors(
-                                            baseColor: DesignTokens.outlineVariant,
-                                            highlightColor: DesignTokens.surface,
-                                            child: Container(color: Colors.white),
-                                          ),
+                                          placeholder: (context, url) =>
+                                              Shimmer.fromColors(
+                                                baseColor:
+                                                    DesignTokens.outlineVariant,
+                                                highlightColor:
+                                                    DesignTokens.surface,
+                                                child: Container(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
                                           errorWidget: (context, url, error) =>
-                                              Container(color: DesignTokens.outlineVariant, child: const Icon(Icons.image_not_supported, size: 100)),
+                                              Container(
+                                                color:
+                                                    DesignTokens.outlineVariant,
+                                                child: const Icon(
+                                                  Icons.image_not_supported,
+                                                  size: 100,
+                                                ),
+                                              ),
                                         ),
                                       ),
                                     ),
                                   );
                                 },
                               )
-                            : Container(color: DesignTokens.outlineVariant, child: const Icon(Icons.image_not_supported, size: 100)),
+                            : Container(
+                                color: DesignTokens.outlineVariant,
+                                child: const Icon(
+                                  Icons.image_not_supported,
+                                  size: 100,
+                                ),
+                              ),
                         Positioned(
                           top: MediaQuery.of(context).padding.top + 8,
                           left: 12,
@@ -123,17 +167,28 @@ class ProductDetailScreen extends ConsumerWidget {
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.5),
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
                             ),
                             child: IconButton(
                               key: const Key('productdetail_back_button'),
                               tooltip: 'product.go_back'.tr(),
-                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                              icon: const Icon(
+                                Icons.arrow_back,
+                                color: Colors.white,
+                              ),
                               onPressed: () => Navigator.pop(context),
                             ),
                           ),
                         ),
-                        Positioned(bottom: 16, left: 0, right: 0, child: _ImageDots(imageCount: imageUrls.length)),
+                        Positioned(
+                          bottom: 16,
+                          left: 0,
+                          right: 0,
+                          child: _ImageDots(imageCount: imageUrls.length),
+                        ),
                       ],
                     ),
                   ),
@@ -143,8 +198,16 @@ class ProductDetailScreen extends ConsumerWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: isDark ? DesignTokens.textPrimary : Colors.white,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, -4))],
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -162,14 +225,21 @@ class ProductDetailScreen extends ConsumerWidget {
                             header: true,
                             child: ShaderMask(
                               shaderCallback: (bounds) => LinearGradient(
-                                colors: [DesignTokens.primary, DesignTokens.secondary],
+                                colors: [
+                                  DesignTokens.primary,
+                                  DesignTokens.secondary,
+                                ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ).createShader(bounds),
                               child: Text(
                                 product.name,
                                 key: const Key('product_detail_name'),
-                                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -177,15 +247,30 @@ class ProductDetailScreen extends ConsumerWidget {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: DesignTokens.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.star, size: 18, color: DesignTokens.warning),
+                                    Icon(
+                                      Icons.star,
+                                      size: 18,
+                                      color: DesignTokens.warning,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       product.rating.toStringAsFixed(1),
-                                      style: TextStyle(fontWeight: FontWeight.w600, color: DesignTokens.primary),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: DesignTokens.primary,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -194,7 +279,10 @@ class ProductDetailScreen extends ConsumerWidget {
                                 const SizedBox(width: 8),
                                 Text(
                                   '(${product.ratingCount})',
-                                  style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: DesignTokens.textSecondary,
+                                  ),
                                 ),
                               ],
                             ],
@@ -206,35 +294,65 @@ class ProductDetailScreen extends ConsumerWidget {
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [DesignTokens.primary.withValues(alpha: 0.95), DesignTokens.secondary.withValues(alpha: 0.95)],
+                                colors: [
+                                  DesignTokens.primary.withValues(alpha: 0.95),
+                                  DesignTokens.secondary.withValues(
+                                    alpha: 0.95,
+                                  ),
+                                ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                              boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+                              borderRadius: BorderRadius.circular(
+                                DesignTokens.radius16,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: DesignTokens.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: Row(
                               children: [
                                 Text(
                                   '${'product.price'.tr()}:',
-                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
                                   '\$${product.price.toStringAsFixed(2)}',
                                   key: const Key('product_detail_price'),
-                                  style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white),
+                                  style: const TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                           const SizedBox(height: 20),
                           // Delivery Information Card — suppress for digital
-                          if (!product.isDigital) _DeliveryInfoCard(product: product),
+                          if (!product.isDigital)
+                            _DeliveryInfoCard(product: product),
                           if (!product.isDigital) const SizedBox(height: 28),
                           Text(
                             'product.description'.tr(),
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? Colors.white
+                                  : DesignTokens.textPrimary,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           GlassContainer(
@@ -243,21 +361,39 @@ class ProductDetailScreen extends ConsumerWidget {
                               product.description,
                               style: TextStyle(
                                 fontSize: 15,
-                                color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
+                                color: isDark
+                                    ? DesignTokens.outlineVariant
+                                    : DesignTokens.textPrimary,
                                 height: 1.6,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
                           ),
-                          if (product.isDigital) ...[const SizedBox(height: 12), _DigitalProductInfo(product: product)],
+                          if (product.isDigital) ...[
+                            const SizedBox(height: 12),
+                            _DigitalProductInfo(product: product),
+                          ],
                           const SizedBox(height: 28),
-                          _VariantAndCartSection(product: product, viewModel: viewModel),
+                          _VariantAndCartSection(
+                            product: product,
+                            viewModel: viewModel,
+                          ),
                           const SizedBox(height: 32),
-                          _ReviewsSection(productId: productId, ratingCount: product.ratingCount, averageRating: product.rating),
+                          _ReviewsSection(
+                            productId: productId,
+                            ratingCount: product.ratingCount,
+                            averageRating: product.rating,
+                          ),
                           const SizedBox(height: 32),
-                          _QASection(productId: productId, sellerId: product.sellerId),
+                          _QASection(
+                            productId: productId,
+                            sellerId: product.sellerId,
+                          ),
                           const SizedBox(height: 32),
-                          _SimilarProductsSection(productId: productId, categoryId: product.categoryId),
+                          _SimilarProductsSection(
+                            productId: productId,
+                            categoryId: product.categoryId,
+                          ),
                           const SizedBox(height: 40),
                         ],
                       ),
@@ -275,16 +411,30 @@ class ProductDetailScreen extends ConsumerWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ).createShader(bounds),
-            child: const ModernLoadingIndicator(color: Colors.white, strokeWidth: 3, centered: false),
+            child: const ModernLoadingIndicator(
+              color: Colors.white,
+              strokeWidth: 3,
+              centered: false,
+            ),
           ),
         ),
         error: (e, s) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 80, color: DesignTokens.error.withValues(alpha: 0.6)),
+              Icon(
+                Icons.error_outline,
+                size: 80,
+                color: DesignTokens.error.withValues(alpha: 0.6),
+              ),
               const SizedBox(height: 16),
-              Text('Error: $e', style: const TextStyle(fontSize: 16, color: DesignTokens.textSecondary)),
+              Text(
+                'Error: $e',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: DesignTokens.textSecondary,
+                ),
+              ),
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: () => ref.invalidate(productByIdProvider(productId)),
@@ -298,7 +448,11 @@ class ProductDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _showImageDialog(BuildContext context, List<String> imageUrls, int initialIndex) {
+  void _showImageDialog(
+    BuildContext context,
+    List<String> imageUrls,
+    int initialIndex,
+  ) {
     showDialog(
       context: context,
       barrierColor: DesignTokens.textPrimary,
@@ -324,7 +478,11 @@ class ProductDetailScreen extends ConsumerWidget {
                           highlightColor: DesignTokens.surface,
                           child: Container(color: Colors.white),
                         ),
-                        errorWidget: (context, url, error) => const Icon(Icons.image_not_supported, size: 100, color: Colors.white),
+                        errorWidget: (context, url, error) => const Icon(
+                          Icons.image_not_supported,
+                          size: 100,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   );
@@ -334,10 +492,17 @@ class ProductDetailScreen extends ConsumerWidget {
                 top: MediaQuery.of(context).padding.top + 16,
                 right: 16,
                 child: Container(
-                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
                   child: IconButton(
                     tooltip: 'common.close'.tr(),
-                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ),
@@ -358,7 +523,10 @@ class _VariantAndCartSection extends StatefulWidget {
   final Product product;
   final ProductDetailViewModel viewModel;
 
-  const _VariantAndCartSection({required this.product, required this.viewModel});
+  const _VariantAndCartSection({
+    required this.product,
+    required this.viewModel,
+  });
 
   @override
   State<_VariantAndCartSection> createState() => _VariantAndCartSectionState();
@@ -369,7 +537,9 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
   Map<String, String> _selectedOptions = {};
 
   List<Map<String, dynamic>> get _variantOptions =>
-      (widget.product.variantOptions).whereType<Map<String, dynamic>>().toList();
+      (widget.product.variantOptions)
+          .whereType<Map<String, dynamic>>()
+          .toList();
 
   List<Map<String, dynamic>> get _variants =>
       (widget.product.variants).whereType<Map<String, dynamic>>().toList();
@@ -411,7 +581,8 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasVariants = widget.product.hasVariants && _variantOptions.isNotEmpty;
+    final hasVariants =
+        widget.product.hasVariants && _variantOptions.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,14 +590,23 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
         if (hasVariants) ...[
           ..._variantOptions.map((opt) {
             final optName = opt['name'] as String? ?? '';
-            final values = (opt['values'] as List?)?.whereType<String>().toList() ?? <String>[];
+            final values =
+                (opt['values'] as List?)?.whereType<String>().toList() ??
+                <String>[];
             final selected = _selectedOptions[optName];
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(optName, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary)),
+                  Text(
+                    optName,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : DesignTokens.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -434,16 +614,44 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
                     children: values.map((val) {
                       final isSelected = selected == val;
                       return GestureDetector(
-                        onTap: () => setState(() => _selectedOptions = {..._selectedOptions, optName: val}),
+                        onTap: () => setState(
+                          () => _selectedOptions = {
+                            ..._selectedOptions,
+                            optName: val,
+                          },
+                        ),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected ? DesignTokens.primary : (isDark ? Colors.grey.shade800 : Colors.white),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.4), width: isSelected ? 2 : 1),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
                           ),
-                          child: Text(val, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isSelected ? Colors.white : (isDark ? Colors.white : DesignTokens.textPrimary))),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? DesignTokens.primary
+                                : (isDark
+                                      ? Colors.grey.shade800
+                                      : Colors.white),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected
+                                  ? DesignTokens.primary
+                                  : DesignTokens.outline.withValues(alpha: 0.4),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Text(
+                            val,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark
+                                        ? Colors.white
+                                        : DesignTokens.textPrimary),
+                            ),
+                          ),
                         ),
                       );
                     }).toList(),
@@ -455,12 +663,24 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
           if (!_allOptionsSelected)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text('Please select all options', style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic)),
+              child: Text(
+                'Please select all options',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: DesignTokens.textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
             ),
         ],
         _QuantitySelector(viewModel: widget.viewModel),
         const SizedBox(height: 24),
-        _AddToCartButton(productId: widget.product.productId, sellerId: widget.product.sellerId, stockQuantity: _effectiveStock, variantKey: _matchedVariant?['variantId'] as String?),
+        _AddToCartButton(
+          productId: widget.product.productId,
+          sellerId: widget.product.sellerId,
+          stockQuantity: _effectiveStock,
+          variantKey: _matchedVariant?['variantId'] as String?,
+        ),
       ],
     );
   }
@@ -472,7 +692,12 @@ class _AddToCartButton extends ConsumerStatefulWidget {
   final int stockQuantity;
   final String? variantKey;
 
-  const _AddToCartButton({required this.productId, required this.sellerId, required this.stockQuantity, this.variantKey});
+  const _AddToCartButton({
+    required this.productId,
+    required this.sellerId,
+    required this.stockQuantity,
+    this.variantKey,
+  });
 
   @override
   ConsumerState<_AddToCartButton> createState() => _AddToCartButtonState();
@@ -481,20 +706,32 @@ class _AddToCartButton extends ConsumerStatefulWidget {
 class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
   @override
   Widget build(BuildContext context) {
-    final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
+    final quantity = ref.watch(
+      productDetailViewModelProvider.select((state) => state.quantity),
+    );
     final currentUser = ref.watch(currentUserProvider);
-    final isOwnProduct = currentUser != null && currentUser.uid == widget.sellerId;
+    final isOwnProduct =
+        currentUser != null && currentUser.uid == widget.sellerId;
 
     // If user is the seller, show disabled button with message
     if (isOwnProduct) {
       return Column(
         key: const Key('product_own_product_message'),
         children: [
-          ModernButton(label: 'product.own_product_title'.tr(), onPressed: null, fullWidth: true, icon: Icons.storefront),
+          ModernButton(
+            label: 'product.own_product_title'.tr(),
+            onPressed: null,
+            fullWidth: true,
+            icon: Icons.storefront,
+          ),
           const SizedBox(height: 8),
           Text(
             'product.own_product_msg'.tr(),
-            style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
+            style: TextStyle(
+              fontSize: 13,
+              color: DesignTokens.textSecondary,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       );
@@ -502,7 +739,12 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
 
     // Out of stock: show "Notify me when available" button
     if (widget.stockQuantity <= 0) {
-      final notifState = ref.watch(stockNotificationNotifierProvider((productId: widget.productId, variantKey: widget.variantKey)));
+      final notifState = ref.watch(
+        stockNotificationNotifierProvider((
+          productId: widget.productId,
+          variantKey: widget.variantKey,
+        )),
+      );
       final isSubscribed = notifState.value ?? false;
       final isLoading = notifState.isLoading;
       return Column(
@@ -510,15 +752,28 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
         children: [
           ModernButton(
             key: const Key('product_notify_me_button'),
-            label: isSubscribed ? 'product.notify_cancel'.tr() : 'product.notify_me'.tr(),
-            onPressed: isLoading ? null : () => _toggleNotification(context, currentUser),
+            label: isSubscribed
+                ? 'product.notify_cancel'.tr()
+                : 'product.notify_me'.tr(),
+            onPressed: isLoading
+                ? null
+                : () => _toggleNotification(
+                    context,
+                    ref.read(currentUserProvider),
+                  ),
             fullWidth: true,
-            icon: isSubscribed ? Icons.notifications_off_outlined : Icons.notifications_outlined,
+            icon: isSubscribed
+                ? Icons.notifications_off_outlined
+                : Icons.notifications_outlined,
           ),
           const SizedBox(height: 8),
           Text(
             'product.out_of_stock'.tr(),
-            style: TextStyle(fontSize: 13, color: DesignTokens.error, fontStyle: FontStyle.italic),
+            style: TextStyle(
+              fontSize: 13,
+              color: DesignTokens.error,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       );
@@ -538,7 +793,9 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
         }
         if (!context.mounted) return;
         final messenger = ScaffoldMessenger.of(context);
-        final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity);
+        final success = await ref
+            .read(cartControllerProvider)
+            .addToCart(widget.productId, quantity);
 
         if (success) {
           HapticFeedback.mediumImpact();
@@ -549,8 +806,12 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
         if (context.mounted) {
           messenger.showSnackBar(
             SnackBar(
-              content: Text(success ? 'cart.added_success'.tr() : 'cart.added_failure'.tr()),
-              backgroundColor: success ? DesignTokens.success : DesignTokens.error,
+              content: Text(
+                success ? 'cart.added_success'.tr() : 'cart.added_failure'.tr(),
+              ),
+              backgroundColor: success
+                  ? DesignTokens.success
+                  : DesignTokens.error,
               behavior: SnackBarBehavior.floating,
               margin: const EdgeInsets.all(16),
             ),
@@ -563,29 +824,61 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
     );
   }
 
-  Future<void> _toggleNotification(BuildContext context, dynamic currentUser) async {
+  Future<void> _toggleNotification(
+    BuildContext context,
+    dynamic currentUser,
+  ) async {
     if (currentUser == null) {
       showLoginPrompt(context);
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
-    final notifier = ref.read(stockNotificationNotifierProvider((productId: widget.productId, variantKey: widget.variantKey)).notifier);
-    final isSubscribed = ref.read(stockNotificationNotifierProvider((productId: widget.productId, variantKey: widget.variantKey))).value ?? false;
+    final notifier = ref.read(
+      stockNotificationNotifierProvider((
+        productId: widget.productId,
+        variantKey: widget.variantKey,
+      )).notifier,
+    );
+    final isSubscribed =
+        ref
+            .read(
+              stockNotificationNotifierProvider((
+                productId: widget.productId,
+                variantKey: widget.variantKey,
+              )),
+            )
+            .value ??
+        false;
     try {
       if (isSubscribed) {
         await notifier.unsubscribe();
         if (context.mounted) {
-          messenger.showSnackBar(SnackBar(content: Text('product.notify_cancelled'.tr()), backgroundColor: DesignTokens.textSecondary));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('product.notify_cancelled'.tr()),
+              backgroundColor: DesignTokens.textSecondary,
+            ),
+          );
         }
       } else {
         await notifier.subscribe();
         if (context.mounted) {
-          messenger.showSnackBar(SnackBar(content: Text('product.notify_subscribed'.tr()), backgroundColor: DesignTokens.success));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('product.notify_subscribed'.tr()),
+              backgroundColor: DesignTokens.success,
+            ),
+          );
         }
       }
     } catch (e) {
       if (context.mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(AppError.getMessage(e, 'product.notify_error'.tr())), backgroundColor: DesignTokens.error));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(AppError.getMessage(e, 'product.notify_error'.tr())),
+            backgroundColor: DesignTokens.error,
+          ),
+        );
       }
     }
   }
@@ -610,24 +903,43 @@ class _DeliveryInfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
+        border: Border.all(
+          color: isDark
+              ? DesignTokens.darkOutline
+              : DesignTokens.outlineVariant,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(product.isDigital ? Icons.download_rounded : Icons.local_shipping_outlined, color: DesignTokens.primary, size: 22),
+              Icon(
+                product.isDigital
+                    ? Icons.download_rounded
+                    : Icons.local_shipping_outlined,
+                color: DesignTokens.primary,
+                size: 22,
+              ),
               const SizedBox(width: 10),
               Text(
                 'product.details.delivery_information'.tr(),
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : DesignTokens.textPrimary,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 14),
           // Estimated delivery time
-          _DeliveryInfoRow(icon: Icons.access_time_rounded, label: 'checkout.estimated_delivery'.tr(), value: deliveryInfo.estimateText, isDark: isDark),
+          _DeliveryInfoRow(
+            icon: Icons.access_time_rounded,
+            label: 'checkout.estimated_delivery'.tr(),
+            value: deliveryInfo.estimateText,
+            isDark: isDark,
+          ),
           const SizedBox(height: 10),
           if (deliveryInfo.supplierRegion != null) ...[
             _DeliveryInfoRow(
@@ -641,24 +953,39 @@ class _DeliveryInfoCard extends StatelessWidget {
           ],
           const SizedBox(height: 10),
           _DeliveryInfoRow(
-            icon: deliveryInfo.hasTracking ? Icons.track_changes_rounded : Icons.info_outline_rounded,
+            icon: deliveryInfo.hasTracking
+                ? Icons.track_changes_rounded
+                : Icons.info_outline_rounded,
             label: 'product.tracking'.tr(),
-            value: deliveryInfo.hasTracking ? 'product.tracking_available'.tr() : 'product.tracking_limited'.tr(),
+            value: deliveryInfo.hasTracking
+                ? 'product.tracking_available'.tr()
+                : 'product.tracking_limited'.tr(),
             isDark: isDark,
           ),
           if (product.freeShipping) ...[
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(
+                color: DesignTokens.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.local_offer_rounded, size: 16, color: DesignTokens.success),
+                  Icon(
+                    Icons.local_offer_rounded,
+                    size: 16,
+                    color: DesignTokens.success,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'product.free_shipping'.tr(),
-                    style: TextStyle(color: DesignTokens.success, fontWeight: FontWeight.w600, fontSize: 13),
+                    style: TextStyle(
+                      color: DesignTokens.success,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
@@ -671,14 +998,27 @@ class _DeliveryInfoCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: DesignTokens.warning.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: DesignTokens.warning.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.warning),
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: DesignTokens.warning,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text('product.details.international_disclaimer'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.warning, height: 1.3)),
+                    child: Text(
+                      'product.details.international_disclaimer'.tr(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: DesignTokens.warning,
+                        height: 1.3,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -697,21 +1037,45 @@ class _DeliveryInfoRow extends StatelessWidget {
   final bool isDark;
   final bool isWarning;
 
-  const _DeliveryInfoRow({required this.icon, required this.label, required this.value, required this.isDark, this.isWarning = false});
+  const _DeliveryInfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isDark,
+    this.isWarning = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: isWarning ? DesignTokens.warning : (isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
+        Icon(
+          icon,
+          size: 18,
+          color: isWarning
+              ? DesignTokens.warning
+              : (isDark
+                    ? DesignTokens.textOnDarkSecondary
+                    : DesignTokens.textSecondary),
+        ),
         const SizedBox(width: 10),
-        Text('$label: ', style: TextStyle(fontSize: 14, color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark
+                ? DesignTokens.textOnDarkSecondary
+                : DesignTokens.textSecondary,
+          ),
+        ),
         Text(
           value,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: isWarning ? DesignTokens.warning : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+            color: isWarning
+                ? DesignTokens.warning
+                : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
           ),
         ),
       ],
@@ -738,11 +1102,20 @@ class _DigitalProductInfo extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.download_outlined, size: 16, color: DesignTokens.digital),
+              const Icon(
+                Icons.download_outlined,
+                size: 16,
+                color: DesignTokens.digital,
+              ),
               const SizedBox(width: 6),
               Text(
-                product.digitalType == DigitalTypeValues.software ? 'Desktop Software' : 'Digital Book',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: DesignTokens.digital),
+                product.digitalType == DigitalTypeValues.software
+                    ? 'Desktop Software'
+                    : 'Digital Book',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: DesignTokens.digital,
+                ),
               ),
             ],
           ),
@@ -753,7 +1126,13 @@ class _DigitalProductInfo extends StatelessWidget {
             Wrap(
               spacing: 6,
               children: builds.keys.map((p) {
-                final label = const {'macos': 'macOS', 'windows': 'Windows', 'linux': 'Linux'}[p] ?? p;
+                final label =
+                    const {
+                      'macos': 'macOS',
+                      'windows': 'Windows',
+                      'linux': 'Linux',
+                    }[p] ??
+                    p;
                 return Chip(
                   label: Text(label, style: const TextStyle(fontSize: 11)),
                   visualDensity: VisualDensity.compact,
@@ -763,7 +1142,10 @@ class _DigitalProductInfo extends StatelessWidget {
           ],
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text('License key + download link delivered after purchase.', style: TextStyle(fontSize: 12)),
+            child: Text(
+              'License key + download link delivered after purchase.',
+              style: TextStyle(fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -780,7 +1162,9 @@ class _ImageDots extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (imageCount <= 1) return const SizedBox.shrink();
 
-    final currentIndex = ref.watch(productDetailViewModelProvider.select((state) => state.currentImageIndex));
+    final currentIndex = ref.watch(
+      productDetailViewModelProvider.select((state) => state.currentImageIndex),
+    );
 
     return ExcludeSemantics(
       child: Row(
@@ -791,7 +1175,12 @@ class _ImageDots extends ConsumerWidget {
             margin: const EdgeInsets.symmetric(horizontal: 4),
             width: 8,
             height: 8,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: currentIndex == index ? Colors.white : Colors.white.withValues(alpha: 0.5)),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: currentIndex == index
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.5),
+            ),
           ),
         ),
       ),
@@ -804,15 +1193,21 @@ class _ImageDots extends ConsumerWidget {
 // ============================================================================
 
 /// Stream of up to 10 most recent product ratings, ordered by createdAt desc.
-final _productRatingsProvider = StreamProvider.autoDispose.family<List<Map<String, dynamic>>, String>(
-  (ref, productId) => ref.watch(firestoreProvider)
-      .collection(Collections.productRatings)
-      .where(Fields.productId, isEqualTo: productId)
-      .orderBy(Fields.createdAt, descending: true)
-      .limit(10)
-      .snapshots()
-      .map((snap) => snap.docs.map((d) => {...d.data(), Fields.ratingId: d.id}).toList()),
-);
+final _productRatingsProvider = StreamProvider.autoDispose
+    .family<List<Map<String, dynamic>>, String>(
+      (ref, productId) => ref
+          .watch(firestoreProvider)
+          .collection(Collections.productRatings)
+          .where(Fields.productId, isEqualTo: productId)
+          .orderBy(Fields.createdAt, descending: true)
+          .limit(10)
+          .snapshots()
+          .map(
+            (snap) => snap.docs
+                .map((d) => {...d.data(), Fields.ratingId: d.id})
+                .toList(),
+          ),
+    );
 
 class _ReviewsSection extends ConsumerWidget {
   final String productId;
@@ -881,17 +1276,19 @@ class _ReviewsSection extends ConsumerWidget {
                   ),
 
                 // Review cards
-                ...ratings.map((review) => _ReviewCard(
-                      review: review,
-                      productId: productId,
-                    )),
+                ...ratings.map(
+                  (review) => _ReviewCard(review: review, productId: productId),
+                ),
 
                 if (ratings.isEmpty && ratingCount > 0)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       "$ratingCount rating${ratingCount == 1 ? '' : 's'} (no text reviews yet)",
-                      style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                      style: TextStyle(
+                        color: DesignTokens.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
               ],
@@ -932,10 +1329,16 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     final sellerReply = review[Fields.sellerReply] as String?;
     final userId = review[Fields.userId] as String? ?? '';
     final reviewer = userId.length > 8 ? userId.substring(0, 8) : userId;
-    final reviewerLabel = reviewer.isNotEmpty ? 'User ${reviewer.toUpperCase()}' : 'Anonymous';
+    final reviewerLabel = reviewer.isNotEmpty
+        ? 'User ${reviewer.toUpperCase()}'
+        : 'Anonymous';
     final createdAt = (review[Fields.createdAt] as Timestamp?)?.toDate();
     final isVerified = review[Fields.verifiedPurchase] as bool? ?? false;
-    final photoUrls = (review[Fields.reviewImageUrls] as List?)?.whereType<String>().toList() ?? <String>[];
+    final photoUrls =
+        (review[Fields.reviewImageUrls] as List?)
+            ?.whereType<String>()
+            .toList() ??
+        <String>[];
 
     if (comment.isEmpty && sellerReply == null) return const SizedBox.shrink();
 
@@ -957,8 +1360,14 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                 radius: 16,
                 backgroundColor: DesignTokens.primary.withValues(alpha: 0.15),
                 child: Text(
-                  reviewerLabel.isNotEmpty ? reviewerLabel[0].toUpperCase() : '?',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: DesignTokens.primary),
+                  reviewerLabel.isNotEmpty
+                      ? reviewerLabel[0].toUpperCase()
+                      : '?',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: DesignTokens.primary,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -966,22 +1375,36 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(reviewerLabel, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    Text(
+                      reviewerLabel,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
                     if (createdAt != null)
                       Text(
                         DateFormat.yMMMd().format(createdAt),
-                        style: const TextStyle(fontSize: 11, color: DesignTokens.textDisabled),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: DesignTokens.textDisabled,
+                        ),
                       ),
                   ],
                 ),
               ),
               // Star display
               Row(
-                children: List.generate(5, (i) => Icon(
-                  i < starValue ? Icons.star_rounded : Icons.star_border_rounded,
-                  size: 14,
-                  color: DesignTokens.warning,
-                )),
+                children: List.generate(
+                  5,
+                  (i) => Icon(
+                    i < starValue
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
+                    size: 14,
+                    color: DesignTokens.warning,
+                  ),
+                ),
               ),
             ],
           ),
@@ -991,11 +1414,19 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
             const SizedBox(height: 6),
             Row(
               children: [
-                Icon(Icons.verified_rounded, size: 14, color: DesignTokens.success),
+                Icon(
+                  Icons.verified_rounded,
+                  size: 14,
+                  color: DesignTokens.success,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   'Verified Purchase',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.success),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: DesignTokens.success,
+                  ),
                 ),
               ],
             ),
@@ -1022,7 +1453,11 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                       placeholder: (ctx, url) => Shimmer.fromColors(
                         baseColor: DesignTokens.outlineVariant,
                         highlightColor: DesignTokens.surface,
-                        child: Container(width: 80, height: 80, color: Colors.white),
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.white,
+                        ),
                       ),
                       errorWidget: (ctx, url, err) => Container(
                         width: 80,
@@ -1049,9 +1484,13 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isDark ? Colors.black.withValues(alpha: 0.3) : DesignTokens.surface,
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.3)
+                    : DesignTokens.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: DesignTokens.digital.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: DesignTokens.digital.withValues(alpha: 0.3),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1065,7 +1504,10 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(sellerReply, style: const TextStyle(fontSize: 13, height: 1.4)),
+                  Text(
+                    sellerReply,
+                    style: const TextStyle(fontSize: 13, height: 1.4),
+                  ),
                 ],
               ),
             ),
@@ -1078,18 +1520,29 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
               children: [
                 Text(
                   'Helpful?',
-                  style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: DesignTokens.textSecondary,
+                  ),
                 ),
                 const SizedBox(width: 6),
                 _votingHelpful
                     ? Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: ModernLoadingIndicator(size: 14, strokeWidth: 2, color: DesignTokens.primary, centered: false),
+                        child: ModernLoadingIndicator(
+                          size: 14,
+                          strokeWidth: 2,
+                          color: DesignTokens.primary,
+                          centered: false,
+                        ),
                       )
                     : TextButton(
                         style: TextButton.styleFrom(
                           minimumSize: Size.zero,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: () => _voteHelpful(ratingId, true),
@@ -1119,10 +1572,10 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
       await functions
           .httpsCallable(CloudFunctionEndpoints.voteReviewHelpful)
           .call({
-        Fields.ratingId: ratingId,
-        Fields.productId: widget.productId,
-        'helpful': helpful,
-      });
+            Fields.ratingId: ratingId,
+            Fields.productId: widget.productId,
+            'helpful': helpful,
+          });
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
@@ -1149,7 +1602,11 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     }
   }
 
-  void _showReviewPhotoDialog(BuildContext context, List<String> urls, int initialIndex) {
+  void _showReviewPhotoDialog(
+    BuildContext context,
+    List<String> urls,
+    int initialIndex,
+  ) {
     showDialog(
       context: context,
       barrierColor: DesignTokens.textPrimary,
@@ -1171,7 +1628,11 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                       highlightColor: DesignTokens.surface,
                       child: Container(color: Colors.white),
                     ),
-                    errorWidget: (ctx, url, err) => const Icon(Icons.image_not_supported, size: 100, color: Colors.white),
+                    errorWidget: (ctx, url, err) => const Icon(
+                      Icons.image_not_supported,
+                      size: 100,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -1180,7 +1641,10 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
               top: MediaQuery.of(context).padding.top + 16,
               right: 16,
               child: Container(
-                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
                 child: IconButton(
                   tooltip: 'common.close'.tr(),
                   icon: const Icon(Icons.close, color: Colors.white, size: 28),
@@ -1195,14 +1659,18 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
   }
 }
 
-
 class _QACard extends ConsumerWidget {
   final QAModel qa;
   final String productId;
   final String sellerId;
   final String? currentUserId;
 
-  const _QACard({required this.qa, required this.productId, required this.sellerId, this.currentUserId});
+  const _QACard({
+    required this.qa,
+    required this.productId,
+    required this.sellerId,
+    this.currentUserId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1224,17 +1692,32 @@ class _QACard extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.help_outline, size: 20, color: DesignTokens.primary),
+              const Icon(
+                Icons.help_outline,
+                size: 20,
+                color: DesignTokens.primary,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(qa.question, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                    Text(
+                      qa.question,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
-                      'qa.asked_on'.tr(namedArgs: {'date': formatter.format(qa.createdAt)}),
-                      style: const TextStyle(fontSize: 12, color: DesignTokens.textDisabled),
+                      'qa.asked_on'.tr(
+                        namedArgs: {'date': formatter.format(qa.createdAt)},
+                      ),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: DesignTokens.textDisabled,
+                      ),
                     ),
                   ],
                 ),
@@ -1248,12 +1731,18 @@ class _QACard extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: DesignTokens.outlineVariant.withValues(alpha: 0.5)),
+                border: Border.all(
+                  color: DesignTokens.outlineVariant.withValues(alpha: 0.5),
+                ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.check_circle_outline, size: 20, color: DesignTokens.success),
+                  const Icon(
+                    Icons.check_circle_outline,
+                    size: 20,
+                    color: DesignTokens.success,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1261,7 +1750,11 @@ class _QACard extends ConsumerWidget {
                       children: [
                         Text(
                           'qa.answer_label'.tr(),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.success),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: DesignTokens.success,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(qa.answer!, style: const TextStyle(fontSize: 15)),
@@ -1269,7 +1762,10 @@ class _QACard extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Text(
                             '${'qa.answered'.tr()} ${formatter.format(qa.answeredAt!)}',
-                            style: const TextStyle(fontSize: 11, color: DesignTokens.textDisabled),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: DesignTokens.textDisabled,
+                            ),
                           ),
                         ],
                       ],
@@ -1306,13 +1802,20 @@ class _QACard extends ConsumerWidget {
           maxLines: 3,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('common.cancel'.tr()),
+          ),
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                ref.read(qaControllerProvider.notifier).answerQuestion(qaId: qa.id, answer: controller.text);
+                ref
+                    .read(qaControllerProvider.notifier)
+                    .answerQuestion(qaId: qa.id, answer: controller.text);
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('qa.answer_submitted'.tr())));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('qa.answer_submitted'.tr())),
+                );
               }
             },
             child: Text('qa.submit_answer'.tr()),
@@ -1343,7 +1846,11 @@ class _QASectionState extends ConsumerState<_QASection> {
     final qaAsync = ref.watch(qaListProvider(widget.productId));
     final currentUserId = ref.watch(userIdProvider);
     final isSeller = currentUserId == widget.sellerId;
-    final isPremium = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? false;
+    final isPremium =
+        ref
+            .watch(subscriptionStreamProvider)
+            .whenOrNull(data: (s) => s?.isPremium) ??
+        false;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
@@ -1351,7 +1858,11 @@ class _QASectionState extends ConsumerState<_QASection> {
       children: [
         Text(
           'qa.title'.tr(),
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white : DesignTokens.textPrimary,
+          ),
         ),
         const SizedBox(height: 16),
         qaAsync.when(
@@ -1365,11 +1876,22 @@ class _QASectionState extends ConsumerState<_QASection> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ...displayList.map((qa) => _QACard(qa: qa, productId: widget.productId, sellerId: widget.sellerId, currentUserId: currentUserId)),
+                ...displayList.map(
+                  (qa) => _QACard(
+                    qa: qa,
+                    productId: widget.productId,
+                    sellerId: widget.sellerId,
+                    currentUserId: currentUserId,
+                  ),
+                ),
                 if (qaList.length > 3 && !_showAll)
                   TextButton(
                     onPressed: () => setState(() => _showAll = true),
-                    child: Text('qa.see_all'.tr(namedArgs: {'count': qaList.length.toString()})),
+                    child: Text(
+                      'qa.see_all'.tr(
+                        namedArgs: {'count': qaList.length.toString()},
+                      ),
+                    ),
                   ),
                 const SizedBox(height: 16),
                 if (!isSeller && currentUserId != null)
@@ -1377,7 +1899,9 @@ class _QASectionState extends ConsumerState<_QASection> {
                     onPressed: () => isPremium
                         ? _showAskDialog(context)
                         : _showPremiumPaywall(context),
-                    icon: Icon(isPremium ? Icons.help_outline : Icons.lock_rounded),
+                    icon: Icon(
+                      isPremium ? Icons.help_outline : Icons.lock_rounded,
+                    ),
                     label: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1385,51 +1909,83 @@ class _QASectionState extends ConsumerState<_QASection> {
                         if (!isPremium) ...[
                           const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               gradient: DesignTokens.primaryGradient,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'subscription.premium_label'.tr(),
-                              style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
                       ],
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? Colors.grey.shade900 : Colors.white,
-                      foregroundColor: isPremium ? DesignTokens.primary : DesignTokens.textSecondary,
+                      backgroundColor: isDark
+                          ? Colors.grey.shade900
+                          : Colors.white,
+                      foregroundColor: isPremium
+                          ? DesignTokens.primary
+                          : DesignTokens.textSecondary,
                       elevation: 0,
-                      side: BorderSide(color: isPremium ? DesignTokens.primary : DesignTokens.outline),
+                      side: BorderSide(
+                        color: isPremium
+                            ? DesignTokens.primary
+                            : DesignTokens.outline,
+                      ),
                     ),
                   )
                 else if (currentUserId == null)
                   Center(
-                    child: Text('qa.sign_in_to_ask'.tr(), style: const TextStyle(color: DesignTokens.textSecondary)),
+                    child: Text(
+                      'qa.sign_in_to_ask'.tr(),
+                      style: const TextStyle(color: DesignTokens.textSecondary),
+                    ),
                   ),
               ],
             );
           },
           loading: () => const Center(child: ModernLoadingIndicator()),
-          error: (e, _) => Text('errors.something_went_wrong'.tr(), style: const TextStyle(color: DesignTokens.error)),
+          error: (e, _) => Text(
+            'errors.something_went_wrong'.tr(),
+            style: const TextStyle(color: DesignTokens.error),
+          ),
         ),
       ],
     );
   }
 
-  Widget _emptyState(BuildContext context, String? currentUserId, bool isSeller, bool isPremium) {
+  Widget _emptyState(
+    BuildContext context,
+    String? currentUserId,
+    bool isSeller,
+    bool isPremium,
+  ) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.grey.shade50,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey.shade900
+            : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: DesignTokens.outlineVariant),
       ),
       child: Column(
         children: [
-          Icon(Icons.forum_outlined, size: 48, color: DesignTokens.textDisabled),
+          Icon(
+            Icons.forum_outlined,
+            size: 48,
+            color: DesignTokens.textDisabled,
+          ),
           const SizedBox(height: 16),
           Text(
             'qa.no_questions'.tr(),
@@ -1442,7 +1998,10 @@ class _QASectionState extends ConsumerState<_QASection> {
               onPressed: () => isPremium
                   ? _showAskDialog(context)
                   : _showPremiumPaywall(context),
-              icon: Icon(isPremium ? Icons.help_outline : Icons.lock_rounded, size: 18),
+              icon: Icon(
+                isPremium ? Icons.help_outline : Icons.lock_rounded,
+                size: 18,
+              ),
               label: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1450,14 +2009,21 @@ class _QASectionState extends ConsumerState<_QASection> {
                   if (!isPremium) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         gradient: DesignTokens.primaryGradient,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         'subscription.premium_label'.tr(),
-                        style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -1468,7 +2034,10 @@ class _QASectionState extends ConsumerState<_QASection> {
             const SizedBox(height: 16),
             Text(
               'qa.sign_in_to_ask'.tr(),
-              style: const TextStyle(color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
+              style: const TextStyle(
+                color: DesignTokens.textSecondary,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ],
@@ -1503,14 +2072,19 @@ class _QASectionState extends ConsumerState<_QASection> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('common.cancel'.tr()),
+          ),
           ElevatedButton(
             onPressed: () async {
               final text = controller.text.trim();
               if (text.isEmpty) return;
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
-              await ref.read(qaControllerProvider.notifier).askQuestion(widget.productId, text);
+              await ref
+                  .read(qaControllerProvider.notifier)
+                  .askQuestion(widget.productId, text);
               if (!mounted) return;
               final state = ref.read(qaControllerProvider);
               if (state.hasError) {
@@ -1539,7 +2113,12 @@ class _QuantityButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String semanticLabel;
 
-  const _QuantityButton({super.key, required this.icon, required this.onPressed, required this.semanticLabel});
+  const _QuantityButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    required this.semanticLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1555,7 +2134,13 @@ class _QuantityButton extends StatelessWidget {
           splashColor: DesignTokens.primary.withValues(alpha: 0.3),
           child: Padding(
             padding: const EdgeInsets.all(8),
-            child: Icon(icon, color: onPressed != null ? DesignTokens.primary : DesignTokens.textDisabled, size: 20),
+            child: Icon(
+              icon,
+              color: onPressed != null
+                  ? DesignTokens.primary
+                  : DesignTokens.textDisabled,
+              size: 20,
+            ),
           ),
         ),
       ),
@@ -1570,7 +2155,9 @@ class _QuantitySelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
+    final quantity = ref.watch(
+      productDetailViewModelProvider.select((state) => state.quantity),
+    );
 
     return Row(
       children: [
@@ -1579,7 +2166,9 @@ class _QuantitySelector extends ConsumerWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : DesignTokens.textPrimary,
           ),
         ),
         const SizedBox(width: 20),
@@ -1597,7 +2186,10 @@ class _QuantitySelector extends ConsumerWidget {
                 child: Text(
                   '$quantity',
                   key: const Key('product_qty_value'),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               _QuantityButton(
@@ -1682,7 +2274,12 @@ class _MetricPill extends StatelessWidget {
   final String value;
   final bool isDark;
 
-  const _MetricPill({required this.icon, required this.label, required this.value, required this.isDark});
+  const _MetricPill({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1691,15 +2288,28 @@ class _MetricPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? Colors.grey.shade800 : DesignTokens.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isDark ? Colors.grey.shade700 : DesignTokens.outlineVariant),
+        border: Border.all(
+          color: isDark ? Colors.grey.shade700 : DesignTokens.outlineVariant,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 13, color: DesignTokens.primary),
           const SizedBox(width: 4),
-          Text('$label: ', style: TextStyle(fontSize: 11, color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
-          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 11,
+              color: isDark
+                  ? DesignTokens.textOnDarkSecondary
+                  : DesignTokens.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -1714,14 +2324,22 @@ class _SimilarProductsSection extends ConsumerWidget {
   final String productId;
   final int categoryId;
 
-  const _SimilarProductsSection({required this.productId, required this.categoryId});
+  const _SimilarProductsSection({
+    required this.productId,
+    required this.categoryId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Skip if category is unset (0)
     if (categoryId == 0) return const SizedBox.shrink();
 
-    final similarAsync = ref.watch(similarProductsProvider((excludeProductId: productId, categoryId: categoryId)));
+    final similarAsync = ref.watch(
+      similarProductsProvider((
+        excludeProductId: productId,
+        categoryId: categoryId,
+      )),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return similarAsync.when(

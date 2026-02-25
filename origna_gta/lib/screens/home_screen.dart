@@ -71,7 +71,8 @@ class _AddProductButton extends ConsumerWidget {
 
     // Must match Firestore rules: admin OR verified seller.
     final canAddProducts = isAdmin || isVerified;
-    if (kDebugMode) debugPrint('🔍 isVerified=$isVerified, canAddProducts=$canAddProducts');
+    if (kDebugMode)
+      debugPrint('🔍 isVerified=$isVerified, canAddProducts=$canAddProducts');
 
     return IconButton(
       key: const Key('home_add_product_button'),
@@ -349,7 +350,9 @@ class _SubcategoryChips extends ConsumerWidget {
 
     if (selectedCategoryId == null) return const SizedBox.shrink();
 
-    final subcategories = SubcategoryConstants.forCategoryId(selectedCategoryId);
+    final subcategories = SubcategoryConstants.forCategoryId(
+      selectedCategoryId,
+    );
     if (subcategories.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -390,14 +393,19 @@ class _SubcategoryChips extends ConsumerWidget {
                       isAll ? null : subcategory,
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       child: Text(
                         isAll ? 'home.category_all'.tr() : subcategory!,
                         style: TextStyle(
                           color: isSelected
                               ? DesignTokens.secondary
                               : DesignTokens.textSecondary,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                           fontSize: 12,
                         ),
                       ),
@@ -742,6 +750,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         color: DesignTokens.textSecondary,
                         size: 20,
                       ),
+                      tooltip: 'common.clear'.tr(),
                       onPressed: () {
                         _searchController.clear();
                         homeNotifier.onSearchChanged('');
@@ -809,11 +818,10 @@ class _PaginationLoader extends ConsumerWidget {
       homeViewModelProvider.select((state) => state.isLoadingMore),
     );
 
-    if (!isLoadingMore){
-   return const SliverToBoxAdapter(child: SizedBox.shrink());
-
+    if (!isLoadingMore) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-   
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 32),
@@ -997,13 +1005,13 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton>
                     return;
                   }
                   Navigator.pushNamed(context, AppRoutes.profile);
-              },
+                },
+              ),
             ),
-          ),
-        );
-      },
-    ),
-  );
+          );
+        },
+      ),
+    );
   }
 
   @override

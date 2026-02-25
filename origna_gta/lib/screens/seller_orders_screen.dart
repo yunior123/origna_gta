@@ -7,7 +7,8 @@ import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
-import 'package:origna_gta/utils/constants.dart' hide PaymentStatus, ShippingApprovalStatus;
+import 'package:origna_gta/utils/constants.dart'
+    hide PaymentStatus, ShippingApprovalStatus;
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -16,14 +17,15 @@ import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 // Streams the total count of unanswered product questions for a seller (U-03)
-final _sellerUnansweredQaProvider = StreamProvider.autoDispose.family<int, String>((ref, sellerId) {
-  return FirebaseFirestore.instance
-      .collection(Collections.productQuestions)
-      .where(Fields.sellerId, isEqualTo: sellerId)
-      .where(Fields.isAnswered, isEqualTo: false)
-      .snapshots()
-      .map((snap) => snap.docs.length);
-});
+final _sellerUnansweredQaProvider = StreamProvider.autoDispose
+    .family<int, String>((ref, sellerId) {
+      return FirebaseFirestore.instance
+          .collection(Collections.productQuestions)
+          .where(Fields.sellerId, isEqualTo: sellerId)
+          .where(Fields.isAnswered, isEqualTo: false)
+          .snapshots()
+          .map((snap) => snap.docs.length);
+    });
 
 class SellerOrdersScreen extends ConsumerWidget {
   const SellerOrdersScreen({super.key});
@@ -36,18 +38,26 @@ class SellerOrdersScreen extends ConsumerWidget {
 
     if (user == null) {
       return Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: Scaffold(
           appBar: AppBarFactory.simple(title: 'seller.manage_orders'.tr()),
           backgroundColor: Colors.transparent,
-          body: AnimatedEmptyState(icon: Icons.login_rounded, title: 'seller.login_required'.tr(), subtitle: 'seller.login_to_view'.tr()),
+          body: AnimatedEmptyState(
+            icon: Icons.login_rounded,
+            title: 'seller.login_required'.tr(),
+            subtitle: 'seller.login_to_view'.tr(),
+          ),
         ),
       );
     }
 
     if (userProfile?.suspended == true) {
       return Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: Scaffold(
           appBar: AppBarFactory.simple(title: 'seller.manage_orders'.tr()),
           backgroundColor: Colors.transparent,
@@ -60,13 +70,29 @@ class SellerOrdersScreen extends ConsumerWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(color: DesignTokens.error.withValues(alpha: 0.1), shape: BoxShape.circle),
-                      child: Icon(Icons.block_rounded, size: 56, color: DesignTokens.error),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.error.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.block_rounded,
+                        size: 56,
+                        color: DesignTokens.error,
+                      ),
                     ),
                     const SizedBox(height: DesignTokens.spacing20),
-                    Text('seller.account_suspended'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                    Text(
+                      'seller.account_suspended'.tr(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: DesignTokens.spacing8),
-                    Text('seller.contact_support'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+                    Text(
+                      'seller.contact_support'.tr(),
+                      style: TextStyle(color: DesignTokens.textSecondary),
+                    ),
                   ],
                 ),
               ),
@@ -79,7 +105,9 @@ class SellerOrdersScreen extends ConsumerWidget {
     final ordersAsync = ref.watch(sellerOrdersProvider);
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         key: const Key('seller_orders_screen_title'),
         appBar: AppBarFactory.custom(
@@ -90,7 +118,9 @@ class SellerOrdersScreen extends ConsumerWidget {
               message: 'Integration Guide',
               child: IconButton(
                 icon: const Icon(Icons.integration_instructions_outlined),
-                onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerIntegration),
+                tooltip: 'Integration Guide',
+                onPressed: () =>
+                    Navigator.pushNamed(context, AppRoutes.sellerIntegration),
               ),
             ),
           ],
@@ -101,21 +131,35 @@ class SellerOrdersScreen extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.white,
                 shape: BoxShape.circle,
                 boxShadow: DesignTokens.shadowMd,
               ),
               child: ShaderMask(
-                shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
+                shaderCallback: (bounds) =>
+                    DesignTokens.primaryGradient.createShader(bounds),
+                child: const ModernLoadingIndicator(
+                  strokeWidth: 3,
+                  color: Colors.white,
+                  centered: false,
+                ),
               ),
             ),
           ),
-          error: (error, _) =>
-              AnimatedEmptyState(icon: Icons.error_outline_rounded, title: 'seller.something_wrong'.tr(), subtitle: 'seller.could_not_load'.tr()),
+          error: (error, _) => AnimatedEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'seller.something_wrong'.tr(),
+            subtitle: 'seller.could_not_load'.tr(),
+          ),
           data: (orders) {
             if (orders.isEmpty) {
-              return AnimatedEmptyState(icon: Icons.storefront_outlined, title: 'seller.no_orders_yet'.tr(), subtitle: 'seller.orders_appear_here'.tr());
+              return AnimatedEmptyState(
+                icon: Icons.storefront_outlined,
+                title: 'seller.no_orders_yet'.tr(),
+                subtitle: 'seller.orders_appear_here'.tr(),
+              );
             }
 
             return Center(
@@ -141,7 +185,6 @@ class SellerOrdersScreen extends ConsumerWidget {
   }
 }
 
-
 // U-03: Badge widget showing unanswered Q&A count for the seller
 class _UnansweredQaBadge extends ConsumerWidget {
   final String sellerId;
@@ -153,13 +196,19 @@ class _UnansweredQaBadge extends ConsumerWidget {
     final count = countAsync.valueOrNull ?? 0;
 
     return Tooltip(
-      message: count > 0 ? '$count unanswered question${count == 1 ? '' : 's'}' : 'No pending questions',
+      message: count > 0
+          ? '$count unanswered question${count == 1 ? '' : 's'}'
+          : 'No pending questions',
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           IconButton(
             icon: const Icon(Icons.forum_outlined),
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerProducts),
+            tooltip: count > 0
+                ? '$count unanswered question${count == 1 ? '' : 's'}'
+                : 'No pending questions',
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.sellerProducts),
           ),
           if (count > 0)
             Positioned(
@@ -176,7 +225,11 @@ class _UnansweredQaBadge extends ConsumerWidget {
                 child: Center(
                   child: Text(
                     count > 99 ? '99+' : '$count',
-                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -195,13 +248,19 @@ class _SellerOrderCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sellerItems = order.items.where((item) => item.sellerId == sellerId).toList();
+    final sellerItems = order.items
+        .where((item) => item.sellerId == sellerId)
+        .toList();
     if (sellerItems.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final sellerTotal = sellerItems.fold<double>(0.0, (acc, item) => acc + (item.price * item.quantity));
+    final sellerTotal = sellerItems.fold<double>(
+      0.0,
+      (acc, item) => acc + (item.price * item.quantity),
+    );
     // Per-seller fee = seller's own subtotal × platform fee rate (not the full order fee)
-    final platformFee = sellerTotal * (BusinessRules.platformFeePercent / 100.0);
+    final platformFee =
+        sellerTotal * (BusinessRules.platformFeePercent / 100.0);
     final sellerNet = sellerTotal - platformFee;
 
     return Container(
@@ -209,7 +268,11 @@ class _SellerOrderCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outlineVariant),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : DesignTokens.outlineVariant,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
@@ -231,20 +294,40 @@ class _SellerOrderCard extends ConsumerWidget {
                   children: [
                     Text(
                       '${'seller.order_prefix'.tr()}${order.orderId.substring(0, 8).toUpperCase()}',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 2),
-                    Text(DateFormat('MMM dd, yyyy').format(order.createdAt), style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                    Text(
+                      DateFormat('MMM dd, yyyy').format(order.createdAt),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: DesignTokens.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: DesignTokens.primaryGradient,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Tooltip(
-                    message: 'Gross: \$${sellerTotal.toStringAsFixed(2)} − \$${platformFee.toStringAsFixed(2)} fee',
+                    message:
+                        'Gross: \$${sellerTotal.toStringAsFixed(2)} − \$${platformFee.toStringAsFixed(2)} fee',
                     child: Text(
                       '\$${sellerNet.toStringAsFixed(2)}',
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -254,48 +337,84 @@ class _SellerOrderCard extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : DesignTokens.surfaceVariant,
                 borderRadius: BorderRadius.circular(DesignTokens.radius8),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.location_on_outlined, size: 14, color: DesignTokens.textSecondary),
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 14,
+                    color: DesignTokens.textSecondary,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       order.shippingAddress?.formattedAddress ?? '',
-                      style: TextStyle(fontSize: 12, color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? DesignTokens.textDisabled
+                            : DesignTokens.textSecondary,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            Divider(height: 28, color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.outlineVariant),
-            if (order.paymentStatus == PaymentStatus.awaitingPayment) _buildAuthorizationBanner(context, ref, isDark),
+            Divider(
+              height: 28,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : DesignTokens.outlineVariant,
+            ),
+            if (order.paymentStatus == PaymentStatus.awaitingPayment)
+              _buildAuthorizationBanner(context, ref, isDark),
             // Delivery instructions from buyer
-            if (order.deliveryInstructions != null && order.deliveryInstructions!.isNotEmpty) _buildDeliveryInstructionsBanner(isDark),
+            if (order.deliveryInstructions != null &&
+                order.deliveryInstructions!.isNotEmpty)
+              _buildDeliveryInstructionsBanner(isDark),
             Text(
               'seller.your_items'.tr(),
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: isDark ? Colors.white : DesignTokens.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
-            ...sellerItems.map((item) => _buildSellerItem(context, ref, item, isDark)),
+            ...sellerItems.map(
+              (item) => _buildSellerItem(context, ref, item, isDark),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAuthorizationBanner(BuildContext context, WidgetRef ref, bool isDark) {
+  Widget _buildAuthorizationBanner(
+    BuildContext context,
+    WidgetRef ref,
+    bool isDark,
+  ) {
     final actualShipping = order.actualShipping;
     final approvalStatus = order.shippingApprovalStatus;
-    final isLoading = ref.watch(sellerOrdersViewModelProvider.select((state) => state.isLoading));
+    final isLoading = ref.watch(
+      sellerOrdersViewModelProvider.select((state) => state.isLoading),
+    );
 
     return Container(
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.08), DesignTokens.secondary.withValues(alpha: 0.05)]),
+        gradient: LinearGradient(
+          colors: [
+            DesignTokens.primary.withValues(alpha: 0.08),
+            DesignTokens.secondary.withValues(alpha: 0.05),
+          ],
+        ),
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.25)),
       ),
@@ -306,13 +425,24 @@ class _SellerOrderCard extends ConsumerWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                child: Icon(Icons.payment_rounded, size: 16, color: DesignTokens.primary),
+                decoration: BoxDecoration(
+                  color: DesignTokens.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.payment_rounded,
+                  size: 16,
+                  color: DesignTokens.primary,
+                ),
               ),
               const SizedBox(width: 10),
               Text(
                 'seller.payment_authorized'.tr(),
-                style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.primary, fontSize: 14),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: DesignTokens.primary,
+                  fontSize: 14,
+                ),
               ),
             ],
           ),
@@ -320,8 +450,15 @@ class _SellerOrderCard extends ConsumerWidget {
           Text(
             actualShipping <= 0.0
                 ? 'seller.enter_shipping_cost'.tr()
-                : (approvalStatus == ShippingApprovalStatus.pending ? 'seller.waiting_buyer_approval'.tr() : 'seller.ready_to_capture'.tr()),
-            style: TextStyle(fontSize: 12, color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary),
+                : (approvalStatus == ShippingApprovalStatus.pending
+                      ? 'seller.waiting_buyer_approval'.tr()
+                      : 'seller.ready_to_capture'.tr()),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark
+                  ? DesignTokens.textDisabled
+                  : DesignTokens.textSecondary,
+            ),
           ),
           if (actualShipping <= 0.0) ...[
             const SizedBox(height: 12),
@@ -329,7 +466,9 @@ class _SellerOrderCard extends ConsumerWidget {
               constraints: const BoxConstraints(maxWidth: 320),
               child: ModernButton(
                 label: 'Confirm Shipping & Ship',
-                onPressed: isLoading ? null : () => _showUpdateShippingDialog(context, ref),
+                onPressed: isLoading
+                    ? null
+                    : () => _showUpdateShippingDialog(context, ref),
                 isLoading: isLoading,
               ),
             ),
@@ -353,8 +492,15 @@ class _SellerOrderCard extends ConsumerWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: DesignTokens.info.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-            child: Icon(Icons.edit_note_outlined, size: 16, color: DesignTokens.info),
+            decoration: BoxDecoration(
+              color: DesignTokens.info.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.edit_note_outlined,
+              size: 16,
+              color: DesignTokens.info,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -363,12 +509,22 @@ class _SellerOrderCard extends ConsumerWidget {
               children: [
                 Text(
                   'seller.delivery_instructions'.tr(),
-                  style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.info, fontSize: 13),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: DesignTokens.info,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   order.deliveryInstructions!,
-                  style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.4),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark
+                        ? DesignTokens.outlineVariant
+                        : DesignTokens.textPrimary,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -378,7 +534,12 @@ class _SellerOrderCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildSellerItem(BuildContext context, WidgetRef ref, OrderItem item, bool isDark) {
+  Widget _buildSellerItem(
+    BuildContext context,
+    WidgetRef ref,
+    OrderItem item,
+    bool isDark,
+  ) {
     final statusStr = item.status;
     final isAuthorized = order.paymentStatus == PaymentStatus.awaitingPayment;
     final isRefunded = statusStr == DeliveryStatusValues.refunded;
@@ -398,15 +559,29 @@ class _SellerOrderCard extends ConsumerWidget {
                   errorBuilder: (_, _, _) => Container(
                     width: 44,
                     height: 44,
-                    decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius8)),
-                    child: Icon(Icons.image_outlined, color: DesignTokens.textDisabled, size: 20),
+                    decoration: BoxDecoration(
+                      color: DesignTokens.surfaceVariant,
+                      borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                    ),
+                    child: Icon(
+                      Icons.image_outlined,
+                      color: DesignTokens.textDisabled,
+                      size: 20,
+                    ),
                   ),
                 )
               : Container(
                   width: 44,
                   height: 44,
-                  decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius8)),
-                  child: Icon(Icons.image_outlined, color: DesignTokens.textDisabled, size: 20),
+                  decoration: BoxDecoration(
+                    color: DesignTokens.surfaceVariant,
+                    borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                  ),
+                  child: Icon(
+                    Icons.image_outlined,
+                    color: DesignTokens.textDisabled,
+                    size: 20,
+                  ),
                 ),
         ),
         title: Row(
@@ -414,7 +589,10 @@ class _SellerOrderCard extends ConsumerWidget {
             Flexible(
               child: Text(
                 item.name,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -422,15 +600,26 @@ class _SellerOrderCard extends ConsumerWidget {
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: DesignTokens.digital.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)),
+                decoration: BoxDecoration(
+                  color: DesignTokens.digital.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.download_outlined, size: 10, color: DesignTokens.digital),
+                    const Icon(
+                      Icons.download_outlined,
+                      size: 10,
+                      color: DesignTokens.digital,
+                    ),
                     const SizedBox(width: 3),
                     const Text(
                       'Digital',
-                      style: TextStyle(fontSize: 10, color: DesignTokens.digital, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: DesignTokens.digital,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -443,13 +632,25 @@ class _SellerOrderCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Text('${'seller.qty_prefix'.tr()} ${item.quantity}', style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                Text(
+                  '${'seller.qty_prefix'.tr()} ${item.quantity}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: DesignTokens.textSecondary,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 _buildStatusChip(statusStr),
               ],
             ),
             if (item.carrier != null)
-              Text('${'seller.carrier_prefix'.tr()} ${item.carrier}', style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+              Text(
+                '${'seller.carrier_prefix'.tr()} ${item.carrier}',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: DesignTokens.textSecondary,
+                ),
+              ),
             if (item.refundedAt != null)
               Text(
                 '${'seller.refunded_prefix'.tr()} ${DateFormat.yMd().format(item.refundedAt!)}',
@@ -462,17 +663,27 @@ class _SellerOrderCard extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: DesignTokens.warning.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: DesignTokens.warning.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.edit_note_rounded, size: 14, color: DesignTokens.warning),
+                    Icon(
+                      Icons.edit_note_rounded,
+                      size: 14,
+                      color: DesignTokens.warning,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         '${'cart.item_note_label'.tr()}: ${item.buyerNote}',
-                        style: TextStyle(fontSize: 12, color: DesignTokens.textPrimary, fontStyle: FontStyle.italic),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: DesignTokens.textPrimary,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ),
                   ],
@@ -481,11 +692,22 @@ class _SellerOrderCard extends ConsumerWidget {
           ],
         ),
         // Suppress mark-shipped button for digital items — fulfilled automatically
-        trailing: !item.isDigital && !isAuthorized && statusStr == DeliveryStatusValues.pending && !isRefunded
+        trailing:
+            !item.isDigital &&
+                !isAuthorized &&
+                statusStr == DeliveryStatusValues.pending &&
+                !isRefunded
             ? Container(
-                decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(DesignTokens.radius8)),
+                decoration: BoxDecoration(
+                  color: DesignTokens.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                ),
                 child: IconButton(
-                  icon: Icon(Icons.local_shipping_rounded, color: DesignTokens.primary, size: 22),
+                  icon: Icon(
+                    Icons.local_shipping_rounded,
+                    color: DesignTokens.primary,
+                    size: 22,
+                  ),
                   tooltip: 'seller.mark_shipped'.tr(),
                   onPressed: () {
                     HapticFeedback.lightImpact();
@@ -511,10 +733,17 @@ class _SellerOrderCard extends ConsumerWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Text(
         _getStatusDisplayText(status),
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
@@ -527,24 +756,42 @@ class _SellerOrderCard extends ConsumerWidget {
     return status;
   }
 
-  void _showMarkAsShippedDialog(BuildContext context, WidgetRef ref, OrderItem item) {
+  void _showMarkAsShippedDialog(
+    BuildContext context,
+    WidgetRef ref,
+    OrderItem item,
+  ) {
     final trackingController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radius20),
+        ),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)]),
+                gradient: LinearGradient(
+                  colors: [
+                    DesignTokens.primary.withValues(alpha: 0.15),
+                    DesignTokens.secondary.withValues(alpha: 0.15),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(DesignTokens.radius8),
               ),
-              child: Icon(Icons.local_shipping_rounded, size: 18, color: DesignTokens.primary),
+              child: Icon(
+                Icons.local_shipping_rounded,
+                size: 18,
+                color: DesignTokens.primary,
+              ),
             ),
             const SizedBox(width: 12),
-            Text('seller.mark_shipped'.tr(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            Text(
+              'seller.mark_shipped'.tr(),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         content: Semantics(
@@ -554,8 +801,13 @@ class _SellerOrderCard extends ConsumerWidget {
             controller: trackingController,
             decoration: InputDecoration(
               labelText: 'seller.tracking_number'.tr(),
-              prefixIcon: Icon(Icons.qr_code_rounded, color: DesignTokens.primary),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+              prefixIcon: Icon(
+                Icons.qr_code_rounded,
+                color: DesignTokens.primary,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
                 borderSide: BorderSide(color: DesignTokens.primary, width: 2),
@@ -566,7 +818,10 @@ class _SellerOrderCard extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('common.cancel'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+            child: Text(
+              'common.cancel'.tr(),
+              style: TextStyle(color: DesignTokens.textSecondary),
+            ),
           ),
           SizedBox(
             width: 120,
@@ -578,7 +833,12 @@ class _SellerOrderCard extends ConsumerWidget {
                   Navigator.pop(context);
                   ref
                       .read(sellerOrdersViewModelProvider.notifier)
-                      .updateItemStatus(order.orderId, item.productId, DeliveryStatusValues.shipped, trackingNumber: tracking);
+                      .updateItemStatus(
+                        order.orderId,
+                        item.productId,
+                        DeliveryStatusValues.shipped,
+                        trackingNumber: tracking,
+                      );
                 }
               },
               height: 42,
@@ -591,25 +851,41 @@ class _SellerOrderCard extends ConsumerWidget {
 
   void _showUpdateShippingDialog(BuildContext context, WidgetRef ref) {
     final estimatedShipping = order.shippingCost;
-    final shippingController = TextEditingController(text: estimatedShipping.toStringAsFixed(2));
+    final shippingController = TextEditingController(
+      text: estimatedShipping.toStringAsFixed(2),
+    );
     final trackingController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radius20),
+        ),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)]),
+                gradient: LinearGradient(
+                  colors: [
+                    DesignTokens.primary.withValues(alpha: 0.15),
+                    DesignTokens.secondary.withValues(alpha: 0.15),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(DesignTokens.radius8),
               ),
-              child: Icon(Icons.payment_rounded, size: 18, color: DesignTokens.primary),
+              child: Icon(
+                Icons.payment_rounded,
+                size: 18,
+                color: DesignTokens.primary,
+              ),
             ),
             const SizedBox(width: 12),
-            Text('seller.confirm_shipping'.tr(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            Text(
+              'seller.confirm_shipping'.tr(),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         content: Column(
@@ -622,11 +898,19 @@ class _SellerOrderCard extends ConsumerWidget {
                 controller: shippingController,
                 decoration: InputDecoration(
                   labelText: 'seller.actual_cost'.tr(),
-                  prefixIcon: Icon(Icons.attach_money_rounded, color: DesignTokens.primary),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+                  prefixIcon: Icon(
+                    Icons.attach_money_rounded,
+                    color: DesignTokens.primary,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                  ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    borderSide: BorderSide(color: DesignTokens.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: DesignTokens.primary,
+                      width: 2,
+                    ),
                   ),
                 ),
                 keyboardType: TextInputType.number,
@@ -640,11 +924,19 @@ class _SellerOrderCard extends ConsumerWidget {
                 controller: trackingController,
                 decoration: InputDecoration(
                   labelText: 'seller.tracking_number'.tr(),
-                  prefixIcon: Icon(Icons.qr_code_rounded, color: DesignTokens.primary),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+                  prefixIcon: Icon(
+                    Icons.qr_code_rounded,
+                    color: DesignTokens.primary,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                  ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    borderSide: BorderSide(color: DesignTokens.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: DesignTokens.primary,
+                      width: 2,
+                    ),
                   ),
                 ),
               ),
@@ -654,7 +946,10 @@ class _SellerOrderCard extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('common.cancel'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+            child: Text(
+              'common.cancel'.tr(),
+              style: TextStyle(color: DesignTokens.textSecondary),
+            ),
           ),
           SizedBox(
             width: 120,
@@ -665,7 +960,9 @@ class _SellerOrderCard extends ConsumerWidget {
                 final tracking = trackingController.text.trim();
                 if (cost != null && tracking.isNotEmpty) {
                   Navigator.pop(context);
-                  ref.read(sellerOrdersViewModelProvider.notifier).updateShippingAndCapture(order.orderId, cost, tracking);
+                  ref
+                      .read(sellerOrdersViewModelProvider.notifier)
+                      .updateShippingAndCapture(order.orderId, cost, tracking);
                 }
               },
               height: 42,

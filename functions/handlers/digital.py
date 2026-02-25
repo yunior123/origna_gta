@@ -30,8 +30,8 @@ APP_BASE_URL = "https://app.origna.com"
 try:
     from config import BASE_URL as _BASE_URL
     APP_BASE_URL = _BASE_URL
-except Exception:
-    pass  # fallback to hardcoded URL above
+except ImportError:
+    logger.info("config.BASE_URL not available; using default APP_BASE_URL")
 
 
 # ── Internal implementations (pure functions, testable without HTTP context) ──

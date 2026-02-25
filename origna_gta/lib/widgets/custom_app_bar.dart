@@ -9,23 +9,55 @@ import 'package:origna_gta/utils/utils.dart';
 /// Factory methods for common AppBar configurations
 class AppBarFactory {
   /// AppBar with custom leading widget
-  static CustomAppBar custom({required String title, Widget? leading, List<Widget>? actions, bool showCartBadge = false}) {
-    return CustomAppBar(title: title, leading: leading, actions: actions, showBackButton: false, showCartBadge: showCartBadge);
+  static CustomAppBar custom({
+    required String title,
+    Widget? leading,
+    List<Widget>? actions,
+    bool showCartBadge = false,
+  }) {
+    return CustomAppBar(
+      title: title,
+      leading: leading,
+      actions: actions,
+      showBackButton: false,
+      showCartBadge: showCartBadge,
+    );
   }
 
   /// AppBar without back button (for main screens)
-  static CustomAppBar main({required String title, List<Widget>? actions, bool showCartBadge = false}) {
-    return CustomAppBar(title: title, actions: actions, showBackButton: false, showCartBadge: showCartBadge);
+  static CustomAppBar main({
+    required String title,
+    List<Widget>? actions,
+    bool showCartBadge = false,
+  }) {
+    return CustomAppBar(
+      title: title,
+      actions: actions,
+      showBackButton: false,
+      showCartBadge: showCartBadge,
+    );
   }
 
   /// Simple AppBar with just title and back button
-  static CustomAppBar simple({required String title, VoidCallback? onBackPressed}) {
+  static CustomAppBar simple({
+    required String title,
+    VoidCallback? onBackPressed,
+  }) {
     return CustomAppBar(title: title, onBackPressed: onBackPressed);
   }
 
   /// AppBar with cart badge
-  static CustomAppBar withCart({required String title, List<Widget>? actions, VoidCallback? onBackPressed}) {
-    return CustomAppBar(title: title, actions: actions, showCartBadge: true, onBackPressed: onBackPressed);
+  static CustomAppBar withCart({
+    required String title,
+    List<Widget>? actions,
+    VoidCallback? onBackPressed,
+  }) {
+    return CustomAppBar(
+      title: title,
+      actions: actions,
+      showCartBadge: true,
+      onBackPressed: onBackPressed,
+    );
   }
 }
 
@@ -33,9 +65,15 @@ class AppBarFactory {
 class AppBarIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
-  final String tooltip; // WCAG 4.1.2: Required — every IconButton needs a tooltip
+  final String
+  tooltip; // WCAG 4.1.2: Required — every IconButton needs a tooltip
 
-  const AppBarIconButton({super.key, required this.icon, required this.onPressed, required this.tooltip});
+  const AppBarIconButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -77,8 +115,17 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: DesignTokens.primaryGradient,
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
-        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.primary.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: SafeArea(
         child: Padding(
@@ -89,7 +136,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               if (leading != null)
                 leading!
               else if (showBackButton)
-                _buildIconButton(icon: Icons.arrow_back, tooltip: 'Back', onPressed: onBackPressed ?? () => Navigator.of(context).pop()),
+                _buildIconButton(
+                  icon: Icons.arrow_back,
+                  tooltip: 'Back',
+                  onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
+                ),
 
               // Title
               Expanded(
@@ -97,7 +148,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Text(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18, letterSpacing: 0.5),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 18,
+                      letterSpacing: 0.5,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -115,7 +171,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  static Widget _buildIconButton({required IconData icon, required VoidCallback onPressed, String? tooltip}) {
+  static Widget _buildIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    String? tooltip,
+  }) {
     return IconButton(
       icon: Icon(icon, color: Colors.white),
       onPressed: onPressed,
@@ -129,7 +189,6 @@ class _CartBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLoggedIn = ref.watch(currentUserProvider.select((user) => user != null));
     final cartCount = ref.watch(cartItemCountProvider);
 
     return Stack(
@@ -139,8 +198,9 @@ class _CartBadge extends ConsumerWidget {
           icon: Icons.shopping_cart_outlined,
           tooltip: 'Cart',
           onPressed: () {
+            final user = ref.read(currentUserProvider);
             if (!context.mounted) return;
-            if (!isLoggedIn) {
+            if (user == null) {
               showLoginPrompt(context);
               return;
             }
@@ -153,11 +213,18 @@ class _CartBadge extends ConsumerWidget {
             top: 4,
             child: Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
               constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
               child: Text(
                 cartCount > 99 ? '99+' : cartCount.toString(),
-                style: TextStyle(color: DesignTokens.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: DesignTokens.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),

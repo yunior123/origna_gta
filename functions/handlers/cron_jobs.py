@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 import stripe
 from firebase_functions import scheduler_fn
+from google.api_core import exceptions as google_exceptions
 
 from config import (
     AUTHORIZATION_VALID_DAYS,
@@ -226,7 +227,14 @@ def _run_auto_capture() -> None:
                             f"⚠️ Auto-capture for order {order_id} resulted in unexpected PI status: {pi.status}"
                         )
                         continue
-            except Exception as capture_err:
+            except (
+                stripe.error.StripeError,
+                google_exceptions.GoogleAPICallError,
+                google_exceptions.RetryError,
+                ValueError,
+                TypeError,
+                RuntimeError,
+            ) as capture_err:
                 logger.error(f"Error during auto-capture for order {order_id}: {capture_err}")
                 continue
 
@@ -250,7 +258,13 @@ def _run_auto_capture() -> None:
             if len(dispute_alerts) > 0:
                 logger.warning(f"⚠️ Order {order_id} has active dispute, skipping auto-payout")
                 continue
-        except Exception as e:
+        except (
+            google_exceptions.GoogleAPICallError,
+            google_exceptions.RetryError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+        ) as e:
             logger.warning(f"⚠️ Failed to check disputes for order {order_id}: {str(e)}, skipping for safety")
             continue
 
@@ -302,7 +316,13 @@ def _run_auto_capture() -> None:
 
             try:
                 confirmed_items = _try_auto_confirm(get_db().transaction())
-            except Exception as e:
+            except (
+                google_exceptions.GoogleAPICallError,
+                google_exceptions.RetryError,
+                ValueError,
+                TypeError,
+                RuntimeError,
+            ) as e:
                 logger.error(f"Failed to auto-confirm order {order_id}: {e}")
                 continue
 
@@ -648,7 +668,13 @@ def _run_expired_authorizations() -> None:
             if expire_result != "locked":
                 logger.info(f"Order {order_id} cannot be expired: {expire_result}")
                 continue
-        except Exception as e:
+        except (
+            google_exceptions.GoogleAPICallError,
+            google_exceptions.RetryError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+        ) as e:
             logger.warning(f"⚠️ Failed to lock order {order_id} for expiry: {str(e)}")
             continue
 
@@ -1196,8 +1222,8 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
                 from services.algolia_service import delete_product as algolia_delete
 
                 algolia_delete(product_id)
-            except Exception:
-                pass
+            except (ImportError, RuntimeError, ValueError) as algolia_err:
+                logger.warning(f"Failed to remove product {product_id} from Algolia after URL revalidation: {algolia_err}")
 
             # Notify seller
             seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))

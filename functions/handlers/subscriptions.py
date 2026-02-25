@@ -340,8 +340,8 @@ def _sync_subscription(sub: dict | stripe.Subscription) -> None:
                 else:
                     period_end_ts = getattr(first_item, "current_period_end", None)
                     period_start_ts = period_start_ts or getattr(first_item, "current_period_start", None)
-        except Exception:
-            pass
+        except (AttributeError, TypeError, KeyError, IndexError) as parse_err:
+            logger.debug(f"_sync_subscription: failed to parse subscription item period fields: {type(parse_err).__name__}")
 
     period_end = _ts_to_datetime(period_end_ts)
     period_start = _ts_to_datetime(period_start_ts)

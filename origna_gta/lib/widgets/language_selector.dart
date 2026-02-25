@@ -35,8 +35,11 @@ class _CompactLanguageButton extends ConsumerWidget {
       child: Tooltip(
         message: 'language.select_language'.tr(),
         child: IconButton(
+          tooltip: 'language.select_language'.tr(),
           onPressed: () {
-            final newLocale = isEn ? const Locale(LanguageValues.french) : const Locale(LanguageValues.english);
+            final newLocale = isEn
+                ? const Locale(LanguageValues.french)
+                : const Locale(LanguageValues.english);
             context.setLocale(newLocale);
             _persistLang(ref, newLocale.languageCode);
           },
@@ -90,8 +93,13 @@ class _LanguageDropdown extends ConsumerWidget {
 void _persistLang(WidgetRef ref, String langCode) {
   final userId = ref.read(userIdProvider);
   if (userId == null) return;
-  final lang = langCode == LanguageValues.french ? LanguageValues.french : LanguageValues.english;
-  ref.read(userRepositoryProvider).updatePreferredLanguage(userId, lang).catchError((_) {
-    // Fire-and-forget — UI locale is already set; Firestore failure is non-critical
-  });
+  final lang = langCode == LanguageValues.french
+      ? LanguageValues.french
+      : LanguageValues.english;
+  ref
+      .read(userRepositoryProvider)
+      .updatePreferredLanguage(userId, lang)
+      .catchError((_) {
+        // Fire-and-forget — UI locale is already set; Firestore failure is non-critical
+      });
 }

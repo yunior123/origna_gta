@@ -48,6 +48,7 @@ from services.email_service import (
     get_seller_notification_email,
     send_email,
 )
+from services.email_task import enqueue_email_task
 from services.push_service import send_push_notification
 from utils.db import get_db, get_firestore, get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS, FIRESTORE_TRIGGER_OPTIONS
@@ -2018,10 +2019,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         if new_status == OrderStatusValues.CONFIRMED:
             # Order confirmed — send confirmation email + push to buyer
             confirmed_html = get_order_confirmation_email(after_data, order_id, lang=lang)
-            send_email(
+            enqueue_email_task(
                 to_email=buyer_email,
                 subject=_email_t("sub.confirmed", lang).replace("{oid}", oid_short),
                 html_content=confirmed_html,
+                event_type="order_confirmed",
+                order_id=order_id,
             )
             send_push_notification(
                 user_id, "Order Confirmed!", f"Your order #{oid_short} has been confirmed",
@@ -2030,10 +2033,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
 
         elif new_status == OrderStatusValues.PROCESSING:
             processing_html = get_order_processing_email(after_data, order_id, lang=lang)
-            send_email(
+            enqueue_email_task(
                 to_email=buyer_email,
                 subject=_email_t("sub.processing", lang).replace("{oid}", oid_short),
                 html_content=processing_html,
+                event_type="order_processing",
+                order_id=order_id,
             )
             send_push_notification(
                 user_id, "Order Update", f"Your order #{oid_short} is being processed",
@@ -2073,10 +2078,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
 
             # Email buyer — branded template with receipt
             shipped_html = get_order_shipped_email(after_data, order_id, tracking_number, carrier, lang=lang)
-            send_email(
+            enqueue_email_task(
                 to_email=buyer_email,
                 subject=_email_t("sub.shipped", lang).replace("{oid}", oid_short),
                 html_content=shipped_html,
+                event_type="order_shipped",
+                order_id=order_id,
             )
             send_push_notification(
                 user_id, "Order Shipped!", f"Order #{oid_short} is on its way via {carrier}",
@@ -2105,10 +2112,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                             seller_shipped_html = get_seller_notification_email(
                                 after_data, order_id, sid, lang=seller_lang
                             )
-                            send_email(
+                            enqueue_email_task(
                                 to_email=seller_email,
                                 subject=_email_t("sub.shipped_seller", seller_lang).replace("{oid}", oid_short),
                                 html_content=seller_shipped_html,
+                                event_type="order_shipped_seller",
+                                order_id=order_id,
                             )
                         send_push_notification(
                             sid, "Shipment Confirmed", f"Order #{oid_short} has been marked as shipped",
@@ -2120,10 +2129,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         elif new_status == OrderStatusValues.IN_TRANSIT:
             # Email buyer — in transit update with tracking info
             in_transit_html = get_order_in_transit_email(after_data, order_id, lang=lang)
-            send_email(
+            enqueue_email_task(
                 to_email=buyer_email,
                 subject=_email_t("sub.in_transit", lang).replace("{oid}", oid_short),
                 html_content=in_transit_html,
+                event_type="order_in_transit",
+                order_id=order_id,
             )
             send_push_notification(
                 user_id, "In Transit", f"Order #{oid_short} is in transit",
@@ -2133,10 +2144,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         elif new_status == OrderStatusValues.DELIVERED:
             # Email buyer — branded template with receipt + confirm receipt CTA
             delivered_html = get_order_delivered_email(after_data, order_id, lang=lang)
-            send_email(
+            enqueue_email_task(
                 to_email=buyer_email,
                 subject=_email_t("sub.delivered", lang).replace("{oid}", oid_short),
                 html_content=delivered_html,
+                event_type="order_delivered",
+                order_id=order_id,
             )
             send_push_notification(
                 user_id, "Package Delivered!", f"Order #{oid_short} has been delivered. Confirm receipt to release payment",
@@ -2157,10 +2170,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         elif new_status == OrderStatusValues.CANCELLED:
             reason = after_data.get(Fields.CANCELLATION_REASON, "Unknown")
             cancelled_html = get_order_cancelled_email(after_data, order_id, reason, lang=lang)
-            send_email(
+            enqueue_email_task(
                 to_email=buyer_email,
                 subject=_email_t("sub.cancelled", lang).replace("{oid}", oid_short),
                 html_content=cancelled_html,
+                event_type="order_cancelled",
+                order_id=order_id,
             )
             send_push_notification(
                 user_id, "Order Cancelled", f"Order #{oid_short} has been cancelled",
@@ -2170,10 +2185,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         elif new_status == OrderStatusValues.REFUNDED:
             refund_amount = after_data.get(Fields.CUMULATIVE_REFUNDED_CENTS, 0)
             refunded_html = get_order_refunded_email(after_data, order_id, refund_amount, lang=lang)
-            send_email(
+            enqueue_email_task(
                 to_email=buyer_email,
                 subject=_email_t("sub.refunded", lang).replace("{oid}", oid_short),
                 html_content=refunded_html,
+                event_type="order_refunded",
+                order_id=order_id,
             )
             send_push_notification(
                 user_id, "Refund Processed", f"Your refund for order #{oid_short} has been processed",
@@ -2183,10 +2200,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         elif new_status == OrderStatusValues.PARTIALLY_REFUNDED:
             refund_amount = after_data.get(Fields.PARTIAL_REFUND_AMOUNT_CENTS, 0)
             partial_html = get_order_partially_refunded_email(after_data, order_id, refund_amount, lang=lang)
-            send_email(
+            enqueue_email_task(
                 to_email=buyer_email,
                 subject=_email_t("sub.partial", lang).replace("{oid}", oid_short),
                 html_content=partial_html,
+                event_type="order_partially_refunded",
+                order_id=order_id,
             )
             send_push_notification(
                 user_id, "Partial Refund", f"A partial refund for order #{oid_short} has been issued",

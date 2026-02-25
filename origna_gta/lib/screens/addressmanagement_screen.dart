@@ -22,11 +22,17 @@ class AddressManagementScreen extends ConsumerWidget {
     final viewModelState = ref.watch(addressManagementViewModelProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    ref.listen<AsyncValue<void>>(addressManagementViewModelProvider, (_, state) {
+    ref.listen<AsyncValue<void>>(addressManagementViewModelProvider, (
+      _,
+      state,
+    ) {
       if (state.hasError && !state.isLoading) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(state.error.toString(), style: const TextStyle(color: Colors.white)),
+            content: Text(
+              state.error.toString(),
+              style: const TextStyle(color: Colors.white),
+            ),
             backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -35,13 +41,16 @@ class AddressManagementScreen extends ConsumerWidget {
     });
 
     return Container(
-      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
       child: Scaffold(
         appBar: CustomAppBar(
           title: 'profile.addresses'.tr(),
           actions: [
             IconButton(
               icon: const Icon(Icons.add, color: Colors.white),
+              tooltip: 'address.add_address'.tr(),
               onPressed: () {
                 Navigator.pushNamed(context, AppRoutes.addEditAddress);
               },
@@ -57,18 +66,31 @@ class AddressManagementScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ShaderMask(
-                      shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                      child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
+                      shaderCallback: (bounds) =>
+                          DesignTokens.primaryGradient.createShader(bounds),
+                      child: const ModernLoadingIndicator(
+                        strokeWidth: 3,
+                        color: Colors.white,
+                        centered: false,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'address.loading'.tr(),
-                      style: const TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        color: DesignTokens.textSecondary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
               ),
-              error: (error, stack) => AnimatedEmptyState(icon: Icons.error_outline_rounded, title: 'address.error_loading'.tr(), subtitle: '$error'),
+              error: (error, stack) => AnimatedEmptyState(
+                icon: Icons.error_outline_rounded,
+                title: 'address.error_loading'.tr(),
+                subtitle: '$error',
+              ),
               data: (addresses) {
                 if (addresses.isEmpty) {
                   return AnimatedEmptyState(
@@ -85,7 +107,10 @@ class AddressManagementScreen extends ConsumerWidget {
                           label: 'address.add_address'.tr(),
                           icon: Icons.add_location_alt_outlined,
                           onPressed: () {
-                            Navigator.pushNamed(context, AppRoutes.addEditAddress);
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.addEditAddress,
+                            );
                           },
                         ),
                       ),
@@ -99,11 +124,17 @@ class AddressManagementScreen extends ConsumerWidget {
                     child: ListView.separated(
                       padding: const EdgeInsets.all(DesignTokens.spacing20),
                       itemCount: addresses.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 16),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         return FadeSlideIn(
                           delay: Duration(milliseconds: index * 100),
-                          child: _buildAddressCard(context, ref, addresses[index], isDark),
+                          child: _buildAddressCard(
+                            context,
+                            ref,
+                            addresses[index],
+                            isDark,
+                          ),
                         );
                       },
                     ),
@@ -114,7 +145,12 @@ class AddressManagementScreen extends ConsumerWidget {
             if (viewModelState.isLoading)
               Container(
                 color: Colors.black.withValues(alpha: 0.3),
-                child: const Center(child: ModernLoadingIndicator(strokeWidth: 4, color: DesignTokens.primary)),
+                child: const Center(
+                  child: ModernLoadingIndicator(
+                    strokeWidth: 4,
+                    color: DesignTokens.primary,
+                  ),
+                ),
               ),
           ],
         ),
@@ -122,11 +158,18 @@ class AddressManagementScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAddressCard(BuildContext context, WidgetRef ref, Address address, bool isDark) {
+  Widget _buildAddressCard(
+    BuildContext context,
+    WidgetRef ref,
+    Address address,
+    bool isDark,
+  ) {
     return Container(
       padding: const EdgeInsets.all(DesignTokens.spacing20),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
+        color: isDark
+            ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5)
+            : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius20),
         border: Border.all(
           color: address.isDefault
@@ -160,10 +203,20 @@ class AddressManagementScreen extends ConsumerWidget {
                 children: [
                   if (address.label != null && address.label!.isNotEmpty) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)]),
-                        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                        gradient: LinearGradient(
+                          colors: [
+                            DesignTokens.primary.withValues(alpha: 0.15),
+                            DesignTokens.secondary.withValues(alpha: 0.15),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -180,7 +233,11 @@ class AddressManagementScreen extends ConsumerWidget {
                           const SizedBox(width: 6),
                           Text(
                             address.label!,
-                            style: const TextStyle(color: DesignTokens.primary, fontSize: 12, fontWeight: FontWeight.w700),
+                            style: const TextStyle(
+                              color: DesignTokens.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
@@ -189,25 +246,43 @@ class AddressManagementScreen extends ConsumerWidget {
                   ],
                   if (address.isDefault)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: DesignTokens.success.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                        border: Border.all(color: DesignTokens.success.withValues(alpha: 0.3)),
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius8,
+                        ),
+                        border: Border.all(
+                          color: DesignTokens.success.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Text(
                         'address.default'.tr(),
-                        style: const TextStyle(color: DesignTokens.success, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: DesignTokens.success,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                 ],
               ),
               PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: isDark ? Colors.white70 : Colors.black54),
+                icon: Icon(
+                  Icons.more_vert,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
                 onSelected: (value) async {
                   HapticFeedback.lightImpact();
                   if (value == 'edit') {
-                    Navigator.pushNamed(context, AppRoutes.addEditAddress, arguments: address);
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.addEditAddress,
+                      arguments: address,
+                    );
                   } else if (value == 'delete') {
                     final messenger = ScaffoldMessenger.of(context);
                     final confirm = await showDialog<bool>(
@@ -216,26 +291,39 @@ class AddressManagementScreen extends ConsumerWidget {
                         title: Text('common.confirm_delete'.tr()),
                         content: Text('address.delete_confirmation'.tr()),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('common.cancel'.tr())),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: Text('common.cancel'.tr()),
+                          ),
                           TextButton(
                             onPressed: () => Navigator.pop(context, true),
-                            child: Text('common.delete'.tr(), style: const TextStyle(color: DesignTokens.error)),
+                            child: Text(
+                              'common.delete'.tr(),
+                              style: const TextStyle(color: DesignTokens.error),
+                            ),
                           ),
                         ],
                       ),
                     );
                     if (confirm == true) {
                       if (address.addressId != null) {
-                        ref.read(addressManagementViewModelProvider.notifier).deleteAddress(address.addressId!);
+                        ref
+                            .read(addressManagementViewModelProvider.notifier)
+                            .deleteAddress(address.addressId!);
                       } else {
                         messenger.showSnackBar(
-                          SnackBar(content: Text('address.delete_failed'.tr()), backgroundColor: DesignTokens.error),
+                          SnackBar(
+                            content: Text('address.delete_failed'.tr()),
+                            backgroundColor: DesignTokens.error,
+                          ),
                         );
                       }
                     }
                   } else if (value == 'set_default') {
                     if (address.addressId != null) {
-                      ref.read(addressManagementViewModelProvider.notifier).setDefaultAddress(address.addressId!);
+                      ref
+                          .read(addressManagementViewModelProvider.notifier)
+                          .setDefaultAddress(address.addressId!);
                     }
                   }
                 },
@@ -244,7 +332,11 @@ class AddressManagementScreen extends ConsumerWidget {
                     value: 'edit',
                     child: Row(
                       children: [
-                        const Icon(Icons.edit_outlined, size: 20, color: DesignTokens.primary),
+                        const Icon(
+                          Icons.edit_outlined,
+                          size: 20,
+                          color: DesignTokens.primary,
+                        ),
                         const SizedBox(width: 12),
                         Text('common.edit'.tr()),
                       ],
@@ -255,7 +347,11 @@ class AddressManagementScreen extends ConsumerWidget {
                       value: 'set_default',
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle_outline, size: 20, color: DesignTokens.success),
+                          const Icon(
+                            Icons.check_circle_outline,
+                            size: 20,
+                            color: DesignTokens.success,
+                          ),
                           const SizedBox(width: 12),
                           Text('address.set_as_default'.tr()),
                         ],
@@ -265,9 +361,16 @@ class AddressManagementScreen extends ConsumerWidget {
                     value: 'delete',
                     child: Row(
                       children: [
-                        const Icon(Icons.delete_outline, size: 20, color: DesignTokens.error),
+                        const Icon(
+                          Icons.delete_outline,
+                          size: 20,
+                          color: DesignTokens.error,
+                        ),
                         const SizedBox(width: 12),
-                        Text('common.delete'.tr(), style: const TextStyle(color: DesignTokens.error)),
+                        Text(
+                          'common.delete'.tr(),
+                          style: const TextStyle(color: DesignTokens.error),
+                        ),
                       ],
                     ),
                   ),
@@ -280,36 +383,60 @@ class AddressManagementScreen extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(DesignTokens.spacing16),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : DesignTokens.surfaceVariant,
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.location_on_outlined, size: 20, color: DesignTokens.primary.withValues(alpha: 0.7)),
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 20,
+                  color: DesignTokens.primary.withValues(alpha: 0.7),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(address.formattedAddress, style: TextStyle(fontSize: 14, height: 1.6, color: DesignTokens.textSecondary)),
+                  child: Text(
+                    address.formattedAddress,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: DesignTokens.textSecondary,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          if (address.phoneNumber != null && address.phoneNumber!.isNotEmpty) ...[
+          if (address.phoneNumber != null &&
+              address.phoneNumber!.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(DesignTokens.spacing12),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : DesignTokens.surfaceVariant,
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.phone_outlined, size: 18, color: DesignTokens.primary.withValues(alpha: 0.7)),
+                  Icon(
+                    Icons.phone_outlined,
+                    size: 18,
+                    color: DesignTokens.primary.withValues(alpha: 0.7),
+                  ),
                   const SizedBox(width: 12),
                   Text(
                     address.phoneNumber!,
-                    style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: DesignTokens.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -320,4 +447,3 @@ class AddressManagementScreen extends ConsumerWidget {
     );
   }
 }
-

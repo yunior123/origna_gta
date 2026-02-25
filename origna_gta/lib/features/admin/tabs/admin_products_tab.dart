@@ -30,18 +30,33 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
         Container(
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16), boxShadow: DesignTokens.shadowSm),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            boxShadow: DesignTokens.shadowSm,
+          ),
           child: Column(
             children: [
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'admin.sellers.search_hint'.tr(),
-                  hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
-                  prefixIcon: Icon(Icons.search_rounded, color: DesignTokens.primary),
+                  hintStyle: TextStyle(
+                    color: DesignTokens.textDisabled,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: DesignTokens.primary,
+                  ),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: Icon(Icons.close_rounded, color: DesignTokens.textSecondary, size: 20),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: DesignTokens.textSecondary,
+                            size: 20,
+                          ),
+                          tooltip: 'common.clear'.tr(),
                           onPressed: () {
                             _searchController.clear();
                           },
@@ -49,8 +64,14 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                       : null,
                   filled: true,
                   fillColor: DesignTokens.surfaceVariant,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -58,11 +79,23 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip('admin.sellers.filter_all_products'.tr(), 'all'),
+                    _buildFilterChip(
+                      'admin.sellers.filter_all_products'.tr(),
+                      'all',
+                    ),
                     _buildApprovalFilterChip(),
-                    _buildFilterChip('admin.sellers.filter_in_stock'.tr(), 'in_stock'),
-                    _buildFilterChip('admin.sellers.filter_out_of_stock'.tr(), 'out_of_stock'),
-                    _buildFilterChip('admin.sellers.filter_low_stock'.tr(), 'low_stock'),
+                    _buildFilterChip(
+                      'admin.sellers.filter_in_stock'.tr(),
+                      'in_stock',
+                    ),
+                    _buildFilterChip(
+                      'admin.sellers.filter_out_of_stock'.tr(),
+                      'out_of_stock',
+                    ),
+                    _buildFilterChip(
+                      'admin.sellers.filter_low_stock'.tr(),
+                      'low_stock',
+                    ),
                   ],
                 ),
               ),
@@ -76,22 +109,29 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
               .watch(adminProductsProvider(null))
               .when(
                 loading: () => const ModernLoadingIndicator.fullScreen(),
-                error: (error, stack) => Center(child: Text('admin.users.error_fetching'.tr())),
+                error: (error, stack) =>
+                    Center(child: Text('admin.users.error_fetching'.tr())),
                 data: (productsRaw) {
                   if (productsRaw.isEmpty) {
-                    return AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: 'admin.sellers.no_products'.tr());
+                    return AnimatedEmptyState(
+                      icon: Icons.inventory_2_outlined,
+                      title: 'admin.sellers.no_products'.tr(),
+                    );
                   }
 
                   final products = productsRaw.where((data) {
                     final name = data.name.toLowerCase();
                     final stock = data.stockQuantity;
 
-                    final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery);
+                    final matchesSearch =
+                        _searchQuery.isEmpty || name.contains(_searchQuery);
 
                     bool matchesStock = true;
                     switch (_stockFilter) {
                       case 'pending_review':
-                        matchesStock = data.lifecycleStatus == ProductLifecycleStatusValues.underReview;
+                        matchesStock =
+                            data.lifecycleStatus ==
+                            ProductLifecycleStatusValues.underReview;
                         break;
                       case 'in_stock':
                         matchesStock = stock > 0;
@@ -152,7 +192,13 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           loading: () => const SizedBox.shrink(),
           error: (err, stack) => const SizedBox.shrink(),
           data: (products) {
-            final pendingCount = products.where((p) => p.lifecycleStatus == ProductLifecycleStatusValues.underReview).length;
+            final pendingCount = products
+                .where(
+                  (p) =>
+                      p.lifecycleStatus ==
+                      ProductLifecycleStatusValues.underReview,
+                )
+                .length;
             final isSelected = _stockFilter == 'pending_review';
             return Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -160,12 +206,29 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                 onTap: () => setState(() => _stockFilter = 'pending_review'),
                 child: AnimatedContainer(
                   duration: DesignTokens.durationFast,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected ? DesignTokens.warning : Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: isSelected ? DesignTokens.warning : DesignTokens.outlineVariant.withValues(alpha: 0.5)),
-                    boxShadow: isSelected ? [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                    border: Border.all(
+                      color: isSelected
+                          ? DesignTokens.warning
+                          : DesignTokens.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: DesignTokens.warning.withValues(
+                                alpha: 0.25,
+                              ),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : [],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -173,22 +236,35 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                       Text(
                         '⏳ Pending Review',
                         style: TextStyle(
-                          color: isSelected ? Colors.white : DesignTokens.textSecondary,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: isSelected
+                              ? Colors.white
+                              : DesignTokens.textSecondary,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                           fontSize: 12,
                         ),
                       ),
                       if (pendingCount > 0) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: isSelected ? Colors.white.withValues(alpha: 0.3) : DesignTokens.warning,
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.3)
+                                : DesignTokens.warning,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
                             '$pendingCount',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
                           ),
                         ),
                       ],
@@ -213,8 +289,20 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           decoration: BoxDecoration(
             color: isSelected ? DesignTokens.primary : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outlineVariant.withValues(alpha: 0.5)),
-            boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))] : [],
+            border: Border.all(
+              color: isSelected
+                  ? DesignTokens.primary
+                  : DesignTokens.outlineVariant.withValues(alpha: 0.5),
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: DesignTokens.primary.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [],
           ),
           child: Text(
             label,
@@ -258,7 +346,10 @@ class _ApprovalBadge extends StatelessWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -266,7 +357,11 @@ class _ApprovalBadge extends StatelessWidget {
           const SizedBox(width: 3),
           Text(
             label,
-            style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -295,17 +390,23 @@ class _ProductCard extends ConsumerWidget {
       stockIcon = Icons.remove_circle_rounded;
     } else if (stock < 5) {
       stockColor = DesignTokens.warning;
-      stockText = 'admin.sellers.low_stock_count'.tr(namedArgs: {'count': stock.toString()});
+      stockText = 'admin.sellers.low_stock_count'.tr(
+        namedArgs: {'count': stock.toString()},
+      );
       stockIcon = Icons.warning_rounded;
     } else {
       stockColor = DesignTokens.success;
-      stockText = 'admin.sellers.in_stock_count'.tr(namedArgs: {'count': stock.toString()});
+      stockText = 'admin.sellers.in_stock_count'.tr(
+        namedArgs: {'count': stock.toString()},
+      );
       stockIcon = Icons.check_circle_rounded;
     }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -322,21 +423,45 @@ class _ProductCard extends ConsumerWidget {
                       placeholder: (context, url) => Container(
                         width: 70,
                         height: 70,
-                        decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-                        child: Icon(Icons.image_rounded, color: DesignTokens.textDisabled),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.surfaceVariant,
+                          borderRadius: BorderRadius.circular(
+                            DesignTokens.radius12,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.image_rounded,
+                          color: DesignTokens.textDisabled,
+                        ),
                       ),
                       errorWidget: (context, url, error) => Container(
                         width: 70,
                         height: 70,
-                        decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-                        child: Icon(Icons.broken_image_rounded, color: DesignTokens.textDisabled),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.surfaceVariant,
+                          borderRadius: BorderRadius.circular(
+                            DesignTokens.radius12,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.broken_image_rounded,
+                          color: DesignTokens.textDisabled,
+                        ),
                       ),
                     )
                   : Container(
                       width: 70,
                       height: 70,
-                      decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-                      child: Icon(Icons.image_rounded, color: DesignTokens.textDisabled),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.surfaceVariant,
+                        borderRadius: BorderRadius.circular(
+                          DesignTokens.radius12,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.image_rounded,
+                        color: DesignTokens.textDisabled,
+                      ),
                     ),
             ),
             const SizedBox(width: 14),
@@ -348,19 +473,32 @@ class _ProductCard extends ConsumerWidget {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
                   Text(
                     '\$${price.toStringAsFixed(2)}',
-                    style: const TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 15),
+                    style: const TextStyle(
+                      color: DesignTokens.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: stockColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: stockColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -368,7 +506,11 @@ class _ProductCard extends ConsumerWidget {
                         const SizedBox(width: 4),
                         Text(
                           stockText,
-                          style: TextStyle(color: stockColor, fontSize: 11, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: stockColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -382,18 +524,61 @@ class _ProductCard extends ConsumerWidget {
             // Actions
             PopupMenuButton<String>(
               onSelected: (value) => _handleAction(context, ref, value),
-              icon: Icon(Icons.more_vert_rounded, color: DesignTokens.textDisabled),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+              icon: Icon(
+                Icons.more_vert_rounded,
+                color: DesignTokens.textDisabled,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              ),
               itemBuilder: (context) => [
-                if (product.lifecycleStatus != ProductLifecycleStatusValues.active)
-                  _menuItem('approve', Icons.check_circle_rounded, 'Approve Product', DesignTokens.success),
-                if (product.lifecycleStatus != ProductLifecycleStatusValues.rejected)
-                  _menuItem('reject', Icons.cancel_rounded, 'Reject Product', DesignTokens.error),
-                _menuItem('set_stock', Icons.edit_rounded, 'admin.sellers.set_stock'.tr(), DesignTokens.primary),
-                _menuItem('mark_out_of_stock', Icons.remove_circle_outline_rounded, 'admin.sellers.mark_out_of_stock'.tr(), DesignTokens.warning),
-                _menuItem('view_seller', Icons.person_rounded, 'admin.sellers.view_seller'.tr(), DesignTokens.info),
-                if (product.isDigital) _menuItem('view_urls', Icons.link_rounded, 'View Download URLs', DesignTokens.info),
-                _menuItem('delete', Icons.delete_rounded, 'admin.sellers.delete_product'.tr(), DesignTokens.error),
+                if (product.lifecycleStatus !=
+                    ProductLifecycleStatusValues.active)
+                  _menuItem(
+                    'approve',
+                    Icons.check_circle_rounded,
+                    'Approve Product',
+                    DesignTokens.success,
+                  ),
+                if (product.lifecycleStatus !=
+                    ProductLifecycleStatusValues.rejected)
+                  _menuItem(
+                    'reject',
+                    Icons.cancel_rounded,
+                    'Reject Product',
+                    DesignTokens.error,
+                  ),
+                _menuItem(
+                  'set_stock',
+                  Icons.edit_rounded,
+                  'admin.sellers.set_stock'.tr(),
+                  DesignTokens.primary,
+                ),
+                _menuItem(
+                  'mark_out_of_stock',
+                  Icons.remove_circle_outline_rounded,
+                  'admin.sellers.mark_out_of_stock'.tr(),
+                  DesignTokens.warning,
+                ),
+                _menuItem(
+                  'view_seller',
+                  Icons.person_rounded,
+                  'admin.sellers.view_seller'.tr(),
+                  DesignTokens.info,
+                ),
+                if (product.isDigital)
+                  _menuItem(
+                    'view_urls',
+                    Icons.link_rounded,
+                    'View Download URLs',
+                    DesignTokens.info,
+                  ),
+                _menuItem(
+                  'delete',
+                  Icons.delete_rounded,
+                  'admin.sellers.delete_product'.tr(),
+                  DesignTokens.error,
+                ),
               ],
             ),
           ],
@@ -404,13 +589,24 @@ class _ProductCard extends ConsumerWidget {
 
   void _approveProduct(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final success = await ref.read(adminActionsViewModelProvider.notifier).approveProduct(product.id);
+    final success = await ref
+        .read(adminActionsViewModelProvider.notifier)
+        .approveProduct(product.id);
     if (!context.mounted) return;
     if (success) {
-      messenger.showSnackBar(const SnackBar(content: Text('✅ Product approved and now live'), backgroundColor: Color(0xFF22C55E)));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('✅ Product approved and now live'),
+          backgroundColor: Color(0xFF22C55E),
+        ),
+      );
     } else {
-      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to approve product';
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+      final error =
+          ref.read(adminActionsViewModelProvider).errorMessage ??
+          'Failed to approve product';
+      messenger.showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
+      );
     }
   }
 
@@ -420,10 +616,16 @@ class _ProductCard extends ConsumerWidget {
       children: [
         SizedBox(
           width: 60,
-          child: Text(label, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+          child: Text(
+            label,
+            style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+          ),
         ),
         Expanded(
-          child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+          ),
         ),
       ],
     );
@@ -455,7 +657,12 @@ class _ProductCard extends ConsumerWidget {
     }
   }
 
-  PopupMenuItem<String> _menuItem(String value, IconData icon, String label, Color color) {
+  PopupMenuItem<String> _menuItem(
+    String value,
+    IconData icon,
+    String label,
+    Color color,
+  ) {
     return PopupMenuItem(
       value: value,
       child: Row(
@@ -470,18 +677,32 @@ class _ProductCard extends ConsumerWidget {
 
   void _setStock(BuildContext context, WidgetRef ref, int quantity) async {
     final messenger = ScaffoldMessenger.of(context);
-    final success = await ref.read(adminActionsViewModelProvider.notifier).updateProductStock(product.id, quantity);
+    final success = await ref
+        .read(adminActionsViewModelProvider.notifier)
+        .updateProductStock(product.id, quantity);
     if (!context.mounted) return;
     if (success) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(quantity == 0 ? 'product.out_of_stock'.tr() : 'admin.sellers.stock_updated'.tr(namedArgs: {'quantity': quantity.toString()})),
-          backgroundColor: quantity == 0 ? DesignTokens.warning : DesignTokens.success,
+          content: Text(
+            quantity == 0
+                ? 'product.out_of_stock'.tr()
+                : 'admin.sellers.stock_updated'.tr(
+                    namedArgs: {'quantity': quantity.toString()},
+                  ),
+          ),
+          backgroundColor: quantity == 0
+              ? DesignTokens.warning
+              : DesignTokens.success,
         ),
       );
     } else {
-      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.sellers.failed_stock_update'.tr();
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+      final error =
+          ref.read(adminActionsViewModelProvider).errorMessage ??
+          'admin.sellers.failed_stock_update'.tr();
+      messenger.showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
+      );
     }
   }
 
@@ -489,7 +710,9 @@ class _ProductCard extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
         title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: DesignTokens.error),
@@ -497,20 +720,39 @@ class _ProductCard extends ConsumerWidget {
             Text('admin.sellers.delete_product'.tr()),
           ],
         ),
-        content: Text('admin.sellers.delete_confirm'.tr(namedArgs: {'name': product.name})),
+        content: Text(
+          'admin.sellers.delete_confirm'.tr(namedArgs: {'name': product.name}),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('common.cancel'.tr()),
+          ),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
-              final success = await ref.read(adminActionsViewModelProvider.notifier).deleteProduct(product.id);
+              final success = await ref
+                  .read(adminActionsViewModelProvider.notifier)
+                  .deleteProduct(product.id);
               if (!context.mounted) return;
               if (success) {
-                messenger.showSnackBar(SnackBar(content: Text('admin.sellers.deleted_success'.tr()), backgroundColor: DesignTokens.error));
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('admin.sellers.deleted_success'.tr()),
+                    backgroundColor: DesignTokens.error,
+                  ),
+                );
               } else {
-                final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.sellers.failed_delete'.tr();
-                messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+                final error =
+                    ref.read(adminActionsViewModelProvider).errorMessage ??
+                    'admin.sellers.failed_delete'.tr();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(error),
+                    backgroundColor: DesignTokens.error,
+                  ),
+                );
               }
             },
             style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
@@ -526,7 +768,9 @@ class _ProductCard extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
         title: Row(
           children: [
             Icon(Icons.link_rounded, color: DesignTokens.info),
@@ -539,10 +783,16 @@ class _ProductCard extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Type: ${product.digitalType ?? 'unknown'}', style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                'Type: ${product.digitalType ?? 'unknown'}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 12),
               if (builds.isEmpty)
-                const Text('No digitalBuilds URLs', style: TextStyle(color: Color(0xFF6B7280)))
+                const Text(
+                  'No digitalBuilds URLs',
+                  style: TextStyle(color: Color(0xFF6B7280)),
+                )
               else
                 ...builds.entries.map(
                   (e) => Padding(
@@ -550,9 +800,21 @@ class _ProductCard extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                        Text(
+                          e.key,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        SelectableText(e.value, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                        SelectableText(
+                          e.value,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -560,7 +822,12 @@ class _ProductCard extends ConsumerWidget {
             ],
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.close'.tr()))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('common.close'.tr()),
+          ),
+        ],
       ),
     );
   }
@@ -570,7 +837,9 @@ class _ProductCard extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
         title: Row(
           children: [
             Icon(Icons.cancel_rounded, color: DesignTokens.error),
@@ -582,7 +851,10 @@ class _ProductCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Product: ${product.name}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(
+              'Product: ${product.name}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: reasonController,
@@ -591,26 +863,44 @@ class _ProductCard extends ConsumerWidget {
               decoration: const InputDecoration(
                 labelText: 'Rejection reason (shown to seller)',
                 border: OutlineInputBorder(),
-                hintText: 'e.g. Images are low quality, please upload clearer photos.',
+                hintText:
+                    'e.g. Images are low quality, please upload clearer photos.',
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('common.cancel'.tr()),
+          ),
           FilledButton(
             onPressed: () async {
               final reason = reasonController.text.trim();
               if (reason.isEmpty) return;
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
-              final success = await ref.read(adminActionsViewModelProvider.notifier).rejectProduct(product.id, reason);
+              final success = await ref
+                  .read(adminActionsViewModelProvider.notifier)
+                  .rejectProduct(product.id, reason);
               if (!context.mounted) return;
               if (success) {
-                messenger.showSnackBar(SnackBar(content: const Text('❌ Product rejected. Seller notified.'), backgroundColor: DesignTokens.error));
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: const Text('❌ Product rejected. Seller notified.'),
+                    backgroundColor: DesignTokens.error,
+                  ),
+                );
               } else {
-                final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to reject product';
-                messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+                final error =
+                    ref.read(adminActionsViewModelProvider).errorMessage ??
+                    'Failed to reject product';
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(error),
+                    backgroundColor: DesignTokens.error,
+                  ),
+                );
               }
             },
             style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
@@ -622,7 +912,9 @@ class _ProductCard extends ConsumerWidget {
   }
 
   void _showSetStockDialog(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController(text: product.stockQuantity.toString());
+    final controller = TextEditingController(
+      text: product.stockQuantity.toString(),
+    );
 
     showDialog(
       context: context,
@@ -631,10 +923,16 @@ class _ProductCard extends ConsumerWidget {
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          decoration: InputDecoration(labelText: 'admin.sellers.stock_quantity_label'.tr(), border: const OutlineInputBorder()),
+          decoration: InputDecoration(
+            labelText: 'admin.sellers.stock_quantity_label'.tr(),
+            border: const OutlineInputBorder(),
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('common.cancel'.tr()),
+          ),
           ElevatedButton(
             onPressed: () {
               final newStock = int.tryParse(controller.text) ?? 0;
@@ -652,10 +950,17 @@ class _ProductCard extends ConsumerWidget {
     final sellerId = product.sellerId;
 
     final messenger = ScaffoldMessenger.of(context);
-    final sellerData = await ref.read(adminActionsViewModelProvider.notifier).fetchUserById(sellerId);
+    final sellerData = await ref
+        .read(adminActionsViewModelProvider.notifier)
+        .fetchUserById(sellerId);
     if (!context.mounted) return;
     if (sellerData == null) {
-      messenger.showSnackBar(SnackBar(content: Text('admin.sellers.seller_not_found'.tr()), backgroundColor: DesignTokens.error));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('admin.sellers.seller_not_found'.tr()),
+          backgroundColor: DesignTokens.error,
+        ),
+      );
       return;
     }
 
@@ -663,13 +968,22 @@ class _ProductCard extends ConsumerWidget {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          ),
           title: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.person_rounded, color: DesignTokens.primary, size: 20),
+                decoration: BoxDecoration(
+                  color: DesignTokens.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.person_rounded,
+                  color: DesignTokens.primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 10),
               Text('admin.sellers.seller_info'.tr()),
@@ -679,14 +993,34 @@ class _ProductCard extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _detailRow('common.name'.tr(), sellerData.name.isNotEmpty ? sellerData.name : 'common.unknown'.tr()),
+              _detailRow(
+                'common.name'.tr(),
+                sellerData.name.isNotEmpty
+                    ? sellerData.name
+                    : 'common.unknown'.tr(),
+              ),
               const SizedBox(height: 8),
-              _detailRow('common.email'.tr(), sellerData.email.isNotEmpty ? sellerData.email : 'common.unknown'.tr()),
+              _detailRow(
+                'common.email'.tr(),
+                sellerData.email.isNotEmpty
+                    ? sellerData.email
+                    : 'common.unknown'.tr(),
+              ),
               const SizedBox(height: 8),
-              _detailRow('Stripe', sellerData.onboardingCompleted ? 'admin.sellers.stripe_connected'.tr() : 'admin.sellers.stripe_pending'.tr()),
+              _detailRow(
+                'Stripe',
+                sellerData.onboardingCompleted
+                    ? 'admin.sellers.stripe_connected'.tr()
+                    : 'admin.sellers.stripe_pending'.tr(),
+              ),
             ],
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.close'.tr()))],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('common.close'.tr()),
+            ),
+          ],
         ),
       );
     }

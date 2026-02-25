@@ -14,6 +14,11 @@ abstract class CartRepository {
   /// Fetch the seller ID for a product to prevent self-purchase.
   /// Returns null if the product does not exist.
   Future<String?> getProductSellerId(String productId);
+
+  /// Returns true if [variantId] exists and is active in the product's variants array.
+  /// Returns false if the product doesn't exist or the variant is not found/inactive.
+  Future<bool> isVariantValid(String productId, String variantId);
+
   Future<void> removeFromCart(String userId, String cartItemId);
   Future<void> updateBuyerNote(String userId, String cartItemId, String? note);
   Future<void> updateQuantity(String userId, String cartItemId, int quantity);
@@ -84,6 +89,19 @@ class FirebaseCartRepository implements CartRepository {
     final productDoc = await _firestore.collection(Collections.products).doc(productId).get();
     if (!productDoc.exists) return null;
     return productDoc.data()?[Fields.sellerId] as String?;
+  }
+
+  @override
+  Future<bool> isVariantValid(String productId, String variantId) async {
+    final productDoc = await _firestore.collection(Collections.products).doc(productId).get();
+    if (!productDoc.exists) return false;
+    final variants = (productDoc.data()?[Fields.variants] as List<dynamic>?) ?? [];
+    return variants.any((v) {
+      final map = v as Map<String, dynamic>?;
+      return map != null &&
+          map[Fields.variantId] == variantId &&
+          (map[Fields.isActive] as bool? ?? true);
+    });
   }
 
   @override

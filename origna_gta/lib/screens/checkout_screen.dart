@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
@@ -208,6 +209,8 @@ class _CheckoutButton extends ConsumerWidget {
 
     switch (result) {
       case CheckoutSuccess(:final checkoutUrl):
+        // Persist terms acceptance server-side (fire-and-forget — never blocks checkout redirect)
+        ref.read(userRepositoryProvider).recordTermsAcceptance().catchError((_) {});
         await _redirectToStripe(checkoutUrl, context);
       case CheckoutError(:final message):
         messenger.showSnackBar(

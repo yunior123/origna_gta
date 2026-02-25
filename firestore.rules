@@ -407,7 +407,11 @@ service cloud.firestore {
 
       // Inventory levels subcollection — backend-only writes (checkout, triggers, cancel)
       match /inventoryLevels/{warehouseId} {
-        allow read: if true;
+        // Restrict reads to admins or owning seller; inventory should not be public.
+        allow read: if isAdmin() || (
+          isAuthenticated() &&
+          get(/databases/$(database)/documents/products/$(productId)).data.sellerId == request.auth.uid
+        );
         allow write: if isAdmin();  // Admin bypass for E2E test seeding; else backend Admin SDK only
       }
     }

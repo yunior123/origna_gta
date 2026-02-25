@@ -228,7 +228,7 @@ class CartController {
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
 
-  Future<bool> addToCart(String productId, int quantity) async {
+  Future<bool> addToCart(String productId, int quantity, {String? variantId}) async {
     final userId = _userId;
     if (userId == null) return false;
 
@@ -238,7 +238,13 @@ class CartController {
       if (sellerId == null) return false;
       if (sellerId == userId) return false;
 
-      await _repository.addToCart(userId, productId, quantity);
+      // Validate variantId exists and is active in the product's variants array
+      if (variantId != null) {
+        final valid = await _repository.isVariantValid(productId, variantId);
+        if (!valid) return false;
+      }
+
+      await _repository.addToCart(userId, productId, quantity, variantId: variantId);
       return true;
     } catch (e, st) {
       Sentry.captureException(e, stackTrace: st);

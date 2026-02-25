@@ -575,6 +575,7 @@ class Fields:
     REVIEW_TEXT = "reviewText"
     VERIFIED_PURCHASE = "verifiedPurchase"
     IS_FLAGGED = "isFlagged"
+    FLAGGED = "flagged"  # request payload key used by admin_flag_review callable
     HAS_PHOTOS = "hasPhotos"
     NOTIFIED_AT = "notifiedAt"
     SUBSCRIBED_AT = "subscribedAt"
