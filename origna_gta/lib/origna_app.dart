@@ -54,15 +54,20 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   if (kDebugMode) {
     debugPrint('🔗 Initial route: $initialRoute');
   }
-  final uri = Uri.tryParse(initialRoute);
+
+  // On Web, Uri.base contains the full URL with query parameters which Flutter
+  // sometimes omits from the initialRoute string depending on the lifecycle.
+  final uri = kIsWeb ? Uri.base : Uri.tryParse(initialRoute);
+
   if (kDebugMode && uri != null) {
-    debugPrint('🔗 Parsed path: ${uri.path}');
+    debugPrint('🔗 Parsed URI path: ${uri.path}, query: ${uri.queryParameters}');
   }
 
   // Handle Firebase Auth action URLs (like password reset)
   if (uri != null && uri.queryParameters['mode'] == 'resetPassword') {
     final oobCode = uri.queryParameters['oobCode'];
-    if (oobCode != null && oobCode.isNotEmpty) {
+    final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
+    if (oobCode != null && validOobCode.hasMatch(oobCode)) {
       return [
         SlidePageRoute(page: const AuthWrapper()),
         SlidePageRoute(page: ResetPasswordScreen(oobCode: oobCode)),
@@ -85,7 +90,7 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   }
 
   // Handle payment success redirect from Stripe
-  if (uri != null && uri.path == AppRoutes.paymentSuccess) {
+  if (uri != null && (uri.path == AppRoutes.paymentSuccess || uri.path.endsWith(AppRoutes.paymentSuccess))) {
     final sessionId = uri.queryParameters['session_id'];
     if (sessionId != null && sessionId.isNotEmpty) {
       return [
@@ -152,7 +157,8 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   // Handle Firebase Auth action URLs (like password reset) dynamically via deep links
   if (uri.queryParameters['mode'] == 'resetPassword') {
     final oobCode = uri.queryParameters['oobCode'];
-    if (oobCode != null && oobCode.isNotEmpty) {
+    final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
+    if (oobCode != null && validOobCode.hasMatch(oobCode)) {
       return SlidePageRoute(
         settings: settings,
         page: ResetPasswordScreen(oobCode: oobCode),

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Clean Firestore products and re-seed with proper Timestamp types."""
-import json
 import requests
 import uuid
 import random
@@ -221,7 +220,7 @@ def main():
     # Verify
     print(f"\n{'=' * 60}")
     print(f"🏁 Done! {ok}/{total} products created.")
-    print(f"\n🔍 Verifying createdAt types...")
+    print("\n🔍 Verifying createdAt types...")
     r = requests.get(f"{FIRESTORE}/products?pageSize=25", headers=HEADERS)
     docs = r.json().get("documents", [])
     types = {}
@@ -233,8 +232,8 @@ def main():
         emoji = "✅" if t == "timestampValue" else "⚠️"
         print(f"   {emoji} {t}: {c} products")
     
-    print(f"\n🔗 Refresh browser: http://localhost:3000")
-    print(f"🔗 Emulator UI: http://localhost:4000/firestore/data/products")
+    print("\n🔗 Refresh browser: http://localhost:3000")
+    print("🔗 Emulator UI: http://localhost:4000/firestore/data/products")
     print("=" * 60)
 
 if __name__ == "__main__":

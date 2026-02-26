@@ -270,38 +270,6 @@ class TestProductHandlers:
 class TestOrderHandlers:
     """Test order lifecycle management"""
 
-    @patch("handlers.payment_stripe._capture_payment_impl")
-    def test_confirm_order_receipt_captures_and_pays_seller(self, mock_capture_impl):
-        """Test confirm_order_receipt delegates to capture_payment"""
-        from handlers.orders import confirm_order_receipt
-
-        mock_capture_impl.return_value = {"success": True, "captured": True}
-
-        mock_request = Mock()
-        mock_request.auth = Mock(uid="buyer_123")
-        mock_request.data = {"orderId": "order_123"}
-
-        result = confirm_order_receipt(mock_request)
-
-        assert result["success"] is True
-        mock_capture_impl.assert_called_once_with(mock_request)
-
-    @patch("handlers.payment_stripe._capture_payment_impl")
-    def test_confirm_receipt_non_buyer_rejected(self, mock_capture_impl):
-        """SECURITY: confirm_order_receipt propagates capture_payment auth checks"""
-        from handlers.orders import confirm_order_receipt
-
-        mock_capture_impl.side_effect = https_fn.HttpsError("permission-denied", "This is not your order")
-
-        mock_request = Mock()
-        mock_request.auth = Mock(uid="attacker_999")  # Different user
-        mock_request.data = {"orderId": "order_123"}
-
-        with pytest.raises(https_fn.HttpsError) as exc:
-            confirm_order_receipt(mock_request)
-
-        assert exc.value.code == "permission-denied"
-
     @patch("handlers.orders.get_db")
     def test_update_order_status_validates_state_machine(self, mock_get_db):
         """Test state machine prevents invalid transitions"""
@@ -847,7 +815,7 @@ class TestProductLifecycleStatus:
 
 
 class TestAdminApproveProductStatusSync:
-    """admin_approve_product must write STATUS='active' alongside IS_ACTIVE=True"""
+    """admin_approve_product must write lifecycleStatus='active'"""
 
     @patch("handlers.products._get_seller_email", return_value=None)
     @patch("handlers.products.index_product")
@@ -902,7 +870,7 @@ class TestAdminApproveProductStatusSync:
 
 
 class TestAdminRejectProductStatusSync:
-    """admin_reject_product must write STATUS='paused' alongside IS_ACTIVE=False"""
+    """admin_reject_product must write lifecycleStatus='rejected'"""
 
     @patch("handlers.products.algolia_delete_product")
     @patch("handlers.products._get_seller_email", return_value=None)

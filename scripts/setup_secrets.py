@@ -1,7 +1,6 @@
 
 import os
 import subprocess
-import time
 from dotenv import load_dotenv
 
 # Load keys from functions/.env

@@ -1,0 +1,170 @@
+import { expect, test } from '@playwright/test';
+import {
+  TEST_ACCOUNTS,
+  callOk,
+  discoverProducts,
+  fullMultiSellerCheckoutAndPay,
+  parseDoc,
+  readDoc,
+  signIn,
+  TEST_UIDS,
+  waitForOrderStatus,
+  writeDoc,
+  toFirestoreFields,
+  fillStripeCheckout,
+} from './api-helpers';
+
+const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
+const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
+
+/**
+ * Order Notifications E2E
+ * Verifies that push/email notifications are triggered correctly 
+ * for various order lifecycle events, especially for multi-seller orders.
+ */
+test.describe('Order Notifications', () => {
+  test.setTimeout(240_000);
+
+  let productA: { id: string; sellerId: string; name?: string } | null = null;
+  let productB: { id: string; sellerId: string; name?: string } | null = null;
+
+  test.beforeAll(async () => {
+    const auth = await signIn(BUYER_EMAIL);
+    const products = await discoverProducts(auth.idToken);
+    
+    // Use stable E2E products
+    productA = products.find(p => p.id === 'e2e_product_admin_seller') || null;
+    productB = products.find(p => p.id === 'e2e_product_test_seller') || null;
+
+    if (!productA || !productB) {
+      throw new Error('Required E2E stable products not found');
+    }
+  });
+
+  test('Buyer receives notification when individual items are shipped', async ({ page }) => {
+    // 1. Create a 2-item multi-seller order
+    const checkoutResult = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
+      { productId: productA!.id, quantity: 1 },
+      { productId: productB!.id, quantity: 1 },
+    ]);
+    const orderId = checkoutResult.orderId;
+    expect(orderId).toBeTruthy();
+
+    const auth = await signIn(BUYER_EMAIL);
+    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+
+    // 2. Mark Item A as SHIPPED using Cloud Function (avoids 403 on direct write)
+    const adminAuth = await signIn(ADMIN_EMAIL);
+    await callOk('update_item_status', {
+      orderId,
+      productId: productA!.id,
+      newStatus: 'shipped',
+      trackingNumber: 'TRK123',
+      carrier: 'Canada Post'
+    }, adminAuth.idToken);
+
+    // 3. Verify notification in mail_logs (via e2e_get_mail_logs)
+    await page.waitForTimeout(10000);
+
+    const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: BUYER_EMAIL }, adminAuth.idToken);
+    const logs = mailLogsResult.logs;
+    
+    const shipmentMail = logs.find((l: any) => l.subject.includes('Shipment Update') || l.subject.includes('Mise à jour de livraison'));
+    expect(shipmentMail, 'Should find a shipment notification email').toBeTruthy();
+    expect(shipmentMail.to).toBe(BUYER_EMAIL);
+    // Item-level shipment email should mention the specific item
+    expect(shipmentMail.html).toContain(productA!.id);
+  });
+
+  test('Buyer receives notification when individual items are delivered', async ({ page }) => {
+    // 1. Create a single-item order
+    const checkoutResult = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
+      { productId: productA!.id, quantity: 1 },
+    ]);
+    const orderId = checkoutResult.orderId;
+    
+    const auth = await signIn(BUYER_EMAIL);
+    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+
+    // 2. Mark Item as DELIVERED
+    // Note: DELIVERED is usually set by buyer confirmation or auto-capture.
+    // For testing, we can use confirm_item_receipt
+    await callOk('confirm_item_receipt', {
+      orderId,
+      productId: productA!.id
+    }, auth.idToken);
+
+    await page.waitForTimeout(10000);
+
+    // 3. Verify notification
+    const adminAuth = await signIn(ADMIN_EMAIL);
+    const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: BUYER_EMAIL }, adminAuth.idToken);
+    const logs = mailLogsResult.logs;
+    
+    const deliveryMail = logs.find((l: any) => l.subject.includes('Delivery Update') || l.subject.includes('Mise à jour de livraison'));
+    expect(deliveryMail, 'Should find an item delivery notification email').toBeTruthy();
+    expect(deliveryMail.to).toBe(BUYER_EMAIL);
+  });
+
+  test('Local pickup order receives "Ready for Pickup" notification', async ({ page }) => {
+    const auth = await signIn(BUYER_EMAIL);
+    const adminAuth = await signIn(ADMIN_EMAIL);
+    
+    // We manually build the payload to specify 'pickup' delivery speed
+    const payload = {
+      userId: auth.localId,
+      items: [{
+        productId: productA!.id,
+        name: 'E2E Test Product A',
+        price: 15.99,
+        quantity: 1,
+        sellerId: productA!.sellerId,
+        imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+        isDigital: false
+      }],
+      subtotal: 15.99,
+      shippingAddress: {
+        street: '100 Queen St W',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5H 2N2',
+        country: 'Canada',
+        phoneNumber: '+14165550000'
+      },
+      deliverySpeed: 'pickup'
+    };
+
+    const checkoutResult = await callOk('create_checkout_session', payload, auth.idToken);
+    const orderId = checkoutResult.orderId;
+    expect(orderId).toBeTruthy();
+
+    await page.goto(checkoutResult.checkoutUrl);
+    await fillStripeCheckout(page, BUYER_EMAIL);
+    await page.waitForTimeout(5000);
+
+    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+
+    // 2. Mark as SHIPPED (Ready for Pickup)
+    await callOk('update_item_status', {
+      orderId,
+      productId: productA!.id,
+      newStatus: 'shipped',
+      carrier: 'Pickup'
+      // trackingNumber is optional for pickup now
+    }, adminAuth.idToken);
+
+    await page.waitForTimeout(10000);
+
+    // 3. Verify notification subject contains "Ready for Pickup"
+    const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: BUYER_EMAIL }, adminAuth.idToken);
+    const logs = mailLogsResult.logs;
+    
+    const pickupMail = logs.find((l: any) => 
+      l.subject.toLowerCase().includes('ready for pickup') || 
+      l.subject.toLowerCase().includes('prêt pour ramassage')
+    );
+    
+    expect(pickupMail, 'Should find a "Ready for Pickup" notification email').toBeTruthy();
+    expect(pickupMail.to).toBe(BUYER_EMAIL);
+  });
+});

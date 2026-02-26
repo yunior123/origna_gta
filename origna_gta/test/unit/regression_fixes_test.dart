@@ -3,7 +3,6 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:easy_localization/easy_localization.dart';
 
 void main() {
   group('Regression Fixes Unit Tests', () {

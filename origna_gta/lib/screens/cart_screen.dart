@@ -116,7 +116,7 @@ class CartScreen extends ConsumerWidget {
               error: (error, stack) => AnimatedEmptyState(
                 icon: Icons.error_outline_rounded,
                 title: 'cart.unable_to_load'.tr(),
-                subtitle: '$error',
+                subtitle: 'cart.load_error_subtitle'.tr(),
               ),
               data: (productIds) {
                 if (productIds.isEmpty) {

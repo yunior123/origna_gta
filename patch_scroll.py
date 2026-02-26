@@ -1,4 +1,3 @@
-import re
 
 with open('origna_gta/lib/screens/home_screen.dart', 'r') as f:
     content = f.read()

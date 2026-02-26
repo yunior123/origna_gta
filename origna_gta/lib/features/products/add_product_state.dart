@@ -29,16 +29,32 @@ class AddProductState {
   final bool sameDayEnabled;
   final int minimumOrderQuantity;
   final bool freeShipping;
-  final bool freeShippingAt10Plus; // Free shipping for 10+ item orders
+  // H-03: freeShippingAt10Plus removed - never stored/used on backend
   final bool savedExpressEnabled; // Saved state when free shipping toggled on
   final bool savedSameDayEnabled; // Saved state when free shipping toggled on
   final bool savedStandardEnabled; // Saved state when digital mode toggled on
   final String? errorMessage;
   final bool isSuccess;
+  
+  // C-03: Business logic state moved from Screen to ViewModel/State
+  final String selectedSupplierType;
+  final String selectedSupplierCurrency;
+  final bool hasTracking;
+  final bool inventoryManaged;
+  final bool trackQuantity;
+  final bool allowBackorder;
+  final bool lowStockAlertEnabled;
+  final int activeStep;
+  final String? selectedCategoryId;
+  final String? selectedSubcategory;
+  final bool hasAttemptedSubmit;
+  final bool discountTierError;
+
   // Multi-warehouse fields
   final String? sellerSku;
   final List<String> selectedWarehouseIds;
   final Map<String, int> warehouseStockMap; // warehouseId → stock qty
+  
   // N-09: Variant builder fields
   final bool hasVariants;
   final List<VariantOption> variantOptions;
@@ -68,12 +84,26 @@ class AddProductState {
     this.sameDayEnabled = false,
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
-    this.freeShippingAt10Plus = false,
     this.savedExpressEnabled = false,
     this.savedSameDayEnabled = false,
     this.savedStandardEnabled = true,
     this.errorMessage,
     this.isSuccess = false,
+    
+    // C-03 defaults
+    this.selectedSupplierType = SupplierTypeValues.aliexpress,
+    this.selectedSupplierCurrency = SupplierCurrencyValues.usd,
+    this.hasTracking = false,
+    this.inventoryManaged = true,
+    this.trackQuantity = true,
+    this.allowBackorder = false,
+    this.lowStockAlertEnabled = false,
+    this.activeStep = 0,
+    this.selectedCategoryId,
+    this.selectedSubcategory,
+    this.hasAttemptedSubmit = false,
+    this.discountTierError = false,
+
     this.sellerSku,
     this.selectedWarehouseIds = const [],
     this.warehouseStockMap = const {},
@@ -108,12 +138,26 @@ class AddProductState {
     bool? sameDayEnabled,
     int? minimumOrderQuantity,
     bool? freeShipping,
-    bool? freeShippingAt10Plus,
     bool? savedExpressEnabled,
     bool? savedSameDayEnabled,
     bool? savedStandardEnabled,
     Object? errorMessage = _sentinel,
     bool? isSuccess,
+    
+    // C-03 fields
+    String? selectedSupplierType,
+    String? selectedSupplierCurrency,
+    bool? hasTracking,
+    bool? inventoryManaged,
+    bool? trackQuantity,
+    bool? allowBackorder,
+    bool? lowStockAlertEnabled,
+    int? activeStep,
+    Object? selectedCategoryId = _sentinel,
+    Object? selectedSubcategory = _sentinel,
+    bool? hasAttemptedSubmit,
+    bool? discountTierError,
+
     Object? sellerSku = _sentinel,
     List<String>? selectedWarehouseIds,
     Map<String, int>? warehouseStockMap,
@@ -145,12 +189,26 @@ class AddProductState {
       sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,
       minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
       freeShipping: freeShipping ?? this.freeShipping,
-      freeShippingAt10Plus: freeShippingAt10Plus ?? this.freeShippingAt10Plus,
       savedExpressEnabled: savedExpressEnabled ?? this.savedExpressEnabled,
       savedSameDayEnabled: savedSameDayEnabled ?? this.savedSameDayEnabled,
       savedStandardEnabled: savedStandardEnabled ?? this.savedStandardEnabled,
       errorMessage: errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
       isSuccess: isSuccess ?? this.isSuccess,
+      
+      // C-03
+      selectedSupplierType: selectedSupplierType ?? this.selectedSupplierType,
+      selectedSupplierCurrency: selectedSupplierCurrency ?? this.selectedSupplierCurrency,
+      hasTracking: hasTracking ?? this.hasTracking,
+      inventoryManaged: inventoryManaged ?? this.inventoryManaged,
+      trackQuantity: trackQuantity ?? this.trackQuantity,
+      allowBackorder: allowBackorder ?? this.allowBackorder,
+      lowStockAlertEnabled: lowStockAlertEnabled ?? this.lowStockAlertEnabled,
+      activeStep: activeStep ?? this.activeStep,
+      selectedCategoryId: selectedCategoryId == _sentinel ? this.selectedCategoryId : selectedCategoryId as String?,
+      selectedSubcategory: selectedSubcategory == _sentinel ? this.selectedSubcategory : selectedSubcategory as String?,
+      hasAttemptedSubmit: hasAttemptedSubmit ?? this.hasAttemptedSubmit,
+      discountTierError: discountTierError ?? this.discountTierError,
+
       sellerSku: sellerSku == _sentinel ? this.sellerSku : sellerSku as String?,
       selectedWarehouseIds: selectedWarehouseIds ?? this.selectedWarehouseIds,
       warehouseStockMap: warehouseStockMap ?? this.warehouseStockMap,

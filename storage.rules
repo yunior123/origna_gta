@@ -44,12 +44,6 @@ service firebase.storage {
       allow delete: if isOwner(sellerId);
     }
     
-    // Legacy path (read-only for backwards compatibility)
-    match /products/{productId}/{fileName} {
-      allow read: if true;
-      allow create, update, delete: if false;
-    }
-    
     // ================================================================
     // USER PROFILE IMAGES
     // ================================================================

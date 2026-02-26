@@ -13,7 +13,6 @@ Usage:
 """
 import os
 import sys
-import time
 
 # Force emulator mode so AlgoliaConfig.get_index_name() returns 'products_emulator'
 os.environ['FUNCTIONS_EMULATOR'] = 'true'
@@ -93,8 +92,8 @@ for doc in docs:
         Fields.STOCK_QUANTITY: data.get(Fields.STOCK_QUANTITY, 0),
         Fields.RATING: data.get(Fields.RATING, 0.0),
         Fields.RATING_COUNT: data.get(Fields.RATING_COUNT, 0),
-        Fields.IS_ACTIVE: data.get(Fields.IS_ACTIVE, True),
-        Fields.KEYWORDS: data.get(Fields.KEYWORDS, []) or data.get('searchKeywords', []),
+        Fields.LIFECYCLE_STATUS: data.get(Fields.LIFECYCLE_STATUS, ProductLifecycleStatusValues.ACTIVE),
+        Fields.KEYWORDS: data.get(Fields.KEYWORDS, []) or data.get(Fields.SEARCH_KEYWORDS, []),
         Fields.FREE_SHIPPING: data.get(Fields.FREE_SHIPPING, False),
         Fields.IS_PERISHABLE: data.get(Fields.IS_PERISHABLE, False),
         Fields.IS_LOCAL_DELIVERY_ONLY: data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False),
@@ -133,7 +132,7 @@ client = SearchClient(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY)
 async def push_and_verify():
     try:
         resp = await client.save_objects(index_name=INDEX_NAME, objects=algolia_objects)
-        print(f"✅ Upload complete!")
+        print("✅ Upload complete!")
     except Exception as e:
         print(f"❌ Failed to push to Algolia: {e}")
         await client.close()

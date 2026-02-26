@@ -1,9 +1,6 @@
 
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
-import datetime
-import random
-import os
 from dotenv import load_dotenv
 
 # Load environment variables

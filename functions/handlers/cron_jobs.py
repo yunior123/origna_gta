@@ -16,8 +16,6 @@ from firebase_functions import scheduler_fn
 from google.api_core import exceptions as google_exceptions
 
 from config import (
-    AUTHORIZATION_VALID_DAYS,
-    AUTO_CONFIRM_DAYS,
     IS_EMULATOR,
     PLATFORM_FEE_RATIO,
     get_stripe_secret_key,
@@ -142,7 +140,7 @@ def _run_auto_capture() -> None:
         logger.info("Stripe payments are disabled, skipping auto-payout")
         return
 
-    cutoff_date = datetime.now(UTC) - timedelta(days=AUTO_CONFIRM_DAYS)
+    cutoff_date = datetime.now(UTC) - timedelta(days=BusinessRules.AUTO_CONFIRM_DAYS)
 
     # Query DELIVERED orders with captured payment that haven't been paid out yet
     # Also query SHIPPED orders past cutoff for auto-confirmation
@@ -337,7 +335,7 @@ def _run_auto_capture() -> None:
                 actor="system", actor_type="system",
                 from_status=OrderStatusValues.SHIPPED, to_status=OrderStatusValues.DELIVERED,
             )
-            logger.info(f"Auto-confirmed order {order_id} as delivered (was shipped, {AUTO_CONFIRM_DAYS}+ days)")
+            logger.info(f"Auto-confirmed order {order_id} as delivered (was shipped, {BusinessRules.AUTO_CONFIRM_DAYS}+ days)")
 
         try:
             # Payment is already captured — just mark payout in progress
@@ -584,7 +582,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     Logic:
     - With automatic capture, there are no authorization holds to expire.
     - This cron now cleans up stale PENDING orders (checkout abandoned)
-      that were never paid and are older than AUTHORIZATION_VALID_DAYS.
+      that were never paid and are older than AUTHORIZATION_EXPIRY_DAYS.
     - Restores stock for these abandoned orders.
     """
     logger.info("Running check_expired_authorizations cron job (stale order cleanup)")
@@ -603,7 +601,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
 def _run_expired_authorizations() -> None:
     """Inner implementation of expired authorization cleanup."""
 
-    cutoff_date = datetime.now(UTC) - timedelta(days=AUTHORIZATION_VALID_DAYS)
+    cutoff_date = datetime.now(UTC) - timedelta(days=BusinessRules.AUTHORIZATION_EXPIRY_DAYS)
 
     # Find stale PENDING orders that were never paid (session expired/abandoned)
     # OR were AUTHORIZED but never captured (manual capture expiry)
@@ -638,7 +636,7 @@ def _run_expired_authorizations() -> None:
                 try:
                     logger.info(f"Cancelling stale authorization for order {order_id} (PI: {pi_id})")
                     stripe.api_key = get_stripe_secret_key()
-                    stripe.PaymentIntent.cancel(pi_id)
+                    stripe.PaymentIntent.cancel(pi_id, idempotency_key=f"cancel_auth_{order_id}")
                 except Exception as cancel_err:
                     logger.warning(f"⚠️ Failed to cancel Stripe PI {pi_id} for expired order {order_id}: {cancel_err}")
 
@@ -684,10 +682,14 @@ def _run_expired_authorizations() -> None:
             continue
 
         # Use fresh stock_already_restored from transaction (Fix 2)
+        stock_restored_ok = stock_already_restored  # assume True if already done
         if stock_already_restored:
             logger.info(f"Stock already restored for expired order {order_id}")
         else:
-            # Use batch write for atomicity across multiple product stock updates
+            # CRITICAL FIX: Only mark STOCK_RESTORED=True if the batch actually succeeds.
+            # A crash or Firestore error here previously left stock permanently decremented
+            # because STOCK_RESTORED=True was written unconditionally after the try/except,
+            # hiding the failure and preventing any retry mechanism from detecting it.
             stock_batch = get_db().batch()
             for item in fresh_items:
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
@@ -696,22 +698,29 @@ def _run_expired_authorizations() -> None:
                 )
             try:
                 stock_batch.commit()
+                stock_restored_ok = True
             except Exception as e:
-                logger.error(f"Failed to restore stock batch for order {order_id}: {str(e)}")
+                logger.error(
+                    f"Failed to restore stock batch for order {order_id}: {str(e)} — "
+                    f"STOCK_RESTORED will NOT be set; order will remain in EXPIRED state "
+                    f"with stock un-restored. Manual intervention required."
+                )
+                stock_restored_ok = False
 
-        # Update order with remaining fields NOT set in the transaction
+        # Update order with remaining fields NOT set in the transaction.
         # NOTE: ORDER_STATUS and PAYMENT_STATUS are already set in the transaction.
         # Only set STOCK_RESTORED, EXPIRES_AT here to avoid duplicating writes.
-        order_doc.reference.update(
-            {
-                Fields.STOCK_RESTORED: True,
-                Fields.EXPIRES_AT: get_server_timestamp(),
-                Fields.UPDATED_AT: get_server_timestamp(),
-            }
-        )
+        # FIX: STOCK_RESTORED is only set True when stock was actually restored.
+        update_fields: dict = {
+            Fields.EXPIRES_AT: get_server_timestamp(),
+            Fields.UPDATED_AT: get_server_timestamp(),
+        }
+        if stock_restored_ok:
+            update_fields[Fields.STOCK_RESTORED] = True
+        order_doc.reference.update(update_fields)
 
         expired_count += 1
-        logger.info(f"Expired order {order_id}")
+        logger.info(f"Expired order {order_id} (stock_restored={stock_restored_ok})")
 
     logger.info(f"Stale order cleanup completed: {expired_count} orders expired")
 
@@ -747,7 +756,7 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
             .where(
                 Fields.ORDER_STATUS,
                 "in",
-                [OrderStatusValues.DELIVERED, OrderStatusValues.CANCELLED],
+                [OrderStatusValues.DELIVERED, OrderStatusValues.CANCELLED, OrderStatusValues.EXPIRED, OrderStatusValues.FAILED, OrderStatusValues.DISPUTED]  # FIX (H2): also archive terminal states EXPIRED/FAILED/DISPUTED,
             )
             .where(Fields.UPDATED_AT, "<=", cutoff_date)
             .limit(200)
@@ -1098,79 +1107,89 @@ def retry_failed_algolia_syncs(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running retry_failed_algolia_syncs cron job")
 
-    from services.algolia_service import delete_product as algolia_delete_product
-    from services.algolia_service import index_product as algolia_index_product
+    # FIX (H3): Add distributed lock — prevents concurrent instances from
+    # double-retrying the same Algolia operations, causing duplicate index writes.
+    if not acquire_cron_lock("retry_failed_algolia_syncs"):
+        logger.info("retry_failed_algolia_syncs: already running, skipping")
+        return
 
-    # Fetch unresolved sync failures (max 50 per run)
-    failures = (
-        get_db().collection(Collections.ALGOLIA_SYNC_FAILURES).where(Fields.RESOLVED, "==", False).limit(50).stream()
-    )
 
-    retried = 0
-    resolved = 0
-    max_retries = BusinessRules.ALGOLIA_DLQ_MAX_RETRIES
-
-    for failure_doc in failures:
-        failure_data = failure_doc.to_dict()
-        product_id = failure_data.get(Fields.PRODUCT_ID)
-        action = failure_data.get(Fields.ACTION, AlgoliaActionValues.INDEX)
-        retry_count = failure_data.get(Fields.RETRY_COUNT, 0)
-
-        if not product_id:
-            failure_doc.reference.update({Fields.RESOLVED: True})
-            resolved += 1
-            continue
-
-        # Max retries exceeded — mark as resolved (needs manual intervention)
-        if retry_count >= max_retries:
-            failure_doc.reference.update(
-                {
-                    Fields.RESOLVED: True,
-                    Fields.MAX_RETRIES_EXCEEDED: True,
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                }
-            )
-            resolved += 1
-            logger.warning(f"Algolia sync for {product_id} exceeded max retries — marking as resolved")
-            continue
-
-        try:
-            if action == AlgoliaActionValues.DELETE:
-                algolia_delete_product(product_id)
-            else:
-                # Re-fetch product data from Firestore
-                product_doc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
-                if not product_doc.exists:
-                    # Product was deleted — try to delete from Algolia instead
+    try:
+        from services.algolia_service import delete_product as algolia_delete_product
+        from services.algolia_service import index_product as algolia_index_product
+    
+        # Fetch unresolved sync failures (max 50 per run)
+        failures = (
+            get_db().collection(Collections.ALGOLIA_SYNC_FAILURES).where(Fields.RESOLVED, "==", False).limit(50).stream()
+        )
+    
+        retried = 0
+        resolved = 0
+        max_retries = BusinessRules.ALGOLIA_DLQ_MAX_RETRIES
+    
+        for failure_doc in failures:
+            failure_data = failure_doc.to_dict()
+            product_id = failure_data.get(Fields.PRODUCT_ID)
+            action = failure_data.get(Fields.ACTION, AlgoliaActionValues.INDEX)
+            retry_count = failure_data.get(Fields.RETRY_COUNT, 0)
+    
+            if not product_id:
+                failure_doc.reference.update({Fields.RESOLVED: True})
+                resolved += 1
+                continue
+    
+            # Max retries exceeded — mark as resolved (needs manual intervention)
+            if retry_count >= max_retries:
+                failure_doc.reference.update(
+                    {
+                        Fields.RESOLVED: True,
+                        Fields.MAX_RETRIES_EXCEEDED: True,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
+                resolved += 1
+                logger.warning(f"Algolia sync for {product_id} exceeded max retries — marking as resolved")
+                continue
+    
+            try:
+                if action == AlgoliaActionValues.DELETE:
                     algolia_delete_product(product_id)
                 else:
-                    product_data = product_doc.to_dict()
-                    if product_data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE:
-                        algolia_index_product(product_id, product_data)
-                    else:
+                    # Re-fetch product data from Firestore
+                    product_doc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
+                    if not product_doc.exists:
+                        # Product was deleted — try to delete from Algolia instead
                         algolia_delete_product(product_id)
-
-            # Success — resolve the failure
-            failure_doc.reference.update(
-                {
-                    Fields.RESOLVED: True,
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                }
-            )
-            resolved += 1
-            retried += 1
-        except Exception as e:
-            # Increment retry count
-            failure_doc.reference.update(
-                {
-                    Fields.RETRY_COUNT: retry_count + 1,
-                    Fields.LAST_RETRY_ERROR: type(e).__name__,
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                }
-            )
-            logger.warning(f"Algolia retry failed for {product_id}: {type(e).__name__}")
-
-    logger.info(f"Algolia DLQ retry completed: {retried} retried, {resolved} resolved")
+                    else:
+                        product_data = product_doc.to_dict()
+                        if product_data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE:
+                            algolia_index_product(product_id, product_data)
+                        else:
+                            algolia_delete_product(product_id)
+    
+                # Success — resolve the failure
+                failure_doc.reference.update(
+                    {
+                        Fields.RESOLVED: True,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
+                resolved += 1
+                retried += 1
+            except Exception as e:
+                # Increment retry count
+                failure_doc.reference.update(
+                    {
+                        Fields.RETRY_COUNT: retry_count + 1,
+                        Fields.LAST_RETRY_ERROR: type(e).__name__,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
+                logger.warning(f"Algolia retry failed for {product_id}: {type(e).__name__}")
+    
+        logger.info(f"Algolia DLQ retry completed: {retried} retried, {resolved} resolved")
+    finally:
+        release_cron_lock("retry_failed_algolia_syncs")  # FIX (H3): always release lock
 
 
 @scheduler_fn.on_schedule(schedule="every 168 hours", **CRON_OPTIONS)  # weekly
@@ -1190,69 +1209,71 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
         logger.info("revalidate_digital_product_urls: lock held, skipping")
         return
 
-    checked = 0
-    deactivated = 0
-
-    products = (
-        get_db()
-        .collection(Collections.PRODUCTS)
-        .where(Fields.IS_DIGITAL, "==", True)
-        .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
-        .stream()
-    )
-
-    for doc in products:
-        product_data = doc.to_dict() or {}
-        product_id = doc.id
-        checked += 1
-
-        urls_to_check: list[tuple[str, str]] = []
-        book_url = product_data.get(Fields.BOOK_SOURCE_URL)
-        if book_url:
-            urls_to_check.append(("bookSourceUrl", book_url))
-        builds = product_data.get(Fields.DIGITAL_BUILDS) or {}
-        for platform, url in builds.items():
-            if url:
-                urls_to_check.append((f"digitalBuilds.{platform}", url))
-
-        dead = []
-        for label, url in urls_to_check:
-            try:
-                resp = requests.head(url, timeout=10, allow_redirects=True, headers={"User-Agent": "OrignaBot/1.0"})
-                if resp.status_code >= 400:
-                    dead.append(label)
-            except requests.exceptions.RequestException:
-                dead.append(label)
-
-        if dead:
-            reason = f"Download URL(s) became unreachable: {', '.join(dead)}"
-            doc.reference.update(
-                {
-                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.UNDER_REVIEW,
-                    Fields.APPROVAL_REJECTION_REASON: reason,
-                }
-            )
-            # Remove from Algolia
-            try:
-                from services.algolia_service import delete_product as algolia_delete
-
-                algolia_delete(product_id)
-            except (ImportError, RuntimeError, ValueError) as algolia_err:
-                logger.warning(f"Failed to remove product {product_id} from Algolia after URL revalidation: {algolia_err}")
-
-            # Notify seller
-            seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
-            if seller_email:
+    try:
+        checked = 0
+        deactivated = 0
+    
+        products = (
+            get_db()
+            .collection(Collections.PRODUCTS)
+            .where(Fields.IS_DIGITAL, "==", True)
+            .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
+            .stream()
+        )
+    
+        for doc in products:
+            product_data = doc.to_dict() or {}
+            product_id = doc.id
+            checked += 1
+    
+            urls_to_check: list[tuple[str, str]] = []
+            book_url = product_data.get(Fields.BOOK_SOURCE_URL)
+            if book_url:
+                urls_to_check.append(("bookSourceUrl", book_url))
+            builds = product_data.get(Fields.DIGITAL_BUILDS) or {}
+            for platform, url in builds.items():
+                if url:
+                    urls_to_check.append((f"digitalBuilds.{platform}", url))
+    
+            dead = []
+            for label, url in urls_to_check:
                 try:
-                    _send_product_rejection_email(seller_email, product_data.get(Fields.NAME, ""), reason)
-                except Exception as e:
-                    logger.error(f"Failed to email seller for dead URL on {product_id}: {e}")
-
-            deactivated += 1
-            logger.warning(f"Deactivated product {product_id} — dead URLs: {dead}")
-
-    logger.info(f"Digital URL revalidation done: {checked} checked, {deactivated} deactivated")
-    release_cron_lock("revalidate_digital_product_urls")
+                    resp = requests.head(url, timeout=10, allow_redirects=True, headers={"User-Agent": "OrignaBot/1.0"})
+                    if resp.status_code >= 400:
+                        dead.append(label)
+                except requests.exceptions.RequestException:
+                    dead.append(label)
+    
+            if dead:
+                reason = f"Download URL(s) became unreachable: {', '.join(dead)}"
+                doc.reference.update(
+                    {
+                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.UNDER_REVIEW,
+                        Fields.APPROVAL_REJECTION_REASON: reason,
+                    }
+                )
+                # Remove from Algolia
+                try:
+                    from services.algolia_service import delete_product as algolia_delete
+    
+                    algolia_delete(product_id)
+                except (ImportError, RuntimeError, ValueError) as algolia_err:
+                    logger.warning(f"Failed to remove product {product_id} from Algolia after URL revalidation: {algolia_err}")
+    
+                # Notify seller
+                seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
+                if seller_email:
+                    try:
+                        _send_product_rejection_email(seller_email, product_data.get(Fields.NAME, ""), reason)
+                    except Exception as e:
+                        logger.error(f"Failed to email seller for dead URL on {product_id}: {e}")
+    
+                deactivated += 1
+                logger.warning(f"Deactivated product {product_id} — dead URLs: {dead}")
+    
+        logger.info(f"Digital URL revalidation done: {checked} checked, {deactivated} deactivated")
+    finally:
+        release_cron_lock("revalidate_digital_product_urls")  # CRITICAL FIX (C2): always release lock
 
 
 @scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
@@ -1273,112 +1294,122 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     from services.email_service import send_email
 
     logger.info("Running check_low_stock_alerts cron job")
-    alerted_count = 0
-    checked_count = 0
 
-    # Fetch active + approved products in batches of 500
-    query = (
-        get_db()
-        .collection(Collections.PRODUCTS)
-        .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
-        .limit(500)
-    )
+    # FIX (H3): Add distributed lock — prevents concurrent instances from
+    # sending duplicate low-stock emails to sellers.
+    if not acquire_cron_lock("check_low_stock_alerts"):
+        logger.info("check_low_stock_alerts: already running, skipping")
+        return
 
-    now_utc = datetime.now(UTC)
-    alert_cooldown = timedelta(hours=23)
-
-    # First pass: collect products needing alerts and unique seller IDs
-    products_needing_alert = []
-    unique_seller_ids: set = set()
-
-    for doc in query.stream():
-        checked_count += 1
-        data = doc.to_dict() or {}
-
-        inventory = data.get(Fields.INVENTORY) or {}
-        threshold = inventory.get(Fields.LOW_STOCK_THRESHOLD, 0)
-        track_quantity = inventory.get(Fields.TRACK_QUANTITY, True)
-
-        # Skip if seller hasn't opted in (threshold=0) or tracking is disabled
-        if not threshold or not track_quantity:
-            continue
-
-        stock = data.get(Fields.STOCK_QUANTITY, 0)
-        if stock > threshold:
-            continue
-
-        # Check cooldown — don't re-alert within 23 hours
-        last_alert = data.get(Fields.LAST_LOW_STOCK_ALERT_AT)
-        if last_alert:
-            if hasattr(last_alert, "tzinfo") and last_alert.tzinfo is None:
-                last_alert = last_alert.replace(tzinfo=UTC)
-            elif not hasattr(last_alert, "tzinfo"):
-                last_alert = None
-        if last_alert and (now_utc - last_alert) < alert_cooldown:
-            continue
-
-        seller_id = data.get(Fields.SELLER_ID)
-        if not seller_id:
-            continue
-
-        products_needing_alert.append((doc, data, stock, threshold))
-        unique_seller_ids.add(seller_id)
-
-    # Batch-read all seller docs to avoid N+1
-    seller_data_map: dict = {}
-    if unique_seller_ids:
-        seller_refs = [get_db().collection(Collections.USERS).document(sid) for sid in unique_seller_ids]
-        for seller_snap in get_db().get_all(seller_refs):
-            if seller_snap.exists:
-                seller_data_map[seller_snap.id] = seller_snap.to_dict() or {}
-
-    # Second pass: send low stock alert emails
-    for doc, data, stock, threshold in products_needing_alert:
-        seller_id = data.get(Fields.SELLER_ID)
-        seller_info = seller_data_map.get(seller_id)
-        if not seller_info:
-            continue
-
-        seller_email = seller_info.get(Fields.EMAIL)
-        if not seller_email:
-            continue
-
-        product_name = data.get(Fields.NAME, "Your product")
-        subject = f"[Origna] Low stock alert: {product_name}"
-        html = f"""
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-  <h2 style="color: #E53E3E;">⚠️ Low Stock Alert</h2>
-  <p>Your product <strong>{product_name}</strong> is running low on stock.</p>
-  <table style="width:100%; border-collapse:collapse; margin: 16px 0;">
-    <tr><td style="padding:6px 0; color:#666; width:160px;">Current stock</td>
-        <td style="font-weight:bold; color:#E53E3E;">{stock} unit{"s" if stock != 1 else ""} remaining</td></tr>
-    <tr><td style="padding:6px 0; color:#666;">Alert threshold</td>
-        <td>{threshold} units</td></tr>
-    <tr><td style="padding:6px 0; color:#666;">Product ID</td>
-        <td><code style="font-size:12px;">{doc.id}</code></td></tr>
-  </table>
-  <p>Please restock soon to avoid missing sales.</p>
-  <p style="margin-top:20px;">
-    <a href="https://orignagta.ca/seller/products" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
-      Manage Inventory
-    </a>
-  </p>
-  <p style="color:#999; font-size:12px; margin-top:20px;">
-    You are receiving this because you enabled low stock alerts for this product.<br>
-    To disable, edit the product and uncheck "Notify me when stock falls below threshold".<br>
-    Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}
-  </p>
-</div>"""
-
-        try:
-            send_email(seller_email, subject, html)
-            get_db().collection(Collections.PRODUCTS).document(doc.id).update({Fields.LAST_LOW_STOCK_ALERT_AT: now_utc})
-            alerted_count += 1
-            logger.info(f"Low stock alert sent for product {doc.id} (stock={stock}, threshold={threshold})")
-        except Exception as e:
-            logger.error(f"Failed to send low stock alert for {doc.id}: {e}")
-
-    logger.info(f"check_low_stock_alerts done: {checked_count} checked, {alerted_count} alerted")
+    try:
+        alerted_count = 0
+        checked_count = 0
+    
+        # Fetch active + approved products in batches of 500
+        query = (
+            get_db()
+            .collection(Collections.PRODUCTS)
+            .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
+            .limit(500)
+        )
+    
+        now_utc = datetime.now(UTC)
+        alert_cooldown = timedelta(hours=23)
+    
+        # First pass: collect products needing alerts and unique seller IDs
+        products_needing_alert = []
+        unique_seller_ids: set = set()
+    
+        for doc in query.stream():
+            checked_count += 1
+            data = doc.to_dict() or {}
+    
+            inventory = data.get(Fields.INVENTORY) or {}
+            threshold = inventory.get(Fields.LOW_STOCK_THRESHOLD, 0)
+            track_quantity = inventory.get(Fields.TRACK_QUANTITY, True)
+    
+            # Skip if seller hasn't opted in (threshold=0) or tracking is disabled
+            if not threshold or not track_quantity:
+                continue
+    
+            stock = data.get(Fields.STOCK_QUANTITY, 0)
+            if stock > threshold:
+                continue
+    
+            # Check cooldown — don't re-alert within 23 hours
+            last_alert = data.get(Fields.LAST_LOW_STOCK_ALERT_AT)
+            if last_alert:
+                if hasattr(last_alert, "tzinfo") and last_alert.tzinfo is None:
+                    last_alert = last_alert.replace(tzinfo=UTC)
+                elif not hasattr(last_alert, "tzinfo"):
+                    last_alert = None
+            if last_alert and (now_utc - last_alert) < alert_cooldown:
+                continue
+    
+            seller_id = data.get(Fields.SELLER_ID)
+            if not seller_id:
+                continue
+    
+            products_needing_alert.append((doc, data, stock, threshold))
+            unique_seller_ids.add(seller_id)
+    
+        # Batch-read all seller docs to avoid N+1
+        seller_data_map: dict = {}
+        if unique_seller_ids:
+            seller_refs = [get_db().collection(Collections.USERS).document(sid) for sid in unique_seller_ids]
+            for seller_snap in get_db().get_all(seller_refs):
+                if seller_snap.exists:
+                    seller_data_map[seller_snap.id] = seller_snap.to_dict() or {}
+    
+        # Second pass: send low stock alert emails
+        for doc, data, stock, threshold in products_needing_alert:
+            seller_id = data.get(Fields.SELLER_ID)
+            seller_info = seller_data_map.get(seller_id)
+            if not seller_info:
+                continue
+    
+            seller_email = seller_info.get(Fields.EMAIL)
+            if not seller_email:
+                continue
+    
+            product_name = data.get(Fields.NAME, "Your product")
+            subject = f"[Origna] Low stock alert: {product_name}"
+            html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #E53E3E;">⚠️ Low Stock Alert</h2>
+      <p>Your product <strong>{product_name}</strong> is running low on stock.</p>
+      <table style="width:100%; border-collapse:collapse; margin: 16px 0;">
+        <tr><td style="padding:6px 0; color:#666; width:160px;">Current stock</td>
+            <td style="font-weight:bold; color:#E53E3E;">{stock} unit{"s" if stock != 1 else ""} remaining</td></tr>
+        <tr><td style="padding:6px 0; color:#666;">Alert threshold</td>
+            <td>{threshold} units</td></tr>
+        <tr><td style="padding:6px 0; color:#666;">Product ID</td>
+            <td><code style="font-size:12px;">{doc.id}</code></td></tr>
+      </table>
+      <p>Please restock soon to avoid missing sales.</p>
+      <p style="margin-top:20px;">
+        <a href="https://orignagta.ca/seller/products" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
+          Manage Inventory
+        </a>
+      </p>
+      <p style="color:#999; font-size:12px; margin-top:20px;">
+        You are receiving this because you enabled low stock alerts for this product.<br>
+        To disable, edit the product and uncheck "Notify me when stock falls below threshold".<br>
+        Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}
+      </p>
+    </div>"""
+    
+            try:
+                send_email(seller_email, subject, html)
+                get_db().collection(Collections.PRODUCTS).document(doc.id).update({Fields.LAST_LOW_STOCK_ALERT_AT: now_utc})
+                alerted_count += 1
+                logger.info(f"Low stock alert sent for product {doc.id} (stock={stock}, threshold={threshold})")
+            except Exception as e:
+                logger.error(f"Failed to send low stock alert for {doc.id}: {e}")
+    
+        logger.info(f"check_low_stock_alerts done: {checked_count} checked, {alerted_count} alerted")
+    finally:
+        release_cron_lock("check_low_stock_alerts")  # FIX (H3): always release lock
 
 
 @scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
@@ -1542,133 +1573,139 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
     """
     TASK 11 — Weekly cron: compute seller health metrics and raise security alerts for threshold breaches.
 
-    Thresholds → SECURITY_ALERT:
-    - disputeRate  > 5%
-    - refundRate   > 15%
-    - cancellationRate > 10%
-
-    Metrics are written to seller_metrics/{sellerId}.
+    Multi-seller isolation fix:
+    - Only items belonging to the seller are counted for their refund/cancellation rates.
+    - Dispute rate is per-order (if an order has a dispute, all sellers in it are affected).
+    - Metrics are written to seller_metrics/{sellerId}.
     """
     from schema_constants import SecurityAlertTypes, SeverityLevels
 
     logger.info("Running compute_seller_metrics cron job")
 
+    # FIX (H1): Add distributed lock to prevent concurrent runs that create
+    # duplicate SELLER_METRICS_BREACH security alerts on each weekly execution.
+    if not acquire_cron_lock("compute_seller_metrics"):
+        logger.info("compute_seller_metrics: already running, skipping")
+        return
+
+
     now_utc = datetime.now(UTC)
-    window_start = now_utc - timedelta(days=30)
-    processed_count = 0
-    alerted_count = 0
-
-    DISPUTE_THRESHOLD = BusinessRules.SELLER_DISPUTE_RATE_THRESHOLD
-    REFUND_THRESHOLD = BusinessRules.SELLER_REFUND_RATE_THRESHOLD
-    CANCEL_THRESHOLD = BusinessRules.SELLER_CANCEL_RATE_THRESHOLD
-
-    # Get all sellers
-    sellers_query = get_db().collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.SELLER).limit(500)
-
-    for seller_doc in sellers_query.stream():
-        seller_id = seller_doc.id
-        seller_data = seller_doc.to_dict() or {}
-
-        if not seller_data.get(Fields.IS_SELLER) and UserRoleValues.SELLER not in (seller_data.get(Fields.ROLES) or []):
-            continue
-
-        # Fetch orders for this seller in the last 30 days
-        orders_query = (
-            get_db()
-            .collection(Collections.ORDERS)
-            .where(Fields.SELLER_IDS, "array_contains", seller_id)
-            .where(Fields.CREATED_AT, ">=", window_start)
-            .limit(500)
-        )
-
-        orders = list(orders_query.stream())
-        total_orders = len(orders)
-
-        if total_orders == 0:
-            # Write zero-metrics doc (no alert)
+    try:
+        window_start = now_utc - timedelta(days=30)
+        processed_count = 0
+        alerted_count = 0
+    
+        DISPUTE_THRESHOLD = BusinessRules.SELLER_DISPUTE_RATE_THRESHOLD
+        REFUND_THRESHOLD = BusinessRules.SELLER_REFUND_RATE_THRESHOLD
+        CANCEL_THRESHOLD = BusinessRules.SELLER_CANCEL_RATE_THRESHOLD
+    
+        # Get all sellers
+        sellers_query = get_db().collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.SELLER).limit(500)
+    
+        for seller_doc in sellers_query.stream():
+            seller_id = seller_doc.id
+    
+            # Fetch orders containing at least one item from this seller
+            orders_query = (
+                get_db()
+                .collection(Collections.ORDERS)
+                .where(Fields.SELLER_IDS, "array_contains", seller_id)
+                .where(Fields.CREATED_AT, ">=", window_start)
+                .limit(500)
+            )
+    
+            orders = list(orders_query.stream())
+            total_orders = len(orders)
+    
+            if total_orders == 0:
+                # Write zero-metrics doc (no alert)
+                get_db().collection(Collections.SELLER_METRICS).document(seller_id).set(
+                    {
+                        Fields.SELLER_ID: seller_id,
+                        Fields.DISPUTE_RATE: 0.0,
+                        Fields.REFUND_RATE: 0.0,
+                        Fields.CANCELLATION_RATE: 0.0,
+                        Fields.LATE_SHIPMENT_RATE: 0.0,
+                        Fields.AVG_RESPONSE_TIME_HOURS: _compute_avg_response_time(seller_id, window_start),
+                        Fields.TOTAL_ORDERS_30D: 0,
+                        Fields.TOTAL_REVENUE_CENTS_30D: 0,
+                        Fields.COMPUTED_AT: now_utc,
+                    }
+                )
+                processed_count += 1
+                continue
+    
+            # Tally metrics with item-level isolation
+            disputed_orders = 0
+            refunded_items = 0
+            cancelled_items = 0
+            late_shipped_items = 0
+            total_seller_items = 0
+            total_revenue_cents = 0
+    
+            for order_doc in orders:
+                od = order_doc.to_dict() or {}
+    
+                # Dispute is order-level — if order has dispute, all sellers are affected
+                if od.get(Fields.HAS_DISPUTE):
+                    disputed_orders += 1
+    
+                # Isolate items for this seller
+                items = od.get(Fields.ITEMS, [])
+                for item in items:
+                    if item.get(Fields.SELLER_ID) == seller_id:
+                        total_seller_items += 1
+                        item_status = item.get(Fields.STATUS)
+    
+                        if item_status == DeliveryStatusValues.REFUNDED:
+                            refunded_items += 1
+    
+                        # Cancellation: if order was cancelled by seller or item is cancelled
+                        # (Note: OrderStatusValues.CANCELLED is order-level)
+                        if od.get(Fields.ORDER_STATUS) == OrderStatusValues.CANCELLED:
+                            cancelled_items += 1
+    
+                        # Late shipment: check item-level shippedAt
+                        shipped_at = item.get(Fields.SHIPPED_AT)
+                        created_at = od.get(Fields.CREATED_AT)
+                        est_days = item.get(Fields.ESTIMATED_SHIP_DAYS, 3)
+                        if shipped_at and created_at:
+                            if hasattr(shipped_at, "tzinfo") and shipped_at.tzinfo is None:
+                                shipped_at = shipped_at.replace(tzinfo=UTC)
+                            if hasattr(created_at, "tzinfo") and created_at.tzinfo is None:
+                                created_at = created_at.replace(tzinfo=UTC)
+                            if (shipped_at - created_at).days > est_days:
+                                late_shipped_items += 1
+    
+                # Revenue: extract seller's portion from payout snapshot
+                payouts = od.get(Fields.SELLER_PAYOUTS) or []
+                for payout in payouts:
+                    if isinstance(payout, dict) and payout.get(Fields.SELLER_ID) == seller_id:
+                        total_revenue_cents += payout.get(Fields.SELLER_AMOUNT_CENTS, 0)
+    
+            # Calculate rates based on isolated totals
+            dispute_rate = disputed_orders / total_orders
+            refund_rate = refunded_items / total_seller_items if total_seller_items > 0 else 0
+            cancel_rate = cancelled_items / total_seller_items if total_seller_items > 0 else 0
+            late_rate = late_shipped_items / total_seller_items if total_seller_items > 0 else 0
+    
+            # Write metrics
             get_db().collection(Collections.SELLER_METRICS).document(seller_id).set(
                 {
                     Fields.SELLER_ID: seller_id,
-                    Fields.DISPUTE_RATE: 0.0,
-                    Fields.REFUND_RATE: 0.0,
-                    Fields.CANCELLATION_RATE: 0.0,
-                    Fields.LATE_SHIPMENT_RATE: 0.0,
+                    Fields.DISPUTE_RATE: round(dispute_rate, 4),
+                    Fields.REFUND_RATE: round(refund_rate, 4),
+                    Fields.CANCELLATION_RATE: round(cancel_rate, 4),
+                    Fields.LATE_SHIPMENT_RATE: round(late_rate, 4),
                     Fields.AVG_RESPONSE_TIME_HOURS: _compute_avg_response_time(seller_id, window_start),
-                    Fields.TOTAL_ORDERS_30D: 0,
-                    Fields.TOTAL_REVENUE_CENTS_30D: 0,
+                    Fields.TOTAL_ORDERS_30D: total_orders,
+                    Fields.TOTAL_REVENUE_CENTS_30D: total_revenue_cents,
                     Fields.COMPUTED_AT: now_utc,
                 }
             )
             processed_count += 1
-            continue
-
-        # Tally metrics
-        disputed = 0
-        refunded = 0
-        cancelled = 0
-        late_shipped = 0
-        total_revenue_cents = 0
-
-        for order_doc in orders:
-            od = order_doc.to_dict() or {}
-            status = od.get(Fields.ORDER_STATUS, "")
-            payment_status = od.get(Fields.PAYMENT_STATUS, "")
-
-            if status == OrderStatusValues.CANCELLED:
-                cancelled += 1
-            if payment_status == PaymentStatusValues.REFUNDED:
-                refunded += 1
-
-            # Revenue: sum payout amounts for this seller
-            payouts = od.get(Fields.SELLER_PAYOUTS) or []
-            for payout in payouts:
-                if isinstance(payout, dict) and payout.get(Fields.SELLER_ID) == seller_id:
-                    total_revenue_cents += payout.get(Fields.SELLER_AMOUNT_CENTS, 0)
-
-            # Dispute: check if order has an associated dispute in webhook_events
-            if od.get(Fields.HAS_DISPUTE):
-                disputed += 1
-
-            # Late shipment: shipped > estimatedShipDays after order
-            items = od.get(Fields.ITEMS, [])
-            for item in items:
-                if isinstance(item, dict) and item.get(Fields.SELLER_ID) == seller_id:
-                    shipped_at = item.get(Fields.SHIPPED_AT)
-                    created_at = od.get(Fields.CREATED_AT)
-                    est_days = item.get(Fields.ESTIMATED_SHIP_DAYS, 3)
-                    if shipped_at and created_at:
-                        if hasattr(shipped_at, "tzinfo") and shipped_at.tzinfo is None:
-                            shipped_at = shipped_at.replace(tzinfo=UTC)
-                        if hasattr(created_at, "tzinfo") and created_at.tzinfo is None:
-                            created_at = created_at.replace(tzinfo=UTC)
-                        actual_days = (shipped_at - created_at).days
-                        if actual_days > est_days:
-                            late_shipped += 1
-
-        dispute_rate = disputed / total_orders
-        refund_rate = refunded / total_orders
-        cancel_rate = cancelled / total_orders
-        late_rate = late_shipped / total_orders
-
-        # Write metrics
-        get_db().collection(Collections.SELLER_METRICS).document(seller_id).set(
-            {
-                Fields.SELLER_ID: seller_id,
-                Fields.DISPUTE_RATE: round(dispute_rate, 4),
-                Fields.REFUND_RATE: round(refund_rate, 4),
-                Fields.CANCELLATION_RATE: round(cancel_rate, 4),
-                Fields.LATE_SHIPMENT_RATE: round(late_rate, 4),
-                Fields.AVG_RESPONSE_TIME_HOURS: _compute_avg_response_time(seller_id, window_start),
-                Fields.TOTAL_ORDERS_30D: total_orders,
-                Fields.TOTAL_REVENUE_CENTS_30D: total_revenue_cents,
-                Fields.COMPUTED_AT: now_utc,
-            }
-        )
-        processed_count += 1
-
-        # Check threshold breaches (only for active sellers)
-        seller_status = seller_data.get(Fields.STATUS, "active")
-        if seller_status not in ("suspended", "banned"):
+    
+            # Check threshold breaches
             breaches = []
             if dispute_rate > DISPUTE_THRESHOLD:
                 breaches.append(f"disputeRate={dispute_rate:.1%}")
@@ -1676,33 +1713,55 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                 breaches.append(f"refundRate={refund_rate:.1%}")
             if cancel_rate > CANCEL_THRESHOLD:
                 breaches.append(f"cancellationRate={cancel_rate:.1%}")
-
+    
             if breaches:
-                get_db().collection(Collections.SECURITY_ALERTS).add(
-                    {
-                        Fields.TYPE: SecurityAlertTypes.SELLER_METRICS_BREACH,
-                        Fields.SELLER_ID: seller_id,
-                        Fields.BREACHES: breaches,
-                        Fields.TOTAL_ORDERS: total_orders,
-                        Fields.SEVERITY: SeverityLevels.HIGH,
-                        Fields.CREATED_AT: now_utc,
-                        Fields.REQUIRES_MANUAL_REVIEW: True,
-                    }
+                # FIX (H1): Deduplicate — only create a new alert if no unresolved
+                # SELLER_METRICS_BREACH alert already exists for this seller.
+                # Without this check, every weekly run creates a new alert for
+                # sellers who persistently breach thresholds, flooding the dashboard.
+                existing_breach = (
+                    get_db()
+                    .collection(Collections.SECURITY_ALERTS)
+                    .where(Fields.TYPE, "==", SecurityAlertTypes.SELLER_METRICS_BREACH)
+                    .where(Fields.SELLER_ID, "==", seller_id)
+                    .where(Fields.RESOLVED, "==", False)
+                    .limit(1)
+                    .get()
                 )
-                alerted_count += 1
-                logger.warning(f"Seller {seller_id} metrics breach: {', '.join(breaches)}")
-
-    logger.info(f"compute_seller_metrics done: {processed_count} sellers processed, {alerted_count} alerts raised")
-
+                if not existing_breach:
+                    get_db().collection(Collections.SECURITY_ALERTS).add(
+                        {
+                            Fields.TYPE: SecurityAlertTypes.SELLER_METRICS_BREACH,
+                            Fields.SELLER_ID: seller_id,
+                            Fields.BREACHES: breaches,
+                            Fields.TOTAL_ORDERS: total_orders,
+                            Fields.SEVERITY: SeverityLevels.HIGH,
+                            Fields.CREATED_AT: now_utc,
+                            Fields.RESOLVED: False,
+                        }
+                    )
+                    alerted_count += 1
+                    logger.warning(f"Seller {seller_id} metrics breach: {", ".join(breaches)}")
+                else:
+                    logger.info(f"Seller {seller_id} metrics breach already alerted (unresolved alert exists)")
+    
+        logger.info(f"compute_seller_metrics done: {processed_count} sellers processed, {alerted_count} alerts raised")
+    
+    finally:
+        release_cron_lock("compute_seller_metrics")  # FIX (H1): always release lock
 
 # ============================================================================
 # TRENDING PRODUCTS CRON
 # ============================================================================
 
-TRENDING_TOP_N = 20  # How many products to mark as trending
-TRENDING_WINDOW_HOURS = 48  # Look-back window for trending signals
-TRENDING_PURCHASE_WEIGHT = 3  # Purchases are 3× more valuable than views
-TRENDING_FAVORITE_WEIGHT = 2  # Favorites are 2× more valuable than views
+# FIX (M3): Use BusinessRules constants as single source of truth.
+# Previously TRENDING_WINDOW_HOURS=48 here vs BusinessRules.TRENDING_WINDOW_HOURS=24
+# caused the window variable to be computed but NEVER USED (noqa: F841 suppressed the warning).
+# Now using BusinessRules values throughout.
+TRENDING_TOP_N = BusinessRules.TRENDING_TOP_N              # 20 products
+TRENDING_WINDOW_HOURS = BusinessRules.TRENDING_WINDOW_HOURS  # 24h rolling window
+TRENDING_PURCHASE_WEIGHT = BusinessRules.TRENDING_PURCHASE_WEIGHT  # 3x
+TRENDING_FAVORITE_WEIGHT = BusinessRules.TRENDING_FAVORITE_WEIGHT  # 1x
 
 
 @scheduler_fn.on_schedule(schedule="every 6 hours", **CRON_OPTIONS)
@@ -1724,7 +1783,7 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
         now = datetime.now(UTC)
         _window_start = now - timedelta(hours=TRENDING_WINDOW_HOURS)  # noqa: F841
 
-        # Fetch all active products (Fix: use LIFECYCLE_STATUS instead of deprecated IS_ACTIVE)
+        # Fetch all active products
         products_query = (
             db.collection(Collections.PRODUCTS)
             .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
@@ -1874,8 +1933,6 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
                 error_count += 1
 
         # Fix orphaned isPremium=True with no subscription doc — paginate through all premium users
-        orphan_batch = db.batch()
-        orphan_count = 0
         cursor = None
         while True:
             q = db.collection(Collections.USERS).where(Fields.IS_PREMIUM, "==", True).limit(500)
@@ -1884,14 +1941,19 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
             page = list(q.stream())
             if not page:
                 break
+
             uid_list = [u.id for u in page]
             sub_refs = [db.collection(Collections.SUBSCRIPTIONS).document(uid) for uid in uid_list]
             sub_docs = db.get_all(sub_refs)
             sub_exists = {doc.id: doc.exists for doc in sub_docs}
+
+            chunk_batch = db.batch()
+            chunk_orphan_count = 0
+
             for uid in uid_list:
                 if not sub_exists.get(uid, False):
                     logger.warning(f"Clearing orphaned isPremium for user {uid}")
-                    orphan_batch.update(
+                    chunk_batch.update(
                         db.collection(Collections.USERS).document(uid),
                         {
                             Fields.IS_PREMIUM: False,
@@ -1901,13 +1963,15 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
                             Fields.UPDATED_AT: now,
                         },
                     )
-                    orphan_count += 1
+                    chunk_orphan_count += 1
                     synced_count += 1
+
+            if chunk_orphan_count > 0:
+                chunk_batch.commit()
+
             cursor = page[-1]
             if len(page) < 500:
                 break
-        if orphan_count > 0:
-            orphan_batch.commit()
 
         logger.info(f"sync_expired_subscriptions: {synced_count} fixed, {error_count} errors")
     finally:

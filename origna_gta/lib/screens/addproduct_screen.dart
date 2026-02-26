@@ -67,27 +67,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   final _additionalItemCostController = TextEditingController(text: '0.00');
   final _maxItemsPerShipmentController = TextEditingController(text: '0');
 
-  // State
-  String _selectedSupplierType = SupplierTypeValues.aliexpress;
-  String _selectedSupplierCurrency = SupplierCurrencyValues.usd;
-  bool _hasTracking = false;
-  bool _inventoryManaged = true;
-  bool _trackQuantity = true;
-  bool _allowBackorder = false;
-  bool _lowStockAlertEnabled = false;
-  bool _hasAttemptedSubmit = false;
-  bool _discountTierError = false; // true when 5+ tier discount < 3+ tier discount
-
-  String? _selectedSubcategory;
-  String? _selectedCategoryId;
-
-  // Active section for stepper
-  int _activeStep = 0;
-
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
-
-  // Province names are sourced from ProvinceCodeValues.names in schema_constants.dart
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +171,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: List.generate(5, (i) {
-                            final isActive = i <= _activeStep;
+                            final isActive = i <= state.activeStep;
                             return Container(
                               width: isActive ? 18 : 8,
                               height: 8,
@@ -218,7 +199,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                           constraints: BoxConstraints(maxWidth: maxWidth),
                           child: Form(
                             key: _formKey,
-                            autovalidateMode: _hasAttemptedSubmit ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
+                            autovalidateMode: state.hasAttemptedSubmit ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -229,6 +210,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                   icon: Icons.shopping_bag_rounded,
                                   title: 'product.product_details'.tr(),
                                   subtitle: 'product.name_desc_pricing'.tr(),
+                                  state: state,
+                                  viewModel: viewModel,
                                   children: [
                                     _buildGlassTextField(
                                       key: const Key('product_name_field'),
@@ -289,7 +272,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         final cap = double.tryParse(v);
                                         if (cap == null) return 'product.invalid_price'.tr();
                                         final currentPrice = double.tryParse(_priceController.text.trim()) ?? 0;
-                                        if (cap <= currentPrice) return 'product.compare_at_price_must_be_higher'.tr();
+                                        if (cap - currentPrice < 0.50) return 'product.compare_at_price_must_be_higher'.tr();
                                         return null;
                                       },
                                     ),
@@ -311,7 +294,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                             onChanged: (v) => viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
                                           ),
                                         ),
-                                        // FIX: Hide free shipping toggle for digital products (forced true anyway)
                                         if (!state.isDigital)
                                           Expanded(
                                             child: _buildGlassToggle(
@@ -327,9 +309,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       ],
                                     ),
                                     const SizedBox(height: 16),
-                                    _buildCategorySelector(viewModel),
+                                    _buildCategorySelector(viewModel, state),
                                     const SizedBox(height: 12),
-                                    _buildSubcategorySelector(),
+                                    _buildSubcategorySelector(state, viewModel),
                                     const SizedBox(height: 12),
                                     _buildGlassTextField(
                                       controller: _taxCodeController,
@@ -347,15 +329,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     _buildGlassTextField(
                                       key: const Key('addproduct_seller_sku_field'),
                                       controller: _sellerSkuController,
-                                      label: 'Your SKU (optional)',
+                                      label: 'product.sku_optional'.tr(),
                                       icon: Icons.qr_code_rounded,
-                                      hint: 'e.g. T-SHIRT-BLK-M',
+                                      hint: 'product.sku_hint'.tr(),
                                       onChanged: (v) => viewModel.setSellerSku(v),
                                     ),
                                     _buildTappableInfoHint(
-                                      'What is a SKU?',
-                                      'Seller SKU',
-                                      'Your internal product code (Stock Keeping Unit). Two listings with the same SKU from your store will be merged — helps prevent duplicate products on the platform.',
+                                      'product.sku_what_is'.tr(),
+                                      'product.sku'.tr(),
+                                      'product.sku_info_body'.tr(),
                                     ),
                                     if (!state.isDigital) ...[
                                       const SizedBox(height: 16),
@@ -365,28 +347,29 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 ),
                                 const SizedBox(height: 16),
 
-                                // SECTION: Variant Builder (N-09)
                                 _buildVariantBuilderSection(state, viewModel),
                                 if (state.hasVariants) const SizedBox(height: 16),
 
-                                // SECTION 2: Product Images
                                 _buildSectionCard(
                                   key: const Key('addproduct_section_images'),
                                   index: 1,
                                   icon: Icons.photo_library_rounded,
                                   title: 'product.product_images'.tr(),
                                   subtitle: 'product.up_to_5_photos'.tr(),
+                                  state: state,
+                                  viewModel: viewModel,
                                   children: [ProductAddImages(imageModels: state.imageModels, onImagesChanged: viewModel.updateImages)],
                                 ),
                                 const SizedBox(height: 16),
 
-                                // SECTION 3: Delivery
                                 _buildSectionCard(
                                   key: const Key('addproduct_section_delivery'),
                                   index: 2,
                                   icon: Icons.local_shipping_rounded,
                                   title: 'product.delivery_shipping'.tr(),
                                   subtitle: 'product.shipping_options'.tr(),
+                                  state: state,
+                                  viewModel: viewModel,
                                   children: [
                                     _buildGlassToggle(
                                       key: const Key('addproduct_digital_toggle'),
@@ -433,6 +416,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                                 child: _buildGlassTextField(
                                                   controller: _standardDaysController,
                                                   label: 'product.days_label'.tr(),
+                                                  hint: 'product.est_business_days_hint'.tr(),
                                                   keyboardType: TextInputType.number,
                                                 ),
                                               ),
@@ -449,8 +433,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           ),
                                         ],
                                       ),
-                                      // When free shipping is ON, Express/Same-Day/Bulk discounts are hidden
-                                      // because the backend makes ALL tiers $0 anyway
                                       if (state.freeShipping)
                                         Padding(
                                           padding: const EdgeInsets.only(top: 12),
@@ -474,6 +456,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                                   child: _buildGlassTextField(
                                                     controller: _expressDaysController,
                                                     label: 'product.days_label'.tr(),
+                                                    hint: 'product.est_business_days_hint'.tr(),
                                                     keyboardType: TextInputType.number,
                                                   ),
                                                 ),
@@ -515,7 +498,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 ),
                                 const SizedBox(height: 16),
 
-                                // SECTION 4: Package & Location
                                 if (!state.isDigital)
                                   _buildSectionCard(
                                     key: const Key('addproduct_section_package'),
@@ -523,6 +505,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     icon: Icons.location_on_rounded,
                                     title: 'product.package_location'.tr(),
                                     subtitle: 'product.dimensions_pickup'.tr(),
+                                    state: state,
+                                    viewModel: viewModel,
                                     children: [
                                       _buildGlassToggle(
                                         key: const Key('addproduct_local_pickup_toggle'),
@@ -543,7 +527,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           keyboardType: TextInputType.number,
                                         ),
                                         const SizedBox(height: 12),
-                                        // Dimensions row
                                         Row(
                                           children: [
                                             Expanded(
@@ -581,7 +564,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         ),
                                       ],
                                       const SizedBox(height: 20),
-                                      // Location / Warehouse selection
                                       _buildWarehouseSelector(context, state, viewModel),
                                     ],
                                   ),
@@ -598,25 +580,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     const SizedBox(height: 12),
                                     _buildGlassDropdown(
                                       label: 'product.supplier_platform'.tr(),
-                                      value: _selectedSupplierType,
+                                      value: state.selectedSupplierType,
                                       items: getSupplierDropdownItems(),
                                       onChanged: (v) {
-                                        setState(() {
-                                          _selectedSupplierType = v ?? SupplierTypeValues.other;
-                                          final config = getSupplierConfig(v);
-                                          if (!config.supportedCurrencies.contains(_selectedSupplierCurrency)) {
-                                            _selectedSupplierCurrency = config.defaultCurrency;
-                                          }
-                                          // Pre-populate delivery days from supplier config so the
-                                          // seller sees sensible defaults (they can override manually).
-                                          final range = getSupplierDeliveryRange(v);
-                                          _standardDaysController.text = range.minDays.toString();
-                                          _expressDaysController.text = (range.minDays ~/ 2).clamp(1, range.minDays).toString();
-                                        });
+                                        final type = v ?? SupplierTypeValues.other;
+                                        viewModel.setSupplierType(type);
+                                        final config = getSupplierConfig(type);
+                                        if (!config.supportedCurrencies.contains(state.selectedSupplierCurrency)) {
+                                          viewModel.setSupplierCurrency(config.defaultCurrency);
+                                        }
+                                        final range = getSupplierDeliveryRange(type);
+                                        _standardDaysController.text = range.minDays.toString();
+                                        _expressDaysController.text = (range.minDays ~/ 2).clamp(1, range.minDays).toString();
                                       },
                                     ),
-                                    if (_selectedSupplierType.isNotEmpty) _buildSupplierInfoBadge(_selectedSupplierType),
-                                    if (getSupplierConfig(_selectedSupplierType).isCustom) ...[
+                                    if (state.selectedSupplierType.isNotEmpty) _buildSupplierInfoBadge(state.selectedSupplierType),
+                                    if (getSupplierConfig(state.selectedSupplierType).isCustom) ...[
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
                                         controller: _customSupplierNameController,
@@ -642,17 +621,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         Expanded(
                                           child: _buildGlassDropdown(
                                             label: 'product.currency_label'.tr(),
-                                            value: _selectedSupplierCurrency,
+                                            value: state.selectedSupplierCurrency,
                                             items: getSupplierConfig(
-                                              _selectedSupplierType,
+                                              state.selectedSupplierType,
                                             ).supportedCurrencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                                            onChanged: (v) => setState(() => _selectedSupplierCurrency = v ?? SupplierCurrencyValues.usd),
+                                            onChanged: (v) => viewModel.setSupplierCurrency(v ?? SupplierCurrencyValues.usd),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    // Margin preview
-                                    if (_costController.text.isNotEmpty && _priceController.text.isNotEmpty) _buildMarginPreview(),
+                                    if (_costController.text.isNotEmpty && _priceController.text.isNotEmpty) _buildMarginPreview(state),
                                     const SizedBox(height: 12),
                                     _buildGlassTextField(controller: _supplierSkuController, label: 'product.supplier_sku'.tr(), icon: Icons.qr_code_2_rounded),
                                     const SizedBox(height: 12),
@@ -677,8 +655,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           child: _buildGlassToggle(
                                             label: 'product.has_tracking'.tr(),
                                             icon: Icons.gps_fixed_rounded,
-                                            value: _hasTracking,
-                                            onChanged: (v) => setState(() => _hasTracking = v),
+                                            value: state.hasTracking,
+                                            onChanged: viewModel.setHasTracking,
                                             infoTitle: 'product.supplier_tracking_title'.tr(),
                                             infoBody: 'product.supplier_tracking_body'.tr(),
                                           ),
@@ -700,19 +678,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       label: 'product.manage_inventory'.tr(),
                                       subtitle: 'product.manage_inventory_subtitle'.tr(),
                                       icon: Icons.inventory_rounded,
-                                      value: _inventoryManaged,
-                                      onChanged: (v) => setState(() => _inventoryManaged = v),
+                                      value: state.inventoryManaged,
+                                      onChanged: viewModel.setInventoryManaged,
                                       infoTitle: 'product.inventory_management_title'.tr(),
                                       infoBody: 'product.inventory_management_body'.tr(),
                                     ),
-                                    if (_inventoryManaged) ...[
+                                    if (state.inventoryManaged) ...[
                                       const SizedBox(height: 8),
                                       _buildGlassToggle(
                                         label: 'product.stock_quantity'.tr(),
                                         subtitle: 'product.track_quantity_subtitle'.tr(),
                                         icon: Icons.numbers_rounded,
-                                        value: _trackQuantity,
-                                        onChanged: (v) => setState(() => _trackQuantity = v),
+                                        value: state.trackQuantity,
+                                        onChanged: viewModel.setTrackQuantity,
                                         infoTitle: 'product.stock_quantity'.tr(),
                                         infoBody: 'product.track_quantity_info_body'.tr(),
                                       ),
@@ -721,8 +699,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         label: 'product.allow_backorders'.tr(),
                                         subtitle: 'product.allow_backorders_subtitle'.tr(),
                                         icon: Icons.replay_rounded,
-                                        value: _allowBackorder,
-                                        onChanged: (v) => setState(() => _allowBackorder = v),
+                                        value: state.allowBackorder,
+                                        onChanged: viewModel.setAllowBackorder,
                                         infoTitle: 'product.allow_backorders'.tr(),
                                         infoBody: 'product.allow_backorders_info_body'.tr(),
                                       ),
@@ -732,10 +710,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         label: 'product.low_stock_alert'.tr(),
                                         subtitle: 'product.low_stock_alert_subtitle'.tr(),
                                         icon: Icons.notifications_active_rounded,
-                                        value: _lowStockAlertEnabled,
-                                        onChanged: (v) => setState(() => _lowStockAlertEnabled = v),
+                                        value: state.lowStockAlertEnabled,
+                                        onChanged: viewModel.setLowStockAlertEnabled,
                                       ),
-                                      if (_lowStockAlertEnabled) ...[
+                                      if (state.lowStockAlertEnabled) ...[
                                         const SizedBox(height: 8),
                                         _buildGlassTextField(
                                           controller: _lowStockThresholdController,
@@ -749,7 +727,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 ),
                                 const SizedBox(height: 28),
 
-                                // Submit Button
                                 _buildSubmitButton(state, viewModel),
                                 const SizedBox(height: 20),
                               ],
@@ -784,6 +761,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     _lengthController.dispose();
     _widthController.dispose();
     _heightController.dispose();
+    _compareAtPriceController.dispose();
     _taxCodeController.dispose();
     _minOrderController.dispose();
     _standardDaysController.dispose();
@@ -814,7 +792,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     _fadeController.forward();
     _shippingDiscount3Controller.addListener(_validateDiscountTiers);
     _shippingDiscount5Controller.addListener(_validateDiscountTiers);
-    // F-58: Reset stale form data if screen is re-entered after a previous successful submission.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(addProductViewModelProvider.notifier).resetIfSuccess();
     });
@@ -824,7 +801,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     final d3 = double.tryParse(_shippingDiscount3Controller.text);
     final d5 = double.tryParse(_shippingDiscount5Controller.text);
     final hasError = d3 != null && d5 != null && d5 < d3;
-    if (hasError != _discountTierError) setState(() => _discountTierError = hasError);
+    final state = ref.read(addProductViewModelProvider);
+    if (hasError != state.discountTierError) {
+      ref.read(addProductViewModelProvider.notifier).setDiscountTierError(hasError);
+    }
   }
 
   Widget _buildAddressSuggestions(AddProductState state, AddProductViewModel viewModel) {
@@ -873,14 +853,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
-  // ─── SPECIALIZED WIDGETS ──────────────────────────────────────────────
-
-  Widget _buildCategorySelector(AddProductViewModel viewModel) {
+  Widget _buildCategorySelector(AddProductViewModel viewModel, AddProductState state) {
     return DropdownButtonFormField<String>(
       key: const Key('addproduct_category_selector'),
-      initialValue: _selectedCategoryId,
+      initialValue: state.selectedCategoryId,
       decoration: InputDecoration(
-        labelText: 'Category',
+        labelText: 'product.category'.tr(),
         prefixIcon: const Icon(Icons.category_rounded, size: 20),
         filled: true,
         fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
@@ -915,13 +893,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           )
           .toList(),
       onChanged: (v) {
-        setState(() {
-          _selectedCategoryId = v;
-          _categoryController.text = v ?? '';
-          _selectedSubcategory = null;
-        });
+        viewModel.setCategoryId(v);
+        _categoryController.text = v ?? '';
       },
-      validator: (v) => v == null ? 'Required' : null,
+      validator: (v) => v == null ? 'common.required'.tr() : null,
     );
   }
 
@@ -969,12 +944,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
-  // ─── DATA BUILDERS ────────────────────────────────────────────────────
-
   List<SellerDeliveryOption> _buildDeliveryOptions(AddProductState state) {
     if (state.isDigital) return [];
 
-    // Bug #2: Local-only products need a pickup delivery option
     if (state.isLocalDeliveryOnly) {
       return [SellerDeliveryOption(type: DeliveryTypeValues.pickup, description: 'product.local_pickup_only'.tr(), estimatedDays: 0, costCents: 0)];
     }
@@ -1002,12 +974,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           discountValue: discount5,
           label: 'product.shipping_discount_label'.tr(namedArgs: {'percent': discount5.toStringAsFixed(0), 'qty': '5'}),
         ),
-      );
-    }
-
-    if (state.freeShippingAt10Plus) {
-      quantityDiscounts.add(
-        ShippingQuantityDiscount(minQuantity: 10, discountType: DiscountTypeValues.flatRate, discountValue: 0, label: 'product.free_shipping_10_plus_label'.tr()),
       );
     }
 
@@ -1108,7 +1074,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 12),
-        // Sub-type selector
         Row(
           children: [
             Expanded(
@@ -1140,27 +1105,30 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           ),
           const SizedBox(height: 4),
           _buildUrlField(
-            label: 'macOS (.dmg)',
-            placeholder: 'https://releases.yoursite.com/app.dmg',
+            label: 'product.mac_os_label'.tr(),
+            placeholder: 'product.macos_hint'.tr(),
             value: state.macosDownloadUrl,
             onChanged: viewModel.setMacosDownloadUrl,
           ),
           _buildUrlField(
-            label: 'Windows (.exe / .msi)',
-            placeholder: 'https://releases.yoursite.com/app.exe',
+            label: 'product.windows_label'.tr(),
+            placeholder: 'product.windows_hint'.tr(),
             value: state.windowsDownloadUrl,
             onChanged: viewModel.setWindowsDownloadUrl,
           ),
           _buildUrlField(
-            label: 'Linux (.deb / .AppImage) — optional',
-            placeholder: 'https://releases.yoursite.com/app.deb',
+            label: 'product.linux_label'.tr(),
+            placeholder: 'product.linux_hint'.tr(),
             value: state.linuxDownloadUrl,
             onChanged: viewModel.setLinuxDownloadUrl,
           ),
           const SizedBox(height: 8),
           TextFormField(
             initialValue: state.deviceLimit?.toString(),
-            decoration: const InputDecoration(labelText: 'Device limit', hintText: 'Leave blank for unlimited'),
+            decoration: InputDecoration(
+              labelText: 'product.device_limit_label'.tr(),
+              hintText: 'product.device_limit_hint'.tr(),
+            ),
             keyboardType: TextInputType.number,
             onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v.trim())),
           ),
@@ -1173,8 +1141,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           ),
           const SizedBox(height: 4),
           _buildUrlField(
-            label: 'Download source URL',
-            placeholder: 'https://storage.yoursite.com/book.pdf',
+            label: 'product.download_source_url_label'.tr(),
+            placeholder: 'product.book_download_hint'.tr(),
             value: state.bookSourceUrl,
             onChanged: viewModel.setBookSourceUrl,
           ),
@@ -1216,8 +1184,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       onChanged: onChanged,
     );
   }
-
-  // ─── FIELD BUILDERS ───────────────────────────────────────────────────
 
   Widget _buildGlassTextField({
     Key? key,
@@ -1338,6 +1304,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 
   Widget _buildInfoBanner(String text, IconData icon, Color color) {
+    // FIX [HIGH] WCAG 2.1 AA: amber (#F59E0B) on white is ~2:1 contrast — fails 4.5:1.
+    // Use DesignTokens.warningText (#92400E, ~7:1) for text when banner is warning-colored.
+    final isWarning = color == DesignTokens.warning;
+    final textColor = isWarning ? DesignTokens.warningText : color;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1347,12 +1317,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       ),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: color),
+          Icon(icon, size: 16, color: textColor),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -1360,9 +1330,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
-  Widget _buildMarginPreview() {
-    // Cannot compute accurate margin when supplier cost is not in CAD
-    if (_selectedSupplierCurrency != 'CAD') {
+  Widget _buildMarginPreview(AddProductState state) {
+    if (state.selectedSupplierCurrency != 'CAD') {
       return Container(
         margin: const EdgeInsets.only(top: 12),
         padding: const EdgeInsets.all(12),
@@ -1377,7 +1346,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'product.margin_warning'.tr(namedArgs: {'currency': _selectedSupplierCurrency}),
+                'product.margin_warning'.tr(namedArgs: {'currency': state.selectedSupplierCurrency}),
                 style: TextStyle(fontSize: 12, color: DesignTokens.warning),
               ),
             ),
@@ -1409,7 +1378,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         children: [
           Row(
             children: [
-              // Margin circle
               Container(
                 width: 56,
                 height: 56,
@@ -1487,13 +1455,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           _buildShippingDiscountTier(label: 'product.three_plus_items'.tr(), controller: _shippingDiscount3Controller, hint: '20'),
           const SizedBox(height: 8),
           _buildShippingDiscountTier(label: 'product.five_plus_items'.tr(), controller: _shippingDiscount5Controller, hint: '50'),
-          if (_discountTierError) ...[
+          if (state.discountTierError) ...[
             const SizedBox(height: 6),
             Text('product.discount_validation'.tr(), style: TextStyle(color: DesignTokens.error, fontSize: 12)),
           ],
-          // F-26: freeShippingAt10Plus removed — feature not fully implemented yet.
-          // The toggle was showing in UI but the value was never stored/used on the backend.
-          // Re-add when the bulk discount feature is fully designed and implemented.
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1522,20 +1487,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
-  // ─── SECTION BUILDERS ─────────────────────────────────────────────────
-
   Widget _buildSectionCard({
     Key? key,
     required int index,
     required IconData icon,
     required String title,
     required String subtitle,
+    required AddProductState state,
+    required AddProductViewModel viewModel,
     required List<Widget> children,
   }) {
     return TapRegion(
       key: key,
       onTapInside: (_) {
-        if (_activeStep != index) setState(() => _activeStep = index);
+        if (state.activeStep != index) viewModel.setActiveStep(index);
       },
       child: AnimatedContainer(
         duration: DesignTokens.durationNormal,
@@ -1543,17 +1508,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           color: DesignTokens.textOnPrimary,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: _activeStep == index ? DesignTokens.primary.withValues(alpha: 0.3) : DesignTokens.outlineVariant,
-            width: _activeStep == index ? 1.5 : 1,
+            color: state.activeStep == index ? DesignTokens.primary.withValues(alpha: 0.3) : DesignTokens.outlineVariant,
+            width: state.activeStep == index ? 1.5 : 1,
           ),
-          boxShadow: _activeStep == index
+          boxShadow: state.activeStep == index
               ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 4))]
               : DesignTokens.shadowSm,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Section header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
               child: Row(
@@ -1577,13 +1541,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                       ],
                     ),
                   ),
-                  // Active indicator icon
-                  if (_activeStep == index) Icon(Icons.edit_rounded, size: 18, color: DesignTokens.primary),
+                  if (state.activeStep == index) Icon(Icons.edit_rounded, size: 18, color: DesignTokens.primary),
                 ],
               ),
             ),
             const Divider(height: 24, indent: 20, endIndent: 20),
-            // Section content
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
@@ -1610,7 +1572,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             keyboardType: TextInputType.number,
             style: const TextStyle(fontSize: 13),
             validator: (v) {
-              if (v == null || v.isEmpty) return null; // optional field
+              if (v == null || v.isEmpty) return null;
               final val = double.tryParse(v);
               if (val == null || val < 0 || val > 100) return 'product.discount_range'.tr();
               return null;
@@ -1641,13 +1603,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
-  Widget _buildSubcategorySelector() {
+  Widget _buildSubcategorySelector(AddProductState state, AddProductViewModel viewModel) {
     final catId = int.tryParse(_categoryController.text) ?? 0;
     final subcategories = SubcategoryConstants.forCategoryId(catId);
     if (subcategories.isEmpty) return const SizedBox.shrink();
     return DropdownButtonFormField<String>(
       key: Key('addproduct_subcategory_$catId'),
-      initialValue: _selectedSubcategory,
+      initialValue: state.selectedSubcategory,
       decoration: InputDecoration(
         labelText: 'product.subcategory_optional'.tr(),
         prefixIcon: const Icon(Icons.subdirectory_arrow_right_rounded, size: 20),
@@ -1680,7 +1642,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             ),
           )
           .toList(),
-      onChanged: (v) => setState(() => _selectedSubcategory = v),
+      onChanged: viewModel.setSubcategory,
     );
   }
 
@@ -1750,12 +1712,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               onTap: state.isLoading
                   ? null
                   : () {
-                      if (!_hasAttemptedSubmit) {
-                        setState(() => _hasAttemptedSubmit = true);
+                      if (!state.hasAttemptedSubmit) {
+                        viewModel.setHasAttemptedSubmit(true);
                       }
-                      // Discount tier cross-field error is shown inline; block submit if invalid.
-                      if (_discountTierError) return;
-                      // Clear previous error before re-validation
+                      if (state.discountTierError) return;
                       viewModel.clearError();
                       if (!_formKey.currentState!.validate()) {
                         ScaffoldMessenger.of(context).clearSnackBars();
@@ -1771,6 +1731,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                         return;
                       }
                       {
+                        final taxCode = _taxCodeController.text.trim();
+                        final normalizedTaxCode = taxCode.isEmpty ? null : taxCode;
+
                         SupplierInfo? supplierInfo;
                         final hasCost = _costController.text.trim().isNotEmpty;
                         final hasSku = _supplierSkuController.text.trim().isNotEmpty;
@@ -1778,23 +1741,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
                         if (hasCost || hasSku || hasUrl) {
                           supplierInfo = SupplierInfo(
-                            type: _selectedSupplierType,
+                            type: state.selectedSupplierType,
                             cost: double.tryParse(_costController.text),
-                            currency: _selectedSupplierCurrency,
+                            currency: state.selectedSupplierCurrency,
                             supplierSku: hasSku ? _supplierSkuController.text.trim() : null,
                             supplierUrl: hasUrl ? _supplierUrlController.text.trim() : null,
                             shippingDays: _supplierShippingDaysController.text.trim().isEmpty ? null : _supplierShippingDaysController.text.trim(),
-                            hasTracking: _hasTracking,
+                            hasTracking: state.hasTracking,
                             notes: _supplierNotesController.text.trim().isEmpty ? null : _supplierNotesController.text.trim(),
                           );
                         }
 
-                        // FIX: Always create inventory config to persist settings
                         final inventoryConfig = InventoryConfig(
-                          managed: _inventoryManaged,
-                          trackQuantity: _trackQuantity,
-                          allowBackorder: _allowBackorder,
-                          lowStockThreshold: _lowStockAlertEnabled ? (int.tryParse(_lowStockThresholdController.text) ?? 5) : 0,
+                          managed: state.inventoryManaged,
+                          trackQuantity: state.trackQuantity,
+                          allowBackorder: state.allowBackorder,
+                          lowStockThreshold: state.lowStockAlertEnabled ? (int.tryParse(_lowStockThresholdController.text) ?? 5) : 0,
                         );
 
                         viewModel.addProduct(
@@ -1802,12 +1764,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                           description: _descriptionController.text.trim(),
                           price: double.tryParse(_priceController.text.trim()) ?? 0,
                           compareAtPrice: _compareAtPriceController.text.trim().isEmpty ? null : double.tryParse(_compareAtPriceController.text.trim()),
-                          // When warehouses are selected, stock is the sum of warehouseStockMap — never trust the text field
-                          stock: state.selectedWarehouseIds.isEmpty
-                              ? (int.tryParse(_stockController.text.trim()) ?? 0)
-                              : 0, // overridden by warehouseStockMap sum in VM
+                          stock: state.selectedWarehouseIds.isEmpty ? (int.tryParse(_stockController.text.trim()) ?? 0) : 0,
                           categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
-                          subcategory: _selectedSubcategory,
+                          subcategory: state.selectedSubcategory,
                           street: _streetController.text.trim(),
                           apartment: _apartmentController.text.trim(),
                           city: _cityController.text.trim(),
@@ -1816,7 +1775,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                           length: double.tryParse(_lengthController.text),
                           width: double.tryParse(_widthController.text),
                           height: double.tryParse(_heightController.text),
-                          taxCode: _taxCodeController.text.trim(),
+                          taxCode: normalizedTaxCode,
                           deliveryOptions: _buildDeliveryOptions(state),
                           minimumOrderQuantity: int.tryParse(_minOrderController.text) ?? 1,
                           freeShipping: state.freeShipping,
@@ -1849,8 +1808,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       ),
     );
   }
-
-  // ─── HELPERS ──────────────────────────────────────────────────────────
 
   Widget _buildSubSectionHeader(String title, IconData icon) {
     return Row(
@@ -1937,19 +1894,45 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
+  // FIX [HIGH] Inconsistent styling: was bare default TextFormField, now matches _buildGlassTextField.
   Widget _buildUrlField({required String label, required String placeholder, required String? value, required void Function(String?) onChanged}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: TextFormField(
         initialValue: value,
-        decoration: InputDecoration(labelText: label, hintText: placeholder),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: placeholder,
+          prefixIcon: const Icon(Icons.link_rounded, size: 20),
+          filled: true,
+          fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.5)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: DesignTokens.error),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          labelStyle: const TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+          hintStyle: const TextStyle(color: DesignTokens.textDisabled, fontSize: 13),
+        ),
         keyboardType: TextInputType.url,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         onChanged: (v) => onChanged(v.trim().isEmpty ? null : v.trim()),
       ),
     );
   }
 
-  // ─── N-09: VARIANT BUILDER ──────────────────────────────────────────
   Widget _buildVariantBuilderSection(AddProductState state, AddProductViewModel viewModel) {
     return _buildCollapsibleSection(
       key: const Key('addproduct_section_variants'),
@@ -1968,7 +1951,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ),
         if (state.hasVariants) ...[
           const SizedBox(height: 16),
-          // Existing option types
           ...List.generate(state.variantOptions.length, (i) {
             final opt = state.variantOptions[i];
             return _VariantOptionCard(
@@ -1980,10 +1962,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             );
           }),
           const SizedBox(height: 8),
-          // Add new option type
-          if (state.variantOptions.length < 3) // Max 3 option types (e.g. Size, Color, Material)
+          if (state.variantOptions.length < 3)
             _AddVariantOptionButton(existingNames: state.variantOptions.map((o) => o.name).toList(), onAdd: viewModel.addVariantOption),
-          // Generated variants table
           if (state.variants.isNotEmpty) ...[
             const SizedBox(height: 20),
             _buildSubSectionHeader('product.variant_combinations'.tr(namedArgs: {'count': state.variants.length.toString()}), Icons.grid_view_rounded),
@@ -2009,9 +1989,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
-  /// Warehouse selector — the primary shipping location system.
-  /// Shows seller's warehouses as checkboxes with per-warehouse stock input.
-  /// Falls back to manual address form when seller has no warehouses yet.
   Widget _buildWarehouseSelector(BuildContext context, AddProductState state, AddProductViewModel viewModel) {
     final warehousesAsync = ref.watch(sellerWarehousesStreamProvider);
 
@@ -2023,7 +2000,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       error: (e, _) => _buildInfoBanner('product.warehouse_load_error'.tr(namedArgs: {'error': e.toString()}), Icons.error_outline_rounded, DesignTokens.error),
       data: (warehouses) {
         if (warehouses.isEmpty) {
-          // No warehouses — show address form + prompt to add warehouses
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2039,7 +2015,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 style: OutlinedButton.styleFrom(foregroundColor: DesignTokens.primary),
               ),
               const SizedBox(height: 16),
-              // Manual address fallback
               _buildSubSectionHeader('product.warehouse_manual_address'.tr(), Icons.edit_location_alt_rounded),
               const SizedBox(height: 8),
               if (state.addressVerified)
@@ -2120,7 +2095,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           );
         }
 
-        // Warehouses available — show selector
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2138,7 +2112,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               ],
             ),
             const SizedBox(height: 4),
-            // Info hint about warehouse vs personal address
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
@@ -2296,7 +2269,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             ),
           ],
         ),
-        backgroundColor: const Color(0xFFF59E0B),
+        backgroundColor: DesignTokens.warning, // FIX [LOW] Was hardcoded Color(0xFFF59E0B)
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -2306,12 +2279,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     Navigator.pop(context);
   }
 
+  // FIX [MEDIUM] Missing SafeArea: bottom sheet content was clipped on notched devices.
   void _showInfoSheet(String title, String body) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => Container(
+      builder: (ctx) => SafeArea(
+        minimum: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: Container(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
@@ -2353,6 +2329,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           ],
         ),
       ),
+      ), // SafeArea
     );
   }
 
@@ -2379,7 +2356,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 }
 
-/// Button to add a new option type (Size, Color, Material, or Custom).
 class _AddVariantOptionButton extends StatelessWidget {
   final List<String> existingNames;
   final void Function(String name, List<String> values) onAdd;
@@ -2473,13 +2449,12 @@ class _AddVariantOptionButton extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ).then((_) {
+      nameCtrl.dispose();
+      valuesCtrl.dispose();
+    });
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// N-09: Variant Builder Helper Widgets
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class _DigitalTypeCard extends StatelessWidget {
   final String label;
@@ -2489,34 +2464,49 @@ class _DigitalTypeCard extends StatelessWidget {
 
   const _DigitalTypeCard({super.key, required this.label, required this.icon, required this.selected, required this.onTap});
 
+  // FIX [HIGH] Design-system violation: replaced Theme.of(context).colorScheme with DesignTokens.
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: selected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
-          border: Border.all(color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor, width: selected ? 2 : 1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: selected ? Theme.of(context).colorScheme.primary : null),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: selected ? Theme.of(context).colorScheme.primary : null),
+    return Semantics(
+      button: true,
+      label: label,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: DesignTokens.durationFast,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: selected
+                ? DesignTokens.primary.withValues(alpha: 0.08)
+                : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+            border: Border.all(
+              color: selected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.3),
+              width: selected ? 2 : 1,
             ),
-          ],
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: selected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 2))] : null,
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: selected ? DesignTokens.primary : DesignTokens.textSecondary, size: 24),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 13,
+                  color: selected ? DesignTokens.primary : DesignTokens.textPrimary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Card displaying a single option type (e.g. "Size" with values "S, M, L").
 class _VariantOptionCard extends StatelessWidget {
   final String name;
   final List<String> values;
@@ -2612,11 +2602,13 @@ class _VariantOptionCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ).then((_) {
+      nameCtrl.dispose();
+      valuesCtrl.dispose();
+    });
   }
 }
 
-/// Single row in the variants table showing option values + price/stock/sku inputs.
 class _VariantRow extends StatelessWidget {
   final Map<String, String> optionValues;
   final double? price;
@@ -2648,23 +2640,35 @@ class _VariantRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.15)),
       ),
+      // FIX [HIGH] Design inconsistency: _VariantRow fields now match glass styling used everywhere else.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: DesignTokens.secondary.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              Expanded(
+                child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: DesignTokens.darkSurface)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: TextFormField(
                   initialValue: price?.toStringAsFixed(2),
-                  decoration: InputDecoration(
-                    labelText: 'product.price_dollar'.tr(),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                  ),
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(fontSize: 13),
+                  decoration: _variantFieldDecoration('product.price_dollar'.tr(), prefixText: '\$ '),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                   onChanged: (v) => onPriceChanged(double.tryParse(v)),
                 ),
               ),
@@ -2672,13 +2676,9 @@ class _VariantRow extends StatelessWidget {
               Expanded(
                 child: TextFormField(
                   initialValue: stockQuantity.toString(),
-                  decoration: InputDecoration(
-                    labelText: 'product.stock'.tr(),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                  ),
+                  decoration: _variantFieldDecoration('product.stock'.tr()),
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(fontSize: 13),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                   onChanged: (v) => onStockChanged(int.tryParse(v) ?? 0),
                 ),
               ),
@@ -2686,12 +2686,8 @@ class _VariantRow extends StatelessWidget {
               Expanded(
                 child: TextFormField(
                   initialValue: sku,
-                  decoration: InputDecoration(
-                    labelText: 'product.sku'.tr(),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                  ),
-                  style: const TextStyle(fontSize: 13),
+                  decoration: _variantFieldDecoration('product.sku'.tr()),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                   onChanged: (v) => onSkuChanged(v.trim().isEmpty ? null : v.trim()),
                 ),
               ),
@@ -2699,6 +2695,35 @@ class _VariantRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // Shared compact glass decoration for variant fields.
+  static InputDecoration _variantFieldDecoration(String label, {String? prefixText}) {
+    return InputDecoration(
+      labelText: label,
+      prefixText: prefixText,
+      isDense: true,
+      filled: true,
+      fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.25)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: DesignTokens.error),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      labelStyle: const TextStyle(color: DesignTokens.textSecondary, fontSize: 11),
     );
   }
 }

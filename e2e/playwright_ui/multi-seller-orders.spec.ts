@@ -18,14 +18,22 @@ const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 test.describe('Multi-Seller Orders', () => {
   test.setTimeout(180_000);
 
-  let productA: { id: string; sellerId: string } | null = null;
-  let productB: { id: string; sellerId: string } | null = null;
+  let productA: { id: string; sellerId: string } | null = null; // Canada (Admin)
+  let productB: { id: string; sellerId: string } | null = null; // Canada (Seller)
+  let productC: { id: string; sellerId: string } | null = null; // China (Seller)
   let singleProductId: string;
 
   test.beforeAll(async () => {
     const auth = await signIn(BUYER_EMAIL);
-    const twoProducts = await ensureTwoSellerProducts(auth.idToken);
-    [productA, productB] = twoProducts;
+    const products = await discoverProducts(auth.idToken);
+    
+    productA = products.find(p => p.id === 'e2e_product_admin_seller') || null;
+    productB = products.find(p => p.id === 'e2e_product_test_seller') || null;
+    productC = products.find(p => p.id === 'e2e_product_intl_seller') || null;
+
+    if (!productA || !productB || !productC) {
+      throw new Error('Required E2E stable products not found in discoverProducts');
+    }
 
     // Always have a fallback single product for basic multi-item test
     const product = await getTestProduct(auth.idToken, auth.localId);
@@ -52,6 +60,28 @@ test.describe('Multi-Seller Orders', () => {
     const auth = await signIn(BUYER_EMAIL);
     const order = await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 90_000);
     expect(order.items.length).toBe(2);
+  });
+
+  test('Multi-country + Multi-seller cart creates order', async ({ page }) => {
+    // Product A (Canada, Admin) + Product C (China, Seller)
+    const result = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
+      { productId: productA!.id, quantity: 1 },
+      { productId: productC!.id, quantity: 1 },
+    ]);
+    expect(result.orderId).toBeTruthy();
+
+    const auth = await signIn(BUYER_EMAIL);
+    const order = await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 90_000);
+    expect(order.items.length).toBe(2);
+    
+    // Verify item countries if they are in the order doc
+    // (Assuming backend denormalizes shipFromCountry)
+    const itemA = order.items.find((i: any) => i.productId === productA!.id);
+    const itemC = order.items.find((i: any) => i.productId === productC!.id);
+    
+    // If the backend stores shipFromCountry, we can assert it here
+    // expect(itemA.shipFromCountry).toBe('Canada');
+    // expect(itemC.shipFromCountry).toBe('China');
   });
 
   test('Per-item status tracking works for multi-item order', async ({ page }) => {
@@ -101,5 +131,25 @@ test.describe('Multi-Seller Orders', () => {
     }, sellerAuthB.idToken);
 
     expect(error.code, 'Cross-seller update should be rejected').not.toBe('unexpected-success');
+  });
+
+  test('Seller cannot update order-level status for multi-seller order', async ({ page }) => {
+    const result = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
+      { productId: productA!.id, quantity: 1 },
+      { productId: productB!.id, quantity: 1 },
+    ]);
+
+    const auth = await signIn(BUYER_EMAIL);
+    await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 90_000);
+
+    // Seller A tries to update the WHOLE order status — should be rejected
+    const sellerAuth = await getSellerAuth(productA!.sellerId);
+    const error = await callExpectError('update_order_status', {
+      orderId: result.orderId,
+      newStatus: 'processing',
+    }, sellerAuth.idToken);
+
+    expect(error.code, 'Order-level update should be rejected for multi-seller order').not.toBe('unexpected-success');
+    expect(error.message).toContain('Multi-seller order');
   });
 });

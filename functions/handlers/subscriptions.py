@@ -22,6 +22,7 @@ from schema_constants import (
     Collections,
     Fields,
     SubscriptionStatusValues,
+    UserRoleValues,
 )
 from utils.db import get_db as _get_db
 from utils.db import get_server_timestamp as _get_server_timestamp
@@ -29,9 +30,15 @@ from utils.function_options import DEFAULT_OPTIONS
 
 logger = logging.getLogger(__name__)
 
+# Cache Stripe key at module level to avoid Secret Manager reads on every handler call
+_STRIPE_KEY_CACHE: str | None = None
+
 
 def _stripe_init() -> None:
-    stripe.api_key = get_stripe_secret_key()
+    global _STRIPE_KEY_CACHE
+    if not _STRIPE_KEY_CACHE:
+        _STRIPE_KEY_CACHE = get_stripe_secret_key()
+    stripe.api_key = _STRIPE_KEY_CACHE
 
 
 def _get_or_create_stripe_customer(uid: str, user_snap) -> str:
@@ -64,9 +71,26 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "Authentication required.")
 
+    # MEDIUM-021 FIX: Use a more dynamic idempotency key to allow retries after session expiry
+    # or cancellation, but still protect against double-clicks within a short window.
+    # We use a 15-minute window for idempotency.
     uid = req.auth.uid
+    idempotency_window = int(datetime.now(UTC).timestamp() // 900)
+    idempotency_key = f"premium_sub_{uid}_{idempotency_window}"
+
     user_ref = _get_db().collection(Collections.USERS).document(uid)
     user_snap = user_ref.get()
+
+    if not user_snap.exists:
+        raise https_fn.HttpsError("not-found", "User profile not found.")
+
+    user_data = user_snap.to_dict() or {}
+    roles = user_data.get(Fields.ROLES, [])
+
+    # MEDIUM FIX: Block sellers from subscribing — premium is for buyers only.
+    # Sellers already have distinct business features and shouldn't pay buyer fees.
+    if UserRoleValues.SELLER in roles:
+        raise https_fn.HttpsError("failed-precondition", "Seller accounts cannot currently subscribe to Premium. This feature is for buyers only.")
 
     # Check already subscribed — block all non-terminal statuses to prevent double-subscriptions
     _NON_SUBSCRIBABLE = frozenset({
@@ -102,7 +126,7 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
             client_reference_id=uid,
             metadata={"uid": uid},
             subscription_data={"metadata": {"uid": uid}},
-            idempotency_key=f"premium_sub_{uid}",
+            idempotency_key=idempotency_key,
         )
         # Cache session URL so we can recover it on IdempotencyError
         user_ref.update({
@@ -247,20 +271,27 @@ def get_subscription_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 # ============================================================================
 
 
-def handle_subscription_created(event: stripe.Event) -> None:
+def handle_subscription_created(event: stripe.Event | dict) -> None:
     """Sync subscription.created → Firestore."""
-    _sync_subscription(event.data.object)
+    # SECURITY FIX (CRITICAL-021): Use dict access to prevent AttributeError when
+    # called with manual dict objects (e.g. from invoice.paid path).
+    obj = event["data"]["object"] if isinstance(event, dict) else event.data.object
+    _sync_subscription(obj)
 
 
-def handle_subscription_updated(event: stripe.Event) -> None:
+def handle_subscription_updated(event: stripe.Event | dict) -> None:
     """Sync subscription.updated → Firestore + user.isPremium cache."""
-    _sync_subscription(event.data.object)
+    # SECURITY FIX (CRITICAL-021): Use dict access to prevent AttributeError when
+    # called with manual dict objects (e.g. from invoice.paid path).
+    obj = event["data"]["object"] if isinstance(event, dict) else event.data.object
+    _sync_subscription(obj)
 
 
-def handle_subscription_deleted(event: stripe.Event) -> None:
+def handle_subscription_deleted(event: stripe.Event | dict) -> None:
     """Subscription ended → clear premium status."""
-    sub = event.data.object
-    uid = sub.get("metadata", {}).get("uid")
+    # SECURITY FIX (CRITICAL-021): Use dict access to prevent AttributeError
+    sub = event["data"]["object"] if isinstance(event, dict) else event.data.object
+    uid = sub.get("metadata", {}).get("uid") if isinstance(sub, dict) else (sub.metadata or {}).get("uid")
     if not uid:
         logger.warning("subscription.deleted: no uid in metadata")
         return
@@ -270,22 +301,23 @@ def handle_subscription_deleted(event: stripe.Event) -> None:
 
     batch = db.batch()
 
+    sub_id = sub["id"] if isinstance(sub, dict) else sub.id
+    current_period_end = sub.get("current_period_end") if isinstance(sub, dict) else sub.current_period_end
+
     sub_ref = db.collection(Collections.SUBSCRIPTIONS).document(uid)
     batch.set(
         sub_ref,
         {
-            Fields.STRIPE_SUBSCRIPTION_ID: sub["id"],
+            Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
             Fields.STATUS: SubscriptionStatusValues.CANCELED,
             Fields.CANCEL_AT_PERIOD_END: False,
-            Fields.CURRENT_PERIOD_END: _ts_to_datetime(sub.get("current_period_end")),
+            Fields.CURRENT_PERIOD_END: _ts_to_datetime(current_period_end),
             Fields.UPDATED_AT: now,
         },
         merge=True,
     )
 
     # Clear premium cache on user doc — in same batch to avoid partial writes.
-    # Use set+merge to safely handle the case where the user account was deleted
-    # but the subscription webhook fires afterward (avoids batch.update NOT_FOUND crash).
     user_ref = db.collection(Collections.USERS).document(uid)
     user_doc = user_ref.get()
     if not user_doc.exists:
@@ -307,9 +339,9 @@ def handle_subscription_deleted(event: stripe.Event) -> None:
     logger.info(f"Premium cleared for user {uid} (subscription deleted)")
 
 
-def handle_invoice_payment_failed(event: stripe.Event) -> None:
+def handle_invoice_payment_failed(event: stripe.Event | dict) -> None:
     """Invoice payment failed → mark past_due."""
-    invoice = event.data.object
+    invoice = event["data"]["object"] if isinstance(event, dict) else event.data.object
     sub_id = invoice.get("subscription")
     if not sub_id:
         return

@@ -74,6 +74,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late final TextEditingController _heightController;
   late final TextEditingController _shipDaysController;
   late final TextEditingController _minOrderController;
+  late final TextEditingController _taxCodeController;
 
   // Inventory config
   bool _lowStockAlertEnabled = false;
@@ -201,6 +202,24 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('product_edit_tax_code_field'),
+                    controller: _taxCodeController,
+                    decoration: InputDecoration(
+                      labelText: 'product.tax_code_label'.tr(),
+                      prefixIcon: const Icon(Icons.receipt_long_rounded),
+                      hintText: 'product.tax_code_hint'.tr(),
+                      helperText: 'product.stripe_tax_codes_body'.tr(),
+                    ),
+                    validator: (v) => v == null || v.isEmpty || isValidTaxCode(v) ? null : 'product.invalid_tax_code'.tr(),
+                  ),
+                  _buildTappableInfoHint(
+                    'product.tax_code_learn_more'.tr(),
+                    'product.stripe_tax_codes'.tr(),
+                    'product.stripe_tax_codes_body'.tr(),
+                  ),
+                  const SizedBox(height: 12),
                   SwitchListTile(
                     title: Text('product.mark_sold_out'.tr()),
                     value: state.isSoldOut,
@@ -338,13 +357,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           ),
                         ],
                       ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text('product.free_shipping_10_plus_label'.tr()),
-                        value: state.freeShippingAt10Plus,
-                        activeTrackColor: DesignTokens.primary,
-                        onChanged: viewModel.setFreeShippingAt10Plus,
-                      ),
                     ],
                     const SizedBox(height: 16),
                     _buildDeliveryOptions(state, viewModel),
@@ -441,6 +453,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _heightController.dispose();
     _shipDaysController.dispose();
     _minOrderController.dispose();
+    _taxCodeController.dispose();
     _lowStockThresholdController.dispose();
     _macosUrlController.dispose();
     _windowsUrlController.dispose();
@@ -475,6 +488,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _heightController = TextEditingController(text: p.heightCm?.toString() ?? '');
     _shipDaysController = TextEditingController(text: p.estimatedShipDays.toString());
     _minOrderController = TextEditingController(text: p.minimumOrderQuantity.toString());
+    _taxCodeController = TextEditingController(text: p.taxCode ?? '');
     final existingThreshold = p.inventory?.lowStockThreshold ?? 0;
     _lowStockAlertEnabled = existingThreshold > 0;
     _lowStockThresholdController = TextEditingController(text: existingThreshold > 0 ? existingThreshold.toString() : '5');
@@ -817,14 +831,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     // Bug #6: Preserve existing quantityDiscounts/additionalItemCost/maxItemsPerShipment from product
     final existingStandard = widget.product.deliveryOptions.where((o) => o.type == 'standard').firstOrNull;
     final existingExpress = widget.product.deliveryOptions.where((o) => o.type == 'express').firstOrNull;
-    // Strip any existing free-at-10 entry — will be re-added from state.freeShippingAt10Plus
-    final baseQuantityDiscounts = (existingStandard?.quantityDiscounts ?? existingExpress?.quantityDiscounts ?? const <ShippingQuantityDiscount>[])
-        .where((d) => !(d.minQuantity == 10 && d.discountValue == 0 && d.discountType == DiscountTypeValues.flatRate))
-        .toList();
-    final freeAt10Discount = state.freeShippingAt10Plus
-        ? [ShippingQuantityDiscount(minQuantity: 10, discountType: DiscountTypeValues.flatRate, discountValue: 0, label: 'product.free_shipping_10_plus_label'.tr())]
-        : <ShippingQuantityDiscount>[];
-    final existingQuantityDiscounts = [...baseQuantityDiscounts, ...freeAt10Discount];
+    final existingQuantityDiscounts = existingStandard?.quantityDiscounts ?? existingExpress?.quantityDiscounts ?? const <ShippingQuantityDiscount>[];
     final existingAdditionalItemCostCents = existingStandard?.additionalItemCostCents ?? existingExpress?.additionalItemCostCents ?? 0;
     final existingMaxItems = existingStandard?.maxItemsPerShipment ?? existingExpress?.maxItemsPerShipment ?? 0;
 
@@ -884,6 +891,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       width: double.tryParse(_widthController.text),
       height: double.tryParse(_heightController.text),
       shipDays: state.isDigital ? 0 : int.tryParse(_shipDaysController.text) ?? 3,
+      taxCode: _taxCodeController.text.trim(),
       deliveryOptions: deliveryOptions,
       inventory: updatedInventory,
       compareAtPrice: _compareAtPriceController.text.trim().isEmpty ? null : double.tryParse(_compareAtPriceController.text.trim()),
@@ -900,5 +908,91 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     final reg = RegExp(r'^[A-Z]\d[A-Z] \d[A-Z]\d$');
     if (!reg.hasMatch(v.toUpperCase().trim())) return 'product.invalid_postal'.tr();
     return null;
+  }
+
+  Widget _buildTappableInfoHint(String shortText, String title, String body) {
+    return GestureDetector(
+      onTap: () => _showInfoSheet(title, body),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.info.withValues(alpha: 0.6)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(shortText, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 14, color: DesignTokens.textDisabled),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showInfoSheet(String title, String body) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: DesignTokens.textOnPrimary,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: DesignTokens.info.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.lightbulb_rounded, color: DesignTokens.info, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: DesignTokens.surfaceVariant, shape: BoxShape.circle),
+                    child: const Icon(Icons.close_rounded, size: 16, color: DesignTokens.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              body,
+              style: TextStyle(fontSize: 14, color: DesignTokens.darkSurface.withValues(alpha: 0.8), height: 1.5),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DesignTokens.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text('common.got_it'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -27,7 +27,6 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import UTC, datetime
 
 from google.cloud import firestore
 
@@ -197,10 +196,9 @@ def main() -> int:
                 Fields.STOCK_QUANTITY: 50,
                 Fields.KEYWORDS: ["seed", "integration", "test"],
                 Fields.CREATED_AT: firestore.SERVER_TIMESTAMP,
-                Fields.IS_ACTIVE: True,
                 Fields.RATING: 0.0,
                 Fields.RATING_COUNT: 0,
-                Fields.STATUS: ProductStatusValues.ACTIVE,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
                 Fields.FREE_SHIPPING: False,
                 Fields.IS_DIGITAL: False,
                 Fields.WEIGHT_KG: 0.5,

@@ -95,6 +95,12 @@ final similarProductsProvider = FutureProvider.autoDispose.family<List<Product>,
   },
 );
 
+/// Streams the count of unanswered product questions for a seller
+final sellerUnansweredQaProvider = StreamProvider.autoDispose.family<int, String>((ref, sellerId) {
+  final repository = ref.watch(productRepositoryProvider);
+  return repository.watchUnansweredQuestionsCount(sellerId);
+});
+
 // ============================================================================
 // FAVORITES PROVIDER
 // ============================================================================

@@ -1,0 +1,926 @@
+  static const all = [
+  static const all = [active, revoked];
+  static const all = [macos, windows, linux];
+  static const all = [software, book];
+  static const all = {
+  static const all = {
+  static const all = {
+  static const all = {
+  static const all = {
+  static const all = {admin, seller, buyer};
+  static const all = {canada, canadaCode};
+  static const all = {newCondition, likeNew, good, fair, forParts};
+  static const all = {notRequired, pending, approved, rejected};
+  static const all = {pending, shipped, delivered, refunded};
+  static const all = {percent, fixed, flatRate};
+  static const all = {percent, fixedCents};
+  static const all = {processing, completed, failed};
+  static const all = {signup, checkbox, doubleOptIn, implied};
+  static const all = {stripe};
+  static const all = {ups, fedex, canadaPost, purolator, dhl, usps, other};
+  static const all = {warehouse, personal};
+  static const allowedShippingCountries = {'Canada', 'CA'};
+  static const appTagline = "Canada's Modern Marketplace";
+  static const artCollectibles = 20;
+  static const authorizationExpiryDays = 7;
+  static const autoConfirmDays =
+  static const automotive = 11;
+  static const babyKids = 17;
+  static const beautyPersonalCare = 8;
+  static const bookAccessTokens =
+  static const books = 14;
+  static const carrierNote =
+  static const commissionRateBps =
+  static const computers = 2;
+  static const condition =
+  static const copyrightText =
+  static const couponUses =
+  static const digitalProducts = 21;
+  static const electronics = 1;
+  static const fashion = 5;
+  static const favoritesPageSize =
+  static const fcmTokenKey =
+  static const fcmTokens =
+  static const freeShippingThresholdCents =
+  static const fulfillmentWarehouseId =
+  static const gaming = 3;
+  static const generateSoftwareDownloadSession =
+  static const groceries = 19;
+  static const healthWellness = 9;
+  static const homeKitchen = 4;
+  static const international = {
+  static const inventoryLevels =
+  static const jewelryWatches = 7;
+  static const Map<int, List<String>> _byId = {
+  static const Map<String, List<String>> map = {
+  static const max = 21;
+  static const maxCaptureAttempts = 3;
+  static const maxProductImages =
+  static const maxShippingCostCad =
+  static const min = 1;
+  static const musicInstruments = 15;
+  static const names = {
+  static const officeSupplies = 13;
+  static const ordersPageSize =
+  static const petSupplies = 18;
+  static const physicalAddress =
+  static const platformFeePercent = 2.5;
+  static const platformFeeRatio =
+  static const premiumActive = {active, trialing};
+  static const priceCents =
+  static const productName =
+  static const productQuestions =
+  static const returnWindowDays =
+  static const returnWindowDaysField =
+  static const reviewVotes =
+  static const s1688 =
+  static const schemaVersion =
+  static const sellerDisputeRateThreshold =
+  static const sellerName =
+  static const sellerRefundRateThreshold = 0.10; // 10% refund rate threshold
+  static const sessionExpired =
+  static const shoesAccessories = 6;
+  static const softwareAccessTokens =
+  static const sportsFitness = 10;
+  static const taxRates = {
+  static const terminalStates = {cancelled};
+  static const timestampField = {
+  static const toolsHardware = 12;
+  static const toysGames = 16;
+  static const trendingFavoriteWeight = 1; // Weight for favorite events
+  static const trendingPurchaseWeight = 3; // Weight for purchase events
+  static const trendingTopN = 20; // Number of products to mark as trending
+  static const trendingWindowHours =
+  static const updateNotificationPreferences =
+  static const userSecurity =
+  static const validTransitions = <String, List<String>>{
+  static const validTransitions = <String, List<String>>{
+  static const version =
+  static const warehouseStockMap =
+_cron_locks
+1.0
+708286364RC0001
+AB
+acceptsReturns
+accessToken
+accountId
+accountId
+action
+action
+activations
+active
+active
+active
+actor
+actorType
+actualCost
+actualShippingCents
+add
+additionalItemCostCents
+address
+addressCount
+addresses // users/{userId}/addresses
+addressId
+admin
+admin_approve_product
+admin_create_coupon
+admin_delete_review
+admin_flag_review
+admin_logs
+admin_mfa_disable
+admin_mfa_enroll
+admin_mfa_verify
+admin_refund_order
+admin_reject_product
+admin_update_product_stock
+adminId
+algolia_app_id
+algolia_search_api_key
+algolia_sync_failures
+algolia_sync_issue
+algoliaCount
+alibaba
+aliexpress
+all
+all
+allItemsDelivered
+allItemsShipped
+allowBackorder
+amazon_europe
+amazon_japan
+amazon_usa
+amount
+amountCents
+anonymizedAt
+answer
+answer_product_question
+answeredAt
+answeredBy
+apartment
+apply_coupon
+approvalRejectionReason
+approvalRequired
+approve
+approve_shipping_cost
+approved
+approved
+approved
+approved
+archived
+archived
+archivedAt
+ask_product_question
+askerId
+AUD
+auth_deletion_failed
+authorization_expired
+authorized
+auto_confirmed
+autoCaptured
+autoConfirmed
+available
+availableNationwide
+availableQuantity
+avgRating
+avgResponseTimeHours
+avgShipDays
+awaiting_payment
+backup_codes
+bankAccountLast4
+bankDetails
+BC
+blocked_gst_attempt
+book
+bookAccessToken
+bookSourceUrl
+breaches
+BRL
+bulk_update_products
+businessAddress
+businessName
+buyer
+buyerConfirmed
+buyerId
+buyerNote
+buyerUnreadCount
+CA
+cad
+CAD
+Canada
+Canada
+Canada
+canada_post
+cancel_order
+cancel_subscription
+cancelAtPeriodEnd
+canceled
+cancellation_confirmed
+cancellationRate
+cancellationReason
+cancelled
+cancelled
+cancelledAt
+cancelledBy
+cancelling
+cancelScheduledAt // datetime — when cancellation was requested
+capture_payment
+captureAttempts
+captured
+captured
+capturedAt
+capturing
+carrier
+cart // users/{userId}/cart
+cartItemId
+cartSubtotalCents
+categoryId
+chargeId
+chargesEnabled
+chatId
+chats // chats/{chatId}
+checkbox
+checkoutUrl
+city
+cjdropshipping
+clientIp
+CNY
+code
+comment
+compareAtPrice
+compareAtPriceHistory
+completed
+completed
+completed
+completedAt
+computedAt
+config
+configured
+confirmation
+confirmed
+confirmedAt
+confirmedByBuyer
+confirmedByClient
+consentMethod
+consentTimestamp
+cost
+costCents
+costco
+count
+country
+coupang
+couponCode
+coupons // N-07: coupon/promo code system
+create_account_link
+create_checkout_session
+create_connect_account
+create_product_atomic
+create_stripe_login_link
+create_subscription
+create_warehouse
+createdAt
+critical
+cumulativeRefundedCents
+cumulativeReversedCents
+currency
+currentPeriodEnd
+currentPeriodStart
+custom
+custom
+customerEmail
+customerId
+customerName
+dataProcessingConsent
+dateFavorited
+deactivated
+deactivationReason
+delete
+delete_account
+DELETE_MY_ACCOUNT
+delete_product
+delete_product_images
+delete_warehouse
+deleted
+deletedAt
+deletedBy
+delivered
+delivered
+deliveredAt
+deliveryInstructions
+deliveryOptions
+deliverySpeed
+description
+descriptionF
+destination
+detailsSubmitted
+deviceId
+deviceLimit
+dhgate
+dhl
+digitalBuilds
+digitalType
+digitalUnlocked
+discountAmountCents
+discountType
+discountValue
+dispute_created
+dispute_funds_reinstated
+disputed
+disputed
+disputedAt
+disputeId
+disputeRate
+disputeResolution
+disputeResolvedAt
+disputeStatus
+domestic
+double_opt_in
+draft
+duplicate
+email
+emailConsent
+emulatorMode
+en
+enabled
+enabledProviders
+error
+error
+errorCode
+errorMessage
+escalated
+escalatedAt
+escalationReason
+estimatedDays
+estimatedShipDays
+etsy_wholesale
+EUR
+eventId
+events // orders/{orderId}/events/{eventId}
+eventType
+existing
+expectedCostCents
+expired
+expiresAt
+expiring
+express
+failed
+failed
+failed
+failedAt
+failureMessage
+failureReason
+fair
+faire
+favorites // users/{userId}/favorites
+fcmToken
+fcmTokenUpdatedAt
+features
+fedex
+feeRate
+fileName
+firestoreCount
+first_request
+firstBuyerMessageAt
+firstReplyHours
+firstSellerReplyAt
+fixed
+fixed_cents
+flagged
+flat_rate
+for_parts
+formattedAddress
+fr
+fraudScore
+freeShipping
+fromStatus
+fullName
+GBP
+generate_book_download_session
+geoapify_api_key
+get_address_suggestions
+get_connect_account_status
+get_or_create_chat
+get_payment_providers
+get_product_questions
+get_provider_status
+get_seller_warehouses
+get_subscription_status
+global_sources
+gmarket
+good
+gst
+GST
+gstNumber
+hasChanges
+hasDispute
+hasPhotos
+hasTracking
+hasVariants
+heightCm
+helpfulCount
+helpfulVoterIds
+high
+HKD
+Home
+hst
+HST
+https://dashboard.stripe.com/express
+https://orignagta.ca
+https://orignagta.ca/unsubscribe
+idempotencyKey
+ignored
+image_base_url
+imageUrls
+implied
+in_transit
+inactive // Internal: no subscription doc exists
+incomplete
+incomplete_expired
+index
+indiamart
+INR
+international_generic
+international_supplier
+invalid_gst_attempt
+inventory
+isAnswered
+isCorporate
+isDefault
+isDigital
+isFlagged
+isLocalDeliveryOnly
+isPerishable
+isPremium
+isSeller
+isTrending
+item_delivered
+item_shipped
+itemIds
+items
+itemStatus
+itemTaxes
+JPY
+keywords
+KRW
+label
+label_issued
+last_request
+lastActorId
+lastCaptureError
+lastCartAbandonEmailAt
+lastCheckoutSession
+lastCheckoutTimestamp
+lastLowStockAlertAt
+lastMessage
+lastMessageAt
+lastMfaVerify
+lastOrderId
+lastRetryError
+lastRoleUpdate
+lastRoleUpdateBy
+lastSyncedAt
+lastVerifiedAt
+lateShipmentRate
+latitude
+lengthCm
+licenseKey
+licenseKey
+licenses // users/{userId}/licenses
+lifecycleStatus
+like_new
+linux
+liveAccountId
+livemode
+local
+local_delivery
+localDeliveryOnly
+lockedAt
+lockedBy
+longitude
+low
+lowStockThreshold
+M5V 3A8
+macos
+made_in_china
+manualReviewReason
+mark_messages_read
+mark_received
+marketingOptIn
+maxItemsPerShipment
+maxRetriesExceeded
+maxUsesPerUser
+maxUsesTotal
+MB
+medium
+message
+messages // chats/{chatId}/messages/{msgId}
+mfa_low_backup_codes
+mfaBackupCodes
+mfaBackupCodesSalt
+mfaBackupCodesTemp
+mfaEnabled
+mfaEnrolledAt
+mfaFailedAttempts
+mfaLockoutUntil
+mfaSecret
+mfaSecretTemp
+mfaVerified
+minimumOrderQuantity
+minOrderCents
+minOrderQuantity
+minQuantity
+mismatchPercent
+missingKeys
+MXN
+N/A
+name
+nameF
+NB
+netAmountCents
+new
+newCostCents
+newEnabled
+newPrice
+newRoles
+newShippingCost
+newStatus
+NL
+not_required
+note_added
+notifications // users/{uid}/notifications
+notificationsSent
+notifiedAt
+notifyNewProducts
+notifyTrending
+NS
+NT
+NU
+oberlo
+oldEnabled
+oldPrice
+oldRoles
+ON
+ON
+onboardingCompleted
+optionValues
+orderId
+orders
+ordersCancelled
+orderStatus
+originalCostCents
+originalUserDeleted
+Origna GTA
+other
+other
+Other
+paid
+partial
+partially_refunded
+partially_reversed
+partialRefundAmountCents
+partialReversals
+past_due
+paused
+payloadSize
+payment_authorized
+payment_captured
+payment_failed
+payment_failed
+payment_provider_disabled
+payment_provider_update
+payment_providers
+paymentCompletedAt
+paymentError
+paymentId
+paymentIntentId
+paymentIntentId
+paymentProvider
+paymentStatus
+payout_failed
+payout_record_incomplete
+payoutDate
+payoutErrors
+payoutHoldDays
+payoutId
+payouts
+payoutsEnabled
+payoutStatus
+PE
+pending
+pending
+pending
+pending
+pending_profiles // pending_profiles/{uid}
+pendingRequirements
+pendingTotalCents
+percent
+percent
+perishable
+personal
+phoneNumber
+pickup
+platform
+platform
+platformFee
+platformFeeCents
+platformFeeTotalCents
+positiveRatePct
+postalCode
+preDisputeStatus
+preferredLanguage
+premiumExpiresAt
+premiumSince
+price
+PRICE_CHANGED
+priceChanges
+priceHistory
+priceSnapshot
+primaryWarehouseId
+printful
+printify
+privacyAcceptedAt
+privacyPolicyVersion
+processed
+processed
+processedAt
+processing
+processing
+processing
+processing
+processingStatus
+product_ratings
+productId
+productIds
+productImageUrl
+productName
+products
+productsDeactivated
+productTitle
+provider
+provider
+providerName
+providers
+providerStatus
+provisioning_uri
+pst
+PST
+purchaseCount
+purolator
+pushEnabled
+QC
+qrCodeUrl
+qst
+QST
+quantity
+quantityDiscounts
+question
+questionId
+rakuten
+rate_limits
+rating
+ratingCount
+ratingId
+ratings
+reactivate_subscription
+read
+reason
+reason
+received
+receivedAt
+refreshUrl
+refund_failed
+refund_issued
+refund_order_item
+refund_reversal_failed
+refundAmount
+refundAmountCents
+refundAmountCents
+refunded
+refunded
+refunded
+refundedAt
+refundId
+refundRate
+refundReason
+refunds
+rejected
+rejected
+rejected
+remainingCodes
+remove
+removedProducts
+requested
+requested
+requestedAt
+requestedBy
+requirementsCurrentlyDue
+requiresManualReview
+reservationHoldMinutes
+reservedQuantity
+resolution
+resolved
+resolvedAt
+respondedAt
+retries
+retryCount
+return_requests
+returnAdminNote
+returnId
+returnReason
+returnRefundAmountCents
+returnStatus
+returnTrackingNumber
+returnUrl
+reversalErrors
+reversalId
+reversalReason
+reversed
+reversed_dispute
+reversedAt
+review
+reviewId
+reviewImageUrls
+reviewText
+revoked
+role_change
+roles
+running
+same_day
+savedAt // N-05: Save for Later timestamp
+searchKeywords
+secret
+security_alerts
+seller
+seller_account_changed
+seller_kyc_failed
+seller_metrics // Tasks 11
+seller_metrics_breach // TASK 11
+seller_profiles // Seller-only profile data
+seller_skus // Collision docs for atomic SKU uniqueness
+seller_suspended
+seller_unsuspended
+sellerAddress
+sellerAmountCents
+sellerCaptures
+sellerId
+sellerIds
+sellerPayouts
+sellerProfile
+sellerReply
+sellerReplyAt
+sellerSku
+sellerStripeAccounts
+sellerUnreadCount
+send_message
+senderDisplayName // denormalized at send time
+senderId
+sentry_dns
+Session Expired
+session_expired
+sessionId
+severity
+SGD
+shared_gst_number
+shipFromCity
+shipFromCountries
+shipFromCountry
+shipFromProvince
+shipped
+shipped
+shippedAt
+shippingAddress
+shippingApproval
+shippingApprovalRequired
+shippingApprovalStatus
+shippingCostCents
+shippingDays
+signatureVerified
+signup
+SK
+slug
+snapshotAccountId
+software
+spocket
+standard
+state
+status
+status_changed
+stock_notifications // Tasks 07
+stockChanges
+stockQuantity
+stockRestored
+street
+stripe
+stripe_tax_fallback_gst // Stripe Tax down for GST-exempt buyer
+stripeAccountId
+stripePaymentIntentId
+stripeSessionId
+stripeSubscriptionId
+stripeTransferId
+subcategory
+submit_product_rating
+subscribe_stock_notification
+subscribedAt
+subscriptions // subscriptions/{userId}
+subscriptionStatus
+subtotal
+subtotalCents
+success
+supplier
+supplierShippingDays
+support@orignaventures.ca
+support@orignaventures.ca
+supportedCountries
+supportedCurrencies
+supportedPlatforms
+suspend_seller
+suspended
+suspendedAt
+suspendedBy
+suspensionReason
+suspicious_tax_exemption
+targetUserId
+tax_exemption_pending_review
+taxAmountCents
+taxCents
+taxCode
+taxes
+taxExempt
+taxExemption
+taxRate
+temu
+termsAcceptedAt
+termsVersion
+text
+timestamp
+token_revocation_failed // Suspension token revoke failed
+toStatus
+totalAmountCents
+totalOrders
+totalOrders30d
+totalRevenueCents30d
+totalReviews
+totalSales
+trackingNumber
+trackQuantity
+tradeindia
+transferId
+transfersReversed
+trendingAt
+trendingScore
+trialing
+TWD
+type
+uid
+under_review
+unpaid
+unsubscribe_stock_notification
+unsubscribedAt
+unsuspend_seller
+unsuspendedAt
+unsuspendedBy
+update_item_status
+update_order_status
+update_payment_provider
+update_shipping_cost
+update_user_roles
+update_warehouse
+updatedAt
+updatedBy
+upload_product_images
+upload_review_images
+uploadUrl
+ups
+upvotes
+url
+USD
+USD
+usedCount
+userId
+users
+usps
+variantId
+variantKey
+variantOptions
+variants
+variantSku
+variantTitle
+verificationStatus
+verified
+verifiedPurchase
+verify_cart_prices
+viewCount
+voided
+vote_review_helpful
+walmart
+warehouse
+warehouseIds
+warehouses // users/{sellerId}/warehouses
+warehouseStock
+webhook_events
+webhook_logs
+weightKg
+widthCm
+windows
+Work
+YT
+Yunior Rodriguez Osorio

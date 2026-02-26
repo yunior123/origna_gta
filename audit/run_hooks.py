@@ -45,16 +45,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # Import hooks — this triggers registration via @register_hook
-from hooks.hook_domains import PaymentHook, AuthHook, ProductHook
-from hooks.hook_schema_sync import SchemaSyncHook
-from hooks.hook_code_quality import CodeQualityHook
-from hooks.hook_extended import (
-    SecurityHook, PerformanceHook, StateMgmtHook,
-    OrdersHook, ErrorHandlingHook, SellerHook,
-)
-from hooks.hook_tax import TaxHook
-from hooks.hook_infra import InfraHook
-from hooks.hook_qa import QAHook
 from hooks.base import get_all_hooks
 from hooks.runner import HookRunner
 

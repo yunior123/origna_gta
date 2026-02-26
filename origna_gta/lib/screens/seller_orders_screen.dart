@@ -13,19 +13,8 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
-import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
-
-// Streams the total count of unanswered product questions for a seller (U-03)
-final _sellerUnansweredQaProvider = StreamProvider.autoDispose
-    .family<int, String>((ref, sellerId) {
-      return FirebaseFirestore.instance
-          .collection(Collections.productQuestions)
-          .where(Fields.sellerId, isEqualTo: sellerId)
-          .where(Fields.isAnswered, isEqualTo: false)
-          .snapshots()
-          .map((snap) => snap.docs.length);
-    });
+import 'package:origna_gta/features/products/products_provider.dart';
 
 class SellerOrdersScreen extends ConsumerWidget {
   const SellerOrdersScreen({super.key});
@@ -192,21 +181,21 @@ class _UnansweredQaBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final countAsync = ref.watch(_sellerUnansweredQaProvider(sellerId));
+    final countAsync = ref.watch(sellerUnansweredQaProvider(sellerId));
     final count = countAsync.valueOrNull ?? 0;
 
     return Tooltip(
       message: count > 0
-          ? '$count unanswered question${count == 1 ? '' : 's'}'
-          : 'No pending questions',
+          ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()])
+          : 'seller.no_pending_questions'.tr(),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           IconButton(
             icon: const Icon(Icons.forum_outlined),
             tooltip: count > 0
-                ? '$count unanswered question${count == 1 ? '' : 's'}'
-                : 'No pending questions',
+                ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()])
+                : 'seller.no_pending_questions'.tr(),
             onPressed: () =>
                 Navigator.pushNamed(context, AppRoutes.sellerProducts),
           ),

@@ -32,7 +32,6 @@ import datetime
 import os
 import random
 import sys
-import uuid
 
 from google.cloud import firestore
 
@@ -126,7 +125,7 @@ OTTAWA = _addr("150 Elgin St", "Ottawa", "ON", "K2P 1L4", "6135550005")
 SELLERS = [
     {
         "uid": f"{PREFIX}seller_1",
-        "email": f"seller1@mseed.ca",
+        "email": "seller1@mseed.ca",
         "name": "Alice Chen",
         "address": VANCOUVER,
         "city": "Vancouver",
@@ -137,7 +136,7 @@ SELLERS = [
     },
     {
         "uid": f"{PREFIX}seller_2",
-        "email": f"seller2@mseed.ca",
+        "email": "seller2@mseed.ca",
         "name": "Bob Tremblay",
         "address": MONTREAL,
         "city": "Montreal",
@@ -148,7 +147,7 @@ SELLERS = [
     },
     {
         "uid": f"{PREFIX}seller_3",
-        "email": f"seller3@mseed.ca",
+        "email": "seller3@mseed.ca",
         "name": "Carlos Rivera",
         "address": TORONTO,
         "city": "Toronto",
@@ -159,7 +158,7 @@ SELLERS = [
     },
     {
         "uid": f"{PREFIX}seller_4",
-        "email": f"seller4@mseed.ca",
+        "email": "seller4@mseed.ca",
         "name": "Diana Park",
         "address": CALGARY,
         "city": "Calgary",
@@ -170,7 +169,7 @@ SELLERS = [
     },
     {
         "uid": f"{PREFIX}seller_5",
-        "email": f"seller5@mseed.ca",
+        "email": "seller5@mseed.ca",
         "name": "Ethan Williams",
         "address": OTTAWA,
         "city": "Ottawa",
@@ -289,7 +288,6 @@ def _product(
         Fields.CREATED_AT: _ago(days=created_days_ago),
         Fields.UPDATED_AT: _ago(days=1),
         Fields.MINIMUM_ORDER_QUANTITY: 1,
-        Fields.IS_ACTIVE: lifecycle == ProductLifecycleStatusValues.ACTIVE,
         Fields.WAREHOUSE_IDS: [wh_id],
         Fields.PRIMARY_WAREHOUSE_ID: wh_id,
         "isTrending": False,
@@ -1147,8 +1145,8 @@ def seed_licenses(db: firestore.Client) -> None:
                 "deviceId": lic["deviceId"],
                 "platform": lic["platform"],
                 "digitalBuilds": {
-                    "macos": f"https://downloads.orignagta.ca/mseed/build/macos.dmg",
-                    "windows": f"https://downloads.orignagta.ca/mseed/build/windows.exe",
+                    "macos": "https://downloads.orignagta.ca/mseed/build/macos.dmg",
+                    "windows": "https://downloads.orignagta.ca/mseed/build/windows.exe",
                 },
                 Fields.CREATED_AT: lic["activatedAt"],
             },
@@ -1176,7 +1174,7 @@ def ensure_admin_user(db: firestore.Client) -> None:
             Fields.MARKETING_OPT_IN: False,
             Fields.DATA_PROCESSING_CONSENT: True,
         })
-        print(f"  ✅  created admin user doc")
+        print("  ✅  created admin user doc")
     else:
         # Patch to ensure admin/seller roles and premium
         ref.update({
@@ -1187,7 +1185,7 @@ def ensure_admin_user(db: firestore.Client) -> None:
             Fields.ONBOARDING_COMPLETED: True,
             Fields.STRIPE_ACCOUNT_ID: "acct_mseed_admin",
         })
-        print(f"  ✅  patched admin user doc (roles + premium)")
+        print("  ✅  patched admin user doc (roles + premium)")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

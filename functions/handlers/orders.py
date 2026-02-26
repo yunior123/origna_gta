@@ -21,6 +21,7 @@ from schema_constants import (
     Collections,
     DeliveryItemStatusTransitions,
     DeliveryStatusValues,
+    DeliveryTypeValues,
     Fields,
     OrderEventTypes,
     OrderStatusValues,
@@ -38,6 +39,8 @@ from services.email_service import (
     get_order_confirmation_email,
     get_order_delivered_email,
     get_order_in_transit_email,
+    get_order_item_delivered_email,
+    get_order_item_shipped_email,
     get_order_partially_refunded_email,
     get_order_processing_email,
     get_order_refunded_email,
@@ -80,30 +83,82 @@ def _restore_stock_to_batch(batch, items: list) -> None:
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
-def confirm_order_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
+def confirm_item_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
-    Buyer confirms order receipt, triggering payment capture and seller payouts.
-
-    Flow:
-    1. Check if payment provider is enabled
-    2. Capture Stripe Payment Intent
-    3. Update order status to delivered
-    4. Create payout records for each seller
-    5. Transfer funds to sellers (minus 2.5% platform fee)
+    Buyer confirms receipt of a specific item in a multi-seller order.
+    Sets item status to DELIVERED and triggers a partial payout for that seller.
 
     Request data:
-        orderId: Order document ID
-
-    Returns:
-        {success: True, captured: True}
+        orderId: Order ID
+        productId: Product ID to confirm
     """
-    # Backward-compatible wrapper around the canonical capture flow.
-    # Flutter calls `confirm_order_receipt`; newer code calls `capture_payment` directly.
-    # NOTE: Import the undecorated _capture_payment_impl to avoid calling the
-    # @on_call wrapper (which expects a Flask Request, not a CallableRequest).
-    from handlers.payment_stripe import _capture_payment_impl
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
-    return _capture_payment_impl(req)
+    user_id = req.auth.uid
+    order_id = req.data.get(Fields.ORDER_ID)
+    product_id = req.data.get(Fields.PRODUCT_ID)
+
+    if not order_id or not product_id:
+        raise https_fn.HttpsError("invalid-argument", "orderId and productId required")
+
+    db = get_db()
+    order_ref = db.collection(Collections.ORDERS).document(order_id)
+
+    @get_firestore().transactional
+    def _confirm_item_txn(transaction):
+        order_doc = order_ref.get(transaction=transaction)
+        if not order_doc.exists:
+            raise https_fn.HttpsError("not-found", "Order not found")
+
+        order_data = order_doc.to_dict()
+        if order_data.get(Fields.USER_ID) != user_id:
+            raise https_fn.HttpsError("permission-denied", "Only the order owner can confirm receipt")
+
+        items = order_data.get(Fields.ITEMS, [])
+        item_index = next((i for i, it in enumerate(items) if it.get(Fields.PRODUCT_ID) == product_id), None)
+
+        if item_index is None:
+            raise https_fn.HttpsError("not-found", "Item not found in order")
+
+        item = items[item_index]
+        current_item_status = item.get(Fields.STATUS)
+
+        if current_item_status == DeliveryStatusValues.DELIVERED:
+            return {"success": True, "message": "Item already marked as delivered"}
+
+        if current_item_status not in (DeliveryStatusValues.SHIPPED, DeliveryStatusValues.PENDING):
+            raise https_fn.HttpsError("failed-precondition", f"Cannot confirm item in status {current_item_status}")
+
+        # Update item status
+        now_utc = datetime.now(UTC)
+        items[item_index][Fields.STATUS] = DeliveryStatusValues.DELIVERED
+        items[item_index][Fields.DELIVERED_AT] = now_utc
+        items[item_index][Fields.CONFIRMED_BY_BUYER] = True
+
+        all_delivered = all(it.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED for it in items)
+
+        update_data = {
+            Fields.ITEMS: items,
+            Fields.UPDATED_AT: get_server_timestamp()
+        }
+
+        if all_delivered:
+            update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+            update_data[Fields.CONFIRMED_AT] = now_utc
+            update_data[Fields.CONFIRMED_BY_CLIENT] = True
+
+        transaction.update(order_ref, update_data)
+        return {"success": True, "allDelivered": all_delivered}
+
+    result = _confirm_item_txn(db.transaction())
+
+    # Trigger payout if payment is already captured (Auto-capture mode)
+    # or if this was the last item and we're in manual capture mode.
+    # For now, we delegate payout to the auto_capture cron or capture_payment handler
+    # which already handles DELIVERED items.
+
+    return result
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -476,14 +531,16 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         now_utc = datetime.now(UTC)
 
         if new_status == DeliveryStatusValues.SHIPPED:
-            if not tracking_number:
+            # For pickup orders, tracking number is optional (serves as 'Ready for Pickup' signal)
+            is_pickup = fresh_data.get(Fields.DELIVERY_SPEED) == DeliveryTypeValues.PICKUP
+            if not tracking_number and not is_pickup:
                 raise https_fn.HttpsError(
                     "invalid-argument",
                     "Tracking number is required when marking an item as shipped.",
                 )
             fresh_items[fresh_item_index][Fields.SHIPPED_AT] = now_utc
             fresh_items[fresh_item_index][Fields.TRACKING_NUMBER] = tracking_number
-            fresh_items[fresh_item_index][Fields.CARRIER] = carrier or ""
+            fresh_items[fresh_item_index][Fields.CARRIER] = carrier or ("Pickup" if is_pickup else "")
         elif new_status == DeliveryStatusValues.DELIVERED:
             fresh_items[fresh_item_index][Fields.DELIVERED_AT] = now_utc
 
@@ -1455,7 +1512,6 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("failed-precondition", "Can only update shipping on confirmed/processing orders")
 
     # Allow shipping cost update for both authorized (manual-capture) and captured (auto-capture) payments.
-    # In auto-capture mode paymentStatus is always 'captured'; AUTHORIZED path is kept for compatibility.
     allowed_payment_statuses = [PaymentStatusValues.AUTHORIZED, PaymentStatusValues.CAPTURED]
     if order_data.get(Fields.PAYMENT_STATUS) not in allowed_payment_statuses:
         raise https_fn.HttpsError(
@@ -1647,7 +1703,9 @@ def create_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
     if item_data.get(Fields.IS_DIGITAL, False):
         raise https_fn.HttpsError("invalid-argument", "Digital products cannot be returned")
 
-    if item_data.get(Fields.STATUS) not in (DeliveryStatusValues.DELIVERED, DeliveryStatusValues.CONFIRMED):
+    item_status = item_data.get(Fields.STATUS)
+    item_confirmed_by_buyer = item_data.get(Fields.CONFIRMED_BY_BUYER, False)
+    if item_status != DeliveryStatusValues.DELIVERED and not item_confirmed_by_buyer:
         raise https_fn.HttpsError("failed-precondition", "Item must be delivered before requesting a return")
 
     _assert_within_return_window(item_data)
@@ -1962,12 +2020,14 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
     old_status = before_data.get(Fields.ORDER_STATUS)
     new_status = after_data.get(Fields.ORDER_STATUS)
 
+    # Always check if paymentStatus changed (e.g. for refund emails)
+    # This must happen even if orderStatus also changed
+    old_payment_status = before_data.get(Fields.PAYMENT_STATUS)
+    new_payment_status = after_data.get(Fields.PAYMENT_STATUS)
+    if old_payment_status != new_payment_status:
+        _handle_payment_status_email(order_id, after_data, new_payment_status, buyer_email=None)
+
     if old_status == new_status:
-        # Check if paymentStatus changed (for refund emails)
-        old_payment_status = before_data.get(Fields.PAYMENT_STATUS)
-        new_payment_status = after_data.get(Fields.PAYMENT_STATUS)
-        if old_payment_status != new_payment_status:
-            _handle_payment_status_email(order_id, after_data, new_payment_status, buyer_email=None)
         return
 
     # Transactional dedup — claim slot atomically to prevent duplicate sends on retries
@@ -2045,13 +2105,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 data={"type": "order_status", "orderId": order_id, "status": new_status},
             )
 
-        # Clean up stock_notifications when order reaches a terminal/confirmed state
-        # so the buyer is not re-notified about products they already purchased
+        # Clean up stock_notifications only after a successful purchase
+        # so the buyer is not re-notified about products they already purchased.
+        # CANCELLED and FAILED orders must NOT clear subscriptions — no purchase happened.
         if new_status in {
             OrderStatusValues.CONFIRMED,
             OrderStatusValues.PROCESSING,
-            OrderStatusValues.CANCELLED,
-            OrderStatusValues.FAILED,
         }:
             try:
                 product_ids = list({item.get(Fields.PRODUCT_ID) for item in after_data.get(Fields.ITEMS, []) if item.get(Fields.PRODUCT_ID)})
@@ -2179,36 +2238,6 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             )
             send_push_notification(
                 user_id, "Order Cancelled", f"Order #{oid_short} has been cancelled",
-                data={"type": "order_status", "orderId": order_id, "status": new_status},
-            )
-
-        elif new_status == OrderStatusValues.REFUNDED:
-            refund_amount = after_data.get(Fields.CUMULATIVE_REFUNDED_CENTS, 0)
-            refunded_html = get_order_refunded_email(after_data, order_id, refund_amount, lang=lang)
-            enqueue_email_task(
-                to_email=buyer_email,
-                subject=_email_t("sub.refunded", lang).replace("{oid}", oid_short),
-                html_content=refunded_html,
-                event_type="order_refunded",
-                order_id=order_id,
-            )
-            send_push_notification(
-                user_id, "Refund Processed", f"Your refund for order #{oid_short} has been processed",
-                data={"type": "order_status", "orderId": order_id, "status": new_status},
-            )
-
-        elif new_status == OrderStatusValues.PARTIALLY_REFUNDED:
-            refund_amount = after_data.get(Fields.PARTIAL_REFUND_AMOUNT_CENTS, 0)
-            partial_html = get_order_partially_refunded_email(after_data, order_id, refund_amount, lang=lang)
-            enqueue_email_task(
-                to_email=buyer_email,
-                subject=_email_t("sub.partial", lang).replace("{oid}", oid_short),
-                html_content=partial_html,
-                event_type="order_partially_refunded",
-                order_id=order_id,
-            )
-            send_push_notification(
-                user_id, "Partial Refund", f"A partial refund for order #{oid_short} has been issued",
                 data={"type": "order_status", "orderId": order_id, "status": new_status},
             )
 
@@ -2368,3 +2397,210 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
             )
     except Exception as e:
         logger.error(f"🚨 Failed to send return request notification for {return_id}: {str(e)}")
+
+
+@firestore_fn.on_document_updated(document="orders/{orderId}", **FIRESTORE_TRIGGER_OPTIONS)
+def on_order_item_shipped(event: firestore_fn.Event[firestore_fn.Change[firestore_fn.DocumentSnapshot]]) -> None:
+    """
+    Triggered when an order document is updated.
+    Detects when an individual item status changes to 'shipped' and notifies the buyer.
+    This is essential for multi-seller orders where items ship at different times.
+    """
+    before = event.data.before.to_dict()
+    after = event.data.after.to_dict()
+    if not before or not after:
+        return
+
+    order_id = event.params["orderId"]
+    before_items = before.get(Fields.ITEMS, [])
+    after_items = after.get(Fields.ITEMS, [])
+
+    # Map before items by a unique key (productId + warehouseId if available)
+    def _item_key(item):
+        return f"{item.get(Fields.PRODUCT_ID)}_{item.get(Fields.FULFILLMENT_WAREHOUSE_ID, 'none')}"
+
+    before_map = {_item_key(item): item for item in before_items}
+
+    shipped_this_update = []
+    for item in after_items:
+        key = _item_key(item)
+        prev_item = before_map.get(key)
+
+        # Detect transition to shipped for physical items
+        if (item.get(Fields.STATUS) == DeliveryStatusValues.SHIPPED and
+            (not prev_item or prev_item.get(Fields.STATUS) != DeliveryStatusValues.SHIPPED) and
+            not item.get(Fields.IS_DIGITAL, False)):
+            shipped_this_update.append(item)
+
+    if not shipped_this_update:
+        return
+
+    db = get_db()
+    user_id = after.get(Fields.USER_ID)
+    customer_email = after.get(Fields.CUSTOMER_EMAIL)
+
+    if not user_id or not customer_email:
+        logger.warning(f"Order {order_id} missing user_id or customer_email, cannot notify")
+        return
+
+    # SECURITY: Claim notification to avoid duplicates using a hash of item product IDs
+    import hashlib
+    item_ids_str = ":".join(sorted([it.get(Fields.PRODUCT_ID, "") for it in shipped_this_update]))
+    item_hash = hashlib.md5(item_ids_str.encode()).hexdigest()[:12]
+    claim_id = f"item_shipped_{order_id}_{item_hash}"
+
+    claim_ref = db.collection(Collections.WEBHOOK_EVENTS).document(claim_id)
+    try:
+        claim_ref.create({
+            Fields.TIMESTAMP: get_server_timestamp(),
+            Fields.EVENT_TYPE: "item_shipped_notification",
+            Fields.ORDER_ID: order_id
+        })
+    except Exception:
+        logger.info(f"Notification already sent for these items in order {order_id}, skipping")
+        return
+
+    try:
+        # Fetch user preferred language
+        user_doc = db.collection(Collections.USERS).document(user_id).get()
+        lang = (user_doc.to_dict() or {}).get(Fields.PREFERRED_LANGUAGE, "en") if user_doc.exists else "en"
+
+        is_pickup = after.get(Fields.DELIVERY_SPEED) == DeliveryTypeValues.PICKUP
+        item_names = [it.get(Fields.NAME, "item") for it in shipped_this_update]
+
+        # 1. Send Push Notification
+        title = "Order Update" if lang == "en" else "Mise à jour de commande"
+        if is_pickup:
+            if len(shipped_this_update) == 1:
+                body = f"Your item '{item_names[0]}' is ready for pickup!" if lang == "en" else f"Votre article '{item_names[0]}' est prêt à être récupéré !"
+            else:
+                body = f"{len(shipped_this_update)} items from your order are ready for pickup!" if lang == "en" else f"{len(shipped_this_update)} articles de votre commande sont prêts à être récupérés !"
+        else:
+            if len(shipped_this_update) == 1:
+                body = f"Your item '{item_names[0]}' has been shipped!" if lang == "en" else f"Votre article '{item_names[0]}' a été expédié !"
+            else:
+                body = f"{len(shipped_this_update)} items from your order have been shipped!" if lang == "en" else f"{len(shipped_this_update)} articles de votre commande ont été expédiés !"
+
+        send_push_notification(
+            user_id,
+            title,
+            body,
+            data={"type": "order_update", "orderId": order_id, "status": DeliveryStatusValues.SHIPPED}
+        )
+
+        # 2. Send Email Notification
+        tracking = shipped_this_update[0].get(Fields.TRACKING_NUMBER, "N/A")
+        carrier = shipped_this_update[0].get(Fields.CARRIER, "N/A")
+
+        email_html = get_order_item_shipped_email(
+            order_data=after,
+            order_id=order_id,
+            shipped_items=shipped_this_update,
+            tracking_number=tracking,
+            carrier=carrier,
+            lang=lang
+        )
+
+        subject = f"Shipment Update - Order #{order_id[:8]}" if lang == "en" else f"Mise à jour de livraison - Commande #{order_id[:8]}"
+        if is_pickup:
+            subject = f"Ready for Pickup - Order #{order_id[:8]}" if lang == "en" else f"Prêt pour ramassage - Commande #{order_id[:8]}"
+
+        send_email(customer_email, subject, email_html)
+
+        logger.info(f"✅ Notified buyer {user_id} for shipment of {len(shipped_this_update)} items in order {order_id}")
+
+    except Exception as e:
+        logger.error(f"🚨 Failed to notify buyer for item shipment in order {order_id}: {str(e)}")
+
+
+@firestore_fn.on_document_updated(document="orders/{orderId}", **FIRESTORE_TRIGGER_OPTIONS)
+def on_order_item_delivered(event: firestore_fn.Event[firestore_fn.Change[firestore_fn.DocumentSnapshot]]) -> None:
+    """
+    Triggered when an order document is updated.
+    Detects when an individual item status changes to 'delivered' and notifies the buyer.
+    """
+    before = event.data.before.to_dict()
+    after = event.data.after.to_dict()
+    if not before or not after:
+        return
+
+    order_id = event.params["orderId"]
+    before_items = before.get(Fields.ITEMS, [])
+    after_items = after.get(Fields.ITEMS, [])
+
+    def _item_key(item):
+        return f"{item.get(Fields.PRODUCT_ID)}_{item.get(Fields.FULFILLMENT_WAREHOUSE_ID, 'none')}"
+
+    before_map = {_item_key(item): item for item in before_items}
+
+    delivered_this_update = []
+    for item in after_items:
+        key = _item_key(item)
+        prev_item = before_map.get(key)
+
+        if (item.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED and
+            (not prev_item or prev_item.get(Fields.STATUS) != DeliveryStatusValues.DELIVERED)):
+            delivered_this_update.append(item)
+
+    if not delivered_this_update:
+        return
+
+    db = get_db()
+    user_id = after.get(Fields.USER_ID)
+    if not user_id:
+        return
+
+    # Claim notification to avoid duplicates
+    import hashlib
+    item_ids_str = ":".join(sorted([it.get(Fields.PRODUCT_ID, "") for it in delivered_this_update]))
+    item_hash = hashlib.md5(item_ids_str.encode()).hexdigest()[:12]
+    claim_id = f"item_delivered_{order_id}_{item_hash}"
+
+    claim_ref = db.collection(Collections.WEBHOOK_EVENTS).document(claim_id)
+    try:
+        claim_ref.create({
+            Fields.TIMESTAMP: get_server_timestamp(),
+            Fields.EVENT_TYPE: "item_delivered_notification",
+            Fields.ORDER_ID: order_id
+        })
+    except Exception:
+        return
+
+    try:
+        user_doc = db.collection(Collections.USERS).document(user_id).get()
+        lang = (user_doc.to_dict() or {}).get(Fields.PREFERRED_LANGUAGE, "en") if user_doc.exists else "en"
+
+        item_names = [it.get(Fields.NAME, "item") for it in delivered_this_update]
+        title = "Item Delivered" if lang == "en" else "Article livré"
+
+        if len(delivered_this_update) == 1:
+            body = f"Your item '{item_names[0]}' has been delivered!" if lang == "en" else f"Votre article '{item_names[0]}' a été livré !"
+        else:
+            body = f"{len(delivered_this_update)} items from your order have been delivered!" if lang == "en" else f"{len(delivered_this_update)} articles de votre commande ont été livrés !"
+
+        # 1. Send Push Notification
+        send_push_notification(
+            user_id,
+            title,
+            body,
+            data={"type": "order_update", "orderId": order_id, "status": DeliveryStatusValues.DELIVERED}
+        )
+
+        # 2. Send Email Notification
+        customer_email = after.get(Fields.CUSTOMER_EMAIL)
+        if not customer_email:
+            customer_email = (user_doc.to_dict() or {}).get(Fields.EMAIL)
+
+        if customer_email:
+            email_html = get_order_item_delivered_email(
+                order_data=after,
+                order_id=order_id,
+                delivered_items=delivered_this_update,
+                lang=lang
+            )
+            subject = f"Delivery Update - Order #{order_id[:8]}" if lang == "en" else f"Mise à jour de livraison - Commande #{order_id[:8]}"
+            send_email(customer_email, subject, email_html)
+
+        logger.info(f"✅ Notified buyer {user_id} for delivery of {len(delivered_this_update)} items in order {order_id}")
+    except Exception as e:
+        logger.error(f"🚨 Failed to send delivery notification: {str(e)}")

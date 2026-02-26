@@ -16,11 +16,9 @@ from __future__ import annotations
 import subprocess
 import shutil
 import time
-import requests
 import anthropic
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from .config import (
     PROJECT_ROOT, ANTHROPIC_MODEL,
@@ -69,8 +67,8 @@ class AutoFixReport:
                 print(f"     └─ {fix.error[:120]}")
 
         if self.files_fixed > 0:
-            print(f"\n💡 Review changes with: git diff")
-            print(f"   Undo all fixes with: git checkout -- .")
+            print("\n💡 Review changes with: git diff")
+            print("   Undo all fixes with: git checkout -- .")
 
 
 class AutoFixer:
@@ -183,7 +181,7 @@ class AutoFixer:
         if not fixed_content or fixed_content.strip() == original_content.strip():
             fix.status = "skipped"
             fix.error = "No changes produced"
-            print(f"     ⏭️  No changes")
+            print("     ⏭️  No changes")
             return fix
 
         # 6. Dry run — just show diff preview
@@ -200,7 +198,7 @@ class AutoFixer:
             shutil.copy2(file_path, backup_path)
 
             file_path.write_text(fixed_content)
-            print(f"     ✏️  Written")
+            print("     ✏️  Written")
         except Exception as e:
             fix.status = "failed"
             fix.error = f"Write error: {e}"
@@ -221,7 +219,7 @@ class AutoFixer:
         # 9. Clean up backup
         backup_path.unlink(missing_ok=True)
         fix.status = "fixed"
-        print(f"     ✅ Fixed!")
+        print("     ✅ Fixed!")
         return fix
 
     def _format_findings_for_fix(self, findings: list[Finding]) -> str:
@@ -374,7 +372,7 @@ Return the COMPLETE file with all issues fixed. Raw content only, no wrapping.""
         except subprocess.TimeoutExpired:
             # Don't block on slow analysis — assume OK
             return True, ""
-        except Exception as e:
+        except Exception:
             # If dart not available, skip validation
             return True, ""
 

@@ -258,7 +258,6 @@ abstract final class CloudFunctionEndpoints {
   static const getSellerWarehouses = 'get_seller_warehouses';
 
   // === ORDER ENDPOINTS ===
-  static const confirmOrderReceipt = 'confirm_order_receipt';
   static const updateOrderStatus = 'update_order_status';
   static const updateItemStatus = 'update_item_status';
   static const cancelOrder = 'cancel_order';
@@ -551,8 +550,6 @@ abstract final class Fields {
   static const unsuspendedBy = 'unsuspendedBy';
   static const suspendedBy = 'suspendedBy';
   static const suspensionReason = 'suspensionReason';
-  static const commissionRate =
-      'commissionRate'; // DEPRECATED: use commissionRateBps
   static const commissionRateBps =
       'commissionRateBps'; // 250 = 2.50% (basis points)
   static const verified = 'verified';
@@ -623,9 +620,6 @@ abstract final class Fields {
   static const rating = 'rating';
   static const ratingCount = 'ratingCount';
   static const keywords = 'keywords';
-  static const isActive = 'isActive'; // DEPRECATED — use lifecycleStatus
-  static const approvalStatus =
-      'approvalStatus'; // DEPRECATED — use lifecycleStatus
   static const approvalRejectionReason = 'approvalRejectionReason';
   static const lifecycleStatus = 'lifecycleStatus';
   static const isDigital = 'isDigital';
@@ -851,16 +845,12 @@ abstract final class Fields {
   static const shippingDays = 'shippingDays';
   static const hasTracking = 'hasTracking';
   static const maxItemsPerShipment = 'maxItemsPerShipment';
-  static const additionalItemCost = 'additionalItemCost';
   static const additionalItemCostCents = 'additionalItemCostCents';
   static const availableNationwide = 'availableNationwide';
   static const quantityDiscounts = 'quantityDiscounts';
   static const discountType = 'discountType';
   static const discountValue = 'discountValue';
   static const minQuantity = 'minQuantity';
-
-  /// DEPRECATED — kept for reading existing documents only. Use [status] field.
-  static const deliveryStatus = 'deliveryStatus';
 
   // === PAYOUT FIELDS ===
   static const amountCents = 'amountCents';
@@ -1077,8 +1067,6 @@ abstract final class Fields {
   static const maxUsesTotal = 'maxUsesTotal';
   static const maxUsesPerUser = 'maxUsesPerUser';
   static const usedCount = 'usedCount';
-  static const usedByUids =
-      'usedByUids'; // DEPRECATED — use coupon_uses subcollection
 
   // === N-09: Product variants ===
   static const hasVariants = 'hasVariants';
@@ -1151,9 +1139,6 @@ abstract final class OrderStatusValues {
   static const cancelled = 'cancelled';
   static const failed = 'failed';
   static const expired = 'expired';
-  // DEPRECATED: refunded/partiallyRefunded moved to PaymentStatusValues — kept for backward-compatible reads
-  static const refunded = 'refunded';
-  static const partiallyRefunded = 'partially_refunded';
   static const disputed = 'disputed';
 
   static const all = {
@@ -1280,29 +1265,6 @@ abstract final class PlaceholderAddressValues {
 /// Default policy/terms version numbers
 abstract final class PolicyVersionValues {
   static const defaultVersion = '1.0';
-}
-
-/// DEPRECATED — use ProductLifecycleStatusValues
-/// Valid values for product approvalStatus field.
-/// All new products start as underReview until an admin approves them.
-abstract final class ProductApprovalStatusValues {
-  static const underReview = 'under_review';
-  static const approved = 'approved';
-  static const rejected = 'rejected';
-
-  static const all = {underReview, approved, rejected};
-}
-
-/// DEPRECATED — use ProductLifecycleStatusValues
-/// Valid values for product status field
-abstract final class ProductStatusValues {
-  static const draft = 'draft';
-  static const active = 'active';
-  static const paused = 'paused';
-  static const archived = 'archived';
-  static const outOfStock = 'out_of_stock';
-
-  static const all = {draft, active, paused, archived, outOfStock};
 }
 
 /// Single lifecycle status replacing isActive + status + approvalStatus.
@@ -1576,13 +1538,10 @@ abstract final class SubcategoryConstants {
     21: ['Software', 'eBooks', 'Digital Art', 'Audio & Music', 'Courses & Tutorials', 'Templates'], // Digital Products
   };
 
-  /// Lookup subcategories by category display name (localized key → english key mapping).
-  /// Returns empty list if no subcategories defined for the category.
-  static List<String> forCategory(String categoryName) {
-    return map[categoryName] ?? const [];
+  /// Lookup subcategories by category ID (matches productCategories list in utils.dart).
+  static List<String> forCategoryId(int categoryId) {
+    return _byId[categoryId] ?? const [];
   }
-
-  static List<String> forCategoryId(int id) => _byId[id] ?? const [];
 }
 
 abstract final class SubscriptionStatusValues {

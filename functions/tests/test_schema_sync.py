@@ -100,14 +100,14 @@ class TestExtractBusinessRules:
         """Should extract PLATFORM_FEE_PERCENT."""
         python_file = tmp_path / "config.py"
         python_file.write_text("""
-PLATFORM_FEE_PERCENT = 0.025  # 2.5%
+PLATFORM_FEE_PERCENT = 2.5  # 2.5%
 AUTO_CONFIRM_DAYS = 5
-AUTHORIZATION_VALID_DAYS = 7
+AUTHORIZATION_EXPIRY_DAYS = 7
 """)
 
         result = extract_business_rules(python_file)
 
-        assert result["platformFeePercent"] == 2.5  # Converted to percentage
+        assert result["platformFeePercent"] == 2.5
         assert result["autoConfirmDays"] == 5
         assert result["authorizationExpiryDays"] == 7
 
@@ -326,14 +326,13 @@ class OrderStatus:
     PENDING = 'pending'
     CONFIRMED = 'confirmed'
 
-class PaymentStatus:
-    AUTHORIZED = 'authorized'
-    CAPTURED = 'captured'
+    class PaymentStatus:
+        AUTHORIZED = 'authorized'
+        CAPTURED = 'captured'
 
-PLATFORM_FEE_PERCENT = 0.025
-AUTO_CONFIRM_DAYS = 5
-""")
-
+    PLATFORM_FEE_PERCENT = 2.5
+    AUTO_CONFIRM_DAYS = 5
+    """)
         # Create initial Dart content
         dart_file = tmp_path / "schema.dart"
         dart_file.write_text("""

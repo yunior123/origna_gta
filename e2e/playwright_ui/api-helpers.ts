@@ -867,9 +867,10 @@ export function invalidateProductCache(): void {
  * Using fixed IDs + getDoc (single-document GET) avoids runQuery (list) permission
  * issues — Firestore rules evaluate `resource.data` reliably for individual GETs.
  */
-const STABLE_TEST_PRODUCTS: Array<{ id: string; sellerUid: string; prefix: string }> = [
+const STABLE_TEST_PRODUCTS: Array<{ id: string; sellerUid: string; prefix: string; country?: string }> = [
   { id: 'e2e_product_admin_seller',  sellerUid: TEST_UIDS.ADMIN,  prefix: 'A' },
   { id: 'e2e_product_test_seller',   sellerUid: TEST_UIDS.SELLER, prefix: 'B' },
+  { id: 'e2e_product_intl_seller',   sellerUid: TEST_UIDS.SELLER, prefix: 'C', country: 'China' },
 ];
 
 /**
@@ -884,17 +885,25 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
   const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
   const products: DiscoveredProduct[] = [];
 
-  for (const { id, sellerUid, prefix } of STABLE_TEST_PRODUCTS) {
+  for (const { id, sellerUid, prefix, country } of STABLE_TEST_PRODUCTS) {
     let product: DiscoveredProduct | null = null;
     try {
       const fields = await getDoc(`products/${id}`, adminAuth.idToken);
-      if (fields && fields.lifecycleStatus === 'active') {
+      if (fields && (fields.lifecycleStatus === 'active' || fields.status === 'active')) {
         // Auto-restore stock if too low (tests decrement stock with each checkout)
         const currentStock = fields.stockQuantity ?? 0;
         if (currentStock < 10) {
           await writeDoc(`products/${id}`, toFirestoreFields({ stockQuantity: 200 }), adminAuth.idToken, true);
           fields.stockQuantity = 200;
         }
+
+        // FIX: Ensure Product C has international address if it was created as Canadian before
+        if (id === 'e2e_product_intl_seller' && fields.sellerAddress?.country !== 'China') {
+          const intlAddress = { street: 'Nanjing Rd', city: 'Shanghai', state: 'SH', postalCode: '200001', country: 'China' };
+          await writeDoc(`products/${id}`, toFirestoreFields({ sellerAddress: intlAddress }), adminAuth.idToken, true);
+          fields.sellerAddress = intlAddress;
+        }
+
         if ((fields.stockQuantity ?? 0) > 0) {
           product = {
             id,
@@ -909,7 +918,10 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
     } catch { /* will create below */ }
 
     if (!product) {
-      product = await createDummyProduct(sellerUid, prefix, id);
+      const address = country === 'China' 
+        ? { street: 'Nanjing Rd', city: 'Shanghai', state: 'SH', postalCode: '200001', country: 'China' }
+        : undefined;
+      product = await createDummyProduct(sellerUid, prefix, id, address);
     }
     products.push(product);
   }
@@ -986,7 +998,12 @@ export async function getTwoSellerProducts(token: string): Promise<[DiscoveredPr
   return [a, b];
 }
 
-export async function createDummyProduct(sellerUid: string, prefix: string, productId?: string): Promise<DiscoveredProduct> {
+export async function createDummyProduct(
+  sellerUid: string, 
+  prefix: string, 
+  productId?: string,
+  customAddress?: { street: string; city: string; state: string; postalCode: string; country: string }
+): Promise<DiscoveredProduct> {
   const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
   const id = productId ?? `test_dummy_${prefix}_${Date.now()}`;
   const productData = {
@@ -1000,7 +1017,7 @@ export async function createDummyProduct(sellerUid: string, prefix: string, prod
     categoryId: 1,
     imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
     keywords: ['dummy', prefix],
-    sellerAddress: {
+    sellerAddress: customAddress || {
       street: '100 University Ave',
       city: 'Toronto',
       state: 'ON',

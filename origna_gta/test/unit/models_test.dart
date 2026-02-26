@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/models/models.dart';
 
 void main() {
   group('Address', () {
@@ -253,7 +253,7 @@ void main() {
       expect(product.weightKg, 0.5);
       expect(product.isLocalDeliveryOnly, false);
       expect(product.estimatedShipDays, 3);
-      expect(product.isActive, true);
+      expect(product.lifecycleStatus, 'active');
     });
 
     test('fromMap handles missing optional fields', () {
@@ -268,7 +268,7 @@ void main() {
       expect(product.ratingCount, 0);
       expect(product.stockQuantity, 0);
       expect(product.weightKg, null);
-      expect(product.isActive, true);
+      expect(product.lifecycleStatus, 'draft');
     });
 
     test('toMap returns correct map', () {
@@ -285,6 +285,7 @@ void main() {
         keywords: ['test'],
         rating: 4.5,
         ratingCount: 100,
+        lifecycleStatus: 'active',
       );
 
       final map = product.toMap();
@@ -294,7 +295,7 @@ void main() {
       expect(map[Fields.price], 29.99);
       expect(map[Fields.stockQuantity], 50);
       expect(map[Fields.rating], 4.5);
-      expect(map[Fields.isActive], true);
+      expect(map[Fields.lifecycleStatus], 'active');
     });
 
     test('price parsing handles various numeric types', () {

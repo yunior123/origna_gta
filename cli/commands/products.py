@@ -194,7 +194,7 @@ def add_product(
 
     db.collection("products").document(product_id).set(product_data)
 
-    console.print(f"\n[bold green]✓ Product created[/bold green]")
+    console.print("\n[bold green]✓ Product created[/bold green]")
     t = make_table("New Product", ["Field", "Value"])
     t.add_row("ID", product_id)
     t.add_row("Title", title)

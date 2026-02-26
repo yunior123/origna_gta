@@ -33,7 +33,8 @@ abstract class ReturnRequest with _$ReturnRequest {
     return ReturnRequest(
       returnId: doc.id,
       orderId: data['orderId'] as String? ?? '',
-      orderItemId: data['orderItemId'] as String? ?? '',
+      // Backend writes 'cartItemId' (Fields.CART_ITEM_ID); fall back to 'orderItemId' for compat
+      orderItemId: (data['cartItemId'] ?? data['orderItemId']) as String? ?? '',
       buyerId: data['buyerId'] as String? ?? '',
       sellerId: data['sellerId'] as String? ?? '',
       productId: data['productId'] as String? ?? '',

@@ -52,9 +52,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           sameDayEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.sameDay),
           minimumOrderQuantity: _product.minimumOrderQuantity,
           freeShipping: _product.freeShipping,
-          freeShippingAt10Plus: _product.deliveryOptions
-              .expand((o) => o.quantityDiscounts)
-              .any((d) => d.minQuantity == 10 && d.discountValue == 0 && d.discountType == DiscountTypeValues.flatRate),
+          taxCode: _product.taxCode,
         ),
       );
 
@@ -124,7 +122,6 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   );
 
   void toggleFreeShipping(bool value) => state = state.copyWith(freeShipping: value);
-  void setFreeShippingAt10Plus(bool value) => state = state.copyWith(freeShippingAt10Plus: value);
 
   void toggleLocalDelivery(bool value) => state = state.copyWith(isLocalDeliveryOnly: value);
 
@@ -146,6 +143,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     double? length,
     double? width,
     double? height,
+    String? taxCode,
     required int shipDays,
     required List<models.SellerDeliveryOption> deliveryOptions,
     models.InventoryConfig? inventory,
@@ -155,6 +153,8 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   }) async {
     // Guard: prevent double-submit
     if (state.isLoading) return;
+
+    final normalizedTaxCode = (taxCode == null || taxCode.trim().isEmpty) ? null : taxCode.trim();
 
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'Product name is required');
@@ -225,9 +225,16 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           return;
         }
       } else if (state.digitalType == DigitalTypeValues.book) {
-        if (state.bookSourceUrl != null && state.bookSourceUrl!.isNotEmpty && !state.bookSourceUrl!.startsWith('https://')) {
-          state = state.copyWith(errorMessage: 'Book URL must start with https://');
-          return;
+        final url = state.bookSourceUrl?.trim();
+        if (url != null && url.isNotEmpty) {
+          if (url.length > 500) {
+            state = state.copyWith(errorMessage: 'product.url_too_long'.tr());
+            return;
+          }
+          if (!url.startsWith('https://')) {
+            state = state.copyWith(errorMessage: 'product.book_url_https_required'.tr());
+            return;
+          }
         }
       }
     }
@@ -289,6 +296,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         deviceLimit: state.isDigital ? state.deviceLimit : null,
         minimumOrderQuantity: state.minimumOrderQuantity,
         freeShipping: state.freeShipping,
+        taxCode: normalizedTaxCode,
         inventory: inventory ?? _product.inventory,
         compareAtPrice: compareAtPrice,
       );

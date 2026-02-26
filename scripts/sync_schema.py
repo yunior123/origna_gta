@@ -76,7 +76,7 @@ def extract_python_class_constants(file_path: Path, class_name: str) -> dict[str
 
 
 def extract_business_rules(file_path: Path) -> dict[str, Any]:
-    """Extract business rule constants from schema constants or legacy config format."""
+    """Extract business rule constants from schema constants."""
     content = file_path.read_text()
     class_pattern = r"class BusinessRules(?:\([^)]*\))?:\n(.*?)(?:\nclass|\Z)"
     class_match = re.search(class_pattern, content, re.DOTALL)
@@ -86,21 +86,16 @@ def extract_business_rules(file_path: Path) -> dict[str, Any]:
     rules = {}
 
     # PLATFORM_FEE_PERCENT:
-    # - Legacy config.py used ratio (0.025)
-    # - schema_constants.BusinessRules uses percent (2.5)
+    # schema_constants.BusinessRules uses percent (2.5)
     match = re.search(r"PLATFORM_FEE_PERCENT\s*=\s*(\d+\.?\d*)", search_body)
     if match:
-        raw = float(match.group(1))
-        rules["platformFeePercent"] = raw * 100 if raw <= 1 else raw
+        rules["platformFeePercent"] = float(match.group(1))
 
     match = re.search(r"AUTO_CONFIRM_DAYS\s*=\s*(\d+)", search_body)
     if match:
         rules["autoConfirmDays"] = int(match.group(1))
 
-    # Support both AUTHORIZATION_EXPIRY_DAYS (current) and AUTHORIZATION_VALID_DAYS (legacy)
     match = re.search(r"AUTHORIZATION_EXPIRY_DAYS\s*=\s*(\d+)", search_body)
-    if not match:
-        match = re.search(r"AUTHORIZATION_VALID_DAYS\s*=\s*(\d+)", search_body)
     if match:
         rules["authorizationExpiryDays"] = int(match.group(1))
 
@@ -338,9 +333,9 @@ def main():
             updated_content = update_class_in_dart(updated_content, 'BusinessRules', new_rules_class)
             changes.append("BusinessRules: values updated")
         else:
-            print(f"   ✓ BusinessRules already up-to-date")
+            print("   ✓ BusinessRules already up-to-date")
     else:
-        print(f"   ⚠️  BusinessRules not found in Dart file, skipping")
+        print("   ⚠️  BusinessRules not found in Dart file, skipping")
     
     # Update timestamp
     updated_content = update_timestamp(updated_content)
@@ -355,7 +350,7 @@ def main():
     else:
         # Still update timestamp to show the file was checked
         DART_SCHEMA_FILE.write_text(updated_content)
-        print(f"\n✅ No value changes needed (timestamp updated)")
+        print("\n✅ No value changes needed (timestamp updated)")
     
     print("\n📋 Next steps:")
     print("   1. Run `flutter analyze` to verify")

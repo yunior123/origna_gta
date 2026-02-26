@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import json, base64
+import json
+import base64
 from urllib.request import Request, urlopen
 
 AUTH = 'http://localhost:9099'

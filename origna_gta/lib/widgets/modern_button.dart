@@ -64,8 +64,8 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
             ? null
             : (_) {
                 _scaleController.reverse();
-                // Prevent double tap execution as InkWell handles the tap too
-                // widget.onPressed?.call();
+                // GestureDetector's onTapUp fires before InkWell's onTap; calling
+                // widget.onPressed here would double-fire. Tap is handled by InkWell.
               },
         onTapCancel: isDisabled ? null : () => _scaleController.reverse(),
         child: ScaleTransition(

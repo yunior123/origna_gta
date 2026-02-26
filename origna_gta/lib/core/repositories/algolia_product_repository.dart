@@ -17,18 +17,6 @@ class AlgoliaProductRepository implements ProductRepository {
   AlgoliaProductRepository(this._algoliaService, this._firestore, this._functions);
 
   @override
-  @Deprecated('Use createProductAtomic() instead — bypasses server validation.')
-  Future<String> addProduct(Product product) async {
-    throw UnsupportedError('addProduct() is disabled. Use createProductAtomic().');
-  }
-
-  @override
-  @Deprecated('Use createProductAtomic() instead — bypasses server validation.')
-  Future<void> addProductWithId(String productId, Product product) async {
-    throw UnsupportedError('addProductWithId() is disabled. Use createProductAtomic().');
-  }
-
-  @override
   Future<void> deleteProduct(String productId) async {
     // AUDIT FIX: Use Cloud Function for deletion — validates pending orders, syncs Algolia, etc.
     await _functions.httpsCallable(CloudFunctionEndpoints.deleteProduct).call({Fields.productId: productId});
@@ -190,6 +178,16 @@ class AlgoliaProductRepository implements ProductRepository {
         .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
   }
 
+  @override
+  Stream<int> watchUnansweredQuestionsCount(String sellerId) {
+    return _firestore
+        .collection(Collections.productQuestions)
+        .where(Fields.sellerId, isEqualTo: sellerId)
+        .where(Fields.isAnswered, isEqualTo: false)
+        .snapshots()
+        .map((snap) => snap.docs.length);
+  }
+
   Future<ProductQueryResult> _fetchFromFirestore({
     String? searchQuery,
     int? categoryId,
@@ -226,7 +224,8 @@ class AlgoliaProductRepository implements ProductRepository {
       query = query.startAfterDocument(lastDocument);
     }
 
-    query = query.limit(pageSize);
+    // N+1 pattern: fetch one extra item to accurately determine if more exist
+    query = query.limit(pageSize + 1);
 
     if (kDebugMode) {
       debugPrint('[AlgoliaProductRepository] Firestore Project ID: ${_firestore.app.options.projectId}');
@@ -235,15 +234,19 @@ class AlgoliaProductRepository implements ProductRepository {
 
     final snapshot = await query.get(const GetOptions(source: Source.server));
     if (kDebugMode) debugPrint('[AlgoliaProductRepository] Fallback Snapshot length: ${snapshot.docs.length}');
-    final products = snapshot.docs.map((doc) {
+    
+    final hasMore = snapshot.docs.length > pageSize;
+    final docsToMap = hasMore ? snapshot.docs.take(pageSize) : snapshot.docs;
+
+    final products = docsToMap.map((doc) {
       if (kDebugMode) debugPrint('[AlgoliaProductRepository] Doc ${doc.id} name: ${doc.data()[Fields.name]}');
       return Product.fromFirestore(doc);
     }).toList();
 
     return ProductQueryResult(
       products: products,
-      hasMore: snapshot.docs.length >= pageSize,
-      lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+      hasMore: hasMore,
+      lastDocument: docsToMap.isNotEmpty ? docsToMap.last : null,
     );
   }
 

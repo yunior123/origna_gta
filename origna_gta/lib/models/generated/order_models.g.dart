@@ -84,7 +84,6 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   respondedAt: json['respondedAt'] == null
       ? null
       : DateTime.parse(json['respondedAt'] as String),
-  actualCost: (json['actualCost'] as num?)?.toDouble(),
   requiresManualReview: json['requiresManualReview'] as bool? ?? false,
   manualReviewReason: json['manualReviewReason'] as String?,
   payoutErrors:
@@ -151,7 +150,6 @@ Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
   'cancelledAt': instance.cancelledAt?.toIso8601String(),
   'cancellationReason': instance.cancellationReason,
   'respondedAt': instance.respondedAt?.toIso8601String(),
-  'actualCost': instance.actualCost,
   'requiresManualReview': instance.requiresManualReview,
   'manualReviewReason': instance.manualReviewReason,
   'payoutErrors': instance.payoutErrors,
@@ -174,8 +172,6 @@ const _$OrderStatusEnumMap = {
   OrderStatus.cancelled: 'cancelled',
   OrderStatus.failed: 'failed',
   OrderStatus.expired: 'expired',
-  OrderStatus.refunded: 'refunded',
-  OrderStatus.partiallyRefunded: 'partially_refunded',
   OrderStatus.disputed: 'disputed',
 };
 

@@ -9,7 +9,6 @@ Requires: requests (pip install requests)
 Emulator must be running on localhost:8080 (Firestore) and localhost:9099 (Auth).
 """
 
-import json
 import requests
 import uuid
 from datetime import datetime, timedelta
@@ -625,7 +624,7 @@ def main():
     print(f"🏁 Done! {success_count}/{len(PRODUCTS)} products created successfully.")
     print(f"   Seller UID: {seller_uid}")
     print(f"   Seller Email: {TARGET_EMAIL}")
-    print(f"\n   🔗 View in Emulator UI: http://localhost:4000/firestore/data/products")
+    print("\n   🔗 View in Emulator UI: http://localhost:4000/firestore/data/products")
     print(f"{'=' * 60}")
 
 

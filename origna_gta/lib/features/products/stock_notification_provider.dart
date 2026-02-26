@@ -43,6 +43,10 @@ class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
           .where(Fields.productId, isEqualTo: productId);
       if (variantKey != null) {
         query = query.where(Fields.variantKey, isEqualTo: variantKey);
+      } else {
+        // Filter explicitly for product-level (empty variantKey) to avoid false positive
+        // from a variant-specific subscription on the same product.
+        query = query.where(Fields.variantKey, isEqualTo: '');
       }
       final snap = await query.limit(1).get();
       state = AsyncValue.data(snap.docs.isNotEmpty);

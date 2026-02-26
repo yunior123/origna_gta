@@ -1,0 +1,799 @@
+_cron_locks
+/payment-cancel
+/payment-success
+/seller/refresh
+/seller/return
+\u00a9 2026 Origna Ventures Inc. All rights reserved.
+1.0
+1688
+708286364RC0001
+acceptsReturns
+accessToken
+accountId
+accountId
+action
+action
+activations
+active
+active
+active
+actor
+actorType
+actualCost
+actualShippingCents
+add
+additionalItemCostCents
+address
+addressCount
+addresses  # users/{userId}/addresses  (TASK 05: buyer address book)
+addressId
+admin
+admin_logs
+adminId
+algolia_sync_failures
+algolia_sync_issue
+algoliaCount
+alibaba
+aliexpress
+all
+allItemsDelivered
+allItemsShipped
+allowBackorder
+amazon_europe
+amazon_japan
+amazon_usa
+amount
+amountCents
+anonymizedAt
+answer
+answeredAt
+answeredBy
+apartment
+approvalRejectionReason
+approvalRequired
+approve
+approved
+approved
+approved
+approved
+archived
+archived
+archivedAt
+askerId
+AUD
+auth_deletion_failed
+authorization_expired
+authorized
+auto_confirmed
+autoCaptured
+autoConfirmed
+available
+availableNationwide
+availableQuantity
+avgRating
+avgResponseTimeHours
+avgShipDays
+awaiting_payment
+backup_codes
+bankAccountLast4
+bankDetails
+blocked_gst_attempt
+book
+book_access_tokens
+bookAccessToken
+bookSourceUrl
+breaches
+BRL
+businessAddress
+businessName
+buyer
+buyerConfirmed  # Alternate for CONFIRMED_BY_BUYER
+buyerId
+buyerNote
+buyerUnreadCount  # int — unread messages for buyer
+CA
+ca_gst_hst
+cad
+CAD
+Canada
+Canada
+canada_post
+Canada's Modern Marketplace
+cancelAtPeriodEnd  # bool
+canceled
+cancellation_confirmed
+cancellationRate
+cancellationReason
+cancelled
+cancelled
+cancelledAt
+cancelledBy
+cancelling
+cancelScheduledAt  # datetime — when cancellation was requested
+captureAttempts
+captured
+captured
+capturedAt
+capturing
+carrier
+carrierNote  # Free-text override when carrier='other'
+cart  # users/{userId}/cart
+cartItemId
+cartSubtotalCents
+categoryId
+chargeId
+chargesEnabled
+chatId
+chats  # top-level: chats/{chatId}
+checkbox
+checkoutUrl
+city
+cjdropshipping
+clientIp
+CNY
+code
+comment
+commissionRateBps  # 250 = 2.50% (basis points — avoids float precision)
+compareAtPrice  # Original/crossed-out price for sale display
+compareAtPriceHistory
+completed
+completed
+completed
+completedAt
+computedAt
+condition  # Product condition: new|like_new|good|fair|for_parts
+config
+configured
+confirmation
+confirmed
+confirmedAt
+confirmedByBuyer
+confirmedByClient
+consentMethod  # str — how consent was obtained (signup, checkbox, etc.)
+consentTimestamp  # datetime — when consent was given
+cost  # kept for shipping estimate dicts; for SellerDeliveryOption use COST_CENTS
+costCents
+costco
+count
+country
+coupang
+coupon_uses  # Subcollection under coupons/{couponId} — replaces usedByUids array
+couponCode
+coupons  # N-07: coupon/promo code system
+createdAt
+critical
+cumulativeRefundedCents
+cumulativeReversedCents
+currency
+currentPeriodEnd  # datetime
+currentPeriodStart  # datetime
+custom
+custom
+customerEmail
+customerId
+customerName
+dataProcessingConsent  # bool — explicit consent for data processing
+dateFavorited
+deactivated
+deactivationReason
+delete
+deleted
+deletedAt
+deletedBy
+delivered
+delivered
+deliveredAt
+deliveryInstructions
+deliveryOptions
+deliverySpeed
+description
+descriptionF  # French product description
+destination
+detailsSubmitted
+deviceId
+deviceLimit
+dhgate
+dhl
+digitalBuilds
+digitalType
+digitalUnlocked
+discountAmountCents
+discountType
+discountValue
+dispute_created
+dispute_funds_reinstated
+disputed
+disputed
+disputedAt
+disputedAt
+disputeId
+disputeRate
+disputeResolution
+disputeResolvedAt
+disputeStatus
+domestic
+double_opt_in
+draft
+duplicate
+email
+emailConsent  # bool — user accepted transactional emails
+emulatorMode
+en
+enabled
+enabledProviders
+error
+error
+errorCode
+errorMessage
+escalated  # Auto-escalated to admin after N days unresolved
+escalatedAt  # timestamp when return was escalated
+escalationReason  # reason for escalation
+estimatedDays
+estimatedShipDays
+etsy_wholesale
+EUR
+eventId
+events  # Subcollection under orders/{orderId}/events/{eventId}
+eventType
+existing
+expectedCostCents
+expired
+expiresAt
+expiring
+express
+failed
+failed
+failed
+failedAt
+failureMessage
+failureReason
+fair
+faire
+favorites  # users/{userId}/favorites
+fcm_tokens  # users/{uid}/fcm_tokens — multi-device push tokens
+fcmToken  # str — Firebase Cloud Messaging device token
+fcmTokenUpdatedAt  # datetime — last FCM token update
+features
+fedex
+feeRate
+fileName
+firestoreCount
+first_request
+firstBuyerMessageAt  # datetime — when buyer sent first message
+firstReplyHours  # float — hours from first buyer msg to seller first reply
+firstSellerReplyAt  # datetime — when seller sent first reply
+fixed
+fixed_cents
+flagged  # request payload key used by admin_flag_review callable
+flat_rate
+for_parts
+formattedAddress
+fr
+fraudScore
+freeShipping
+fromStatus
+fulfillmentWarehouseId  # TASK 02: warehouse used to fulfill this order item
+fullName
+GBP
+global_sources
+gmarket
+good
+gst
+GST
+gstNumber
+hasChanges
+hasDispute  # bool on order doc
+hasPhotos
+hasTracking
+hasVariants
+heightCm
+helpfulCount
+helpfulVoterIds
+high
+HKD
+hst
+HST
+http://localhost:5005
+http://localhost:5005/unsubscribe
+https://orignagta-dev.web.app
+https://orignagta-dev.web.app/unsubscribe
+https://orignagta-staging.web.app
+https://orignagta-staging.web.app/unsubscribe
+https://orignagta.ca
+https://orignagta.ca
+https://orignagta.ca/unsubscribe
+https://orignagta.web.app
+idempotencyKey
+ignored
+imageUrls
+implied
+in_transit
+inactive  # Internal status: no subscription doc exists
+incomplete
+incomplete_expired
+index
+indiamart
+INR
+international_generic
+international_supplier
+invalid_gst_attempt
+inventory
+inventoryLevels  # products/{productId}/inventoryLevels/{warehouseId}
+isAnswered
+isCorporate
+isDefault
+isDigital
+isFlagged
+isLocalDeliveryOnly
+isPerishable
+isPremium  # bool — cached premium status (authoritative: subscriptions/{uid})
+isSeller  # bool flag on users doc
+isTrending  # bool — currently in trending list
+item_delivered
+item_shipped
+itemIds
+items
+itemStatus
+itemTaxes
+JPY
+keywords
+KRW
+label
+label_issued
+last_request
+lastActorId  # uid of last actor on order
+lastCaptureError
+lastCartAbandonEmailAt
+lastCheckoutSession
+lastCheckoutTimestamp
+lastLowStockAlertAt
+lastMessage  # str — text of last message
+lastMessageAt  # datetime
+lastMfaVerify
+lastOrderId
+lastRetryError
+lastRoleUpdate
+lastRoleUpdateBy
+lastSyncedAt
+lastVerifiedAt
+lateShipmentRate
+latitude
+lengthCm
+licenseKey
+licenseKey
+licenses
+lifecycleStatus
+like_new
+linux
+liveAccountId
+livemode
+local
+local_delivery
+localDeliveryOnly  # Alternate for IS_LOCAL_DELIVERY_ONLY
+lockedAt
+lockedBy
+longitude
+low
+lowStockThreshold
+M5V 3A8
+macos
+made_in_china
+manualReviewReason
+mark_received
+marketingOptIn  # bool — explicit opt-in for marketing emails
+maxItemsPerShipment
+maxRetriesExceeded
+maxUsesPerUser
+maxUsesTotal
+medium
+message
+messages  # subcollection: chats/{chatId}/messages/{msgId}
+mfa_low_backup_codes
+mfaBackupCodes
+mfaBackupCodesSalt
+mfaBackupCodesTemp
+mfaEnabled
+mfaEnrolledAt
+mfaFailedAttempts
+mfaLockoutUntil
+mfaSecret
+mfaSecretTemp
+mfaVerified
+minimumOrderQuantity
+minOrderCents
+minOrderQuantity  # Alternate for MINIMUM_ORDER_QUANTITY
+minQuantity
+mismatchPercent
+missingKeys
+MXN
+N/A
+name
+nameF  # French product name (Quebec Bill 96)
+netAmountCents
+new
+newCostCents
+newEnabled
+newPrice
+newRoles
+newShippingCost
+newStatus
+not_required
+note_added
+notifications  # users/{uid}/notifications
+notificationsSent  # ArrayUnion of status values already notified
+notifiedAt
+notifyNewProducts  # bool — opt-in: notify on new products
+notifyTrending  # bool — opt-in: notify on trending products
+oberlo
+oldEnabled
+oldPrice
+oldRoles
+ON
+ON
+onboardingCompleted
+optionValues
+order_refund
+orderId
+orders
+ordersCancelled
+orderStatus
+originalCostCents
+originalUserDeleted
+Origna GTA
+Origna GTA Security
+Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada
+origna_gta
+other
+other
+paid
+partial
+partially_refunded
+partially_reversed
+partialRefundAmountCents
+partialReversals
+past_due
+paused
+payloadSize
+payment_authorized
+payment_captured
+payment_failed
+payment_failed
+payment_provider_disabled
+payment_provider_update
+payment_providers
+paymentCompletedAt
+paymentError
+paymentId
+paymentIntentId
+paymentIntentId
+paymentProvider
+paymentStatus
+payout_failed
+payout_record_incomplete
+payoutDate
+payoutErrors
+payoutHoldDays
+payoutId
+payouts
+payoutsEnabled
+payoutStatus
+pending
+pending
+pending
+pending
+pending_profiles  # pending_profiles/{uid}
+pendingRequirements
+pendingTotalCents
+percent
+percent
+perishable  # Alternate for IS_PERISHABLE
+personal
+phoneNumber
+pickup
+platform
+platform
+platformFee
+platformFeeCents
+platformFeeRatio  # Stored at checkout for capture-time fee rate
+platformFeeTotalCents
+positiveRatePct
+postalCode
+preDisputeStatus
+preferredLanguage  # str — 'en' or 'fr' (for Quebec Bill 96 compliance)
+premiumExpiresAt  # datetime — current billing period end
+premiumSince  # datetime — when premium started
+price
+PRICE_CHANGED
+priceCents  # Integer cents derived from price (9.99 → 999) — use for arithmetic
+priceChanges
+priceHistory
+priceSnapshot
+primaryWarehouseId
+printful
+printify
+privacyAcceptedAt  # datetime — when privacy policy was accepted
+privacyPolicyVersion  # str — version of privacy policy accepted
+processed
+processed
+processedAt
+processing
+processing
+processing
+processing
+processingStatus
+product_questions  # TASK 09: product Q&A
+product_ratings
+productId
+productIds
+productImageUrl
+productName
+productName  # stored in license doc; denormalized from product
+products
+productsDeactivated
+productTitle
+provider
+provider
+providerName
+providers
+providerStatus
+provisioning_uri
+pst
+PST
+purchaseCount  # int — total purchases (for trending)
+purolator
+pushEnabled  # bool — user opted into push notifications
+qrCodeUrl
+qst
+QST
+quantity
+quantityDiscounts
+question
+questionId
+rakuten
+rate_limits
+rating
+ratingCount
+ratingId
+ratings
+read  # bool — message read by recipient
+reason
+reason
+received
+receivedAt
+refreshUrl
+refund_failed
+refund_issued
+refund_reversal_failed
+refundAmount
+refundAmountCents
+refunded
+refunded
+refunded
+refundedAt
+refundId
+refundRate
+refundReason
+refunds
+rejected
+rejected
+rejected
+remainingCodes
+remove
+removedProducts
+requested
+requested
+requestedAt
+requestedBy
+requirementsCurrentlyDue
+requiresManualReview
+reservationHoldMinutes
+reservedQuantity
+resolution
+resolved
+resolvedAt
+respondedAt
+retries
+retryCount
+return_requests
+returnAdminNote
+returnId
+returnReason
+returnRefundAmountCents
+returnStatus
+returnTrackingNumber
+returnUrl
+returnWindowDays  # seller-profile field; see BusinessRules.RETURN_WINDOW_DAYS for default value
+reversalErrors
+reversalId
+reversalReason
+reversed
+reversed_dispute
+reversedAt
+review
+review_delete
+review_flag
+review_votes  # subcollection of product_ratings/{ratingId}
+reviewId  # alias used in admin operations
+reviewImageUrls
+reviewText
+revoked
+role_change
+roles
+running
+same_day
+savedAt  # N-05: Save for Later timestamp
+schemaVersion  # Schema layout version for migration tracking
+searchKeywords
+secret
+security_alerts
+seller
+seller_account_changed
+seller_kyc_failed
+seller_metrics  # TASK 11: seller health metrics
+seller_metrics_breach  # TASK 11
+seller_profiles  # Seller-only profile data — buyers never have this doc
+seller_skus  # Collision docs for atomic SKU uniqueness: {sellerId}_{sku}
+seller_suspended
+seller_unsuspended
+sellerAddress
+sellerAmountCents  # per-payout cents
+sellerCaptures
+sellerId
+sellerIds
+sellerName  # Seller display name snapshotted at purchase time
+sellerPayouts
+sellerProfile
+sellerReply
+sellerReplyAt
+sellerSku
+sellerStripeAccounts
+sellerUnreadCount  # int — unread messages for seller
+senderDisplayName  # str — denormalized at send time to avoid extra reads for push notifications
+senderId
+session_expired
+sessionId
+severity
+SGD
+shared_gst_number
+shipFromCity
+shipFromCountries
+shipFromCountry
+shipFromProvince
+shipped
+shipped
+shippedAt
+shippingAddress
+shippingApproval
+shippingApprovalRequired
+shippingApprovalStatus
+shippingCostCents
+shippingDays
+signatureVerified
+signup
+slug
+snapshotAccountId
+software
+software_access_tokens
+spocket
+standard
+state
+status
+status_changed
+stock_notifications  # TASK 07: back-in-stock
+stock_update
+stockChanges
+stockQuantity
+stockRestored
+street
+stripe
+stripe_tax_fallback_gst  # Stripe Tax down for GST-exempt buyer
+stripeAccountId
+stripePaymentIntentId
+stripeSessionId
+stripeSubscriptionId  # str — Stripe Subscription ID
+stripeTransferId
+subcategory
+subscribedAt
+subscriptions  # top-level: subscriptions/{userId}
+subscriptionStatus
+subtotal
+subtotalCents
+success
+supplier
+supplierShippingDays  # Alternate for ESTIMATED_SHIP_DAYS
+support@orignaventures.ca
+support@orignaventures.ca
+supportedCountries
+supportedCurrencies
+supportedPlatforms
+suspended
+suspendedAt
+suspendedBy
+suspensionReason
+suspicious_tax_exemption
+targetUserId
+tax_exemption_pending_review
+taxAmountCents
+taxCents  # Per-item tax in cents (inside itemTaxes array)
+taxCode
+taxes
+taxExempt
+taxExemption
+taxRate  # Per-item tax rate (inside itemTaxes array)
+temu
+termsAcceptedAt  # datetime — when ToS was accepted
+termsVersion  # str — version of ToS accepted
+text
+timestamp
+token  # Field name inside fcm_tokens subcollection docs
+token_revocation_failed  # Suspension token revoke failed
+toStatus
+totalAmountCents
+totalOrders
+totalOrders30d
+totalRevenueCents30d
+totalReviews
+totalSales
+trackingNumber
+trackQuantity
+tradeindia
+transferId
+transfersReversed
+trendingAt  # datetime — when product last entered trending
+trendingScore  # int — computed trending score
+trialing
+TWD
+txcd_10000000
+txcd_10201000
+txcd_10302000
+txcd_20030002
+txcd_30060005
+txcd_92010001
+txcd_99999999
+type
+uid
+under_review
+unpaid
+unsubscribe  # User clicked unsubscribe link
+unsubscribedAt  # datetime — when user unsubscribed from marketing
+unsuspendedAt
+unsuspendedBy
+updatedAt
+updatedBy
+uploadUrl
+ups
+upvotes
+url
+USD
+USD
+usedCount
+user_preference  # User toggled consent in settings
+user_security  # Backend-only MFA secrets — allow read: if false
+userId
+users
+usps
+v3.1
+variantId
+variantKey
+variantOptions
+variants
+variantSku
+variantTitle
+verificationStatus
+verified
+verifiedPurchase
+version  # Optimistic concurrency version, starts at 1
+viewCount  # int — total product views
+voided
+walmart
+warehouse
+warehouseIds
+warehouses  # users/{sellerId}/warehouses
+warehouseStock
+warehouseStockMap  # per-warehouse stock allocation: {warehouseId: qty}
+webhook_events
+webhook_logs
+weightKg
+widthCm
+windows
+Yunior Rodriguez Osorio

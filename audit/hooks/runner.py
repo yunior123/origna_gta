@@ -11,20 +11,16 @@ Features:
 from __future__ import annotations
 
 import json
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from .config import (
-    OUTPUT_DIR, PROJECT_ROOT, CRITICAL, HIGH, MEDIUM, SEVERITY_ORDER,
-    ANTHROPIC_MODEL
+    OUTPUT_DIR, PROJECT_ROOT, CRITICAL, MEDIUM, ANTHROPIC_MODEL
 )
 from .base import (
-    BaseHook, HookResult, Finding,
-    get_all_hooks, get_hook, get_git_changed_files,
+    BaseHook, HookResult, get_all_hooks, get_git_changed_files,
 )
 from .fixer import AutoFixer, AutoFixReport
 
@@ -206,7 +202,7 @@ class HookRunner:
         json_latest = OUTPUT_DIR / "hooks_report.json"
         json_latest.write_text(json.dumps(json_data, indent=2))
 
-        print(f"\n📄 Reports saved:")
+        print("\n📄 Reports saved:")
         print(f"   JSON: {json_path.relative_to(PROJECT_ROOT)}")
         print(f"   MD:   {md_path.relative_to(PROJECT_ROOT)}")
 

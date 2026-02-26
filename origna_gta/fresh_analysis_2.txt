@@ -1,0 +1,5 @@
+Analyzing origna_gta...                                         
+
+  error • Missing concrete implementations of 'getter mixin _$ResetPasswordState on Object.errorMessage', 'getter mixin _$ResetPasswordState on Object.isLoading', 'getter mixin _$ResetPasswordState on Object.isSuccess', 'getter mixin _$ResetPasswordState on Object.isVerifying', and 1 more • lib/features/auth/reset_password_state.dart:6:7 • non_abstract_class_inherits_abstract_member
+warning • Unused import: 'package:firebase_auth/firebase_auth.dart' • lib/screens/chat_screen.dart:2:8 • unused_import
+

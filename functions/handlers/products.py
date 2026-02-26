@@ -436,7 +436,7 @@ def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
-    Soft deletes a product (sets isActive = False).
+    Soft deletes a product (sets lifecycleStatus = archived).
 
     Security:
     - Only product owner or admin can delete
@@ -527,34 +527,45 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Soft delete
     product_ref.update({Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ARCHIVED, Fields.DELETED_AT: get_server_timestamp(), Fields.DELETED_BY: user_id})
 
-    # Remove from Algolia index
     try:
         algolia_delete_product(product_id)
     except Exception as e:
         logger.error(f"Failed to delete from Algolia: {str(e)}")
 
-    # Clean up stock_notification subscriptions for this product
+    # Clean up stock_notification subscriptions for this product (paginated for 200+ watchers)
     try:
-        subs = list(get_db().collection(Collections.STOCK_NOTIFICATIONS).where(Fields.PRODUCT_ID, "==", product_id).limit(200).stream())
-        batch = get_db().batch()
-        for sub in subs:
-            batch.delete(sub.reference)
-        if subs:
+        while True:
+            subs = list(get_db().collection(Collections.STOCK_NOTIFICATIONS).where(Fields.PRODUCT_ID, "==", product_id).limit(200).stream())
+            if not subs:
+                break
+            batch = get_db().batch()
+            for sub in subs:
+                batch.delete(sub.reference)
             batch.commit()
     except Exception as e:
         logger.error(f"Failed to cleanup stock_notifications for deleted product {product_id}: {e}")
 
-    # Clean up favorites entries across all users for this product
+    # Clean up favorites entries across all users for this product.
+    # FIX: Paginate the batch loop — a single .limit(500) batch silently leaves
+    # orphans when a popular product has >500 fans. Mirror the paginated pattern
+    # already used for stock_notification cleanup above.
     try:
-        fav_refs = list(
-            get_db().collection_group(Collections.FAVORITES).where(Fields.PRODUCT_ID, "==", product_id).limit(500).stream()
-        )
-        if fav_refs:
-            batch = get_db().batch()
+        total_fav_cleaned = 0
+        while True:
+            fav_refs = list(
+                get_db().collection_group(Collections.FAVORITES).where(Fields.PRODUCT_ID, "==", product_id).limit(200).stream()
+            )
+            if not fav_refs:
+                break
+            fav_batch = get_db().batch()
             for fav in fav_refs:
-                batch.delete(fav.reference)
-            batch.commit()
-            logger.info(f"Cleaned up {len(fav_refs)} favorites for deleted product {product_id}")
+                fav_batch.delete(fav.reference)
+            fav_batch.commit()
+            total_fav_cleaned += len(fav_refs)
+            if len(fav_refs) < 200:
+                break
+        if total_fav_cleaned:
+            logger.info(f"Cleaned up {total_fav_cleaned} favorites for deleted product {product_id}")
     except Exception as e:
         logger.error(f"Failed to cleanup favorites for deleted product {product_id}: {e}")
 
@@ -669,6 +680,8 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CREATED_AT: get_server_timestamp(),
         Fields.HELPFUL_COUNT: 0,
         # Votes are tracked in review_votes/{userId} subcollection (not an array)
+        # FIX C-1: Mark as verified purchase (order ownership + delivery already validated above)
+        Fields.VERIFIED_PURCHASE: True,
     }
     if review_image_urls:
         rating_doc[Fields.REVIEW_IMAGE_URLS] = review_image_urls
@@ -680,16 +693,30 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     _txn_error: dict = {}
 
     def update_rating_transaction(transaction):
-        # Duplicate guard inside transaction (prevents race condition)
-        existing = list(
+        # FIX C-2: Dual duplicate guard — by order (prevents double-click) AND by user+product
+        # (prevents rating inflation when a user buys the same product in multiple orders).
+        existing_order = list(
             get_db()
             .collection(Collections.PRODUCT_RATINGS)
             .where(Fields.ORDER_ID, "==", order_id)
             .limit(1)
             .stream()
         )
-        if existing:
+        if existing_order:
             _txn_error["err"] = https_fn.HttpsError("already-exists", "This order has already been rated")
+            return None, None
+
+        # FIX C-2: One rating per user per product (across all orders)
+        existing_user_product = list(
+            get_db()
+            .collection(Collections.PRODUCT_RATINGS)
+            .where(Fields.USER_ID, "==", user_id)
+            .where(Fields.PRODUCT_ID, "==", product_id)
+            .limit(1)
+            .stream()
+        )
+        if existing_user_product:
+            _txn_error["err"] = https_fn.HttpsError("already-exists", "You have already rated this product")
             return None, None
 
         product_doc = product_ref.get(transaction=transaction)
@@ -881,9 +908,40 @@ def _geocode_warehouse_address(address: dict) -> dict:
         return address
 
 
+def _validate_warehouse_address(address: dict) -> None:
+    """
+    Validate warehouse address fields.
+    FIX H-04: Enforces Canadian postal-code format and province whitelist on server side.
+    Raises https_fn.HttpsError("invalid-argument", ...) on failure.
+    """
+    if not isinstance(address, dict):
+        raise https_fn.HttpsError("invalid-argument", "address must be a map")
+    city = (address.get(Fields.CITY) or "").strip()
+    if not city:
+        raise https_fn.HttpsError("invalid-argument", "address.city is required")
+    country = (address.get(Fields.COUNTRY) or "").strip().lower()
+    state = (address.get(Fields.STATE) or "").strip().upper()
+    postal = (address.get(Fields.POSTAL_CODE) or "").strip().upper()
+    # For Canadian warehouses validate province + postal format
+    if not country or country in ("canada", "ca"):
+        if state and state not in AppConfig.VALID_PROVINCES:
+            raise https_fn.HttpsError(
+                "invalid-argument",
+                f"Invalid province '{state}'. Must be one of: {sorted(AppConfig.VALID_PROVINCES)}",
+            )
+        if postal:
+            ca_postal_re = re.compile(r"^[A-Z]\d[A-Z][ -]?\d[A-Z]\d$")
+            if not ca_postal_re.match(postal):
+                raise https_fn.HttpsError(
+                    "invalid-argument",
+                    f"Invalid Canadian postal code '{postal}'. Expected format: A1A 1A1",
+                )
+
+
 def _derive_ship_from_fields(seller_id: str, product_data: dict) -> dict:
     """Derive shipFrom* fields from warehouse addresses or seller address.
-    Returns dict with shipFromCity, shipFromProvince, shipFromCountry, shipFromCountries.
+    Returns dict with shipFromCity, shipFromProvince, shipFromCountry, shipFromCountries,
+    and denormalized sellerAddress (from primary warehouse) if warehouses are used.
     """
     if product_data.get(Fields.IS_DIGITAL, False):
         return {}
@@ -935,6 +993,11 @@ def _derive_ship_from_fields(seller_id: str, product_data: dict) -> dict:
             result[Fields.SHIP_FROM_PROVINCE] = primary_addr[Fields.STATE]
         if primary_addr.get(Fields.COUNTRY):
             result[Fields.SHIP_FROM_COUNTRY] = primary_addr[Fields.COUNTRY]
+
+        # M-02: Denormalize sellerAddress from primary warehouse
+        # This allows checkout to skip extra Firestore reads for warehouse docs.
+        result[Fields.SELLER_ADDRESS] = primary_addr
+
     if countries:
         result[Fields.SHIP_FROM_COUNTRIES] = sorted(countries)
     return result
@@ -1114,9 +1177,18 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.CREATED_AT: get_server_timestamp(),
             })
         except Exception as sku_err:
-            # If AlreadyExists — another product holds this SKU
+            # Detect Firestore AlreadyExists by exception type first (precise), then
+            # fall back to status code / message for SDK variants that wrap the error.
+            from google.api_core.exceptions import AlreadyExists as _AlreadyExists
             err_str = str(sku_err).lower()
-            if "already exists" in err_str or "exists" in err_str or "409" in err_str:
+            is_conflict = (
+                isinstance(sku_err, _AlreadyExists)
+                or "already-exists" in err_str
+                or "already exists" in err_str
+                or "conflict" in err_str
+                or "409" in err_str
+            )
+            if is_conflict:
                 raise https_fn.HttpsError(
                     "already-exists", f"A product with SKU \"{seller_sku}\" already exists. Use a unique seller SKU."
                 ) from sku_err
@@ -2186,26 +2258,39 @@ def on_product_deleted(event: firestore_fn.Event) -> None:
         logger.error(f"Failed to delete product {product_id} from Algolia: {str(e)}")
 
     try:
-        subs = list(get_db().collection(Collections.STOCK_NOTIFICATIONS).where(Fields.PRODUCT_ID, "==", product_id).limit(200).stream())
-        batch = get_db().batch()
-        for sub in subs:
-            batch.delete(sub.reference)
-        if subs:
+        total_cleaned = 0
+        while True:
+            subs = list(get_db().collection(Collections.STOCK_NOTIFICATIONS).where(Fields.PRODUCT_ID, "==", product_id).limit(200).stream())
+            if not subs:
+                break
+            batch = get_db().batch()
+            for sub in subs:
+                batch.delete(sub.reference)
             batch.commit()
-        logger.info(f"Cleaned up {len(subs)} stock_notifications for deleted product {product_id}")
+            total_cleaned += len(subs)
+        logger.info(f"Cleaned up {total_cleaned} stock_notifications for deleted product {product_id}")
     except Exception as e:
         logger.error(f"Failed to cleanup stock_notifications for hard-deleted product {product_id}: {e}")
 
+    # FIX: Paginate the batch loop — a single .limit(500) batch silently leaves
+    # orphans when a popular product has >500 fans.
     try:
-        fav_refs = list(
-            get_db().collection_group(Collections.FAVORITES).where(Fields.PRODUCT_ID, "==", product_id).limit(500).stream()
-        )
-        if fav_refs:
-            batch = get_db().batch()
+        total_fav_cleaned = 0
+        while True:
+            fav_refs = list(
+                get_db().collection_group(Collections.FAVORITES).where(Fields.PRODUCT_ID, "==", product_id).limit(200).stream()
+            )
+            if not fav_refs:
+                break
+            fav_batch = get_db().batch()
             for fav in fav_refs:
-                batch.delete(fav.reference)
-            batch.commit()
-            logger.info(f"Cleaned up {len(fav_refs)} favorites for hard-deleted product {product_id}")
+                fav_batch.delete(fav.reference)
+            fav_batch.commit()
+            total_fav_cleaned += len(fav_refs)
+            if len(fav_refs) < 200:
+                break
+        if total_fav_cleaned:
+            logger.info(f"Cleaned up {total_fav_cleaned} favorites for hard-deleted product {product_id}")
     except Exception as e:
         logger.error(f"Failed to cleanup favorites for hard-deleted product {product_id}: {e}")
 
@@ -2647,30 +2732,42 @@ def create_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("invalid-argument", f"type must be one of: {WarehouseTypeValues.ALL}")
 
         address = data.get("address")
-        if not isinstance(address, dict) or not address.get(Fields.CITY):
-            raise https_fn.HttpsError("invalid-argument", "address must include at least a city")
+        if not isinstance(address, dict):
+            raise https_fn.HttpsError("invalid-argument", "address must be a map")
+        # FIX H-04: validate postal code format + province whitelist server-side
+        _validate_warehouse_address(address)
 
         # Geocode warehouse address to get lat/lon
         address = _geocode_warehouse_address(address)
 
         is_default = bool(data.get("isDefault", False))
 
-        # If setting as default, clear any existing default
-        if is_default:
-            _clear_default_warehouse(seller_id)
+        # FIX M-01: Use a Firestore transaction so that clearing the existing default
+        # and writing the new warehouse doc are atomic — prevents race conditions that
+        # could produce two isDefault:true warehouses.
+        from firebase_admin import firestore as _fs_admin
 
-        warehouse_doc = (
-            get_db().collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES).document()
-        )
-        warehouse_doc.set(
-            {
-                "label": label,
-                "type": w_type,
-                "address": address,
-                "isDefault": is_default,
-                "createdAt": get_server_timestamp(),
-            }
-        )
+        db = get_db()
+        wh_col = db.collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES)
+        new_wh_ref = wh_col.document()
+        new_wh_doc = {
+            "label": label,
+            "type": w_type,
+            "address": address,
+            "isDefault": is_default,
+            "createdAt": get_server_timestamp(),
+        }
+
+        @_fs_admin.transactional
+        def _txn_create(transaction, col_ref, wh_ref, doc, set_as_default):
+            if set_as_default:
+                existing_defaults = col_ref.where("isDefault", "==", True).stream(transaction=transaction)
+                for d in existing_defaults:
+                    transaction.update(d.reference, {"isDefault": False})
+            transaction.set(wh_ref, doc)
+
+        _txn_create(db.transaction(), wh_col, new_wh_ref, new_wh_doc, is_default)
+        warehouse_doc = new_wh_ref
 
         logger.info(f"Warehouse {warehouse_doc.id} created for seller {seller_id}")
         return create_success_response({"warehouseId": warehouse_doc.id})
@@ -2721,8 +2818,10 @@ def update_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
             patches["type"] = data["type"]
 
         if "address" in data:
-            if not isinstance(data["address"], dict) or not data["address"].get(Fields.CITY):
-                raise https_fn.HttpsError("invalid-argument", "address must include at least a city")
+            if not isinstance(data["address"], dict):
+                raise https_fn.HttpsError("invalid-argument", "address must be a map")
+            # FIX H-04: validate postal code format + province whitelist server-side
+            _validate_warehouse_address(data["address"])
             patches["address"] = _geocode_warehouse_address(data["address"])
 
         if "isDefault" in data:
@@ -2790,10 +2889,14 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
                 .get()
             )
             wh_stock = inv_doc.to_dict().get(Fields.AVAILABLE_QUANTITY, 0) if inv_doc.exists else 0
-            if wh_stock > 0:
+            # FIX H-01: Also check the flat warehouseStock map on the product doc
+            # (products that haven't migrated to inventoryLevels subcollection use this map)
+            flat_stock = int((pdata.get(Fields.WAREHOUSE_STOCK) or {}).get(warehouse_id, 0) or 0)
+            effective_stock = max(wh_stock, flat_stock)
+            if effective_stock > 0:
                 raise https_fn.HttpsError(
                     "failed-precondition",
-                    f"Cannot delete warehouse: product '{pdata.get(Fields.NAME, pdoc.id)}' still has {wh_stock} units in stock. Move or sell stock first.",
+                    f"Cannot delete warehouse: product '{pdata.get(Fields.NAME, pdoc.id)}' still has {effective_stock} units in stock. Move or sell stock first.",
                 )
 
         # GUARD 2: Block if in-flight orders reference this warehouse
@@ -2833,8 +2936,12 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
             if warehouse_id in current_wh_ids:
                 current_wh_ids.remove(warehouse_id)
 
+            from firebase_admin import firestore as _fs_admin_cleanup
             product_patch = {
                 Fields.WAREHOUSE_IDS: current_wh_ids,
+                # FIX C-02: Remove the stale key from the warehouseStock flat map.
+                # Without this, the map retains a dead key that corrupts inventory routing.
+                f"{Fields.WAREHOUSE_STOCK}.{warehouse_id}": _fs_admin_cleanup.DELETE_FIELD,
             }
             cleanup_batch.update(p_ref, product_patch)
 
@@ -3011,8 +3118,11 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
   </p>
 </div>"""
                     try:
-                        send_email(email, subject, html_body)
-                        sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
+                        sent = send_email(email, subject, html_body)
+                        if sent:
+                            sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
+                        else:
+                            logger.warning(f"Email delivery failed for sub {sub_doc.id}; notifiedAt NOT stamped")
                     except Exception as e:
                         logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
                 last_doc = batch_docs[-1]
@@ -3057,8 +3167,11 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
   </p>
 </div>"""
             try:
-                send_email(email, subject, html_body)
-                sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
+                sent = send_email(email, subject, html_body)
+                if sent:
+                    sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
+                else:
+                    logger.warning(f"Email delivery failed for sub {sub_doc.id}; notifiedAt NOT stamped")
             except Exception as e:
                 logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
         last_doc = batch_docs[-1]
@@ -3095,12 +3208,19 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     # When a variantKey is provided, check that specific variant's stock instead
     # of top-level stockQuantity, which would be > 0 if other variants are in stock.
     variant_key = data.get(Fields.VARIANT_KEY)
-    if variant_key and product_data.get(Fields.HAS_VARIANTS):
+    has_variants = product_data.get(Fields.HAS_VARIANTS, False)
+    if variant_key and has_variants:
         variants_raw = product_data.get(Fields.VARIANTS) or []
         variants_by_key = {v.get(Fields.VARIANT_ID, ""): v for v in variants_raw if isinstance(v, dict)}
         variant_data = variants_by_key.get(variant_key) or {}
         if variant_data.get(Fields.STOCK_QUANTITY, 0) > 0:
             raise https_fn.HttpsError("failed-precondition", "Variant is already in stock")
+    elif variant_key and not has_variants:
+        # Reject ambiguous subscription that would never fire
+        raise https_fn.HttpsError("invalid-argument", "variantKey provided but product has no variants")
+    elif has_variants and not variant_key:
+        # Product-level sub on a variant product would be orphaned — never notified
+        raise https_fn.HttpsError("invalid-argument", "This product has variants. Please specify a variantKey.")
     elif product_data.get(Fields.STOCK_QUANTITY, 0) > 0:
         raise https_fn.HttpsError("failed-precondition", "Product is already in stock")
 
@@ -3112,7 +3232,8 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     if not user_email:
         raise https_fn.HttpsError("failed-precondition", "Account has no email")
 
-    # Idempotency: skip if active subscription already exists for same product+variant
+    # Idempotency: skip if active subscription already exists for same product+variant.
+    # Must filter explicitly for variantKey="" (product-level) to avoid collisions.
     existing_query = (
         get_db()
         .collection(Collections.STOCK_NOTIFICATIONS)
@@ -3122,6 +3243,8 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     )
     if variant_key:
         existing_query = existing_query.where(Fields.VARIANT_KEY, "==", variant_key)
+    else:
+        existing_query = existing_query.where(Fields.VARIANT_KEY, "==", "")
     if list(existing_query.limit(1).stream()):
         return create_success_response({"subscribed": True})
 
@@ -3165,6 +3288,9 @@ def unsubscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, A
     )
     if variant_key:
         query = query.where(Fields.VARIANT_KEY, "==", variant_key)
+    else:
+        # Explicit empty-string filter: only removes product-level sub, not variant-level ones
+        query = query.where(Fields.VARIANT_KEY, "==", "")
     subscriptions = list(query.limit(5).stream())
     for sub in subscriptions:
         sub.reference.delete()
@@ -3213,18 +3339,8 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
 
-    # Rate limit: max 5 questions per user per hour (Firestore count verification)
-    one_hour_ago = datetime.now(UTC) - timedelta(hours=1)
-    recent_questions = (
-        db.collection(Collections.PRODUCT_QUESTIONS)
-        .where(Fields.ASKER_ID, "==", req.auth.uid)
-        .where(Fields.CREATED_AT, ">=", one_hour_ago)
-        .count()
-        .get()
-    )
-    count = recent_questions[0][0].value
-    if count >= 5:
-        raise https_fn.HttpsError("resource-exhausted", "Rate limit: max 5 questions per hour.")
+    # M-2 FIX: Removed redundant Firestore-count rate limit — RateLimiter service above
+    # already enforces the identical 5/hour cap without an extra Firestore read.
 
     from utils.helpers import sanitized_text
 
@@ -3309,6 +3425,19 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    # FIX M-1: Rate limit answer submissions (max 30/hour per user — sellers answer many questions)
+    from services.rate_limiter import RateLimiter as _RL
+    _ans_limiter = _RL(get_db())
+    _allowed, _msg = _ans_limiter.check_rate_limit(
+        identifier=req.auth.uid,
+        action="answer_product_question",
+        max_requests=30,
+        window_minutes=60,
+        fail_closed=False,
+    )
+    if not _allowed:
+        raise https_fn.HttpsError("resource-exhausted", _msg)
 
     from utils.helpers import sanitized_text
 
@@ -3736,7 +3865,6 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
         if action == "pause":
             batch.update(prod_ref, {
                 Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
-                Fields.IS_ACTIVE: False,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             updated += 1
@@ -3749,7 +3877,6 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
                 continue
             batch.update(prod_ref, {
                 Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
-                Fields.IS_ACTIVE: True,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             activated_ids.append(pid)
@@ -3758,7 +3885,6 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
         elif action == "archive":
             batch.update(prod_ref, {
                 Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ARCHIVED,
-                Fields.IS_ACTIVE: False,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             updated += 1
@@ -3766,6 +3892,37 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
     if updated > 0:
         batch.commit()
         logger.info(f"bulk_update_products: user={user_id} action={action} updated={updated} skipped={skipped}")
+
+        # FIX: clean up favorites for every archived product so stale bookmark
+        # entries don't accumulate. Individual delete_product already does this;
+        # bulk archive must mirror it for consistency.
+        if action == "archive":
+            for pid in product_ids:
+                prod_snap = snap_by_id.get(pid)
+                if not prod_snap or not prod_snap.exists:
+                    continue
+                prod_data_check = prod_snap.to_dict() or {}
+                if prod_data_check.get(Fields.SELLER_ID) != user_id:
+                    continue
+                try:
+                    total_cleaned = 0
+                    while True:
+                        fav_refs = list(
+                            db.collection_group(Collections.FAVORITES).where(Fields.PRODUCT_ID, "==", pid).limit(200).stream()
+                        )
+                        if not fav_refs:
+                            break
+                        fav_batch = db.batch()
+                        for fav in fav_refs:
+                            fav_batch.delete(fav.reference)
+                        fav_batch.commit()
+                        total_cleaned += len(fav_refs)
+                        if len(fav_refs) < 200:
+                            break
+                    if total_cleaned:
+                        logger.info(f"bulk_update_products: cleaned {total_cleaned} favorites for archived product {pid}")
+                except Exception as fav_err:
+                    logger.error(f"bulk_update_products: favorites cleanup failed for {pid}: {fav_err}")
         # Re-index activated products in Algolia so they appear in search
         if activated_ids:
             for act_pid in activated_ids:
@@ -3776,7 +3933,6 @@ def bulk_update_products(req: https_fn.CallableRequest) -> dict[str, Any]:
                         act_data[Fields.LIFECYCLE_STATUS] = ProductLifecycleStatusValues.ACTIVE
                         algolia_partial_update(act_pid, {
                             Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
-                            Fields.IS_ACTIVE: True,
                         })
                 except Exception as alg_err:
                     logger.error(f"bulk_update_products: Algolia re-index failed for {act_pid}: {alg_err}")
@@ -3807,9 +3963,8 @@ def deactivate_supplier_platform(req: https_fn.CallableRequest) -> dict:
     if not supplier_type:
         raise https_fn.HttpsError(https_fn.FunctionsErrorCode.INVALID_ARGUMENT, "supplierType is required")
 
-    # Validate supplier type
-    valid_types = {v for k, v in vars(SupplierTypeValues).items() if not k.startswith("_")}
-    if supplier_type not in valid_types:
+    # Validate supplier type against the canonical ALL set (not vars() which includes non-string class attrs)
+    if supplier_type not in SupplierTypeValues.ALL:
         raise https_fn.HttpsError(https_fn.FunctionsErrorCode.INVALID_ARGUMENT, f"Invalid supplierType: {supplier_type}")
 
     # Query active products with matching supplier.type (Firestore supports dot notation)
@@ -3817,7 +3972,7 @@ def deactivate_supplier_platform(req: https_fn.CallableRequest) -> dict:
     query = (
         products_ref
         .where("supplier.type", "==", supplier_type)
-        .where(Fields.IS_ACTIVE, "==", True)
+        .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
         .limit(500)
     )
 
@@ -3841,7 +3996,6 @@ def deactivate_supplier_platform(req: https_fn.CallableRequest) -> dict:
                 continue
             batch.update(doc.reference, {
                 Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
-                Fields.IS_ACTIVE: False,
                 Fields.UPDATED_AT: datetime.now(UTC),
             })
             algolia_ids.append(doc.id)
@@ -3854,7 +4008,6 @@ def deactivate_supplier_platform(req: https_fn.CallableRequest) -> dict:
                 try:
                     algolia_partial_update(pid, {
                         Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
-                        Fields.IS_ACTIVE: False,
                     })
                 except Exception as alg_err:
                     logger.error(f"deactivate_supplier_platform: Algolia update failed for {pid}: {alg_err}")

@@ -6,7 +6,7 @@ export 'package:easy_localization/easy_localization.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 // Re-export schema constants so existing imports keep working
-export 'package:origna_gta/core/schema/schema_constants.dart' show Collections, Fields, OrderStatusValues, PaymentStatusValues, DeliveryStatusValues, PayoutStatusValues, ShippingApprovalStatusValues, UserRoleValues, ProductStatusValues, ProductLifecycleStatusValues, SchemaRegistry, BusinessRules, CategoryIds, ApiKeys, ProvinceCodeValues;
+export 'package:origna_gta/core/schema/schema_constants.dart' show Collections, Fields, OrderStatusValues, PaymentStatusValues, DeliveryStatusValues, PayoutStatusValues, ShippingApprovalStatusValues, UserRoleValues, ProductLifecycleStatusValues, SchemaRegistry, BusinessRules, CategoryIds, ApiKeys, ProvinceCodeValues;
 
 // ============================================================================
 // APP CONFIGURATION
@@ -152,8 +152,6 @@ enum OrderStatus {
   cancelled(OrderStatusValues.cancelled),
   failed(OrderStatusValues.failed),
   expired(OrderStatusValues.expired),
-  refunded(OrderStatusValues.refunded),
-  partiallyRefunded(OrderStatusValues.partiallyRefunded),
   disputed(OrderStatusValues.disputed);
 
   final String value;
@@ -180,10 +178,6 @@ enum OrderStatus {
         return 'orders.status.failed'.tr();
       case OrderStatus.expired:
         return 'orders.status.expired'.tr();
-      case OrderStatus.refunded:
-        return 'orders.status.refunded'.tr();
-      case OrderStatus.partiallyRefunded:
-        return 'orders.status.partial_refund'.tr();
       case OrderStatus.disputed:
         return 'orders.status.disputed'.tr();
     }

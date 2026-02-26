@@ -23,7 +23,6 @@ import 'package:url_launcher/url_launcher.dart';
 // ERROR HANDLING UTILITIES
 // ============================================================================
 
-// Add these to your constants or helper section
 const Map<String, Map<String, double>> provinceTaxRates = {
   'AB': {'GST': 0.05},
   'BC': {'GST': 0.05, 'PST': 0.07},
@@ -520,7 +519,10 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
   );
 }
 
-// Add this helper method
+/// Displays a modal dialog prompting the user to sign in.
+///
+/// [text] is a translation key for the dialog body (defaults to cart sign-in prompt).
+/// Tapping "Sign in" navigates to the login screen; tapping "Cancel" dismisses.
 void showLoginPrompt(
   BuildContext context, {
   String text = 'auth.sign_in_cart_required',

@@ -23,7 +23,7 @@ def get_deployed_indexes(project_id):
         print(f"❌ Failed to fetch indexes for {project_id}")
         print(e.stderr)
         sys.exit(1)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         print(f"❌ Failed to parse JSON from firebase output for {project_id}")
         sys.exit(1)
 

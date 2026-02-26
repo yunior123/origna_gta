@@ -28,8 +28,16 @@ class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
 
   ProductRatingViewModel(this._ref) : super(ProductRatingState());
 
+  /// Updates the draft review text shown in the rating form.
   void setReviewText(String? text) => state = state.copyWith(reviewText: text);
 
+  /// Submits a product rating with an optional review text and images.
+  ///
+  /// Uploads [reviewImages] to R2 storage first if provided. Returns `true` on
+  /// success. Logs orphaned image URLs if the rating write fails after a
+  /// successful image upload.
+  ///
+  /// Throws nothing — all errors are captured into [ProductRatingState.errorMessage].
   Future<bool> submitRating(String orderId, String productId, int rating, {List<Uint8List>? reviewImages, String? reviewText}) async {
     if (state.isLoading) return false;
     if (rating < 1 || rating > 5) {

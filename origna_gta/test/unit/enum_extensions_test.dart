@@ -26,7 +26,7 @@ void main() {
     test('OrderStatus extension maps values', () {
       expect(OrderStatus.pending.value, 'pending');
       expect(OrderStatus.delivered.displayText, 'Delivered');
-      expect(OrderStatusExtension.fromValue('refunded'), OrderStatus.refunded);
+      expect(OrderStatusExtension.fromValue('cancelled'), OrderStatus.cancelled);
     });
   });
 }

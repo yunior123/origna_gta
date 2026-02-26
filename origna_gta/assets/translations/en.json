@@ -206,6 +206,7 @@
     "close": "Close",
     "search": "Search",
     "loading": "Loading...",
+    "refresh": "Refresh",
     "error": "Error",
     "submit": "Submit",
     "processing": "Processing...",
@@ -235,7 +236,8 @@
     "manage": "Manage",
     "required": "Required",
     "publish": "Publish",
-    "premium": "Premium"
+    "premium": "Premium",
+    "back_to_home": "Back to Home"
   },
   "auth": {
     "sign_in": "Sign In",
@@ -273,6 +275,17 @@
     "enter_valid_email": "Please enter a valid email",
     "reset_link_sent": "Password reset link sent!",
     "reset_link_failed": "Failed to send reset link",
+    "reset_link_expired": "The password reset link has expired. Please request a new one.",
+    "reset_link_invalid": "The password reset link is invalid or has already been used.",
+    "reset_password_title": "Reset Password",
+    "reset_success_title": "Password Reset Successful",
+    "reset_success_desc": "Your password has been changed successfully. You can now log in with your new password.",
+    "create_new_password": "Create New Password",
+    "resetting_for": "Resetting password for",
+    "new_password": "New Password",
+    "confirm_new_password": "Confirm New Password",
+    "reset_password_button": "Reset Password",
+    "go_to_login": "Go to Login",
     "send": "Send",
     "account_deleted": "Account deleted successfully",
     "seller_suspended": "Seller account suspended. Contact support.",
@@ -317,7 +330,8 @@
       "name_required_validation": "Name is required",
       "name_too_short": "Name must be at least 2 characters",
       "name_too_long": "Name must be less than 60 characters",
-      "name_invalid_format": "Name can only contain letters, spaces, hyphens, apostrophes, and periods"
+      "name_invalid_format": "Name can only contain letters, spaces, hyphens, apostrophes, and periods",
+      "passwords_mismatch": "Passwords do not match"
     }
   },
   "home": {
@@ -569,8 +583,9 @@
     "compare_at_price_hint": "Original price before discount",
     "compare_at_price_learn_more": "What is Compare At Price? Tap to learn more",
     "compare_at_price_info_body": "The original, higher price shown with a strikethrough next to the sale price.\n\nExample: If you normally sell at $79.99 but are running a sale at $49.99, enter $79.99 here. Buyers will see the crossed-out price to highlight the saving.\n\nLeave blank if the product is not on sale.",
-    "compare_at_price_must_be_higher": "Compare At Price must be higher than the selling price",
+    "compare_at_price_must_be_higher": "Compare At Price must be at least $0.50 higher than the selling price",
     "invalid_price": "Enter a valid price",
+    "price_too_low": "Price must be at least $0.50 CAD",
     "stock": "Stock",
     "free_shipping_info_body": "When enabled, the buyer pays $0 for shipping — you absorb the cost.\n\nThis is great for increasing conversions, especially for lightweight or high-margin products.\n\nTip: You can also offer free shipping only for bulk orders (10+ items) in the Delivery section below.",
     "tax_code_label": "Tax Code (optional)",
@@ -685,11 +700,17 @@
     "eg_size": "e.g. Size",
     "eg_size_values": "e.g. S, M, L, XL",
     "sku": "SKU",
+    "sku_optional": "Your SKU (optional)",
+    "sku_hint": "e.g. T-SHIRT-BLK-M",
+    "sku_what_is": "What is a SKU?",
+    "sku_info_title": "Product SKU (Stock Keeping Unit)",
+    "sku_info_body": "A SKU is a unique identifier you assign to each product variant to help track inventory.\n\nTips for SKUs:\n• Keep them short and consistent\n• Include key attributes like size/color (e.g., TS-BLU-L)\n• Avoid special characters or spaces\n\nIf you leave this blank, we'll generate a unique ID for you automatically.",
     "digital_type_required": "Select a digital product type (Software or Book)",
     "digital_platform_url_required": "Add at least one platform download URL",
     "digital_url_https_required": "Download URLs must start with https://",
     "book_url_required": "Enter the book download URL",
     "book_url_https_required": "Book URL must start with https://",
+    "url_too_long": "URL is too long (maximum 500 characters)",
     "variants_required": "Add at least one variant option",
     "variant_price_required": "All variants must have a price greater than zero",
     "warehouse_stock_required": "Set stock quantity for at least one warehouse",
@@ -706,13 +727,24 @@
     "warehouse_total_stock": "Total stock: {total} units across {count} location",
     "warehouse_total_stock_plural": "Total stock: {total} units across {count} locations",
     "warehouse_manage": "Manage",
+    "mac_os_label": "macOS (.dmg)",
+    "windows_label": "Windows (.exe / .msi)",
+    "linux_label": "Linux (.deb / .AppImage) — optional",
+    "macos_hint": "https://releases.yoursite.com/app.dmg",
+    "windows_hint": "https://releases.yoursite.com/app.exe",
+    "linux_hint": "https://releases.yoursite.com/app.deb",
+    "device_limit_label": "Device limit",
+    "device_limit_hint": "Leave blank for unlimited",
+    "download_source_url_label": "Download source URL",
+    "book_download_hint": "https://storage.yoursite.com/book.pdf",
     "details": {
       "delivery_information": "Delivery Information",
       "international_disclaimer": "International shipping times may vary. Customs processing may add delays.",
       "specifications": "Specifications",
       "warranty": "Warranty",
       "return_policy": "Return Policy"
-    }
+    },
+    "est_business_days_hint": "e.g. 5"
   },
   "cart": {
     "your_cart": "Your Cart",
@@ -757,7 +789,8 @@
     "saved_for_later": "Saved for later",
     "save_for_later_error": "Could not save for later. Please try again.",
     "save_for_later": "Save for later",
-    "digital_instant_delivery": "Digital product — instant delivery"
+    "digital_instant_delivery": "Digital product — instant delivery",
+    "load_error_subtitle": "Something went wrong loading your cart. Please try again."
   },
   "checkout": {
     "checkout": "Checkout",
@@ -826,7 +859,10 @@
     "order_review_subtitle": "Please review your order before proceeding to payment",
     "order_review_confirm": "Confirm & Pay",
     "order_review_items": "Items ({count})",
-    "order_review_shipping_to": "Ship To"
+    "order_review_shipping_to": "Ship To",
+    "coupon_applied_label": "Coupon ({code})",
+    "coupon_applied_generic": "Coupon Applied",
+    "calculating_delivery": "Calculating delivery options…"
   },
   "orders": {
     "my_orders": "My Orders",
@@ -992,6 +1028,8 @@
     "loading_approvals": "Loading approvals...",
     "no_pending_approvals": "No pending approvals",
     "approvals_appear_here": "Orders requiring shipping approval will appear here",
+    "unanswered_questions_plural": "{} unanswered question(s)",
+    "no_pending_questions": "No pending questions",
     "approval_needed": "Approval Needed",
     "shipping_cost_update": "Shipping Cost Update",
     "estimated": "Estimated",
@@ -1274,6 +1312,8 @@
   "chat": {
     "message_copied": "Message copied",
     "empty_state_no_messages": "No messages yet. Say hello! 👋",
-    "send_message_cta": "Send a message"
+    "send_message_cta": "Send a message",
+    "own_product_title": "Your Product",
+    "own_product_body": "You cannot message yourself about your own product."
   }
 }

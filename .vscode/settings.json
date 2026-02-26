@@ -9,5 +9,31 @@
 	"playwright.useTestServer": false,
 	"chat.agent.maxRequests": 200,
 	"diffEditor.maxComputationTime": 0,
-	"typescript.tsserver.maxTsServerMemory": 3072
+	"typescript.tsserver.maxTsServerMemory": 3072,
+	"terminal.integrated.scrollback": 10000,
+	"terminal.integrated.copyOnSelection": true,
+	"terminal.integrated.cursorStyle": "line",
+	"terminal.integrated.cursorBlinking": true,
+	"terminal.integrated.showExitAlert": false,
+	"terminal.integrated.enableMultiLinePasteWarning": false,
+	"python.defaultInterpreterPath": "${workspaceFolder}/functions/venv/bin/python",
+	"python.terminal.activateEnvInCurrentTerminal": true,
+	"python.testing.pytestEnabled": true,
+	"python.testing.unittestEnabled": false,
+	"python.testing.pytestArgs": [
+		"functions/tests"
+	],
+	"dart.flutterSdkPath": null,
+	"dart.sdkPath": null,
+	"dart.openDevTools": "flutter",
+	"dart.debugExternalPackageLibraries": false,
+	"dart.debugSdkLibraries": false,
+	"explorer.exclude": {
+		"**/.dart_tool": true,
+		"**/.github": true,
+		"**/.idea": true,
+		"**/.pytest_cache": true,
+		"**/.ruff_cache": true,
+		"**/__pycache__": true
+	}
 }

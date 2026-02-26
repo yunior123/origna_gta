@@ -100,7 +100,7 @@ class FirebaseCartRepository implements CartRepository {
       final map = v as Map<String, dynamic>?;
       return map != null &&
           map[Fields.variantId] == variantId &&
-          (map[Fields.isActive] as bool? ?? true);
+          (map['isActive'] as bool? ?? true);
     });
   }
 

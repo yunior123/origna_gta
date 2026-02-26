@@ -948,7 +948,6 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
         time.sleep(min_response_time - elapsed)
 
     if not code_valid:
-        # Increment failed attempts
         attempt_update = {Fields.MFA_FAILED_ATTEMPTS: mfa_attempts + 1}
         if mfa_attempts + 1 >= BusinessRules.MFA_MAX_ATTEMPTS:
             # Lock out after max failures
@@ -1402,7 +1401,6 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             product_batch.update(
                 product_doc.reference,
                 {
-                    Fields.IS_ACTIVE: False,
                     Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ARCHIVED,
                     "archivedReason": "account_deleted",
                     Fields.ARCHIVED_AT: get_server_timestamp(),
@@ -1786,10 +1784,48 @@ def admin_delete_review(req: https_fn.CallableRequest) -> dict[str, Any]:
     _require_recent_admin_mfa(admin_doc.to_dict())
 
     review_ref = get_db().collection(Collections.PRODUCT_RATINGS).document(review_id)
-    if not review_ref.get().exists:
+    review_snap = review_ref.get()
+    if not review_snap.exists:
         raise https_fn.HttpsError("not-found", "Review not found")
 
+    review_data = review_snap.to_dict() or {}
+    deleted_product_id = review_data.get(Fields.PRODUCT_ID)
+    deleted_rating_value = review_data.get(Fields.RATING, 0)
+
     review_ref.delete()
+
+    # FIX H-1: Recalculate product average rating after deletion to keep it consistent.
+    if deleted_product_id:
+        try:
+            product_ref = get_db().collection(Collections.PRODUCTS).document(deleted_product_id)
+
+            def _recalc_txn(txn):
+                p_snap = product_ref.get(transaction=txn)
+                if not p_snap.exists:
+                    return
+                p_data = p_snap.to_dict() or {}
+                old_avg = p_data.get(Fields.RATING, 0)
+                old_count = p_data.get(Fields.RATING_COUNT, 0)
+                if old_count <= 1:
+                    # Last rating removed → reset to zero
+                    txn.update(product_ref, {Fields.RATING: 0, Fields.RATING_COUNT: 0})
+                    return
+                new_count = old_count - 1
+                new_avg = max(0.0, (old_avg * old_count - deleted_rating_value) / new_count)
+                txn.update(product_ref, {Fields.RATING: new_avg, Fields.RATING_COUNT: new_count})
+
+            from firebase_admin import firestore as _fs_admin
+            _fs_admin.transactional(_recalc_txn)(get_db().transaction())
+
+            # Sync Algolia after recalculation
+            from services.algolia_service import algolia_partial_update
+            p_after = product_ref.get().to_dict() or {}
+            algolia_partial_update(
+                deleted_product_id,
+                {Fields.RATING: p_after.get(Fields.RATING, 0), Fields.RATING_COUNT: p_after.get(Fields.RATING_COUNT, 0)},
+            )
+        except Exception as recalc_err:
+            logger.error(f"admin_delete_review: failed to recalculate rating for {deleted_product_id}: {recalc_err}")
 
     get_db().collection(Collections.ADMIN_LOGS).add(
         {
@@ -1954,7 +1990,7 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_ref.update(
         {
-            Fields.ORDER_STATUS: OrderStatusValues.REFUNDED,
+            Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
             Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED,
             Fields.REFUNDED_AT: get_server_timestamp(),
             Fields.REFUND_REASON: reason,

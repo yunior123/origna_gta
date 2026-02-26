@@ -215,7 +215,7 @@ class CartItemDetailModel {
       createdAt: _parseTimestamp(map[Fields.createdAt]),
       sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
       sellerId: map[Fields.sellerId] ?? '',
-      status: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
+      status: map[Fields.status] ?? DeliveryStatus.pending.value,
       trackingNumber: map[Fields.trackingNumber],
       confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
       weightKg: map[Fields.weightKg] != null ? (map[Fields.weightKg] as num).toDouble() : null,
@@ -493,7 +493,7 @@ class OrderModel {
         createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
-        status: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
+        status: map[Fields.status] ?? DeliveryStatus.pending.value,
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
         isDigital: map[Fields.isDigital] ?? false,
@@ -563,7 +563,7 @@ class OrderModel {
         createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
-        status: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
+        status: map[Fields.status] ?? DeliveryStatus.pending.value,
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
         isDigital: map[Fields.isDigital] ?? false,
@@ -703,12 +703,10 @@ class ProductModel {
   final bool isPerishable; // Food, flowers, etc. - affects same-day delivery logic
   final int minimumOrderQuantity;
   final bool freeShipping;
-  final bool isActive; // DEPRECATED — use lifecycleStatus
   final Timestamp? deletedAt;
   final bool isDigital; // True if product is digital (no shipping required)
   final String? digitalType; // 'software' | 'book'
   final Map<String, String>? digitalBuilds; // platform -> download URL (software only)
-  final String approvalStatus; // DEPRECATED — use lifecycleStatus
   final String? approvalRejectionReason;
   final String lifecycleStatus;
 
@@ -737,12 +735,10 @@ class ProductModel {
     this.isPerishable = false,
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
-    this.isActive = true, // DEPRECATED — use lifecycleStatus
     this.deletedAt,
     this.isDigital = false,
     this.digitalType,
     this.digitalBuilds,
-    this.approvalStatus = 'under_review', // DEPRECATED — use lifecycleStatus
     this.approvalRejectionReason,
     this.lifecycleStatus = 'draft',
   }) : deliveryOptions = deliveryOptions ?? SellerDeliveryOption.defaultOptions(),
@@ -787,7 +783,6 @@ class ProductModel {
       isDigital: map[Fields.isDigital] as bool? ?? false,
       digitalType: map[Fields.digitalType]?.toString(),
       digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
-      approvalStatus: map[Fields.approvalStatus]?.toString() ?? 'under_review',
       approvalRejectionReason: map[Fields.approvalRejectionReason]?.toString(),
       lifecycleStatus: map[Fields.lifecycleStatus]?.toString() ?? 'draft',
       weightKg: map[Fields.weightKg] != null ? _parseDouble(map[Fields.weightKg]) : null,
@@ -801,7 +796,6 @@ class ProductModel {
       isPerishable: map[Fields.isPerishable] ?? false,
       minimumOrderQuantity: _parseIntOr(map[Fields.minimumOrderQuantity], defaultValue: 1),
       freeShipping: map[Fields.freeShipping] ?? false,
-      isActive: map[Fields.isActive] ?? true,
       deletedAt: map[Fields.deletedAt] != null ? _parseTimestamp(map[Fields.deletedAt]) : null,
     );
   }
@@ -838,7 +832,6 @@ class ProductModel {
       Fields.isPerishable: isPerishable,
       Fields.minimumOrderQuantity: minimumOrderQuantity,
       Fields.freeShipping: freeShipping,
-      Fields.isActive: isActive,
       Fields.isDigital: isDigital,
       Fields.lifecycleStatus: lifecycleStatus,
       if (deletedAt != null) Fields.deletedAt: deletedAt,
@@ -959,7 +952,6 @@ class UserModel {
   final DateTime? suspendedAt;
   final String paymentProvider; // stripe
   // Seller-specific fields
-  final double commissionRate; // Per-seller commission rate (default 0.025 = 2.5%)
   final bool verified; // Manual verification by admin
   final String? verificationStatus; // pending, approved, rejected
   final String? platform; // alibaba, dhgate, direct
@@ -993,7 +985,6 @@ class UserModel {
     this.suspended = false,
     this.suspendedAt,
     this.paymentProvider = PaymentProviderValues.stripe,
-    this.commissionRate = 0.025, // Default 2.5%
     this.verified = false,
     this.verificationStatus,
     this.platform,
@@ -1029,7 +1020,6 @@ class UserModel {
       suspendedAt: _parseDateTime(map[Fields.suspendedAt]),
       paymentProvider: map[Fields.paymentProvider] ?? PaymentProviderValues.stripe,
       // Seller-specific fields
-      commissionRate: (map[Fields.commissionRate] as num?)?.toDouble() ?? 0.025,
       verified: map[Fields.verified] ?? false,
       verificationStatus: map[Fields.verificationStatus] as String?,
       platform: map[Fields.platform] as String?,
@@ -1075,7 +1065,6 @@ class UserModel {
     bool? suspended,
     DateTime? suspendedAt,
     String? paymentProvider,
-    double? commissionRate,
     bool? verified,
     String? verificationStatus,
     String? platform,
@@ -1108,7 +1097,6 @@ class UserModel {
       suspended: suspended ?? this.suspended,
       suspendedAt: suspendedAt ?? this.suspendedAt,
       paymentProvider: paymentProvider ?? this.paymentProvider,
-      commissionRate: commissionRate ?? this.commissionRate,
       verified: verified ?? this.verified,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       platform: platform ?? this.platform,
@@ -1145,7 +1133,6 @@ class UserModel {
       if (suspendedAt != null) Fields.suspendedAt: Timestamp.fromDate(suspendedAt!),
       Fields.paymentProvider: paymentProvider,
       // Seller-specific fields
-      Fields.commissionRate: commissionRate,
       Fields.verified: verified,
       if (verificationStatus != null) Fields.verificationStatus: verificationStatus,
       if (platform != null) Fields.platform: platform,

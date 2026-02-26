@@ -249,10 +249,6 @@ abstract class Order with _$Order {
           return OrderStatus.failed;
         case OrderStatusValues.expired:
           return OrderStatus.expired;
-        case OrderStatusValues.refunded:
-          return OrderStatus.refunded;
-        case OrderStatusValues.partiallyRefunded:
-          return OrderStatus.partiallyRefunded;
         case OrderStatusValues.disputed:
           return OrderStatus.disputed;
         default:

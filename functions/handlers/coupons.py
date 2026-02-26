@@ -106,7 +106,7 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     coupon = coupon_snap.to_dict() or {}
 
     # --- Active check ---
-    if not coupon.get(Fields.IS_ACTIVE, False):
+    if not coupon.get("isActive", False):
         raise https_fn.HttpsError("failed-precondition", "Coupon invalid or unavailable")
 
     # --- Expiry check ---
@@ -191,6 +191,21 @@ def redeem_coupon(code: str, user_id: str, order_id: str = "") -> None:
         data = snap.to_dict() or {}
         used_count = int(data.get(Fields.USED_COUNT, 0))
 
+        # AUDIT FIX (MEDIUM-C5): Re-check expiry inside transaction.
+        # A coupon checked at 23:59:59 could expire before this transaction runs.
+        expires_at = data.get(Fields.EXPIRES_AT)
+        if expires_at is not None:
+            now_utc = datetime.now(UTC)
+            if hasattr(expires_at, "ToDatetime"):
+                expires_dt = expires_at.ToDatetime().replace(tzinfo=UTC)
+            elif hasattr(expires_at, "astimezone"):
+                expires_dt = expires_at.astimezone(UTC)
+            else:
+                expires_dt = None
+            if expires_dt is not None and now_utc > expires_dt:
+                logger.warning(f"redeem_coupon: coupon {code} expired at {expires_dt} — aborting")
+                return
+
         # Re-check global limit inside transaction to prevent race condition
         max_uses_total = data.get(Fields.MAX_USES_TOTAL)
         if max_uses_total is not None and used_count >= int(max_uses_total):
@@ -205,7 +220,7 @@ def redeem_coupon(code: str, user_id: str, order_id: str = "") -> None:
             logger.warning(f"redeem_coupon: user {user_id} already at per-user limit for coupon {code} — aborting")
             return
 
-        # Increment global counter
+        # Increment coupon usage (global counter + per-user record) inside the same transaction
         transaction.update(coupon_ref, {
             Fields.USED_COUNT: used_count + 1,
         })
@@ -308,7 +323,7 @@ def admin_create_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not isinstance(max_uses_per_user, int) or max_uses_per_user < 1:
         raise https_fn.HttpsError("invalid-argument", "maxUsesPerUser must be a positive integer")
 
-    is_active = data.get(Fields.IS_ACTIVE, True)
+    is_active = data.get("isActive", True)
     if not isinstance(is_active, bool):
         raise https_fn.HttpsError("invalid-argument", "isActive must be a boolean")
 
@@ -336,9 +351,8 @@ def admin_create_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.MAX_USES_TOTAL: max_uses_total,
         Fields.MAX_USES_PER_USER: max_uses_per_user,
         Fields.USED_COUNT: 0,
-        # usedByUids DEPRECATED — per-user tracking moved to coupon_uses subcollection
         Fields.EXPIRES_AT: expires_at,
-        Fields.IS_ACTIVE: is_active,
+        "isActive": is_active,
         Fields.SELLER_ID: seller_id,
         Fields.CREATED_AT: now,
         "createdByAdminId": req.auth.uid,

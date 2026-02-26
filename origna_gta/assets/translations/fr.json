@@ -274,6 +274,17 @@
     "enter_valid_email": "Veuillez entrer un courriel valide",
     "reset_link_sent": "Lien de réinitialisation envoyé!",
     "reset_link_failed": "Échec de l'envoi du lien",
+    "reset_link_expired": "Le lien de réinitialisation du mot de passe a expiré. Veuillez en demander un nouveau.",
+    "reset_link_invalid": "Le lien de réinitialisation du mot de passe est invalide ou a déjà été utilisé.",
+    "reset_password_title": "Réinitialiser le mot de passe",
+    "reset_success_title": "Réinitialisation réussie",
+    "reset_success_desc": "Votre mot de passe a été modifié avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+    "create_new_password": "Créer un nouveau mot de passe",
+    "resetting_for": "Réinitialisation pour",
+    "new_password": "Nouveau mot de passe",
+    "confirm_new_password": "Confirmer le nouveau mot de passe",
+    "reset_password_button": "Réinitialiser le mot de passe",
+    "go_to_login": "Aller à la connexion",
     "send": "Envoyer",
     "account_deleted": "Compte supprimé avec succès",
     "seller_suspended": "Compte vendeur suspendu. Contactez le support.",
@@ -318,7 +329,8 @@
       "name_required_validation": "Le nom est requis",
       "name_too_short": "Le nom doit contenir au moins 2 caractères",
       "name_too_long": "Le nom doit contenir moins de 60 caractères",
-      "name_invalid_format": "Le nom ne peut contenir que des lettres, des espaces, des tirets, des apostrophes et des points"
+      "name_invalid_format": "Le nom ne peut contenir que des lettres, des espaces, des tirets, des apostrophes et des points",
+      "passwords_mismatch": "Les mots de passe ne correspondent pas"
     }
   },
   "home": {
@@ -570,8 +582,9 @@
     "compare_at_price_hint": "Prix original avant rabais",
     "compare_at_price_learn_more": "Qu'est-ce que le prix de comparaison? Appuyer pour en savoir plus",
     "compare_at_price_info_body": "Le prix original, plus élevé, affiché barré à côté du prix de vente.\n\nExemple : si vous vendez normalement à 79,99 $ mais faites une promotion à 49,99 $, entrez 79,99 $ ici. Les acheteurs verront le prix barré pour mettre en valeur l'économie.\n\nLaissez vide si le produit n'est pas en promotion.",
-    "compare_at_price_must_be_higher": "Le prix de comparaison doit être supérieur au prix de vente",
+    "compare_at_price_must_be_higher": "Le prix de comparaison doit être d'au moins 0,50 $ supérieur au prix de vente",
     "invalid_price": "Entrez un prix valide",
+    "price_too_low": "Le prix doit être d'au moins 0,50 $ CAD",
     "stock": "Stock",
     "free_shipping_info_body": "Lorsqu'activé, l'acheteur paie 0 $ pour la livraison — vous absorbez le coût.\n\nC'est idéal pour augmenter les conversions, surtout pour les produits légers ou à forte marge.\n\nAstuce : Vous pouvez aussi offrir la livraison gratuite uniquement pour les commandes en gros (10+ articles) dans la section Livraison ci-dessous.",
     "tax_code_label": "Code taxe (optionnel)",
@@ -686,11 +699,17 @@
     "eg_size": "ex. Taille",
     "eg_size_values": "ex. S, M, L, XL",
     "sku": "SKU",
+    "sku_optional": "Votre SKU (optionnel)",
+    "sku_hint": "ex. T-SHIRT-BLK-M",
+    "sku_what_is": "Qu'est-ce qu'un SKU ?",
+    "sku_info_title": "SKU du produit (Unité de gestion des stocks)",
+    "sku_info_body": "Un SKU est un identifiant unique que vous attribuez à chaque variante de produit pour aider à suivre l'inventaire.\n\nConseils pour les SKU :\n• Restez court et cohérent\n• Incluez des attributs clés comme la taille/couleur (ex. TS-BLU-L)\n• Évitez les caractères spéciaux ou les espaces\n\nSi vous laissez ce champ vide, nous générerons automatiquement un identifiant unique pour vous.",
     "digital_type_required": "Sélectionnez un type de produit numérique (Logiciel ou Livre)",
     "digital_platform_url_required": "Ajoutez au moins une URL de téléchargement de plateforme",
     "digital_url_https_required": "Les URL de téléchargement doivent commencer par https://",
     "book_url_required": "Entrez l'URL de téléchargement du livre",
     "book_url_https_required": "L'URL du livre doit commencer par https://",
+    "url_too_long": "L'URL est trop longue (maximum 500 caractères)",
     "variants_required": "Ajoutez au moins une option de variante",
     "variant_price_required": "Toutes les variantes doivent avoir un prix supérieur à zéro",
     "warehouse_stock_required": "Définissez la quantité de stock pour au moins un entrepôt",
@@ -707,13 +726,24 @@
     "warehouse_total_stock": "Stock total : {total} unités dans {count} emplacement",
     "warehouse_total_stock_plural": "Stock total : {total} unités dans {count} emplacements",
     "warehouse_manage": "Gérer",
+    "mac_os_label": "macOS (.dmg)",
+    "windows_label": "Windows (.exe / .msi)",
+    "linux_label": "Linux (.deb / .AppImage) — facultatif",
+    "macos_hint": "https://releases.yoursite.com/app.dmg",
+    "windows_hint": "https://releases.yoursite.com/app.exe",
+    "linux_hint": "https://releases.yoursite.com/app.deb",
+    "device_limit_label": "Limite d'appareils",
+    "device_limit_hint": "Laissez vide pour illimité",
+    "download_source_url_label": "URL de la source de téléchargement",
+    "book_download_hint": "https://storage.yoursite.com/book.pdf",
     "details": {
       "delivery_information": "Informations de livraison",
       "international_disclaimer": "Les délais d'expédition internationaux peuvent varier. Le traitement douanier peut entraîner des retards.",
       "specifications": "Spécifications",
       "warranty": "Garantie",
       "return_policy": "Politique de retour"
-    }
+    },
+    "est_business_days_hint": "p.ex. 5"
   },
   "cart": {
     "your_cart": "Votre panier",
@@ -758,7 +788,8 @@
     "saved_for_later": "Sauvegardé pour plus tard",
     "save_for_later_error": "Impossible de sauvegarder pour plus tard. Veuillez réessayer.",
     "save_for_later": "Sauvegarder pour plus tard",
-    "digital_instant_delivery": "Produit numérique — livraison instantanée"
+    "digital_instant_delivery": "Produit numérique — livraison instantanée",
+    "load_error_subtitle": "Une erreur est survenue lors du chargement du panier. Veuillez réessayer."
   },
   "checkout": {
     "checkout": "Payer",
@@ -827,7 +858,10 @@
     "order_review_subtitle": "Veuillez vérifier votre commande avant de procéder au paiement",
     "order_review_confirm": "Confirmer et payer",
     "order_review_items": "Articles ({count})",
-    "order_review_shipping_to": "Livrer à"
+    "order_review_shipping_to": "Livrer à",
+    "coupon_applied_label": "Coupon ({code})",
+    "coupon_applied_generic": "Coupon appliqué",
+    "calculating_delivery": "Calcul des options de livraison…"
   },
   "orders": {
     "my_orders": "Mes commandes",
@@ -993,6 +1027,8 @@
     "loading_approvals": "Chargement des approbations...",
     "no_pending_approvals": "Aucune approbation en attente",
     "approvals_appear_here": "Les commandes nécessitant une approbation de livraison apparaîtront ici",
+    "unanswered_questions_plural": "{} question(s) sans réponse",
+    "no_pending_questions": "Aucune question en attente",
     "approval_needed": "Approbation nécessaire",
     "shipping_cost_update": "Mise à jour des frais de livraison",
     "estimated": "Estimé",
@@ -1270,11 +1306,16 @@
     "back_to_home": "Retour à l'accueil",
     "welcome_to_premium": "Bienvenue dans Premium !",
     "subscription_active_desc": "Votre abonnement est actif. Profitez de tous les avantages ci-dessous.",
-    "start_shopping": "Commencer les achats"
+    "start_shopping": "Commencer les achats",
+    "activating_membership": "Activation de votre abonnement...",
+    "activation_delayed_title": "Activation en cours",
+    "activation_delayed_desc": "Nous n'avons pas encore reçu la confirmation de Stripe. Cela peut prendre quelques instants. Veuillez rafraîchir ou revenir plus tard."
   },
   "chat": {
     "message_copied": "Message copié",
     "empty_state_no_messages": "Aucun message pour le moment. Dites bonjour ! 👋",
-    "send_message_cta": "Envoyer un message"
+    "send_message_cta": "Envoyer un message",
+    "own_product_title": "Votre produit",
+    "own_product_body": "Vous ne pouvez pas vous envoyer de message pour votre propre produit."
   }
 }

@@ -11,10 +11,14 @@ final sellerProductsProvider = StreamProvider.autoDispose<List<Product>>((ref) {
   final userId = ref.watch(userIdProvider);
   if (userId == null) return const Stream.empty();
 
+  // FIX: cap the live stream to 200 documents so high-volume sellers
+  // don't stream an unbounded result-set into memory. Sellers with >200 products
+  // should use the paginated export flow instead.
   return FirebaseFirestore.instance
       .collection(Collections.products)
       .where(Fields.sellerId, isEqualTo: userId)
       .orderBy(Fields.createdAt, descending: true)
+      .limit(200)
       .snapshots()
       .map((snap) => snap.docs.map((d) => Product.fromFirestore(d)).toList());
 });

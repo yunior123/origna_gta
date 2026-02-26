@@ -18,31 +18,6 @@ class FirebaseProductRepository implements ProductRepository {
   FirebaseProductRepository(this._firestore, this._functions);
 
   @override
-  @Deprecated(
-    'Use createProductAtomic() instead — addProduct() bypasses server-controlled fields '
-    '(sellerId validation, lifecycleStatus=under_review, SKU dedup). '
-    'Will be removed before launch.',
-  )
-  Future<String> addProduct(Product product) async {
-    throw UnsupportedError(
-      'addProduct() is disabled. Use createProductAtomic() to create products '
-      'through the server-validated Cloud Function.',
-    );
-  }
-
-  @override
-  @Deprecated(
-    'Use createProductAtomic() instead — addProductWithId() bypasses server-controlled fields. '
-    'Will be removed before launch.',
-  )
-  Future<void> addProductWithId(String productId, Product product) async {
-    throw UnsupportedError(
-      'addProductWithId() is disabled. Use createProductAtomic() to create products '
-      'through the server-validated Cloud Function.',
-    );
-  }
-
-  @override
   String generateProductId() {
     return _firestore.collection(Collections.products).doc().id;
   }
@@ -102,6 +77,9 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Permanently archives a product via Cloud Function, removing it from search and disabling purchases.
+  ///
+  /// Throws [FirebaseFunctionsException] if the caller is not the product owner or an admin.
   Future<void> deleteProduct(String productId) async {
     await _functions.httpsCallable(CloudFunctionEndpoints.deleteProduct).call({
       Fields.productId: productId,
@@ -125,6 +103,9 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  /// Looks up an active product by its URL slug (e.g., `"organic-honey-a1b2"`).
+  ///
+  /// Returns null if no active product with that slug exists.
   Future<Product?> getProductBySlug(String slug) async {
     final snap = await _firestore
         .collection(Collections.products)
@@ -167,21 +148,25 @@ class FirebaseProductRepository implements ProductRepository {
       query = query.where(Fields.subcategory, isEqualTo: subcategory);
     }
 
-    query = query.orderBy(Fields.createdAt, descending: true).limit(pageSize);
+    // N+1 pattern: fetch one extra item to accurately determine if more exist
+    query = query.orderBy(Fields.createdAt, descending: true).limit(pageSize + 1);
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);
     }
 
     final snapshot = await query.get();
-    final products = snapshot.docs
+    
+    final hasMore = snapshot.docs.length > pageSize;
+    final docsToMap = hasMore ? snapshot.docs.take(pageSize) : snapshot.docs;
+
+    final products = docsToMap
         .map((doc) => Product.fromFirestore(doc))
         .toList();
-    final hasMore = snapshot.docs.length >= pageSize;
 
     return ProductQueryResult(
       products: products,
-      lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+      lastDocument: docsToMap.isNotEmpty ? docsToMap.last : null,
       hasMore: hasMore,
     );
   }
@@ -392,18 +377,31 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
-  /// Streams the set of product IDs the user has favorited, updating in real-time.
-  ///
-  /// [userId] The authenticated user UID.
-  /// Returns a [Stream] of product ID strings capped at [BusinessRules.favoritesPageSize].
   Stream<Set<String>> watchFavorites(String userId) {
     return _firestore
         .collection(Collections.users)
         .doc(userId)
         .collection(Collections.favorites)
+        // FIX: orderBy must precede limit() so the 50-item cap is deterministic.
+        // Without this, Firestore returns an arbitrary 50 docs — users with >50
+        // favorites silently lose random favourites from the stream.
+        .orderBy(Fields.dateFavorited, descending: true)
         .limit(BusinessRules.favoritesPageSize)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
+  }
+
+  @override
+  Stream<int> watchUnansweredQuestionsCount(String sellerId) {
+    // FIX: cap at 500 to prevent an unbounded collection scan for high-volume
+    // sellers. Badge counts above 500 are still displayed as '500+' by callers.
+    return _firestore
+        .collection(Collections.productQuestions)
+        .where(Fields.sellerId, isEqualTo: sellerId)
+        .where(Fields.isAnswered, isEqualTo: false)
+        .limit(500)
+        .snapshots()
+        .map((snap) => snap.docs.length);
   }
 
   // Sanitization is now handled by the shared top-level
@@ -572,8 +570,6 @@ Map<String, dynamic> sanitizeProductForFirestore(
 }
 
 abstract class ProductRepository {
-  Future<String> addProduct(Product product);
-  Future<void> addProductWithId(String productId, Product product);
   Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls});
   Future<void> deleteProduct(String productId);
   Future<Product?> fetchProductById(String productId);
@@ -596,4 +592,5 @@ abstract class ProductRepository {
   Future<List<String>> uploadImages(List<Uint8List> images, String productId);
   Future<List<String>> uploadReviewImages(List<Uint8List> images, String userId);
   Stream<Set<String>> watchFavorites(String userId);
+  Stream<int> watchUnansweredQuestionsCount(String sellerId);
 }

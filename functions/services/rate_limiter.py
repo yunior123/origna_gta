@@ -100,6 +100,19 @@ class RateLimiter:
             return check_and_increment(transaction, ref)
 
         except Exception as e:
+            err_str = str(e).lower()
+            # Firestore transaction contention (ABORTED / concurrent modification) is
+            # expected when many requests arrive simultaneously for the same user.
+            # This is NOT a sign of malice — fail-open here since the relaxed multiplier
+            # (100×) ensures the actual request count is far below the limit.
+            is_contention = any(k in err_str for k in (
+                "aborted", "contention", "concurrent modification", "10 aborted",
+                "failed to commit transaction",  # Firestore "Failed to commit transaction in N attempts."
+            ))
+            if is_contention:
+                logger.warning(f"⚠️ Rate limiter contention (fail-open): {e}")
+                return True, "OK"
+
             logger.warning(f"⚠️ Rate limiter error: {e}")
 
             # SECURITY FIX: Fail-closed for high-stakes actions

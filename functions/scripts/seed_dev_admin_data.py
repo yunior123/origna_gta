@@ -38,6 +38,7 @@ from schema_constants import (  # noqa: E402
     Fields,
     OrderStatusValues,
     PaymentStatusValues,
+    ProductLifecycleStatusValues,
     UserRoleValues,
 )
 
@@ -144,7 +145,7 @@ def _seed_product(db: firestore.Client, *, seller_uid: str) -> str:
         Fields.RATING: 0.0,
         Fields.RATING_COUNT: 0,
         Fields.CREATED_AT: _now_utc(),
-        Fields.IS_ACTIVE: True,
+        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
     }
 
     product_ref.set(product_doc, merge=True)
@@ -193,7 +194,6 @@ def _seed_order(db: firestore.Client, *, user_uid: str, user_email: str, product
         Fields.IMAGE_URLS: product.get(Fields.IMAGE_URLS) or ["https://example.com/seed-product.jpg"],
         Fields.SELLER_ID: product.get(Fields.SELLER_ID) or user_uid,
         Fields.SELLER_ADDRESS: seller_address,
-        # Keep both fields written for compatibility.
         Fields.STATUS: DeliveryStatusValues.PENDING,
     }
 

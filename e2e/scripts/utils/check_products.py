@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Quick check: verify products exist and are queryable in the Firestore emulator."""
-import json
 import requests
 
 FIRESTORE = "http://localhost:8080/v1/projects/orignagta/databases/(default)/documents"

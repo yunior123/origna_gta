@@ -1,0 +1,65 @@
+Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 93.0.0 (96.0.0 available)
+  algolia_client_core 1.44.0 (1.46.1 available)
+  algolia_client_insights 1.44.0 (1.46.1 available)
+  algolia_client_search 1.44.0 (1.46.1 available)
+  algoliasearch 1.44.0 (1.46.1 available)
+  analyzer 10.0.1 (10.2.0 available)
+  app_links 6.4.1 (7.0.0 available)
+  archive 4.0.7 (4.0.9 available)
+  build_runner 2.11.0 (2.11.1 available)
+  built_value 8.12.3 (8.12.4 available)
+  characters 1.4.0 (1.4.1 available)
+  ffi 2.1.5 (2.2.0 available)
+  flutter_riverpod 2.6.1 (3.2.1 available)
+  google_sign_in_android 7.2.7 (7.2.9 available)
+  google_sign_in_ios 6.2.5 (6.3.0 available)
+  google_sign_in_web 1.1.0 (1.1.2 available)
+  image 4.7.2 (4.8.0 available)
+  image_picker_android 0.8.13+13 (0.8.13+14 available)
+  jni 0.14.2 (0.15.2 available)
+  json_annotation 4.10.0 (4.11.0 available)
+  json_serializable 6.12.0 (6.13.0 available)
+  matcher 0.12.17 (0.12.18 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  meta 1.17.0 (1.18.1 available)
+  petitparser 7.0.1 (7.0.2 available)
+  posix 6.0.3 (6.5.0 available)
+  riverpod 2.6.1 (3.2.1 available)
+  rx 0.4.0 (0.5.0 available)
+  sentry 9.12.0 (9.14.0 available)
+  sentry_flutter 9.12.0 (9.14.0 available)
+  test_api 0.7.7 (0.7.9 available)
+  url_launcher_ios 6.3.6 (6.4.1 available)
+  uuid 4.5.2 (4.5.3 available)
+  win32 5.15.0 (6.0.0 available)
+Got dependencies!
+34 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing origna_gta...                                         
+
+  error • Missing concrete implementation of 'abstract class ProductRepository.watchUnansweredQuestionsCount' • lib/core/repositories/algolia_product_repository.dart:12:7 • non_abstract_class_inherits_abstract_member
+  error • Target of URI doesn't exist: 'package:origna_gta/features/auth/reset_password_state.freezed.dart' • lib/features/auth/reset_password_state.dart:3:6 • uri_does_not_exist
+  error • Classes can only mix in mixins and classes • lib/features/auth/reset_password_state.dart:6:31 • mixin_of_non_class
+  error • The name '_ResetPasswordState' isn't a type and can't be used in a redirected constructor • lib/features/auth/reset_password_state.dart:13:8 • redirect_to_non_class
+  error • The method 'copyWith' isn't defined for the type 'ResetPasswordState' • lib/features/auth/reset_password_view_model.dart:23:21 • undefined_method
+  error • The method 'copyWith' isn't defined for the type 'ResetPasswordState' • lib/features/auth/reset_password_view_model.dart:28:21 • undefined_method
+  error • The method 'copyWith' isn't defined for the type 'ResetPasswordState' • lib/features/auth/reset_password_view_model.dart:33:21 • undefined_method
+  error • The method 'copyWith' isn't defined for the type 'ResetPasswordState' • lib/features/auth/reset_password_view_model.dart:57:21 • undefined_method
+  error • The method 'copyWith' isn't defined for the type 'ResetPasswordState' • lib/features/auth/reset_password_view_model.dart:62:21 • undefined_method
+  error • The method 'copyWith' isn't defined for the type 'ResetPasswordState' • lib/features/auth/reset_password_view_model.dart:66:19 • undefined_method
+  error • The method 'copyWith' isn't defined for the type 'ResetPasswordState' • lib/features/auth/reset_password_view_model.dart:74:21 • undefined_method
+  error • The method 'copyWith' isn't defined for the type 'ResetPasswordState' • lib/features/auth/reset_password_view_model.dart:79:21 • undefined_method
+  error • The method 'copyWith' isn't defined for the type 'ResetPasswordState' • lib/features/auth/reset_password_view_model.dart:84:21 • undefined_method
+warning • Unused import: 'package:firebase_auth/firebase_auth.dart' • lib/screens/chat_screen.dart:2:8 • unused_import
+  error • The getter 'isVerifying' isn't defined for the type 'ResetPasswordState' • lib/screens/reset_password_screen.dart:28:15 • undefined_getter
+  error • The getter 'isSuccess' isn't defined for the type 'ResetPasswordState' • lib/screens/reset_password_screen.dart:34:15 • undefined_getter
+  error • The getter 'userEmail' isn't defined for the type 'ResetPasswordState' • lib/screens/reset_password_screen.dart:84:27 • undefined_getter
+  error • The getter 'userEmail' isn't defined for the type 'ResetPasswordState' • lib/screens/reset_password_screen.dart:87:60 • undefined_getter
+  error • The getter 'errorMessage' isn't defined for the type 'ResetPasswordState' • lib/screens/reset_password_screen.dart:93:27 • undefined_getter
+  error • The getter 'errorMessage' isn't defined for the type 'ResetPasswordState' • lib/screens/reset_password_screen.dart:103:29 • undefined_getter
+  error • The getter 'errorMessage' isn't defined for the type 'ResetPasswordState' • lib/screens/reset_password_screen.dart:108:27 • undefined_getter
+  error • The getter 'errorMessage' isn't defined for the type 'ResetPasswordState' • lib/screens/reset_password_screen.dart:109:27 • undefined_getter
+  error • The getter 'isLoading' isn't defined for the type 'ResetPasswordState' • lib/screens/reset_password_screen.dart:130:38 • undefined_getter
+

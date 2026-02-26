@@ -8,7 +8,6 @@ Usage: python3 e2e/scripts/seed/seed-orders.py
 
 import json
 import requests
-import time
 from datetime import datetime, timedelta
 
 FIRESTORE = "http://localhost:8080"
@@ -64,14 +63,14 @@ def nv():
     """Null value."""
     return {"nullValue": None}
 
-def make_address(street, city, state, postal, phone="5141234567", lat=45.5, lng=-73.6):
+def make_address(street, city, state, postal, country="Canada", phone="5141234567", lat=45.5, lng=-73.6):
     return mv({
         "street": sv(street),
         "apartment": sv(""),
         "city": sv(city),
         "state": sv(state),
         "postalCode": sv(postal),
-        "country": sv("Canada"),
+        "country": sv(country),
         "phoneNumber": sv(phone),
         "isDefault": bv(True),
         "label": sv("Home"),
@@ -80,8 +79,8 @@ def make_address(street, city, state, postal, phone="5141234567", lat=45.5, lng=
     })
 
 def make_item(product_id, name, price, qty, seller_uid, seller_city, seller_province,
-              images=None, delivery_status="pending", tracking=None, carrier=None,
-              free_shipping=False, is_digital=False):
+              seller_country="Canada", images=None, delivery_status="pending", tracking=None, 
+              carrier=None, free_shipping=False, is_digital=False):
     # Use picsum.photos for reliable CORS-friendly images
     default_images = [f"https://picsum.photos/seed/{product_id}/400/400"]
     fields = {
@@ -92,7 +91,7 @@ def make_item(product_id, name, price, qty, seller_uid, seller_city, seller_prov
         "quantity": iv(qty),
         "imageUrls": av([sv(img) for img in (images or default_images)]),
         "sellerId": sv(seller_uid),
-        "sellerAddress": make_address(f"123 Seller St", seller_city, seller_province, "H3B 1A1"),
+        "sellerAddress": make_address("123 Seller St", seller_city, seller_province, "H3B 1A1", country=seller_country),
         "isDigital": bv(is_digital),
         "status": sv(delivery_status),
         "deliveryStatus": sv(delivery_status),
@@ -176,6 +175,7 @@ def build_order(order_id, buyer_uid, buyer_email, buyer_province, items_data,
             seller_uid=item["seller_uid"],
             seller_city=item.get("seller_city", "Montreal"),
             seller_province=item.get("seller_province", "QC"),
+            seller_country=item.get("seller_country", "Canada"),
             delivery_status=item.get("delivery_status", "pending"),
             tracking=item.get("tracking"),
             carrier=item.get("carrier"),
@@ -197,7 +197,7 @@ def build_order(order_id, buyer_uid, buyer_email, buyer_province, items_data,
         net = int(seller_total) - platform_fee
         payouts.append(mv({
             "sellerId": sv(sid),
-            "stripeAccountId": sv(f"acct_test_mock"),
+            "stripeAccountId": sv("acct_test_mock"),
             "amountCents": iv(int(seller_total)),
             "platformFeeCents": iv(platform_fee),
             "netAmountCents": iv(net),
@@ -395,9 +395,26 @@ create_order("order_test_008", build_order(
     ]
 ))
 
+# Order 9: Multi-country, Multi-seller CONFIRMED
+create_order("order_test_009", build_order(
+    "order_test_009",
+    buyer_uid=BUYER1_UID,
+    buyer_email="yuniorrodriguezo460@gmail.com",
+    buyer_province="ON",
+    status="confirmed",
+    payment_status="authorized",
+    created_ago_days=0,
+    items_data=[
+        {"product_id": "product_intl_001", "name": "Global Tech Gadget", "price": 299.99, "qty": 1,
+         "seller_uid": SELLER2_UID, "seller_city": "Shenzhen", "seller_province": "GD", "seller_country": "China"},
+        {"product_id": "product_001", "name": "Handmade Quebec Scarf", "price": 45.99, "qty": 1,
+         "seller_uid": SELLER1_UID, "seller_city": "Montreal", "seller_province": "QC", "seller_country": "Canada"},
+    ]
+))
+
 print()
 print("═" * 50)
-print("✅ 8 test orders created!")
+print("✅ 9 test orders created!")
 print("  📋 order_test_001: pending (2 items, multi-seller)")
 print("  📋 order_test_002: confirmed (2 items, multi-seller)")
 print("  📋 order_test_003: processing (1 item)")
@@ -406,6 +423,7 @@ print("  📋 order_test_005: in_transit (1 item, w/ tracking)")
 print("  📋 order_test_006: delivered (1 digital item)")
 print("  📋 order_test_007: cancelled")
 print("  📋 order_test_008: confirmed (3 items, multi-seller — for status cycling)")
+print("  📋 order_test_009: confirmed (2 items, multi-country, multi-seller)")
 print()
 print("🔑 Login as yuniorrodriguezo460@gmail.com (password: REDACTED_TEST_PASSWORD) to see orders")
 print("   Orders visible: order_test_001, 006, 008")

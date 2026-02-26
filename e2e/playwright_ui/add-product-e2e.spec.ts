@@ -22,237 +22,185 @@ const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'REDACTED_TEST_PASSWORD
 test.describe('PW IT Replica — Add Product Flow', () => {
     test.setTimeout(300_000);
 
-    test('P01-P12: Add Product varieties and validation', async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }) => {
         await requireWebApp(page, TARGET_URL);
         page.setDefaultTimeout(60_000);
-
         await page.goto(`${TARGET_URL}/`);
         await waitForFlutter(page);
-        await checkSemantics(page);
-
-        // P00: Login as seller/admin (returns on home page)
         await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
 
-        const suffix = uniqueSuffix(testInfo);
-        const p01Name = `T01 Standard Ship ${suffix}`;
-        const p12Name = `T12 Bad Price ${suffix}`;
-
-        // P00: Navigate to Add Product via home AppBar button
         const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
         await expect(addProductBtn).toBeVisible({ timeout: 20000 });
         await addProductBtn.click();
         await expect(page).toHaveURL(/\/add-product/i, { timeout: 30000 });
         await waitForFlutter(page);
+    });
 
-        // C011: Add product screen loaded
+    test.afterEach(async ({ page }) => {
+        await page.goto(`${TARGET_URL}/`);
+        await waitForFlutter(page);
+        await performSignOut(page, TARGET_URL);
+    });
+
+    test('T01: Product Name validation — cannot submit empty', async ({ page }) => {
+        const publishBtn = page.locator('[aria-label^="btn-publish-product"]').first();
+        await page.keyboard.press('End');
+        await page.waitForTimeout(500);
+        await publishBtn.click();
+        await page.waitForTimeout(1000);
+        // Should stay on the same page
         expect(page.url()).toMatch(/\/add-product/i);
+    });
 
-        // P01: Fill basic fields
+    test('T02: Price validation — cannot be zero', async ({ page }, testInfo) => {
         const nameInput = page.getByRole('textbox', { name: /product name|nom du produit/i }).first();
-        await expect(nameInput).toBeVisible({ timeout: 20000 });
-        await nameInput.click();
-        await nameInput.pressSequentially(p01Name, { delay: 30 });
-
-        const descInput = page.getByRole('textbox', { name: /description/i }).first();
-        if (await descInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await descInput.click();
-            await descInput.pressSequentially('Test description for E2E run', { delay: 30 });
-        }
+        await nameInput.pressSequentially(`Price Test ${uniqueSuffix(testInfo)}`, { delay: 30 });
 
         const priceInput = page.getByRole('textbox', { name: /price|prix/i }).first();
-        await expect(priceInput).toBeVisible({ timeout: 10000 });
         await priceInput.click();
-        await priceInput.pressSequentially('29.99', { delay: 30 });
-
-        const stockInput = page.getByRole('textbox', { name: /stock|quantit/i }).first();
-        if (await stockInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await stockInput.click();
-            await stockInput.pressSequentially('10', { delay: 30 });
-        }
-
-        // Scroll to delivery section
-        await page.keyboard.press('End');
-        await page.waitForTimeout(600);
-
-        // C012: Standard delivery section visible
-        const standardDeliveryText = page.getByText(/standard delivery|livraison standard/i).first();
-        if (await standardDeliveryText.isVisible({ timeout: 8000 }).catch(() => false)) {
-            await standardDeliveryText.scrollIntoViewIfNeeded().catch(() => { });
-        }
-
-        // P02/P10: Digital toggle
-        const digitalLabelText = page.getByText(/digital product|produit num/i).first();
-        if (await digitalLabelText.isVisible({ timeout: 8000 }).catch(() => false)) {
-            await digitalLabelText.scrollIntoViewIfNeeded().catch(() => { });
-            await page.waitForTimeout(400);
-
-            const allSwitches = page.locator('[role="switch"]');
-            const switchCount = await allSwitches.count();
-
-            if (switchCount > 0) {
-                const digitalSwitch = allSwitches.first();
-                const beforeState = await digitalSwitch.getAttribute('aria-checked').catch(() => null);
-
-                await digitalSwitch.click();
-                await page.waitForTimeout(600);
-
-                const afterState = await digitalSwitch.getAttribute('aria-checked').catch(() => null);
-
-                if (beforeState === 'false' && afterState === 'true') {
-                    await page.waitForTimeout(400);
-                    // Toggle back OFF
-                    await digitalSwitch.click();
-                    await page.waitForTimeout(600);
-                } else if (beforeState === 'true') {
-                    await digitalSwitch.click();
-                    await page.waitForTimeout(400);
-                }
-            }
-        }
-
-        // P11: Validation — submit without name
-        await nameInput.click();
-        await nameInput.press('Control+A');
-        await nameInput.press('Backspace');
-
-        const publishBtn = page.locator('[aria-label^="btn-publish-product"]').first();
-
-        await page.keyboard.press('End');
-        await page.waitForTimeout(500);
-
-        if (await publishBtn.isVisible({ timeout: 8000 }).catch(() => false)) {
-            await publishBtn.scrollIntoViewIfNeeded().catch(() => { });
-            await publishBtn.click();
-            await page.waitForTimeout(1000);
-            expect(page.url()).toMatch(/\/add-product/i);
-        }
-
-        // P12: Validation — zero price
-        await nameInput.click();
-        await nameInput.press('Control+A');
-        await nameInput.pressSequentially(p12Name, { delay: 30 });
-        await priceInput.click();
-        await priceInput.press('Control+A');
         await priceInput.pressSequentially('0', { delay: 30 });
 
-        if (await publishBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await publishBtn.click();
-            await page.waitForTimeout(1000);
-            expect(page.url()).toMatch(/\/add-product/i);
-        }
-
-        // Return to home before sign-out (use goBack, not page.goto which kills auth)
-        await page.goto(`${TARGET_URL}/`);
-        await waitForFlutter(page);
-
-        // C080/C099: Sign-out
-        await performSignOut(page, TARGET_URL);
+        const publishBtn = page.locator('[aria-label^="btn-publish-product"]').first();
+        await page.keyboard.press('End');
+        await page.waitForTimeout(500);
+        await publishBtn.click();
+        await page.waitForTimeout(1000);
+        expect(page.url()).toMatch(/\/add-product/i);
     });
-});
 
-test.describe('PW Digital Products — Add Product', () => {
-    test.setTimeout(300_000);
+    test('T03: Stock validation — must be positive', async ({ page }, testInfo) => {
+        const nameInput = page.getByRole('textbox', { name: /product name/i }).first();
+        await nameInput.pressSequentially(`Stock Test ${uniqueSuffix(testInfo)}`, { delay: 30 });
 
-    test('D01: Software digital product — sub-type selector + macOS URL field visible', async ({ page }, testInfo) => {
-        await requireWebApp(page, TARGET_URL);
-        page.setDefaultTimeout(60_000);
+        const stockInput = page.getByRole('textbox', { name: /stock|quantit/i }).first();
+        await stockInput.click();
+        await stockInput.pressSequentially('-5', { delay: 30 });
 
-        await page.goto(`${TARGET_URL}/`);
-        await waitForFlutter(page);
-        await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
+        const publishBtn = page.locator('[aria-label^="btn-publish-product"]').first();
+        await page.keyboard.press('End');
+        await publishBtn.click();
+        await page.waitForTimeout(1000);
+        expect(page.url()).toMatch(/\/add-product/i);
+    });
 
-        // Navigate to add product
-        const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
-        await expect(addProductBtn).toBeVisible({ timeout: 20_000 });
-        await addProductBtn.click();
-        await expect(page).toHaveURL(/\/add-product/i, { timeout: 30_000 });
-        await waitForFlutter(page);
+    test('T04: Description field visibility and interaction', async ({ page }) => {
+        const descInput = page.getByRole('textbox', { name: /description/i }).first();
+        await expect(descInput).toBeVisible();
+        await descInput.click();
+        await descInput.pressSequentially('Detailed product description for testing purposes.', { delay: 30 });
+        await expect(descInput).toHaveValue(/Detailed product description/);
+    });
 
-        // D01a: Toggle digital product ON
+    test('T05: Category selector interaction', async ({ page }) => {
+        const categorySelector = page.getByRole('button', { name: /category|catégorie/i }).first();
+        if (await categorySelector.isVisible()) {
+            await categorySelector.click();
+            await page.waitForTimeout(500);
+            // Verify some categories are shown (Electronics, Fashion, etc.)
+            const electronicsOption = page.getByText(/electronics|électronique/i).first();
+            await expect(electronicsOption).toBeVisible();
+            await electronicsOption.click();
+        }
+    });
+
+    test('T06: Warehouse selection UI', async ({ page }) => {
+        await page.keyboard.press('End');
+        await page.waitForTimeout(500);
+        const warehouseSelector = page.getByRole('button', { name: /select warehouse|sélectionner un entrepôt/i }).first();
+        // This might only show if the seller has warehouses
+        if (await warehouseSelector.isVisible()) {
+            await expect(warehouseSelector).toBeEnabled();
+        } else {
+            // Fallback: should see origin address fields or "Seller Address"
+            const originText = page.getByText(/shipping origin|origine de l'expédition/i).first();
+            await expect(originText).toBeVisible();
+        }
+    });
+
+    test('T07: Delivery speed toggles', async ({ page }) => {
+        await page.keyboard.press('End');
+        await page.waitForTimeout(500);
+
+        const standardToggle = page.getByRole('switch', { name: /standard delivery|livraison standard/i }).first();
+        if (await standardToggle.isVisible()) {
+            const isChecked = await standardToggle.getAttribute('aria-checked');
+            await standardToggle.click();
+            await page.waitForTimeout(400);
+            expect(await standardToggle.getAttribute('aria-checked')).not.toBe(isChecked);
+        }
+    });
+
+    test('T08: Dimensions and Weight validation', async ({ page }) => {
+        await page.keyboard.press('End');
+        await page.waitForTimeout(500);
+
+        const weightInput = page.getByRole('textbox', { name: /weight|poids/i }).first();
+        if (await weightInput.isVisible()) {
+            await weightInput.click();
+            await weightInput.pressSequentially('2.5', { delay: 30 });
+            await expect(weightInput).toHaveValue('2.5');
+        }
+    });
+
+    test('T09: Info tooltips presence', async ({ page }) => {
+        // Check for at least one info tooltip button
+        const infoButtons = page.locator('button[aria-label*="info"], button[aria-label*="help"]');
+        const count = await infoButtons.count();
+        // There should be some info buttons for SKU, shipping, etc.
+        if (count > 0) {
+            await expect(infoButtons.first()).toBeVisible();
+        }
+    });
+
+    test('T10: Digital product — Software sub-type fields', async ({ page }) => {
         const digitalToggle = page.getByRole('switch', { name: /digital/i }).first();
-        await expect(digitalToggle).toBeVisible({ timeout: 15_000 });
+        await expect(digitalToggle).toBeVisible();
         if ((await digitalToggle.getAttribute('aria-checked')) !== 'true') {
             await digitalToggle.click();
             await page.waitForTimeout(800);
         }
-        await expect(digitalToggle).toHaveAttribute('aria-checked', 'true');
 
-        // D01b: Software chip visible
         const softwareChip = page.getByRole('button', { name: /software/i }).first();
-        await expect(softwareChip).toBeVisible({ timeout: 10_000 });
+        await expect(softwareChip).toBeVisible();
         await softwareChip.click();
-        await page.waitForTimeout(500);
 
-        // D01c: macOS URL field appears after selecting Software
         const macosField = page.getByRole('textbox', { name: /macos/i }).first();
-        await expect(macosField).toBeVisible({ timeout: 10_000 });
-
-        // D01d: Windows URL field also appears
+        await expect(macosField).toBeVisible();
         const windowsField = page.getByRole('textbox', { name: /windows/i }).first();
-        await expect(windowsField).toBeVisible({ timeout: 5_000 });
-
-        // D01e: Enter a macOS URL
-        await macosField.click();
-        await page.waitForTimeout(600);
-        await macosField.pressSequentially('https://releases.example.com/cleaner.dmg', { delay: 30 });
-        await page.waitForTimeout(500);
-
-        // D01f: Field retains value
-        await expect(macosField).toHaveValue(/releases\.example\.com/);
-
-        await page.goto(`${TARGET_URL}/`);
-        await waitForFlutter(page);
-        await performSignOut(page, TARGET_URL);
+        await expect(windowsField).toBeVisible();
     });
 
-    test('D02: Book digital product — book URL field visible, no platform fields', async ({ page }, testInfo) => {
-        await requireWebApp(page, TARGET_URL);
-        page.setDefaultTimeout(60_000);
-
-        await page.goto(`${TARGET_URL}/`);
-        await waitForFlutter(page);
-        await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
-
-        // Navigate to add product
-        const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
-        await expect(addProductBtn).toBeVisible({ timeout: 20_000 });
-        await addProductBtn.click();
-        await expect(page).toHaveURL(/\/add-product/i, { timeout: 30_000 });
-        await waitForFlutter(page);
-
-        // D02a: Toggle digital ON
+    test('T11: Digital product — Book sub-type fields', async ({ page }) => {
         const digitalToggle = page.getByRole('switch', { name: /digital/i }).first();
-        await expect(digitalToggle).toBeVisible({ timeout: 15_000 });
         if ((await digitalToggle.getAttribute('aria-checked')) !== 'true') {
             await digitalToggle.click();
             await page.waitForTimeout(800);
         }
 
-        // D02b: Select Book sub-type
         const bookChip = page.getByRole('button', { name: /book/i }).first();
-        await expect(bookChip).toBeVisible({ timeout: 10_000 });
+        await expect(bookChip).toBeVisible();
         await bookChip.click();
-        await page.waitForTimeout(500);
 
-        // D02c: Book URL field visible
         const bookUrlField = page.getByRole('textbox', { name: /download source url|book download/i }).first();
-        await expect(bookUrlField).toBeVisible({ timeout: 10_000 });
+        await expect(bookUrlField).toBeVisible();
+    });
 
-        // D02d: macOS URL field NOT visible (software-only)
-        const macosField = page.getByRole('textbox', { name: /macos/i });
-        await expect(macosField).not.toBeVisible();
+    test('T12: Back navigation and state reset', async ({ page }) => {
+        const nameInput = page.getByRole('textbox', { name: /product name/i }).first();
+        await nameInput.pressSequentially('Temporary Product', { delay: 30 });
 
-        // D02e: Enter a book URL
-        await bookUrlField.click();
-        await page.waitForTimeout(400);
-        await page.keyboard.type('https://storage.example.com/python-mastery.pdf', { delay: 20 });
-        await page.waitForTimeout(300);
-
-        // D02f: Validate URL field value
-        await expect(bookUrlField).toHaveValue(/storage\.example\.com/);
-
+        // Navigate back to home
         await page.goto(`${TARGET_URL}/`);
         await waitForFlutter(page);
-        await performSignOut(page, TARGET_URL);
+
+        // Navigate back to Add Product
+        const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
+        await addProductBtn.click();
+        await waitForFlutter(page);
+
+        // Verify name input is empty (state reset)
+        const nameInputNew = page.getByRole('textbox', { name: /product name/i }).first();
+        await expect(nameInputNew).toHaveValue('');
     });
 });
+

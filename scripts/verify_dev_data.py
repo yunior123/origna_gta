@@ -1,10 +1,9 @@
 
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import firestore
 import subprocess
 import google.oauth2.credentials
 from dotenv import load_dotenv
-import os
 
 load_dotenv("functions/.env")
 

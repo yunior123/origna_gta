@@ -177,19 +177,27 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   /// Apply a coupon code — validates server-side and stores discount in state.
-  Future<void> applyCoupon(String code, int subtotalCents) async {
+  /// [sellerIds] must be passed so seller-scoped coupons can be validated.
+  Future<void> applyCoupon(String code, int subtotalCents, {List<String>? sellerIds}) async {
     final trimmed = code.trim().toUpperCase();
     if (trimmed.isEmpty) return;
     state = state.copyWith(isCouponLoading: true, clearCouponError: true);
     try {
       final functions = _ref.read(firebaseFunctionsProvider);
+      // AUDIT FIX (HIGH-C4): Include sellerIds so the server can validate
+      // seller-scoped coupons (e.g., coupon only valid for SellerA's products).
       final result = await functions.httpsCallable(CloudFunctionEndpoints.applyCoupon).call({
         Fields.couponCode: trimmed,
         ApiKeys.cartSubtotalCents: subtotalCents,
+        'sellerIds': sellerIds ?? [],
       });
       final data = (result.data as Map<Object?, Object?>).cast<String, dynamic>();
       final discountCents = (data[Fields.discountAmountCents] as num?)?.toInt() ?? 0;
       state = state.copyWith(couponCode: trimmed, couponDiscountCents: discountCents, isCouponLoading: false);
+      // AUDIT FIX (MEDIUM-C7): Recalculate client-side tax estimate using post-discount subtotal.
+      // Server is authoritative; this keeps the UI summary consistent.
+      final postDiscountSubtotal = (subtotalCents - discountCents) / 100.0;
+      calculateTaxes(postDiscountSubtotal, shippingCost: state.shippingCost);
     } on FirebaseFunctionsException catch (e) {
       state = state.copyWith(isCouponLoading: false, couponError: e.message ?? 'Invalid coupon code');
     } catch (e, st) {

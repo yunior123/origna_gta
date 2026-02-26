@@ -10,10 +10,9 @@ from __future__ import annotations
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 from .base import BaseHook, Finding, HookResult, register_hook
-from .config import PROJECT_ROOT, CRITICAL, HIGH, MEDIUM, LOW
+from .config import PROJECT_ROOT
 from .prompts import STRUCTURED_OUTPUT_INSTRUCTION, PROJECT_CONTEXT
 
 

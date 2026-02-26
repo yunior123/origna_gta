@@ -728,7 +728,7 @@
     },
     "lifecycleStatus": {
       "type": "string",
-      "enum": ["active", "inactive", "pending_review", "rejected", "archived"],
+      "enum": ["draft", "under_review", "approved", "active", "paused", "archived", "rejected"],
       "description": "Backend lifecycle gate controlling product visibility"
     }
   },

@@ -415,10 +415,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Future<void> _initializeCheckout() async {
     final notifier = ref.read(checkoutStateProvider.notifier);
     await notifier.initialize();
+    if (!mounted) return; // Guard: widget may be disposed during async gap
 
     final state = ref.read(checkoutStateProvider);
     if (state.address != null) {
       await notifier.calculateShipping(widget.items);
+      if (!mounted) return; // Guard: widget may be disposed during async gap
       final shipping = ref.read(checkoutStateProvider).shippingCost;
       notifier.calculateTaxes(widget.total, shippingCost: shipping);
     }
@@ -428,10 +430,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final notifier = ref.read(checkoutStateProvider.notifier);
     // Re-initialize to fetch the newly selected default address
     await notifier.initialize();
+    if (!mounted) return; // Guard: widget may be disposed during async gap
 
     final state = ref.read(checkoutStateProvider);
     if (state.address != null) {
       await notifier.calculateShipping(widget.items);
+      if (!mounted) return; // Guard: widget may be disposed during async gap
       final shipping = ref.read(checkoutStateProvider).shippingCost;
       notifier.calculateTaxes(widget.total, shippingCost: shipping);
     }
@@ -450,7 +454,20 @@ class _DeliveryOptionsSection extends ConsumerWidget {
     final baseShippingCost = ref.watch(checkoutStateProvider.select((state) => state.baseShippingCost));
 
     if (isCalculating) {
-      return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('checkout.delivery_speed_title'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const ModernLoadingIndicator(size: 20, strokeWidth: 2),
+              const SizedBox(width: 12),
+              Text('checkout.calculating_delivery'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
+            ],
+          ),
+        ],
+      );
     }
 
     return Column(
@@ -788,7 +805,7 @@ class _OrderSummary extends ConsumerWidget {
             children: [
               const Icon(Icons.local_offer_rounded, size: 14, color: DesignTokens.success),
               const SizedBox(width: 4),
-              Text('Coupon ($couponCode)', style: const TextStyle(fontSize: 14, color: DesignTokens.success)),
+              Text('checkout.coupon_applied_label'.tr(namedArgs: {'code': couponCode}), style: const TextStyle(fontSize: 14, color: DesignTokens.success)),
             ],
           ),
           Text('-\$${(discountCents / 100.0).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: DesignTokens.success, fontWeight: FontWeight.w600)),
@@ -828,8 +845,10 @@ class _OrderSummary extends ConsumerWidget {
 
 class _CouponSection extends ConsumerStatefulWidget {
   final int subtotalCents;
+  // AUDIT FIX (HIGH-C4): Pass seller IDs so seller-scoped coupon validation works
+  final List<String> sellerIds;
 
-  const _CouponSection({required this.subtotalCents});
+  const _CouponSection({required this.subtotalCents, this.sellerIds = const []});
 
   @override
   ConsumerState<_CouponSection> createState() => _CouponSectionState();
@@ -904,7 +923,8 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
   void _apply(CheckoutNotifier notifier) {
     final code = _controller.text.trim();
     if (code.isEmpty) return;
-    notifier.applyCoupon(code, widget.subtotalCents);
+    // AUDIT FIX (HIGH-C4): Pass sellerIds for server-side seller-scoped validation
+    notifier.applyCoupon(code, widget.subtotalCents, sellerIds: widget.sellerIds);
   }
 }
 
@@ -1120,7 +1140,7 @@ class _OrderReviewSheet extends ConsumerWidget {
     final tax = (effectiveSubtotal + state.shippingCost) * taxRate;
     final total = effectiveSubtotal + state.shippingCost + tax;
 
-    final bgColor = isDark ? const Color(0xFF1A1A2E) : Colors.white;
+    final bgColor = isDark ? DesignTokens.darkCard : Colors.white;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
@@ -1291,7 +1311,7 @@ class _OrderReviewSheet extends ConsumerWidget {
             children: [
               const Icon(Icons.local_offer_rounded, size: 14, color: DesignTokens.success),
               const SizedBox(width: 4),
-              Text(code != null ? 'Coupon ($code)' : 'Coupon', style: const TextStyle(fontSize: 14, color: DesignTokens.success)),
+              Text(code != null ? 'checkout.coupon_applied_label'.tr(namedArgs: {'code': code}) : 'checkout.coupon_applied_generic'.tr(), style: const TextStyle(fontSize: 14, color: DesignTokens.success)),
             ],
           ),
           Text('-\$${discount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: DesignTokens.success, fontWeight: FontWeight.w600)),

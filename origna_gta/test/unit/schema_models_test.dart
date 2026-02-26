@@ -105,7 +105,7 @@ void main() {
       expect(taxes3.total, 15.5);
     });
 
-    test('Taxes toMap/fromMap compatibility', () {
+    test('Taxes toMap/fromMap consistency', () {
       final taxes = Taxes(gst: 2.5, pst: 3.5);
 
       final map = taxes.toMap();
@@ -159,7 +159,7 @@ void main() {
   });
 
   group('SellerPayout Model Tests', () {
-    test('SellerPayout toJson/fromMap compatibility', () {
+    test('SellerPayout toJson/fromMap consistency', () {
       final payout = SellerPayout(
         sellerId: 'seller_123',
         amountCents: 10000,

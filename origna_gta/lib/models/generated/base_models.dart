@@ -94,10 +94,6 @@ enum OrderStatus {
   failed,
   @JsonValue('expired')
   expired,
-  @JsonValue('refunded')
-  refunded,
-  @JsonValue('partially_refunded')
-  partiallyRefunded,
   @JsonValue('disputed')
   disputed,
 }

@@ -3,7 +3,7 @@ import hmac
 import html
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import quote
 
 from mailjet_rest import Client
@@ -265,6 +265,10 @@ _EMAIL_STRINGS: dict[str, dict[str, str]] = {
         "en": "Refund Processed for Order #{oid} - Origna",
         "fr": "Remboursement traité pour la commande #{oid} - Origna",
     },
+    "sub.item_shipped": {
+        "en": "Part of your order #{oid} has shipped! - Origna",
+        "fr": "Une partie de votre commande #{oid} a été expédiée ! - Origna",
+    },
     "sub.partial": {
         "en": "Partial Refund for Order #{oid} - Origna",
         "fr": "Remboursement partiel pour la commande #{oid} - Origna",
@@ -490,7 +494,6 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
         order_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
 
     # CPA Ontario: estimated delivery date (7 business days from now as default)
-    from datetime import timedelta
 
     # Calculate estimated delivery date based on items and shipping speed
     # We take the maximum days from all items to be safe
@@ -1303,6 +1306,52 @@ def get_order_shipped_email(
     return _email_wrapper("Order Shipped", content, include_gst=True, lang=lang, recipient_email=order_data.get(Fields.CUSTOMER_EMAIL, ''))
 
 
+def get_order_item_shipped_email(
+    order_data: dict, order_id: str, shipped_items: list, tracking_number: str = "N/A", carrier: str = "N/A", lang: str = "en"
+) -> str:
+    """Generate HTML email for partial shipment notification (item-level)."""
+    short_oid = order_id[:8]
+    safe_tracking = html.escape(str(tracking_number))
+    safe_carrier = html.escape(str(carrier))
+
+    content = _hero_header("📦", _t("shipped.hero_h", lang), f"Items from order #{short_oid} are on their way!", "rgba(59, 130, 246, 0.2)")
+
+    # Tracking block
+    t_tracking = _t("section.tracking", lang)
+    t_order_id = _t("label.order_id", lang)
+    t_carrier = _t("label.carrier", lang)
+    t_tracking_num = _t("label.tracking_num", lang)
+    content += f"""
+        <tr><td style="padding: 24px 40px;">
+            <div style="background-color: #f8f9ff; border: 1px solid #e0e3f0; border-radius: 16px; padding: 20px 24px;">
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 18px; margin-right: 8px;">🚚</span>
+                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">{t_tracking}</span>
+                </div>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">{t_order_id}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_carrier}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 500;">{safe_carrier}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_tracking_num}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #667EEA; font-weight: 600;">{safe_tracking}</td>
+                    </tr>
+                </table>
+            </div>
+        </td></tr>
+    """
+
+    content += _items_summary_table(shipped_items, lang)
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.track_order", lang))
+
+    return _email_wrapper("Shipment Update", content, include_gst=False, lang=lang, recipient_email=order_data.get(Fields.CUSTOMER_EMAIL, ''))
+
+
 def get_order_in_transit_email(order_data: dict, order_id: str, lang: str = "en") -> str:
     """Generate branded HTML email for order in-transit notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
@@ -1739,12 +1788,12 @@ def get_return_request_approved_email(return_data: dict, return_id: str, order_i
                     </tr>
                     <tr>
                         <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_return_id}</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-family: 'Courier New', monospace;">#{short_rid}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_rid}</td>
                     </tr>
                     {reason_row}
                     <tr>
                         <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_status}</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #059669; font-weight: 600;">{_t("return.status_approved", lang)}</td>
+                        <td style="padding: 14px 16px; font-size: 14px; color: #059669; font-weight: 600;">{_t("return.status_approved", lang)}</td>
                     </tr>
                 </table>
             </div>
@@ -1793,7 +1842,7 @@ def get_return_request_rejected_email(return_data: dict, return_id: str, order_i
                     {reason_row}
                     <tr>
                         <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_status}</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #DC2626; font-weight: 600;">{_t("return.status_rejected", lang)}</td>
+                        <td style="padding: 14px 16px; font-size: 14px; color: #DC2626; font-weight: 600;">{_t("return.status_rejected", lang)}</td>
                     </tr>
                 </table>
             </div>
@@ -1998,7 +2047,6 @@ def send_payment_capture_failed_email(
 
         <tr><td style="padding: 0 40px 24px 40px;">
             <p style="margin: 0; font-size: 13px; color: #888; text-align: center;">{_t("capture.help", lang)} <strong>{order_id[:8]}</strong></p>
-        </td></tr>
 
         <!-- CASL-COMPLIANT FOOTER -->
         {_casl_compliant_footer(include_gst=False, lang=lang, recipient_email=customer_email)}
@@ -2011,3 +2059,407 @@ def send_payment_capture_failed_email(
     """
     subject = _t("sub.payment_issue", lang).replace("{oid}", order_id[:8])
     send_email(customer_email, subject, html_body, to_name=customer_name)
+
+
+def get_order_item_delivered_email(
+    order_data: dict, order_id: str, delivered_items: list, lang: str = "en"
+) -> str:
+    """Generate HTML email for partial delivery notification (item-level)."""
+    short_oid = order_id[:8]
+
+    content = _hero_header(
+        "🎉",
+        "Item Delivered" if lang == "en" else "Article livré",
+        f"Good news! Items from order #{short_oid} have arrived.",
+        "rgba(16, 185, 129, 0.2)"
+    )
+
+    content += _items_summary_table(delivered_items, lang)
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.track_order", lang))
+
+    return _email_wrapper(
+        "Delivery Update" if lang == "en" else "Mise à jour de livraison",
+        content,
+        include_gst=False,
+        lang=lang,
+        recipient_email=order_data.get(Fields.CUSTOMER_EMAIL, '')
+    )
+
+
+# ============================================================
+# FLOW 6 — Return: RECEIVED + REFUNDED email templates
+# ============================================================
+
+def get_return_received_email(return_data: dict, return_id: str, order_id: str, lang: str = "en") -> str:
+    """Email to buyer: seller has confirmed the returned item was received; refund in progress."""
+    short_oid = order_id[:8]
+    short_rid = return_id[:8]
+    reason = html.escape(str(return_data.get(Fields.RETURN_REASON, "")))
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+
+    hero_h = {"en": "Return Received ✅", "fr": "Retour reçu ✅"}.get(lang, "Return Received ✅")
+    hero_s = {
+        "en": "The seller has confirmed receipt of your returned item. A refund is now being processed.",
+        "fr": "Le vendeur a confirmé la réception de votre article retourné. Un remboursement est en cours de traitement.",
+    }.get(lang, "The seller has confirmed receipt of your returned item. A refund is now being processed.")
+    t_order = _t("label.order_id", lang)
+    t_ret = _t("return.label_return_id", lang)
+    t_status_label = _t("return.label_status", lang)
+    t_status_val = {"en": "Item Received — Refund Processing", "fr": "Article reçu — Remboursement en cours"}.get(lang, "Item Received — Refund Processing")
+    t_timeline_t = _t("refunded.timeline_t", lang)
+    t_timeline_b = _t("refunded.timeline_b", lang).format(support=support_link)
+    reason_row = f"""<tr>
+        <td style="padding:4px 0;font-size:13px;color:#888888;">{_t("return.label_reason", lang)}</td>
+        <td style="padding:4px 0;font-size:14px;color:#1a1a2e;">{reason}</td>
+    </tr>""" if reason else ""
+
+    content = _hero_header("📬", hero_h, hero_s, "rgba(16, 185, 129, 0.2)")
+    content += f"""
+        <tr><td style="padding: 24px 40px;">
+            <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 16px; padding: 20px 24px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding:4px 0;font-size:13px;color:#888888;width:120px;">{t_order}</td>
+                        <td style="padding:4px 0;font-size:14px;color:#1a1a2e;font-weight:600;font-family:'Courier New',monospace;">#{short_oid}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:4px 0;font-size:13px;color:#888888;">{t_ret}</td>
+                        <td style="padding:4px 0;font-size:14px;color:#1a1a2e;font-family:'Courier New',monospace;">#{short_rid}</td>
+                    </tr>
+                    {reason_row}
+                    <tr>
+                        <td style="padding:4px 0;font-size:13px;color:#888888;">{t_status_label}</td>
+                        <td style="padding:4px 0;font-size:14px;color:#059669;font-weight:600;">{t_status_val}</td>
+                    </tr>
+                </table>
+            </div>
+        </td></tr>
+        <tr><td style="padding: 0 40px 24px 40px;">
+            <div style="background-color:#f8f9ff;border:1px solid #e8ebf0;border-radius:12px;padding:16px 20px;">
+                <p style="margin:0 0 8px 0;font-size:13px;font-weight:700;color:#1a1a2e;">{t_timeline_t}</p>
+                <p style="margin:0;font-size:12px;color:#555555;line-height:1.6;">{t_timeline_b}</p>
+            </div>
+        </td></tr>
+    """
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
+
+    buyer_email = return_data.get(Fields.CUSTOMER_EMAIL, "")
+    return _email_wrapper("Return Received", content, include_gst=False, lang=lang, recipient_email=buyer_email)
+
+
+def get_return_refunded_email(return_data: dict, return_id: str, order_id: str, lang: str = "en") -> str:
+    """Email to buyer: refund for their return has been issued."""
+    short_oid = order_id[:8]
+    short_rid = return_id[:8]
+    refund_cents = return_data.get(Fields.RETURN_REFUND_AMOUNT_CENTS, 0) or 0
+    refund_amount = refund_cents / 100
+    reason = html.escape(str(return_data.get(Fields.RETURN_REASON, "")))
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+
+    hero_h = {"en": "Your Refund Has Been Issued 💰", "fr": "Votre remboursement a été émis 💰"}.get(lang, "Your Refund Has Been Issued 💰")
+    hero_s = {
+        "en": "Your return refund has been processed and is on its way to your original payment method.",
+        "fr": "Votre remboursement de retour a été traité et est en route vers votre moyen de paiement d'origine.",
+    }.get(lang, "Your return refund has been processed and is on its way to your original payment method.")
+    t_order = _t("label.order_id", lang)
+    t_ret = _t("return.label_return_id", lang)
+    t_refund_amt = _t("label.refund_amount", lang)
+    t_timeline_t = _t("refunded.timeline_t", lang)
+    t_timeline_b = _t("refunded.timeline_b", lang).format(support=support_link)
+    reason_row = f"""<tr>
+        <td style="padding:4px 0;font-size:13px;color:#888888;">{_t("return.label_reason", lang)}</td>
+        <td style="padding:4px 0;font-size:14px;color:#1a1a2e;">{reason}</td>
+    </tr>""" if reason else ""
+
+    content = _hero_header("💰", hero_h, hero_s, "rgba(16, 185, 129, 0.2)")
+    content += f"""
+        <tr><td style="padding: 24px 40px;">
+            <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 16px; padding: 20px 24px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding:4px 0;font-size:13px;color:#888888;width:120px;">{t_order}</td>
+                        <td style="padding:4px 0;font-size:14px;color:#1a1a2e;font-weight:600;font-family:'Courier New',monospace;">#{short_oid}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:4px 0;font-size:13px;color:#888888;">{t_ret}</td>
+                        <td style="padding:4px 0;font-size:14px;color:#1a1a2e;font-family:'Courier New',monospace;">#{short_rid}</td>
+                    </tr>
+                    {reason_row}
+                    <tr>
+                        <td style="padding:4px 0;font-size:13px;color:#888888;">{t_refund_amt}</td>
+                        <td style="padding:4px 0;font-size:16px;color:#059669;font-weight:700;">${refund_amount:.2f} CAD</td>
+                    </tr>
+                </table>
+            </div>
+        </td></tr>
+        <tr><td style="padding: 0 40px 24px 40px;">
+            <div style="background-color:#f8f9ff;border:1px solid #e8ebf0;border-radius:12px;padding:16px 20px;">
+                <p style="margin:0 0 8px 0;font-size:13px;font-weight:700;color:#1a1a2e;">{t_timeline_t}</p>
+                <p style="margin:0;font-size:12px;color:#555555;line-height:1.6;">{t_timeline_b}</p>
+            </div>
+        </td></tr>
+    """
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
+
+    buyer_email = return_data.get(Fields.CUSTOMER_EMAIL, "")
+    return _email_wrapper("Return Refunded", content, include_gst=False, lang=lang, recipient_email=buyer_email)
+
+
+# ============================================================
+# FLOW 7 — Premium Subscription email templates
+# ============================================================
+
+def get_premium_welcome_email(user_data: dict, period_end=None, lang: str = "en") -> str:
+    """Welcome email sent when a user's premium subscription is first activated."""
+    user_name = html.escape(user_data.get("name", ""))
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color:#667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+
+    period_str = ""
+    if period_end:
+        try:
+            period_str = period_end.strftime("%B %d, %Y") if hasattr(period_end, "strftime") else str(period_end)
+        except Exception:
+            pass
+
+    hero_h = {"en": "Welcome to Origna Premium! 🌟", "fr": "Bienvenue dans Origna Premium ! 🌟"}.get(lang, "Welcome to Origna Premium! 🌟")
+    hero_s = {
+        "en": "Your premium subscription is now active. Enjoy exclusive benefits!",
+        "fr": "Votre abonnement premium est maintenant actif. Profitez des avantages exclusifs !",
+    }.get(lang, "Your premium subscription is now active. Enjoy exclusive benefits!")
+
+    benefits_en = [
+        "🚚 Free shipping on all orders",
+        "⭐ Priority customer support",
+        "🔔 Early access to new products and sales",
+        "🏷️ Exclusive member discounts",
+    ]
+    benefits_fr = [
+        "🚚 Livraison gratuite sur toutes les commandes",
+        "⭐ Support client prioritaire",
+        "🔔 Accès anticipé aux nouveaux produits et ventes",
+        "🏷️ Remises exclusives pour les membres",
+    ]
+    benefits = benefits_fr if lang == "fr" else benefits_en
+    benefit_rows = "".join(
+        f'<li style="margin:0 0 8px 0;font-size:14px;color:#333333;line-height:1.5;">{b}</li>'
+        for b in benefits
+    )
+
+    t_next_billing = {
+        "en": f"Your subscription renews on <strong>{period_str}</strong> at $7.86 CAD/month.",
+        "fr": f"Votre abonnement se renouvelle le <strong>{period_str}</strong> à 7,86 $ CAD/mois.",
+    }.get(lang, f"Your subscription renews on <strong>{period_str}</strong> at $7.86 CAD/month.") if period_str else ""
+
+    t_manage = {
+        "en": f"To manage or cancel your subscription at any time, visit your account settings or contact {support_link}.",
+        "fr": f"Pour gérer ou annuler votre abonnement à tout moment, consultez les paramètres de votre compte ou contactez {support_link}.",
+    }.get(lang, "")
+
+    salutation = f"<p style='margin:0 0 16px 0;font-size:15px;color:#333;'>{('Hello' if lang == 'en' else 'Bonjour')} {user_name},</p>" if user_name else ""
+
+    content = _hero_header("🌟", hero_h, hero_s, "rgba(102, 126, 234, 0.2)")
+    content += f"""
+        <tr><td style="padding:28px 40px;">
+            {salutation}
+            <p style="margin:0 0 16px 0;font-size:14px;color:#333;line-height:1.6;">
+                {"You're now a Premium member of Origna — Canada's Modern Marketplace. Here's what you get:" if lang == "en" else "Vous êtes maintenant membre Premium d'Origna — la marketplace moderne du Canada. Voici vos avantages :"}
+            </p>
+            <ul style="margin:0 0 20px 0;padding-left:20px;">
+                {benefit_rows}
+            </ul>
+        </td></tr>
+        <tr><td style="padding:0 40px 24px 40px;">
+            <div style="background-color:#f8f9ff;border:1px solid #e8ebf0;border-radius:12px;padding:16px 20px;">
+                <p style="margin:0 0 8px 0;font-size:13px;color:#555;line-height:1.5;">{t_next_billing}</p>
+                <p style="margin:0;font-size:12px;color:#888;line-height:1.5;">{t_manage}</p>
+            </div>
+        </td></tr>
+    """
+    content += _cta_button(f"{APP_BASE_URL}/subscription", "Manage Subscription" if lang == "en" else "Gérer l'abonnement")
+
+    recipient_email = user_data.get("email", "")
+    return _email_wrapper("Welcome to Premium", content, include_gst=False, lang=lang, recipient_email=recipient_email)
+
+
+def get_premium_cancellation_email(user_data: dict, period_end=None, lang: str = "en") -> str:
+    """Confirmation email when a user schedules their subscription to cancel at period end."""
+    user_name = html.escape(user_data.get("name", ""))
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color:#667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+
+    period_str = ""
+    if period_end:
+        try:
+            period_str = period_end.strftime("%B %d, %Y") if hasattr(period_end, "strftime") else str(period_end)
+        except Exception:
+            pass
+
+    hero_h = {"en": "Subscription Cancellation Confirmed", "fr": "Annulation d'abonnement confirmée"}.get(lang, "Subscription Cancellation Confirmed")
+    hero_s = {
+        "en": "Your premium subscription has been scheduled to cancel.",
+        "fr": "Votre abonnement premium a été planifié pour annulation.",
+    }.get(lang, "Your premium subscription has been scheduled to cancel.")
+
+    t_access = {
+        "en": f"You'll retain full premium access until <strong>{period_str}</strong>. After that, your account will revert to a standard membership." if period_str else "You'll retain full premium access until your current billing period ends.",
+        "fr": f"Vous conserverez l'accès complet au premium jusqu'au <strong>{period_str}</strong>. Après cette date, votre compte reviendra à un abonnement standard." if period_str else "Vous conserverez l'accès complet au premium jusqu'à la fin de votre période de facturation en cours.",
+    }.get(lang, "")
+    t_reactivate = {
+        "en": f"Changed your mind? You can reactivate anytime before {period_str} from your account settings or by contacting {support_link}." if period_str else f"Changed your mind? Reactivate from your account settings or contact {support_link}.",
+        "fr": f"Vous avez changé d'avis ? Vous pouvez réactiver à tout moment avant le {period_str} depuis les paramètres de votre compte ou en contactant {support_link}." if period_str else f"Vous avez changé d'avis ? Réactivez depuis les paramètres de votre compte ou contactez {support_link}.",
+    }.get(lang, "")
+
+    salutation = f"<p style='margin:0 0 16px 0;font-size:15px;color:#333;'>{('Hello' if lang == 'en' else 'Bonjour')} {user_name},</p>" if user_name else ""
+
+    content = _hero_header("❌", hero_h, hero_s, "rgba(220, 38, 38, 0.15)")
+    content += f"""
+        <tr><td style="padding:28px 40px;">
+            {salutation}
+            <div style="background-color:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:16px 20px;margin-bottom:16px;">
+                <p style="margin:0;font-size:14px;color:#333;line-height:1.6;">{t_access}</p>
+            </div>
+            <div style="background-color:#f8f9ff;border:1px solid #e8ebf0;border-radius:12px;padding:16px 20px;">
+                <p style="margin:0;font-size:13px;color:#555;line-height:1.5;">{t_reactivate}</p>
+            </div>
+        </td></tr>
+    """
+    content += _cta_button(f"{APP_BASE_URL}/subscription", "Manage Subscription" if lang == "en" else "Gérer l'abonnement")
+
+    recipient_email = user_data.get("email", "")
+    return _email_wrapper("Cancellation Confirmed", content, include_gst=False, lang=lang, recipient_email=recipient_email)
+
+
+def get_premium_expired_email(user_data: dict, lang: str = "en") -> str:
+    """Email sent when a subscription is fully deleted/expired by Stripe."""
+    user_name = html.escape(user_data.get("name", ""))
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color:#667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+
+    hero_h = {"en": "Your Premium Subscription Has Ended", "fr": "Votre abonnement Premium a pris fin"}.get(lang, "Your Premium Subscription Has Ended")
+    hero_s = {
+        "en": "Your premium benefits are no longer active.",
+        "fr": "Vos avantages premium ne sont plus actifs.",
+    }.get(lang, "Your premium benefits are no longer active.")
+
+    t_body = {
+        "en": "We're sorry to see you go. Your account has been downgraded to a standard membership. You can still browse and shop on Origna — you'll just lose premium-exclusive benefits like free shipping.",
+        "fr": "Nous sommes désolés de vous voir partir. Votre compte a été rétrogradé à un abonnement standard. Vous pouvez toujours naviguer et acheter sur Origna — vous perdez simplement les avantages exclusifs premium comme la livraison gratuite.",
+    }.get(lang, "")
+    t_resubscribe = {
+        "en": f"Want to rejoin? Subscribe again at any time from your account settings. Questions? Contact {support_link}.",
+        "fr": f"Envie de nous rejoindre à nouveau ? Réabonnez-vous à tout moment depuis les paramètres de votre compte. Des questions ? Contactez {support_link}.",
+    }.get(lang, "")
+
+    salutation = f"<p style='margin:0 0 16px 0;font-size:15px;color:#333;'>{('Hello' if lang == 'en' else 'Bonjour')} {user_name},</p>" if user_name else ""
+
+    content = _hero_header("😔", hero_h, hero_s, "rgba(107, 114, 128, 0.2)")
+    content += f"""
+        <tr><td style="padding:28px 40px;">
+            {salutation}
+            <p style="margin:0 0 16px 0;font-size:14px;color:#333;line-height:1.6;">{t_body}</p>
+            <div style="background-color:#f8f9ff;border:1px solid #e8ebf0;border-radius:12px;padding:16px 20px;">
+                <p style="margin:0;font-size:13px;color:#555;line-height:1.5;">{t_resubscribe}</p>
+            </div>
+        </td></tr>
+    """
+    content += _cta_button(f"{APP_BASE_URL}/subscription", "Subscribe Again" if lang == "en" else "Se réabonner")
+
+    recipient_email = user_data.get("email", "")
+    return _email_wrapper("Subscription Ended", content, include_gst=False, lang=lang, recipient_email=recipient_email)
+
+
+def get_premium_payment_failed_email(user_data: dict, lang: str = "en") -> str:
+    """Email sent when a subscription renewal payment fails (invoice.payment_failed)."""
+    user_name = html.escape(user_data.get("name", ""))
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color:#667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+
+    hero_h = {"en": "⚠️ Premium Payment Failed", "fr": "⚠️ Paiement premium échoué"}.get(lang, "⚠️ Premium Payment Failed")
+    hero_s = {
+        "en": "We couldn't renew your premium subscription — please update your payment method.",
+        "fr": "Nous n'avons pas pu renouveler votre abonnement premium — veuillez mettre à jour votre moyen de paiement.",
+    }.get(lang, "We couldn't renew your premium subscription — please update your payment method.")
+
+    t_body = {
+        "en": "Your premium subscription renewal payment has failed. Your account has been temporarily downgraded. To restore premium access, please update your payment method in your account settings.",
+        "fr": "Le paiement de renouvellement de votre abonnement premium a échoué. Votre compte a été temporairement rétrogradé. Pour restaurer l'accès premium, veuillez mettre à jour votre moyen de paiement dans les paramètres de votre compte.",
+    }.get(lang, "")
+    t_causes = {
+        "en": ["Card has insufficient funds", "Card was cancelled or expired", "Bank declined the transaction"],
+        "fr": ["Fonds insuffisants sur la carte", "Carte annulée ou expirée", "Banque a refusé la transaction"],
+    }.get(lang, ["Card has insufficient funds", "Card was cancelled or expired", "Bank declined the transaction"])
+    cause_rows = "".join(f'<li style="margin:0 0 4px 0;font-size:13px;color:#555;">{c}</li>' for c in t_causes)
+    t_help = {
+        "en": f"Need help? Contact {support_link} with your account email.",
+        "fr": f"Besoin d'aide ? Contactez {support_link} avec l'adresse e-mail de votre compte.",
+    }.get(lang, "")
+
+    salutation = f"<p style='margin:0 0 16px 0;font-size:15px;color:#333;'>{('Hello' if lang == 'en' else 'Bonjour')} {user_name},</p>" if user_name else ""
+
+    content = _hero_header("⚠️", hero_h, hero_s, "rgba(245, 158, 11, 0.2)")
+    content += f"""
+        <tr><td style="padding:28px 40px;">
+            {salutation}
+            <p style="margin:0 0 16px 0;font-size:14px;color:#333;line-height:1.6;">{t_body}</p>
+            <div style="background-color:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:16px 20px;margin-bottom:16px;">
+                <p style="margin:0 0 8px 0;font-size:13px;font-weight:700;color:#92400E;">{'Common causes:' if lang == 'en' else 'Causes fréquentes :'}</p>
+                <ul style="margin:0;padding-left:18px;">{cause_rows}</ul>
+            </div>
+            <div style="background-color:#f8f9ff;border:1px solid #e8ebf0;border-radius:12px;padding:16px 20px;">
+                <p style="margin:0;font-size:12px;color:#555;">{t_help}</p>
+            </div>
+        </td></tr>
+    """
+    content += _cta_button(f"{APP_BASE_URL}/subscription", "Update Payment Method" if lang == "en" else "Mettre à jour le moyen de paiement")
+
+    recipient_email = user_data.get("email", "")
+    return _email_wrapper("Payment Failed", content, include_gst=False, lang=lang, recipient_email=recipient_email)
+
+
+def get_premium_renewal_reminder_email(user_data: dict, period_end=None, days_remaining: int = 7, lang: str = "en") -> str:
+    """Renewal reminder email sent N days before subscription renews."""
+    user_name = html.escape(user_data.get("name", ""))
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color:#667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+
+    period_str = ""
+    if period_end:
+        try:
+            period_str = period_end.strftime("%B %d, %Y") if hasattr(period_end, "strftime") else str(period_end)
+        except Exception:
+            pass
+
+    hero_h = {
+        "en": f"Your Premium Renews in {days_remaining} Days",
+        "fr": f"Votre Premium se renouvelle dans {days_remaining} jours",
+    }.get(lang, f"Your Premium Renews in {days_remaining} Days")
+    hero_s = {
+        "en": "Just a friendly heads-up about your upcoming renewal.",
+        "fr": "Juste un petit rappel concernant votre prochain renouvellement.",
+    }.get(lang, "Just a friendly heads-up about your upcoming renewal.")
+
+    t_body = {
+        "en": f"Your Origna Premium subscription will automatically renew on <strong>{period_str}</strong> at <strong>$7.86 CAD/month</strong>.",
+        "fr": f"Votre abonnement Origna Premium sera automatiquement renouvelé le <strong>{period_str}</strong> à <strong>7,86 $ CAD/mois</strong>.",
+    }.get(lang, "") if period_str else {
+        "en": "Your Origna Premium subscription is coming up for renewal at <strong>$7.86 CAD/month</strong>.",
+        "fr": "Votre abonnement Origna Premium arrive à renouvellement à <strong>7,86 $ CAD/mois</strong>.",
+    }.get(lang, "")
+
+    t_manage = {
+        "en": f"To cancel or manage your subscription, visit your account settings or contact {support_link}.",
+        "fr": f"Pour annuler ou gérer votre abonnement, consultez les paramètres de votre compte ou contactez {support_link}.",
+    }.get(lang, "")
+
+    salutation = f"<p style='margin:0 0 16px 0;font-size:15px;color:#333;'>{('Hello' if lang == 'en' else 'Bonjour')} {user_name},</p>" if user_name else ""
+
+    content = _hero_header("🔔", hero_h, hero_s, "rgba(102, 126, 234, 0.2)")
+    content += f"""
+        <tr><td style="padding:28px 40px;">
+            {salutation}
+            <div style="background-color:#f8f9ff;border:1px solid #e8ebf0;border-radius:12px;padding:16px 20px;margin-bottom:16px;">
+                <p style="margin:0 0 8px 0;font-size:14px;color:#333;line-height:1.6;">{t_body}</p>
+            </div>
+            <p style="margin:0;font-size:12px;color:#888;line-height:1.5;">{t_manage}</p>
+        </td></tr>
+    """
+    content += _cta_button(f"{APP_BASE_URL}/subscription", "Manage Subscription" if lang == "en" else "Gérer l'abonnement")
+
+    recipient_email = user_data.get("email", "")
+    return _email_wrapper("Renewal Reminder", content, include_gst=False, lang=lang, recipient_email=recipient_email)

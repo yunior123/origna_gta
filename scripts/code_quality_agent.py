@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import os
 import re
 import shutil
 import subprocess
@@ -152,7 +151,7 @@ def _audit_python_comments(filepath: Path) -> list[Finding]:
                     category="comments", severity="LOW", file=rel,
                     line=node.lineno,
                     message=f"Function '{node.name}' missing docstring",
-                    suggestion=f"Add docstring: what it does, params, returns",
+                    suggestion="Add docstring: what it does, params, returns",
                 ))
         elif isinstance(node, ast.ClassDef):
             if not ast.get_docstring(node):
@@ -160,7 +159,7 @@ def _audit_python_comments(filepath: Path) -> list[Finding]:
                     category="comments", severity="MEDIUM", file=rel,
                     line=node.lineno,
                     message=f"Class '{node.name}' missing docstring",
-                    suggestion=f"Add docstring describing the class purpose",
+                    suggestion="Add docstring describing the class purpose",
                 ))
 
     # Check for legacy/stale comments

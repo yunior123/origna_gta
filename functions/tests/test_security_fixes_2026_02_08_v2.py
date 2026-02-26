@@ -31,7 +31,7 @@ class TestStockRevalidationLogic:
         source = inspect.getsource(process_checkout_session_completed)
 
         # Check that validation code exists
-        assert "LIFECYCLE_STATUS" in source or "IS_ACTIVE" in source, "Missing product active status check"
+        assert "LIFECYCLE_STATUS" in source, "Missing product lifecycle status check"
         assert "suspended" in source, "Missing seller suspension check"
         assert "_restore_stock_and_cancel_order" in source, "Missing cancel helper call"
         assert "deactivated" in source, "Missing product deactivate message"

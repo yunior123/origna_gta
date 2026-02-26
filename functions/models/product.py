@@ -165,6 +165,43 @@ class SupplierInfo(BaseModel):
             raise ValueError(f"Invalid currency: {v}. Must be one of: {SupplierCurrencyValues.ALL}")
         return v.upper()
 
+    @field_validator("supplierUrl")
+    @classmethod
+    def validate_supplier_url(cls, v: str | None) -> str | None:
+        """SECURITY: supplierUrl must be https:// to prevent javascript: / data: URI injection.
+        This field is internal (not shown to buyers) but may be rendered as a link in admin
+        panels — an unvalidated URL allows XSS or SSRF via crafted schemes."""
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            return None
+        if not v.startswith("https://"):
+            raise ValueError("supplierUrl must start with https://")
+        # Block common dangerous schemes that could slip past naive checks
+        v_lower = v.lower()
+        dangerous = ["javascript:", "data:", "vbscript:", "file://", "\\x", "%00"]
+        for pat in dangerous:
+            if pat in v_lower:
+                raise ValueError(f"supplierUrl contains disallowed content: {pat}")
+        return v
+
+    @field_validator("notes")
+    @classmethod
+    def validate_supplier_notes(cls, v: str | None) -> str | None:
+        """SECURITY: strip HTML/script injection from internal notes.
+        notes is shown in admin panels — inject here → stored XSS."""
+        if v is None:
+            return v
+        dangerous_patterns = ["<script", "javascript:", "data:text/html", "vbscript:", "expression("]
+        v_lower = v.lower()
+        for pattern in dangerous_patterns:
+            if pattern in v_lower:
+                raise ValueError("Supplier notes contain disallowed content")
+        if re.search(r"<[a-zA-Z/!]", v):
+            raise ValueError("Supplier notes must not contain HTML tags")
+        return v
+
 
 # ============================================================================
 # INVENTORY CONFIG - For flexible inventory management
@@ -263,7 +300,7 @@ class Product(BaseModel):
                 Fields.STOCK_QUANTITY: 100,
                 Fields.RATING: 4.5,
                 Fields.CREATED_AT: "2026-02-01T10:00:00Z",
-                Fields.IS_ACTIVE: True,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
             }
         }
     )
@@ -579,12 +616,15 @@ class ProductCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_shipping_source(self) -> "ProductCreate":
-        """Require either sellerAddress or warehouseIds — not both, not neither"""
+        """
+        Validate that shipping source is provided.
+        Individual sellers provide sellerAddress.
+        Warehouse sellers provide warehouseIds.
+        Denormalization may populate both in the final DB document.
+        """
         if not self.isDigital:
             has_addr = bool(self.sellerAddress)
             has_wh = bool(self.warehouseIds)
-            if has_addr and has_wh:
-                raise ValueError("Provide either sellerAddress OR warehouseIds, not both")
             if not has_addr and not has_wh:
                 raise ValueError("A product must have either a sellerAddress or at least one warehouseId")
         return self

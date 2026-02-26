@@ -3,7 +3,7 @@ _db = None
 
 
 def _get_db():
-    """Lazy Firestore client (uses same pattern as handlers for test compatibility)."""
+    """Lazy Firestore client (uses same pattern as handlers for testing)."""
     global _db
     if _db is None:
         from firebase_admin import firestore as fs

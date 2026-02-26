@@ -3,7 +3,6 @@ import os
 import argparse
 import subprocess
 import requests
-import json
 from dotenv import load_dotenv
 
 # Load .env from functions directory

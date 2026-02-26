@@ -47,7 +47,7 @@
     "sellerReply": {
       "anyOf": [
         {
-          "maxLength": 1000,
+          "maxLength": 500,
           "type": "string"
         },
         {

@@ -29,7 +29,7 @@ class EditProductState {
   final bool sameDayEnabled;
   final int minimumOrderQuantity;
   final bool freeShipping;
-  final bool freeShippingAt10Plus;
+  final String? taxCode;
 
   EditProductState({
     this.isLoading = false,
@@ -57,7 +57,7 @@ class EditProductState {
     this.sameDayEnabled = false,
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
-    this.freeShippingAt10Plus = false,
+    this.taxCode,
   });
 
   EditProductState copyWith({
@@ -86,7 +86,7 @@ class EditProductState {
     bool? sameDayEnabled,
     int? minimumOrderQuantity,
     bool? freeShipping,
-    bool? freeShippingAt10Plus,
+    Object? taxCode = _sentinel,
   }) {
     return EditProductState(
       isLoading: isLoading ?? this.isLoading,
@@ -114,7 +114,7 @@ class EditProductState {
       sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,
       minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
       freeShipping: freeShipping ?? this.freeShipping,
-      freeShippingAt10Plus: freeShippingAt10Plus ?? this.freeShippingAt10Plus,
+      taxCode: taxCode == _sentinel ? this.taxCode : taxCode as String?,
     );
   }
 }

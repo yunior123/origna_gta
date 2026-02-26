@@ -74,10 +74,6 @@ extension OrderStatusExtension on OrderStatus {
         return 'Failed';
       case OrderStatus.expired:
         return 'Expired';
-      case OrderStatus.refunded:
-        return 'Refunded';
-      case OrderStatus.partiallyRefunded:
-        return 'Partially Refunded';
       case OrderStatus.disputed:
         return 'Disputed';
     }
@@ -103,10 +99,6 @@ extension OrderStatusExtension on OrderStatus {
         return 'failed';
       case OrderStatus.expired:
         return 'expired';
-      case OrderStatus.refunded:
-        return 'refunded';
-      case OrderStatus.partiallyRefunded:
-        return 'partially_refunded';
       case OrderStatus.disputed:
         return 'disputed';
     }
@@ -132,10 +124,6 @@ extension OrderStatusExtension on OrderStatus {
         return OrderStatus.failed;
       case OrderStatusValues.expired:
         return OrderStatus.expired;
-      case OrderStatusValues.refunded:
-        return OrderStatus.refunded;
-      case OrderStatusValues.partiallyRefunded:
-        return OrderStatus.partiallyRefunded;
       case OrderStatusValues.disputed:
         return OrderStatus.disputed;
       default:

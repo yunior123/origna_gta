@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Test email_verified token flow in Firebase Auth Emulator"""
-import json, base64
+import json
+import base64
 from urllib.request import Request, urlopen
 
 AUTH = 'http://localhost:9099'

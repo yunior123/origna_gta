@@ -6,8 +6,6 @@ Applies comprehensive mocking pattern to all handler tests
 
 import os
 import re
-import sys
-from pathlib import Path
 
 # Test files to fix
 FAILING_TEST_FILES = {
@@ -85,7 +83,7 @@ def update_test_fixture(file_path, test_name, builder_setup):
         )
         
         # Add setup code after function definition
-        setup_code = f"""
+        setup_code = """
         # Setup Firestore mock with test data
         firestore_mock_builder.add_seller('seller_123')
         firestore_mock_builder.add_product('prod_123', 'seller_123', price=50.00, stock=100)
@@ -124,10 +122,10 @@ def main():
         
         # Check if needs update
         if 'firestore_mock_builder' not in content:
-            print(f"  → Needs firestore_mock_builder integration")
+            print("  → Needs firestore_mock_builder integration")
             print(f"  → Pattern: {info['pattern']}")
         else:
-            print(f"  ✓ Already has firestore_mock_builder")
+            print("  ✓ Already has firestore_mock_builder")
         
         print()
     

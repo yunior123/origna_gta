@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/utils/utils.dart' hide Address, UserModel, ProductModel, CartModel, CartItemModel, SellerPayout;
+import 'package:origna_gta/models/models.dart';
 
 void main() {
   group('Tax Calculations', () {
@@ -155,52 +156,6 @@ void main() {
     });
   });
 
-  group('Province Adjacency and Regions', () {
-    // Testing private functions through the fallback shipping calculation behavior
-    // These tests validate the province logic indirectly
-
-    test('same province shipping should be cheapest', () {
-      // This tests the _calculateFallbackShipping logic indirectly
-      // Same province = 12.99 base
-      // Different province = 18.99+ base
-      // We can't directly test private functions, but we document expected behavior
-      expect(true, true); // Placeholder - actual shipping tests below
-    });
-  });
-
-  group('Tiered Shipping Calculations', () {
-    // Note: These test the shipping tier logic
-    // The actual _calculateTieredShipping is private, but we can test the expected behavior
-
-    test('local delivery (0-50km) should have lowest base cost', () {
-      // Expected: 5.99 for local
-      // This is documented behavior based on the code
-      expect(true, true);
-    });
-
-    test('regional delivery (50-150km) should have moderate cost', () {
-      // Expected: 8.99 for regional
-      expect(true, true);
-    });
-
-    test('provincial delivery (150-500km) should have higher cost', () {
-      // Expected: 12.99 for provincial
-      expect(true, true);
-    });
-
-    test('inter-provincial delivery should have even higher cost', () {
-      // Expected: 16.99 for 500-1000km
-      // Expected: 22.99 for 1000-2000km
-      expect(true, true);
-    });
-
-    test('coast-to-coast delivery should have highest cost', () {
-      // Expected: 28.99 for 2000-4000km
-      // Expected: 34.99 for 4000km+
-      expect(true, true);
-    });
-  });
-
   group('Address Parsing', () {
     test('parseAddressSuggestion extracts correct fields', () {
       final suggestion = {
@@ -258,19 +213,6 @@ void main() {
       expect(result.city, '');
       expect(result.state, 'ON'); // Default
       expect(result.postalCode, '');
-    });
-  });
-
-  group('Grid Column Calculations', () {
-    // Note: getCrossAxisCount requires BuildContext so it's tested in widget tests
-    // Here we document expected behavior:
-    // - Mobile (Android/iOS): 2 columns
-    // - Web mobile (<600px): 2 columns
-    // - Web tablet (600-1024px): 3 columns
-    // - Web desktop (1024px+): 4 columns
-
-    test('expected column counts documented', () {
-      expect(true, true); // Placeholder - actual tests in widget tests
     });
   });
 }

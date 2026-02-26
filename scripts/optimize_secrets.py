@@ -1,6 +1,5 @@
 import subprocess
 import json
-import sys
 
 PROJECTS = ["orignagta-dev", "orignagta-staging", "orignagta"]
 

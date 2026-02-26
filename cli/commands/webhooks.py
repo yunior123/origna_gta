@@ -1,5 +1,4 @@
 """Stripe webhook management per environment."""
-import os
 import click
 from cli.utils.output import header, success, error, console, make_table
 from cli.utils.stripe_client import get_stripe

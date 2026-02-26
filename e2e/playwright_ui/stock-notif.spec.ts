@@ -41,9 +41,11 @@ import {
   deleteDoc,
   waitForFlutterReady,
   ensureLoggedInAsAdmin,
+  toFirestoreFields,
   TEST_ACCOUNTS,
   TEST_UIDS,
   FUNCTIONS_URL,
+  FIRESTORE_BASE,
 } from './api-helpers';
 import { waitForFlutterNavigation } from './flutter-helpers';
 
@@ -525,25 +527,31 @@ test.describe('4. Security — Adversarial Scenarios', () => {
   });
 
   test('4.5 Firestore direct write to stock_notifications is blocked by rules', async () => {
-    // Attempt a direct Firestore write without calling the Cloud Function
-    // This verifies the Firestore security rules prevent bypassing the CF
+    // Attempt a direct Firestore REST write with a user token (not Admin SDK)
+    // This verifies the Firestore security rule `allow create, update: if false` is enforced
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
-    const directWriteErr = await callExpectError(
-      // Use a raw Firestore REST write via the api-helpers test endpoint
-      '__firestore_direct_write__',
-      {
-        collection: 'stock_notifications',
-        doc: `${OOS_PRODUCT_ID}_direct_write_bypass`,
-        data: {
-          productId: OOS_PRODUCT_ID,
-          userId: auth.localId,
-          variantKey: null,
-          createdAt: new Date().toISOString(),
-        },
-      },
-      auth.idToken,
-    );
-    // Expect a permission-denied from Firestore rules
-    expect(directWriteErr.code).toMatch(/permission-denied/i);
+
+    const path = `stock_notifications/${OOS_PRODUCT_ID}_bypass_${auth.localId}`;
+    const url = `${FIRESTORE_BASE}/${path}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${auth.idToken}`,
+    };
+    const body = JSON.stringify({
+      fields: toFirestoreFields({
+        productId: OOS_PRODUCT_ID,
+        userId: auth.localId,
+        variantKey: null,
+        createdAt: new Date().toISOString(),
+      }),
+    });
+
+    const res = await fetch(url, { method: 'PATCH', headers, body });
+    const errorBody = await res.json().catch(() => ({}));
+
+    // Firestore must reject with 403 PERMISSION_DENIED
+    expect(res.status, 'Expected 403 from Firestore rules').toBe(403);
+    const errMsg = JSON.stringify(errorBody).toLowerCase();
+    expect(errMsg).toMatch(/permission.denied|missing or insufficient/i);
   });
 });

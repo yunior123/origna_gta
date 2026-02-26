@@ -1,7 +1,6 @@
 """Deploy commands — functions, rules, indexes, hosting, all."""
 import os
 import subprocess
-import sys
 import click
 from cli.utils.output import console, success, error, header, confirm_prod
 

@@ -1,7 +1,6 @@
 
 import os
 import subprocess
-import sys
 
 # Secrets mapping: Env Var Name -> Secret Name (kebab-case)
 SECRETS_MAP = {

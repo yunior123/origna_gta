@@ -16,6 +16,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import '../features/auth/auth_provider.dart';
+import '../features/subscription/subscription_provider.dart';
 import '../features/profile/profile_viewmodel.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -195,7 +196,15 @@ class ProfileScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
 
                       // Premium Subscription Section
-                      FadeSlideIn(delay: const Duration(milliseconds: 75), child: _buildPremiumMenuItem(context, userModel.isPremium)),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 75),
+                        child: Builder(builder: (context) {
+                          // Use subscriptionStreamProvider (authoritative) rather than
+                          // userModel.isPremium which may lag behind subscription doc updates.
+                          final isPremiumFromStream = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userModel.isPremium;
+                          return _buildPremiumMenuItem(context, isPremiumFromStream);
+                        }),
+                      ),
                       const SizedBox(height: 24),
 
                       // Account Settings Section

@@ -78,7 +78,7 @@ class AlgoliaService {
       Fields.ratingCount: hit[Fields.ratingCount] ?? 0,
       Fields.keywords: hit[Fields.keywords] ?? hit['searchKeywords'] ?? [],
       Fields.sellerAddress: hit[Fields.sellerAddress] ?? {},
-      Fields.isActive: hit[Fields.isActive] ?? true,
+      Fields.lifecycleStatus: hit[Fields.lifecycleStatus] ?? 'active',
       Fields.weightKg: hit[Fields.weightKg],
       Fields.lengthCm: hit[Fields.lengthCm],
       Fields.widthCm: hit[Fields.widthCm],

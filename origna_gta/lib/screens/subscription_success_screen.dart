@@ -64,12 +64,29 @@ class _BenefitRow extends StatelessWidget {
   }
 }
 
-class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessScreen> with SingleTickerProviderStateMixin {
+class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _pulseController;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _glowAnimation;
   Timer? _activationTimeout;
   bool _timedOut = false;
+  DateTime? _backgroundTime;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _backgroundTime = DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_backgroundTime != null && _activationTimeout?.isActive == true) {
+        final elapsed = DateTime.now().difference(_backgroundTime!).inSeconds;
+        // If we were backgrounded for a long time, trigger timeout immediately on resume
+        if (elapsed > 10 && !_timedOut) {
+          _activationTimeout?.cancel();
+          setState(() => _timedOut = true);
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +95,10 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
 
     // Gate the success UI on actual isPremium=true from Firestore
     final isPremium = subAsync.valueOrNull?.isPremium ?? false;
-    if (!isPremium && !_timedOut) {
+
+    // HIGH-021 FIX: Prevent success screen bypass.
+    // If timed out and still not premium, show a manual refresh/error state instead of success.
+    if (!isPremium) {
       return Scaffold(
         body: Container(
           decoration: BoxDecoration(
@@ -89,16 +109,52 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
             ),
           ),
           child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const ModernLoadingIndicator(),
-                const SizedBox(height: 24),
-                Text(
-                  'subscription.activating_membership'.tr(),
-                  style: const TextStyle(fontSize: 16, color: DesignTokens.textSecondary),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!_timedOut) ...[
+                    const ModernLoadingIndicator(),
+                    const SizedBox(height: 24),
+                    Text(
+                      'subscription.activating_membership'.tr(),
+                      style: const TextStyle(fontSize: 16, color: DesignTokens.textSecondary),
+                    ),
+                  ] else ...[
+                    const Icon(Icons.timer_off_outlined, size: 64, color: DesignTokens.warning),
+                    const SizedBox(height: 24),
+                    Text(
+                      'subscription.activation_delayed_title'.tr(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'subscription.activation_delayed_desc'.tr(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+                    ),
+                    const SizedBox(height: 32),
+                    ModernButton(
+                      label: 'common.refresh'.tr(),
+                      onPressed: () {
+                        setState(() {
+                          _timedOut = false;
+                          _startTimeout();
+                        });
+                        ref.invalidate(subscriptionStreamProvider);
+                      },
+                      icon: Icons.refresh_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                      child: Text('common.back_to_home'.tr()),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
@@ -225,6 +281,7 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _activationTimeout?.cancel();
     _pulseController.dispose();
     super.dispose();
@@ -233,9 +290,15 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
     _glowAnimation = Tween<double>(begin: 0.25, end: 0.55).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    _startTimeout();
+  }
+
+  void _startTimeout() {
+    _activationTimeout?.cancel();
     // 30s timeout fallback — if webhook is delayed, show a manual refresh prompt
     _activationTimeout = Timer(const Duration(seconds: 30), () {
       if (mounted) setState(() => _timedOut = true);

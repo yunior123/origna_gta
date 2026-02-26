@@ -499,7 +499,6 @@ class _ProductCardState extends ConsumerState<ProductCard>
     );
   }
 
-  // Add a utility function to validate image URLs
   bool isValidImageUrl(String url) {
     return url.isNotEmpty && Uri.tryParse(url)?.hasAbsolutePath == true;
   }

@@ -120,7 +120,7 @@ class CaptureMethod:
 # ============================================================================
 # PLATFORM CONFIGURATION
 # All business rule constants are canonically defined in BusinessRules
-# in schema_constants.py — re-exported here for backward compat.
+# in schema_constants.py.
 # ============================================================================
 
 from schema_constants import BusinessRules  # noqa: E402
@@ -129,7 +129,6 @@ PLATFORM_FEE_RATIO = BusinessRules.PLATFORM_FEE_RATIO
 PREMIUM_MONTHLY_PRICE_CAD = BusinessRules.PREMIUM_MONTHLY_PRICE_CAD
 PREMIUM_MONTHLY_PRICE_CENTS = BusinessRules.PREMIUM_MONTHLY_PRICE_CENTS
 AUTO_CONFIRM_DAYS = BusinessRules.AUTO_CONFIRM_DAYS
-AUTHORIZATION_VALID_DAYS = BusinessRules.AUTHORIZATION_EXPIRY_DAYS
 SHIPPING_APPROVAL_THRESHOLD = BusinessRules.SHIPPING_APPROVAL_THRESHOLD
 
 # ============================================================================
@@ -244,7 +243,7 @@ _USE_LOCAL = IS_EMULATOR or FORCE_LOCAL_SECRETS
 APP_SECRETS_PARAM = params.SecretParam("APP_SECRETS")
 
 # Parsed once per cold start
-_app_secrets: dict | None = None
+_app_secrets: dict[str, str] | None = None
 
 
 def _load_secret(key: str, required: bool = True) -> str:
@@ -255,7 +254,7 @@ def _load_secret(key: str, required: bool = True) -> str:
     return value or ""
 
 
-def _secrets() -> dict:
+def _secrets() -> dict[str, str]:
     """Return parsed APP_SECRETS dict, cached per cold start."""
     global _app_secrets
     if _app_secrets is None:

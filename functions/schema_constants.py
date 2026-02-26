@@ -225,7 +225,6 @@ class Fields:
     UNSUSPENDED_BY = "unsuspendedBy"
     SUSPENDED_BY = "suspendedBy"
     SUSPENSION_REASON = "suspensionReason"
-    COMMISSION_RATE = "commissionRate"  # DEPRECATED: use COMMISSION_RATE_BPS
     COMMISSION_RATE_BPS = "commissionRateBps"  # 250 = 2.50% (basis points — avoids float precision)
     VERIFIED = "verified"
     VERIFICATION_STATUS = "verificationStatus"
@@ -282,8 +281,6 @@ class Fields:
     REVIEW = "review"
     KEYWORDS = "keywords"
     SEARCH_KEYWORDS = "searchKeywords"
-    IS_ACTIVE = "isActive"  # DEPRECATED — use LIFECYCLE_STATUS
-    APPROVAL_STATUS = "approvalStatus"  # DEPRECATED — use LIFECYCLE_STATUS
     APPROVAL_REJECTION_REASON = "approvalRejectionReason"
     LIFECYCLE_STATUS = "lifecycleStatus"
     IS_DIGITAL = "isDigital"
@@ -381,7 +378,6 @@ class Fields:
     SHIPPING_DAYS = "shippingDays"
     HAS_TRACKING = "hasTracking"
     MAX_ITEMS_PER_SHIPMENT = "maxItemsPerShipment"
-    ADDITIONAL_ITEM_COST = "additionalItemCost"  # kept for backward compat; for SellerDeliveryOption use ADDITIONAL_ITEM_COST_CENTS
     ADDITIONAL_ITEM_COST_CENTS = "additionalItemCostCents"
     QUANTITY_DISCOUNTS = "quantityDiscounts"
     DISCOUNT_TYPE = "discountType"
@@ -499,8 +495,6 @@ class Fields:
     REFUND_AMOUNT_CENTS = "refundAmountCents"
     REFUND_ID = "refundId"
     CONFIRMED_BY_BUYER = "confirmedByBuyer"
-    DELIVERY_STATUS = "deliveryStatus"  # DEPRECATED — kept for reading existing documents only. Write 'status' field.
-
     # === STRIPE METADATA KEYS (used in transfer/alert metadata) ===
     SNAPSHOT_ACCOUNT_ID = "snapshotAccountId"
     LIVE_ACCOUNT_ID = "liveAccountId"
@@ -706,7 +700,6 @@ class Fields:
     MAX_USES_TOTAL = "maxUsesTotal"
     MAX_USES_PER_USER = "maxUsesPerUser"
     USED_COUNT = "usedCount"
-    USED_BY_UIDS = "usedByUids"  # DEPRECATED — use coupon_uses subcollection
     PRICE_CENTS = "priceCents"  # Integer cents derived from price (9.99 → 999) — use for arithmetic
     SCHEMA_VERSION = "schemaVersion"  # Schema layout version for migration tracking
     SELLER_NAME = "sellerName"  # Seller display name snapshotted at purchase time
@@ -750,9 +743,6 @@ class OrderStatusValues:
     CANCELLED = "cancelled"
     FAILED = "failed"
     EXPIRED = "expired"
-    # DEPRECATED: REFUNDED / PARTIALLY_REFUNDED moved to PaymentStatusValues — kept for backward-compatible reads
-    REFUNDED = "refunded"
-    PARTIALLY_REFUNDED = "partially_refunded"
     DISPUTED = "disputed"
 
     ALL: frozenset[str] = frozenset(
@@ -889,28 +879,6 @@ class UserRoleValues:
     ALL: frozenset[str] = frozenset({ADMIN, SELLER, BUYER})
 
 
-class ProductStatusValues:
-    """DEPRECATED — use ProductLifecycleStatusValues"""
-
-    DRAFT = "draft"
-    ACTIVE = "active"
-    PAUSED = "paused"
-    ARCHIVED = "archived"
-    OUT_OF_STOCK = "out_of_stock"
-
-    ALL: frozenset[str] = frozenset({DRAFT, ACTIVE, PAUSED, ARCHIVED, OUT_OF_STOCK})
-
-
-class ProductApprovalStatusValues:
-    """DEPRECATED — use ProductLifecycleStatusValues"""
-
-    UNDER_REVIEW = "under_review"
-    APPROVED = "approved"
-    REJECTED = "rejected"
-
-    ALL: frozenset[str] = frozenset({UNDER_REVIEW, APPROVED, REJECTED})
-
-
 class ProductLifecycleStatusValues:
     """Single lifecycle status replacing isActive + status + approvalStatus.
 
@@ -927,7 +895,7 @@ class ProductLifecycleStatusValues:
     REJECTED = "rejected"
 
     ALL: frozenset[str] = frozenset({"draft", "under_review", "approved", "active", "paused", "archived", "rejected"})
-    VALID_TRANSITIONS: dict = {
+    VALID_TRANSITIONS: dict[str, set[str] | frozenset[str]] = {
         "draft": {"under_review"},
         "under_review": {"approved", "rejected"},
         "approved": {"active"},
@@ -936,7 +904,7 @@ class ProductLifecycleStatusValues:
         "rejected": {"draft", "under_review"},
         "archived": frozenset(),
     }
-    BUYER_VISIBLE: frozenset = frozenset({"active"})
+    BUYER_VISIBLE: frozenset[str] = frozenset({"active"})
 
 
 class ReturnStatusValues:
@@ -951,7 +919,7 @@ class ReturnStatusValues:
     ESCALATED = "escalated"  # Auto-escalated to admin after N days unresolved
 
     ALL: frozenset[str] = frozenset({"requested", "approved", "label_issued", "received", "refunded", "rejected", "escalated"})
-    VALID_TRANSITIONS: dict = {
+    VALID_TRANSITIONS: dict[str, set[str] | frozenset[str]] = {
         "requested": {"approved", "rejected", "escalated"},
         "approved": {"label_issued", "rejected"},
         "label_issued": {"received"},
@@ -1395,7 +1363,7 @@ class BusinessRules:
     PREMIUM_MONTHLY_PRICE_CAD = 7.86  # Premium subscription monthly price in CAD
     PREMIUM_MONTHLY_PRICE_CENTS = 786  # Premium subscription monthly price in cents
     AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (2-day safety margin)
-    AUTHORIZATION_EXPIRY_DAYS = 7
+    AUTHORIZATION_EXPIRY_DAYS = 6  # FIX (M1): 6-day cutoff gives 24h safety margin before Stripe auto-voids at day 7
     RETURN_WINDOW_DAYS = 7  # No returns/refunds after 7 days post-delivery (Amazon-style policy)
     RETURN_ESCALATION_DAYS = 3  # Return requests auto-escalated after 3 days without seller action
     MAX_CAPTURE_ATTEMPTS = 3
@@ -1671,21 +1639,32 @@ class SubscriptionStatusValues:
 
 
 class Subcategories:
-    """Maps category name to list of subcategories. (N-11)"""
+    """Maps category ID to list of subcategories. (N-11)
+    Mirrors Dart SubcategoryConstants._byId for backend validation parity.
+    """
 
-    MAP: dict[str, list[str]] = {
-        "Fashion": ["Men's Clothing", "Women's Clothing", "Kids' Clothing", "Shoes", "Accessories", "Bags", "Jewelry"],
-        "Electronics": ["Smartphones", "Laptops", "Tablets", "Cameras", "Audio", "Gaming", "Smart Home", "Wearables"],
-        "Home & Garden": ["Furniture", "Decor", "Kitchen", "Bedding", "Lighting", "Garden & Outdoor", "Storage"],
-        "Beauty & Personal Care": ["Skincare", "Haircare", "Makeup", "Fragrance", "Men's Grooming"],
-        "Sports & Outdoors": ["Fitness", "Outdoor Recreation", "Team Sports", "Water Sports", "Winter Sports"],
-        "Toys & Games": ["Puzzles & Board Games", "Building Toys", "Dolls & Playsets", "Video Games", "Outdoor Play"],
-        "Food & Grocery": ["Snacks", "Beverages", "Health Foods", "Specialty Foods", "Baking"],
-        "Books & Media": ["Books", "Music", "Movies & TV", "Magazines"],
-        "Automotive": ["Car Accessories", "Motorcycle", "Tools & Equipment"],
-        "Health": ["Vitamins & Supplements", "Medical Devices", "Personal Care"],
-        "Art & Crafts": ["Drawing & Painting", "Yarn & Fiber Arts", "Paper Crafts", "Photography"],
-        "Baby": ["Baby Clothing", "Feeding", "Nursery", "Strollers", "Toys"],
+    MAP: dict[int, list[str]] = {
+        1: ["Smartphones", "Laptops", "Tablets", "Cameras", "Audio", "Gaming", "Smart Home", "Wearables"],
+        2: ["Laptops", "Desktops", "Monitors", "Components", "Networking", "Accessories"],
+        3: ["Consoles", "Video Games", "Controllers", "Headsets", "PC Gaming", "VR"],
+        4: ["Furniture", "Decor", "Kitchen", "Bedding", "Lighting", "Garden & Outdoor", "Storage"],
+        5: ["Men's Clothing", "Women's Clothing", "Kids' Clothing", "Outerwear", "Activewear", "Underwear"],
+        6: ["Sneakers", "Boots", "Sandals", "Bags", "Belts", "Hats", "Sunglasses"],
+        7: ["Watches", "Necklaces", "Rings", "Earrings", "Bracelets", "Fine Jewelry"],
+        8: ["Skincare", "Haircare", "Makeup", "Fragrance", "Men's Grooming"],
+        9: ["Vitamins & Supplements", "Medical Devices", "Personal Care", "Diet & Nutrition"],
+        10: ["Fitness", "Outdoor Recreation", "Team Sports", "Water Sports", "Winter Sports", "Cycling"],
+        11: ["Car Accessories", "Motorcycle", "Tools & Equipment", "Replacement Parts", "Car Care"],
+        12: ["Power Tools", "Hand Tools", "Hardware", "Plumbing", "Electrical", "Building Materials"],
+        13: ["Pens & Pencils", "Paper", "Binders & Folders", "Desk Accessories", "Printers & Ink", "School Supplies"],
+        14: ["Fiction", "Non-Fiction", "Children", "Textbooks", "Comics & Graphic Novels", "Audiobooks"],
+        15: ["Guitars", "Keyboards", "Drums", "Recording Equipment", "DJ Gear", "Accessories"],
+        16: ["Puzzles & Board Games", "Building Toys", "Dolls & Playsets", "Action Figures", "Outdoor Play"],
+        17: ["Baby Clothing", "Feeding", "Nursery", "Strollers", "Toys", "Diapering"],
+        18: ["Dogs", "Cats", "Fish", "Birds", "Small Animals", "Reptiles"],
+        19: ["Snacks", "Beverages", "Health Foods", "Specialty Foods", "Baking", "Pantry Staples"],
+        20: ["Painting", "Sculpture", "Photography", "Mixed Media", "Antiques", "Coins & Stamps"],
+        21: ["Software", "eBooks", "Digital Art", "Audio & Music", "Courses & Tutorials", "Templates"],
     }
 
 
@@ -1707,7 +1686,7 @@ class OrderEventTypes:
     CANCELLATION_CONFIRMED = "cancellation_confirmed"
     NOTE_ADDED = "note_added"
     AUTO_CONFIRMED = "auto_confirmed"
-    ALL: frozenset = frozenset({
+    ALL: frozenset[str] = frozenset({
         "status_changed", "payment_authorized", "payment_captured", "payment_failed",
         "refund_issued", "item_shipped", "item_delivered", "cancellation_confirmed", "note_added",
         "auto_confirmed",

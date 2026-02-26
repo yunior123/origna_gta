@@ -20,6 +20,42 @@
  */
 
 import { Page, Locator } from '@playwright/test';
+import * as path from 'path';
+import * as fs from 'fs';
+
+// ─── SCREENSHOT UTILITIES ───────────────────────────────────────────
+
+/**
+ * Capture a screenshot and save it to the desktop for UI/UX review.
+ * Screenshots are organized by date and test worker.
+ * 
+ * @param page The Playwright page object
+ * @param label Descriptive label for the screenshot filename
+ */
+export async function takeScreenshot(page: Page, label: string): Promise<void> {
+  const desktopPath = path.join(process.env.HOME || '', 'Desktop', 'origna-screenshots');
+  
+  // Ensure directory exists
+  if (!fs.existsSync(desktopPath)) {
+    try {
+      fs.mkdirSync(desktopPath, { recursive: true });
+    } catch (e) {
+      console.warn(`⚠️ Could not create screenshot directory at ${desktopPath}: ${e}`);
+      return;
+    }
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `${timestamp}_${label.replace(/[^a-z0-9]/gi, '_')}.png`;
+  const fullPath = path.join(desktopPath, filename);
+
+  try {
+    await page.screenshot({ path: fullPath, fullPage: true });
+    // console.log(`📸 Screenshot saved: ${fullPath}`);
+  } catch (e) {
+    console.warn(`⚠️ Failed to capture screenshot "${label}": ${e}`);
+  }
+}
 
 // ─── FLUTTER INITIALIZATION ─────────────────────────────────────────
 
@@ -67,10 +103,7 @@ export async function waitForFlutter(page: Page, timeout = 90000): Promise<void>
     .catch(() => {});
   console.log(`   ✅ Canvas rendered (${Date.now() - startTime}ms)`);
 
-  // 4) Activate semantics tree — if ensureSemantics() wasn't baked into the build,
-  //    the placeholder button or a Tab key press will trigger it.
-  //    Flutter 3.19+ uses a visible "Enable accessibility" <button> instead of
-  //    the old <flt-semantics-placeholder> element.
+  // 4) Activate semantics tree
   const enableA11yBtn = page.locator('button:has-text("Enable accessibility")');
   const placeholder = page.locator('flt-semantics-placeholder');
   if ((await enableA11yBtn.count()) > 0) {
@@ -93,18 +126,17 @@ export async function waitForFlutter(page: Page, timeout = 90000): Promise<void>
     .first()
     .waitFor({ state: 'attached', timeout: Math.min(30000, timeout) })
     .catch(() => {});
+  
   console.log(`   ✅ Flutter initialized in ${Date.now() - startTime}ms`);
+  
+  // Take auto-screenshot after initialization
+  await takeScreenshot(page, 'flutter_initialized');
 }
 
 // ─── SELECTORS ──────────────────────────────────────────────────────
 
 /**
  * Locate a Flutter button by its semantic label or visible text.
- * Works with: ModernButton, IconButton (tooltip), Semantics(button: true).
- *
- * @example
- *   await flutterButton(page, 'btn-login-submit').click();
- *   await flutterButton(page, /login/i).click();
  */
 export function flutterButton(page: Page, nameOrLabel: string | RegExp): Locator {
   return page.getByRole('button', { name: nameOrLabel });
@@ -112,10 +144,6 @@ export function flutterButton(page: Page, nameOrLabel: string | RegExp): Locator
 
 /**
  * Locate a Flutter text input field.
- * Flutter text fields render as <input> elements nested inside <flt-semantics>.
- *
- * @example
- *   await fillFlutterInput(page, 'Email', 'user@example.com');
  */
 export function flutterInput(page: Page, label: string | RegExp): Locator {
   return page.getByRole('textbox', { name: label });
@@ -123,9 +151,6 @@ export function flutterInput(page: Page, label: string | RegExp): Locator {
 
 /**
  * Locate a Flutter checkbox by its semantic label.
- *
- * @example
- *   await flutterCheckbox(page, 'chk-terms-accepted').check();
  */
 export function flutterCheckbox(page: Page, label: string | RegExp): Locator {
   return page.getByRole('checkbox', { name: label });
@@ -133,27 +158,18 @@ export function flutterCheckbox(page: Page, label: string | RegExp): Locator {
 
 /**
  * Locate any Flutter widget by its aria-label (from Semantics(label:) or tooltip).
- * This is the most generic selector — works for any semantics-enriched widget.
- *
- * @example
- *   await flutterByLabel(page, 'product-card-abc123').click();
- *   await flutterByLabel(page, /product-card/).first().click();
  */
 export function flutterByLabel(page: Page, label: string | RegExp): Locator {
   if (typeof label === 'string') {
     return page.locator(`[aria-label="${label}"]`);
   }
   return page.locator('flt-semantics').filter({ has: page.locator(`[aria-label]`) }).filter({
-    hasText: label, // fallback — works when text content matches
+    hasText: label,
   });
 }
 
 /**
- * Locate a Flutter widget by exact aria-label using a CSS attribute selector.
- * More precise than flutterByLabel when you know the exact label.
- *
- * @example
- *   await flutterByExactLabel(page, 'btn-add-to-cart-prod123').click();
+ * Locate a Flutter widget by exact aria-label.
  */
 export function flutterByExactLabel(page: Page, label: string): Locator {
   return page.locator(`[aria-label="${label}"]`);
@@ -161,9 +177,6 @@ export function flutterByExactLabel(page: Page, label: string): Locator {
 
 /**
  * Locate a Flutter link by its semantic label.
- *
- * @example
- *   await flutterLink(page, 'link-terms-conditions').click();
  */
 export function flutterLink(page: Page, label: string | RegExp): Locator {
   return page.getByRole('link', { name: label });
@@ -173,10 +186,6 @@ export function flutterLink(page: Page, label: string | RegExp): Locator {
 
 /**
  * Fill a Flutter text input by its label.
- * Clicks the input first to ensure focus, then fills.
- *
- * @example
- *   await fillFlutterInput(page, 'Email', 'user@example.com');
  */
 export async function fillFlutterInput(
   page: Page,
@@ -186,44 +195,22 @@ export async function fillFlutterInput(
   const input = flutterInput(page, label);
   await input.click();
   await input.fill(value);
-}
-
-/**
- * Clear and fill a Flutter text input.
- *
- * @example
- *   await clearAndFillFlutterInput(page, 'Search', 'new query');
- */
-export async function clearAndFillFlutterInput(
-  page: Page,
-  label: string | RegExp,
-  value: string,
-): Promise<void> {
-  const input = flutterInput(page, label);
-  await input.click();
-  await input.clear();
-  await input.fill(value);
+  await takeScreenshot(page, `fill_input_${label.toString().replace(/[^a-z0-9]/gi, '_')}`);
 }
 
 /**
  * Click a Flutter button and optionally wait for navigation.
- *
- * @example
- *   await clickFlutterButton(page, 'btn-proceed-to-checkout');
  */
 export async function clickFlutterButton(
   page: Page,
   nameOrLabel: string | RegExp,
 ): Promise<void> {
   await flutterButton(page, nameOrLabel).click();
+  await takeScreenshot(page, `click_btn_${nameOrLabel.toString().replace(/[^a-z0-9]/gi, '_')}`);
 }
 
 /**
  * Wait for a specific semantic label to appear in the DOM.
- * Useful for confirming navigation or dynamic content loading.
- *
- * @example
- *   await waitForSemanticLabel(page, 'product-card-abc123');
  */
 export async function waitForSemanticLabel(
   page: Page,
@@ -234,13 +221,11 @@ export async function waitForSemanticLabel(
     state: 'attached',
     timeout,
   });
+  await takeScreenshot(page, `wait_for_label_${label}`);
 }
 
 /**
  * Check if a semantic label exists in the DOM (non-blocking).
- *
- * @example
- *   const exists = await hasSemanticLabel(page, 'btn-delete-account');
  */
 export async function hasSemanticLabel(page: Page, label: string): Promise<boolean> {
   return (await page.locator(`[aria-label="${label}"]`).count()) > 0;
@@ -250,10 +235,6 @@ export async function hasSemanticLabel(page: Page, label: string): Promise<boole
 
 /**
  * Navigate to a Flutter route via URL hash and wait for rendering.
- * Flutter Web uses hash routing by default.
- *
- * @example
- *   await navigateToRoute(page, '/profile', 'http://localhost:5005');
  */
 export async function navigateToRoute(
   page: Page,
@@ -262,37 +243,27 @@ export async function navigateToRoute(
 ): Promise<void> {
   await page.goto(`${baseUrl}/#${route}`);
   await waitForFlutter(page, 30000);
+  await takeScreenshot(page, `nav_to_${route.replace(/\//g, '_')}`);
 }
 
 // ─── PRODUCT HELPERS ────────────────────────────────────────────────
 
-/**
- * Get the product card locator by product ID.
- * Uses the semantic label convention: product-card-{productId}
- */
 export function productCard(page: Page, productId: string): Locator {
   return flutterByExactLabel(page, `product-card-${productId}`);
 }
 
-/**
- * Click the favorite button on a product card.
- */
 export async function toggleFavorite(page: Page, productId: string): Promise<void> {
   await flutterByExactLabel(page, `btn-favorite-${productId}`).click();
+  await takeScreenshot(page, `toggle_favorite_${productId}`);
 }
 
-/**
- * Click the add-to-cart button on a product card.
- */
 export async function addToCart(page: Page, productId: string): Promise<void> {
   await flutterByExactLabel(page, `btn-add-to-cart-${productId}`).click();
+  await takeScreenshot(page, `add_to_cart_${productId}`);
 }
 
 // ─── UNIQUE SUFFIX (for parallel tests) ─────────────────────────────
 
-/**
- * Generate a unique suffix for test data to avoid collisions.
- */
 export function uniqueSuffix(testInfo: { workerIndex: number; parallelIndex: number }): string {
   const rnd = Math.random().toString(16).slice(2, 8);
   return `w${testInfo.workerIndex}-p${testInfo.parallelIndex}-${Date.now()}-${rnd}`;

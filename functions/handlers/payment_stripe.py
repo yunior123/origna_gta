@@ -18,7 +18,6 @@ from firebase_functions import https_fn
 
 # Initializing Stripe key lazily in handlers
 from config import (
-    AUTHORIZATION_VALID_DAYS,
     BASE_URL,
     CATEGORY_TAX_CODE_MAP,
     IS_EMULATOR,
@@ -75,7 +74,7 @@ logger = logging.getLogger(__name__)
 
 def _check_premium_from_sub(uid: str) -> bool:
     """Check premium status from authoritative subscriptions doc, not cached user field.
-    Called at checkout to gate free-shipping for premium buyers (line ~1368).
+    Called at checkout to gate free-shipping for premium buyers (line ~1394).
     """
     from utils.premium_check import is_premium_authoritative
     return is_premium_authoritative(uid, db=get_db())
@@ -170,8 +169,8 @@ def _assert_seller_active(seller_id: str, require_approval: bool = True) -> dict
     return seller_data
 
 
-def _rollback_checkout(validated_items: list, order_ref) -> None:
-    """Rollback stock reservation and mark order as failed on checkout failure."""
+def _rollback_checkout(validated_items: list, order_ref, coupon_code: str | None = None, user_id: str | None = None) -> None:
+    """Rollback stock reservation, coupon pre-reservation, and mark order as failed on checkout failure."""
     try:
 
         @get_transactional()
@@ -197,6 +196,34 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
     except Exception as rollback_err:
         logger.critical(f"🚨 CRITICAL: Stock rollback failed during checkout rollback: {rollback_err}")
 
+    # AUDIT FIX (CRITICAL-C3): Roll back coupon pre-reservation on Stripe failure
+    if coupon_code and user_id:
+        try:
+            _db = get_db()
+            _fs = get_firestore()
+            _cr = _db.collection(Collections.COUPONS).document(coupon_code)
+            _ur = _cr.collection(Collections.COUPON_USES).document(user_id)
+
+            @_fs.transactional
+            def _undo_coupon_txn(_txn):
+                _snap = _cr.get(transaction=_txn)
+                if not _snap.exists:
+                    return
+                _used = int((_snap.to_dict() or {}).get(Fields.USED_COUNT, 0))
+                _txn.update(_cr, {Fields.USED_COUNT: max(0, _used - 1)})
+                _us = _ur.get(transaction=_txn)
+                if _us.exists:
+                    _uc = int((_us.to_dict() or {}).get("useCount", 1))
+                    if _uc <= 1:
+                        _txn.delete(_ur)
+                    else:
+                        _txn.update(_ur, {"useCount": _uc - 1})
+
+            _undo_coupon_txn(_db.transaction())
+            logger.info(f"Coupon {coupon_code} pre-reservation rolled back for user {user_id}")
+        except Exception as _ce:
+            logger.error(f"Failed to rollback coupon {coupon_code} for user {user_id}: {_ce}")
+
     # Mark order as failed (keep for audit trail instead of deleting)
     try:
         order_ref.update(
@@ -209,7 +236,7 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
             }
         )
     except Exception as order_err:
-        logger.critical(f"🚨 CRITICAL: Order status rollback failed: {order_err}")
+        logger.critical(f"\U0001f6a8 CRITICAL: Order status rollback failed: {order_err}")
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -922,7 +949,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             if coupon_snap.exists:
                 coupon_data = coupon_snap.to_dict() or {}
                 _coupon_valid = (
-                    coupon_data.get(Fields.IS_ACTIVE, False)
+                    coupon_data.get("isActive", False)
                     and _coupon_not_expired(coupon_data)
                     and _coupon_within_limits(coupon_data, user_id)
                     and _coupon_seller_allowed(coupon_data, sellers)
@@ -930,7 +957,19 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 )
                 if _coupon_valid:
                     coupon_code = code
-                    discount_amount_cents = _compute_discount(coupon_data, actual_subtotal_cents)
+                    # AUDIT FIX (HIGH-C2): For seller-scoped coupons, compute
+                    # discount only on that seller's items — not the full cart.
+                    # Platform-wide coupons (sellerId=None) still use the full subtotal.
+                    scoped_seller = coupon_data.get(Fields.SELLER_ID)
+                    if scoped_seller is not None:
+                        scoped_subtotal_cents = sum(
+                            round(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
+                            for item in validated_items
+                            if item.get(Fields.SELLER_ID) == scoped_seller
+                        )
+                        discount_amount_cents = _compute_discount(coupon_data, scoped_subtotal_cents)
+                    else:
+                        discount_amount_cents = _compute_discount(coupon_data, actual_subtotal_cents)
                 else:
                     logger.warning(f"Coupon {code} re-validation failed at payment time for user {user_id}")
             else:
@@ -939,6 +978,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Discounted subtotal is the taxable base (CRA: tax applies to amount actually paid)
     discounted_subtotal_cents = max(0, actual_subtotal_cents - discount_amount_cents)
 
+    # Recompute all_digital from server-verified validated_items — never trust client payload
+    all_digital = all(item.get(Fields.IS_DIGITAL, False) for item in validated_items)
 
     if all_digital:
         # Digital-only orders: worldwide delivery, zero shipping, zero Canadian tax
@@ -1084,6 +1125,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # IDEMPOTENCY: Check for duplicate order BEFORE reserving stock to avoid
     # reserving stock for a request that will be returned as a duplicate.
+    # Use limit(10) so that when an explicit client_idempotency_key is provided,
+    # we can find the matching order even if newer pending orders exist (e.g. from
+    # concurrent requests by the same user).
     recent_orders = (
         get_db()
         .collection(Collections.ORDERS)
@@ -1091,12 +1135,16 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         .where(Fields.ORDER_STATUS, "==", OrderStatusValues.PENDING)
         .where(Fields.PAYMENT_STATUS, "==", PaymentStatusValues.AWAITING_PAYMENT)
         .order_by(Fields.CREATED_AT, direction="DESCENDING")
-        .limit(1)
+        .limit(10)
         .get()
     )
 
     for recent_doc in recent_orders:
         recent_data = recent_doc.to_dict()
+        # If an explicit idempotency key was provided, only match orders with the same key.
+        # This prevents a concurrent pending order from stealing the dedup slot.
+        if client_idempotency_key and recent_data.get(ApiKeys.IDEMPOTENCY_KEY) != client_idempotency_key:
+            continue
         # If same user created same-value order in last 60 seconds, return existing
         recent_created = recent_data.get(Fields.CREATED_AT)
         if recent_created and hasattr(recent_created, "timestamp"):
@@ -1334,6 +1382,54 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         logger.error(f"Stock reservation error: {str(e)}")
         raise https_fn.HttpsError("internal", "Could not reserve stock. Please try again.") from e
 
+    # AUDIT FIX (CRITICAL-C3): Pre-reserve the coupon in a Firestore transaction
+    # BEFORE creating the Stripe session.  Without this, two concurrent requests
+    # can both pass the limit check, both get the discounted Stripe session, and
+    # both pay the discounted price — exceeding maxUsesTotal by N-1.
+    # On Stripe error the coupon reservation is rolled back via _rollback_checkout.
+    coupon_prereserved = False
+    if coupon_code:
+        from handlers.coupons import redeem_coupon as _redeem_coupon_fn  # noqa: E402
+        from utils.db import get_firestore as _get_fs  # noqa: E402
+        _db = get_db()
+        _fs = _get_fs()
+        _coupon_ref = _db.collection(Collections.COUPONS).document(coupon_code)
+        _use_ref = _coupon_ref.collection(Collections.COUPON_USES).document(user_id)
+
+        @_fs.transactional
+        def _prereserve_coupon_txn(_txn):
+            _snap = _coupon_ref.get(transaction=_txn)
+            if not _snap.exists:
+                raise https_fn.HttpsError("not-found", "Coupon invalid or unavailable")
+            _data = _snap.to_dict() or {}
+            _used = int(_data.get(Fields.USED_COUNT, 0))
+            _max_total = _data.get(Fields.MAX_USES_TOTAL)
+            if _max_total is not None and _used >= int(_max_total):
+                raise https_fn.HttpsError("resource-exhausted", "Coupon invalid or unavailable")
+            _use_snap = _use_ref.get(transaction=_txn)
+            _max_per_user = int(_data.get(Fields.MAX_USES_PER_USER, 1))
+            _u_count = int(_use_snap.to_dict().get("useCount", 0)) if _use_snap.exists else 0
+            if _u_count >= _max_per_user:
+                raise https_fn.HttpsError("resource-exhausted", "Coupon invalid or unavailable")
+            # Atomically increment — will be rolled back if Stripe session creation fails
+            _txn.update(_coupon_ref, {Fields.USED_COUNT: _used + 1})
+            if _use_snap.exists:
+                _txn.update(_use_ref, {"useCount": _u_count + 1, "lastUsedAt": _fs.SERVER_TIMESTAMP})
+            else:
+                _txn.set(_use_ref, {"useCount": 1, "usedAt": _fs.SERVER_TIMESTAMP, "lastUsedAt": _fs.SERVER_TIMESTAMP})
+
+        try:
+            _prereserve_coupon_txn(_db.transaction())
+            coupon_prereserved = True
+            logger.info(f"Coupon {coupon_code} pre-reserved for user {user_id}")
+        except https_fn.HttpsError:
+            raise  # Limit exceeded or coupon gone — block checkout
+        except Exception as _e:
+            # Transient DB error — fail safe: block the checkout rather than
+            # risk issuing a discount we cannot account for.
+            logger.error(f"Coupon pre-reserve failed for {coupon_code}: {_e}")
+            raise https_fn.HttpsError("internal", "Could not apply coupon. Please try again.") from _e
+
     # TASK 02: stamp fulfillmentWarehouseId onto each item before order creation
     for i, wh_id in enumerate(fulfillment_warehouse_ids):
         if wh_id is not None:
@@ -1380,11 +1476,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
         Fields.DELIVERY_SPEED: delivery_speed,
-        # Platform fee on post-discount subtotal (platform earns only on amount actually collected)
+        # Platform fee on post-discount subtotal (platform earns only on amount actually collected).
+        # PLATFORM_FEE_RATIO = 2.5% (config.py). Premium buyers pay 0% as a subscription benefit.
         # P-03 FIX: Read from subscriptions/{uid} instead of cached isPremium to prevent race condition
-        Fields.PLATFORM_FEE_TOTAL_CENTS: 0
+        Fields.PLATFORM_FEE_TOTAL_CENTS: 0  # already in cents
         if _check_premium_from_sub(user_id)
-        else round(discounted_subtotal_cents * PLATFORM_FEE_RATIO),
+        else round(discounted_subtotal_cents * PLATFORM_FEE_RATIO),  # already in cents
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
         Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
@@ -1392,6 +1489,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.ITEM_TAXES: item_taxes,
         Fields.PREFERRED_LANGUAGE: user_data.get(Fields.PREFERRED_LANGUAGE, "en"),
         "platformFeeRatio": PLATFORM_FEE_RATIO,
+        # Store client-provided idempotency key so the dedup check can match it
+        # even when concurrent requests create newer pending orders for the same user.
+        **(
+            {ApiKeys.IDEMPOTENCY_KEY: client_idempotency_key}
+            if client_idempotency_key
+            else {}
+        ),
     }
 
     # SECURITY FIX (CRITICAL-014): Snapshot seller Stripe account IDs at checkout.
@@ -1459,6 +1563,22 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 }
             )
 
+        # AUDIT FIX (CRITICAL-C1): Discount must appear as a negative line item so the
+        # Stripe PaymentIntent amount equals the post-discount total recorded in Firestore.
+        # Without this, Stripe charges full price while the order doc shows the discounted
+        # amount — a guaranteed overcharge of exactly discount_amount_cents on every coupon use.
+        if discount_amount_cents > 0 and coupon_code:
+            line_items.append(
+                {
+                    "price_data": {
+                        Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
+                        "product_data": {Fields.NAME: f"Discount ({coupon_code})"},
+                        "unit_amount": -discount_amount_cents,  # Negative = credit/discount
+                    },
+                    Fields.QUANTITY: 1,
+                }
+            )
+
         session = stripe.checkout.Session.create(
             line_items=line_items,
             mode="payment",
@@ -1495,27 +1615,27 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     except stripe.error.CardError as e:
         # Card declined — rollback and return user-friendly message
-        _rollback_checkout(validated_items, order_ref)
+        _rollback_checkout(validated_items, order_ref, coupon_code=coupon_code, user_id=user_id)
         raise https_fn.HttpsError(
             "failed-precondition", e.user_message or "Your card was declined. Please try a different payment method."
         ) from e
     except stripe.error.RateLimitError:
-        _rollback_checkout(validated_items, order_ref)
+        _rollback_checkout(validated_items, order_ref, coupon_code=coupon_code, user_id=user_id)
         raise https_fn.HttpsError("unavailable", "Payment service is busy. Please try again in a moment.") from None
     except stripe.error.APIConnectionError:
-        _rollback_checkout(validated_items, order_ref)
+        _rollback_checkout(validated_items, order_ref, coupon_code=coupon_code, user_id=user_id)
         raise https_fn.HttpsError(
             "unavailable", "Could not connect to payment service. Please check your connection and try again."
         ) from None
     except stripe.error.StripeError as e:
-        _rollback_checkout(validated_items, order_ref)
+        _rollback_checkout(validated_items, order_ref, coupon_code=coupon_code, user_id=user_id)
         logger.error(f"Stripe error in checkout: {str(e)}")
         raise https_fn.HttpsError("internal", "Payment processing failed. Please try again.") from e
     except https_fn.HttpsError:
         # Re-raise already-safe HttpsErrors (from validation, stock checks, etc.)
         raise
     except Exception as e:
-        _rollback_checkout(validated_items, order_ref)
+        _rollback_checkout(validated_items, order_ref, coupon_code=coupon_code, user_id=user_id)
         logger.error(f"Unexpected checkout error: {str(e)}")
         raise https_fn.HttpsError("internal", "An unexpected error occurred. Please try again.") from e
 
@@ -1881,10 +2001,13 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
         sellers_total[sid] = sellers_total.get(sid, 0) + amt
 
     for seller_id, amount_cents in sellers_total.items():
-        # Apply coupon discount proportionally before computing platform fee
-        adjusted_amount_cents = round(amount_cents * discount_ratio)
-        platform_fee_cents = round(adjusted_amount_cents * stored_fee_rate)
-        net_amount_cents = adjusted_amount_cents - platform_fee_cents
+        # Apply coupon discount proportionally before computing platform fee.
+        # adjusted_amount_cents = seller's share of what the buyer actually paid (in cents).
+        adjusted_amount_cents = round(amount_cents * discount_ratio)  # already in cents
+        # PLATFORM_FEE_RATIO = 2.5%; uses the rate frozen at checkout to prevent config changes
+        # from retroactively affecting in-flight orders.
+        platform_fee_cents = round(adjusted_amount_cents * stored_fee_rate)  # already in cents
+        net_amount_cents = adjusted_amount_cents - platform_fee_cents  # already in cents
 
         payout_ref = get_db().collection(Collections.PAYOUTS).document(f"{order_id}_{seller_id}")
         # Skip if payout already COMPLETED — prevents webhook retry from resetting status
@@ -2083,6 +2206,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
         order_address = order_data.get(Fields.SHIPPING_ADDRESS, {})
 
         def normalize(val):
+            """Lowercase-strip a value for case/whitespace-insensitive address comparison."""
             return str(val).strip().lower() if val else ""
 
         # Compare critical fields that affect shipping/tax: Country, State, Postal Code
@@ -2149,7 +2273,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
         Fields.STRIPE_PAYMENT_INTENT_ID: pi_id,
         Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
         Fields.CAPTURED_AT: get_server_timestamp(),
-        Fields.EXPIRES_AT: datetime.now(UTC) + timedelta(days=AUTHORIZATION_VALID_DAYS),
+        Fields.EXPIRES_AT: datetime.now(UTC) + timedelta(days=BusinessRules.AUTHORIZATION_EXPIRY_DAYS),
         Fields.UPDATED_AT: get_server_timestamp(),
     }
 
@@ -2306,6 +2430,8 @@ def _add_stock_restore_to_batch(batch, order_data: dict) -> None:
     """Adds stock increment operations to an existing batch."""
     _fs = get_firestore()
     for item in order_data.get(Fields.ITEMS, []):
+        if item.get(Fields.IS_DIGITAL, False):
+            continue  # digital products have no physical stock to restore
         product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
         qty = item[Fields.QUANTITY]
         patch = {Fields.STOCK_QUANTITY: _fs.Increment(qty)}
@@ -2331,6 +2457,8 @@ def _add_stock_restore_to_transaction(transaction, order_data: dict) -> None:
     """
     _fs = get_firestore()
     for item in order_data.get(Fields.ITEMS, []):
+        if item.get(Fields.IS_DIGITAL, False):
+            continue  # digital products have no physical stock to restore
         product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
         qty = item[Fields.QUANTITY]
         patch = {Fields.STOCK_QUANTITY: _fs.Increment(qty)}
@@ -2459,6 +2587,8 @@ def process_session_expired(session: dict) -> str | None:
         if not order_data.get(Fields.STOCK_RESTORED, False):
             _fs = get_firestore()
             for item in order_data.get(Fields.ITEMS, []):
+                if item.get(Fields.IS_DIGITAL, False):
+                    continue  # digital products have no physical stock to restore
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
                 qty = item[Fields.QUANTITY]
                 transaction.update(product_ref, {Fields.STOCK_QUANTITY: _fs.Increment(qty)})
@@ -3471,10 +3601,15 @@ def process_account_updated(account: dict) -> None:
     pending_requirements = list(set(currently_due + eventually_due))
 
     # Update seller_profiles with Stripe Connect status
+    # FIX M-02: onboardingCompleted requires BOTH details_submitted AND charges_enabled.
+    # Setting it on details_submitted alone would mark a seller as "onboarded" before
+    # Stripe has approved charges, misleading any gate that checks only onboardingCompleted.
+    _details_submitted = account.get("details_submitted", False)
+    _charges_enabled = account.get("charges_enabled", False)
     sp_update = {
-        Fields.CHARGES_ENABLED: account.get("charges_enabled", False),
+        Fields.CHARGES_ENABLED: _charges_enabled,
         Fields.PAYOUTS_ENABLED: account.get("payouts_enabled", False),
-        Fields.ONBOARDING_COMPLETED: account.get("details_submitted", False),
+        Fields.ONBOARDING_COMPLETED: _details_submitted and _charges_enabled,
         Fields.PENDING_REQUIREMENTS: pending_requirements,
         Fields.UPDATED_AT: get_server_timestamp(),
     }

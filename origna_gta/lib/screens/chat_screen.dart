@@ -1,9 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
@@ -64,7 +64,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final vmState = ref.watch(chatViewModelProvider(widget.productId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final myUid = ref.watch(userIdProvider) ?? '';
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: widget.productTitle),

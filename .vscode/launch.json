@@ -130,7 +130,7 @@
         // PYTHON FUNCTIONS CONFIGURATIONS
         // =====================================================================
         {
-            "name": "🐍 Python: Run Tests (Emulator)",
+            "name": "🐍 Python: Run All Tests",
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
@@ -142,7 +142,8 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "FUNCTIONS_EMULATOR": "true",
-                "PYTHONPATH": "${workspaceFolder}/functions"
+                "PYTHONPATH": "${workspaceFolder}/functions",
+                "PYTEST_ADDOPTS": "-p no:warnings"
             },
             "console": "integratedTerminal"
         },
@@ -159,9 +160,11 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "FUNCTIONS_EMULATOR": "true",
-                "PYTHONPATH": "${workspaceFolder}/functions"
+                "PYTHONPATH": "${workspaceFolder}/functions",
+                "PYTEST_ADDOPTS": "-p no:warnings"
             },
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "autoFocusTerminal": true
         }
     ],
     "compounds": [

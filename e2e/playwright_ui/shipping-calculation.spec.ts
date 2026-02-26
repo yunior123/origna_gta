@@ -143,4 +143,17 @@ test.describe('Shipping Calculation', () => {
     expect(order.taxAmountCents, 'AB tax must be exactly 5% GST').toBeGreaterThanOrEqual(expected5pct - 1);
     expect(order.taxAmountCents, 'AB tax must be exactly 5% GST').toBeLessThanOrEqual(expected5pct + 1);
   });
+
+  test('International seller uses national ceiling shipping cost ($26.99)', async () => {
+    const products = await discoverProducts();
+    const intlProduct = products.find(p => p.id === 'e2e_product_intl_seller');
+    if (!intlProduct) throw new Error('International test product missing');
+
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, intlProduct.id, 1, buyerAuth.idToken);
+    const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
+    const order = parseDoc(await readDoc(`orders/${result.orderId}`, buyerAuth.idToken));
+
+    // National ceiling is $26.99 = 2699 cents
+    expect(order.shippingCostCents).toBe(2699);
+  });
 });

@@ -53,7 +53,7 @@ else
 fi
 
 # 5. Deploy Firebase functions
-echo -e "\n${YELLOW}[5/5] Deploying Firebase functions...${NC}"
+echo -e "\n${YELLOW}[5/6] Deploying Firebase functions...${NC}"
 cd "$REPO_ROOT"
 if firebase deploy --only functions; then
     echo -e "${GREEN}✓ Firebase functions deployed${NC}"
@@ -61,6 +61,14 @@ else
     echo -e "${RED}✗ Firebase functions deployment failed${NC}"
     exit 1
 fi
+
+# 6. Record deploy versions
+echo -e "\n${YELLOW}[6/6] Recording deploy versions...${NC}"
+cd "$REPO_ROOT"
+python3 scripts/record_deploy_version.py --env=dev
+python3 scripts/record_deploy_version.py --env=staging
+python3 scripts/record_deploy_version.py --env=prod
+echo -e "${GREEN}✓ Deploy versions recorded${NC}"
 
 # Summary
 echo -e "\n${YELLOW}========================================${NC}"
@@ -70,4 +78,5 @@ echo -e "${GREEN}  - Tests passed${NC}"
 echo -e "${GREEN}  - Flutter built${NC}"
 echo -e "${GREEN}  - Rules deployed${NC}"
 echo -e "${GREEN}  - Functions deployed${NC}"
+echo -e "${GREEN}  - Versions recorded${NC}"
 echo -e "${YELLOW}========================================${NC}"

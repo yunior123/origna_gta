@@ -101,14 +101,14 @@ def main():
                 print(f"✅ Dev webhook already exists and is correct: {webhook.id}")
                 existing_dev = webhook
             else:
-                print(f"⚠️ Dev webhook exists but events mismatch. Deleting and recreating...")
+                print("⚠️ Dev webhook exists but events mismatch. Deleting and recreating...")
                 stripe.WebhookEndpoint.delete(webhook.id)
         elif webhook.url == STAGING_URL:
              if set(webhook.enabled_events) == set(EVENTS):
                 print(f"✅ Staging webhook already exists and is correct: {webhook.id}")
                 existing_staging = webhook
              else:
-                print(f"⚠️ Staging webhook exists but events mismatch. Deleting and recreating...")
+                print("⚠️ Staging webhook exists but events mismatch. Deleting and recreating...")
                 stripe.WebhookEndpoint.delete(webhook.id)
 
     # 2. Create Dev Webhook if missing

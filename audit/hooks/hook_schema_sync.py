@@ -11,10 +11,9 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 
 from .base import BaseHook, Finding, HookResult, register_hook
-from .config import PROJECT_ROOT, CRITICAL, HIGH, MEDIUM
+from .config import PROJECT_ROOT, HIGH, MEDIUM
 from .prompts import STRUCTURED_OUTPUT_INSTRUCTION, PROJECT_CONTEXT
 
 

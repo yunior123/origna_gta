@@ -12,7 +12,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-// import 'package:origna_gta/firebase_options.dart'; // Deprecated in favor of config/
 import 'package:origna_gta/config/firebase_config_dev.dart';
 import 'package:origna_gta/config/firebase_config_prod.dart';
 import 'package:origna_gta/config/firebase_config_staging.dart';
@@ -151,7 +150,13 @@ void main() {
         options.beforeSend = (event, hint) {
           // Filter sensitive data - strip emails before sending
           if (event.user != null) {
-            event.user = SentryUser(id: event.user!.id, username: event.user!.username, ipAddress: event.user!.ipAddress, data: event.user!.data);
+            final user = event.user!;
+            event.user = SentryUser(
+              id: user.id,
+              username: user.username,
+              ipAddress: user.ipAddress,
+              data: user.data,
+            );
           }
           return event;
         };

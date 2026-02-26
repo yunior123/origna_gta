@@ -127,16 +127,18 @@ class _ProductAddImagesState extends State<ProductAddImages> {
     );
   }
 
+  // FIX [MEDIUM] UX: Single-pick replaced with multi-image select — sellers can pick multiple
+  // photos in one tap instead of repeating the picker flow for each image.
   Future<void> _pickImage() async {
     final messenger = ScaffoldMessenger.of(context);
 
     if (_imageModels.length >= BusinessRules.maxProductImages) {
       messenger.showSnackBar(
         SnackBar(
-          content:  Row(
+          content: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 8),
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
               Text('product.max_images'.tr()),
             ],
           ),
@@ -151,19 +153,26 @@ class _ProductAddImagesState extends State<ProductAddImages> {
 
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      // Multi-select: allow picking up to remaining slots in a single gallery session
+      final remaining = BusinessRules.maxProductImages - _imageModels.length;
+      final pickedFiles = await picker.pickMultiImage(limit: remaining);
 
-      if (pickedFile != null && pickedFile.path.isNotEmpty) {
-        final bytes = await pickedFile.readAsBytes();
-        setState(() {
+      if (pickedFiles.isNotEmpty) {
+        int addedCount = 0;
+        for (final pickedFile in pickedFiles) {
+          if (_imageModels.length >= BusinessRules.maxProductImages) break;
+          if (pickedFile.path.isEmpty) continue;
+          final bytes = await pickedFile.readAsBytes();
           if (bytes.isNotEmpty) {
             _imageModels.add(ImageModel(url: pickedFile.path, bytes: bytes));
-          } else {
-            messenger.showSnackBar(SnackBar(content: Text('product.empty_image'.tr())));
+            addedCount++;
           }
-        });
-        if (bytes.isNotEmpty) {
+        }
+        if (addedCount > 0) {
+          setState(() {});
           widget.onImagesChanged?.call(List.unmodifiable(_imageModels));
+        } else {
+          messenger.showSnackBar(SnackBar(content: Text('product.empty_image'.tr())));
         }
       }
     } catch (e) {

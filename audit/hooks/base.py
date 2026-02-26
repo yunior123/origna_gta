@@ -14,20 +14,16 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-import requests
 import anthropic
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from .config import (
     PROJECT_ROOT, ANTHROPIC_MODEL, MAX_OUTPUT_TOKENS,
-    OUTPUT_DIR,
     CRITICAL, HIGH, MEDIUM, LOW, SEVERITY_ORDER,
-    MAX_CONTEXT_CHARS, EXCLUDE_PATTERNS,
-    load_api_key,
+    MAX_CONTEXT_CHARS, load_api_key,
 )
 
 # ─── Registry ─────────────────────────────────────────────────────────────────

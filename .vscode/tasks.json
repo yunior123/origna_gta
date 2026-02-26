@@ -97,7 +97,11 @@
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
-			"problemMatcher": []
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared"
+			}
 		},
 		// =====================================================================
 		// STRIPE WEBHOOK FORWARDING
@@ -121,7 +125,7 @@
 				}
 			},
 			"presentation": {
-				"reveal": "always",
+				"reveal": "silent",
 				"panel": "dedicated",
 				"group": "stripe"
 			}
@@ -129,13 +133,7 @@
 		{
 			"label": "Stripe: Forward Webhooks (with signing secret)",
 			"type": "shell",
-			"command": "stripe",
-			"args": [
-				"listen",
-				"--forward-to", "localhost:5001/orignagta/us-central1/stripe_webhook",
-				"--events", "checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_reinstated,transfer.reversed,payout.failed,refund.failed,account.updated",
-				"--print-secret"
-			],
+			"command": "stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_reinstated,transfer.reversed,payout.failed,refund.failed,account.updated --print-secret",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
@@ -163,7 +161,11 @@
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
-			"problemMatcher": []
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared"
+			}
 		},
 		// =====================================================================
 		// PYTHON TESTS
@@ -171,7 +173,7 @@
 		{
 			"label": "Run Unit Tests (Python)",
 			"type": "shell",
-			"command": "cd functions && source venv/bin/activate && python -m pytest tests/ -v --tb=short",
+			"command": "cd functions && source venv/bin/activate && python3 -m pytest tests/ -v --tb=short",
 			"options": {
 				"cwd": "${workspaceFolder}",
 				"env": {

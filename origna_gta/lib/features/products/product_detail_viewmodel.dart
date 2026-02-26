@@ -59,13 +59,16 @@ class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
     state = state.copyWith(quantity: quantity);
   }
 
+  /// Increments the selected quantity by 1 (no upper-bound guard; caller enforces stock limit).
   void incrementQuantity() => state = state.copyWith(quantity: state.quantity + 1);
+
   void decrementQuantity() {
     if (state.quantity > 1) {
       state = state.copyWith(quantity: state.quantity - 1);
     }
   }
 
+  /// Updates the active carousel image index for the product detail gallery.
   void setImageIndex(int index) => state = state.copyWith(currentImageIndex: index);
 
   /// Fetches seller metrics from Firestore and stores in state.

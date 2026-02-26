@@ -3,11 +3,9 @@ Algolia indexing service for products
 Handles syncing Firestore products to Algolia search index
 """
 
-import asyncio
-import concurrent.futures
 import logging
 
-from algoliasearch.search.client import SearchClient
+from algoliasearch.search.client import SearchClientSync
 from pydantic import ValidationError
 
 from config import AlgoliaConfig, get_algolia_app_id, get_algolia_write_api_key
@@ -17,35 +15,20 @@ from schema_constants import AppConfig, Collections, Fields, ProductLifecycleSta
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro):
-    """Run an async coroutine synchronously. Handles event loop reuse."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        # Already in an async context — create a new loop in a thread
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            return pool.submit(asyncio.run, coro).result()
-    else:
-        return asyncio.run(coro)
+# Algolia client — NO GLOBAL STATE to avoid "Event loop is closed" errors in Cloud Function container reuse
+# Each function now initializes and closes its own client via context manager.
 
 
-# Algolia client — lazy initialized to avoid cold-start failures when Secret Manager is not ready
-_algolia_client = None
+def _get_algolia_client() -> SearchClientSync:
+    """Initialize a fresh Algolia client. Raises RuntimeError if credentials are missing."""
+    app_id = get_algolia_app_id()
+    api_key = get_algolia_write_api_key()
+    if not app_id or not api_key:
+        raise RuntimeError("Algolia credentials not configured — app_id or api_key is missing")
 
-
-def _get_algolia_client():
-    """Lazy-initialize the Algolia client. Raises RuntimeError if credentials are missing."""
-    global _algolia_client
-    if _algolia_client is None:
-        app_id = get_algolia_app_id()
-        api_key = get_algolia_write_api_key()
-        if not app_id or not api_key:
-            raise RuntimeError("Algolia credentials not configured — app_id or api_key is missing")
-        _algolia_client = SearchClient(app_id, api_key)
-    return _algolia_client
+    # Use SearchClientSync for synchronous Cloud Functions.
+    # We must use it as a context manager to ensure the internal transport is closed.
+    return SearchClientSync(app_id, api_key)
 
 
 def _get_index_name() -> str:
@@ -92,7 +75,6 @@ def format_product_for_algolia(product_id: str, product_data: dict | Product) ->
         Fields.STOCK_QUANTITY: data.get(Fields.STOCK_QUANTITY, 0),
         Fields.RATING: data.get(Fields.RATING, 0.0),
         Fields.RATING_COUNT: data.get(Fields.RATING_COUNT, 0),
-        Fields.IS_ACTIVE: data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE,
         Fields.LIFECYCLE_STATUS: data.get(Fields.LIFECYCLE_STATUS, ProductLifecycleStatusValues.DRAFT),
         Fields.KEYWORDS: data.get(Fields.KEYWORDS, []) or data.get(Fields.SEARCH_KEYWORDS, []),
         Fields.FREE_SHIPPING: data.get(Fields.FREE_SHIPPING, False),
@@ -189,12 +171,6 @@ def index_product(product_id: str, product_data: dict, max_retries: int = AppCon
     Returns:
         True if successful, False otherwise
     """
-    try:
-        client = _get_algolia_client()
-    except RuntimeError:
-        logger.warning("⚠️  Algolia not configured - skipping indexing")
-        return False
-
     # Only index active products; skip delete for non-active that were never indexed (e.g. draft)
     if product_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
         prev_status = product_data.get("_previousLifecycleStatus")
@@ -210,9 +186,13 @@ def index_product(product_id: str, product_data: dict, max_retries: int = AppCon
 
     for attempt in range(max_retries):
         try:
-            _run_async(client.save_object(index_name=_get_index_name(), body=algolia_object))
+            with _get_algolia_client() as client:
+                client.save_object(index_name=_get_index_name(), body=algolia_object)
             logger.info(f"  ✅ Indexed product {product_id} to Algolia (index={_get_index_name()})")
             return True
+        except RuntimeError as e:
+            logger.warning(f"⚠️  Algolia not configured - skipping indexing: {e}")
+            return False
         except Exception as e:
             last_error = e
             logger.warning(f"  ⚠️  Algolia index attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
@@ -235,26 +215,22 @@ def partial_update_product(product_id: str, fields: dict, max_retries: int = App
     Returns:
         True if successful, False otherwise
     """
-    try:
-        client = _get_algolia_client()
-    except RuntimeError:
-        logger.warning("⚠️  Algolia not configured - skipping partial update")
-        return False
-
     body = {"objectID": product_id, **fields}
     last_error = None
 
     for attempt in range(max_retries):
         try:
-            _run_async(
+            with _get_algolia_client() as client:
                 client.partial_update_object(
                     index_name=_get_index_name(),
                     object_id=product_id,
                     attributes_to_update=body,
                 )
-            )
             logger.info(f"  ✅ Partially updated product {product_id} in Algolia: {list(fields.keys())}")
             return True
+        except RuntimeError as e:
+            logger.warning(f"⚠️  Algolia not configured - skipping partial update: {e}")
+            return False
         except Exception as e:
             last_error = e
             logger.warning(f"  ⚠️  Algolia partial update attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
@@ -278,11 +254,6 @@ def batch_partial_update_products(product_ids: list[str], fields: dict, max_retr
     """
     if not product_ids:
         return True
-    try:
-        client = _get_algolia_client()
-    except RuntimeError:
-        logger.warning("⚠️  Algolia not configured - skipping batch partial update")
-        return False
 
     objects = [{"objectID": pid, **fields} for pid in product_ids]
     last_error = None
@@ -294,14 +265,16 @@ def batch_partial_update_products(product_ids: list[str], fields: dict, max_retr
             from algoliasearch.search.models.batch_write_params import BatchWriteParams
 
             requests = [BatchRequest(action=Action.PARTIAL_UPDATE_OBJECT, body=obj) for obj in objects]
-            _run_async(
+            with _get_algolia_client() as client:
                 client.batch(
                     index_name=_get_index_name(),
                     batch_write_params=BatchWriteParams(requests=requests),
                 )
-            )
             logger.info(f"  ✅ Batch partial-updated {len(product_ids)} products in Algolia: {list(fields.keys())}")
             return True
+        except RuntimeError as e:
+            logger.warning(f"⚠️  Algolia not configured - skipping batch partial update: {e}")
+            return False
         except Exception as e:
             last_error = e
             logger.warning(f"  ⚠️  Algolia batch partial update attempt {attempt + 1}/{max_retries} failed: {e}")
@@ -322,19 +295,17 @@ def delete_product(product_id: str, max_retries: int = AppConfig.ALGOLIA_MAX_RET
     Returns:
         True if successful, False otherwise
     """
-    try:
-        client = _get_algolia_client()
-    except RuntimeError:
-        logger.warning("⚠️  Algolia not configured - skipping deletion")
-        return False
-
     last_error = None
 
     for attempt in range(max_retries):
         try:
-            _run_async(client.delete_object(index_name=_get_index_name(), object_id=product_id))
+            with _get_algolia_client() as client:
+                client.delete_object(index_name=_get_index_name(), object_id=product_id)
             logger.info(f"  ✅ Deleted product {product_id} from Algolia (index={_get_index_name()})")
             return True
+        except RuntimeError as e:
+            logger.warning(f"⚠️  Algolia not configured - skipping deletion: {e}")
+            return False
         except Exception as e:
             last_error = e
             logger.warning(f"  ⚠️  Algolia delete attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
@@ -353,18 +324,17 @@ def get_index_stats() -> int:
         Number of records in the index, or 0 if unavailable.
     """
     try:
-        client = _get_algolia_client()
-    except RuntimeError:
-        logger.warning("⚠️  Algolia not configured - cannot get index stats")
+        with _get_algolia_client() as client:
+            index_name = _get_index_name()
+            # Use search with empty query and hitsPerPage=0 to get nbHits
+            search_result = client.search_single_index(
+                index_name=index_name,
+                search_params={"query": "", "hitsPerPage": 0}
+            )
+            return search_result.nb_hits or 0
+    except RuntimeError as e:
+        logger.warning(f"⚠️  Algolia not configured - cannot get index stats: {e}")
         return 0
-
-    try:
-        index_name = _get_index_name()
-        # Use search with empty query and hitsPerPage=0 to get nbHits
-        search_result = _run_async(
-            client.search_single_index(index_name=index_name, search_params={"query": "", "hitsPerPage": 0})
-        )
-        return search_result.nb_hits or 0
     except Exception as e:
         logger.error(f"  ❌ Failed to get Algolia index stats: {str(e)}")
         return 0
@@ -380,12 +350,6 @@ def batch_index_products(products: list) -> tuple:
     Returns:
         Tuple of (success_count, failure_count)
     """
-    try:
-        client = _get_algolia_client()
-    except RuntimeError:
-        logger.warning("⚠️  Algolia not configured - skipping batch indexing")
-        return (0, len(products))
-
     success_count = 0
     failure_count = 0
     algolia_objects = []
@@ -402,9 +366,13 @@ def batch_index_products(products: list) -> tuple:
         return (0, failure_count + len(products) - failure_count)
 
     try:
-        _run_async(client.save_objects(index_name=_get_index_name(), objects=algolia_objects))
+        with _get_algolia_client() as client:
+            client.save_objects(index_name=_get_index_name(), objects=algolia_objects)
         logger.info(f"  ✅ Batch indexed {len(algolia_objects)} products to Algolia (index={_get_index_name()})")
         success_count = len(algolia_objects)
+    except RuntimeError as e:
+        logger.warning(f"⚠️  Algolia not configured - skipping batch indexing: {e}")
+        return (0, len(products))
     except Exception as e:
         logger.error(f"  ❌ Failed to batch index products: {str(e)}")
         # Log each item to DLQ so they can be retried individually
@@ -421,16 +389,10 @@ def configure_algolia_index():
     Should be run once during setup or when index configuration changes
     """
     try:
-        client = _get_algolia_client()
-    except RuntimeError:
-        logger.warning("⚠️  Algolia not configured - skipping index configuration")
-        return False
-
-    try:
-        index_name = _get_index_name()
-        logger.info(f"  🔧 Configuring Algolia index: {index_name}")
-        # Set searchable attributes with priority
-        _run_async(
+        with _get_algolia_client() as client:
+            index_name = _get_index_name()
+            logger.info(f"  🔧 Configuring Algolia index: {index_name}")
+            # Set searchable attributes with priority
             client.set_settings(
                 index_name=index_name,
                 index_settings={
@@ -443,7 +405,7 @@ def configure_algolia_index():
                         Fields.CATEGORY_ID,
                         Fields.SUBCATEGORY,
                         Fields.SELLER_ID,
-                        Fields.IS_ACTIVE,
+                        Fields.LIFECYCLE_STATUS,
                         Fields.FREE_SHIPPING,
                         Fields.IS_PERISHABLE,
                         f"filterOnly({Fields.SHIP_FROM_COUNTRY})",
@@ -466,7 +428,7 @@ def configure_algolia_index():
                         Fields.STOCK_QUANTITY,
                         Fields.RATING,
                         Fields.RATING_COUNT,
-                        Fields.IS_ACTIVE,
+                        Fields.LIFECYCLE_STATUS,
                         Fields.KEYWORDS,
                         Fields.SELLER_ADDRESS,
                         Fields.WEIGHT_KG,
@@ -490,9 +452,11 @@ def configure_algolia_index():
                     "hitsPerPage": AppConfig.ALGOLIA_HITS_PER_PAGE,
                 },
             )
-        )
-        logger.info(f"  ✅ Configured Algolia index settings for '{index_name}'")
-        return True
+            logger.info(f"  ✅ Configured Algolia index settings for '{index_name}'")
+            return True
+    except RuntimeError as e:
+        logger.warning(f"⚠️  Algolia not configured - skipping index configuration: {e}")
+        return False
     except Exception as e:
         logger.error(f"  ❌ Failed to configure Algolia index '{_get_index_name()}': {str(e)}")
         return False
@@ -511,10 +475,13 @@ def delete_products_from_algolia(product_ids: list[str]) -> int:
     if not product_ids:
         return 0
     try:
-        client = _get_algolia_client()
-        _run_async(client.delete_objects(index_name=_get_index_name(), object_ids=product_ids))
+        with _get_algolia_client() as client:
+            client.delete_objects(index_name=_get_index_name(), object_ids=product_ids)
         logger.info(f"  ✅ Batch deleted {len(product_ids)} products from Algolia (index={_get_index_name()})")
         return len(product_ids)
+    except RuntimeError as e:
+        logger.warning(f"⚠️  Algolia not configured - skipping batch deletion: {e}")
+        return 0
     except Exception as e:
         logger.error(f"  ❌ Algolia batch delete failed: {e}")
         for pid in product_ids:

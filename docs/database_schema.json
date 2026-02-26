@@ -1846,11 +1846,6 @@
           "required": true,
           "description": "Rating value (1-5)"
         },
-        "comment": {
-          "type": "string",
-          "required": false,
-          "description": "Review text"
-        },
         "reviewImageUrls": {
           "type": "array<string>",
           "required": false,
@@ -1869,7 +1864,7 @@
         "helpfulVoterIds": {
           "type": "array<string>",
           "default": [],
-          "description": "N-04: UIDs of users who voted this review helpful (prevents duplicate votes)"
+          "description": "DEPRECATED: Do not use. Votes are tracked in review_votes/{voterId} subcollection (product_ratings/{ratingId}/review_votes/{userId}) to avoid unbounded array growth. This field is kept for schema backward-compat only."
         },
         "sellerReply": {
           "type": "string",
@@ -1897,6 +1892,11 @@
           "type": "boolean",
           "default": false,
           "indexed": true
+        },
+        "review": {
+          "type": "string",
+          "required": false,
+          "description": "Review text (field name is 'review', not 'comment')"
         }
       }
     },
@@ -1943,12 +1943,6 @@
           "type": "number",
           "default": 0,
           "description": "Total number of times this coupon has been redeemed"
-        },
-        "usedByUids": {
-          "type": "array<string>",
-          "default": [],
-          "description": "DEPRECATED \u2014 use coupon_uses subcollection instead. Kept for reading legacy docs.",
-          "deprecated": true
         },
         "expiresAt": {
           "type": "timestamp",
@@ -2725,20 +2719,6 @@
         }
       }
     },
-    "favorites": {
-      "description": "User product wishlist \u2014 subcollection: users/{userId}/favorites/{productId}",
-      "documentId": "{productId}",
-      "fields": {
-        "productId": {
-          "type": "string",
-          "required": true
-        },
-        "savedAt": {
-          "type": "timestamp",
-          "required": true
-        }
-      }
-    },
     "inventory_levels": {
       "description": "Per-warehouse stock \u2014 subcollection: products/{productId}/inventoryLevels/{warehouseId}",
       "documentId": "{warehouseId}",
@@ -3150,18 +3130,6 @@
           "type": "string",
           "default": "pending",
           "description": "Per-item status for granular tracking",
-          "values": [
-            "pending",
-            "shipped",
-            "delivered",
-            "refunded"
-          ]
-        },
-        "deliveryStatus": {
-          "type": "string",
-          "default": "pending",
-          "deprecated": true,
-          "description": "DEPRECATED \u2014 kept for reading legacy documents only. Use 'status' field instead.",
           "values": [
             "pending",
             "shipped",

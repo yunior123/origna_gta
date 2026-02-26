@@ -20,6 +20,14 @@ python3 scripts/validate_indexes.py
 echo "Validating Firestore rules against dev, staging, and prod..."
 python3 scripts/validate_rules.py
 
+# 3.5. Validate Cloud Functions sync across all environments
+echo "Validating Cloud Functions sync against dev, staging, and prod..."
+python3 scripts/verify_functions_sync.py
+
+# 3.6. Validate deploy version parity (rules, indexes, functions, hosting, schema)
+echo "Validating deploy version parity across dev, staging, and prod..."
+python3 scripts/check_deploy_versions.py
+
 # 4. Run ALL Flutter Unit & Widget Tests
 echo "Running ALL Flutter Tests..."
 cd origna_gta

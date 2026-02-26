@@ -34,6 +34,20 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void addImage(ImageModel image) => state = state.copyWith(imageModels: [...state.imageModels, image]);
 
+  // C-03: Setters for business logic state
+  void setSupplierType(String type) => state = state.copyWith(selectedSupplierType: type);
+  void setSupplierCurrency(String currency) => state = state.copyWith(selectedSupplierCurrency: currency);
+  void setHasTracking(bool value) => state = state.copyWith(hasTracking: value);
+  void setInventoryManaged(bool value) => state = state.copyWith(inventoryManaged: value);
+  void setTrackQuantity(bool value) => state = state.copyWith(trackQuantity: value);
+  void setAllowBackorder(bool value) => state = state.copyWith(allowBackorder: value);
+  void setLowStockAlertEnabled(bool value) => state = state.copyWith(lowStockAlertEnabled: value);
+  void setActiveStep(int step) => state = state.copyWith(activeStep: step);
+  void setCategoryId(String? id) => state = state.copyWith(selectedCategoryId: id, selectedSubcategory: null);
+  void setSubcategory(String? sub) => state = state.copyWith(selectedSubcategory: sub);
+  void setHasAttemptedSubmit(bool value) => state = state.copyWith(hasAttemptedSubmit: value);
+  void setDiscountTierError(bool value) => state = state.copyWith(discountTierError: value);
+
   /// Validates all inputs, compresses images, and creates the product via [createProductAtomic].
   ///
   /// Handles physical/digital products, warehouse stock, and variant configurations.
@@ -68,8 +82,6 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     models.SupplierInfo? supplier,
     // Inventory configuration
     models.InventoryConfig? inventory,
-    // Product status
-    String? status,
     // Subcategory (N-11)
     String? subcategory,
   }) async {
@@ -204,11 +216,16 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
           return;
         }
       } else if (state.digitalType == DigitalTypeValues.book) {
-        if (state.bookSourceUrl == null || state.bookSourceUrl!.trim().isEmpty) {
+        final url = state.bookSourceUrl?.trim();
+        if (url == null || url.isEmpty) {
           state = state.copyWith(errorMessage: 'product.book_url_required'.tr());
           return;
         }
-        if (!state.bookSourceUrl!.startsWith('https://')) {
+        if (url.length > 500) {
+          state = state.copyWith(errorMessage: 'product.url_too_long'.tr());
+          return;
+        }
+        if (!url.startsWith('https://')) {
           state = state.copyWith(errorMessage: 'product.book_url_https_required'.tr());
           return;
         }
@@ -424,8 +441,6 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void setExpressEnabled(bool value) => state = state.copyWith(expressEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
 
-  void setFreeShippingAt10Plus(bool? value) => state = state.copyWith(freeShippingAt10Plus: value ?? false);
-
   void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
 
   void setLocalDeliveryOnly(bool value) => state = state.copyWith(
@@ -487,7 +502,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         savedSameDayEnabled: state.sameDayEnabled,
         expressEnabled: false,
         sameDayEnabled: false,
-        freeShippingAt10Plus: false,
+        // freeShippingAt10Plus: false,
       );
     } else {
       // Restore previously saved express/same-day state
@@ -619,12 +634,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   Future<List<Uint8List>> _compressImages(List<ImageModel> imageModels) async {
-    final results = <Uint8List>[];
-    for (var model in imageModels) {
-      final compressed = await _validateAndCompressImage(model.bytes);
-      if (compressed != null) results.add(compressed);
-    }
-    return results;
+    final results = await Future.wait(
+      imageModels.map((m) => _validateAndCompressImage(m.bytes)),
+    );
+    return results.whereType<Uint8List>().toList();
   }
 
   Future<Uint8List?> _validateAndCompressImage(Uint8List bytes) async {

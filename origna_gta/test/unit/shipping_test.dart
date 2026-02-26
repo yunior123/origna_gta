@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/utils/constants.dart';
-import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/utils/utils.dart' hide Address, UserModel, ProductModel, CartModel, CartItemModel, SellerPayout;
+import 'package:origna_gta/models/models.dart';
 
 void main() {
   group('Shipping Calculation Logic', () {

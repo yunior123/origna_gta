@@ -57,10 +57,6 @@ _StatusConfig _orderStatusConfig(OrderStatus status) {
       return _StatusConfig(color: DesignTokens.error, icon: Icons.error_outline, label: 'orders.status.failed'.tr(), description: 'orders.status.failed_desc'.tr());
     case OrderStatus.expired:
       return _StatusConfig(color: DesignTokens.textSecondary, icon: Icons.timer_off, label: 'orders.status.expired'.tr(), description: 'orders.status.expired_desc'.tr());
-    case OrderStatus.refunded:
-      return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'orders.status.refunded'.tr(), description: 'orders.status.refunded_desc'.tr());
-    case OrderStatus.partiallyRefunded:
-      return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'orders.status.partial_refund'.tr(), description: 'orders.status.partial_refund_desc'.tr());
     case OrderStatus.disputed:
       return _StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'orders.status.disputed'.tr(), description: 'orders.status.disputed_desc'.tr());
   }
@@ -74,11 +70,9 @@ _StatusConfig _itemStatusConfig(String status) {
     return _StatusConfig(color: DesignTokens.primary, icon: Icons.autorenew, label: 'orders.status.processing'.tr(), description: 'orders.status.processing_desc'.tr());
   } else if (status == OrderStatusValues.shipped) {
     return _StatusConfig(color: DesignTokens.statusShipped, icon: Icons.local_shipping, label: 'orders.status.shipped'.tr(), description: 'orders.status.shipped_desc'.tr());
-  } else if (status == OrderStatusValues.inTransit) {
-    return _StatusConfig(color: DesignTokens.statusInTransit, icon: Icons.flight_takeoff, label: 'orders.status.in_transit'.tr(), description: 'orders.status.in_transit_desc'.tr());
   } else if (status == OrderStatusValues.delivered) {
     return _StatusConfig(color: DesignTokens.success, icon: Icons.check_circle, label: 'orders.status.delivered'.tr(), description: 'orders.status.delivered_desc'.tr());
-  } else if (status == OrderStatusValues.refunded) {
+  } else if (status == DeliveryStatusValues.refunded) {
     return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'orders.status.refunded'.tr(), description: 'orders.status.refunded_desc'.tr());
   } else if (status == OrderStatusValues.cancelled) {
     return _StatusConfig(color: DesignTokens.error, icon: Icons.cancel_outlined, label: 'orders.status.cancelled'.tr(), description: 'orders.status.cancelled_desc'.tr());
@@ -281,7 +275,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     final isAuthorized = order.paymentStatus == PaymentStatus.authorized;
     final isPendingApproval = order.shippingApprovalStatus == ShippingApprovalStatus.pending;
     final showTimeline = _timelineStep(order.orderStatus) >= 0;
-    final isTerminal = [OrderStatus.cancelled, OrderStatus.failed, OrderStatus.expired, OrderStatus.refunded, OrderStatus.partiallyRefunded, OrderStatus.disputed].contains(order.orderStatus);
+    final isTerminal = [OrderStatus.cancelled, OrderStatus.failed, OrderStatus.expired, OrderStatus.disputed].contains(order.orderStatus);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),

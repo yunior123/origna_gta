@@ -1,88 +1,61 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-class ResetPasswordScreen extends StatefulWidget {
+import '../features/auth/reset_password_view_model.dart';
+
+class ResetPasswordScreen extends ConsumerStatefulWidget {
   final String oobCode;
 
   const ResetPasswordScreen({super.key, required this.oobCode});
 
   @override
-  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
-  bool _isLoading = false;
-  bool _isSuccess = false;
-  String? _errorMessage;
-
-  Future<void> _resetPassword() async {
-    final password = _passwordController.text.trim();
-    final confirm = _confirmController.text.trim();
-
-    if (password.isEmpty || password.length < 6) {
-      setState(() => _errorMessage = 'Password must be at least 6 characters');
-      return;
-    }
-
-    if (password != confirm) {
-      setState(() => _errorMessage = 'Passwords do not match');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      await FirebaseAuth.instance.confirmPasswordReset(
-        code: widget.oobCode,
-        newPassword: password,
-      );
-      setState(() {
-        _isSuccess = true;
-        _isLoading = false;
-      });
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.message ?? 'An error occurred';
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'An unexpected error occurred';
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (_isSuccess) {
+    final state = ref.watch(resetPasswordViewModelProvider(widget.oobCode));
+
+    if (state.isVerifying) {
+      return const Scaffold(
+        body: Center(child: ModernLoadingIndicator()),
+      );
+    }
+
+    if (state.isSuccess) {
       return Scaffold(
-        appBar: AppBar(title: Text('Reset Password')),
+        appBar: AppBar(title: Text('auth.reset_password_title'.tr())),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(DesignTokens.spacing24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 80),
-                const SizedBox(height: 24),
+                const Icon(Icons.check_circle_outline, color: DesignTokens.success, size: 80),
+                const SizedBox(height: DesignTokens.spacing24),
                 Text(
-                  'Password Reset Successfully',
+                  'auth.reset_success_title'.tr(),
                   style: Theme.of(context).textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
+                const SizedBox(height: DesignTokens.spacing16),
+                Text(
+                  'auth.reset_success_desc'.tr(),
+                  style: TextStyle(color: DesignTokens.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: DesignTokens.spacing32),
+                ModernButton(
+                  label: 'auth.go_to_login'.tr(),
                   onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
-                  style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary),
-                  child: const Text('Go to Login', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
@@ -92,10 +65,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text('Reset Password')),
+      appBar: AppBar(title: Text('auth.reset_password_title'.tr())),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(DesignTokens.spacing24),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 400),
             child: Column(
@@ -103,66 +76,69 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Create New Password',
+                  'auth.create_new_password'.tr(),
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Please enter your new password below.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.textSecondary),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                if (_errorMessage != null)
+                if (state.userEmail != null) ...[
+                  const SizedBox(height: DesignTokens.spacing8),
+                  Text(
+                    '${'auth.resetting_for'.tr()}: ${state.userEmail}',
+                    style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: DesignTokens.spacing32),
+                if (state.errorMessage != null)
                   Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(DesignTokens.spacing12),
+                    margin: const EdgeInsets.only(bottom: DesignTokens.spacing24),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.withOpacity(0.5)),
+                      color: DesignTokens.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                      border: Border.all(color: DesignTokens.error.withValues(alpha: 0.5)),
                     ),
                     child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red),
+                      state.errorMessage!,
+                      style: const TextStyle(color: DesignTokens.error),
                       textAlign: TextAlign.center,
                     ),
                   ),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'New Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outline),
+                if (state.userEmail != null) ...[
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'auth.new_password'.tr(),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _confirmController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Confirm Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outline),
+                  const SizedBox(height: DesignTokens.spacing16),
+                  TextField(
+                    controller: _confirmController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'auth.confirm_new_password'.tr(),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _resetPassword,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DesignTokens.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  const SizedBox(height: DesignTokens.spacing32),
+                  ModernButton(
+                    label: 'auth.reset_password_button'.tr(),
+                    isLoading: state.isLoading,
+                    onPressed: () => ref
+                        .read(resetPasswordViewModelProvider(widget.oobCode).notifier)
+                        .resetPassword(
+                          _passwordController.text.trim(),
+                          _confirmController.text.trim(),
+                        ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text('Reset Password', style: TextStyle(color: Colors.white, fontSize: 16)),
-                ),
+                ] else ...[
+                  ModernButton(
+                    label: 'auth.go_to_login'.tr(),
+                    onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
+                  ),
+                ],
               ],
             ),
           ),

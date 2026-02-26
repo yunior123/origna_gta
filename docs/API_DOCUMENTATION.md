@@ -13,9 +13,12 @@
 3. [Gestion des Paiements (Airwallex)](#gestion-des-paiements-airwallex)
 4. [Gestion des Produits](#gestion-des-produits)
 5. [Gestion des Commandes](#gestion-des-commandes)
-6. [Administration](#administration)
-7. [Tâches Planifiées (Cron)](#tâches-planifiées-cron)
-8. [Codes d'Erreur](#codes-derreur)
+6. [Chat et Communications](#chat-et-communications)
+7. [Gestion des Adresses](#gestion-des-adresses)
+8. [Produits Numériques et Licences](#produits-numériques-et-licences)
+9. [Administration](#administration)
+10. [Tâches Planifiées (Cron)](#tâches-planifiées-cron)
+11. [Codes d'Erreur](#codes-derreur)
 
 ---
 
@@ -630,6 +633,39 @@ Aucun paramètre requis
 
 ---
 
+### 7. Notifications de Retour en Stock
+
+**Endpoints:** `subscribe_stock_notification`, `unsubscribe_stock_notification`  
+**Méthode:** `POST` (Callable Function)  
+**Authentification:** ✅ Requise
+
+#### Paramètres
+
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `productId` | String | ✅ | ID du produit |
+
+---
+
+### 8. Questions et Réponses (Q&A)
+
+**Endpoints:** `ask_product_question`, `answer_product_question`, `get_product_questions`  
+**Authentification:** ✅ Requise (sauf `get_product_questions`)
+
+#### ask_product_question (Acheteur)
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `productId` | String | ✅ | ID du produit |
+| `question` | String | ✅ | Texte de la question |
+
+#### answer_product_question (Vendeur)
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `questionId` | String | ✅ | ID de la question |
+| `answer` | String | ✅ | Texte de la réponse |
+
+---
+
 ## Gestion des Commandes
 
 ### 1. Confirmer la Réception de Commande
@@ -798,49 +834,104 @@ Aucun paramètre requis
 
 ---
 
-## Administration
+### 5. Demandes de Retour
 
-### 1. Mettre à Jour les Rôles Utilisateur
+**Endpoints:** `create_return_request`, `approve_return_request`, `reject_return_request`  
+**Authentification:** ✅ Requise
 
-**Endpoint:** `update_user_roles`  
+#### create_return_request (Acheteur)
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `orderId` | String | ✅ | ID de la commande |
+| `itemId` | String | ✅ | ID de l'article |
+| `reason` | String | ✅ | Raison du retour |
+
+#### approve_return_request (Vendeur/Admin)
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `requestId` | String | ✅ | ID de la demande de retour |
+
+---
+
+## Chat et Communications
+
+### 1. Obtenir ou Créer une Conversation
+
+**Endpoint:** `get_or_create_chat`  
 **Méthode:** `POST` (Callable Function)  
-**Authentification:** ✅ Requise (Admin avec MFA récent < 5 min)
+**Authentification:** ✅ Requise (Premium uniquement)
 
 #### Paramètres
 
 | Paramètre | Type | Requis | Description |
 |-----------|------|--------|-------------|
-| `targetUserId` | String | ✅ | ID de l'utilisateur cible |
-| `roles` | Array[String] | ✅ | Nouveaux rôles: `buyer`, `seller`, `admin` |
-
-#### Exemple de Requête
-
-```json
-{
-  "targetUserId": "user_abc123",
-  "roles": ["buyer", "seller"]
-}
-```
+| `otherUserId` | String | ✅ | ID de l'autre participant |
+| `productId` | String | ❌ | ID du produit lié à la conversation |
 
 #### Réponse Réussie (200)
 
 ```json
 {
   "success": true,
-  "newRoles": ["buyer", "seller"]
+  "chatId": "chat_abc123"
 }
 ```
 
-#### Erreurs Possibles
+---
 
-- `unauthenticated` - Utilisateur non authentifié
-- `invalid-argument` - Paramètres invalides
-- `not-found` - Utilisateur cible ou admin introuvable
-- `permission-denied` - Rôle admin requis, MFA expirée, ou tentative de modifier ses propres rôles
+### 2. Envoyer un Message
+
+**Endpoint:** `send_message`  
+**Méthode:** `POST` (Callable Function)  
+**Authentification:** ✅ Requise
+
+#### Paramètres
+
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `chatId` | String | ✅ | ID de la conversation |
+| `text` | String | ✅ | Texte du message |
 
 ---
 
-### 2. Suspendre un Vendeur
+### 3. Marquer comme Lu
+
+**Endpoint:** `mark_messages_read`  
+**Méthode:** `POST` (Callable Function)  
+**Authentification:** ✅ Requise
+
+#### Paramètres
+
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `chatId` | String | ✅ | ID de la conversation |
+
+---
+
+## Gestion des Adresses
+
+### 1. Ajouter une Adresse
+**Endpoint:** `add_buyer_address`
+
+### 2. Mettre à Jour une Adresse
+**Endpoint:** `update_buyer_address`
+
+### 3. Supprimer une Adresse
+**Endpoint:** `delete_buyer_address`
+
+---
+
+## Produits Numériques et Licences
+
+### 1. Activer une Licence
+**Endpoint:** `activate_license`
+
+### 2. Générer une Session de Téléchargement
+**Endpoints:** `generate_book_download_session`, `generate_software_download_session`
+
+---
+
+## Administration
 
 **Endpoint:** `suspend_seller`  
 **Méthode:** `POST` (Callable Function)  

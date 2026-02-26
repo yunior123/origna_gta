@@ -11,17 +11,22 @@
 |------|---------|----------------|
 | `main.py` | All Cloud Functions | Function registration, Stripe init, validation helpers |
 
-### Handlers — `functions/handlers/` (57 Cloud Functions total)
+### Handlers — `functions/handlers/` (72 Cloud Functions total)
 | File | Key Functions | Responsibility |
 |------|---------------|----------------|
 | `payment_stripe.py` | `create_checkout_session`, `verify_cart_prices`, `stripe_webhook`, `capture_payment`, `create_connect_account`, `get_connect_account_status`, `create_account_link`, `process_charge_refunded`, `process_dispute_created`, `process_dispute_closed`, `process_dispute_updated`, `process_dispute_funds_reinstated` | Stripe payments: checkout, capture, webhooks, Connect onboarding, dispute handling |
-| `payment_airwallex.py` | `airwallex_create_seller_account`, `airwallex_process_payment`, `airwallex_capture_payment`, `airwallex_webhook` | Alternative payment provider (gated, post-launch) |
 | `payment_providers.py` | `get_payment_providers`, `update_payment_provider`, `get_provider_status` | Admin payment provider management (enable/disable) |
-| `orders.py` | `confirm_order_receipt`, `update_order_status`, `update_item_status`, `refund_order_item`, `cancel_order`, `approve_shipping_cost`, `update_shipping_cost`, `on_order_status_changed` | Order state machine, item status, refunds, shipping approval. Note: orders are created in `create_checkout_session` |
-| `products.py` | `upload_product_images`, `delete_product`, `submit_product_rating`, `configure_algolia`, `get_products_paginated`, `get_seller_products_paginated`, `get_product_ratings_paginated`, `on_product_created`, `on_product_updated`, `on_product_deleted` | Product management, Algolia sync triggers, image upload, ratings. Note: product create/update via Firestore triggers |
-| `admin.py` | `update_user_roles`, `suspend_seller`, `unsuspend_seller`, `admin_update_product_stock`, `admin_mfa_enroll`, `admin_mfa_verify`, `admin_mfa_verify_backup`, `admin_mfa_disable`, `delete_account`, `export_my_data`, `unsubscribe_email` | Role management, seller suspension, MFA (4 endpoints), CASL/PIPEDA compliance (export, unsubscribe, delete) |
-| `users.py` | `update_user_profile`, `get_user_profile`, `update_email_consent` | User profile CRUD, email consent management |
-| `cron_jobs.py` | `auto_capture_confirmed_receipts`, `check_expired_authorizations`, `auto_archive_old_orders`, `monitor_algolia_sync`, `cleanup_stale_rate_limits`, `cleanup_orphaned_r2_images`, `cleanup_stale_webhook_events`, `cleanup_stale_security_alerts`, `retry_failed_algolia_syncs` | 9 scheduled cron jobs: payment capture, authorization expiry, archiving, Algolia monitoring, cleanup tasks |
+| `orders.py` | `confirm_order_receipt`, `update_order_status`, `update_item_status`, `refund_order_item`, `cancel_order`, `approve_shipping_cost`, `update_shipping_cost`, `on_order_status_changed`, `create_return_request`, `approve_return_request`, `reject_return_request` | Order state machine, item status, refunds, shipping approval, and return requests. |
+| `products.py` | `upload_product_images`, `delete_product`, `submit_product_rating`, `configure_algolia`, `get_products_paginated`, `get_seller_products_paginated`, `get_product_ratings_paginated`, `on_product_created`, `on_product_updated`, `on_product_deleted`, `subscribe_stock_notification`, `unsubscribe_stock_notification`, `ask_product_question`, `answer_product_question`, `get_product_questions` | Product management, Algolia sync, ratings, stock notifications, and product Q&A. |
+| `chat.py` | `get_or_create_chat`, `send_message`, `mark_messages_read` | Real-time chat between buyers and sellers (Premium feature). |
+| `addresses.py` | `add_buyer_address`, `update_buyer_address`, `delete_buyer_address`, `set_default_buyer_address` | User shipping address management. |
+| `digital.py` | `activate_license`, `deactivate_license`, `generate_book_download_session`, `generate_software_download_session`, `verify_license` | Digital products: license management and secure download sessions. |
+| `coupons.py` | `validate_coupon`, `apply_coupon_to_order`, `admin_create_coupon` | Platform-wide and seller-specific discount coupons. |
+| `subscriptions.py` | `create_premium_subscription`, `cancel_premium_subscription`, `get_subscription_status` | Premium membership management for waived fees and advanced features. |
+| `admin.py` | `update_user_roles`, `suspend_seller`, `unsuspend_seller`, `admin_update_product_stock`, `admin_mfa_enroll`, `admin_mfa_verify`, `admin_mfa_verify_backup`, `admin_mfa_disable`, `delete_account`, `export_my_data`, `unsubscribe_email` | Role management, seller suspension, MFA, and CASL/PIPEDA compliance. |
+| `users.py` | `update_user_profile`, `get_user_profile`, `update_email_consent` | User profile CRUD and email consent management. |
+| `cron_jobs.py` | `auto_capture_confirmed_receipts`, `check_expired_authorizations`, `auto_archive_old_orders`, `monitor_algolia_sync`, `cleanup_stale_rate_limits`, `cleanup_orphaned_r2_images`, `cleanup_stale_webhook_events`, `cleanup_stale_security_alerts`, `retry_failed_algolia_syncs` | 9 scheduled cron jobs for maintenance and automated tasks. |
+| `email_tasks.py` | `send_welcome_email`, `send_order_confirmation`, `send_shipping_update` | Asynchronous email tasks triggered by events. |
 
 ### Models — `functions/models/`
 | File | Classes | Fields of Note |
@@ -118,8 +123,7 @@
 | `generated/order_models.dart` | `Order`, `OrderItem` | Freezed — primary |
 | `generated/product_models.dart` | `Product`, `ShippingConfig` | Freezed — primary |
 | `generated/user_models.dart` | `User`, `SellerProfile` | Freezed — primary |
-| `models.dart` | Legacy: `UserModel`, `CartItemModel`, `ProductModel`, `OrderModel` | ⚠️ `Address` collision |
-| `models_compat.dart` | Compatibility layer | Bridges legacy → generated |
+| `models.dart` | `UserModel`, `CartItemModel`, `ProductModel`, `OrderModel`, `Address` | Manual non-Freezed models |
 | `enum_extensions.dart` | Enum helpers | String↔enum conversion |
 
 ### Services — `lib/services/`
