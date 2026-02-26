@@ -99,7 +99,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           else if (vmState.errorMessage != null && vmState.errorMessage!.contains('Premium'))
             Expanded(
               child: Center(
-                child: PremiumPaywallWidget(featureName: 'Chat with Sellers'),
+                child: PremiumPaywallWidget(featureName: 'subscription.chat_with_sellers'.tr()),
               ),
             )
           else if (vmState.errorMessage != null)

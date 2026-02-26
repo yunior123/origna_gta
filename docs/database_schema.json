@@ -2776,29 +2776,10 @@
       "description": "Seller warehouse/shipping locations \u2014 subcollection: users/{sellerId}/warehouses/{warehouseId}",
       "documentId": "{warehouseId}",
       "fields": {
-        "name": {
+        "label": {
           "type": "string",
-          "required": true
-        },
-        "street": {
-          "type": "string",
-          "required": true
-        },
-        "city": {
-          "type": "string",
-          "required": true
-        },
-        "province": {
-          "type": "string",
-          "required": true
-        },
-        "postalCode": {
-          "type": "string",
-          "required": true
-        },
-        "country": {
-          "type": "string",
-          "required": true
+          "required": true,
+          "description": "Seller-given name (1\u2013100 chars)"
         },
         "isDefault": {
           "type": "boolean",
@@ -2807,6 +2788,20 @@
         "createdAt": {
           "type": "timestamp",
           "required": true
+        },
+        "type": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "warehouse",
+            "personal"
+          ],
+          "description": "Location type"
+        },
+        "address": {
+          "type": "map",
+          "required": true,
+          "description": "Nested address object: {street, city, state (2-letter province), postalCode, country, latitude?, longitude?}"
         }
       }
     },

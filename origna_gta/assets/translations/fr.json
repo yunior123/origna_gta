@@ -236,7 +236,8 @@
     "manage": "Gérer",
     "required": "Requis",
     "publish": "Publier",
-    "premium": "Premium"
+    "premium": "Premium",
+    "error_loading": "Une erreur s'est produite. Veuillez réessayer."
   },
   "auth": {
     "sign_in": "Se connecter",
@@ -743,7 +744,8 @@
       "warranty": "Garantie",
       "return_policy": "Politique de retour"
     },
-    "est_business_days_hint": "p.ex. 5"
+    "est_business_days_hint": "p.ex. 5",
+    "select_all_options": "Veuillez sélectionner toutes les options ci-dessus"
   },
   "cart": {
     "your_cart": "Votre panier",
@@ -861,7 +863,9 @@
     "order_review_shipping_to": "Livrer à",
     "coupon_applied_label": "Coupon ({code})",
     "coupon_applied_generic": "Coupon appliqué",
-    "calculating_delivery": "Calcul des options de livraison…"
+    "calculating_delivery": "Calcul des options de livraison…",
+    "coupon_invalid_code": "Code de coupon invalide ou expiré.",
+    "coupon_apply_failed": "Impossible d'appliquer le coupon. Veuillez réessayer."
   },
   "orders": {
     "my_orders": "Mes commandes",
@@ -945,7 +949,8 @@
       "partial_refund_desc": "Remboursement partiel effectué",
       "disputed": "Contestée",
       "disputed_desc": "Litige de paiement ouvert"
-    }
+    },
+    "items_ordered": "{count} article(s) commandé(s)"
   },
   "seller": {
     "become_seller": "Devenir vendeur",
@@ -1309,7 +1314,11 @@
     "start_shopping": "Commencer les achats",
     "activating_membership": "Activation de votre abonnement...",
     "activation_delayed_title": "Activation en cours",
-    "activation_delayed_desc": "Nous n'avons pas encore reçu la confirmation de Stripe. Cela peut prendre quelques instants. Veuillez rafraîchir ou revenir plus tard."
+    "activation_delayed_desc": "Nous n'avons pas encore reçu la confirmation de Stripe. Cela peut prendre quelques instants. Veuillez rafraîchir ou revenir plus tard.",
+    "status_active": "ACTIF",
+    "menu_manage_desc": "Gérer l'abonnement et les notifications",
+    "menu_upgrade_desc": "Passez au niveau supérieur sans frais & chat vendeur — CAD 7,86 $/mois",
+    "premium_label": "Abonnement Premium"
   },
   "chat": {
     "message_copied": "Message copié",

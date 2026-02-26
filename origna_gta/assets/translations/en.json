@@ -237,7 +237,8 @@
     "required": "Required",
     "publish": "Publish",
     "premium": "Premium",
-    "back_to_home": "Back to Home"
+    "back_to_home": "Back to Home",
+    "error_loading": "Something went wrong. Please try again."
   },
   "auth": {
     "sign_in": "Sign In",
@@ -744,7 +745,8 @@
       "warranty": "Warranty",
       "return_policy": "Return Policy"
     },
-    "est_business_days_hint": "e.g. 5"
+    "est_business_days_hint": "e.g. 5",
+    "select_all_options": "Please select all options above"
   },
   "cart": {
     "your_cart": "Your Cart",
@@ -862,7 +864,9 @@
     "order_review_shipping_to": "Ship To",
     "coupon_applied_label": "Coupon ({code})",
     "coupon_applied_generic": "Coupon Applied",
-    "calculating_delivery": "Calculating delivery options…"
+    "calculating_delivery": "Calculating delivery options…",
+    "coupon_invalid_code": "Invalid or expired coupon code.",
+    "coupon_apply_failed": "Unable to apply coupon. Please try again."
   },
   "orders": {
     "my_orders": "My Orders",
@@ -946,7 +950,8 @@
       "partial_refund_desc": "Partial refund issued",
       "disputed": "Disputed",
       "disputed_desc": "Payment dispute opened"
-    }
+    },
+    "items_ordered": "{count} item(s) ordered"
   },
   "seller": {
     "become_seller": "Become a Seller",
@@ -1307,7 +1312,11 @@
     "back_to_home": "Back to Home",
     "welcome_to_premium": "Welcome to Premium!",
     "subscription_active_desc": "Your subscription is active. Enjoy all the benefits below.",
-    "start_shopping": "Start Shopping"
+    "start_shopping": "Start Shopping",
+    "status_active": "ACTIVE",
+    "menu_manage_desc": "Manage subscription & notifications",
+    "menu_upgrade_desc": "Upgrade for no fees & seller chat — CAD $7.86/mo",
+    "premium_label": "Premium Membership"
   },
   "chat": {
     "message_copied": "Message copied",

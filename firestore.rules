@@ -410,10 +410,9 @@ service cloud.firestore {
         isAdmin()
       );
       allow create: if isAuthenticated() && request.resource.data.buyerId == request.auth.uid;
-      allow update: if isAdmin() || (
-        isAuthenticated() && resource.data.sellerId == request.auth.uid &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['returnStatus', 'returnTrackingNumber', 'updatedAt'])
-      );
+      // Sellers can only update tracking/status via backend Cloud Functions (Admin SDK bypasses rules).
+      // Direct client writes are blocked — use approve_return_request CF instead.
+      allow update: if isAdmin();
     }
     
     // ================================================================
@@ -634,7 +633,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         resource.data.buyerId == request.auth.uid ||
         resource.data.sellerId == request.auth.uid ||
-        (isAdmin() && resource.data.get('flagged', false) == true)
+        isAdmin()
       );
       // Chat threads created via backend only
       allow create, update, delete: if false;
@@ -644,7 +643,7 @@ service cloud.firestore {
         allow read: if isAuthenticated() && (
           get(/databases/$(database)/documents/chats/$(chatId)).data.buyerId == request.auth.uid ||
           get(/databases/$(database)/documents/chats/$(chatId)).data.sellerId == request.auth.uid ||
-          (isAdmin() && get(/databases/$(database)/documents/chats/$(chatId)).data.get('flagged', false) == true)
+          isAdmin()
         );
         // Messages are written only via backend (Admin SDK bypasses rules)
         allow create, update, delete: if false;

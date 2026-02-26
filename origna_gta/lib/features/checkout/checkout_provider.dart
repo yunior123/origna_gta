@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:math';
 import 'package:uuid/uuid.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -189,7 +190,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final result = await functions.httpsCallable(CloudFunctionEndpoints.applyCoupon).call({
         Fields.couponCode: trimmed,
         ApiKeys.cartSubtotalCents: subtotalCents,
-        'sellerIds': sellerIds ?? [],
+        Fields.sellerIds: sellerIds ?? [],
       });
       final data = (result.data as Map<Object?, Object?>).cast<String, dynamic>();
       final discountCents = (data[Fields.discountAmountCents] as num?)?.toInt() ?? 0;
@@ -199,9 +200,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final postDiscountSubtotal = (subtotalCents - discountCents) / 100.0;
       calculateTaxes(postDiscountSubtotal, shippingCost: state.shippingCost);
     } on FirebaseFunctionsException catch (e) {
-      state = state.copyWith(isCouponLoading: false, couponError: e.message ?? 'Invalid coupon code');
+      state = state.copyWith(isCouponLoading: false, couponError: e.message ?? 'checkout.coupon_invalid_code'.tr());
     } catch (e, st) {
-      state = state.copyWith(isCouponLoading: false, couponError: 'Unable to apply coupon. Please try again.');
+      state = state.copyWith(isCouponLoading: false, couponError: 'checkout.coupon_apply_failed'.tr());
       AppError.log(e, stackTrace: st, context: 'checkout_applyCoupon');
     }
   }
@@ -285,6 +286,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
                 Fields.quantity: item.quantity,
                 Fields.sellerId: item.sellerId,
                 Fields.imageUrls: item.imageUrls,
+                Fields.isDigital: item.isDigital,
                 if (item.buyerNote != null && item.buyerNote!.isNotEmpty)
                   Fields.buyerNote: item.buyerNote,
               },

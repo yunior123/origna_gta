@@ -258,10 +258,13 @@ class _CheckoutContent extends ConsumerWidget {
         final digitalTotal = subtotal + digitalTax;
         return Container(
           decoration: BoxDecoration(
+            // ── AUDIT FIX [CRITICAL]: textPrimary (#1A1A2E) was used as both
+            // gradient start AND end in dark mode — identical opaque colours,
+            // and semantically wrong (text colour ≠ surface colour).
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [isDark ? DesignTokens.textPrimary : DesignTokens.surface, isDark ? DesignTokens.textPrimary : Colors.white],
+              colors: [isDark ? DesignTokens.darkBackground : DesignTokens.surface, isDark ? DesignTokens.darkSurface : Colors.white],
             ),
           ),
           child: Column(
@@ -289,7 +292,7 @@ class _CheckoutContent extends ConsumerWidget {
                       const SizedBox(height: 28),
                       _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
                       const SizedBox(height: 28),
-                      _CouponSection(subtotalCents: (subtotal * 100).round()),
+                      _CouponSection(subtotalCents: (subtotal * 100).round(), sellerIds: items.map((i) => i.sellerId).where((id) => id.isNotEmpty).toSet().toList()),
                       const SizedBox(height: 28),
                       _OrderSummary(items: items, subtotal: subtotal, state: digitalProvince),
                       const SizedBox(height: 40),
@@ -319,10 +322,11 @@ class _CheckoutContent extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
+        // ── AUDIT FIX [CRITICAL]: same textPrimary-as-background bug fixed ──
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [isDark ? DesignTokens.textPrimary : DesignTokens.surface, isDark ? DesignTokens.textPrimary : Colors.white],
+          colors: [isDark ? DesignTokens.darkBackground : DesignTokens.surface, isDark ? DesignTokens.darkSurface : Colors.white],
         ),
       ),
       child: Column(
@@ -359,7 +363,7 @@ class _CheckoutContent extends ConsumerWidget {
                   ],
                   _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
                   const SizedBox(height: 28),
-                  _CouponSection(subtotalCents: (subtotal * 100).round()),
+                  _CouponSection(subtotalCents: (subtotal * 100).round(), sellerIds: items.map((i) => i.sellerId).where((id) => id.isNotEmpty).toSet().toList()),
                   const SizedBox(height: 28),
                   _OrderSummary(items: items, subtotal: subtotal, state: address.state),
                   const SizedBox(height: 40),
@@ -454,18 +458,36 @@ class _DeliveryOptionsSection extends ConsumerWidget {
     final baseShippingCost = ref.watch(checkoutStateProvider.select((state) => state.baseShippingCost));
 
     if (isCalculating) {
+      final isDarkCalc = Theme.of(context).brightness == Brightness.dark;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('checkout.delivery_speed_title'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const ModernLoadingIndicator(size: 20, strokeWidth: 2),
-              const SizedBox(width: 12),
-              Text('checkout.calculating_delivery'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
+              Text('checkout.delivery_speed_title'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: ModernLoadingIndicator(strokeWidth: 2.5, color: DesignTokens.primary, centered: false),
+              ),
             ],
           ),
+          const SizedBox(height: 12),
+          // ── AUDIT FIX [HIGH]: Skeleton cards replace blank space while calculating ──
+          for (int i = 0; i < 3; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                height: 72,
+                decoration: BoxDecoration(
+                  color: isDarkCalc
+                      ? DesignTokens.darkCard.withValues(alpha: 0.7)
+                      : DesignTokens.outlineVariant.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
         ],
       );
     }
@@ -505,7 +527,12 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isSelected ? DesignTokens.primary.withValues(alpha: 0.08) : Colors.white,
+                    // ── AUDIT FIX [HIGH]: was Colors.white — not dark-mode safe ──
+                    color: isSelected
+                        ? DesignTokens.primary.withValues(alpha: 0.08)
+                        : (Theme.of(context).brightness == Brightness.dark
+                            ? DesignTokens.darkCard
+                            : Colors.white),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outlineVariant, width: isSelected ? 1.5 : 1),
                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 1))],
@@ -712,7 +739,7 @@ class _OrderSummary extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.darkCard : Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
           ),
@@ -867,6 +894,7 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
   Widget build(BuildContext context) {
     final couponCode = ref.watch(checkoutStateProvider.select((s) => s.couponCode));
     final isLoading = ref.watch(checkoutStateProvider.select((s) => s.isCouponLoading));
+    final isProcessing = ref.watch(checkoutStateProvider.select((s) => s.isProcessing));
     final couponError = ref.watch(checkoutStateProvider.select((s) => s.couponError));
     final notifier = ref.read(checkoutStateProvider.notifier);
     final applied = couponCode != null;
@@ -881,12 +909,12 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
             Expanded(
               child: TextField(
                 controller: _controller,
-                enabled: !applied && !isLoading,
+                enabled: !applied && !isLoading && !isProcessing,
                 textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
                   hintText: 'checkout.coupon_hint'.tr(),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? DesignTokens.darkCard : Colors.white,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
@@ -910,7 +938,7 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
                   )
                 : ElevatedButton(
                     key: const Key('checkout_apply_coupon_button'),
-                    onPressed: isLoading ? null : () => _apply(notifier),
+                    onPressed: (isLoading || isProcessing) ? null : () => _apply(notifier),
                     style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     child: isLoading ? const SizedBox(width: 18, height: 18, child: ModernLoadingIndicator(strokeWidth: 2)) : Text('common.apply'.tr()),
                   ),

@@ -744,6 +744,8 @@ class OrderStatusValues:
     FAILED = "failed"
     EXPIRED = "expired"
     DISPUTED = "disputed"
+    REFUNDED = "refunded"
+    PARTIALLY_REFUNDED = "partially_refunded"
 
     ALL: frozenset[str] = frozenset(
         {
@@ -757,6 +759,8 @@ class OrderStatusValues:
             FAILED,
             EXPIRED,
             DISPUTED,
+            REFUNDED,
+            PARTIALLY_REFUNDED,
         }
     )
 
@@ -771,17 +775,21 @@ class OrderStatusValues:
         "processing": ["shipped", "cancelled"],
         "shipped": ["in_transit", "delivered"],
         "in_transit": ["delivered", "cancelled"],
-        "delivered": ["disputed"],
+        "delivered": ["disputed", "refunded", "partially_refunded"],
         "cancelled": [],  # Terminal
         "failed": ["pending"],  # Retry
         "expired": ["pending"],  # Retry
-        "disputed": [],  # Resolved via paymentStatus
+        "disputed": ["refunded", "partially_refunded"],  # Resolved via payment refund
+        "refunded": [],  # Terminal
+        "partially_refunded": [],  # Terminal
     }
 
     # Terminal states — no further transitions allowed
     TERMINAL_STATES: frozenset[str] = frozenset(
         {
             "cancelled",
+            "refunded",
+            "partially_refunded",
         }
     )
 

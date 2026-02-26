@@ -164,7 +164,7 @@ class AlgoliaProductRepository implements ProductRepository {
   }
 
   @override
-  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls}) async {
+  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls, String? bookSourceUrl}) async {
     throw UnimplementedError('createProductAtomic should be handled by FirebaseProductRepository');
   }
 

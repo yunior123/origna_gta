@@ -99,9 +99,10 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
           required String country,
           required bool isDefault,
         }) async {
-          // Build a minimal Address for the warehouse
-          // Full address editing (street, postal) is handled inline in the form
-          Navigator.pop(context);
+          // FIX L-01: This legacy callback is never invoked — the form always calls
+          // onSaveFull with the complete address map.  Assert so any accidental
+          // call surfaces immediately in tests rather than silently dropping a save.
+          assert(false, 'onSave should never be called; use onSaveFull instead');
         },
         onSaveFull: ({
           required String label,
@@ -214,7 +215,7 @@ class _WarehousesList extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: DesignTokens.darkSurface,
         title: const Text('Delete location?').tr(),
-        content: Text('Remove "$label"? Products using this location will retain the ID.').tr(),
+        content: Text('Remove "$label"? Product references to this location will be cleaned up automatically.').tr(),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -574,7 +575,18 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                       label: 'Province',
                       hint: 'ON',
                       maxLength: 2,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      // FIX H-02: Validate against the 13 canonical CA province/territory codes.
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        const validProvinces = {
+                          'AB', 'BC', 'MB', 'NB', 'NL', 'NS',
+                          'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT',
+                        };
+                        if (!validProvinces.contains(v.trim().toUpperCase())) {
+                          return 'Invalid province code';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                 ],
@@ -590,7 +602,14 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                       label: 'Postal Code',
                       hint: 'M5V 3A8',
                       maxLength: 7,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      // FIX H-03: Validate Canadian postal code format (e.g. M5V 3A8 or M5V3A8).
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        final upper = v.trim().toUpperCase();
+                        final caPostal = RegExp(r'^[A-Z]\d[A-Z][ -]?\d[A-Z]\d$');
+                        if (!caPostal.hasMatch(upper)) return 'Format: A1A 1A1';
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 8),

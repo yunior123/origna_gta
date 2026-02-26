@@ -24,10 +24,19 @@ class FirebaseOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<void> confirmReceipt(String orderId) async {
-    await _functions.httpsCallable(CloudFunctionEndpoints.capturePayment).call({
-      Fields.orderId: orderId,
-    });
+  Future<void> confirmReceipt(String orderId, {String? productId}) async {
+    if (productId != null && productId.isNotEmpty) {
+      // Per-item receipt confirmation — triggers partial payout for that seller
+      await _functions.httpsCallable(CloudFunctionEndpoints.confirmItemReceipt).call({
+        Fields.orderId: orderId,
+        Fields.productId: productId,
+      });
+    } else {
+      // Whole-order payment capture (legacy / single-seller path)
+      await _functions.httpsCallable(CloudFunctionEndpoints.capturePayment).call({
+        Fields.orderId: orderId,
+      });
+    }
   }
 
   @override
@@ -140,7 +149,7 @@ abstract class OrderRepository {
   Future<void> capturePayment(String orderId);
 
   /// Buyer confirms receipt of [orderId]; triggers capture if not yet done.
-  Future<void> confirmReceipt(String orderId);
+  Future<void> confirmReceipt(String orderId, {String? productId});
 
   /// Creates a Stripe Checkout session for the given [orderData] payload.
   /// Returns a map containing at least `{sessionId, checkoutUrl}`.

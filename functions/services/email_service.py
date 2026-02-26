@@ -1757,7 +1757,9 @@ def get_return_request_submitted_email(return_data: dict, return_id: str, order_
     cta_label = _t("cta.manage_orders", lang) if recipient == UserRoleValues.SELLER else _t("cta.view_orders", lang)
     content += _cta_button(f"{APP_BASE_URL}/orders", cta_label)
     title = "New Return Request" if recipient == UserRoleValues.SELLER else "Return Request Submitted"
-    return _email_wrapper(title, content, include_gst=False, lang=lang)
+    # FIX F6-5: Pass recipient_email so CASL footer generates personalised unsubscribe link
+    _rec_email = return_data.get(Fields.CUSTOMER_EMAIL, "") if recipient != UserRoleValues.SELLER else ""
+    return _email_wrapper(title, content, include_gst=False, lang=lang, recipient_email=_rec_email)
 
 
 def get_return_request_approved_email(return_data: dict, return_id: str, order_id: str, lang: str = "en") -> str:
@@ -1805,7 +1807,8 @@ def get_return_request_approved_email(return_data: dict, return_id: str, order_i
         </td></tr>
     """
     content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
-    return _email_wrapper("Return Approved", content, include_gst=False, lang=lang)
+    # FIX F6-5: Pass recipient_email for personalised unsubscribe URL in CASL footer
+    return _email_wrapper("Return Approved", content, include_gst=False, lang=lang, recipient_email=return_data.get(Fields.CUSTOMER_EMAIL, ""))
 
 
 def get_return_request_rejected_email(return_data: dict, return_id: str, order_id: str, lang: str = "en") -> str:
@@ -1854,7 +1857,8 @@ def get_return_request_rejected_email(return_data: dict, return_id: str, order_i
         </td></tr>
     """
     content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
-    return _email_wrapper("Return Request Update", content, include_gst=False, lang=lang)
+    # FIX F6-5: Pass recipient_email for personalised unsubscribe URL in CASL footer
+    return _email_wrapper("Return Request Update", content, include_gst=False, lang=lang, recipient_email=return_data.get(Fields.CUSTOMER_EMAIL, ""))
 
 
 def send_email(

@@ -49,6 +49,7 @@ class PaymentStatusEnum(StrEnum):
     CAPTURING = "capturing"
     CANCELLING = "cancelling"
     EXPIRING = "expiring"
+    VOIDED = "voided"
 
 
 class DeliveryStatusEnum(StrEnum):

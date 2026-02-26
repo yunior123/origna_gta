@@ -34,7 +34,9 @@ class BuyerOrdersViewModel extends StateNotifier<BuyerOrdersState> {
     if (state.confirmingItemId != null) return false;
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null, confirmingItemId: itemKey);
     try {
-      await _ref.read(orderRepositoryProvider).confirmReceipt(orderId);
+      // Extract productId from itemKey (format: "orderId_productId")
+      final productId = itemKey.startsWith(orderId + '_') ? itemKey.substring(orderId.length + 1) : null;
+      await _ref.read(orderRepositoryProvider).confirmReceipt(orderId, productId: productId);
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {

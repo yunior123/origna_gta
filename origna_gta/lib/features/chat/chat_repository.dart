@@ -6,6 +6,9 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 class ChatMessage {
   final String id;
   final String senderId;
+  /// Denormalized sender display name — written server-side at send time (chat.py F-70).
+  /// Avoids an extra users/{uid} fetch to show the sender's name in the chat UI.
+  final String senderDisplayName;
   final String text;
   final DateTime createdAt;
   final bool isRead;
@@ -13,6 +16,7 @@ class ChatMessage {
   const ChatMessage({
     required this.id,
     required this.senderId,
+    required this.senderDisplayName,
     required this.text,
     required this.createdAt,
     required this.isRead,
@@ -24,6 +28,7 @@ class ChatMessage {
     return ChatMessage(
       id: doc.id,
       senderId: data[Fields.senderId] as String? ?? '',
+      senderDisplayName: data[Fields.senderDisplayName] as String? ?? '',
       text: data[Fields.messageText] as String? ?? '',
       createdAt: ts is Timestamp ? ts.toDate() : DateTime.now(),
       isRead: data[Fields.isRead] as bool? ?? false,

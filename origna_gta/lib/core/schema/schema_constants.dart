@@ -259,6 +259,7 @@ abstract final class CloudFunctionEndpoints {
 
   // === ORDER ENDPOINTS ===
   static const updateOrderStatus = 'update_order_status';
+  static const confirmItemReceipt = 'confirm_item_receipt';
   static const updateItemStatus = 'update_item_status';
   static const cancelOrder = 'cancel_order';
   static const refundOrderItem = 'refund_order_item';
@@ -1152,7 +1153,12 @@ abstract final class OrderStatusValues {
     failed,
     expired,
     disputed,
+    refunded,
+    partiallyRefunded,
   };
+
+  static const refunded = 'refunded';
+  static const partiallyRefunded = 'partially_refunded';
 
   /// Centralized state machine — single source of truth for order transitions.
   /// Must match schema_constants.py OrderStatusValues.VALID_TRANSITIONS.
@@ -1162,15 +1168,17 @@ abstract final class OrderStatusValues {
     processing: [shipped, cancelled],
     shipped: [inTransit, delivered],
     inTransit: [delivered, cancelled],
-    delivered: [disputed],
+    delivered: [disputed, refunded, partiallyRefunded],
     cancelled: [], // Terminal
     failed: [pending], // Retry
     expired: [pending], // Retry
-    disputed: [], // Resolved via paymentStatus
+    disputed: [refunded, partiallyRefunded], // Resolved via payment refund
+    refunded: [], // Terminal
+    partiallyRefunded: [], // Terminal
   };
 
   /// Terminal states — no further transitions allowed.
-  static const terminalStates = {cancelled};
+  static const terminalStates = {cancelled, refunded, partiallyRefunded};
 }
 
 // =============================================================================

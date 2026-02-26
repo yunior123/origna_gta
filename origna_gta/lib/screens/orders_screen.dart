@@ -59,6 +59,10 @@ _StatusConfig _orderStatusConfig(OrderStatus status) {
       return _StatusConfig(color: DesignTokens.textSecondary, icon: Icons.timer_off, label: 'orders.status.expired'.tr(), description: 'orders.status.expired_desc'.tr());
     case OrderStatus.disputed:
       return _StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'orders.status.disputed'.tr(), description: 'orders.status.disputed_desc'.tr());
+    case OrderStatus.refunded:
+      return _StatusConfig(color: DesignTokens.info, icon: Icons.replay, label: 'orders.status.refunded'.tr(), description: 'orders.status.refunded_desc'.tr());
+    case OrderStatus.partiallyRefunded:
+      return _StatusConfig(color: DesignTokens.info, icon: Icons.replay, label: 'orders.status.partially_refunded'.tr(), description: 'orders.status.partially_refunded_desc'.tr());
   }
 }
 

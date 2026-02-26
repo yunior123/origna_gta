@@ -105,13 +105,30 @@ class ChatViewModel extends StateNotifier<ChatState> {
     }
   }
 
+  /// Backend enforces MIN_MESSAGE_LENGTH=10, MAX_MESSAGE_LENGTH=1000 (ValidationLimits).
+  /// Mirror those limits here so the UI rejects bad input without a network round-trip.
+  static const int _minMessageLength = 10;
+  static const int _maxMessageLength = 1000;
+
   Future<void> sendMessage(String text) async {
     final chatId = state.chatId;
-    if (chatId == null || text.trim().isEmpty) return;
+    final trimmed = text.trim();
+    if (chatId == null || trimmed.isEmpty) return;
     if (state.isLoading) return; // in-flight guard
+
+    // Mirror backend ValidationLimits to avoid unnecessary round-trips
+    if (trimmed.length < _minMessageLength) {
+      state = state.copyWith(errorMessage: 'Message is too short (minimum $_minMessageLength characters).');
+      return;
+    }
+    if (trimmed.length > _maxMessageLength) {
+      state = state.copyWith(errorMessage: 'Message exceeds the maximum length of $_maxMessageLength characters.');
+      return;
+    }
+
     state = state.copyWith(isLoading: true);
     try {
-      await _ref.read(chatRepositoryProvider).sendMessage(chatId, text);
+      await _ref.read(chatRepositoryProvider).sendMessage(chatId, trimmed);
     } catch (e) {
       state = state.copyWith(errorMessage: _parseError(e));
     } finally {

@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/notifications/notification_provider.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -35,6 +36,12 @@ class NotificationService {
   static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
+  /// FIX-5 (HIGH): Global navigator key enabling headless deep-link routing when
+  /// the user taps a push notification while the app is backgrounded or terminated.
+  /// Must be wired to MaterialApp.navigatorKey in origna_app.dart.
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   @visibleForTesting
   FirebaseMessaging? messagingOverride;
 
@@ -52,6 +59,42 @@ class NotificationService {
   void dispose() {
     _tokenSubscription?.cancel();
     _authSubscription?.close();
+  }
+
+  /// Routes to the appropriate screen based on the FCM message payload.
+  /// Called for both cold-start (getInitialMessage) and background tap (onMessageOpenedApp).
+  ///
+  /// Payload conventions (set by backend push_service.py):
+  ///   type == "order_status"   → navigate to /orders (buyer order list)
+  ///   type == "order_update"   → navigate to /orders (item-level shipped)
+  ///   type == "back_in_stock"  → navigate to /product-details with productId
+  ///   (default)                → no-op; app opens to its last state
+  void _handleNotificationTap(RemoteMessage message) {
+    final data = message.data;
+    final type = data['type'] as String?;
+
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) return;
+
+    switch (type) {
+      case 'order_status':
+      case 'order_update':
+        // Navigate buyer to their order list; an order-detail route can replace this
+        // once a dedicated /orders/:id route is added to AppRoutes.
+        navigator.pushNamed(AppRoutes.orders);
+
+      case 'back_in_stock':
+        final productId = data['productId'] as String?;
+        if (productId != null && productId.isNotEmpty) {
+          navigator.pushNamed(
+            AppRoutes.productDetails,
+            arguments: ProductDetailsArgs(productId: productId),
+          );
+        }
+
+      default:
+        debugPrint('NotificationService: unhandled notification type "$type" — ignoring tap');
+    }
   }
 
   /// Initialize the notification service. Should be called only once
@@ -124,6 +167,20 @@ class NotificationService {
 
     // Background handler is registered in main.dart before runApp — not here.
     // FCM requires onBackgroundMessage to be called at app startup.
+
+    // FIX-5 (HIGH): Handle notification tap when app is in the BACKGROUND.
+    // onMessageOpenedApp fires when the user taps a system notification while the
+    // app is backgrounded (but not terminated).
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+    // FIX-5 (HIGH): Handle notification tap when app was TERMINATED.
+    // getInitialMessage() returns the notification that launched the app (if any).
+    messaging.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        // Delay slightly so the navigator is fully mounted before pushing a route.
+        Future.delayed(const Duration(milliseconds: 300), () => _handleNotificationTap(message));
+      }
+    });
 
     // Foreground messages handler — show SnackBar for real-time order updates
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {

@@ -27,6 +27,18 @@ from schema_constants import (
 from utils.db import get_db as _get_db
 from utils.db import get_server_timestamp as _get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS
+from utils.db import get_db as _get_db  # already imported above — alias kept for clarity
+
+def _fetch_user_for_email(uid: str) -> dict:
+    """Fetch user doc fields needed for email sending (email, name, language)."""
+    try:
+        doc = _get_db().collection("users").document(uid).get()
+        if doc.exists:
+            return doc.to_dict() or {}
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"_fetch_user_for_email: failed for {uid}: {e}")
+    return {}
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +197,21 @@ def cancel_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.UPDATED_AT: _get_server_timestamp(),
             }
         )
+        # FIX F7-4: Send cancellation confirmation email
+        try:
+            user_data = _fetch_user_for_email(uid)
+            lang = user_data.get("preferredLanguage", "en")
+            recipient_email = user_data.get("email")
+            if recipient_email:
+                sub_snap2 = _get_db().collection("subscriptions").document(uid).get()
+                period_end = (sub_snap2.to_dict() or {}).get("currentPeriodEnd") if sub_snap2.exists else None
+                from services.email_service import get_premium_cancellation_email, send_email
+                html_body = get_premium_cancellation_email(user_data, period_end=period_end, lang=lang)
+                subj = "Subscription Cancellation Confirmed" if lang == "en" else "Annulation d'abonnement confirmée"
+                send_email(to_email=recipient_email, subject=subj, html_content=html_body)
+                logger.info(f"Premium cancellation email sent to {recipient_email} (uid={uid})")
+        except Exception as _e:
+            logger.error(f"cancel_subscription: failed to send cancellation email: {_e}")
         return {"success": True, "message": "Subscription will cancel at end of billing period."}
     except stripe.StripeError as e:
         logger.error(f"Stripe error canceling subscription for {uid}: {e}")
@@ -272,11 +299,29 @@ def get_subscription_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 
 def handle_subscription_created(event: stripe.Event | dict) -> None:
-    """Sync subscription.created → Firestore."""
+    """Sync subscription.created → Firestore + send welcome email."""
     # SECURITY FIX (CRITICAL-021): Use dict access to prevent AttributeError when
     # called with manual dict objects (e.g. from invoice.paid path).
     obj = event["data"]["object"] if isinstance(event, dict) else event.data.object
     _sync_subscription(obj)
+
+    # FIX F7-2: Send premium welcome email on new subscription
+    try:
+        uid = obj.get("metadata", {}).get("uid") if isinstance(obj, dict) else (obj.metadata or {}).get("uid")
+        if uid:
+            period_end_ts = obj.get("current_period_end") if isinstance(obj, dict) else getattr(obj, "current_period_end", None)
+            period_end = _ts_to_datetime(period_end_ts)
+            user_data = _fetch_user_for_email(uid)
+            lang = user_data.get("preferredLanguage", "en")
+            recipient_email = user_data.get("email")
+            if recipient_email:
+                from services.email_service import get_premium_welcome_email, send_email
+                html_body = get_premium_welcome_email(user_data, period_end=period_end, lang=lang)
+                subj = "Welcome to Origna Premium! 🌟" if lang == "en" else "Bienvenue dans Origna Premium ! 🌟"
+                send_email(to_email=recipient_email, subject=subj, html_content=html_body)
+                logger.info(f"Premium welcome email sent to {recipient_email} (uid={uid})")
+    except Exception as _e:
+        logger.error(f"handle_subscription_created: failed to send welcome email: {_e}")
 
 
 def handle_subscription_updated(event: stripe.Event | dict) -> None:
@@ -338,20 +383,57 @@ def handle_subscription_deleted(event: stripe.Event | dict) -> None:
     batch.commit()
     logger.info(f"Premium cleared for user {uid} (subscription deleted)")
 
+    # FIX F7-5: Send subscription expired/ended email
+    try:
+        user_data = _fetch_user_for_email(uid)
+        lang = user_data.get("preferredLanguage", "en")
+        recipient_email = user_data.get("email")
+        if recipient_email:
+            from services.email_service import get_premium_expired_email, send_email
+            html_body = get_premium_expired_email(user_data, lang=lang)
+            subj = "Your Origna Premium Has Ended" if lang == "en" else "Votre Origna Premium a pris fin"
+            send_email(to_email=recipient_email, subject=subj, html_content=html_body)
+            logger.info(f"Premium expired email sent to {recipient_email} (uid={uid})")
+    except Exception as _e:
+        logger.error(f"handle_subscription_deleted: failed to send expired email: {_e}")
+
 
 def handle_invoice_payment_failed(event: stripe.Event | dict) -> None:
-    """Invoice payment failed → mark past_due."""
+    """Invoice payment failed → mark past_due + send alert email (FIX F7-3)."""
     invoice = event["data"]["object"] if isinstance(event, dict) else event.data.object
     sub_id = invoice.get("subscription")
     if not sub_id:
         return
 
     _stripe_init()
+    sub = None
     try:
         sub = stripe.Subscription.retrieve(sub_id)
         _sync_subscription(sub)
     except stripe.StripeError as e:
         logger.error(f"Failed to retrieve subscription {sub_id} after payment failure: {e}")
+
+    # FIX F7-3: Notify user that their subscription renewal payment failed
+    try:
+        uid = None
+        if sub is not None:
+            uid = (sub.get("metadata", {}).get("uid") if isinstance(sub, dict)
+                   else (sub.metadata or {}).get("uid"))
+        if not uid:
+            # Try to get uid from invoice customer metadata via subscription metadata
+            uid = (invoice.get("metadata", {}) or {}).get("uid")
+        if uid:
+            user_data = _fetch_user_for_email(uid)
+            lang = user_data.get("preferredLanguage", "en")
+            recipient_email = user_data.get("email")
+            if recipient_email:
+                from services.email_service import get_premium_payment_failed_email, send_email
+                html_body = get_premium_payment_failed_email(user_data, lang=lang)
+                subj = "⚠️ Premium Payment Failed — Action Required" if lang == "en" else "⚠️ Paiement premium échoué — Action requise"
+                send_email(to_email=recipient_email, subject=subj, html_content=html_body)
+                logger.info(f"Premium payment-failed email sent to {recipient_email} (uid={uid})")
+    except Exception as _e:
+        logger.error(f"handle_invoice_payment_failed: failed to send payment-failed email: {_e}")
 
 
 def _sync_subscription(sub: dict | stripe.Subscription) -> None:

@@ -447,7 +447,7 @@ class ProfileScreen extends ConsumerWidget {
                         Row(
                           children: [
                             Text(
-                              'Premium Membership',
+                              'subscription.premium_label'.tr(),
                               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
                             ),
                             if (isPremium) ...[
@@ -456,7 +456,7 @@ class ProfileScreen extends ConsumerWidget {
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                                 child: Text(
-                                  'ACTIVE',
+                                  'subscription.status_active'.tr(),
                                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: DesignTokens.success),
                                 ),
                               ),
@@ -465,7 +465,7 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          isPremium ? 'Manage subscription & notifications' : 'Upgrade for no fees & seller chat — CAD \$7.86/mo',
+                          isPremium ? 'subscription.menu_manage_desc'.tr() : 'subscription.menu_upgrade_desc'.tr(),
                           style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
                         ),
                       ],

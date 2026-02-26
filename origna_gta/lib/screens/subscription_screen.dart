@@ -40,7 +40,23 @@ class SubscriptionScreen extends ConsumerWidget {
         ),
         child: subAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
-          error: (e, _) => Center(child: Text(e.toString())),
+          error: (e, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
+                  const SizedBox(height: 12),
+                  Text(
+                    'common.error_loading'.tr(),
+                    style: TextStyle(color: DesignTokens.error, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
           data: (subInfo) => _buildContent(context, ref, vmState, subInfo, isDark),
         ),
       ),
@@ -265,7 +281,7 @@ class SubscriptionScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('subscription.new_products'.tr(), style: const TextStyle(fontSize: 14)),
-                        Text('subscription.new_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text('subscription.new_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
                       ],
                     ),
                   ),
@@ -295,7 +311,7 @@ class SubscriptionScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('subscription.trending_products'.tr(), style: const TextStyle(fontSize: 14)),
-                        Text('subscription.trending_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text('subscription.trending_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
                       ],
                     ),
                   ),

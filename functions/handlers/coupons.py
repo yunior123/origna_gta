@@ -83,7 +83,7 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     data = req.data
     code_raw = data.get(Fields.COUPON_CODE, "")
     cart_subtotal_cents = data.get(ApiKeys.CART_SUBTOTAL_CENTS)
-    seller_ids = data.get("sellerIds") or []
+    seller_ids = data.get(Fields.SELLER_IDS) or []
     if not isinstance(seller_ids, list):
         seller_ids = []
 
@@ -261,7 +261,7 @@ def admin_create_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     N-07: Admin creates a new coupon.
 
     Request data:
-        code: str — coupon code (4-20 uppercase alphanumeric)
+        couponCode: str — coupon code (4-20 uppercase alphanumeric) [field name: 'couponCode', not 'code']
         discountType: str — "percent" | "fixed_cents"
         discountValue: number — percent: 1-100, fixed_cents: min 100 (i.e., $1.00 CAD)
         minOrderCents: int? — minimum cart subtotal in cents

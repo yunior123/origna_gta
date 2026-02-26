@@ -578,3 +578,20 @@ When deploying to a new region for the first time, Firebase CLI asks: "How many 
   3. Playwright E2E UI testing (against a live Dev instance or emulator) using `npx playwright test`.
 - **Git Hook Path Resolution:** When executing scripts from within `.git/hooks/pre-push`, `$(dirname "$0")` may fail to correctly resolve the repository root depending on how the hook is symlinked or copied. Use `REPO_ROOT="$(git rev-parse --show-toplevel)"` to reliably get the root of the git repository.
 - **Generic Environment Validation:** Rather than hardcoding validation strings (like `grep deliveredAt firestore.indexes.json`), prefer generic validation scripts like `validate_indexes.py` and `validate_rules.py` which query live environments via `firebase firestore:indexes` and `https://firebaserules.googleapis.com` to ensure local configs perfectly match deployed configs.
+
+## Stock Notifications Correctness (Feb 2026 Audit)
+- **Variant Key Isolation:** All stock_notification queries (subscribe idempotency, unsubscribe, order cleanup, Flutter init) MUST use explicit `variantKey==""` filter when no variantKey is provided. Without it, a variant subscription (variantKey="var_red") will incorrectly match a product-level query and vice versa.
+- **Orphan Prevention:** Reject product-level subscriptions (`variantKey=null/""`) on `hasVariants=true` products — the notification fan-out only iterates over specific variantKeys and would silently skip the product-level subscription. Similarly, reject `variantKey` on non-variant products.
+- **Order Cleanup Scope:** When cleaning up stock subscriptions after a confirmed purchase, filter by both `productId` AND `variantKey` (from the purchased item). Buying variantA should NOT delete the user's subscription for variantB on the same product.
+- **Send Email Return Check:** `send_email()` catches all exceptions internally and returns `bool`. ALWAYS check the return value before stamping `notifiedAt`. Unchecked calls permanently consume the subscription even during email provider outages.
+- **Pagination on Delete:** Product deletion cleanup must use a paginated `while True / limit(200) / break` loop, not a single `.limit(200)`. Popular products can have hundreds+ of watchers.
+
+## Cross-Stack Checkout (Feb 2026 Audit)
+- **isDigital in Item Payload:** The Flutter checkout provider MUST include `Fields.isDigital: item.isDigital` in each item map sent to `create_checkout_session`. Without it, `item.get(Fields.IS_DIGITAL, False)` always returns `False` in the early guard (line ~649 of payment_stripe.py), causing digital-only orders to fail with "Shipping address required" before the safe server-side recompute runs.
+
+## Enum Exhaustiveness (Feb 2026)
+- **Dart Switch on Enums:** When adding new enum values to `OrderStatus` or `PaymentStatus` (base_models.dart), IMMEDIATELY update all exhaustive switch statements in `enum_extensions.dart` (displayText, value) and any screen-level switches (e.g. orders_screen.dart). Missing cases cause compile errors. Added: `OrderStatus.refunded`, `OrderStatus.partiallyRefunded`, `PaymentStatus.partiallyRefunded`, `PaymentStatus.voided`.
+
+## Pre-existing Ruff Issues in orders.py (Feb 2026)
+- `F821 SERVER_TIMESTAMP` undefined (line ~482) — fixed to `get_server_timestamp()`. Inline function-level imports (`_ew`, `_hh2`) generate `I001` sort errors — suppressed with `# noqa: E402,I001`.
+- `get_return_received_email` and `get_return_refunded_email` were defined in `email_service.py` but never imported in `orders.py` — fixed by adding to the import block at top of file.

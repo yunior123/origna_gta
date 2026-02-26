@@ -1389,7 +1389,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # On Stripe error the coupon reservation is rolled back via _rollback_checkout.
     coupon_prereserved = False
     if coupon_code:
-        from handlers.coupons import redeem_coupon as _redeem_coupon_fn  # noqa: E402
         from utils.db import get_firestore as _get_fs  # noqa: E402
         _db = get_db()
         _fs = _get_fs()
@@ -1496,6 +1495,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             if client_idempotency_key
             else {}
         ),
+        # AUDIT FIX (CRITICAL-C3): Flag that coupon was pre-reserved at checkout;
+        # the webhook must NOT call redeem_coupon() again to avoid double-counting.
+        **({"couponPrereserved": True} if coupon_prereserved else {}),
     }
 
     # SECURITY FIX (CRITICAL-014): Snapshot seller Stripe account IDs at checkout.
@@ -2070,6 +2072,16 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
     """Run confirmation emails, digital licenses, coupon redemption, and cart clearing after payment capture.
     Called by both process_checkout_session_completed (card/instant) and process_async_payment_succeeded (bank/Interac).
     """
+    # Generate digital licenses FIRST so license keys are included in the confirmation email
+    try:
+        _generate_digital_licenses(order_id, order_data)
+        # Re-fetch order_data so the email builder sees digitalUnlocked=True and licenseKey values
+        refreshed = get_db().collection(Collections.ORDERS).document(order_id).get()
+        if refreshed.exists:
+            order_data = refreshed.to_dict()
+    except Exception as e:
+        logger.error(f"Digital license generation failed for order {order_id}: {str(e)}")
+
     # Send confirmation emails
     try:
         buyer_email = order_data.get(Fields.CUSTOMER_EMAIL)
@@ -2098,12 +2110,24 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
             except Exception as e:
                 logger.warning(f"PDF invoice generation failed (non-critical): {str(e)}")
 
-            send_email(
-                to_email=buyer_email,
-                subject=_email_t("sub.confirmed", buyer_lang),
-                html_content=buyer_email_html,
-                attachments=pdf_attachments,
-            )
+            # FIX F5-3: Use enqueue_email_task to avoid blocking Stripe webhook.
+            # Note: PDF attachment is passed through as extra kwarg — email_task will
+            # fall back to sync send if attachments are present (Cloud Tasks payload limit).
+            if pdf_attachments:
+                send_email(
+                    to_email=buyer_email,
+                    subject=_email_t("sub.confirmed", buyer_lang),
+                    html_content=buyer_email_html,
+                    attachments=pdf_attachments,
+                )
+            else:
+                enqueue_email_task(
+                    to_email=buyer_email,
+                    subject=_email_t("sub.confirmed", buyer_lang),
+                    html_content=buyer_email_html,
+                    event_type="order_confirmed_buyer",
+                    order_id=order_id,
+                )
 
         sellers = set(item[Fields.SELLER_ID] for item in order_data[Fields.ITEMS])
         for seller_id in sellers:
@@ -2114,26 +2138,30 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
                 if seller_email:
                     seller_lang = seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
                     seller_email_html = get_seller_notification_email(order_data, order_id, seller_id, lang=seller_lang)
-                    send_email(
+                    enqueue_email_task(
                         to_email=seller_email,
                         subject=_email_t("sub.new_order", seller_lang),
                         html_content=seller_email_html,
-                    )
+                        event_type="order_confirmed_seller",
+                        order_id=order_id,
+                    )  # FIX F5-3: Non-blocking seller notification
     except Exception as e:
         logger.error(f"Failed to send confirmation emails: {str(e)}")
 
-    # Generate digital licenses for any digital items
-    try:
-        _generate_digital_licenses(order_id, order_data)
-    except Exception as e:
-        logger.error(f"Digital license generation failed for order {order_id}: {str(e)}")
-
-    # Redeem coupon if one was applied
+    # Redeem coupon if one was applied.
+    # AUDIT FIX (CRITICAL-C3): Skip if coupon was already pre-reserved at checkout
+    # time (couponPrereserved=True on order doc). Pre-reservation already atomically
+    # incremented usedCount; calling redeem_coupon() again would double-count.
+    # For orders created before this fix (couponPrereserved missing), fall back to
+    # the original redeem_coupon() path so old orders are not broken.
     try:
         applied_coupon_code = order_data.get(Fields.COUPON_CODE)
-        if applied_coupon_code:
+        coupon_already_prereserved = order_data.get("couponPrereserved", False)
+        if applied_coupon_code and not coupon_already_prereserved:
             from handlers.coupons import redeem_coupon as _redeem_coupon
             _redeem_coupon(applied_coupon_code, order_data[Fields.USER_ID], order_id=order_id)
+        elif applied_coupon_code and coupon_already_prereserved:
+            logger.info(f"Coupon {applied_coupon_code} already pre-reserved at checkout — skipping double-redeem")
     except Exception as e:
         logger.error(f"Failed to redeem coupon for order {order_id}: {str(e)}")
 

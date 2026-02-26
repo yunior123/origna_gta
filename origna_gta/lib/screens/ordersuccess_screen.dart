@@ -123,9 +123,80 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                         ),
                       ),
                     ),
+                    // ── AUDIT FIX [HIGH]: Show purchase summary (value + items) ──
+                    // Previously valueCad and itemCount were passed to this screen
+                    // but never rendered — a major gap in the success experience.
+                    if (widget.valueCad > 0 || widget.itemCount > 0) ...[
+                      const SizedBox(height: 20),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 230),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                DesignTokens.primary.withValues(alpha: 0.08),
+                                DesignTokens.secondary.withValues(alpha: 0.08),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                            border: Border.all(
+                              color: DesignTokens.primary.withValues(alpha: 0.18),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (widget.itemCount > 0) ...[
+                                Icon(
+                                  Icons.shopping_bag_outlined,
+                                  size: 18,
+                                  color: DesignTokens.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'orders.items_ordered'.tr(namedArgs: {'count': '${widget.itemCount}'}),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: DesignTokens.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                              if (widget.itemCount > 0 && widget.valueCad > 0) ...[
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  child: Container(
+                                    width: 1,
+                                    height: 18,
+                                    color: DesignTokens.outline,
+                                  ),
+                                ),
+                              ],
+                              if (widget.valueCad > 0)
+                                ShaderMask(
+                                  shaderCallback: (bounds) =>
+                                      DesignTokens.primaryGradient.createShader(bounds),
+                                  child: Text(
+                                    '\$${widget.valueCad.toStringAsFixed(2)} CAD',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 48),
                     FadeSlideIn(
-                      delay: const Duration(milliseconds: 250),
+                      delay: const Duration(milliseconds: 300),
                       child: Semantics(
                         button: true,
                         label: 'btn-continue-shopping',
@@ -138,7 +209,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                     ),
                     const SizedBox(height: 12),
                     FadeSlideIn(
-                      delay: const Duration(milliseconds: 300),
+                      delay: const Duration(milliseconds: 360),
                       child: Semantics(
                         button: true,
                         label: 'btn-view-my-orders',

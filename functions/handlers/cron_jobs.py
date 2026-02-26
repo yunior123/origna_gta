@@ -1741,7 +1741,7 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                         }
                     )
                     alerted_count += 1
-                    logger.warning(f"Seller {seller_id} metrics breach: {", ".join(breaches)}")
+                    logger.warning("Seller %s metrics breach: %s", seller_id, ", ".join(breaches))
                 else:
                     logger.info(f"Seller {seller_id} metrics breach already alerted (unresolved alert exists)")
     
@@ -1781,12 +1781,16 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
 
     try:
         now = datetime.now(UTC)
-        _window_start = now - timedelta(hours=TRENDING_WINDOW_HOURS)  # noqa: F841
+        window_start = now - timedelta(hours=TRENDING_WINDOW_HOURS)  # FIX (M3): now actually used
 
         # Fetch all active products
+        # FIX (M3): Filter to products updated within the trending window so scoring
+        # is based on recent activity, not all-time cumulative counters.
+        # This requires a composite Firestore index on (lifecycleStatus, updatedAt).
         products_query = (
             db.collection(Collections.PRODUCTS)
             .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
+            .where(Fields.UPDATED_AT, ">=", window_start)
             .stream()
         )
 
@@ -1890,6 +1894,88 @@ def _notify_trending_products(db, top_products: list[tuple]) -> None:
         logger.info(f"Trending FCM sent: {response.success_count} ok, {response.failure_count} failed")
     except Exception as e:
         logger.error(f"Failed to send trending FCM: {e}")
+
+
+
+@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+def send_premium_renewal_reminders(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    FIX F7-6 — Daily cron: email premium subscribers whose subscription renews in
+    exactly 7 days or 1 day, reminding them of the upcoming charge.
+    Deduplication: stores a sent-flag in the subscription doc per reminder type.
+    """
+    if not acquire_cron_lock("send_premium_renewal_reminders"):
+        logger.info("send_premium_renewal_reminders: already running, skipping")
+        return
+
+    try:
+        from datetime import UTC, datetime, timedelta
+
+        from services.email_service import get_premium_renewal_reminder_email, send_email
+
+        db = get_db()
+        now = datetime.now(UTC)
+
+        for days_ahead in (7, 1):
+            window_start = now + timedelta(days=days_ahead) - timedelta(hours=12)
+            window_end   = now + timedelta(days=days_ahead) + timedelta(hours=12)
+            dedup_field  = f"renewalReminderSentDays{days_ahead}"
+
+            query = (
+                db.collection(Collections.SUBSCRIPTIONS)
+                .where(Fields.CURRENT_PERIOD_END, ">=", window_start)
+                .where(Fields.CURRENT_PERIOD_END, "<=", window_end)
+                .where(Fields.STATUS, "in", list(SubscriptionStatusValues.PREMIUM_ACTIVE))
+                .limit(200)
+                .stream()
+            )
+
+            sent_count = 0
+            for sub_doc in query:
+                uid = sub_doc.id
+                sub_data = sub_doc.to_dict() or {}
+
+                # Skip if already cancelled at period end
+                if sub_data.get(Fields.CANCEL_AT_PERIOD_END):
+                    continue
+
+                # Dedup: skip if reminder already sent for this renewal cycle
+                if sub_data.get(dedup_field):
+                    continue
+
+                try:
+                    user_doc = db.collection(Collections.USERS).document(uid).get()
+                    if not user_doc.exists:
+                        continue
+                    user_data = user_doc.to_dict() or {}
+                    recipient_email = user_data.get(Fields.EMAIL)
+                    lang = user_data.get(Fields.PREFERRED_LANGUAGE, "en")
+                    period_end = sub_data.get(Fields.CURRENT_PERIOD_END)
+
+                    if not recipient_email:
+                        continue
+
+                    html_body = get_premium_renewal_reminder_email(
+                        user_data, period_end=period_end, days_remaining=days_ahead, lang=lang
+                    )
+                    subj_en = f"Your Origna Premium Renews in {days_ahead} Day{'s' if days_ahead > 1 else ''}"
+                    subj_fr = f"Votre Origna Premium se renouvelle dans {days_ahead} jour{'s' if days_ahead > 1 else ''}"
+                    subject = subj_fr if lang == "fr" else subj_en
+
+                    send_email(to_email=recipient_email, subject=subject, html_content=html_body)
+
+                    # Mark reminder as sent to prevent re-sending in next run
+                    db.collection(Collections.SUBSCRIPTIONS).document(uid).update(
+                        {dedup_field: True, Fields.UPDATED_AT: now}
+                    )
+                    sent_count += 1
+                except Exception as e:
+                    logger.error(f"send_premium_renewal_reminders: failed for uid={uid}: {e}")
+
+            logger.info(f"send_premium_renewal_reminders: {days_ahead}d window — {sent_count} emails sent")
+
+    finally:
+        release_cron_lock("send_premium_renewal_reminders")
 
 
 @scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
@@ -2032,7 +2118,7 @@ def _run_return_escalation() -> None:
             return_id = doc.id
             return_data = doc.to_dict() or {}
             order_id = return_data.get(Fields.ORDER_ID, "")
-            buyer_id = return_data.get(Fields.USER_ID, "")
+            buyer_id = return_data.get(Fields.BUYER_ID, "")  # return_requests use buyerId not userId
 
             try:
                 doc.reference.update({

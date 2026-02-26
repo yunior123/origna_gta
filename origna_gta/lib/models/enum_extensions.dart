@@ -76,6 +76,10 @@ extension OrderStatusExtension on OrderStatus {
         return 'Expired';
       case OrderStatus.disputed:
         return 'Disputed';
+      case OrderStatus.refunded:
+        return 'Refunded';
+      case OrderStatus.partiallyRefunded:
+        return 'Partially Refunded';
     }
   }
 
@@ -101,6 +105,10 @@ extension OrderStatusExtension on OrderStatus {
         return 'expired';
       case OrderStatus.disputed:
         return 'disputed';
+      case OrderStatus.refunded:
+        return 'refunded';
+      case OrderStatus.partiallyRefunded:
+        return 'partially_refunded';
     }
   }
 
@@ -153,6 +161,10 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'Payment Failed';
       case PaymentStatus.refunded:
         return 'Refunded';
+      case PaymentStatus.partiallyRefunded:
+        return 'Partially Refunded';
+      case PaymentStatus.voided:
+        return 'Voided';
       case PaymentStatus.sessionExpired:
         return UIMessages.sessionExpiredTitle;
       case PaymentStatus.cancelled:
@@ -186,6 +198,10 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'payment_failed';
       case PaymentStatus.refunded:
         return 'refunded';
+      case PaymentStatus.partiallyRefunded:
+        return 'partially_refunded';
+      case PaymentStatus.voided:
+        return 'voided';
       case PaymentStatus.sessionExpired:
         return 'session_expired';
       case PaymentStatus.cancelled:

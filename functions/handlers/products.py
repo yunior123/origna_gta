@@ -13,7 +13,7 @@ import logging
 import re
 import secrets
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
@@ -3118,13 +3118,24 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
   </p>
 </div>"""
                     try:
-                        sent = send_email(email, subject, html_body)
-                        if sent:
-                            sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
-                        else:
-                            logger.warning(f"Email delivery failed for sub {sub_doc.id}; notifiedAt NOT stamped")
+                        # FIX-7 (MEDIUM): Stamp notifiedAt BEFORE sending so Firestore-triggered
+                        # retries see notifiedAt != None and skip this subscriber, preventing
+                        # duplicate email/push on Cloud Function retry.
+                        sub_data_uid = sub_data.get(Fields.USER_ID)
+                        sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
+                        send_email(email, subject, html_body)
+                        # FIX-4 (HIGH): Also send FCM push so mobile users see a notification
+                        # tray entry, not just email.
+                        if sub_data_uid:
+                            from services.push_service import send_push_notification as _push
+                            _push(
+                                sub_data_uid,
+                                "Back in Stock! 🎉",
+                                f"{product_name} (the variant you wanted) is back in stock.",
+                                data={"type": "back_in_stock", "productId": product_id, "variantKey": variant_key},
+                            )
                     except Exception as e:
-                        logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
+                        logger.error(f"Failed to send back-in-stock notification for sub {sub_doc.id}: {e}")
                 last_doc = batch_docs[-1]
         return
 
@@ -3167,13 +3178,21 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
   </p>
 </div>"""
             try:
-                sent = send_email(email, subject, html_body)
-                if sent:
-                    sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
-                else:
-                    logger.warning(f"Email delivery failed for sub {sub_doc.id}; notifiedAt NOT stamped")
+                # FIX-7 (MEDIUM): Claim notifiedAt before send to prevent duplicate delivery on retry.
+                sub_data_uid = sub_data.get(Fields.USER_ID)
+                sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
+                send_email(email, subject, html_body)
+                # FIX-4 (HIGH): FCM push so mobile users get a tray notification.
+                if sub_data_uid:
+                    from services.push_service import send_push_notification as _push
+                    _push(
+                        sub_data_uid,
+                        "Back in Stock! 🎉",
+                        f"{product_name} is back in stock.",
+                        data={"type": "back_in_stock", "productId": product_id},
+                    )
             except Exception as e:
-                logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
+                logger.error(f"Failed to send back-in-stock notification for sub {sub_doc.id}: {e}")
         last_doc = batch_docs[-1]
 
 

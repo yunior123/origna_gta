@@ -53,8 +53,8 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
     if lic.get(Fields.STATUS) != LicenseStatusValues.ACTIVE:
         raise ValueError("revoked")
 
-    # Ownership check: if caller is authenticated, verify they own this license
-    if caller_uid and lic.get(Fields.USER_ID) != caller_uid:
+    # Ownership check: verify the caller owns this license (caller_uid is always set)
+    if not caller_uid or lic.get(Fields.USER_ID) != caller_uid:
         raise ValueError("unauthorized")
 
     supported = lic.get(Fields.SUPPORTED_PLATFORMS, [])
@@ -267,21 +267,26 @@ def activate_license(req: https_fn.Request) -> https_fn.Response:
                 content_type="application/json",
             )
 
-        # Verify caller identity from Authorization header (optional but enforced when present)
+        # Verify caller identity from Authorization header (required)
         caller_uid: str | None = None
         auth_header = req.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            id_token = auth_header[len("Bearer "):]
-            try:
-                from firebase_admin import auth as fb_auth
-                decoded = fb_auth.verify_id_token(id_token)
-                caller_uid = decoded["uid"]
-            except Exception:
-                return https_fn.Response(
-                    json.dumps({"error": "invalid_token", "message": "Invalid authorization token"}),
-                    status=401,
-                    content_type="application/json",
-                )
+        if not auth_header.startswith("Bearer "):
+            return https_fn.Response(
+                json.dumps({"error": "unauthenticated", "message": "Authorization required to activate a license"}),
+                status=401,
+                content_type="application/json",
+            )
+        id_token = auth_header[len("Bearer "):]
+        try:
+            from firebase_admin import auth as fb_auth
+            decoded = fb_auth.verify_id_token(id_token)
+            caller_uid = decoded["uid"]
+        except Exception:
+            return https_fn.Response(
+                json.dumps({"error": "invalid_token", "message": "Invalid authorization token"}),
+                status=401,
+                content_type="application/json",
+            )
 
         # Rate limit: 10 attempts per device per 10 min to block brute-force
         rate_id = f"device:{device_id[:64]}"

@@ -96,6 +96,10 @@ enum OrderStatus {
   expired,
   @JsonValue('disputed')
   disputed,
+  @JsonValue('refunded')
+  refunded,
+  @JsonValue('partially_refunded')
+  partiallyRefunded,
 }
 
 enum PaymentStatus {
@@ -127,6 +131,10 @@ enum PaymentStatus {
   cancelling,
   @JsonValue('expiring')
   expiring,
+  @JsonValue('partially_refunded')
+  partiallyRefunded,
+  @JsonValue('voided')
+  voided,
 }
 
 enum ShippingApprovalStatus {

@@ -384,6 +384,12 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         product,
         compressedImages,
         testImageUrls: testImageUrls,
+        // Pass bookSourceUrl for digital book products — excluded from Dart Product model
+        // (buyer-protected: never read back by client) but required by Python backend
+        // to store the download URL server-side.
+        bookSourceUrl: (state.isDigital && state.digitalType == DigitalTypeValues.book)
+            ? state.bookSourceUrl
+            : null,
       );
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e, st) {

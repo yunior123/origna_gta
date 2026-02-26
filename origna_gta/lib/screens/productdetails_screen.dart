@@ -77,7 +77,7 @@ class ProductDetailScreen extends ConsumerWidget {
                 floating: true,
                 expandedHeight: 340,
                 backgroundColor: isDark
-                    ? DesignTokens.textPrimary
+                    ? DesignTokens.darkSurface
                     : Colors.white,
                 actions: [
                   if (product.slug != null)
@@ -197,7 +197,7 @@ class ProductDetailScreen extends ConsumerWidget {
                   preferredSize: const Size.fromHeight(20),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: isDark ? DesignTokens.textPrimary : Colors.white,
+                      color: isDark ? DesignTokens.darkSurface : Colors.white,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(24),
                       ),
@@ -630,7 +630,7 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
                             color: isSelected
                                 ? DesignTokens.primary
                                 : (isDark
-                                      ? Colors.grey.shade800
+                                      ? DesignTokens.darkCard
                                       : Colors.white),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
@@ -664,7 +664,7 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(
-                'Please select all options',
+                'product.select_all_options'.tr(),
                 style: TextStyle(
                   fontSize: 13,
                   color: DesignTokens.textSecondary,

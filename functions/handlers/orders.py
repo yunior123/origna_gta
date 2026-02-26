@@ -24,6 +24,7 @@ from schema_constants import (
     DeliveryTypeValues,
     Fields,
     OrderEventTypes,
+    OrderItemIdValues,
     OrderStatusValues,
     PaymentStatusValues,
     PayoutStatusValues,
@@ -45,6 +46,8 @@ from services.email_service import (
     get_order_processing_email,
     get_order_refunded_email,
     get_order_shipped_email,
+    get_return_received_email,
+    get_return_refunded_email,
     get_return_request_approved_email,
     get_return_request_rejected_email,
     get_return_request_submitted_email,
@@ -314,7 +317,13 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
                 for item in items
             )
 
-            update_data = {Fields.ITEMS: items, Fields.UPDATED_AT: get_server_timestamp()}
+            update_data = {
+                Fields.ITEMS: items,
+                Fields.UPDATED_AT: get_server_timestamp(),
+                # FIX-6 (MEDIUM): Stamp the actor so on_order_status_changed can skip
+                # the self-notification push to the seller who triggered the shipment.
+                Fields.LAST_ACTOR_ID: user_id,
+            }
 
             if all_shipped:
                 update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
@@ -446,6 +455,33 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("failed-precondition", "Cannot update archived order")
 
     items = order_data.get(Fields.ITEMS, [])
+
+    # Handle 'all' sentinel — update every item belonging to this seller
+    if product_id == OrderItemIdValues.ALL:
+        seller_items = [
+            (idx, item) for idx, item in enumerate(items) if item.get(Fields.SELLER_ID) == user_id
+        ]
+        if not seller_items and user_id not in (order_data.get(Fields.USER_ID, ""),):
+            # Admin path: update ALL items regardless of seller
+            is_admin_check = UserRoleValues.ADMIN in (
+                (get_db().collection(Collections.USERS).document(user_id).get().to_dict() or {}).get(Fields.ROLES, [])
+            )
+            if is_admin_check:
+                seller_items = list(enumerate(items))
+        if not seller_items:
+            raise https_fn.HttpsError("not-found", "No items found for this seller in the order")
+        updated_items = list(items)
+        for idx, item in seller_items:
+            updated_item = dict(item)
+            updated_item[Fields.STATUS] = new_status
+            if tracking_number:
+                updated_item[Fields.TRACKING_NUMBER] = tracking_number
+            if carrier:
+                updated_item[Fields.CARRIER] = carrier
+            updated_items[idx] = updated_item
+        order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: get_server_timestamp()})
+        logger.info(f"Updated all {len(seller_items)} items for seller {user_id} in order {order_id} to {new_status}")
+        return {"success": True, "itemStatus": new_status, "allItemsDelivered": False}
 
     # Find the item to update
     item_index = None
@@ -1758,6 +1794,102 @@ def create_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
     return create_success_response({Fields.RETURN_ID: return_id})
 
 
+def _process_return_refund(order_id: str, product_id: str, return_id: str, buyer_id: str) -> None:
+    """Internal helper: execute Stripe refund for a return and transition statuses.
+
+    Called from mark_received action in approve_return_request once item is physically received.
+    Transitions: return_request → refunded, order item → refunded.
+    Idempotent — skips if item already refunded.
+    """
+    from datetime import datetime as _dt
+
+    import stripe as _stripe
+
+    db = get_db()
+    order_ref = db.collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+    if not order_doc.exists:
+        logger.error(f"_process_return_refund: order {order_id} not found")
+        return
+
+    order_data = order_doc.to_dict()
+    payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+    if not payment_intent_id:
+        logger.error(f"_process_return_refund: no payment intent on order {order_id}")
+        return
+
+    items = order_data.get(Fields.ITEMS, [])
+    item_data = next((it for it in items if it.get(Fields.PRODUCT_ID) == product_id), None)
+    if not item_data:
+        logger.error(f"_process_return_refund: product {product_id} not in order {order_id}")
+        return
+
+    if item_data.get(Fields.STATUS) == DeliveryStatusValues.REFUNDED:
+        logger.info(f"_process_return_refund: item {product_id} already refunded, skipping")
+        _finalise_return_refunded(order_id, product_id, return_id)
+        return
+
+    # Calculate proportional refund amount (item + proportional tax + proportional shipping)
+    item_price_cents = round(item_data.get(Fields.PRICE, 0) * 100)
+    item_quantity = item_data.get(Fields.QUANTITY, 1)
+    item_subtotal_cents = item_price_cents * item_quantity
+    order_subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 0)
+    order_tax_cents = order_data.get(Fields.TAX_AMOUNT_CENTS, 0)
+    order_shipping_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
+    if order_subtotal_cents > 0:
+        proportion = item_subtotal_cents / order_subtotal_cents
+        proportional_tax_cents = round(order_tax_cents * proportion)
+        proportional_shipping_cents = round(order_shipping_cents * proportion)
+    else:
+        proportional_tax_cents = 0
+        proportional_shipping_cents = 0
+    refund_amount_cents = item_subtotal_cents + proportional_tax_cents + proportional_shipping_cents
+
+    try:
+        refund = _stripe.Refund.create(
+            payment_intent=payment_intent_id,
+            amount=refund_amount_cents,
+            reason="requested_by_customer",
+            metadata={
+                Fields.ORDER_ID: order_id,
+                Fields.PRODUCT_ID: product_id,
+                Fields.RETURN_ID: return_id,
+            },
+            idempotency_key=f"return_refund_{return_id}_{product_id}",
+        )
+    except _stripe.error.StripeError as e:
+        logger.error(f"_process_return_refund: Stripe refund failed for return {return_id}: {e}")
+        return
+
+    # Update order item status to refunded atomically
+    now_utc = _dt.now(UTC)
+    updated_items = list(items)
+    for idx, it in enumerate(updated_items):
+        if it.get(Fields.PRODUCT_ID) == product_id:
+            updated_items[idx] = {
+                **it,
+                Fields.STATUS: DeliveryStatusValues.REFUNDED,
+                Fields.REFUNDED_AT: now_utc,
+                Fields.REFUND_REASON: "Return approved",
+                Fields.REFUND_AMOUNT_CENTS: refund_amount_cents,
+                Fields.REFUND_ID: refund.id,
+            }
+            break
+    order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: now_utc})
+    _finalise_return_refunded(order_id, product_id, return_id)
+    logger.info(f"_process_return_refund: refund {refund.id} issued for return {return_id}")
+
+
+def _finalise_return_refunded(order_id: str, product_id: str, return_id: str) -> None:
+    """Mark the return request as refunded."""
+    db = get_db()
+    return_ref = db.collection(Collections.RETURN_REQUESTS).document(return_id)
+    return_ref.update({
+        Fields.RETURN_STATUS: ReturnStatusValues.REFUNDED,
+        Fields.UPDATED_AT: get_server_timestamp(),
+    })
+
+
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
@@ -1838,6 +1970,27 @@ def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
             data={"type": "return_approved", "orderId": order_id, "returnId": return_id},
         )
 
+    elif action == "issue_label":
+        if "label_issued" not in ReturnStatusValues.VALID_TRANSITIONS.get(current_status, set()):
+            raise https_fn.HttpsError("failed-precondition", f"Cannot issue label from status '{current_status}'")
+        new_status = ReturnStatusValues.LABEL_ISSUED
+        tracking_number = data.get(Fields.RETURN_TRACKING_NUMBER)
+        patches_label: dict = {
+            Fields.RETURN_STATUS: new_status,
+            Fields.UPDATED_AT: get_server_timestamp(),
+        }
+        if tracking_number:
+            patches_label[Fields.RETURN_TRACKING_NUMBER] = tracking_number
+        return_ref.update(patches_label)
+
+        # Notify buyer that label is ready
+        send_push_notification(
+            buyer_id,
+            "Return Label Issued",
+            "Your return shipping label has been issued. Please use it to ship the item back.",
+            data={"type": "return_label_issued", "orderId": order_id, "returnId": return_id},
+        )
+
     elif action == "mark_received":
         if "received" not in ReturnStatusValues.VALID_TRANSITIONS.get(current_status, set()):
             raise https_fn.HttpsError("failed-precondition", f"Cannot mark received from status '{current_status}'")
@@ -1859,15 +2012,22 @@ def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
         })
         received_batch.commit()
 
+        # Initiate Stripe refund and transition return to 'refunded'
+        try:
+            _process_return_refund(order_id, product_id, return_id, buyer_id)
+            new_status = ReturnStatusValues.REFUNDED  # Update for response
+        except Exception as _refund_err:
+            logger.error(f"mark_received: refund initiation failed for return {return_id}: {_refund_err}")
+
         # Notify buyer
         send_push_notification(
             buyer_id,
             "Return Received",
-            "Seller has confirmed receipt of your returned item. Refund will be processed shortly.",
+            "Seller has confirmed receipt of your returned item. Refund is being processed.",
             data={"type": "return_received", "orderId": order_id, "returnId": return_id},
         )
     else:
-        raise https_fn.HttpsError("invalid-argument", f"Invalid action '{action}'. Use 'approve' or 'mark_received'")
+        raise https_fn.HttpsError("invalid-argument", f"Invalid action '{action}'. Use 'approve', 'issue_label', or 'mark_received'")
 
     return create_success_response({Fields.RETURN_STATUS: new_status, Fields.RETURN_ID: return_id})
 
@@ -2113,21 +2273,26 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             OrderStatusValues.PROCESSING,
         }:
             try:
-                product_ids = list({item.get(Fields.PRODUCT_ID) for item in after_data.get(Fields.ITEMS, []) if item.get(Fields.PRODUCT_ID)})
-                if product_ids:
-                    batch = get_db().batch()
-                    for pid in product_ids:
-                        subs = list(
-                            get_db()
-                            .collection(Collections.STOCK_NOTIFICATIONS)
-                            .where(Fields.PRODUCT_ID, "==", pid)
-                            .where(Fields.USER_ID, "==", user_id)
-                            .limit(10)
-                            .stream()
-                        )
-                        for sub in subs:
-                            batch.delete(sub.reference)
-                    batch.commit()
+                batch = get_db().batch()
+                for item in after_data.get(Fields.ITEMS, []):
+                    pid = item.get(Fields.PRODUCT_ID)
+                    if not pid:
+                        continue
+                    # Filter by variantKey so buying variantA doesn't clear the
+                    # subscription the buyer has for a different variantB on the same product.
+                    variant_key = item.get(Fields.VARIANT_KEY, "")
+                    subs = list(
+                        get_db()
+                        .collection(Collections.STOCK_NOTIFICATIONS)
+                        .where(Fields.PRODUCT_ID, "==", pid)
+                        .where(Fields.USER_ID, "==", user_id)
+                        .where(Fields.VARIANT_KEY, "==", variant_key)
+                        .limit(10)
+                        .stream()
+                    )
+                    for sub in subs:
+                        batch.delete(sub.reference)
+                batch.commit()
             except Exception as sub_err:
                 logger.warning(f"Failed to cleanup stock_notifications after order {order_id}: {sub_err}")
 
@@ -2201,30 +2366,100 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             )
 
         elif new_status == OrderStatusValues.DELIVERED:
-            # Email buyer — branded template with receipt + confirm receipt CTA
-            delivered_html = get_order_delivered_email(after_data, order_id, lang=lang)
-            enqueue_email_task(
-                to_email=buyer_email,
-                subject=_email_t("sub.delivered", lang).replace("{oid}", oid_short),
-                html_content=delivered_html,
-                event_type="order_delivered",
-                order_id=order_id,
-            )
-            send_push_notification(
-                user_id, "Package Delivered!", f"Order #{oid_short} has been delivered. Confirm receipt to release payment",
-                data={"type": "order_status", "orderId": order_id, "status": new_status},
-            )
+            # FIX F5-1: Distinguish buyer-triggered DELIVERED (confirmed_by_client=True)
+            # from admin/cron-triggered DELIVERED. If buyer confirmed, don't re-ask them
+            # to confirm receipt — instead send an acknowledgement email.
+            buyer_confirmed = after_data.get(Fields.CONFIRMED_BY_CLIENT, False)
 
-            # Notify sellers — receipt confirmed, payout triggered
+            if buyer_confirmed:
+                # Buyer just confirmed receipt — send acknowledgement, not "please confirm"
+                subj_en = f"Receipt Confirmed — Order #{oid_short}"
+                subj_fr = f"Réception confirmée — Commande #{oid_short}"
+                subj = subj_fr if lang == "fr" else subj_en
+                body_en = (
+                    f"<p>Your receipt confirmation for order <strong>#{oid_short}</strong> has been recorded. "
+                    f"The seller will be paid out shortly. Thank you for shopping with Origna!</p>"
+                )
+                body_fr = (
+                    f"<p>Votre confirmation de réception pour la commande <strong>#{oid_short}</strong> a été enregistrée. "
+                    f"Le vendeur sera payé sous peu. Merci de faire confiance à Origna !</p>"
+                )
+                body = body_fr if lang == "fr" else body_en
+                from services.email_service import _email_wrapper as _ew, _hero_header as _hh  # noqa: E402,I001
+                receipt_content = _hh("✅", subj_en if lang == "en" else subj_fr,
+                                       f"Order #{oid_short}", "rgba(16, 185, 129, 0.2)")
+                receipt_content += f"<tr><td style='padding:28px 40px;font-size:14px;color:#333;line-height:1.6;'>{body}</td></tr>"
+                receipt_html = _ew("Receipt Confirmed", receipt_content, include_gst=False, lang=lang, recipient_email=buyer_email)
+                enqueue_email_task(
+                    to_email=buyer_email,
+                    subject=subj,
+                    html_content=receipt_html,
+                    event_type="receipt_confirmed",
+                    order_id=order_id,
+                )
+                send_push_notification(
+                    user_id, "Receipt Confirmed ✅", f"Your confirmation for order #{oid_short} is recorded",
+                    data={"type": "order_status", "orderId": order_id, "status": new_status},
+                )
+            else:
+                # Courier/admin delivered — ask buyer to confirm receipt
+                delivered_html = get_order_delivered_email(after_data, order_id, lang=lang)
+                enqueue_email_task(
+                    to_email=buyer_email,
+                    subject=_email_t("sub.delivered", lang).replace("{oid}", oid_short),
+                    html_content=delivered_html,
+                    event_type="order_delivered",
+                    order_id=order_id,
+                )
+                send_push_notification(
+                    user_id, "Package Delivered!", f"Order #{oid_short} has been delivered. Confirm receipt to release payment",
+                    data={"type": "order_status", "orderId": order_id, "status": new_status},
+                )
+
+            # FIX F5-2: Email sellers that payout is now pending
             seller_ids = set(item.get(Fields.SELLER_ID) for item in after_data.get(Fields.ITEMS, []))
+            seller_refs = [get_db().collection(Collections.USERS).document(sid) for sid in seller_ids]
+            seller_docs_map = {doc.id: doc for doc in get_db().get_all(seller_refs)}
             for sid in seller_ids:
                 try:
+                    sdoc = seller_docs_map.get(sid)
+                    if sdoc and sdoc.exists:
+                        sdata = sdoc.to_dict()
+                        seller_email_addr = sdata.get(Fields.EMAIL)
+                        seller_lang = sdata.get(Fields.PREFERRED_LANGUAGE, "en")
+                        if seller_email_addr:
+                            # Email seller: receipt confirmed / payout pending
+                            payout_subj_en = f"Order #{oid_short} — Receipt Confirmed, Payout Pending"
+                            payout_subj_fr = f"Commande #{oid_short} — Réception confirmée, paiement en cours"
+                            payout_subj = payout_subj_fr if seller_lang == "fr" else payout_subj_en
+                            payout_body_en = (
+                                f"<p>The buyer has confirmed receipt of order <strong>#{oid_short}</strong>. "
+                                f"Your payout is now being processed and will appear in your account within 2-5 business days.</p>"
+                            )
+                            payout_body_fr = (
+                                f"<p>L'acheteur a confirmé la réception de la commande <strong>#{oid_short}</strong>. "
+                                f"Votre paiement est en cours de traitement et apparaîtra sur votre compte dans les 2 à 5 jours ouvrables.</p>"
+                            )
+                            payout_body = payout_body_fr if seller_lang == "fr" else payout_body_en
+                            from services.email_service import _email_wrapper as _ew2, _hero_header as _hh2  # noqa: E402,I001
+                            payout_content = _hh2("💰", payout_subj_en if seller_lang == "en" else payout_subj_fr,
+                                                   f"Order #{oid_short}", "rgba(16, 185, 129, 0.2)")
+                            payout_content += f"<tr><td style='padding:28px 40px;font-size:14px;color:#333;line-height:1.6;'>{payout_body}</td></tr>"
+                            payout_html = _ew2("Payout Pending", payout_content, include_gst=False, lang=seller_lang, recipient_email=seller_email_addr)
+                            enqueue_email_task(
+                                to_email=seller_email_addr,
+                                subject=payout_subj,
+                                html_content=payout_html,
+                                event_type="receipt_confirmed_seller",
+                                order_id=order_id,
+                            )
                     send_push_notification(
-                        sid, "Receipt Confirmed", f"Order #{oid_short} confirmed by buyer — payout pending",
+                        sid, "Receipt Confirmed" if not buyer_confirmed else "Receipt Confirmed",
+                        f"Order #{oid_short} confirmed by buyer — payout pending",
                         data={"type": "order_status", "orderId": order_id, "status": new_status},
                     )
                 except Exception as e:
-                    logger.warning(f"⚠️ Failed to send delivered push to seller {sid}: {str(e)}")
+                    logger.warning(f"⚠️ Failed to send delivered notification to seller {sid}: {str(e)}")
 
         elif new_status == OrderStatusValues.CANCELLED:
             reason = after_data.get(Fields.CANCELLATION_REASON, "Unknown")
@@ -2263,33 +2498,61 @@ def _send_return_email(return_data: dict, return_id: str, order_id: str, buyer_i
 
     oid_short = order_id[:8]
 
+    # FIX F6-4: All return emails now go through enqueue_email_task (non-blocking)
+    # FIX F6-1/F6-2: Added RECEIVED and REFUNDED email cases
     if status == ReturnStatusValues.REQUESTED:
-        # Email seller
+        # Email seller — new return request alert
         seller_email, seller_lang = _fetch_email(seller_id)
         if seller_email:
             html_body = get_return_request_submitted_email(return_data, return_id, order_id, recipient="seller", lang=seller_lang)
             subject = _email_t("sub.return_requested_seller", seller_lang).replace("{oid}", oid_short)
-            send_email(to_email=seller_email, subject=subject, html_content=html_body)
-        # Also email buyer as confirmation
+            enqueue_email_task(to_email=seller_email, subject=subject, html_content=html_body,
+                               event_type="return_requested_seller", order_id=order_id)
+        # Email buyer — request confirmation
         buyer_email, buyer_lang = _fetch_email(buyer_id)
         if buyer_email:
             html_body = get_return_request_submitted_email(return_data, return_id, order_id, recipient="buyer", lang=buyer_lang)
             subject = _email_t("sub.return_requested_buyer", buyer_lang).replace("{oid}", oid_short)
-            send_email(to_email=buyer_email, subject=subject, html_content=html_body)
+            enqueue_email_task(to_email=buyer_email, subject=subject, html_content=html_body,
+                               event_type="return_requested_buyer", order_id=order_id)
 
     elif status == ReturnStatusValues.APPROVED:
         buyer_email, buyer_lang = _fetch_email(buyer_id)
         if buyer_email:
             html_body = get_return_request_approved_email(return_data, return_id, order_id, lang=buyer_lang)
             subject = _email_t("sub.return_approved", buyer_lang).replace("{oid}", oid_short)
-            send_email(to_email=buyer_email, subject=subject, html_content=html_body)
+            enqueue_email_task(to_email=buyer_email, subject=subject, html_content=html_body,
+                               event_type="return_approved", order_id=order_id)
 
     elif status == ReturnStatusValues.REJECTED:
         buyer_email, buyer_lang = _fetch_email(buyer_id)
         if buyer_email:
             html_body = get_return_request_rejected_email(return_data, return_id, order_id, lang=buyer_lang)
             subject = _email_t("sub.return_rejected", buyer_lang).replace("{oid}", oid_short)
-            send_email(to_email=buyer_email, subject=subject, html_content=html_body)
+            enqueue_email_task(to_email=buyer_email, subject=subject, html_content=html_body,
+                               event_type="return_rejected", order_id=order_id)
+
+    elif status == ReturnStatusValues.RECEIVED:
+        # FIX F6-1: Email buyer — returned item received, refund in progress
+        buyer_email, buyer_lang = _fetch_email(buyer_id)
+        if buyer_email:
+            html_body = get_return_received_email(return_data, return_id, order_id, lang=buyer_lang)
+            subject_en = f"Return Received - Order #{oid_short}"
+            subject_fr = f"Retour reçu - Commande #{oid_short}"
+            subject = subject_fr if buyer_lang == "fr" else subject_en
+            enqueue_email_task(to_email=buyer_email, subject=subject, html_content=html_body,
+                               event_type="return_received", order_id=order_id)
+
+    elif status == ReturnStatusValues.REFUNDED:
+        # FIX F6-2: Email buyer — return refund processed
+        buyer_email, buyer_lang = _fetch_email(buyer_id)
+        if buyer_email:
+            html_body = get_return_refunded_email(return_data, return_id, order_id, lang=buyer_lang)
+            subject_en = f"Your Return Refund Has Been Processed - Order #{oid_short}"
+            subject_fr = f"Votre remboursement de retour a été traité - Commande #{oid_short}"
+            subject = subject_fr if buyer_lang == "fr" else subject_en
+            enqueue_email_task(to_email=buyer_email, subject=subject, html_content=html_body,
+                               event_type="return_refunded", order_id=order_id)
 
 
 @firestore_fn.on_document_updated(document="return_requests/{returnId}", **FIRESTORE_TRIGGER_OPTIONS)
@@ -2312,7 +2575,7 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
         return
 
     order_id = after_data.get(Fields.ORDER_ID, "")
-    buyer_id = after_data.get(Fields.USER_ID, "")
+    buyer_id = after_data.get(Fields.BUYER_ID, "")  # return_requests use buyerId not userId
     seller_id = after_data.get(Fields.SELLER_ID, "")
     oid_short = order_id[:8] if order_id else "?"
 
@@ -2415,8 +2678,26 @@ def on_order_item_shipped(event: firestore_fn.Event[firestore_fn.Change[firestor
     before_items = before.get(Fields.ITEMS, [])
     after_items = after.get(Fields.ITEMS, [])
 
-    # Map before items by a unique key (productId + warehouseId if available)
+    # FIX-1 (CRITICAL): Guard against double notification.
+    # When ALL items ship at once the Firestore transaction also sets orderStatus=SHIPPED,
+    # which fires on_order_status_changed.  That trigger sends the canonical "Order Shipped!"
+    # push + email.  This trigger handles PARTIAL shipments (multi-seller, first wave).
+    # If the order-level status just transitioned to SHIPPED in this same write, bail out.
+    before_order_status = before.get(Fields.ORDER_STATUS)
+    after_order_status = after.get(Fields.ORDER_STATUS)
+    if (before_order_status != OrderStatusValues.SHIPPED
+            and after_order_status == OrderStatusValues.SHIPPED):
+        return  # on_order_status_changed will handle the full-order shipped notification
+
+    # FIX-2 (HIGH): Use cartItemId as the unique item key.
+    # productId + warehouseId collides when a buyer orders the same SKU twice in the same
+    # warehouse (two separate line items share the same productId and warehouseId).
+    # cartItemId is generated per line item at add-to-cart time and is always unique.
     def _item_key(item):
+        cid = item.get(Fields.CART_ITEM_ID)
+        if cid:
+            return cid
+        # Fallback for legacy orders that pre-date cartItemId field
         return f"{item.get(Fields.PRODUCT_ID)}_{item.get(Fields.FULFILLMENT_WAREHOUSE_ID, 'none')}"
 
     before_map = {_item_key(item): item for item in before_items}
@@ -2443,9 +2724,14 @@ def on_order_item_shipped(event: firestore_fn.Event[firestore_fn.Change[firestor
         logger.warning(f"Order {order_id} missing user_id or customer_email, cannot notify")
         return
 
-    # SECURITY: Claim notification to avoid duplicates using a hash of item product IDs
+    # FIX-3 (HIGH): Use cartItemId (unique per line item) for dedup hash so that
+    # split shipments of the same product each get their own claim slot.
+    # Fallback to productId for legacy orders without cartItemId.
     import hashlib
-    item_ids_str = ":".join(sorted([it.get(Fields.PRODUCT_ID, "") for it in shipped_this_update]))
+    item_ids_str = ":".join(sorted([
+        it.get(Fields.CART_ITEM_ID) or it.get(Fields.PRODUCT_ID, "")
+        for it in shipped_this_update
+    ]))
     item_hash = hashlib.md5(item_ids_str.encode()).hexdigest()[:12]
     claim_id = f"item_shipped_{order_id}_{item_hash}"
 

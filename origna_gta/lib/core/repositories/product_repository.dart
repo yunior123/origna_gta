@@ -32,6 +32,9 @@ class FirebaseProductRepository implements ProductRepository {
     Product product,
     List<Uint8List> imageBytes, {
     List<String>? testImageUrls,
+    // bookSourceUrl is intentionally NOT on the Dart Product model (buyer-protected)
+    // but must reach the backend so it can be stored server-side for book products.
+    String? bookSourceUrl,
   }) async {
     final productJson = product.toJson()
       ..remove(Fields.productId)
@@ -39,6 +42,13 @@ class FirebaseProductRepository implements ProductRepository {
       ..remove(Fields.createdAt)
       ..remove(Fields.rating)
       ..remove(Fields.ratingCount);
+
+    // Inject bookSourceUrl for digital book products — kept out of the Dart Product
+    // model (buyer-protected: never read back by client) but required by Python
+    // ProductCreate validation to store the download URL server-side.
+    if (bookSourceUrl != null && bookSourceUrl.isNotEmpty) {
+      productJson['bookSourceUrl'] = bookSourceUrl;
+    }
 
     // Normalize apartment: empty string → null (matches sanitizeProductForFirestore)
     final sellerAddress = productJson[Fields.sellerAddress];
@@ -570,7 +580,7 @@ Map<String, dynamic> sanitizeProductForFirestore(
 }
 
 abstract class ProductRepository {
-  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls});
+  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls, String? bookSourceUrl});
   Future<void> deleteProduct(String productId);
   Future<Product?> fetchProductById(String productId);
   Future<ProductQueryResult> fetchProducts({

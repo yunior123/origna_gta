@@ -501,7 +501,10 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   final _sessionTimeout = SessionTimeoutService();
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<Uri>? _deepLinkSubscription;
-  final _navigatorKey = GlobalKey<NavigatorState>();
+  // FIX-5 (HIGH): Use the shared navigatorKey from NotificationService so
+  // notification tap handlers can push routes headlessly (without BuildContext).
+  // The private _navigatorKey is replaced by the static singleton key.
+  GlobalKey<NavigatorState> get _navigatorKey => NotificationService.navigatorKey;
 
   @override
   Widget build(BuildContext context) {
