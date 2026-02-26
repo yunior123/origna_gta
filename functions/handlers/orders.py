@@ -2299,18 +2299,23 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         elif new_status == OrderStatusValues.SHIPPED:
             tracking_number = after_data.get(Fields.TRACKING_NUMBER, "N/A")
             carrier = after_data.get(Fields.CARRIER, "N/A")
+            is_pickup = after_data.get(Fields.DELIVERY_SPEED) == DeliveryTypeValues.PICKUP
 
-            # Email buyer — branded template with receipt
-            shipped_html = get_order_shipped_email(after_data, order_id, tracking_number, carrier, lang=lang)
-            enqueue_email_task(
-                to_email=buyer_email,
-                subject=_email_t("sub.shipped", lang).replace("{oid}", oid_short),
-                html_content=shipped_html,
-                event_type="order_shipped",
-                order_id=order_id,
-            )
+            # For pickup orders, on_order_item_shipped sends the "Ready for Pickup" email
+            # synchronously (for fast E2E test visibility). Skip email here to avoid duplicate.
+            if not is_pickup:
+                shipped_html = get_order_shipped_email(after_data, order_id, tracking_number, carrier, lang=lang)
+                enqueue_email_task(
+                    to_email=buyer_email,
+                    subject=_email_t("sub.shipped", lang).replace("{oid}", oid_short),
+                    html_content=shipped_html,
+                    event_type="order_shipped",
+                    order_id=order_id,
+                )
+            push_body = (f"Order #{oid_short} is ready for pickup!" if is_pickup
+                         else f"Order #{oid_short} is on its way via {carrier}")
             send_push_notification(
-                user_id, "Order Shipped!", f"Order #{oid_short} is on its way via {carrier}",
+                user_id, "Order Shipped!", push_body,
                 data={"type": "order_status", "orderId": order_id, "status": new_status},
             )
 
@@ -2682,11 +2687,14 @@ def on_order_item_shipped(event: firestore_fn.Event[firestore_fn.Change[firestor
     # When ALL items ship at once the Firestore transaction also sets orderStatus=SHIPPED,
     # which fires on_order_status_changed.  That trigger sends the canonical "Order Shipped!"
     # push + email.  This trigger handles PARTIAL shipments (multi-seller, first wave).
-    # If the order-level status just transitioned to SHIPPED in this same write, bail out.
+    # If the order-level status just transitioned to SHIPPED in this same write, bail out —
+    # UNLESS it's a pickup order (Ready for Pickup notification must be sent immediately/sync).
     before_order_status = before.get(Fields.ORDER_STATUS)
     after_order_status = after.get(Fields.ORDER_STATUS)
+    is_pickup_order = after.get(Fields.DELIVERY_SPEED) == DeliveryTypeValues.PICKUP
     if (before_order_status != OrderStatusValues.SHIPPED
-            and after_order_status == OrderStatusValues.SHIPPED):
+            and after_order_status == OrderStatusValues.SHIPPED
+            and not is_pickup_order):
         return  # on_order_status_changed will handle the full-order shipped notification
 
     # FIX-2 (HIGH): Use cartItemId as the unique item key.

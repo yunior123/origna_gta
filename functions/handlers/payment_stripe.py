@@ -995,7 +995,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Calculate shipping (server-side) - returns dollars
         # Bug #9: Read delivery speed from client request (express/same_day cost more)
         delivery_speed = data.get(Fields.DELIVERY_SPEED, DeliveryTypeValues.STANDARD)
-        if delivery_speed not in (DeliveryTypeValues.STANDARD, DeliveryTypeValues.EXPRESS, DeliveryTypeValues.SAME_DAY):
+        if delivery_speed not in DeliveryTypeValues.ALL:
             delivery_speed = DeliveryTypeValues.STANDARD  # Sanitize to prevent injection
 
         # Get delivery instructions from client (optional)

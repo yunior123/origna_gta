@@ -251,6 +251,10 @@ _EMAIL_STRINGS: dict[str, dict[str, str]] = {
         "en": "Your Order #{oid} Has Shipped - Origna",
         "fr": "Votre commande #{oid} a été expédiée - Origna",
     },
+    "sub.ready_for_pickup": {
+        "en": "Ready for Pickup - Order #{oid} - Origna",
+        "fr": "Prêt pour ramassage - Commande #{oid} - Origna",
+    },
     "sub.shipped_seller": {
         "en": "Order {oid} Shipped Successfully - Origna",
         "fr": "Commande {oid} expédiée avec succès - Origna",

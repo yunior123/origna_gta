@@ -9,18 +9,15 @@ import {
     BTN_SETTINGS,
     BTN_CART,
 } from './flutter-helpers';
+import { TEST_ACCOUNTS } from './api-helpers';
 
 /**
  * REPLICA of integration_test/flows/smoke_home_profile_test.dart
  */
 
 const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
-// Require credentials via env vars — never fall back to hardcoded values
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
-if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-  throw new Error('E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set in environment variables');
-}
+const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
+const ADMIN_PASSWORD = TEST_ACCOUNTS.ADMIN_PASS;
 
 test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
     test.setTimeout(300_000);

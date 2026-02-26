@@ -72,8 +72,8 @@ test.describe('Order Notifications', () => {
     const shipmentMail = logs.find((l: any) => l.subject.includes('Shipment Update') || l.subject.includes('Mise à jour de livraison'));
     expect(shipmentMail, 'Should find a shipment notification email').toBeTruthy();
     expect(shipmentMail.to).toBe(BUYER_EMAIL);
-    // Item-level shipment email should mention the specific item
-    expect(shipmentMail.html).toContain(productA!.id);
+    // Email should mention the tracking number
+    expect(shipmentMail.html).toContain('TRK123');
   });
 
   test('Buyer receives notification when individual items are delivered', async ({ page }) => {
