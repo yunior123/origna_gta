@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/services/notification_service.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -15,25 +16,20 @@ String _deviceLanguage() {
 
 abstract class AuthRepository {
   Future<void> deleteAccount();
-  Future<void>
-  ensureUserDocumentExists(); // ✅ New method to create Firestore document for verified users
+  Future<void> ensureUserDocumentExists(); // ✅ New method to create Firestore document for verified users
   Future<bool> isEmailVerified();
-  Future<UserCredential> registerWithEmail(
-    String email,
-    String password,
-    String name, {
-    bool marketingOptIn = false,
-  });
+  Future<UserCredential> registerWithEmail(String email, String password, String name, {bool marketingOptIn = false});
   Future<void> sendEmailVerification();
   Future<void> sendPasswordResetEmail(String email);
   Future<UserCredential> signInWithEmail(String email, String password);
   Future<UserCredential> signInWithGoogle();
   Future<void> signOut();
-  Stream<UserModel?> watchProfile(String userId);
 
   /// Validates that the current user still exists in Firebase Auth
   /// Returns true if valid, false if user was deleted (and signs out)
   Future<bool> validateCurrentUser();
+
+  Stream<UserModel?> watchProfile(String userId);
 }
 
 class FirebaseAuthRepository implements AuthRepository {
@@ -49,9 +45,7 @@ class FirebaseAuthRepository implements AuthRepository {
     if (user == null) return;
 
     // Call the collective delete function which handles Firestore, Auth, and Stripe
-    await _functions.httpsCallable(CloudFunctionEndpoints.deleteAccount).call({
-      Fields.confirmation: ConfirmationValues.deleteMyAccount,
-    });
+    await _functions.httpsCallable(CloudFunctionEndpoints.deleteAccount).call({Fields.confirmation: ConfirmationValues.deleteMyAccount});
   }
 
   @override
@@ -74,18 +68,14 @@ class FirebaseAuthRepository implements AuthRepository {
     // Only create document if email is verified (or in emulator mode)
     if (!freshUser.emailVerified && !EnvConfig().isEmulator) {
       if (kDebugMode) {
-        debugPrint(
-          '⚠️ Email not verified for ${freshUser.email}, skipping Firestore document creation',
-        );
+        debugPrint('⚠️ Email not verified for ${freshUser.email}, skipping Firestore document creation');
       }
       return;
     }
 
     await _createUserDocumentIfNeeded(freshUser);
     if (kDebugMode) {
-      debugPrint(
-        '✅ Firestore document ensured for verified user ${freshUser.email}',
-      );
+      debugPrint('✅ Firestore document ensured for verified user ${freshUser.email}');
     }
   }
 
@@ -109,25 +99,14 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<UserCredential> registerWithEmail(
-    String email,
-    String password,
-    String name, {
-    bool marketingOptIn = false,
-  }) async {
+  Future<UserCredential> registerWithEmail(String email, String password, String name, {bool marketingOptIn = false}) async {
     final trimmedEmail = email.trim().toLowerCase();
 
     if (!ValidationConstants.emailRegex.hasMatch(trimmedEmail)) {
-      throw FirebaseAuthException(
-        code: 'invalid-email',
-        message: 'Email format is invalid',
-      );
+      throw FirebaseAuthException(code: 'invalid-email', message: 'Email format is invalid');
     }
 
-    final userCredential = await _auth.createUserWithEmailAndPassword(
-      email: trimmedEmail,
-      password: password,
-    );
+    final userCredential = await _auth.createUserWithEmailAndPassword(email: trimmedEmail, password: password);
 
     // ⚠️ Store displayName in Firebase Auth profile (NOT in Firestore yet)
     // Firestore document will only be created after email verification
@@ -136,10 +115,7 @@ class FirebaseAuthRepository implements AuthRepository {
       if (kDebugMode) debugPrint('✅ Display name "$name" saved to Firebase Auth profile');
       // Cache marketingOptIn in Firestore so it survives process restarts before email verification
       if (marketingOptIn) {
-        await _firestore
-            .collection(Collections.pendingProfiles)
-            .doc(userCredential.user!.uid)
-            .set({Fields.marketingOptIn: true});
+        await _firestore.collection(Collections.pendingProfiles).doc(userCredential.user!.uid).set({Fields.marketingOptIn: true});
       }
     }
 
@@ -149,18 +125,12 @@ class FirebaseAuthRepository implements AuthRepository {
       try {
         await userCredential.user!.sendEmailVerification();
         if (kDebugMode) {
-          debugPrint(
-            '✅ Verification email sent to $trimmedEmail during registration',
-          );
-          debugPrint(
-            '⚠️ Firestore document will be created after email verification',
-          );
+          debugPrint('✅ Verification email sent to $trimmedEmail during registration');
+          debugPrint('⚠️ Firestore document will be created after email verification');
           debugPrint('');
           debugPrint('📧 EMULATOR MODE: No real email sent!');
           debugPrint('   To verify email, open: http://localhost:4000/auth');
-          debugPrint(
-            '   Find user "$trimmedEmail" and toggle "Email Verified" ON',
-          );
+          debugPrint('   Find user "$trimmedEmail" and toggle "Email Verified" ON');
           debugPrint('');
         }
       } catch (e) {
@@ -191,10 +161,7 @@ class FirebaseAuthRepository implements AuthRepository {
     /// - Bad UX: can't complete purchases
     final user = _auth.currentUser;
     if (user == null) {
-      throw FirebaseAuthException(
-        code: 'no-current-user',
-        message: 'No authenticated user',
-      );
+      throw FirebaseAuthException(code: 'no-current-user', message: 'No authenticated user');
     }
 
     if (user.emailVerified) {
@@ -223,10 +190,7 @@ class FirebaseAuthRepository implements AuthRepository {
     final trimmedEmail = email.trim().toLowerCase();
 
     if (!ValidationConstants.emailRegex.hasMatch(trimmedEmail)) {
-      throw FirebaseAuthException(
-        code: 'invalid-email',
-        message: 'Email format is invalid',
-      );
+      throw FirebaseAuthException(code: 'invalid-email', message: 'Email format is invalid');
     }
 
     try {
@@ -237,9 +201,7 @@ class FirebaseAuthRepository implements AuthRepository {
       if (e.code == 'user-not-found') {
         // Log for monitoring but return success to client
         if (kDebugMode) {
-          debugPrint(
-            '[SECURITY] Password reset attempted for non-existent email',
-          );
+          debugPrint('[SECURITY] Password reset attempted for non-existent email');
         }
         // Don't throw - client sees success either way
         return;
@@ -255,30 +217,20 @@ class FirebaseAuthRepository implements AuthRepository {
     final trimmedEmail = email.trim().toLowerCase();
 
     if (!ValidationConstants.emailRegex.hasMatch(trimmedEmail)) {
-      throw FirebaseAuthException(
-        code: 'invalid-email',
-        message: 'Email format is invalid',
-      );
+      throw FirebaseAuthException(code: 'invalid-email', message: 'Email format is invalid');
     }
 
-    final userCredential = await _auth.signInWithEmailAndPassword(
-      email: trimmedEmail,
-      password: password,
-    );
+    final userCredential = await _auth.signInWithEmailAndPassword(email: trimmedEmail, password: password);
 
     // ✅ Only create Firestore document if email is verified
     if (userCredential.user != null && userCredential.user!.emailVerified) {
       await _createUserDocumentIfNeeded(userCredential.user);
       if (kDebugMode) {
-        debugPrint(
-          '✅ Email verified - Firestore document created/updated for $trimmedEmail',
-        );
+        debugPrint('✅ Email verified - Firestore document created/updated for $trimmedEmail');
       }
     } else {
       if (kDebugMode) {
-        debugPrint(
-          '⚠️ Email NOT verified - Firestore document NOT created for $trimmedEmail',
-        );
+        debugPrint('⚠️ Email NOT verified - Firestore document NOT created for $trimmedEmail');
       }
     }
 
@@ -304,16 +256,19 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {
+    try {
+      // Clear FCM token before signing out
+      await NotificationService.instance.clearTokenFromFirestore();
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ Failed to clear FCM token on sign out: $e');
+    }
     await _auth.signOut();
 
     // On Flutter Web (et parfois avec l'émulateur), la propagation du sign-out
     // peut être asynchrone/retardée. Attendre l'évènement authStateChanges
     // rend l'état UI (gates/providers) beaucoup plus fiable.
     try {
-      await _auth
-          .authStateChanges()
-          .firstWhere((user) => user == null)
-          .timeout(const Duration(seconds: 5));
+      await _auth.authStateChanges().firstWhere((user) => user == null).timeout(const Duration(seconds: 5));
     } catch (_) {
       // Best-effort only: ne pas bloquer la navigation si l'event tarde.
     }
@@ -332,27 +287,18 @@ class FirebaseAuthRepository implements AuthRepository {
 
       // If email is not verified, the user won't have a Firestore doc yet - that's expected
       // Don't sign them out; they need to verify their email first
-      if (freshUser != null &&
-          !freshUser.emailVerified &&
-          !EnvConfig().isEmulator) {
+      if (freshUser != null && !freshUser.emailVerified && !EnvConfig().isEmulator) {
         if (kDebugMode) {
-          debugPrint(
-            'ℹ️ User ${freshUser.email} email not verified - skipping Firestore profile check',
-          );
+          debugPrint('ℹ️ User ${freshUser.email} email not verified - skipping Firestore profile check');
         }
         return true;
       }
 
       // Check if Firestore profile exists (only for verified users)
-      final doc = await _firestore
-          .collection(Collections.users)
-          .doc(user.uid)
-          .get();
+      final doc = await _firestore.collection(Collections.users).doc(user.uid).get();
       if (!doc.exists) {
         if (kDebugMode) {
-          debugPrint(
-            '⚠️ Verified user profile not found in Firestore, signing out stale session',
-          );
+          debugPrint('⚠️ Verified user profile not found in Firestore, signing out stale session');
         }
         await signOut();
         return false;
@@ -361,13 +307,9 @@ class FirebaseAuthRepository implements AuthRepository {
       return true;
     } on FirebaseAuthException catch (e) {
       // user-not-found or user-disabled means the account was deleted
-      if (e.code == 'user-not-found' ||
-          e.code == 'user-disabled' ||
-          e.code == 'user-token-expired') {
+      if (e.code == 'user-not-found' || e.code == 'user-disabled' || e.code == 'user-token-expired') {
         if (kDebugMode) {
-          debugPrint(
-            '⚠️ User account no longer exists (${e.code}), signing out stale session',
-          );
+          debugPrint('⚠️ User account no longer exists (${e.code}), signing out stale session');
         }
         await signOut();
         return false;
@@ -383,12 +325,10 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Stream<UserModel?> watchProfile(String userId) {
-    return _firestore.collection(Collections.users).doc(userId).snapshots().map(
-      (doc) {
-        if (!doc.exists) return null;
-        return UserModel.fromMap({...doc.data()!, Fields.uid: doc.id});
-      },
-    );
+    return _firestore.collection(Collections.users).doc(userId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return UserModel.fromMap({...doc.data()!, Fields.uid: doc.id});
+    });
   }
 
   Future<void> _createUserDocumentIfNeeded(User? user, {String? name}) async {
@@ -402,10 +342,7 @@ class FirebaseAuthRepository implements AuthRepository {
       final callable = _functions.httpsCallable('create_user_profile');
       bool marketingOptIn = false;
       try {
-        final pendingDoc = await _firestore
-            .collection(Collections.pendingProfiles)
-            .doc(user.uid)
-            .get();
+        final pendingDoc = await _firestore.collection(Collections.pendingProfiles).doc(user.uid).get();
         if (pendingDoc.exists) {
           marketingOptIn = (pendingDoc.data()?[Fields.marketingOptIn] as bool?) ?? false;
           await _firestore.collection(Collections.pendingProfiles).doc(user.uid).delete();

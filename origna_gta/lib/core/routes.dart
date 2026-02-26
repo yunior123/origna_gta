@@ -9,13 +9,13 @@ import 'package:origna_gta/models/generated/models.dart' show Product;
 import 'package:origna_gta/models/models.dart' show CartItemDetailModel;
 
 class AppRoutes {
-  AppRoutes._(); // Prevent instantiation
-
   static const String home = '/';
+
   static const String login = '/login';
   static const String cart = '/cart';
   static const String profile = '/profile';
   static const String orders = '/orders';
+  static const String orderDetail = '/orders/detail';
   static const String addProduct = '/add-product';
   static const String editProduct = '/edit-product';
   static const String productDetails = '/product-details';
@@ -43,16 +43,16 @@ class AppRoutes {
   static const String subscriptionSuccess = '/subscription/success';
   static const String subscriptionCancel = '/subscription/cancel';
   static const String chat = '/chat';
+  AppRoutes._(); // Prevent instantiation
 }
 
 // ─── Typed route arguments ─────────────────────────────────────────
 
-/// Arguments for [AppRoutes.productDetails].
-class ProductDetailsArgs {
+/// Arguments for [AppRoutes.chat].
+class ChatArgs {
   final String productId;
-  final Map<String, dynamic>? product;
-
-  const ProductDetailsArgs({required this.productId, this.product});
+  final String productTitle;
+  const ChatArgs({required this.productId, required this.productTitle});
 }
 
 /// Arguments for [AppRoutes.checkout].
@@ -71,15 +71,22 @@ class EditProductArgs {
   const EditProductArgs({required this.product});
 }
 
+/// Arguments for [AppRoutes.orderDetail].
+class OrderDetailArgs {
+  final String orderId;
+  const OrderDetailArgs({required this.orderId});
+}
+
+/// Arguments for [AppRoutes.productDetails].
+class ProductDetailsArgs {
+  final String productId;
+  final Map<String, dynamic>? product;
+
+  const ProductDetailsArgs({required this.productId, this.product});
+}
+
 /// Arguments for [AppRoutes.productBySlug].
 class ProductSlugArgs {
   final String slug;
   const ProductSlugArgs({required this.slug});
-}
-
-/// Arguments for [AppRoutes.chat].
-class ChatArgs {
-  final String productId;
-  final String productTitle;
-  const ChatArgs({required this.productId, required this.productTitle});
 }

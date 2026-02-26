@@ -10,6 +10,7 @@ import {
   checkSemantics,
   ensureLoggedInAsAdmin,
   performSignOut,
+  navigateHome,
   BTN_SETTINGS,
 } from './flutter-helpers';
 import { signIn, callCallable, TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';
@@ -30,8 +31,7 @@ test.describe('Profile Management', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await settingsBtn.click();
@@ -51,8 +51,7 @@ test.describe('Profile Management', () => {
       if (visible) expect(visible).toBeTruthy();
     }
 
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
   });
 
@@ -65,8 +64,7 @@ test.describe('Profile Management', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await settingsBtn.click();
@@ -83,8 +81,7 @@ test.describe('Profile Management', () => {
       expect(page.url()).toMatch(/\/addresses/i);
     }
 
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
   });
 
@@ -97,8 +94,7 @@ test.describe('Profile Management', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await settingsBtn.click();
@@ -112,8 +108,7 @@ test.describe('Profile Management', () => {
       expect(page.url()).toMatch(/\/orders/i);
     }
 
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
   });
 
@@ -126,8 +121,7 @@ test.describe('Profile Management', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await settingsBtn.click();
@@ -143,8 +137,7 @@ test.describe('Profile Management', () => {
       expect(url).toBeTruthy();
     }
 
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
   });
 });

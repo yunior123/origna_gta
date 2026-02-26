@@ -44,7 +44,7 @@ def test_activate_license_success(mocker):
     mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
 
     with patch("handlers.digital.get_db", return_value=mock_db):
-        result = _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "device-uuid-001", "macos")
+        result = _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "device-uuid-001", "macos", caller_uid="buyer123")
 
     assert result["approved"] is True
     assert result["licenseKey"] == "ABCD-EFGH-IJKL-MNOP"
@@ -61,7 +61,7 @@ def test_activate_license_not_found(mocker):
     mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
 
     with patch("handlers.digital.get_db", return_value=mock_db), pytest.raises(Exception, match="not_found"):
-        _activate_license_impl("XXXX-XXXX-XXXX-XXXX", "device1", "macos")
+        _activate_license_impl("XXXX-XXXX-XXXX-XXXX", "device1", "macos", caller_uid="buyer123")
 
 
 def test_activate_license_revoked(mocker):
@@ -76,7 +76,7 @@ def test_activate_license_revoked(mocker):
     mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
 
     with patch("handlers.digital.get_db", return_value=mock_db), pytest.raises(Exception, match="revoked"):
-        _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "device1", "macos")
+        _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "device1", "macos", caller_uid="buyer123")
 
 
 def test_activate_license_wrong_platform(mocker):
@@ -94,7 +94,7 @@ def test_activate_license_wrong_platform(mocker):
         patch("handlers.digital.get_db", return_value=mock_db),
         pytest.raises(Exception, match="platform_not_supported"),
     ):
-        _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "device1", "linux")
+        _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "device1", "linux", caller_uid="buyer123")
 
 
 def test_activate_license_device_limit_exceeded(mocker):
@@ -113,7 +113,7 @@ def test_activate_license_device_limit_exceeded(mocker):
         patch("handlers.digital.get_db", return_value=mock_db),
         pytest.raises(Exception, match="device_limit_exceeded"),
     ):
-        _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "dev-new", "macos")
+        _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "dev-new", "macos", caller_uid="buyer123")
 
 
 def test_activate_license_idempotent_reactivation(mocker):
@@ -129,7 +129,7 @@ def test_activate_license_idempotent_reactivation(mocker):
     mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
 
     with patch("handlers.digital.get_db", return_value=mock_db):
-        result = _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "dev-existing", "macos")
+        result = _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "dev-existing", "macos", caller_uid="buyer123")
 
     assert result["approved"] is True
     # Should update lastVerifiedAt but not add a new activation entry
@@ -152,7 +152,7 @@ def test_activate_license_unlimited_devices(mocker):
     mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
 
     with patch("handlers.digital.get_db", return_value=mock_db):
-        result = _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "dev-new", "macos")
+        result = _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "dev-new", "macos", caller_uid="buyer123")
 
     assert result["approved"] is True
 
@@ -302,7 +302,7 @@ def test_activate_license_returns_product_name():
     mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
 
     with patch("handlers.digital.get_db", return_value=mock_db):
-        result = _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "device-001", "macos")
+        result = _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "device-001", "macos", caller_uid="buyer123")
 
     assert result["productName"] == "FXCleaner"
 

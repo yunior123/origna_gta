@@ -217,6 +217,7 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     uid = req.auth.uid
     chat_id = (req.data.get(Fields.CHAT_ID) or "").strip()
     raw_text = req.data.get(Fields.MESSAGE_TEXT, "")
+    message_id = (req.data.get("messageId") or "").strip()
 
     if not chat_id:
         raise https_fn.HttpsError("invalid-argument", "chatId is required.")
@@ -269,12 +270,17 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     sender_snap = db.collection(Collections.USERS).document(uid).get()
     sender_name = (sender_snap.to_dict() or {}).get(Fields.NAME, "Someone") if sender_snap.exists else "Someone"
 
-    msg_ref = (
-        db.collection(Collections.CHATS)
-        .document(chat_id)
-        .collection(Collections.CHAT_MESSAGES)
-        .document()
-    )
+    chat_messages_ref = db.collection(Collections.CHATS).document(chat_id).collection(Collections.CHAT_MESSAGES)
+    
+    if message_id:
+        msg_ref = chat_messages_ref.document(message_id)
+        if msg_ref.get().exists:
+            # Idempotency check: message already processed
+            logger.info(f"Idempotent send_message: message {message_id} already exists in chat {chat_id}")
+            return {"success": True, "messageId": msg_ref.id}
+    else:
+        msg_ref = chat_messages_ref.document()
+
     msg_ref.set(
         {
             Fields.SENDER_ID: uid,

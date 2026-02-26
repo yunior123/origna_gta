@@ -72,6 +72,7 @@ class TestTaxAudit(unittest.TestCase):
         payment_stripe._firestore = None
 
         main.stripe = mock_stripe
+        payment_stripe.stripe = mock_stripe
         mock_stripe.checkout.Session.create.reset_mock()
 
         # Create mock DB

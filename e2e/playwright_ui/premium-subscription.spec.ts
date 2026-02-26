@@ -160,8 +160,7 @@ async function fillSubscriptionCheckout(
   // 2. Fill email — use a fresh one to avoid Stripe Link recognizing a real account
   const emailInput = page.locator('#email, input[name="email"]').first();
   if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    const uniqueEmail = `stripe-sub-${Date.now()}@origna-test.ca`;
-    await emailInput.fill(uniqueEmail);
+    await emailInput.fill(buyerEmail);
     await page.waitForTimeout(1_500);
     // Dismiss any Link modal triggered by the email entry
     await dismissStripeModals(page);
@@ -486,9 +485,12 @@ test.describe('C. Create Subscription API + Session Integrity', () => {
 
   test('C5: create_subscription idempotency — same user gets same session (or ALREADY_EXISTS)', async () => {
     const auth = await signIn(BUYER_EMAIL);
-    const status = await callCallable('get_subscription_status', {}, auth.idToken);
-    if ((status.result ?? status).isPremium) {
-      // Already subscribed — must get ALREADY_EXISTS
+    // Check subscription doc status directly — isPremium=true with a canceled subscription
+    // allows re-subscribing (backend only blocks ACTIVE/TRIALING/PAST_DUE/INCOMPLETE).
+    const subDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
+    const blockingStatuses = ['active', 'trialing', 'past_due', 'incomplete'];
+    if (subDoc && blockingStatuses.includes(subDoc.status)) {
+      // Active subscription — must get ALREADY_EXISTS
       const err = await callExpectError('create_subscription', {}, auth.idToken);
       expect(err.code).toMatch(/already-exists/i);
       return;
@@ -650,7 +652,7 @@ test.describe('E. Stripe Checkout — Declined Card Scenarios', () => {
 
     const emailInput = page.locator('#email, input[name="email"]').first();
     if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill(`declined-${Date.now()}@origna-test.ca`);
+      await emailInput.fill(BUYER_EMAIL);
       await page.waitForTimeout(1_500);
       await dismissStripeModals(page);
     }
@@ -701,7 +703,7 @@ test.describe('E. Stripe Checkout — Declined Card Scenarios', () => {
 
     const emailInput = page.locator('#email, input[name="email"]').first();
     if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill(`insufficient-${Date.now()}@origna-test.ca`);
+      await emailInput.fill(BUYER_EMAIL);
       await page.waitForTimeout(1_500);
       await dismissStripeModals(page);
     }
@@ -736,7 +738,7 @@ test.describe('E. Stripe Checkout — Declined Card Scenarios', () => {
 
     const emailInput = page.locator('#email, input[name="email"]').first();
     if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill(`wrongcvc-${Date.now()}@origna-test.ca`);
+      await emailInput.fill(BUYER_EMAIL);
       await page.waitForTimeout(1_500);
       await dismissStripeModals(page);
     }
@@ -789,7 +791,7 @@ test.describe('F. 3DS Authentication for Subscription', () => {
 
     const emailInput = page.locator('#email, input[name="email"]').first();
     if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill(`3ds-approve-${Date.now()}@origna-test.ca`);
+      await emailInput.fill(BUYER_EMAIL);
       await page.waitForTimeout(1_500);
       await dismissStripeModals(page);
     }
@@ -841,7 +843,7 @@ test.describe('F. 3DS Authentication for Subscription', () => {
 
     const emailInput = page.locator('#email, input[name="email"]').first();
     if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill(`3ds-fail-${Date.now()}@origna-test.ca`);
+      await emailInput.fill(BUYER_EMAIL);
       await page.waitForTimeout(1_500);
       await dismissStripeModals(page);
     }
@@ -952,9 +954,13 @@ test.describe('H. Double-Subscribe Guard', () => {
 
   test('H1: create_subscription returns ALREADY_EXISTS when subscription active', async () => {
     const auth = await signIn(BUYER_EMAIL);
-    const status = await callCallable('get_subscription_status', {}, auth.idToken);
-    if (!(status.result ?? status).isPremium) {
-      console.log('H1: skipped — buyer not premium');
+    // Check subscription doc status directly — mirrors the backend _NON_SUBSCRIBABLE set.
+    // Using isPremium alone misses past_due/incomplete states where isPremium=false
+    // but backend still blocks re-subscription.
+    const subDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
+    const blockingStatuses = ['active', 'trialing', 'past_due', 'incomplete'];
+    if (!subDoc || !blockingStatuses.includes(subDoc.status)) {
+      console.log('H1: skipped — no blocking subscription');
       return;
     }
     const err = await callExpectError('create_subscription', {}, auth.idToken);
@@ -963,9 +969,11 @@ test.describe('H. Double-Subscribe Guard', () => {
 
   test('H2: ALREADY_EXISTS error message is user-friendly', async () => {
     const auth = await signIn(BUYER_EMAIL);
-    const status = await callCallable('get_subscription_status', {}, auth.idToken);
-    if (!(status.result ?? status).isPremium) {
-      console.log('H2: skipped — buyer not premium');
+    // Check subscription doc status directly — mirrors the backend _NON_SUBSCRIBABLE set.
+    const subDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
+    const blockingStatuses = ['active', 'trialing', 'past_due', 'incomplete'];
+    if (!subDoc || !blockingStatuses.includes(subDoc.status)) {
+      console.log('H2: skipped — no blocking subscription');
       return;
     }
     const err = await callExpectError('create_subscription', {}, auth.idToken);

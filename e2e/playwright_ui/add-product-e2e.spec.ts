@@ -5,6 +5,7 @@ import {
     checkSemantics,
     ensureLoggedInAsAdmin,
     performSignOut,
+    navigateHome,
     uniqueSuffix,
     BTN_ADD_PRODUCT,
 } from './flutter-helpers';
@@ -37,8 +38,8 @@ test.describe('PW IT Replica — Add Product Flow', () => {
     });
 
     test.afterEach(async ({ page }) => {
-        await page.goto(`${TARGET_URL}/`);
-        await waitForFlutter(page);
+        // Use in-app navigation (not page.goto) to preserve Firebase Auth state for sign-out
+        await navigateHome(page, TARGET_URL);
         await performSignOut(page, TARGET_URL);
     });
 

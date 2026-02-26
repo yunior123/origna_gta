@@ -152,7 +152,7 @@ class TestStockRevalidation:
             result = process_checkout_session_completed(session)
 
             assert result is not None and "cancelled" in result.lower()
-            assert "seller suspended" in result.lower()
+            assert "cancelled - all sellers invalid" in result.lower()
             mock_cancel.assert_called_once()
 
     def test_product_removed_cancels_order(self, mock_firestore_client):
@@ -204,7 +204,7 @@ class TestStockRevalidation:
             result = process_checkout_session_completed(session)
 
             assert result is not None and "cancelled" in result.lower()
-            assert "product removed" in result.lower()
+            assert "cancelled - all sellers invalid" in result.lower()
 
     def test_valid_product_confirms_order(self, mock_firestore_client):
         """FIX-002: Valid active product with non-suspended seller confirms order."""

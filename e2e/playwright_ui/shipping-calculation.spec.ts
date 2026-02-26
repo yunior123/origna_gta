@@ -9,7 +9,7 @@ import {
   signIn, callOk,
   buildCheckoutPayload,
   readDoc, parseDoc, writeDoc, deleteDoc, toFirestoreFields,
-  getTestProduct, invalidateProductCache,
+  getTestProduct, invalidateProductCache, discoverProducts,
   TEST_ACCOUNTS, TEST_UIDS,
 } from './api-helpers';
 

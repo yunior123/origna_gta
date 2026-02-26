@@ -45,9 +45,9 @@ import 'package:origna_gta/services/notification_service.dart';
 import 'package:origna_gta/services/session_timeout_service.dart';
 import 'package:origna_gta/utils/animations.dart';
 import 'package:origna_gta/utils/deferred_widget.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
-import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Handle initial route from URL (critical for web redirects from Stripe)
 List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
@@ -68,10 +68,7 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
     final oobCode = uri.queryParameters['oobCode'];
     final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
     if (oobCode != null && validOobCode.hasMatch(oobCode)) {
-      return [
-        SlidePageRoute(page: const AuthWrapper()),
-        SlidePageRoute(page: ResetPasswordScreen(oobCode: oobCode)),
-      ];
+      return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: ResetPasswordScreen(oobCode: oobCode))];
     }
   }
 
@@ -100,10 +97,7 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
         ),
       ];
     }
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(page: ErrorScreen(message: 'errors.invalid_payment_link'.tr())),
-    ];
+    return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: ErrorScreen(message: 'errors.invalid_payment_link'.tr()))];
   }
 
   // Handle privacy policy route
@@ -131,18 +125,12 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
 
   // Handle seller registration return from Stripe Connect
   if (uri != null && uri.path == AppRoutes.sellerReturn) {
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupCompleteScreen())),
-    ];
+    return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupCompleteScreen()))];
   }
 
   // Handle seller registration refresh (user needs to retry)
   if (uri != null && uri.path == AppRoutes.sellerRefresh) {
-    return [
-      SlidePageRoute(page: const AuthWrapper()),
-      SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupRefreshScreen())),
-    ];
+    return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupRefreshScreen()))];
   }
 
   // Default: show AuthWrapper (home)
@@ -248,6 +236,24 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Orders screen
   if (uri.path == AppRoutes.orders) {
+    return SlidePageRoute(
+      settings: settings,
+      page: const AuthRequiredGate(child: OrdersScreen()),
+    );
+  }
+
+  // Order Detail screen — navigates to orders for now; will be a dedicated detail view later
+  if (uri.path == AppRoutes.orderDetail) {
+    // Accept orderId from typed args or query params (for deep-links)
+    final args = settings.arguments as OrderDetailArgs?;
+    final orderId = args?.orderId ?? uri.queryParameters['orderId'];
+    if (orderId == null || orderId.isEmpty) {
+      return SlidePageRoute(
+        settings: settings,
+        page: const AuthRequiredGate(child: OrdersScreen()),
+      );
+    }
+    // TODO: Replace with a dedicated OrderDetailScreen that accepts orderId
     return SlidePageRoute(
       settings: settings,
       page: const AuthRequiredGate(child: OrdersScreen()),
@@ -459,12 +465,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.chat) {
     final args = settings.arguments as ChatArgs?;
     // Support deep-link via URL query params: /chat?productId=X&productTitle=Y
-    final resolvedArgs = args ??
+    final resolvedArgs =
+        args ??
         (uri.queryParameters.containsKey('productId')
-            ? ChatArgs(
-                productId: uri.queryParameters['productId']!,
-                productTitle: uri.queryParameters['productTitle'] ?? '',
-              )
+            ? ChatArgs(productId: uri.queryParameters['productId']!, productTitle: uri.queryParameters['productTitle'] ?? '')
             : null);
     if (resolvedArgs == null) {
       return SlidePageRoute(
@@ -517,84 +521,84 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
         onPointerDown: (_) => _sessionTimeout.recordActivity(),
         onPointerMove: (_) => _sessionTimeout.recordActivity(),
         onPointerSignal: (_) => _sessionTimeout.recordActivity(), // mouse wheel / trackpad scroll
-      child: MaterialApp(
-        navigatorKey: _navigatorKey,
-        scaffoldMessengerKey: NotificationService.scaffoldMessengerKey,
-        // === i18n: easy_localization (Quebec Bill 96 / Loi 96 compliance) ===
-        localizationsDelegates: context.localizationDelegates,
-        supportedLocales: context.supportedLocales,
-        locale: context.locale,
-        scrollBehavior: const MaterialScrollBehavior().copyWith(
-          // Fix Sentry issue: !identical(kind, PointerDeviceKind.trackpad)
-          // Explicitly supports all pointer kinds for modern Flutter Web
-          scrollbars: true,
-          physics: const BouncingScrollPhysics(),
-        ),
-        onGenerateTitle: (ctx) => 'app.title'.tr(),
-        debugShowCheckedModeBanner: !kReleaseMode && !envConfig.isProduction,
-        // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
-        onGenerateInitialRoutes: _onGenerateInitialRoutes,
-        onGenerateRoute: _onGenerateRoute,
-        onUnknownRoute: (_) => SlidePageRoute(
-          settings: const RouteSettings(name: '/'),
-          page: const AuthWrapper(),
-        ),
-        theme: ThemeData(
-          useMaterial3: true,
-          // Centralized Theme using DesignTokens
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: DesignTokens.primary,
-            primary: DesignTokens.primary,
-            secondary: DesignTokens.secondary,
-            tertiary: DesignTokens.tertiary,
-            surface: DesignTokens.surface,
-            brightness: Brightness.light,
+        child: MaterialApp(
+          navigatorKey: _navigatorKey,
+          scaffoldMessengerKey: NotificationService.scaffoldMessengerKey,
+          // === i18n: easy_localization (Quebec Bill 96 / Loi 96 compliance) ===
+          localizationsDelegates: context.localizationDelegates,
+          supportedLocales: context.supportedLocales,
+          locale: context.locale,
+          scrollBehavior: const MaterialScrollBehavior().copyWith(
+            // Fix Sentry issue: !identical(kind, PointerDeviceKind.trackpad)
+            // Explicitly supports all pointer kinds for modern Flutter Web
+            scrollbars: true,
+            physics: const BouncingScrollPhysics(),
           ),
-          scaffoldBackgroundColor: DesignTokens.surface,
-          fontFamily: 'Roboto',
-          appBarTheme: const AppBarTheme(
-            centerTitle: false,
-            elevation: 0,
-            scrolledUnderElevation: 1,
-            backgroundColor: DesignTokens.surface,
-            foregroundColor: DesignTokens.textPrimary,
+          onGenerateTitle: (ctx) => 'app.title'.tr(),
+          debugShowCheckedModeBanner: !kReleaseMode && !envConfig.isProduction,
+          // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
+          onGenerateInitialRoutes: _onGenerateInitialRoutes,
+          onGenerateRoute: _onGenerateRoute,
+          onUnknownRoute: (_) => SlidePageRoute(
+            settings: const RouteSettings(name: '/'),
+            page: const AuthWrapper(),
           ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
+          theme: ThemeData(
+            useMaterial3: true,
+            // Centralized Theme using DesignTokens
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: DesignTokens.primary,
+              primary: DesignTokens.primary,
+              secondary: DesignTokens.secondary,
+              tertiary: DesignTokens.tertiary,
+              surface: DesignTokens.surface,
+              brightness: Brightness.light,
+            ),
+            scaffoldBackgroundColor: DesignTokens.surface,
+            fontFamily: 'Roboto',
+            appBarTheme: const AppBarTheme(
+              centerTitle: false,
               elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              backgroundColor: DesignTokens.primary,
-              foregroundColor: DesignTokens.textOnPrimary,
+              scrolledUnderElevation: 1,
+              backgroundColor: DesignTokens.surface,
+              foregroundColor: DesignTokens.textPrimary,
             ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: DesignTokens.primary,
+                foregroundColor: DesignTokens.textOnPrimary,
+              ),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: DesignTokens.surface,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: DesignTokens.outlineVariant),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: DesignTokens.outlineVariant),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
+              ),
+            ),
+            cardTheme: CardThemeData(
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              color: DesignTokens.surface,
+              surfaceTintColor: DesignTokens.surface,
+            ),
+            dividerTheme: DividerThemeData(color: DesignTokens.outlineVariant, thickness: 1, space: 1),
           ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: DesignTokens.surface,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: DesignTokens.outlineVariant),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: DesignTokens.outlineVariant),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
-            ),
-          ),
-          cardTheme: CardThemeData(
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            color: DesignTokens.surface,
-            surfaceTintColor: DesignTokens.surface,
-          ),
-          dividerTheme: DividerThemeData(color: DesignTokens.outlineVariant, thickness: 1, space: 1),
         ),
-      ),
-    ), // Listener
+      ), // Listener
     ); // Focus
   }
 
@@ -620,13 +624,16 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
       final appLinks = AppLinks();
 
       // Handle initial link if app was closed
-      appLinks.getInitialLink().then((uri) {
-        if (uri != null) {
-          _handleDeepLink(uri);
-        }
-      }).catchError((e) {
-        debugPrint('⚠️ getInitialLink failed: $e');
-      });
+      appLinks
+          .getInitialLink()
+          .then((uri) {
+            if (uri != null) {
+              _handleDeepLink(uri);
+            }
+          })
+          .catchError((e) {
+            debugPrint('⚠️ getInitialLink failed: $e');
+          });
 
       _deepLinkSubscription = appLinks.uriLinkStream.listen((Uri uri) {
         if (kDebugMode) {
@@ -695,10 +702,7 @@ class _ProductBySlugScreen extends ConsumerWidget {
                       Text('product.not_found'.tr(), style: TextStyle(fontSize: 18, color: DesignTokens.textSecondary)),
                       const SizedBox(height: 24),
                       TextButton(
-                        onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                          AppRoutes.home,
-                          (_) => false,
-                        ),
+                        onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (_) => false),
                         child: Text('product.browse'.tr()),
                       ),
                     ],

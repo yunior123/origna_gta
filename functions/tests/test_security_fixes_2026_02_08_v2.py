@@ -35,7 +35,7 @@ class TestStockRevalidationLogic:
         assert "suspended" in source, "Missing seller suspension check"
         assert "_restore_stock_and_cancel_order" in source, "Missing cancel helper call"
         assert "deactivated" in source, "Missing product deactivate message"
-        assert "seller suspended" in source.lower(), "Missing seller suspended message"
+        assert "all sellers invalid" in source.lower(), "Missing all sellers invalid message"
 
 
 class TestRateLimiterIntegration:

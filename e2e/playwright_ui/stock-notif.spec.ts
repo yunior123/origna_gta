@@ -370,10 +370,18 @@ test.describe('3. API — subscribe_stock_notification / unsubscribe_stock_notif
   });
 
   test('3.4 Subscribe with variantKey works (variant-level subscription)', async () => {
-    // Skip if the test product has no variants
+    // Skip if the test product has no variants or variant is in stock
     const product = await getDoc(`products/${VARIANT_PRODUCT_ID}`, buyerToken);
     if (!product || !product.variants || product.variants.length === 0) {
       test.skip(true, 'No variant product available — skipping variant-level subscription test');
+      return;
+    }
+    // Check if the specific variant is OOS; if in-stock, backend rejects subscribe
+    const targetVariant = (product.variants as any[]).find(
+      (v: any) => v.variantKey === OOS_VARIANT_KEY || v.key === OOS_VARIANT_KEY,
+    );
+    if (!targetVariant || (targetVariant.stockQuantity ?? 1) > 0) {
+      test.skip(true, `Variant ${OOS_VARIANT_KEY} is not OOS — skipping variant subscription test`);
       return;
     }
     const result = await callOk(

@@ -1,6 +1,5 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'dart:math';
-import 'package:uuid/uuid.dart';
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -11,6 +10,7 @@ import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/circuit_breaker.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:uuid/uuid.dart';
 
 import 'checkout_state.dart';
 
@@ -46,13 +46,46 @@ final _stripeCircuitBreaker = CircuitBreakerRegistry.get('stripe_checkout', conf
 // ============================================================================
 
 class CheckoutNotifier extends StateNotifier<CheckoutState> {
+  /// Max distance for local delivery option
+  static const double _localDeliveryRadiusKm = BusinessRules.localDeliveryRadiusKm;
+
   final Ref _ref;
 
   CheckoutNotifier(this._ref) : super(const CheckoutState());
-
   OrderRepository get _orderRepository => _ref.read(orderRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
+
   UserRepository get _userRepository => _ref.read(userRepositoryProvider);
+
+  /// Apply a coupon code — validates server-side and stores discount in state.
+  /// [sellerIds] must be passed so seller-scoped coupons can be validated.
+  Future<void> applyCoupon(String code, int subtotalCents, {List<String>? sellerIds}) async {
+    final trimmed = code.trim().toUpperCase();
+    if (trimmed.isEmpty) return;
+    state = state.copyWith(isCouponLoading: true, clearCouponError: true);
+    try {
+      final functions = _ref.read(firebaseFunctionsProvider);
+      // AUDIT FIX (HIGH-C4): Include sellerIds so the server can validate
+      // seller-scoped coupons (e.g., coupon only valid for SellerA's products).
+      final result = await functions.httpsCallable(CloudFunctionEndpoints.applyCoupon).call({
+        Fields.couponCode: trimmed,
+        ApiKeys.cartSubtotalCents: subtotalCents,
+        Fields.sellerIds: sellerIds ?? [],
+      });
+      final data = (result.data as Map<Object?, Object?>).cast<String, dynamic>();
+      final discountCents = (data[Fields.discountAmountCents] as num?)?.toInt() ?? 0;
+      state = state.copyWith(couponCode: trimmed, couponDiscountCents: discountCents, isCouponLoading: false);
+      // AUDIT FIX (MEDIUM-C7): Recalculate client-side tax estimate using post-discount subtotal.
+      // Server is authoritative; this keeps the UI summary consistent.
+      final postDiscountSubtotal = (subtotalCents - discountCents) / 100.0;
+      calculateTaxes(postDiscountSubtotal, shippingCost: state.shippingCost);
+    } on FirebaseFunctionsException catch (e) {
+      state = state.copyWith(isCouponLoading: false, couponError: e.message ?? 'checkout.coupon_invalid_code'.tr());
+    } catch (e, st) {
+      state = state.copyWith(isCouponLoading: false, couponError: 'checkout.coupon_apply_failed'.tr());
+      AppError.log(e, stackTrace: st, context: 'checkout_applyCoupon');
+    }
+  }
 
   /// Calculate shipping cost for cart items and determine available delivery options
   ///
@@ -165,6 +198,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
+  /// Clears the applied coupon code, discount, and any coupon error from state.
+  void removeCoupon() => state = state.copyWith(clearCoupon: true, clearCouponError: true);
+
   /// Reset checkout state
   void reset() {
     state = const CheckoutState();
@@ -176,39 +212,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       state = state.copyWith(deliverySpeed: speed);
     }
   }
-
-  /// Apply a coupon code — validates server-side and stores discount in state.
-  /// [sellerIds] must be passed so seller-scoped coupons can be validated.
-  Future<void> applyCoupon(String code, int subtotalCents, {List<String>? sellerIds}) async {
-    final trimmed = code.trim().toUpperCase();
-    if (trimmed.isEmpty) return;
-    state = state.copyWith(isCouponLoading: true, clearCouponError: true);
-    try {
-      final functions = _ref.read(firebaseFunctionsProvider);
-      // AUDIT FIX (HIGH-C4): Include sellerIds so the server can validate
-      // seller-scoped coupons (e.g., coupon only valid for SellerA's products).
-      final result = await functions.httpsCallable(CloudFunctionEndpoints.applyCoupon).call({
-        Fields.couponCode: trimmed,
-        ApiKeys.cartSubtotalCents: subtotalCents,
-        Fields.sellerIds: sellerIds ?? [],
-      });
-      final data = (result.data as Map<Object?, Object?>).cast<String, dynamic>();
-      final discountCents = (data[Fields.discountAmountCents] as num?)?.toInt() ?? 0;
-      state = state.copyWith(couponCode: trimmed, couponDiscountCents: discountCents, isCouponLoading: false);
-      // AUDIT FIX (MEDIUM-C7): Recalculate client-side tax estimate using post-discount subtotal.
-      // Server is authoritative; this keeps the UI summary consistent.
-      final postDiscountSubtotal = (subtotalCents - discountCents) / 100.0;
-      calculateTaxes(postDiscountSubtotal, shippingCost: state.shippingCost);
-    } on FirebaseFunctionsException catch (e) {
-      state = state.copyWith(isCouponLoading: false, couponError: e.message ?? 'checkout.coupon_invalid_code'.tr());
-    } catch (e, st) {
-      state = state.copyWith(isCouponLoading: false, couponError: 'checkout.coupon_apply_failed'.tr());
-      AppError.log(e, stackTrace: st, context: 'checkout_applyCoupon');
-    }
-  }
-
-  /// Clears the applied coupon code, discount, and any coupon error from state.
-  void removeCoupon() => state = state.copyWith(clearCoupon: true, clearCouponError: true);
 
   /// Sets the active payment provider if [provider] is a recognised value.
   ///
@@ -287,8 +290,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
                 Fields.sellerId: item.sellerId,
                 Fields.imageUrls: item.imageUrls,
                 Fields.isDigital: item.isDigital,
-                if (item.buyerNote != null && item.buyerNote!.isNotEmpty)
-                  Fields.buyerNote: item.buyerNote,
+                if (item.buyerNote != null && item.buyerNote!.isNotEmpty) Fields.buyerNote: item.buyerNote,
               },
             )
             .toList(),
@@ -389,9 +391,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
     return earthRadiusKm * c;
   }
-
-  /// Max distance for local delivery option
-  static const double _localDeliveryRadiusKm = 50.0;
 
   /// Check if buyer is within local delivery range (~50km) of sellers
   Future<bool> _checkLocalDelivery(List<CartItemDetailModel> items, Address buyerAddress) async {

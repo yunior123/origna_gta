@@ -776,11 +776,11 @@ class OrderStatusValues:
         "processing": ["shipped", "cancelled"],
         "shipped": ["in_transit", "delivered"],
         "in_transit": ["delivered", "cancelled"],
-        "delivered": ["disputed", "refunded", "partially_refunded"],
+        "delivered": ["disputed"],
         "cancelled": [],  # Terminal
         "failed": ["pending"],  # Retry
         "expired": ["pending"],  # Retry
-        "disputed": ["refunded", "partially_refunded"],  # Resolved via payment refund
+        "disputed": [],  # Resolved via payment refund
         "refunded": [],  # Terminal
         "partially_refunded": [],  # Terminal
     }
@@ -1371,6 +1371,8 @@ class BusinessRules:
     PLATFORM_FEE_RATIO = 0.025  # PLATFORM_FEE_PERCENT / 100 — use this for calculations
     PREMIUM_MONTHLY_PRICE_CAD = 7.86  # Premium subscription monthly price in CAD
     PREMIUM_MONTHLY_PRICE_CENTS = 786  # Premium subscription monthly price in cents
+    FREE_SHIPPING_THRESHOLD_CENTS = 7500  # $75 CAD — subtotals at or above qualify for free standard shipping
+    LOCAL_DELIVERY_RADIUS_KM = 50.0  # 50km radius for local delivery Eligibility (BUG-L1)
     AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (2-day safety margin)
     AUTHORIZATION_EXPIRY_DAYS = 6  # FIX (M1): 6-day cutoff gives 24h safety margin before Stripe auto-voids at day 7
     RETURN_WINDOW_DAYS = 7  # No returns/refunds after 7 days post-delivery (Amazon-style policy)
@@ -1407,6 +1409,8 @@ class BusinessRules:
     ARCHIVE_AFTER_DAYS = 30
     FIRESTORE_BATCH_LIMIT = 500
     MAX_SHIPPING_COST_CAD = 500  # $500 CAD absolute maximum shipping cost
+    MAX_PRODUCT_IMAGES = 5  # Maximum images per product listing (cross-stack with Dart)
+    MAX_REVIEW_IMAGES = 3  # Maximum images per review
 
     # Seller health thresholds
     SELLER_DISPUTE_RATE_THRESHOLD = 0.05  # 5% dispute rate triggers seller health alert
@@ -1467,6 +1471,36 @@ class BusinessRules:
 
     # Default province for tax fallback
     DEFAULT_PROVINCE = "ON"
+
+    # CDN & Image validation
+    CDN_BASE_URL = "https://cdn.origna.ca"
+    MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
+    IMAGE_MAGIC_BYTES = {
+        b"\xff\xd8\xff": "image/jpeg",  # JPEG
+        b"\x89PNG\r\n\x1a\n": "image/png",  # PNG
+        b"RIFF": "image/webp",  # WebP (RIFF container)
+        b"GIF87a": "image/gif",  # GIF87a
+        b"GIF89a": "image/gif",  # GIF89a
+    }
+
+
+class StripeConstants:
+    """Stripe API specific constants to avoid magic strings."""
+
+    REVERSE_CHARGE = "reverse_charge"
+    SHIPPING_REFERENCE = "shipping"
+    TAX_EXEMPT_NONE = "none"
+    ADDRESS_SOURCE_SHIPPING = "shipping"
+    # Metadata keys
+    METADATA_ORDER_ID = "order_id"
+    METADATA_USER_ID = "user_id"
+    # Line item keys
+    LINE_ITEM_AMOUNT = "amount"
+    LINE_ITEM_REFERENCE = "reference"
+    LINE_ITEM_TAX_CODE = "tax_code"
+    # Customer details keys
+    CUSTOMER_TAX_ID = "tax_id"
+    CUSTOMER_TAX_EXEMPT = "tax_exempt"
 
 
 # =============================================================================
@@ -1699,4 +1733,35 @@ class OrderEventTypes:
         "status_changed", "payment_authorized", "payment_captured", "payment_failed",
         "refund_issued", "item_shipped", "item_delivered", "cancellation_confirmed", "note_added",
         "auto_confirmed",
+    })
+
+# =============================================================================
+# NOTIFICATION TYPES - Parity with Dart NotificationTypes
+# =============================================================================
+
+
+class NotificationTypes:
+    """Standardized notification types to avoid magic strings."""
+
+    ORDER_STATUS = "order_status"
+    ORDER_UPDATE = "order_update"
+    NEW_MESSAGE = "new_message"
+    PROMO = "promo"
+    SYSTEM = "system"
+    ACCOUNT = "account"
+    # Added for return request tracking
+    RETURN_REQUEST = "return_request"
+    RETURN_STATUS = "return_status"
+    BACK_IN_STOCK = "back_in_stock"
+
+    ALL: frozenset[str] = frozenset({
+        ORDER_STATUS,
+        ORDER_UPDATE,
+        NEW_MESSAGE,
+        PROMO,
+        SYSTEM,
+        ACCOUNT,
+        RETURN_REQUEST,
+        RETURN_STATUS,
+        BACK_IN_STOCK,
     })

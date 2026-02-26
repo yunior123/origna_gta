@@ -22,9 +22,6 @@ import {
   fillStripeCheckout,
   waitForOrderStatus,
   verifyEmailSent,
-  writeDoc,
-  deleteDoc,
-  toFirestoreFields,
   FUNCTIONS_URL,
   TEST_ACCOUNTS,
   TEST_UIDS,
@@ -275,47 +272,52 @@ test.describe('D. License Activation & Book Download', () => {
   let softwareLicenseKey: string;
   let bookLicenseKey: string;
 
-  // Seed license keys directly via admin API to avoid slow Stripe checkout
+  // Seed license keys via e2e_seed_license Cloud Function (Admin SDK bypasses
+  // Firestore security rules — licenses collection has allow write: if false).
   test.beforeAll(async () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const buyerAuth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
 
     // Seed software license (FXCleaner — macOS only)
     softwareLicenseKey = 'REDACTED_SECRET';
-    await writeDoc(`licenses/${softwareLicenseKey}`, toFirestoreFields({
+    await callOk('e2e_seed_license', {
+      action: 'create',
       licenseKey: softwareLicenseKey,
-      productId: DIGITAL_SW_ID,
-      orderId: 'e2e-test-order-d-sw',
-      userId: buyerAuth.localId,
-      digitalType: 'software',
-      status: 'active',
-      supportedPlatforms: ['macos'],
-      deviceLimit: 3,
-      activations: [],
-      digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-mac-test.dmg' },
-      productName: 'FXCleaner',
-      createdAt: new Date(),
-    }), adminAuth.idToken, false);
+      data: {
+        productId: DIGITAL_SW_ID,
+        orderId: 'e2e-test-order-d-sw',
+        userId: buyerAuth.localId,
+        digitalType: 'software',
+        status: 'active',
+        supportedPlatforms: ['macos'],
+        deviceLimit: 3,
+        activations: [],
+        digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-mac-test.dmg' },
+        productName: 'FXCleaner',
+      },
+    }, adminAuth.idToken);
 
     // Seed book license (eBook)
     bookLicenseKey = 'REDACTED_SECRET';
-    await writeDoc(`licenses/${bookLicenseKey}`, toFirestoreFields({
+    await callOk('e2e_seed_license', {
+      action: 'create',
       licenseKey: bookLicenseKey,
-      productId: DIGITAL_BOOK_ID,
-      orderId: 'e2e-test-order-d-book',
-      userId: buyerAuth.localId,
-      digitalType: 'book',
-      status: 'active',
-      bookSourceUrl: 'https://cdn.example.com/test-ebook.pdf',
-      productName: 'Canadian History eBook Bundle',
-      createdAt: new Date(),
-    }), adminAuth.idToken, false);
+      data: {
+        productId: DIGITAL_BOOK_ID,
+        orderId: 'e2e-test-order-d-book',
+        userId: buyerAuth.localId,
+        digitalType: 'book',
+        status: 'active',
+        bookSourceUrl: 'https://cdn.example.com/test-ebook.pdf',
+        productName: 'Canadian History eBook Bundle',
+      },
+    }, adminAuth.idToken);
   });
 
   test.afterAll(async () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
-    await deleteDoc(`licenses/${softwareLicenseKey}`, adminAuth.idToken);
-    await deleteDoc(`licenses/${bookLicenseKey}`, adminAuth.idToken);
+    await callOk('e2e_seed_license', { action: 'delete', licenseKey: softwareLicenseKey }, adminAuth.idToken);
+    await callOk('e2e_seed_license', { action: 'delete', licenseKey: bookLicenseKey }, adminAuth.idToken);
   });
 
   test('D.1 Activate software license on a new device → approved with downloadUrls', async () => {
@@ -392,45 +394,49 @@ test.describe('E. Security & Access Control', () => {
   let buyerLicenseKey: string;
   let buyerBookLicenseKey: string;
 
-  // Seed license keys directly via admin API to avoid slow Stripe checkout
+  // Seed via e2e_seed_license Cloud Function (Admin SDK bypasses allow write: if false).
   test.beforeAll(async () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const buyerAuth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
 
     buyerLicenseKey = 'E2EE-SW01-ABCD-9999';
-    await writeDoc(`licenses/${buyerLicenseKey}`, toFirestoreFields({
+    await callOk('e2e_seed_license', {
+      action: 'create',
       licenseKey: buyerLicenseKey,
-      productId: DIGITAL_SW_ID,
-      orderId: 'e2e-test-order-e-sw',
-      userId: buyerAuth.localId,
-      digitalType: 'software',
-      status: 'active',
-      supportedPlatforms: ['macos'],
-      deviceLimit: 3,
-      activations: [],
-      digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-mac-test.dmg' },
-      productName: 'FXCleaner',
-      createdAt: new Date(),
-    }), adminAuth.idToken, false);
+      data: {
+        productId: DIGITAL_SW_ID,
+        orderId: 'e2e-test-order-e-sw',
+        userId: buyerAuth.localId,
+        digitalType: 'software',
+        status: 'active',
+        supportedPlatforms: ['macos'],
+        deviceLimit: 3,
+        activations: [],
+        digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-mac-test.dmg' },
+        productName: 'FXCleaner',
+      },
+    }, adminAuth.idToken);
 
     buyerBookLicenseKey = 'E2EE-BK01-ABCD-8888';
-    await writeDoc(`licenses/${buyerBookLicenseKey}`, toFirestoreFields({
+    await callOk('e2e_seed_license', {
+      action: 'create',
       licenseKey: buyerBookLicenseKey,
-      productId: DIGITAL_BOOK_ID,
-      orderId: 'e2e-test-order-e-book',
-      userId: buyerAuth.localId,
-      digitalType: 'book',
-      status: 'active',
-      bookSourceUrl: 'https://cdn.example.com/test-ebook-e4.pdf',
-      productName: 'Canadian History eBook Bundle',
-      createdAt: new Date(),
-    }), adminAuth.idToken, false);
+      data: {
+        productId: DIGITAL_BOOK_ID,
+        orderId: 'e2e-test-order-e-book',
+        userId: buyerAuth.localId,
+        digitalType: 'book',
+        status: 'active',
+        bookSourceUrl: 'https://cdn.example.com/test-ebook-e4.pdf',
+        productName: 'Canadian History eBook Bundle',
+      },
+    }, adminAuth.idToken);
   });
 
   test.afterAll(async () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
-    await deleteDoc(`licenses/${buyerLicenseKey}`, adminAuth.idToken);
-    await deleteDoc(`licenses/${buyerBookLicenseKey}`, adminAuth.idToken);
+    await callOk('e2e_seed_license', { action: 'delete', licenseKey: buyerLicenseKey }, adminAuth.idToken);
+    await callOk('e2e_seed_license', { action: 'delete', licenseKey: buyerBookLicenseKey }, adminAuth.idToken);
   });
 
   test('E.1 Another buyer cannot activate a license they do not own', async () => {

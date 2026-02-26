@@ -10,6 +10,7 @@ import {
   checkSemantics,
   ensureLoggedInAsAdmin,
   performSignOut,
+  navigateHome,
   BTN_SETTINGS,
 } from './flutter-helpers';
 import { TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';
@@ -30,8 +31,7 @@ test.describe('Favorites', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await settingsBtn.click();
@@ -46,8 +46,7 @@ test.describe('Favorites', () => {
       expect(page.url()).toMatch(/\/favorites/i);
     }
 
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
   });
 
@@ -60,8 +59,7 @@ test.describe('Favorites', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     // Scroll to find product cards
     const productCards = page.locator('[aria-label^="product-card-"]');

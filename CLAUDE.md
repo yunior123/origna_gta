@@ -31,6 +31,11 @@
 28. **Bonus fixes are appreciated, suggetions can be added to state.md, claude.md must be updated on every session initialization** 
 29. ** 🤖 Specialized Agent Playbooks, when taking decision or applying or verifying that the issues and bonus features or issues are correct, spawn them all to verify that the answer is correct so that all is well orchestrated.
 30. if you add new features, make sure to add tests for that feature
+31. The code and logic have to be bullet proof, like a pro
+32. typing is super important
+33. the whole architecture of the app is super important, all flows have to be bulletproof and logicproof. 
+34.  make sure that there are no loose ends like this, if you are not able to complete a task, add it to the state.md file with the tag [TO-DO] and a short description of what needs to be done: example "once a dedicated /orders/:id route is added to AppRoutes."
+35. when adding new features, make sure to add loose ends like this magic string issue that does not comply with claude.md rules to state.md with the tag [TO-DO]:  final orderId = data['orderId'] as String?;
 ---
 
 ## PROJECT
@@ -68,6 +73,10 @@
 ---
 
 ## AGENT RULES
+.claude/rules/
+.claude/agents/
+.claude/agents/admin-panel-auditor.md
+etc
 
 - **3+ file edits** → run `logic-auditor` FIRST
 - **Payment files** → `payment-auditor` IMMEDIATELY after
@@ -96,5 +105,5 @@
 ---
 
 ## KEY GOTCHAS (from `.claude/LEARNED.md`)
-
+.claude/LEARNED.md
 **Full history:** `.claude/LEARNED.md`

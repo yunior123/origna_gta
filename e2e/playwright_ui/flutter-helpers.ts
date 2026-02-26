@@ -147,9 +147,10 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
 
     // Tap "Se connecter" / "Sign in" to trigger in-app navigation to /login
     await signInPrompt.click();
-    await expect(page).toHaveURL(/\/login/i, { timeout: 20000 });
-    await waitForFlutter(page, 120000);
-
+    // Wait for the login form to appear — more robust than URL check because
+    // some Flutter Web routing setups (nested navigators) may not update the URL.
+    // rootNavigator: true in utils.dart ensures the URL updates, but we also
+    // wait for form content as a belt-and-suspenders approach.
     // Flutter Web text inputs: there are two textboxes per field:
     //   1. Disabled one with the label ("Adresse courriel" / "Email Address")
     //   2. Enabled one with placeholder text ("you@example.com" / "••••••••")
@@ -159,7 +160,12 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     // 2. pressSequentially() can lose the first character if focus isn't settled.
     // Solution: click → wait for focus → clear → type key-by-key.
     const emailInput = page.getByRole('textbox', { name: 'you@example.com' });
-    await expect(emailInput).toBeVisible({ timeout: 30000 });
+    // Wait for login form (URL or form appearance — URL may not update in nested nav)
+    await Promise.race([
+        page.waitForURL(/\/login/i, { timeout: 20000 }).catch(() => {}),
+        emailInput.waitFor({ state: 'visible', timeout: 20000 }),
+    ]);
+    await expect(emailInput).toBeVisible({ timeout: 10000 });
     await emailInput.click();
     await page.waitForTimeout(800); // Wait for Flutter focus to settle
     await page.keyboard.type(email, { delay: 30 });
@@ -266,6 +272,26 @@ export async function navigateToSubscription(page: Page): Promise<void> {
     await premiumBtn.click();
     await page.waitForURL(/\/subscription/i, { timeout: 20000 }).catch(() => { });
     await waitForFlutter(page, 30000);
+}
+
+/**
+ * Navigate to the admin panel in-app (auth-safe).
+ * Route: home → settings → profile → admin panel menu item → /admin.
+ * Never uses page.goto() which would kill Firebase Auth state.
+ */
+export async function navigateToAdmin(page: Page): Promise<void> {
+    const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+    await expect(settingsBtn).toBeAttached({ timeout: 15000 });
+    await settingsBtn.click();
+    await page.waitForURL(/\/profile/i, { timeout: 20000 }).catch(() => { });
+    await waitForFlutter(page, 15000);
+
+    const adminBtn = page.getByRole('button', { name: /menu-admin-panel|admin.panel/i }).first();
+    await expect(adminBtn).toBeAttached({ timeout: 20000 });
+    await adminBtn.scrollIntoViewIfNeeded().catch(() => { });
+    await adminBtn.click();
+    await page.waitForURL(/\/admin/i, { timeout: 20000 }).catch(() => { });
+    await waitForFlutter(page, 15000);
 }
 
 // ─── SIGN OUT HELPER ─────────────────────────────────────────────────

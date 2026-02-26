@@ -5,10 +5,15 @@ import 'package:image/image.dart' as img;
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/products/variant_models.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/utils/utils.dart';
 
 import 'edit_product_state.dart';
+
+final editProductViewModelProvider = StateNotifierProvider.autoDispose.family<EditProductViewModel, EditProductState, models.Product>((ref, product) {
+  return EditProductViewModel(ref, product);
+});
 
 /// Top-level isolate function for image compression — runs in a separate thread.
 Uint8List? _compressImageEditIsolate(Uint8List bytes) {
@@ -21,10 +26,6 @@ Uint8List? _compressImageEditIsolate(Uint8List bytes) {
   }
   return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
 }
-
-final editProductViewModelProvider = StateNotifierProvider.autoDispose.family<EditProductViewModel, EditProductState, models.Product>((ref, product) {
-  return EditProductViewModel(ref, product);
-});
 
 class EditProductViewModel extends StateNotifier<EditProductState> {
   final Ref _ref;
@@ -48,11 +49,20 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           latitude: _product.sellerAddress?.latitude,
           longitude: _product.sellerAddress?.longitude,
           standardEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.standard),
+          savedStandardEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.standard),
           expressEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.express),
           sameDayEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.sameDay),
           minimumOrderQuantity: _product.minimumOrderQuantity,
           freeShipping: _product.freeShipping,
           taxCode: _product.taxCode,
+          // Variant/condition fields — parity with AddProductState
+          hasVariants: _product.hasVariants,
+          variantOptions: _product.variantOptions.map((v) => VariantOption.fromMap(v)).toList(),
+          variants: _product.variants.map((v) => ProductVariantEntry.fromMap(v)).toList(),
+          condition: _product.condition,
+          // Warehouse fields
+          selectedWarehouseIds: _product.warehouseIds ?? const [],
+          warehouseStockMap: _product.warehouseStockMap ?? const {},
         ),
       );
 
@@ -93,23 +103,34 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
 
   void setDigitalType(String? type) => state = state.copyWith(digitalType: type);
 
+  /// Move the image at [index] in existingImageUrls to position 0 (cover slot).
+  void setExistingImageAsCover(int index) {
+    final urls = List<String>.from(state.existingImageUrls);
+    if (index <= 0 || index >= urls.length) return;
+    final cover = urls.removeAt(index);
+    urls.insert(0, cover);
+    state = state.copyWith(existingImageUrls: urls);
+  }
+
   void setExpressEnabled(bool value) => state = state.copyWith(expressEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
 
   void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
 
   void setMacosDownloadUrl(String? url) => state = state.copyWith(macosDownloadUrl: url);
-
   void setMinimumOrderQuantity(int value) => state = state.copyWith(minimumOrderQuantity: value);
   void setProvince(String province) => state = state.copyWith(selectedProvince: province);
   void setSameDayEnabled(bool value) => state = state.copyWith(sameDayEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
   void setStandardEnabled(bool value) => state = state.copyWith(standardEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
   void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
+
   void toggleDigital(bool value) => state = state.copyWith(
     isDigital: value,
     freeShipping: value ? true : state.freeShipping,
     isPerishable: value ? false : state.isPerishable,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
-    standardEnabled: value ? false : _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.standard),
+    // Save current standardEnabled before disabling, restore from saved state
+    savedStandardEnabled: value ? state.standardEnabled : state.savedStandardEnabled,
+    standardEnabled: value ? false : state.savedStandardEnabled,
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
     // Clear digital sub-fields when turning off
@@ -153,6 +174,13 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   }) async {
     // Guard: prevent double-submit
     if (state.isLoading) return;
+
+    // CRITICAL: Ownership guard — prevent editing another seller's product
+    final currentUid = _ref.read(userIdProvider);
+    if (currentUid == null || currentUid != _product.sellerId) {
+      state = state.copyWith(errorMessage: 'Unauthorized: you do not own this product');
+      return;
+    }
 
     final normalizedTaxCode = (taxCode == null || taxCode.trim().isEmpty) ? null : taxCode.trim();
 
@@ -272,7 +300,8 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           city: city,
           state: state.selectedProvince,
           postalCode: postalCode.toUpperCase(),
-          country: CountryValues.canada, // Default for now — sellers can be from any country, UI supports CA addresses
+          // Preserve original country from product; fall back to Canada if not set
+          country: _product.sellerAddress?.country.isNotEmpty == true ? _product.sellerAddress!.country : CountryValues.canada,
           latitude: state.latitude,
           longitude: state.longitude,
         ),
@@ -329,14 +358,5 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       throw Exception('product.image_too_large'.tr());
     }
     return compute(_compressImageEditIsolate, bytes);
-  }
-
-  /// Move the image at [index] in existingImageUrls to position 0 (cover slot).
-  void setExistingImageAsCover(int index) {
-    final urls = List<String>.from(state.existingImageUrls);
-    if (index <= 0 || index >= urls.length) return;
-    final cover = urls.removeAt(index);
-    urls.insert(0, cover);
-    state = state.copyWith(existingImageUrls: urls);
   }
 }

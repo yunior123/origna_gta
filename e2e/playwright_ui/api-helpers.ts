@@ -634,11 +634,10 @@ export async function fillStripeCheckout(
   await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => { });
   await dismissStripeModals(page);
 
-  // Fill email if visible
+  // Fill email if visible — use the caller's email so Stripe doesn't create a new Link account
   const emailInput = page.locator('#email, input[name="email"]').first();
   if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    const safeEmail = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@origna-test.ca`;
-    await emailInput.fill(safeEmail);
+    await emailInput.fill(email);
     await page.waitForTimeout(1_500);
 
     // Dismiss Stripe Link SMS verification if it appears

@@ -106,6 +106,7 @@ from handlers.admin import (  # noqa: E402
     create_stripe_login_link,
     delete_account,
     e2e_get_mail_logs,
+    e2e_seed_license,
     export_my_data,
     suspend_seller,
     unsubscribe_email,
@@ -372,6 +373,7 @@ __all__ = [
     "export_my_data",
     "unsubscribe_email",
     "e2e_get_mail_logs",
+    "e2e_seed_license",
     # User Profile
     "add_buyer_address",
     "create_user_profile",

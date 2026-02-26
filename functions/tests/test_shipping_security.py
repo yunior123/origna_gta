@@ -89,6 +89,56 @@ class TestPaymentSecurity(unittest.TestCase):
 
         # Create default mock db and rate limiter for all tests
         self.mock_db = MagicMock()
+        
+        # Default mock documents for user and seller
+        mock_user = MagicMock()
+        mock_user.exists = True
+        mock_user.to_dict.return_value = {"suspended": False, "roles": ["buyer"]}
+        
+        mock_seller = MagicMock()
+        mock_seller.exists = True
+        mock_seller.to_dict.return_value = {"suspended": False, "roles": ["seller"]}
+        
+        mock_seller_profile = MagicMock()
+        mock_seller_profile.exists = True
+        mock_seller_profile.to_dict.return_value = {
+            "onboardingCompleted": True,
+            "chargesEnabled": True,
+            "payoutsEnabled": True,
+        }
+        
+        # We need a default product mock too so other tests don't break if they rely on the default
+        mock_default_product = MagicMock()
+        mock_default_product.exists = True
+        mock_default_product.to_dict.return_value = {
+            "name": "Test Product",
+            "price": 10.0,
+            "lifecycleStatus": "active",
+            "stockQuantity": 10,
+        }
+        
+        def mock_collection(name):
+            mock_coll = MagicMock()
+            def mock_document(doc_id=None):
+                mock_doc_ref = MagicMock()
+                mock_doc_ref.id = doc_id or "default_id"
+                if name == "users":
+                    if doc_id and "seller" in doc_id:
+                        mock_doc_ref.get.return_value = mock_seller
+                    else:
+                        mock_doc_ref.get.return_value = mock_user
+                elif name == "seller_profiles":
+                    mock_doc_ref.get.return_value = mock_seller_profile
+                elif name == "products":
+                    mock_doc_ref.get.return_value = mock_default_product
+                else:
+                    mock_doc_ref.get.return_value = MagicMock(exists=True, to_dict=lambda: {})
+                return mock_doc_ref
+            mock_coll.document = mock_document
+            return mock_coll
+            
+        self.mock_db.collection.side_effect = mock_collection
+        
         self.mock_rate_limiter = MagicMock()
         self.mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
 
@@ -169,9 +219,16 @@ class TestPaymentSecurity(unittest.TestCase):
         }
 
         # Setup Database mocks
-        mock_doc_ref = MagicMock()
-        mock_doc_ref.get.return_value = mock_product
-        self.mock_db.collection.return_value.document.return_value = mock_doc_ref
+        original_side_effect = self.mock_db.collection.side_effect
+        def custom_mock_collection(name):
+            if name == "products":
+                mock_coll = MagicMock()
+                mock_doc_ref = MagicMock()
+                mock_doc_ref.get.return_value = mock_product
+                mock_coll.document.return_value = mock_doc_ref
+                return mock_coll
+            return original_side_effect(name)
+        self.mock_db.collection.side_effect = custom_mock_collection
 
         mock_transaction = MagicMock()
         mock_transaction.get.return_value = mock_seller
@@ -183,7 +240,7 @@ class TestPaymentSecurity(unittest.TestCase):
         mock_stripe.checkout.Session.create.return_value = MagicMock(id="sess_1", url="http://pay")
 
         # Execute - Should REJECT the tampered price
-        with self.assertRaises(MockHttpsError) as context:
+        with self.assertRaises(payment_stripe.https_fn.HttpsError) as context:
             create_checkout_session(req)
 
         # Verify the error message indicates price mismatch
@@ -335,12 +392,20 @@ class TestPaymentSecurity(unittest.TestCase):
             "lifecycleStatus": "active",
         }
 
-        mock_doc_ref = MagicMock()
-        mock_doc_ref.get.return_value = mock_product
-        self.mock_db.collection.return_value.document.return_value = mock_doc_ref
+        original_side_effect = self.mock_db.collection.side_effect
+        def custom_mock_collection(name):
+            if name == "products":
+                mock_coll = MagicMock()
+                mock_doc_ref = MagicMock()
+                mock_doc_ref.get.return_value = mock_product
+                mock_coll.document.return_value = mock_doc_ref
+                return mock_coll
+            return original_side_effect(name)
+        self.mock_db.collection.side_effect = custom_mock_collection
 
-        with self.assertRaises(MockHttpsError):
+        with self.assertRaises(payment_stripe.https_fn.HttpsError) as context:
             create_checkout_session(req)
+        self.assertIn("Item quantity exceeds maximum allowed", str(context.exception.message))
 
     def test_checkout_rejects_missing_address_fields(self):
         """
@@ -360,8 +425,9 @@ class TestPaymentSecurity(unittest.TestCase):
             "shippingAddress": {"state": "ON", "country": "Canada"},
         }
 
-        with self.assertRaises(MockHttpsError):
+        with self.assertRaises(payment_stripe.https_fn.HttpsError) as context:
             create_checkout_session(req)
+        self.assertIn("Missing required address field: street", str(context.exception.message))
 
     def test_checkout_rejects_invalid_postal_code(self):
         """
@@ -387,8 +453,9 @@ class TestPaymentSecurity(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(MockHttpsError):
+        with self.assertRaises(payment_stripe.https_fn.HttpsError) as context:
             create_checkout_session(req)
+        self.assertIn("Invalid Canadian postal code format", str(context.exception.message))
 
     def test_checkout_rejects_overlong_address_fields(self):
         """
@@ -414,8 +481,9 @@ class TestPaymentSecurity(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(MockHttpsError):
+        with self.assertRaises(payment_stripe.https_fn.HttpsError) as context:
             create_checkout_session(req)
+        self.assertIn("Address field street exceeds maximum length", str(context.exception.message))
 
 
 if __name__ == "__main__":

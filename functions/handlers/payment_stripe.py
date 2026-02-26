@@ -217,7 +217,7 @@ def _rollback_checkout(validated_items: list, order_ref, coupon_code: str | None
                     if _uc <= 1:
                         _txn.delete(_ur)
                     else:
-                        _txn.update(_ur, {"useCount": _uc - 1})
+                        _txn.update(_ur, {Fields.COUNT: _uc - 1})
 
             _undo_coupon_txn(_db.transaction())
             logger.info(f"Coupon {coupon_code} pre-reservation rolled back for user {user_id}")
@@ -388,13 +388,13 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         for item in validated_items:
             # Get tax code from category mapping
             category_id = item.get(Fields.CATEGORY_ID, 0)
-            tax_code = CATEGORY_TAX_CODE_MAP.get(category_id, STRIPE_TAX_CODE_GENERAL)
+            tax_code = CATEGORY_TAX_CODE_MAP.get(category_id, BusinessRules.TAX_CODE_GENERAL_GOODS)
 
             line_items.append(
                 {
-                    "amount": int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY],
-                    "reference": item[Fields.PRODUCT_ID],
-                    "tax_code": tax_code,
+                    StripeConstants.LINE_ITEM_AMOUNT: int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY],
+                    StripeConstants.LINE_ITEM_REFERENCE: item[Fields.PRODUCT_ID],
+                    StripeConstants.LINE_ITEM_TAX_CODE: tax_code,
                 }
             )
 
@@ -402,31 +402,31 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         if shipping_cost_cents > 0:
             line_items.append(
                 {
-                    "amount": shipping_cost_cents,
-                    "reference": "shipping",
-                    "tax_code": STRIPE_TAX_CODE_SHIPPING,  # Shipping tax code
+                    StripeConstants.LINE_ITEM_AMOUNT: shipping_cost_cents,
+                    StripeConstants.LINE_ITEM_REFERENCE: StripeConstants.SHIPPING_REFERENCE,
+                    StripeConstants.LINE_ITEM_TAX_CODE: BusinessRules.TAX_CODE_SHIPPING,  # Shipping tax code
                 }
             )
 
         # Build customer details
         customer_details = {
-            "address": {
-                "line1": shipping_address.get(Fields.STREET, ""),
-                "city": shipping_address.get(Fields.CITY, ""),
-                "state": shipping_address.get(Fields.STATE, ""),
-                "postal_code": shipping_address.get(Fields.POSTAL_CODE, ""),
-                "country": AppConfig.DEFAULT_COUNTRY_CODE,
+            Fields.ADDRESS: {
+                Fields.STREET: shipping_address.get(Fields.STREET, ""),
+                Fields.CITY: shipping_address.get(Fields.CITY, ""),
+                Fields.STATE: shipping_address.get(Fields.STATE, ""),
+                Fields.POSTAL_CODE: shipping_address.get(Fields.POSTAL_CODE, ""),
+                Fields.COUNTRY: AppConfig.DEFAULT_COUNTRY_CODE,
             },
-            "address_source": "shipping",
+            "address_source": StripeConstants.ADDRESS_SOURCE_SHIPPING,
         }
 
         # Add GST number for B2B validation (Stripe will validate and apply reverse charge if valid)
         if gst_number:
-            customer_details["tax_id"] = {
-                "type": STRIPE_TAX_TYPE_CA_GST_HST,  # Canadian GST/HST
+            customer_details[StripeConstants.CUSTOMER_TAX_ID] = {
+                Fields.TYPE: BusinessRules.STRIPE_TAX_TYPE_CA_GST_HST,  # Canadian GST/HST
                 "value": gst_number,
             }
-            customer_details["tax_exempt"] = STRIPE_TAX_EXEMPT_NONE  # Let Stripe determine based on tax_id
+            customer_details[StripeConstants.CUSTOMER_TAX_EXEMPT] = StripeConstants.TAX_EXEMPT_NONE  # Let Stripe determine
 
         # Call Stripe Tax API
         ensure_stripe_key()
@@ -455,7 +455,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         # Build item_taxes from Stripe calculation for consistency
         item_taxes = []
         for line_item in calculation.line_items.data:
-            if line_item.reference != "shipping":
+            if line_item.reference != StripeConstants.SHIPPING_REFERENCE:
                 item_taxes.append(
                     {
                         Fields.PRODUCT_ID: line_item.reference,
@@ -468,7 +468,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         is_reverse_charge = False
         customer_details = getattr(calculation, "customer_details", None)
         if customer_details:
-            is_reverse_charge = getattr(customer_details, "tax_exempt", None) == "reverse_charge"
+            is_reverse_charge = getattr(customer_details, StripeConstants.CUSTOMER_TAX_EXEMPT, None) == StripeConstants.REVERSE_CHARGE
 
         return tax_amount_cents, tax_breakdown, item_taxes, is_reverse_charge
 
@@ -1009,6 +1009,16 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             physical_items = [i for i in validated_items if not i.get(Fields.IS_DIGITAL, False)]
             shipping_cost_dollars = calculate_shipping_cost(physical_items, shipping_address, speed=delivery_speed)
             shipping_cost_cents = round(shipping_cost_dollars * 100)
+
+            # CRITICAL-C12: Backend Free Shipping Threshold Enforcement
+            # Subtotals >= $75 qualify for free standard shipping.
+            # Premium users ALWAYS get free shipping regardless of threshold.
+            if discounted_subtotal_cents >= BusinessRules.FREE_SHIPPING_THRESHOLD_CENTS:
+                logger.info(f"FREE_SHIPPING: waived for user {user_id} (subtotal: {discounted_subtotal_cents})")
+                shipping_cost_cents = 0
+            elif _check_premium_from_sub(user_id):
+                logger.info(f"FREE_SHIPPING: waived for PREMIUM user {user_id}")
+                shipping_cost_cents = 0
         except ValueError as e:
             # UX FIX: Return specific validation error (e.g., Same Day distance limit)
             logger.warning(f"Shipping validation error: {str(e)}")
@@ -1490,7 +1500,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.TAX_EXEMPT: is_tax_exempt,
         Fields.ITEM_TAXES: item_taxes,
         Fields.PREFERRED_LANGUAGE: user_data.get(Fields.PREFERRED_LANGUAGE, "en"),
-        "platformFeeRatio": PLATFORM_FEE_RATIO,
+        Fields.PLATFORM_FEE_RATIO: PLATFORM_FEE_RATIO,
         # Store client-provided idempotency key so the dedup check can match it
         # even when concurrent requests create newer pending orders for the same user.
         **(
@@ -1587,8 +1597,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         session = stripe.checkout.Session.create(
             line_items=line_items,
             mode="payment",
-            # No payment_method_types — uses Stripe Dashboard settings
-            # Enables Apple Pay, Google Pay, Interac (popular in Canada), etc.
+            # Explicit payment_method_types disables Stripe Link while keeping card/wallets.
+            # Apple Pay and Google Pay work transparently via 'card' type in CA.
+            payment_method_types=["card"],
             success_url=f"{BASE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{BASE_URL}{AppConfig.CHECKOUT_CANCEL_PATH}",
             client_reference_id=user_id,
@@ -1596,6 +1607,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             payment_intent_data={
                 "metadata": {Fields.ORDER_ID: order_id},
             },
+            **({"customer_email": buyer_email} if buyer_email else {}),
             # NOTE: automatic_tax disabled - we calculate tax server-side to avoid double taxation
             # AUDIT FIX (CRITICAL-001): Idempotency key prevents duplicate sessions on retry
             idempotency_key=client_idempotency_key or f"checkout_{order_id}",
@@ -1985,7 +1997,7 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
     items = order_data.get(Fields.ITEMS, [])
 
     # Use fee rate frozen at checkout time (not the current global config)
-    stored_fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
+    stored_fee_rate = order_data.get(Fields.PLATFORM_FEE_RATIO, PLATFORM_FEE_RATIO)
 
     # Compute discount ratio so seller payouts reflect only collected amount.
     # For seller-scoped coupons (couponSellerId != None), only that seller absorbs
@@ -4052,7 +4064,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             if len(existing_payouts) == 0:
                 items = order_data.get(Fields.ITEMS, [])
-                fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
+                fee_rate = order_data.get(Fields.PLATFORM_FEE_RATIO, PLATFORM_FEE_RATIO)
                 _ac_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0)
                 _ac_discount = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
                 _ac_coupon_seller_id = order_data.get(Fields.COUPON_SELLER_ID)
@@ -4316,7 +4328,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # AUDIT FIX (CRITICAL-001): Use fee rate stored at checkout, not current config.
         # Prevents config manipulation between checkout and capture.
-        stored_fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
+        stored_fee_rate = order_data.get(Fields.PLATFORM_FEE_RATIO, PLATFORM_FEE_RATIO)
         _cap_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0)
         _cap_discount = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
         _cap_coupon_seller_id = order_data.get(Fields.COUPON_SELLER_ID)

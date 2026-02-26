@@ -111,9 +111,9 @@ class TestCreateCheckoutSession:
         mock_transaction.__enter__ = MagicMock(return_value=mock_transaction)
         mock_transaction.__exit__ = MagicMock(return_value=None)
 
-        # Request data
         mock_request = Mock()
-        mock_request.auth = Mock(uid="test_user_123")
+        mock_request.auth = Mock(uid="user_123")
+        mock_request.auth.token = {"email": "user@example.com"}
         mock_request.data = valid_checkout_data
 
         result = create_checkout_session(mock_request)
@@ -121,6 +121,12 @@ class TestCreateCheckoutSession:
         assert result["success"] is True
         assert "sessionId" in result
         mock_stripe_create.assert_called_once()
+        
+        # Verify Stripe Link prevention logic
+        create_kwargs = mock_stripe_create.call_args[1]
+        assert create_kwargs.get("payment_method_types") == ["card"], "Stripe Link prevention failed: must use only 'card'"
+        assert "payment_method_options" not in create_kwargs, "Stripe Link prevention failed: payment_method_options must not be used"
+        assert create_kwargs.get("customer_email") == "user@example.com", "customer_email must be explicitly set to prevent Stripe Link from guessing"
 
     def test_unauthenticated_user_rejected(self):
         """Test that unauthenticated users cannot create checkout sessions"""

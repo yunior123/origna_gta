@@ -527,10 +527,11 @@ void showLoginPrompt(
   BuildContext context, {
   String text = 'auth.sign_in_cart_required',
 }) {
-  // Capture navigator from the CALLER's context before showing dialog.
-  // The dialog builder shadows `context`, so we must store the navigator
-  // reference from the outer (still-mounted) context.
-  final navigator = Navigator.of(context);
+  // Capture the ROOT navigator from the CALLER's context before showing dialog.
+  // rootNavigator: true is required in Flutter Web to update the browser URL.
+  // Without it, a nested navigator (e.g., inside a tab) handles the push
+  // and the browser URL is never updated, breaking deep-linking and E2E tests.
+  final navigator = Navigator.of(context, rootNavigator: true);
   showDialog(
     context: context,
     builder: (dialogContext) => AlertDialog(

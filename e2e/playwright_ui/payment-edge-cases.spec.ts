@@ -39,7 +39,7 @@ test.describe('Payment Edge Cases', () => {
 
     const emailInput = page.locator('#email, input[name="email"]').first();
     if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill(`test-decline-${Date.now()}@origna-test.ca`);
+      await emailInput.fill(BUYER_EMAIL);
       await page.waitForTimeout(1_500);
       await dismissStripeModals(page);
     }
@@ -91,7 +91,7 @@ test.describe('Payment Edge Cases', () => {
 
     const emailInput = page.locator('#email, input[name="email"]').first();
     if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill(`test-3ds-${Date.now()}@origna-test.ca`);
+      await emailInput.fill(BUYER_EMAIL);
       await page.waitForTimeout(1_500);
       await dismissStripeModals(page);
     }
@@ -171,7 +171,7 @@ test.describe('Payment Edge Cases', () => {
 
     const emailInput = page.locator('#email, input[name="email"]').first();
     if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill(`test-nodecrement-${Date.now()}@origna-test.ca`);
+      await emailInput.fill(BUYER_EMAIL);
       await page.waitForTimeout(1_500);
       await dismissStripeModals(page);
     }

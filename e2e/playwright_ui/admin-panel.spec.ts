@@ -5,10 +5,13 @@ import {
     checkSemantics,
     ensureLoggedInAsAdmin,
     performSignOut,
+    navigateHome,
+    navigateToAdmin,
     BTN_SETTINGS,
     BTN_CART,
     BTN_ADD_PRODUCT,
 } from './flutter-helpers';
+import { TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';
 
 /**
  * REPLICA of integration_test/flows/admin_flow_test.dart
@@ -16,10 +19,11 @@ import {
  * NOTE: Admin tabs are a Flutter TabBar — clicking a tab does NOT change the URL.
  */
 
-const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? 'yr62813@gmail.com';
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
-const NON_ADMIN_EMAIL = 'buyer1@test.origna.ca';
+const TARGET_URL = process.env.E2E_TARGET_URL ?? WEB_APP_URL;
+const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? TEST_ACCOUNTS.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? TEST_ACCOUNTS.ADMIN_PASS;
+// Buyer account (non-admin) for access-control test
+const NON_ADMIN_EMAIL = process.env.E2E_BUYER_EMAIL ?? TEST_ACCOUNTS.BUYER_EMAIL;
 
 test.describe('PW IT Replica — Admin Panel Flow', () => {
     test.setTimeout(300_000);
@@ -52,8 +56,8 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test.afterEach(async ({ page }) => {
-            await page.goto(`${TARGET_URL}/`);
-            await waitForFlutter(page);
+            // Use in-app navigation to preserve Firebase Auth state for sign-out
+            await navigateHome(page, TARGET_URL);
             await performSignOut(page, TARGET_URL);
         });
 
@@ -71,8 +75,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test('T03: Admin Tab — Sellers list visibility', async ({ page }) => {
-            await page.goto(`${TARGET_URL}/admin`);
-            await waitForFlutter(page);
+            await navigateToAdmin(page);
             const sellersTab = page.getByRole('tab', { name: /sellers/i }).or(page.getByRole('button', { name: /admin-tab-sellers|sellers/i })).first();
             await sellersTab.click();
             await page.waitForTimeout(1000);
@@ -84,8 +87,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test('T04: Admin Tab — Users search functionality', async ({ page }) => {
-            await page.goto(`${TARGET_URL}/admin`);
-            await waitForFlutter(page);
+            await navigateToAdmin(page);
             const usersTab = page.getByRole('tab', { name: /users/i }).or(page.getByRole('button', { name: /admin-tab-users|users/i })).first();
             await usersTab.click();
             await page.waitForTimeout(600);
@@ -100,8 +102,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test('T05: Admin Tab — Orders management view', async ({ page }) => {
-            await page.goto(`${TARGET_URL}/admin`);
-            await waitForFlutter(page);
+            await navigateToAdmin(page);
             const ordersTab = page.getByRole('tab', { name: /orders/i }).or(page.getByRole('button', { name: /admin-tab-orders|orders/i })).first();
             await ordersTab.click();
             await page.waitForTimeout(600);
@@ -113,8 +114,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test('T06: Admin Tab — Products review queue', async ({ page }) => {
-            await page.goto(`${TARGET_URL}/admin`);
-            await waitForFlutter(page);
+            await navigateToAdmin(page);
             const productsTab = page.getByRole('tab', { name: /products/i }).or(page.getByRole('button', { name: /admin-tab-products|products/i })).first();
             await productsTab.click();
             await page.waitForTimeout(600);
@@ -125,8 +125,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test('T07: Admin Tab — Payments and payouts', async ({ page }) => {
-            await page.goto(`${TARGET_URL}/admin`);
-            await waitForFlutter(page);
+            await navigateToAdmin(page);
             const paymentsTab = page.getByRole('tab', { name: /payments/i }).or(page.getByRole('button', { name: /admin-tab-payments|payments/i })).first();
             await paymentsTab.click();
             await page.waitForTimeout(600);
@@ -137,8 +136,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test('T08: Admin Tab — Security alerts and logs', async ({ page }) => {
-            await page.goto(`${TARGET_URL}/admin`);
-            await waitForFlutter(page);
+            await navigateToAdmin(page);
             const securityTab = page.getByRole('tab', { name: /security/i }).or(page.getByRole('button', { name: /admin-tab-security|security/i })).first();
             await securityTab.click();
             await page.waitForTimeout(600);
@@ -149,8 +147,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test('T09: Admin Action — View Seller Detail', async ({ page }) => {
-            await page.goto(`${TARGET_URL}/admin`);
-            await waitForFlutter(page);
+            await navigateToAdmin(page);
             // On Sellers tab by default
             const viewDetailBtn = page.locator('button[aria-label*="view"], button[aria-label*="detail"]').first();
             if (await viewDetailBtn.isVisible()) {
@@ -161,8 +158,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test('T10: Admin UI — Tab persistence after refresh', async ({ page }) => {
-            await page.goto(`${TARGET_URL}/admin`);
-            await waitForFlutter(page);
+            await navigateToAdmin(page);
             const productsTab = page.getByRole('tab', { name: /products/i }).or(page.getByRole('button', { name: /admin-tab-products|products/i })).first();
             await productsTab.click();
             await page.waitForTimeout(500);
@@ -175,8 +171,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test('T11: Admin UI — Return to Home visibility', async ({ page }) => {
-            await page.goto(`${TARGET_URL}/admin`);
-            await waitForFlutter(page);
+            await navigateToAdmin(page);
             const backBtn = page.getByTooltip(/back/i).or(page.locator('button[aria-label*="back"]')).first();
             await backBtn.click();
             await waitForFlutter(page);

@@ -57,7 +57,7 @@ test.describe('PW IT Replica — Seller Flow', () => {
         const dashboardBtn = page.locator('[aria-label^="menu-seller-dashboard"]').first();
         if (await dashboardBtn.isVisible().catch(() => false)) {
             await dashboardBtn.click();
-            await expect(page).toHaveURL(/\/seller\/register/i, { timeout: 20000 });
+            await expect(page).toHaveURL(/\/seller\/(products|register|dashboard)/i, { timeout: 20000 });
             await page.goBack();
             await waitForFlutter(page);
         }

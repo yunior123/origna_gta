@@ -1,3 +1,5 @@
+import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/products/variant_models.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 /// Sentinel value used to distinguish "not provided" from "explicitly set to null".
@@ -25,11 +27,20 @@ class EditProductState {
   final double? latitude;
   final double? longitude;
   final bool standardEnabled;
+  final bool savedStandardEnabled; // Saved state when digital mode toggled on
   final bool expressEnabled;
   final bool sameDayEnabled;
   final int minimumOrderQuantity;
   final bool freeShipping;
   final String? taxCode;
+  // Variant fields — parity with AddProductState
+  final bool hasVariants;
+  final List<VariantOption> variantOptions;
+  final List<ProductVariantEntry> variants;
+  final String? condition;
+  // Warehouse fields — parity with AddProductState
+  final List<String> selectedWarehouseIds;
+  final Map<String, int> warehouseStockMap;
 
   EditProductState({
     this.isLoading = false,
@@ -49,15 +60,22 @@ class EditProductState {
     this.newImages = const [],
     this.addressSuggestions = const [],
     this.showSuggestions = false,
-    this.selectedProvince = 'ON',
+    this.selectedProvince = ProvinceCodeValues.ontario,
     this.latitude,
     this.longitude,
     this.standardEnabled = true,
+    this.savedStandardEnabled = true,
     this.expressEnabled = false,
     this.sameDayEnabled = false,
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
     this.taxCode,
+    this.hasVariants = false,
+    this.variantOptions = const [],
+    this.variants = const [],
+    this.condition,
+    this.selectedWarehouseIds = const [],
+    this.warehouseStockMap = const {},
   });
 
   EditProductState copyWith({
@@ -82,11 +100,18 @@ class EditProductState {
     Object? latitude = _sentinel,
     Object? longitude = _sentinel,
     bool? standardEnabled,
+    bool? savedStandardEnabled,
     bool? expressEnabled,
     bool? sameDayEnabled,
     int? minimumOrderQuantity,
     bool? freeShipping,
     Object? taxCode = _sentinel,
+    bool? hasVariants,
+    List<VariantOption>? variantOptions,
+    List<ProductVariantEntry>? variants,
+    Object? condition = _sentinel,
+    List<String>? selectedWarehouseIds,
+    Map<String, int>? warehouseStockMap,
   }) {
     return EditProductState(
       isLoading: isLoading ?? this.isLoading,
@@ -110,11 +135,18 @@ class EditProductState {
       latitude: latitude == _sentinel ? this.latitude : latitude as double?,
       longitude: longitude == _sentinel ? this.longitude : longitude as double?,
       standardEnabled: standardEnabled ?? this.standardEnabled,
+      savedStandardEnabled: savedStandardEnabled ?? this.savedStandardEnabled,
       expressEnabled: expressEnabled ?? this.expressEnabled,
       sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,
       minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
       freeShipping: freeShipping ?? this.freeShipping,
       taxCode: taxCode == _sentinel ? this.taxCode : taxCode as String?,
+      hasVariants: hasVariants ?? this.hasVariants,
+      variantOptions: variantOptions ?? this.variantOptions,
+      variants: variants ?? this.variants,
+      condition: condition == _sentinel ? this.condition : condition as String?,
+      selectedWarehouseIds: selectedWarehouseIds ?? this.selectedWarehouseIds,
+      warehouseStockMap: warehouseStockMap ?? this.warehouseStockMap,
     );
   }
 }

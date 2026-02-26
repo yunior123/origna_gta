@@ -56,3 +56,19 @@ For future manual setup:
 
 
 22. playwright ai agents integration
+
+
+33. create a system similar to this to track schema, it should also include subcollection, collection organization, do it collection by collection when it comes to db to have a clear understanding
+
+## 5. Cross-Stack Field Verification ✅
+
+| Field         | Dart (Fields.*)  | Python (Fields.*) | Firestore Value  | Status |
+|---------------|-----------------|-------------------|-----------------|--------|
+| questionText  | questionText     | QUESTION_TEXT     | 'question'      | ✅ Match |
+| answerText    | answerText       | ANSWER_TEXT       | 'answer'        | ✅ Match |
+| askerId       | askerId          | ASKER_ID          | 'askerId'       | ✅ Match |
+| isAnswered    | isAnswered       | IS_ANSWERED       | 'isAnswered'    | ✅ Match |
+| sellerId      | sellerId         | SELLER_ID         | 'sellerId'      | ✅ Match |
+| productId     | productId        | PRODUCT_ID        | 'productId'     | ✅ Match |
+| questionId    | questionId       | QUESTION_ID       | 'questionId'    | ✅ Match |
+| upvotes       | upvotes          | UPVOTES           | 'upvotes'       | ✅ Match |

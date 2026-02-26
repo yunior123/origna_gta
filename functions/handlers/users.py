@@ -105,6 +105,7 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CONSENT_METHOD: consent_method,
         Fields.PRIVACY_POLICY_VERSION: PolicyVersionValues.DEFAULT,
         Fields.TERMS_VERSION: PolicyVersionValues.DEFAULT,
+        Fields.PUSH_ENABLED: bool(data.get(Fields.PUSH_ENABLED, True)),  # Default to True unless explicitly denied
     })
 
     logger.info("Created user profile server-side for uid=%s", user_id)

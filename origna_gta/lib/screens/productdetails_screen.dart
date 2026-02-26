@@ -715,25 +715,29 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
 
     // If user is the seller, show disabled button with message
     if (isOwnProduct) {
-      return Column(
-        key: const Key('product_own_product_message'),
-        children: [
-          ModernButton(
-            label: 'product.own_product_title'.tr(),
-            onPressed: null,
-            fullWidth: true,
-            icon: Icons.storefront,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'product.own_product_msg'.tr(),
-            style: TextStyle(
-              fontSize: 13,
-              color: DesignTokens.textSecondary,
-              fontStyle: FontStyle.italic,
+      return Semantics(
+        label: 'product_own_product_message',
+        container: true,
+        child: Column(
+          key: const Key('product_own_product_message'),
+          children: [
+            ModernButton(
+              label: 'product.own_product_title'.tr(),
+              onPressed: null,
+              fullWidth: true,
+              icon: Icons.storefront,
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'product.own_product_msg'.tr(),
+              style: TextStyle(
+                fontSize: 13,
+                color: DesignTokens.textSecondary,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -747,40 +751,46 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
       );
       final isSubscribed = notifState.value ?? false;
       final isLoading = notifState.isLoading;
-      return Column(
-        key: const Key('product_notify_section'),
-        children: [
-          ModernButton(
-            key: const Key('product_notify_me_button'),
-            label: isSubscribed
-                ? 'product.notify_cancel'.tr()
-                : 'product.notify_me'.tr(),
-            onPressed: isLoading
-                ? null
-                : () => _toggleNotification(
-                    context,
-                    ref.read(currentUserProvider),
-                  ),
-            fullWidth: true,
-            icon: isSubscribed
-                ? Icons.notifications_off_outlined
-                : Icons.notifications_outlined,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'product.out_of_stock'.tr(),
-            style: TextStyle(
-              fontSize: 13,
-              color: DesignTokens.error,
-              fontStyle: FontStyle.italic,
+      return Semantics(
+        label: 'product_notify_section',
+        container: true,
+        child: Column(
+          key: const Key('product_notify_section'),
+          children: [
+            ModernButton(
+              key: const Key('product_notify_me_button'),
+              semanticsLabel: 'product_notify_me_button',
+              label: isSubscribed
+                  ? 'product.notify_cancel'.tr()
+                  : 'product.notify_me'.tr(),
+              onPressed: isLoading
+                  ? null
+                  : () => _toggleNotification(
+                      context,
+                      ref.read(currentUserProvider),
+                    ),
+              fullWidth: true,
+              icon: isSubscribed
+                  ? Icons.notifications_off_outlined
+                  : Icons.notifications_outlined,
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'product.out_of_stock'.tr(),
+              style: TextStyle(
+                fontSize: 13,
+                color: DesignTokens.error,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
     return ModernButton(
       label: 'product.add_to_cart'.tr(),
+      semanticsLabel: 'product_add_to_cart_button',
       onPressed: () async {
         final user = ref.read(currentUserProvider);
         if (user == null) {

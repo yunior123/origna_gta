@@ -139,6 +139,9 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
             client_reference_id=uid,
             metadata={"uid": uid},
             subscription_data={"metadata": {"uid": uid}},
+            # Explicit payment_method_types disables Stripe Link (type: 'link').
+            # Apple Pay and Google Pay work transparently via 'card' type.
+            payment_method_types=["card"],
             idempotency_key=idempotency_key,
         )
         # Cache session URL so we can recover it on IdempotencyError

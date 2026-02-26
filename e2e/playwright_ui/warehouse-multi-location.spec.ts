@@ -263,9 +263,9 @@ test.describe('Warehouse: multi-location seller flow', () => {
     // warehouseStock map must NOT exist on product doc
     expect(doc.warehouseStock).toBeUndefined();
 
-    // Verify each inventoryLevels subdoc has correct quantity
-    const inv1 = parseDoc(await readDoc(`products/${productId}/inventoryLevels/${wId1}`));
-    const inv2 = parseDoc(await readDoc(`products/${productId}/inventoryLevels/${wId2}`));
+    // Verify each inventoryLevels subdoc has correct quantity (admin token required by rules)
+    const inv1 = parseDoc(await readDoc(`products/${productId}/inventoryLevels/${wId1}`, adminToken));
+    const inv2 = parseDoc(await readDoc(`products/${productId}/inventoryLevels/${wId2}`, adminToken));
     expect(inv1.availableQuantity).toBe(stock1);
     expect(inv2.availableQuantity).toBe(stock2);
     expect(inv1.availableQuantity + inv2.availableQuantity).toBe(doc.stockQuantity);

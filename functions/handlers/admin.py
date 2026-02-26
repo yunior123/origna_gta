@@ -1765,6 +1765,58 @@ def e2e_get_mail_logs(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
+def e2e_seed_license(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """DEV/STAGING ONLY: Seed or delete a test license document for E2E tests.
+
+    Uses Admin SDK to bypass Firestore security rules (licenses collection
+    has allow write: if false — only Admin SDK can write).
+
+    Requires admin role. Actions:
+      create — writes license doc with provided data (server timestamp for createdAt)
+      delete — deletes license doc by licenseKey
+    """
+    from config import CURRENT_ENV, Environment
+
+    if CURRENT_ENV == Environment.PRODUCTION:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+            message="Not allowed in production environment",
+        )
+
+    if not req.auth:
+        raise https_fn.HttpsError(code=https_fn.FunctionsErrorCode.UNAUTHENTICATED, message="Not authenticated")
+    user_id = req.auth.uid
+
+    db = get_db()
+    user_doc = db.collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists or UserRoleValues.ADMIN not in user_doc.to_dict().get(Fields.ROLES, []):
+        raise https_fn.HttpsError(code=https_fn.FunctionsErrorCode.PERMISSION_DENIED, message="Admin role required")
+
+    action = req.data.get("action", "create")
+    license_key = req.data.get("licenseKey")
+    if not license_key:
+        raise https_fn.HttpsError(code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT, message="licenseKey required")
+
+    license_ref = db.collection(Collections.LICENSES).document(license_key)
+
+    if action == "delete":
+        license_ref.delete()
+        return create_success_response({"deleted": license_key})
+
+    # action == "create"
+    data = req.data.get("data")
+    if not data or not isinstance(data, dict):
+        raise https_fn.HttpsError(code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT, message="data dict required for create")
+
+    # Enforce licenseKey matches doc ID; set server timestamp
+    data[Fields.LICENSE_KEY] = license_key
+    data[Fields.CREATED_AT] = get_server_timestamp()
+
+    license_ref.set(data)
+    return create_success_response({"created": license_key})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def admin_delete_review(req: https_fn.CallableRequest) -> dict[str, Any]:
     """Delete a product review (admin only with MFA). Logs to admin_logs."""
     if not req.auth:

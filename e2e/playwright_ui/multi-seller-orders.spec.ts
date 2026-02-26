@@ -9,7 +9,7 @@ import {
   signIn, callOk, callExpectError,
   fullCheckoutAndPay, fullMultiSellerCheckoutAndPay,
   waitForOrderStatus, getOrder,
-  getTestProduct, ensureTwoSellerProducts, getSellerAuth,
+  getTestProduct, ensureTwoSellerProducts, getSellerAuth, discoverProducts,
   TEST_ACCOUNTS,
 } from './api-helpers';
 

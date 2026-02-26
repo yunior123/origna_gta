@@ -10,6 +10,7 @@ import {
   checkSemantics,
   ensureLoggedInAsAdmin,
   performSignOut,
+  navigateHome,
   uniqueSuffix,
   BTN_ADD_PRODUCT,
 } from './flutter-helpers';
@@ -31,8 +32,7 @@ test.describe('Seller Product Management', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, SELLER_EMAIL, SELLER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
     await expect(addProductBtn).toBeVisible({ timeout: 20000 });
@@ -52,8 +52,7 @@ test.describe('Seller Product Management', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, SELLER_EMAIL, SELLER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
     await addProductBtn.click();
@@ -83,8 +82,7 @@ test.describe('Seller Product Management', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, SELLER_EMAIL, SELLER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const suffix = uniqueSuffix(testInfo);
 
@@ -123,9 +121,7 @@ test.describe('Seller Product Management', () => {
       await stockInput.pressSequentially('5', { delay: 30 });
     }
 
-    // Verify name field accepted input — Flutter web textbox exposes value via ARIA accessibility tree.
-    // Playwright's `page.accessibility.snapshot()` reads the computed ARIA value correctly.
-    // We verify using `aria-snapshot` or fall back to checking that field is visible and was typed into.
+    // Verify name field accepted input
     const nameAriaValue = await nameInput.evaluate((el) =>
       el.getAttribute('aria-valuenow') ??
       el.getAttribute('value') ??
@@ -137,9 +133,8 @@ test.describe('Seller Product Management', () => {
     const containsProductText = nameAriaValue.includes('E2E Test Product') || nameAriaValue.includes('2E Test Product');
     expect(containsProductText, `Name field value "${nameAriaValue}" should contain product text`).toBe(true);
 
-    // Return to home
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // Return to home via in-app navigation (preserves auth)
+    await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
   });
 
@@ -152,8 +147,7 @@ test.describe('Seller Product Management', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, SELLER_EMAIL, SELLER_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
     await addProductBtn.click();
@@ -182,8 +176,7 @@ test.describe('Seller Product Management', () => {
       }
     }
 
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
   });
 });

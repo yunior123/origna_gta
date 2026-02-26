@@ -380,6 +380,12 @@ class TestSecurityEdgeCases:
 class TestCheckLowStockAlerts:
     """check_low_stock_alerts daily cron — emails sellers when stock <= threshold."""
 
+    @pytest.fixture(autouse=True)
+    def mock_locks(self):
+        with patch("handlers.cron_jobs.acquire_cron_lock", return_value=True), \
+             patch("handlers.cron_jobs.release_cron_lock"):
+            yield
+
     def _make_product(self, stock=2, threshold=5, track=True, last_alert=None, seller_id="seller_1"):
         return {
             "lifecycleStatus": "active",

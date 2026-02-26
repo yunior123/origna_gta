@@ -8,7 +8,6 @@ Scheduled Cron Jobs
 """
 
 import logging
-import os
 from datetime import UTC, datetime, timedelta
 
 import stripe
@@ -16,6 +15,7 @@ from firebase_functions import scheduler_fn
 from google.api_core import exceptions as google_exceptions
 
 from config import (
+    BASE_URL,
     IS_EMULATOR,
     PLATFORM_FEE_RATIO,
     get_stripe_secret_key,
@@ -42,7 +42,8 @@ from schema_constants import (
 from utils.db import get_db, get_firestore, get_server_timestamp
 from utils.function_options import CRON_OPTIONS
 
-APP_BASE_URL = os.environ.get("APP_BASE_URL", "https://www.orignagta.ca")
+# M1: Use environment-aware BASE_URL from config instead of hardcoded prod URL
+APP_BASE_URL = BASE_URL
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,8 @@ def release_cron_lock(job_name: str) -> None:
         logger.warning(f"⚠️ Failed to release cron lock for {job_name}: {type(e).__name__}")
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+# H3: Use cron expression for precise scheduling instead of 'every 24 hours'
+@scheduler_fn.on_schedule(schedule="0 1 * * *", **CRON_OPTIONS)
 def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Auto-payout for delivered orders (payment already captured at checkout).
@@ -193,8 +195,9 @@ def _run_auto_capture() -> None:
                     order_doc.reference.update(
                         {
                             Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
-                            Fields.CAPTURED_AT: datetime.now(UTC),
-                            Fields.UPDATED_AT: datetime.now(UTC),
+                            # M2: Use server timestamps consistently, even in emulator
+                            Fields.CAPTURED_AT: get_server_timestamp(),
+                            Fields.UPDATED_AT: get_server_timestamp(),
                         }
                     )
                     order_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
@@ -307,6 +310,9 @@ def _run_auto_capture() -> None:
                         Fields.ITEMS: items,
                         Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
                         Fields.AUTO_CONFIRMED: True,
+                        # C2: Add DELIVERED_AT and CONFIRMED_AT for auto-confirmed orders
+                        Fields.DELIVERED_AT: get_server_timestamp(),
+                        Fields.CONFIRMED_AT: get_server_timestamp(),
                         Fields.UPDATED_AT: get_server_timestamp(),
                     },
                 )
@@ -329,6 +335,9 @@ def _run_auto_capture() -> None:
                 continue
 
             order_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+            # C2: Sync local items with confirmed items from transaction
+            # Without this, the payout loop reads stale SHIPPED status and produces zero payout
+            order_data[Fields.ITEMS] = confirmed_items
             from models.order_event import OrderEvent
             OrderEvent.write(
                 get_db(), order_id, OrderEventTypes.AUTO_CONFIRMED,
@@ -600,6 +609,8 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
 
 def _run_expired_authorizations() -> None:
     """Inner implementation of expired authorization cleanup."""
+    # M4: Set stripe key once at top, not per-iteration inside the loop
+    stripe.api_key = get_stripe_secret_key()
 
     cutoff_date = datetime.now(UTC) - timedelta(days=BusinessRules.AUTHORIZATION_EXPIRY_DAYS)
 
@@ -635,7 +646,7 @@ def _run_expired_authorizations() -> None:
             if pi_id:
                 try:
                     logger.info(f"Cancelling stale authorization for order {order_id} (PI: {pi_id})")
-                    stripe.api_key = get_stripe_secret_key()
+                    # M4: stripe.api_key already set at top of _run_expired_authorizations()
                     stripe.PaymentIntent.cancel(pi_id, idempotency_key=f"cancel_auth_{order_id}")
                 except Exception as cancel_err:
                     logger.warning(f"⚠️ Failed to cancel Stripe PI {pi_id} for expired order {order_id}: {cancel_err}")
@@ -899,7 +910,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     logger.info(f"Rate limit cleanup completed: {deleted_count} documents deleted")
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="0 3 * * *", **CRON_OPTIONS)
 def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Removes orphaned images from Cloudflare R2 storage.
@@ -1014,7 +1025,7 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
     logger.info(f"  R2 orphan cleanup completed: {deleted_count} files deleted")
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="0 4 * * *", **CRON_OPTIONS)
 def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Removes processed webhook event records older than 7 days.
@@ -1051,7 +1062,7 @@ def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
     logger.info(f"Webhook event cleanup completed: {deleted_count} documents deleted")
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="0 5 * * *", **CRON_OPTIONS)
 def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Archives resolved security alerts older than 90 days.
@@ -1276,7 +1287,7 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
         release_cron_lock("revalidate_digital_product_urls")  # CRITICAL FIX (C2): always release lock
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="0 6 * * *", **CRON_OPTIONS)
 def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Daily cron: email sellers when a product's stockQuantity falls at or below
@@ -1412,7 +1423,7 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
         release_cron_lock("check_low_stock_alerts")  # FIX (H3): always release lock
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="0 7 * * *", **CRON_OPTIONS)
 def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
     """
     TASK 10 — Daily cron: email buyers who have items in cart but haven't checked out.
@@ -1897,7 +1908,7 @@ def _notify_trending_products(db, top_products: list[tuple]) -> None:
 
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="0 8 * * *", **CRON_OPTIONS)
 def send_premium_renewal_reminders(event: scheduler_fn.ScheduledEvent) -> None:
     """
     FIX F7-6 — Daily cron: email premium subscribers whose subscription renews in
@@ -2064,7 +2075,7 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
         release_cron_lock("sync_expired_subscriptions")
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="0 9 * * *", **CRON_OPTIONS)
 def escalate_stale_return_requests(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Cron: Escalates return requests that have been in 'requested' status for

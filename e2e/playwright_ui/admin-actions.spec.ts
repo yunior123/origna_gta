@@ -10,6 +10,7 @@ import {
   checkSemantics,
   ensureLoggedInAsAdmin,
   performSignOut,
+  navigateHome,
   BTN_SETTINGS,
 } from './flutter-helpers';
 import { signIn, callOk, callCallable, TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';
@@ -30,8 +31,7 @@ test.describe('Admin Actions', () => {
     await checkSemantics(page);
 
     await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await settingsBtn.click();
@@ -58,8 +58,7 @@ test.describe('Admin Actions', () => {
       await expect(tab).toBeVisible({ timeout: 15000 });
     }
 
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
+    await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
   });
 

@@ -33,6 +33,7 @@ from config import (
 from models.product import ProductCreate
 from schema_constants import (
     AppConfig,
+    BusinessRules,
     CategoryIds,
     Collections,
     DeliveryTypeValues,
@@ -44,6 +45,7 @@ from schema_constants import (
     UserRoleValues,
     WarehouseTypeValues,
 )
+from services.rate_limiter import RateLimiter
 from services.algolia_service import delete_product as algolia_delete_product
 from services.algolia_service import index_product
 from services.algolia_service import partial_update_product as algolia_partial_update
@@ -56,20 +58,9 @@ logger = logging.getLogger(__name__)
 # Constants
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
-CDN_BASE_URL = "https://cdn.origna.ca"
-
-# SECURITY FIX #6: Magic bytes for image format validation
-# Prevents serving non-image files via CDN even if MIME type is spoofed
-IMAGE_MAGIC_BYTES = {
-    b"\xff\xd8\xff": "image/jpeg",  # JPEG
-    b"\x89PNG\r\n\x1a\n": "image/png",  # PNG
-    b"RIFF": "image/webp",  # WebP (RIFF container)
-    b"GIF87a": "image/gif",  # GIF87a
-    b"GIF89a": "image/gif",  # GIF89a
-}
-MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB absolute max
 
 _r2_creds: dict | None = None  # Module-level cache to avoid repeated Secret Manager hits
+_s3_client_cache: dict | None = None  # Module-level S3 client cache — reuse across calls
 
 
 def _get_cached_r2_credentials() -> dict:
@@ -78,6 +69,28 @@ def _get_cached_r2_credentials() -> dict:
     if _r2_creds is None:
         _r2_creds = get_r2_credentials()
     return _r2_creds
+
+
+def _get_cached_s3_client():
+    """Return a module-level boto3 S3 client, creating it on first call."""
+    global _s3_client_cache
+    if _s3_client_cache is not None:
+        return _s3_client_cache
+    r2_creds = _get_cached_r2_credentials()
+    r2_access_key = r2_creds.get("access_key")
+    r2_secret_key = r2_creds.get("secret_key")
+    r2_account_id = r2_creds.get("account_id")
+    if not all([r2_access_key, r2_secret_key, r2_account_id]):
+        raise https_fn.HttpsError("failed-precondition", "R2 credentials not configured")
+    _s3_client_cache = boto3.client(
+        "s3",
+        endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
+        aws_access_key_id=r2_access_key,
+        aws_secret_access_key=r2_secret_key,
+        config=Config(signature_version="s3v4"),
+        region_name="auto",
+    )
+    return _s3_client_cache
 
 
 def _generate_product_slug(title: str) -> str:
@@ -143,8 +156,6 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("failed-precondition", "Please complete seller onboarding before uploading products")
 
     # AUDIT FIX: Rate limit image uploads
-    from services.rate_limiter import RateLimiter
-
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=user_id, action="upload_images", max_requests=10, window_minutes=1, fail_closed=False
@@ -162,8 +173,8 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not file_names_raw or len(file_names_raw) == 0:
         raise https_fn.HttpsError("invalid-argument", "No files specified")
 
-    if len(file_names_raw) > 5:
-        raise https_fn.HttpsError("invalid-argument", "Maximum 5 images allowed")
+    if len(file_names_raw) > BusinessRules.MAX_PRODUCT_IMAGES:
+        raise https_fn.HttpsError("invalid-argument", f"Maximum {BusinessRules.MAX_PRODUCT_IMAGES} images allowed")
 
     if len(file_names_raw) != len(content_types):
         raise https_fn.HttpsError("invalid-argument", "File names and content types count mismatch")
@@ -188,25 +199,8 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
                 "invalid-argument", f"Invalid file extension '.{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
             )
 
-    # Get R2 credentials based on environment
-    r2_creds = _get_cached_r2_credentials()
-    r2_access_key = r2_creds.get("access_key")
-    r2_secret_key = r2_creds.get("secret_key")
-    r2_account_id = r2_creds.get("account_id")
-
-    if not all([r2_access_key, r2_secret_key, r2_account_id]):
-        raise https_fn.HttpsError("failed-precondition", "R2 credentials not configured")
-
-    # Initialize R2 client (S3-compatible)
-    s3_client = boto3.client(
-        "s3",
-        endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=r2_access_key,
-        aws_secret_access_key=r2_secret_key,
-        config=Config(signature_version="s3v4"),
-        region_name="auto",
-    )
-
+    # Get cached S3 client (module-level)
+    s3_client = _get_cached_s3_client()
     bucket_name = R2Config.BUCKET_NAME
     upload_urls = []
 
@@ -285,23 +279,8 @@ def delete_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     if UserRoleValues.SELLER not in roles and UserRoleValues.ADMIN not in roles:
         raise https_fn.HttpsError("permission-denied", "Seller role required")
 
-    # Get R2 credentials
-    r2_creds = _get_cached_r2_credentials()
-    r2_access_key = r2_creds.get("access_key")
-    r2_secret_key = r2_creds.get("secret_key")
-    r2_account_id = r2_creds.get("account_id")
-
-    if not all([r2_access_key, r2_secret_key, r2_account_id]):
-        raise https_fn.HttpsError("failed-precondition", "R2 credentials not configured")
-
-    s3_client = boto3.client(
-        "s3",
-        endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=r2_access_key,
-        aws_secret_access_key=r2_secret_key,
-        config=Config(signature_version="s3v4"),
-        region_name="auto",
-    )
+    # Get cached S3 client (module-level)
+    s3_client = _get_cached_s3_client()
     bucket_name = R2Config.BUCKET_NAME
     cdn_prefix = CDN_BASE_URL + "/"
 
@@ -371,8 +350,8 @@ def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if not file_names_raw:
         raise https_fn.HttpsError("invalid-argument", "No files specified")
-    if len(file_names_raw) > 3:
-        raise https_fn.HttpsError("invalid-argument", "Maximum 3 review images allowed")
+    if len(file_names_raw) > BusinessRules.MAX_REVIEW_IMAGES:
+        raise https_fn.HttpsError("invalid-argument", f"Maximum {BusinessRules.MAX_REVIEW_IMAGES} review images allowed")
     if len(file_names_raw) != len(content_types):
         raise https_fn.HttpsError("invalid-argument", "File names and content types count mismatch")
 
@@ -388,23 +367,8 @@ def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         if ext not in ALLOWED_EXTENSIONS:
             raise https_fn.HttpsError("invalid-argument", f"Invalid file extension '.{ext}'")
 
-    r2_creds = _get_cached_r2_credentials()
-    r2_access_key = r2_creds.get("access_key")
-    r2_secret_key = r2_creds.get("secret_key")
-    r2_account_id = r2_creds.get("account_id")
-
-    if not all([r2_access_key, r2_secret_key, r2_account_id]):
-        raise https_fn.HttpsError("failed-precondition", "R2 credentials not configured")
-
-    s3_client = boto3.client(
-        "s3",
-        endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=r2_access_key,
-        aws_secret_access_key=r2_secret_key,
-        config=Config(signature_version="s3v4"),
-        region_name="auto",
-    )
-
+    # Get cached S3 client (module-level)
+    s3_client = _get_cached_s3_client()
     bucket_name = R2Config.BUCKET_NAME
     upload_urls = []
 
@@ -457,9 +421,7 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     product_id = req.data.get(Fields.PRODUCT_ID)
 
     # Rate limit: 10/min — prevent mass-deletion abuse
-    from services.rate_limiter import RateLimiter as _RL
-
-    _limiter = _RL(get_db())
+    _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=user_id, action="delete_product", max_requests=10, window_minutes=1, fail_closed=False
     )
@@ -597,8 +559,6 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     # AUDIT FIX: Rate limit rating submissions
-    from services.rate_limiter import RateLimiter
-
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid, action="submit_rating", max_requests=5, window_minutes=1, fail_closed=False
@@ -625,8 +585,8 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     if review_image_urls_raw:
         if not isinstance(review_image_urls_raw, list):
             raise https_fn.HttpsError("invalid-argument", "reviewImageUrls must be a list")
-        if len(review_image_urls_raw) > 3:
-            raise https_fn.HttpsError("invalid-argument", "Maximum 3 review images allowed")
+        if len(review_image_urls_raw) > BusinessRules.MAX_REVIEW_IMAGES:
+            raise https_fn.HttpsError("invalid-argument", f"Maximum {BusinessRules.MAX_REVIEW_IMAGES} review images allowed")
         # Photo reviews require premium — verify before accepting URLs
         from utils.premium_check import is_premium_authoritative
         if not is_premium_authoritative(user_id, db=get_db()):
@@ -771,7 +731,7 @@ def validate_image_magic_bytes(image_url: str) -> bool:
         if not header_bytes:
             return False
 
-        for magic, _mime in IMAGE_MAGIC_BYTES.items():
+        for magic, _mime in BusinessRules.IMAGE_MAGIC_BYTES.items():
             if header_bytes[: len(magic)] == magic:
                 return True
 
@@ -1054,8 +1014,6 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("failed-precondition", "Please complete seller onboarding before uploading products")
 
     # Rate limit
-    from services.rate_limiter import RateLimiter
-
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=user_id, action="create_product", max_requests=5, window_minutes=1, fail_closed=False
@@ -1072,8 +1030,8 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("invalid-argument", "productData is required")
     if not isinstance(images_raw, list):
         raise https_fn.HttpsError("invalid-argument", "images must be a list")
-    if len(images_raw) > 5:
-        raise https_fn.HttpsError("invalid-argument", "Maximum 5 images allowed")
+    if len(images_raw) > BusinessRules.MAX_PRODUCT_IMAGES:
+        raise https_fn.HttpsError("invalid-argument", f"Maximum {BusinessRules.MAX_PRODUCT_IMAGES} images allowed")
 
     ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
     MIME_TO_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
@@ -1090,10 +1048,10 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("invalid-argument", f"Image {i}: invalid base64 data") from exc
         if not img_bytes:
             raise https_fn.HttpsError("invalid-argument", f"Image {i}: empty data")
-        if len(img_bytes) > MAX_IMAGE_BYTES:
+        if len(img_bytes) > BusinessRules.MAX_IMAGE_BYTES:
             raise https_fn.HttpsError("invalid-argument", f"Image {i} exceeds 10 MB limit")
         # Magic bytes validation
-        if not any(img_bytes[: len(magic)] == magic for magic in IMAGE_MAGIC_BYTES):
+        if not any(img_bytes[: len(magic)] == magic for magic in BusinessRules.IMAGE_MAGIC_BYTES):
             raise https_fn.HttpsError("invalid-argument", f"Image {i}: not a recognized image format")
         decoded_images.append((img_bytes, content_type))
 
@@ -1109,21 +1067,7 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
         else:
             raise https_fn.HttpsError("invalid-argument", "At least one product image is required")
     else:
-        r2_creds = _get_cached_r2_credentials()
-        r2_access_key = r2_creds.get("access_key")
-        r2_secret_key = r2_creds.get("secret_key")
-        r2_account_id = r2_creds.get("account_id")
-        if not all([r2_access_key, r2_secret_key, r2_account_id]):
-            raise https_fn.HttpsError("failed-precondition", "R2 credentials not configured")
-
-        s3_client = boto3.client(
-            "s3",
-            endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
-            aws_access_key_id=r2_access_key,
-            aws_secret_access_key=r2_secret_key,
-            config=Config(signature_version="s3v4"),
-            region_name="auto",
-        )
+        s3_client = _get_cached_s3_client()
         bucket_name = R2Config.BUCKET_NAME
 
         try:
@@ -1527,7 +1471,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     # Check each image URL to ensure it's a real image (not a malicious file)
     image_urls = product_data.get(Fields.IMAGE_URLS, [])
     for img_url in image_urls:
-        if isinstance(img_url, str) and img_url.startswith(CDN_BASE_URL) and not validate_image_magic_bytes(img_url):
+        if isinstance(img_url, str) and img_url.startswith(BusinessRules.CDN_BASE_URL) and not validate_image_magic_bytes(img_url):
             logger.warning(f"SECURITY: Product {product_id} has invalid image — deactivating: {img_url[:80]}")
             _deactivate_with_email("Image validation failed (invalid file type)")
             return
@@ -2095,51 +2039,65 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 logger.error(f"Failed to notify admins of resubmission for {product_id}: {e}")
             return
 
-        if changed_fields and changed_fields.issubset(_SKIP_VALIDATION_FIELDS):
-            # Guardrail: stock-only updates may come from checkout/restore paths, but
-            # we still must reject invalid negative/non-numeric stock values.
-            if Fields.STOCK_QUANTITY in changed_fields:
-                stock = product_data.get(Fields.STOCK_QUANTITY, 0)
-                if not _is_valid_stock_quantity(stock):
-                    logger.info(
-                        f"SECURITY: Product {product_id} updated with invalid stock ({stock}) during stock-only update — deactivating"
-                    )
-                    get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                        {
-                            Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
-                        }
-                    )
-                    return
+    # If warehouseStockMap changed, re-calculate total stockQuantity
+    warehouse_map_after = product_data.get(Fields.WAREHOUSE_STOCK_MAP, {})
+    warehouse_map_before = before_data.get(Fields.WAREHOUSE_STOCK_MAP, {})
+    if warehouse_map_after != warehouse_map_before:
+        calculated_stock = sum(warehouse_map_after.values())
+        if calculated_stock != product_data.get(Fields.STOCK_QUANTITY):
+            logger.info(f"Product {product_id}: re-calculating stockQuantity from warehouseStockMap: {calculated_stock}")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update({
+                Fields.STOCK_QUANTITY: calculated_stock,
+                Fields.UPDATED_AT: get_server_timestamp()
+            })
+            # Update local dict for Algolia sync
+            product_data[Fields.STOCK_QUANTITY] = calculated_stock
 
-            # Non-security-relevant update — re-index if active
-            is_active = product_data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE
-            if is_active:
-                try:
-                    product_data["id"] = product_id
-                    # Use partial update for stock/status-only changes to avoid rewriting all fields
-                    stock_only_fields = {Fields.STOCK_QUANTITY, Fields.LIFECYCLE_STATUS, Fields.UPDATED_AT}
-                    if changed_fields.issubset(stock_only_fields):
-                        partial_fields = {k: product_data[k] for k in changed_fields if k in product_data and k != Fields.UPDATED_AT}
-                        if partial_fields:
-                            algolia_partial_update(product_id, partial_fields)
-                    else:
-                        index_product(product_id, product_data)
-                except Exception as e:
-                    logger.error(f"Failed to index product {product_id} after metadata update: {str(e)}")
+    if changed_fields and changed_fields.issubset(_SKIP_VALIDATION_FIELDS):
+        # Guardrail: stock-only updates may come from checkout/restore paths, but
+        # we still must reject invalid negative/non-numeric stock values.
+        if Fields.STOCK_QUANTITY in changed_fields:
+            stock = product_data.get(Fields.STOCK_QUANTITY, 0)
+            if not _is_valid_stock_quantity(stock):
+                logger.info(
+                    f"SECURITY: Product {product_id} updated with invalid stock ({stock}) during stock-only update — deactivating"
+                )
+                get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                    {
+                        Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+                    }
+                )
+                return
 
-            # TASK 07: Fire back-in-stock notifications when stockQuantity 0→>0
+        # Non-security-relevant update — re-index if active
+        is_active = product_data.get(Fields.LIFECYCLE_STATUS) == ProductLifecycleStatusValues.ACTIVE
+        if is_active:
             try:
-                _fire_back_in_stock_notifications(product_id, before_data, product_data)
+                product_data["id"] = product_id
+                # Use partial update for stock/status-only changes to avoid rewriting all fields
+                stock_only_fields = {Fields.STOCK_QUANTITY, Fields.LIFECYCLE_STATUS, Fields.UPDATED_AT}
+                if changed_fields.issubset(stock_only_fields):
+                    partial_fields = {k: product_data[k] for k in changed_fields if k in product_data and k != Fields.UPDATED_AT}
+                    if partial_fields:
+                        algolia_partial_update(product_id, partial_fields)
+                else:
+                    index_product(product_id, product_data)
             except Exception as e:
-                logger.error(f"Back-in-stock notification error for {product_id}: {e}")
+                logger.error(f"Failed to index product {product_id} after metadata update: {str(e)}")
 
-            # N-06: Track price history even on metadata-only updates
-            try:
-                _track_price_history(product_id, before_data, product_data)
-            except Exception as e:
-                logger.error(f"Price history tracking error for {product_id}: {e}")
+        # TASK 07: Fire back-in-stock notifications when stockQuantity 0→>0
+        try:
+            _fire_back_in_stock_notifications(product_id, before_data, product_data)
+        except Exception as e:
+            logger.error(f"Back-in-stock notification error for {product_id}: {e}")
 
-            return
+        # N-06: Track price history even on metadata-only updates
+        try:
+            _track_price_history(product_id, before_data, product_data)
+        except Exception as e:
+            logger.error(f"Price history tracking error for {product_id}: {e}")
+
+        return
         # Track whether address changed — skip geocoding if it didn't
         _address_changed = before_data.get(Fields.SELLER_ADDRESS) != product_data.get(Fields.SELLER_ADDRESS)
 
@@ -2384,7 +2342,7 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
         raise https_fn.HttpsError("permission-denied", "Admin only")
 
     # AUDIT FIX: Rate limit admin endpoint
-    from services.rate_limiter import RateLimiter
+
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
@@ -2426,7 +2384,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     """
     # AUDIT FIX: Rate limit read endpoint to prevent scraping
-    from services.rate_limiter import RateLimiter
+
 
     _limiter = RateLimiter(get_db())
 
@@ -2563,7 +2521,7 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, An
     """
     # AUDIT FIX: Rate limit read endpoint to prevent scraping
     if req.auth:
-        from services.rate_limiter import RateLimiter
+
 
         _limiter = RateLimiter(get_db())
         allowed, msg = _limiter.check_rate_limit(
@@ -2670,7 +2628,7 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
     """
     # AUDIT FIX: Rate limit read endpoint to prevent scraping
     if req.auth:
-        from services.rate_limiter import RateLimiter
+
 
         _limiter = RateLimiter(get_db())
         allowed, msg = _limiter.check_rate_limit(
@@ -3280,6 +3238,11 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     if not product_id:
         raise https_fn.HttpsError("invalid-argument", "productId required")
 
+    # Reject path-traversal and invalid Firestore ID characters before any DB lookup.
+    # Firestore doc IDs cannot contain '/' or be '.' / '..' per SDK rules.
+    if not isinstance(product_id, str) or "/" in product_id or product_id in (".", "..") or len(product_id) > 1500:
+        raise https_fn.HttpsError("invalid-argument", "Invalid productId format")
+
     # Validate variantKey length if provided
     variant_key_raw = data.get(Fields.VARIANT_KEY)
     if variant_key_raw and len(str(variant_key_raw)) > 500:
@@ -3415,7 +3378,7 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
         )
 
     # S-02 FIX: Rate limit question submissions (max 5/hour per user)
-    from services.rate_limiter import RateLimiter
+
 
     _limiter = RateLimiter(db)
     allowed, msg = _limiter.check_rate_limit(
@@ -3516,8 +3479,7 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     # FIX M-1: Rate limit answer submissions (max 30/hour per user — sellers answer many questions)
-    from services.rate_limiter import RateLimiter as _RL
-    _ans_limiter = _RL(get_db())
+    _ans_limiter = RateLimiter(get_db())
     _allowed, _msg = _ans_limiter.check_rate_limit(
         identifier=req.auth.uid,
         action="answer_product_question",
@@ -3673,7 +3635,7 @@ def answer_review(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
-    from services.rate_limiter import RateLimiter
+
     from utils.helpers import sanitized_text
 
     _limiter = RateLimiter(get_db())

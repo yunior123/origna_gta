@@ -1649,7 +1649,109 @@ class TestOnOrderStatusChangedEmails:
 
 
 # ============================================================================
-# SUMMARY: 112 test scenarios covering:
+# 19. CHAT MESSAGING IDEMPOTENCY (3 scenarios)
+# ============================================================================
+
+
+class TestChatMessaging:
+    """Tests chat messaging idempotency and edge cases."""
+
+    @patch("handlers.chat._get_db")
+    @patch("handlers.chat._is_premium", return_value=True)
+    def test_send_message_idempotent(self, mock_is_premium, mock_get_db):
+        """Scenario 113: send_message is idempotent when messageId is provided."""
+        from handlers.chat import send_message
+
+        # Setup mock DB
+        chat_id = "prod123_buyer123"
+        message_id = "msg_abc123"
+        
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+        
+        # Mock chat thread
+        chat_doc = make_mock_doc({"buyerId": "buyer123", "sellerId": "seller123"})
+        mock_db.collection.return_value.document.return_value.get.return_value = chat_doc
+        
+        # Mock rate limiter Check
+        with patch("services.rate_limiter.RateLimiter.check_rate_limit", return_value=(True, "OK")):
+            # Mock sender profile
+            sender_doc = make_mock_doc({"name": "Test Buyer"})
+            
+            # Setup the collection path for message checking
+            mock_msgs_coll = MagicMock()
+            mock_db.collection.return_value.document.return_value.collection.return_value = mock_msgs_coll
+            
+            # Message DOES exist (idempotent case)
+            mock_existing_msg_ref = MagicMock()
+            mock_existing_msg_doc = make_mock_doc(data={}, exists=True, doc_id=message_id)
+            mock_existing_msg_ref.get.return_value = mock_existing_msg_doc
+            mock_existing_msg_ref.id = message_id
+            
+            mock_msgs_coll.document.return_value = mock_existing_msg_ref
+
+            req = make_mock_request(uid="buyer123", data={"chatId": chat_id, "text": "Hello seller", "messageId": message_id})
+            
+            # Call handler
+            result = send_message(req)
+            
+            # Should return success True and messageId without re-writing
+            assert result["success"] is True
+            assert result["messageId"] == message_id
+            # Assert that the document was NOT overwritten
+            mock_existing_msg_ref.set.assert_not_called()
+
+
+# ============================================================================
+# 20. WAREHOUSE MANAGEMENT (3 scenarios)
+# ============================================================================
+
+
+class TestWarehouseManagement:
+    """Tests warehouse deletion constraints."""
+
+    @patch("handlers.products.get_db")
+    def test_delete_warehouse_blocked_by_stock(self, mock_get_db):
+        """Scenario 114: Cannot delete a warehouse if any product has stock there."""
+        from firebase_functions.https_fn import HttpsError
+        from handlers.products import delete_warehouse
+        
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+        
+        # Mock warehouse exists
+        mock_wh_doc = make_mock_doc({}, exists=True)
+        # We need mock_db.collection(Users).document(seller).collection(Wh).document(wh).get()
+        # and mock_db.collection(Products).where...
+        
+        def mock_collection_call(name):
+            coll = MagicMock()
+            if name == "users":
+                coll.document.return_value.collection.return_value.document.return_value.get.return_value = mock_wh_doc
+            elif name == "products":
+                # Returns products with the warehouse
+                pdoc = make_mock_doc({"name": "Test Product", "warehouseStock": {"wh_123": 10}})
+                coll.where.return_value.where.return_value.limit.return_value.get.return_value = [pdoc]
+                
+                # Mock the inventoryLevels subcollection check
+                inv_doc = make_mock_doc({"availableQuantity": 0})
+                coll.document.return_value.collection.return_value.document.return_value.get.return_value = inv_doc
+            elif name == "orders":
+                coll.where.return_value.where.return_value.limit.return_value.get.return_value = []
+            return coll
+            
+        mock_db.collection.side_effect = mock_collection_call
+
+        req = make_mock_request(uid="seller_123", data={"warehouseId": "wh_123"})
+        
+        with pytest.raises(HttpsError) as exc_info:
+            delete_warehouse(req)
+        assert exc_info.value.code == "failed-precondition"
+        assert "still has 10 units in stock" in exc_info.value.message
+
+
+# ============================================================================
+# SUMMARY: 114 test scenarios covering:
 #   - Order state machine (20)
 #   - Checkout validation (10)
 #   - Postal code validation (10)
@@ -1668,4 +1770,6 @@ class TestOnOrderStatusChangedEmails:
 #   - Order creation fields (3)
 #   - Approve shipping cost (4)
 #   - Status changed emails (3)
+#   - Chat Idempotency (1)
+#   - Warehouse Deletion (1)
 # ============================================================================
