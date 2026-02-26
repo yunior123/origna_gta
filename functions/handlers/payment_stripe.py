@@ -938,6 +938,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Re-validate and compute discount server-side against verified actual_subtotal_cents.
     # Client-supplied cartSubtotalCents is used only for UX preview in apply_coupon.
     coupon_code: str | None = None
+    coupon_seller_id: str | None = None  # seller_id for scoped coupon (None = platform-wide)
     discount_amount_cents = 0
     coupon_code_raw = data.get(Fields.COUPON_CODE)
     if coupon_code_raw and isinstance(coupon_code_raw, str):
@@ -961,6 +962,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                     # discount only on that seller's items — not the full cart.
                     # Platform-wide coupons (sellerId=None) still use the full subtotal.
                     scoped_seller = coupon_data.get(Fields.SELLER_ID)
+                    coupon_seller_id = scoped_seller  # store for payout scoping
                     if scoped_seller is not None:
                         scoped_subtotal_cents = sum(
                             round(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
@@ -1459,6 +1461,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.SUBTOTAL_CENTS: actual_subtotal_cents,
         Fields.DISCOUNT_AMOUNT_CENTS: discount_amount_cents,
         Fields.COUPON_CODE: coupon_code,
+        Fields.COUPON_SELLER_ID: coupon_seller_id,
         Fields.SHIPPING_COST_CENTS: shipping_cost_cents,
         Fields.TAX_AMOUNT_CENTS: tax_amount_cents,
         Fields.TOTAL_AMOUNT_CENTS: total_amount_cents,
@@ -1984,14 +1987,35 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
     # Use fee rate frozen at checkout time (not the current global config)
     stored_fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
 
-    # Compute discount ratio so seller payouts reflect only collected amount
+    # Compute discount ratio so seller payouts reflect only collected amount.
+    # For seller-scoped coupons (couponSellerId != None), only that seller absorbs
+    # the discount — other sellers are unaffected.
     actual_subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 0)
     discount_amount_cents = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
-    discount_ratio = (
-        (actual_subtotal_cents - discount_amount_cents) / actual_subtotal_cents
-        if actual_subtotal_cents > 0
-        else 1.0
-    )
+    coupon_seller_id = order_data.get(Fields.COUPON_SELLER_ID)  # None = platform-wide
+
+    # For scoped coupons, compute the scoped seller's subtotal to derive the correct ratio
+    if coupon_seller_id is not None and discount_amount_cents > 0:
+        scoped_subtotal_cents = sum(
+            round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1)
+            for item in items
+            if item.get(Fields.SELLER_ID) == coupon_seller_id
+        )
+        # scoped_discount_ratio applies only to the coupon seller; others get 1.0
+        scoped_discount_ratio = (
+            (scoped_subtotal_cents - discount_amount_cents) / scoped_subtotal_cents
+            if scoped_subtotal_cents > 0
+            else 1.0
+        )
+        global_discount_ratio = None  # sentinel: use per-seller logic below
+    else:
+        # Platform-wide coupon or no coupon — apply uniformly to all sellers
+        global_discount_ratio = (
+            (actual_subtotal_cents - discount_amount_cents) / actual_subtotal_cents
+            if actual_subtotal_cents > 0
+            else 1.0
+        )
+        scoped_discount_ratio = None  # unused
 
     # Compute per-seller totals (price in dollars × 100 → cents, × quantity)
     sellers_total: dict[str, int] = {}
@@ -2005,7 +2029,16 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
     for seller_id, amount_cents in sellers_total.items():
         # Apply coupon discount proportionally before computing platform fee.
         # adjusted_amount_cents = seller's share of what the buyer actually paid (in cents).
-        adjusted_amount_cents = round(amount_cents * discount_ratio)  # already in cents
+        # For seller-scoped coupons, only the coupon's seller absorbs the discount.
+        if global_discount_ratio is not None:
+            # Platform-wide coupon or no coupon — uniform ratio
+            adjusted_amount_cents = round(amount_cents * global_discount_ratio)
+        elif seller_id == coupon_seller_id:
+            # This seller issued the coupon — apply their specific discount ratio
+            adjusted_amount_cents = round(amount_cents * scoped_discount_ratio)
+        else:
+            # Other sellers are unaffected by a scoped coupon
+            adjusted_amount_cents = amount_cents
         # PLATFORM_FEE_RATIO = 2.5%; uses the rate frozen at checkout to prevent config changes
         # from retroactively affecting in-flight orders.
         platform_fee_cents = round(adjusted_amount_cents * stored_fee_rate)  # already in cents
@@ -2266,30 +2299,68 @@ def process_checkout_session_completed(session: dict) -> str | None:
     product_docs_map = {pid: db.collection(Collections.PRODUCTS).document(pid).get() for pid in product_ids_in_items}
     seller_docs_map = {sid: db.collection(Collections.USERS).document(sid).get() for sid in seller_ids_in_items}
 
+    # Collect bad sellers whose items must be cancelled
+    bad_seller_ids: set[str] = set()
     for item in items:
         product_id = item.get(Fields.PRODUCT_ID)
         seller_id = item.get(Fields.SELLER_ID)
 
-        # Check product still exists and is active
         product_doc = product_docs_map.get(product_id)
-
         if product_doc is None or not product_doc.exists:
-            logger.warning(f"⚠️ Product {product_id} no longer exists, cancelling order {order_id}")
-            _restore_stock_and_cancel_order(order_id, order_data, f"Product {product_id} removed")
-            return f"Order {order_id} cancelled - product removed"
+            logger.warning(f"⚠️ Product {product_id} no longer exists for seller {seller_id}")
+            bad_seller_ids.add(seller_id)
+            continue
 
         product_data = product_doc.to_dict()
         if product_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
-            logger.warning(f"⚠️ Product {product_id} deactivated, cancelling order {order_id}")
-            _restore_stock_and_cancel_order(order_id, order_data, f"Product {product_id} deactivated")
-            return f"Order {order_id} cancelled - product deactivated"
+            logger.warning(f"⚠️ Product {product_id} deactivated (seller {seller_id})")
+            bad_seller_ids.add(seller_id)
 
-        # Check seller not suspended
         seller_doc = seller_docs_map.get(seller_id)
         if seller_doc and seller_doc.exists and seller_doc.to_dict().get(Fields.SUSPENDED, False):
-            logger.warning(f"⚠️ Seller {seller_id} suspended, cancelling order {order_id}")
-            _restore_stock_and_cancel_order(order_id, order_data, f"Seller {seller_id} suspended")
-            return f"Order {order_id} cancelled - seller suspended"
+            logger.warning(f"⚠️ Seller {seller_id} suspended")
+            bad_seller_ids.add(seller_id)
+
+    if bad_seller_ids:
+        good_items = [i for i in items if i.get(Fields.SELLER_ID) not in bad_seller_ids]
+
+        if not good_items:
+            # All sellers are bad — cancel entire order
+            _restore_stock_and_cancel_order(order_id, order_data, f"All sellers invalid: {bad_seller_ids}")
+            return f"Order {order_id} cancelled - all sellers invalid"
+
+        # Multi-seller order: partial cancel — refund bad sellers' items, keep good items
+        bad_items = [i for i in items if i.get(Fields.SELLER_ID) in bad_seller_ids]
+        bad_amount_cents = sum(
+            round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1)
+            for item in bad_items
+        )
+        pi_id_for_partial = session.get("payment_intent")
+        if pi_id_for_partial and bad_amount_cents > 0:
+            try:
+                ensure_stripe_key()
+                stripe.Refund.create(
+                    payment_intent=pi_id_for_partial,
+                    amount=bad_amount_cents,
+                    reason="requested_by_customer",
+                    metadata={Fields.ORDER_ID: order_id, "bad_sellers": ",".join(sorted(bad_seller_ids))},
+                    idempotency_key=f"partial_refund_{order_id}_{'_'.join(sorted(bad_seller_ids))}",
+                )
+                logger.info(f"Partial refund {bad_amount_cents}c issued for {order_id}")
+            except Exception as e:
+                logger.error(f"Partial refund failed for {order_id}: {e}")
+
+        # Restore stock only for bad items
+        batch = db.batch()
+        _add_stock_restore_to_batch(batch, {**order_data, Fields.ITEMS: bad_items})
+        order_ref.update({
+            Fields.ITEMS: good_items,
+            Fields.SELLER_IDS: sorted({i.get(Fields.SELLER_ID) for i in good_items}),
+            Fields.SUBTOTAL_CENTS: sum(round(i.get(Fields.PRICE, 0) * 100) * i.get(Fields.QUANTITY, 1) for i in good_items),
+            Fields.UPDATED_AT: get_server_timestamp(),
+        })
+        batch.commit()
+        logger.info(f"Order {order_id}: removed items from bad sellers {bad_seller_ids}, order continues with {len(good_items)} items")
 
     # Update order status — auto-capture: payment is captured immediately at checkout
     pi_id = session.get("payment_intent")
@@ -3984,7 +4055,16 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                 fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
                 _ac_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0)
                 _ac_discount = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
-                _ac_discount_ratio = (_ac_subtotal - _ac_discount) / _ac_subtotal if _ac_subtotal > 0 else 1.0
+                _ac_coupon_seller_id = order_data.get(Fields.COUPON_SELLER_ID)
+
+                if _ac_coupon_seller_id is not None and _ac_discount > 0:
+                    _ac_scoped_items = [i for i in items if i.get(Fields.SELLER_ID) == _ac_coupon_seller_id]
+                    _ac_scoped_sub = sum(round(i.get(Fields.PRICE, 0) * 100) * i.get(Fields.QUANTITY, 1) for i in _ac_scoped_items)
+                    _ac_global_ratio: float | None = None
+                    _ac_scoped_ratio = (_ac_scoped_sub - _ac_discount) / _ac_scoped_sub if _ac_scoped_sub > 0 else 1.0
+                else:
+                    _ac_global_ratio = (_ac_subtotal - _ac_discount) / _ac_subtotal if _ac_subtotal > 0 else 1.0
+                    _ac_scoped_ratio = None
 
                 sellers_total = {}
                 for item in items:
@@ -4016,7 +4096,12 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                         logger.error(f"\u26a0\ufe0f Failed to retrieve PaymentIntent for charge_id: {pi_err}")
 
                 for seller_id, amount_cents in sellers_total.items():
-                    adjusted_amount_cents = round(amount_cents * _ac_discount_ratio)
+                    if _ac_global_ratio is not None:
+                        adjusted_amount_cents = round(amount_cents * _ac_global_ratio)
+                    elif seller_id == _ac_coupon_seller_id:
+                        adjusted_amount_cents = round(amount_cents * _ac_scoped_ratio)
+                    else:
+                        adjusted_amount_cents = amount_cents
                     platform_fee_cents = round(adjusted_amount_cents * fee_rate)
                     net_amount_cents = adjusted_amount_cents - platform_fee_cents
                     payout_ref = get_db().collection(Collections.PAYOUTS).document(f"{order_id}_{seller_id}")
@@ -4234,11 +4319,26 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
         stored_fee_rate = order_data.get("platformFeeRatio", PLATFORM_FEE_RATIO)
         _cap_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0)
         _cap_discount = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
-        discount_ratio = (_cap_subtotal - _cap_discount) / _cap_subtotal if _cap_subtotal > 0 else 1.0
+        _cap_coupon_seller_id = order_data.get(Fields.COUPON_SELLER_ID)
+
+        if _cap_coupon_seller_id is not None and _cap_discount > 0:
+            # Seller-scoped coupon: compute the scoped seller's subtotal for correct ratio
+            _scoped_items = [i for i in items if i.get(Fields.SELLER_ID) == _cap_coupon_seller_id]
+            _scoped_sub = sum(round(i.get(Fields.PRICE, 0) * 100) * i.get(Fields.QUANTITY, 1) for i in _scoped_items)
+            _cap_global_ratio: float | None = None
+            _cap_scoped_ratio = (_scoped_sub - _cap_discount) / _scoped_sub if _scoped_sub > 0 else 1.0
+        else:
+            _cap_global_ratio = (_cap_subtotal - _cap_discount) / _cap_subtotal if _cap_subtotal > 0 else 1.0
+            _cap_scoped_ratio = None
 
         for seller_id, amount_cents in sellers_total_cents.items():
-            # Apply coupon discount proportionally before computing platform fee
-            adjusted_amount_cents = round(amount_cents * discount_ratio)
+            # Apply coupon discount: scoped coupons only affect the coupon's seller
+            if _cap_global_ratio is not None:
+                adjusted_amount_cents = round(amount_cents * _cap_global_ratio)
+            elif seller_id == _cap_coupon_seller_id:
+                adjusted_amount_cents = round(amount_cents * _cap_scoped_ratio)
+            else:
+                adjusted_amount_cents = amount_cents
             # Platform fee in cents — use stored rate from checkout, fallback to config
             platform_fee_cents = round(adjusted_amount_cents * stored_fee_rate)
             net_amount_cents = adjusted_amount_cents - platform_fee_cents

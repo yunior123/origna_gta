@@ -1063,6 +1063,7 @@ abstract final class Fields {
 
   // === N-07: Coupon/promo code system ===
   static const couponCode = 'couponCode';
+  static const couponSellerId = 'couponSellerId'; // seller_id of scoped coupon (null = platform-wide)
   static const discountAmountCents = 'discountAmountCents';
   static const minOrderCents = 'minOrderCents';
   static const maxUsesTotal = 'maxUsesTotal';

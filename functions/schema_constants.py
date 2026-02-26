@@ -695,6 +695,7 @@ class Fields:
 
     # === N-07: Coupon/promo code system ===
     COUPON_CODE = "couponCode"
+    COUPON_SELLER_ID = "couponSellerId"  # seller_id of scoped coupon (None = platform-wide)
     DISCOUNT_AMOUNT_CENTS = "discountAmountCents"
     MIN_ORDER_CENTS = "minOrderCents"
     MAX_USES_TOTAL = "maxUsesTotal"

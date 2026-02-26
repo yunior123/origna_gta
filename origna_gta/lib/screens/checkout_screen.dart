@@ -862,6 +862,17 @@ class _OrderSummary extends ConsumerWidget {
       widgets.add(const SizedBox(height: 4));
     });
 
+    // Excise Tax Act s.223: GST/HST registration number must appear on sales receipts
+    widgets.add(
+      Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text(
+          'GST/HST Reg: ${EmailConfig.gstHstNumber}',
+          style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
+        ),
+      ),
+    );
+
     return widgets;
   }
 }

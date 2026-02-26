@@ -9,6 +9,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart'; // Assuming this exists
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+import '../features/seller/seller_account_status_viewmodel.dart';
 import '../features/seller/seller_registration_state.dart';
 import '../features/seller/seller_registration_view_model.dart';
 
@@ -250,15 +251,21 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     WidgetsBinding.instance.addObserver(this);
   }
 
-  /// Build verification status info card
+  /// Build verification status info card — reads Stripe status from seller_profiles/{uid}
+  /// via sellerAccountStatusProvider (not UserModel, which only reads users/{uid}).
   Widget _buildVerificationStatusCard(UserModel user) {
+    // Stripe status fields live in seller_profiles/{uid}, not users/{uid}.
+    // Use sellerAccountStatusProvider which correctly combines both collections.
+    final statusAsync = ref.watch(sellerAccountStatusProvider);
+    final status = statusAsync.valueOrNull;
+
     final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
-    final onboardingCompleted = user.onboardingCompleted;
-    final chargesEnabled = user.chargesEnabled;
-    final payoutsEnabled = user.payoutsEnabled;
-    
+    final onboardingCompleted = status?.detailsSubmitted ?? false;
+    final chargesEnabled = status?.chargesEnabled ?? false;
+    final payoutsEnabled = status?.chargesEnabled ?? false; // chargesEnabled combines both in SellerAccountStatus
+
     // Only show if user has account but verification is pending
-    if (!hasAccount || payoutsEnabled) return const SizedBox.shrink();
+    if (!hasAccount || (chargesEnabled && payoutsEnabled)) return const SizedBox.shrink();
     
     String title;
     String message;
