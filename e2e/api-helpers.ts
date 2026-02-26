@@ -82,7 +82,7 @@ export const STRIPE_CARD = {
 // Test accounts (from mega-seed.ts)
 export const TEST_ACCOUNTS = {
   ADMIN_EMAIL: 'yr62813@gmail.com',
-  ADMIN_PASS: '960227Y#y',
+  ADMIN_PASS: 'REDACTED_TEST_PASSWORD',
   SELLER1_EMAIL: 'seller1@test.origna.ca',
   SELLER2_EMAIL: 'seller2@test.origna.ca',
   BUYER1_EMAIL: 'buyer1@test.origna.ca',

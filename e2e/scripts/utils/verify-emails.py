@@ -6,7 +6,7 @@ AUTH = "http://localhost:9099"
 KEY = "fake-api-key"
 
 accounts = [
-    ("yr62813@gmail.com", "960227Y#y"),
+    ("yr62813@gmail.com", "REDACTED_TEST_PASSWORD"),
     ("yuniorrodriguezo4601@yahoo.com", "TestYahoo123!"),
 ]
 

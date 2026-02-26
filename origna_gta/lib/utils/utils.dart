@@ -886,18 +886,29 @@ class AppError {
   /// Extract user-friendly message from error.
   ///
   /// For [FirebaseFunctionsException], returns the backend message (safe — our
-  /// backend already sanitises messages before raising HttpsError).
-  /// For [FirebaseException], returns the Firebase-provided message.
+  /// backend already sanitises messages before raising HttpsError), but filters
+  /// out any raw Firestore exceptions that might have leaked.
+  /// For [FirebaseException], returns a safe generic message, as raw Firebase
+  /// messages often contain internal structure details.
   /// For everything else, returns [fallback] to avoid leaking internals.
   static String getMessage(dynamic error, [String? fallback]) {
     final defaultFallback = 'errors.generic_error'.tr();
     final actualFallback = fallback ?? defaultFallback;
+    
     if (error is FirebaseFunctionsException) {
-      return error.message ?? actualFallback;
+      final msg = error.message ?? '';
+      // Filter out leaked backend errors
+      if (msg.contains('FailedPrecondition') || msg.contains('The query requires an index')) {
+        return 'errors.service_unavailable'.tr();
+      }
+      return msg.isNotEmpty ? msg : actualFallback;
     }
+    
     if (error is FirebaseException) {
-      return error.message ?? actualFallback;
+      // Don't expose raw Firebase exceptions to the user UI
+      return 'errors.service_unavailable'.tr();
     }
+    
     // NEVER expose raw e.toString() — it can contain stack traces,
     // class names, and server internals.
     return actualFallback;

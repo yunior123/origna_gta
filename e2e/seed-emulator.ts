@@ -88,7 +88,7 @@ interface SeedUser {
 const USERS: SeedUser[] = [
   // ADMIN (1) - receives all email notifications
   {
-    email: 'yr62813@gmail.com', password: '960227Y#y', displayName: 'Admin Yunior', roles: ['admin', 'seller', 'buyer'], addressIndex: 0,
+    email: 'yr62813@gmail.com', password: 'REDACTED_TEST_PASSWORD', displayName: 'Admin Yunior', roles: ['admin', 'seller', 'buyer'], addressIndex: 0,
     sellerProfile: { businessName: 'Origna Admin Store', businessAddress: CANADIAN_ADDRESSES[0], stripeAccountId: 'acct_test_admin001', payoutsEnabled: true, chargesEnabled: true, onboardingCompleted: true }
   },
 

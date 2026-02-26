@@ -694,7 +694,7 @@
         },
         {
           "fieldPath": "__name__",
-          "order": "DESCENDING"
+          "order": "ASCENDING"
         }
       ],
       "comment": "FIX 2026-02-24: Index for auto_capture cron \u2014 query by deliveredAt instead of updatedAt to avoid field-update reset"

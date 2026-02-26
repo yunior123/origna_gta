@@ -1121,7 +1121,8 @@
     "invalid_payment_link": "Lien de paiement invalide.",
     "auth_error": "Erreur d'authentification : {error}",
     "error_title": "Erreur",
-    "verification_error": "Erreur de vérification. Veuillez réessayer."
+    "verification_error": "Erreur de vérification. Veuillez réessayer.",
+    "service_unavailable": "Le service est temporairement indisponible. Veuillez réessayer plus tard."
   },
   "qa": {
     "title": "Questions et réponses",

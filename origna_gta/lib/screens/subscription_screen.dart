@@ -90,11 +90,14 @@ class SubscriptionScreen extends ConsumerWidget {
     final notifyNew = userAsync.valueOrNull?.notifyNewProducts ?? false;
     final notifyTrending = userAsync.valueOrNull?.notifyTrending ?? false;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
           // Hero badge
           Center(
             child: Container(
@@ -228,6 +231,8 @@ class SubscriptionScreen extends ConsumerWidget {
           const SizedBox(height: 40),
         ],
       ),
+    ),
+    ),
     );
   }
 

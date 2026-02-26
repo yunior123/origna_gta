@@ -112,7 +112,7 @@ const kTestSellerPassword = 'REDACTED_TEST_PASSWORD';
 
 /// Admin account seeded in Firebase emulator.
 const kTestAdminEmail = 'yr62813@gmail.com';
-const kTestAdminPassword = '960227Y#y';
+const kTestAdminPassword = 'REDACTED_TEST_PASSWORD';
 
 /// Combo account (buyer+seller) seeded in Firebase emulator.
 const kTestComboEmail = 'combo1@test.origna.ca';

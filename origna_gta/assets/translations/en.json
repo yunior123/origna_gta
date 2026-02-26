@@ -1120,7 +1120,8 @@
     "invalid_payment_link": "Invalid payment link.",
     "auth_error": "Authentication error: {error}",
     "error_title": "Error",
-    "verification_error": "Error checking verification. Please try again."
+    "verification_error": "Error checking verification. Please try again.",
+    "service_unavailable": "Service is temporarily unavailable. Please try again later."
   },
   "qa": {
     "title": "Questions & Answers",

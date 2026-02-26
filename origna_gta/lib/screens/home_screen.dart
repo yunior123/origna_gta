@@ -252,6 +252,7 @@ class _CategoryChips extends ConsumerWidget {
       height: 52,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: ListView.builder(
+        physics: const ClampingScrollPhysics(),
         scrollDirection: Axis.horizontal,
         itemCount: productCategories.length + 1,
         itemBuilder: (context, index) {
@@ -361,6 +362,7 @@ class _SubcategoryChips extends ConsumerWidget {
       child: SizedBox(
         height: 38,
         child: ListView.builder(
+          physics: const ClampingScrollPhysics(),
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: subcategories.length + 1, // +1 for "All"

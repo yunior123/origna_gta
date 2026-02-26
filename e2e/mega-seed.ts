@@ -169,7 +169,7 @@ const nextEmail = (prefix: string) => `${prefix}${++emailCounter}@test.origna.ca
 
 // 1. ADMIN
 USERS.push({
-  email: 'yr62813@gmail.com', password: '960227Y#y', displayName: 'Admin Yunior',
+  email: 'yr62813@gmail.com', password: 'REDACTED_TEST_PASSWORD', displayName: 'Admin Yunior',
   roles: ['admin', 'seller', 'buyer'], address: makeAddress('ON'),
   sellerProfile: makeSellerProfile('Admin', 'ON', 0),
 });

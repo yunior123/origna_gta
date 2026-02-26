@@ -1292,6 +1292,8 @@ FLOWS: dict[str, list[str]] = {
 
     "email_notifications": [
         "functions/services/email_service.py",
+        "functions/services/email_task.py",
+        "functions/handlers/email_tasks.py",
         "functions/services/pdf_invoice_service.py",
         "functions/handlers/orders.py",
         "functions/handlers/payment_stripe.py",

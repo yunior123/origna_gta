@@ -29,6 +29,7 @@ import 'package:origna_gta/screens/payment_screens.dart';
 import 'package:origna_gta/screens/privacy_policy_screen.dart' deferred as privacy;
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
+import 'package:origna_gta/screens/reset_password_screen.dart';
 import 'package:origna_gta/screens/seller/seller_warehouses_screen.dart' deferred as seller_warehouses;
 import 'package:origna_gta/screens/seller_integration_screen.dart' deferred as seller_integration;
 import 'package:origna_gta/screens/seller_orders_screen.dart' deferred as seller_orders;
@@ -56,6 +57,17 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   final uri = Uri.tryParse(initialRoute);
   if (kDebugMode && uri != null) {
     debugPrint('🔗 Parsed path: ${uri.path}');
+  }
+
+  // Handle Firebase Auth action URLs (like password reset)
+  if (uri != null && uri.queryParameters['mode'] == 'resetPassword') {
+    final oobCode = uri.queryParameters['oobCode'];
+    if (oobCode != null && oobCode.isNotEmpty) {
+      return [
+        SlidePageRoute(page: const AuthWrapper()),
+        SlidePageRoute(page: ResetPasswordScreen(oobCode: oobCode)),
+      ];
+    }
   }
 
   // Handle product by slug deep link (/p/{slug})
@@ -136,6 +148,17 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   final uri = Uri.tryParse(settings.name ?? '');
 
   if (uri == null) return null;
+
+  // Handle Firebase Auth action URLs (like password reset) dynamically via deep links
+  if (uri.queryParameters['mode'] == 'resetPassword') {
+    final oobCode = uri.queryParameters['oobCode'];
+    if (oobCode != null && oobCode.isNotEmpty) {
+      return SlidePageRoute(
+        settings: settings,
+        page: ResetPasswordScreen(oobCode: oobCode),
+      );
+    }
+  }
 
   // Handle home route - used when navigating back from deep links
   if (uri.path == AppRoutes.home || uri.path.isEmpty) {

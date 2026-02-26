@@ -518,3 +518,63 @@ When deploying to a new region for the first time, Firebase CLI asks: "How many 
 - `.env.local` — local only, NEVER deployed by Firebase CLI. Keep `GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json` here.
 - `.env` — deployed to ALL environments. Must NOT have `GOOGLE_APPLICATION_CREDENTIALS`.
 - `.env.orignagta-staging`, `.env.orignagta` — environment-specific overrides, deployed. Must NOT have `GOOGLE_APPLICATION_CREDENTIALS`.
+
+---
+
+## State Regression Fixes (Feb 2026)
+
+### Firebase Exceptions and UI Error Leakage
+- When fixing backend-leaked error messages (like `FirebaseFunctionsException` containing `FailedPrecondition` or `The query requires an index`), always sanitize the messages in `AppError.getMessage` to return user-friendly localized messages like `errors.service_unavailable` instead of throwing raw database structure messages to the UI.
+
+### Flutter Web Horizontal List Overscroll
+- In Flutter Web, horizontal lists (like `ListView.builder`) can trigger a browser-level tab switch or history back/forward navigation when the user scrolls past the boundaries on a trackpad. Always explicitly use `physics: const ClampingScrollPhysics()` on horizontal scrolling lists to prevent web browser overscroll navigation.
+
+### Firebase Dynamic Links / Auth Action Routing
+- Firebase Dynamic Links or Authentication Action URLs (like password reset `/?mode=resetPassword&oobCode=...`) must be intercepted at the top of the route generator (`onGenerateRoute` or `onGenerateInitialRoutes`) in `origna_app.dart` to bypass the AuthWrapper's redirection logic which would otherwise crash or redirect the user away from the intended deep link.
+
+### Playwright E2E Multi-Environment Constraints
+- When testing with E2E (Playwright) against different environments (Dev, Staging, Prod), ensure `REDACTED_TEST_PASSWORD` is consistently used for seeded accounts (`yr62813@gmail.com`) instead of legacy passwords like `960227Y#y`.
+
+### Generic Firestore Index Validation Script
+- Created generic python script `validate_indexes.py` using `firebase firestore:indexes` output to compare local `firestore.indexes.json` against all live environments (`orignagta-dev`, `orignagta-staging`, `orignagta`).
+- **Gotcha:** Firebase implicitly adds `__name__` to some indexes in its CLI output, so normalization scripts must ignore `__name__` when comparing against local configs.
+
+
+---
+
+## Add Product — Code Audit Learnings (Feb 2026)
+- **MVVM Violations:** Ensure screens contain 0 business logic state (`setState` variables). Form flow, inventory config, category selections must be handled in `AddProductState` and managed by the ViewModel.
+- **Controller Leaks:** Always ensure every `TextEditingController` created in a screen (especially in dynamic forms or dialogs) is disposed in the `dispose()` method or after dialog `pop`.
+- **Validation Consistency:** Inline UI validators (like `compareAtPrice - price < 0.50`) must perfectly match the ViewModel validation logic, otherwise the user passes UI validation but gets blocked by a snackbar.
+- **Magic Strings:** Never use hardcoded English strings in widgets (e.g. `labelText: 'Category'`). Use translation keys (`'product.category'.tr()`) to ensure compliance with Bill 96.
+- **Pagination False Positives:** When paginating Firestore, fetching exactly `pageSize` docs and checking `snapshot.docs.length >= pageSize` causes an empty next page if the total docs is an exact multiple. Fix by fetching `pageSize + 1`, checking length, and slicing.
+- **Parallelization:** When uploading or compressing multiple images, use `Future.wait` for parallel processing instead of sequential `for` loops.
+
+## Seller Warehouses & Profiles Audit (Feb 2026)
+- **Firestore Deletion Guards:** `delete_warehouse` backend handler must query `products` (using `warehouseIds array_contains`) to prevent deleting a warehouse that is actively used by products. Firestore Rules cannot enforce cross-collection `array-contains` constraints.
+- **isDefault Uniqueness:** Batch writes do not retry on conflict. Enforcing a single default warehouse per seller requires a `@firestore.transactional` block in Python, not a batch write. Firestore rules cannot query sibling documents to enforce "at most one true" constraints.
+- **Cross-Stack Sync:** When a denormalized field like `shipFromCountries` exists on the product level, it must be added consistently across Pydantic models, Dart Freezed models, Firestore schema JSON, and synchronized on warehouse mutations.
+- **Sequential Read Race Conditions:** Two sequential `get()` calls in Python (e.g. reading `users` then `seller_profiles`) can introduce race conditions. Use `@firestore.transactional` to read them consistently when validating critical business state (like checking if a seller is suspended before allowing checkout).
+- **Province Code Validation:** Province inputs must be validated against `CanadianProvinceValues` rather than free-text to prevent breaking GST/HST lookups during checkout.
+
+## Subscription & Premium Features Audit (Feb 2026)
+- **Stripe Webhook Dictionary vs Object:** In webhook handlers (like `invoice.paid`), be careful with wrapper dicts. `event["data"]["object"]` is a dict, not a Stripe object. Call Stripe's `.retrieve(sub_id)` to get the object, or handle the dict appropriately.
+- **Stripe Idempotency Expiry:** Stripe idempotency keys expire after 24 hours. A static idempotency key (like `f"premium_sub_{uid}"`) will fail if the user retries a day later. Scope keys to the date `f"premium_sub_{uid}_{datetime.now(UTC).date().isoformat()}"`.
+- **AppLifecycleState for Timers:** If a screen uses a `Timer` (e.g. 30 seconds to wait for Stripe activation), pause the timer when the app is backgrounded (Stripe checkout) using `WidgetsBindingObserver`, otherwise it will fire while the user is away.
+- **Role Scoping:** Always verify roles before executing paid actions. Ensure `create_subscription` blocks `seller` accounts from subscribing if the feature is only meant for buyers.
+- **StreamProvider AutoDispose:** When a StreamProvider relies on the user ID, it should `ref.watch(authStateChangesProvider)` to correctly reset its state when the user logs out and logs in as someone else.
+
+## Security & MFA Audit (Feb 2026)
+- **TOTP Replay Attacks:** OTP codes must be invalidated after use. The backend must persist the hash of the last used OTP code and reject it if re-submitted within the valid time window.
+- **Backup Code Consumption Race Conditions:** Deducting a backup code involves reading the array, finding the match, and writing the array back. This must be done inside a `@firestore.transactional` block to prevent concurrent requests from using the same code twice.
+- **Firestore Lockout Increments:** Use `firestore.Increment(1)` for atomic failed attempt counting. Read-then-write `attempts + 1` allows concurrent brute forcing to bypass lockouts.
+- **Fail-Closed Rate Limiting:** High-security endpoints (MFA enroll, Suspend/Unsuspend) must use `fail_closed=True` for their rate limiters so they block access if Firestore is down.
+- **Rule Whitelisting on Creation:** `allow create` rules in Firestore (like `return_requests`) must explicitly whitelist keys and enforce initial default states (e.g. `request.resource.data.returnStatus == 'requested'`) to prevent client injection.
+
+## CI & Pre-Push Hook Learnings (Feb 2026)
+- **Pre-Push Validation Script:** Always include comprehensive tests in pre-push validations (`scripts/pre_push_validation.sh`). This includes:
+  1. `flutter test` for all frontend unit and widget tests.
+  2. `pytest` for all Python backend tests (ensure mockito, pytest-cov, etc., are installed).
+  3. Playwright E2E UI testing (against a live Dev instance or emulator) using `npx playwright test`.
+- **Git Hook Path Resolution:** When executing scripts from within `.git/hooks/pre-push`, `$(dirname "$0")` may fail to correctly resolve the repository root depending on how the hook is symlinked or copied. Use `REPO_ROOT="$(git rev-parse --show-toplevel)"` to reliably get the root of the git repository.
+- **Generic Environment Validation:** Rather than hardcoding validation strings (like `grep deliveredAt firestore.indexes.json`), prefer generic validation scripts like `validate_indexes.py` and `validate_rules.py` which query live environments via `firebase firestore:indexes` and `https://firebaserules.googleapis.com` to ensure local configs perfectly match deployed configs.
