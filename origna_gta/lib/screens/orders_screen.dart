@@ -374,6 +374,12 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                 child: _buildOrderItem(context, item, order.confirmedByClient),
               )),
 
+          // ─── PRICE BREAKDOWN ─────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+            child: _buildPriceBreakdown(order, isDark),
+          ),
+
           // ─── DELIVERY ADDRESS ───────────────────────────────
           if (order.shippingAddress != null)
             Padding(
@@ -756,6 +762,56 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
         const SizedBox(width: 4),
         Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
       ],
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // PRICE BREAKDOWN (H-4: Excise Tax Act s.223 — GST/HST# required on receipts)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Widget _buildPriceBreakdown(Order order, bool isDark) {
+    final textSecondary = DesignTokens.textSecondary;
+    final textPrimary = isDark ? Colors.white : DesignTokens.textPrimary;
+
+    Widget row(String label, String value, {bool bold = false, Color? color}) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 13, color: bold ? textPrimary : textSecondary, fontWeight: bold ? FontWeight.w600 : FontWeight.w400)),
+          Text(value, style: TextStyle(fontSize: 13, color: color ?? (bold ? textPrimary : textSecondary), fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
+        ],
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: (isDark ? Colors.white : DesignTokens.textPrimary).withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          row('orders.subtotal'.tr(), '\$${order.subtotal.toStringAsFixed(2)}'),
+          if (order.discountAmountCents > 0)
+            row('orders.discount'.tr(), '-\$${(order.discountAmountCents / 100).toStringAsFixed(2)}', color: DesignTokens.success),
+          if (order.shippingCostCents > 0)
+            row('orders.shipping'.tr(), '\$${order.shippingCost.toStringAsFixed(2)}'),
+          if (order.taxAmountCents > 0) ...[
+            row('orders.tax'.tr(), '\$${order.taxAmount.toStringAsFixed(2)}'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                'GST/HST# ${EmailConfig.gstHstNumber}',
+                style: TextStyle(fontSize: 10, color: textSecondary.withValues(alpha: 0.7)),
+              ),
+            ),
+          ],
+          Divider(height: 12, color: textSecondary.withValues(alpha: 0.15)),
+          row('orders.total'.tr(), '\$${order.total.toStringAsFixed(2)}', bold: true),
+        ],
+      ),
     );
   }
 

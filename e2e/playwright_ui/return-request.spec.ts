@@ -64,9 +64,9 @@ test.describe('Return Request Flow (Flow 6)', () => {
       newStatus: 'delivered',
     }, adminAuth.idToken);
 
-    const orderDoc = await readDoc(`orders/${orderId}`);
+    const orderDoc = await readDoc(`orders/${orderId}`, adminAuth.idToken);
     const orderData = parseDoc(orderDoc);
-    console.log('Order Items:', JSON.stringify(orderData.items, null, 2));
+    console.log('Order Items:', JSON.stringify(orderData?.items, null, 2));
 
     // 5. Buyer requests return
     const returnResult = await callOk('create_return_request', {
@@ -80,7 +80,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
     expect(returnId).toBeTruthy();
 
     // 6. Verify return request exists in Firestore
-    const returnDoc = await readDoc(`return_requests/${returnId}`);
+    const returnDoc = await readDoc(`return_requests/${returnId}`, adminAuth.idToken);
     const returnData = parseDoc(returnDoc);
     expect(returnData.returnStatus).toBe('requested');
 
@@ -91,7 +91,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
     }, sellerAuth.idToken);
 
     // 8. Verify approved status
-    const returnDocApproved = await readDoc(`return_requests/${returnId}`);
+    const returnDocApproved = await readDoc(`return_requests/${returnId}`, adminAuth.idToken);
     const returnDataApproved = parseDoc(returnDocApproved);
     expect(returnDataApproved.returnStatus).toBe('approved');
   });

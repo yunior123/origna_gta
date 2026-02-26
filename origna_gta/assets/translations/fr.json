@@ -950,7 +950,12 @@
       "disputed": "Contestée",
       "disputed_desc": "Litige de paiement ouvert"
     },
-    "items_ordered": "{count} article(s) commandé(s)"
+    "items_ordered": "{count} article(s) commandé(s)",
+    "subtotal": "Sous-total",
+    "discount": "Réduction",
+    "shipping": "Livraison",
+    "tax": "Taxe",
+    "total": "Total"
   },
   "seller": {
     "become_seller": "Devenir vendeur",

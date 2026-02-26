@@ -21,10 +21,15 @@ test.describe('Password Reset Routing', () => {
     await page.goto(`${baseURL}/?mode=resetPassword&oobCode=fake_oob_code_123456789`);
     await page.waitForLoadState('networkidle');
 
+    // Wait for the heading first to confirm loading + Firebase verification is complete
+    await expect(page.getByRole('heading').filter({ hasText: /Reset Password/i }))
+      .toBeVisible({ timeout: 25000 });
+
     // After Firebase rejects the invalid code, screen should show error + "Go to Login" button
     // (no password form — gated on state.userEmail != null)
-    const goToLoginBtn = page.getByRole('button', { name: /go to login/i });
-    await expect(goToLoginBtn).toBeVisible({ timeout: 20000 });
+    // Use aria-label selector (Flutter web exposes Semantics.label as aria-label)
+    const goToLoginBtn = page.getByLabel('Go to Login');
+    await expect(goToLoginBtn).toBeVisible({ timeout: 10000 });
 
     // Password form must NOT be visible for invalid oobCode
     await expect(page.getByLabel('New Password')).not.toBeVisible();

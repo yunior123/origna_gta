@@ -589,6 +589,22 @@ class _ProductCard extends ConsumerWidget {
 
   void _approveProduct(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    // Confirmation dialog — prevents accidental approval (H-15)
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Approval'),
+        content: Text('Approve "${product.name}" and make it live for buyers?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Approve'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     final success = await ref
         .read(adminActionsViewModelProvider.notifier)
         .approveProduct(product.id);

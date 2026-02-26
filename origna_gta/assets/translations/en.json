@@ -951,7 +951,12 @@
       "disputed": "Disputed",
       "disputed_desc": "Payment dispute opened"
     },
-    "items_ordered": "{count} item(s) ordered"
+    "items_ordered": "{count} item(s) ordered",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "shipping": "Shipping",
+    "tax": "Tax",
+    "total": "Total"
   },
   "seller": {
     "become_seller": "Become a Seller",

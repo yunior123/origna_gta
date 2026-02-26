@@ -8,6 +8,7 @@ Product Management Handlers
 """
 
 import base64 as _base64
+import contextlib
 import html as _html
 import logging
 import re
@@ -1293,10 +1294,10 @@ def on_product_created(event: firestore_fn.Event) -> None:
             update[Fields.APPROVAL_REJECTION_REASON] = reason
         get_db().collection(Collections.PRODUCTS).document(product_id).update(update)
         sid = product_data.get(Fields.SELLER_ID)
-        seller_email = _get_seller_email(sid)
+        seller_email, seller_lang = _get_seller_email_and_lang(sid)
         if seller_email:
             try:
-                _send_product_rejection_email(seller_email, product_name, reason)
+                _send_product_rejection_email(seller_email, product_name, reason, lang=seller_lang)
             except Exception as e:
                 logger.error(f"Failed to send deactivation email for {product_id}: {e}")
 
@@ -1647,11 +1648,27 @@ def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
         logger.info(f"Admin notification sent to {admin_email} for product {product_id}")
 
 
-def _send_product_approval_email(seller_email: str, product_name: str, product_id: str) -> None:
-    """Notify seller that their product has been approved and is now live."""
+def _send_product_approval_email(seller_email: str, product_name: str, product_id: str, lang: str = "en") -> None:
+    """Notify seller that their product has been approved and is now live. Bilingual (Bill 96)."""
     from services.email_service import send_email
 
-    html = f"""
+    if lang == "fr":
+        subject = f"✅ Votre produit est en ligne\u202f: {product_name}"
+        html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #22C55E;">🎉 Votre produit est en ligne\u202f!</h2>
+  <p>Bonne nouvelle\u202f! Votre produit <strong>{product_name}</strong> a été examiné et approuvé par notre équipe.</p>
+  <p>Il est maintenant visible par les acheteurs sur Origna GTA.</p>
+  <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+    <tr><td style="padding:6px 0; color:#666; width:140px;">Produit</td><td style="font-weight:bold;">{product_name}</td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Statut</td><td style="color:#22C55E; font-weight:bold;">✅ Approuvé et en ligne</td></tr>
+  </table>
+  <p>Merci de vendre sur Origna GTA\u202f!</p>
+  <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
+</div>"""
+    else:
+        subject = f"✅ Your product is live: {product_name}"
+        html = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #22C55E;">🎉 Your Product is Live!</h2>
   <p>Good news! Your product <strong>{product_name}</strong> has been reviewed and approved by our team.</p>
@@ -1663,14 +1680,31 @@ def _send_product_approval_email(seller_email: str, product_name: str, product_i
   <p>Thank you for selling on Origna GTA!</p>
   <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
 </div>"""
-    send_email(seller_email, f"✅ Your product is live: {product_name}", html)
+    send_email(seller_email, subject, html)
 
 
-def _send_product_rejection_email(seller_email: str, product_name: str, reason: str) -> None:
-    """Notify seller that their product has been rejected with the reason."""
+def _send_product_rejection_email(seller_email: str, product_name: str, reason: str, lang: str = "en") -> None:
+    """Notify seller that their product has been rejected with the reason. Bilingual (Bill 96)."""
     from services.email_service import send_email
 
-    html = f"""
+    if lang == "fr":
+        subject = f"Mise à jour de l'examen de votre produit\u202f: {product_name}"
+        html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #EF4444;">Mise à jour de l'examen du produit</h2>
+  <p>Malheureusement, votre produit <strong>{product_name}</strong> n'a pas pu être approuvé pour le moment.</p>
+  <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+    <tr><td style="padding:6px 0; color:#666; width:140px;">Produit</td><td style="font-weight:bold;">{product_name}</td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Statut</td><td style="color:#EF4444; font-weight:bold;">❌ Refusé</td></tr>
+    <tr><td style="padding:6px 0; color:#666; vertical-align:top;">Raison</td><td>{reason}</td></tr>
+  </table>
+  <p>Vous pouvez modifier votre produit pour corriger le problème et le soumettre de nouveau.</p>
+  <p>Pour toute question, contactez-nous à <a href="mailto:{EmailConfig.SUPPORT_EMAIL}">{EmailConfig.SUPPORT_EMAIL}</a>.</p>
+  <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
+</div>"""
+    else:
+        subject = f"Product review update: {product_name}"
+        html = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #EF4444;">Product Review Update</h2>
   <p>Unfortunately, your product <strong>{product_name}</strong> could not be approved at this time.</p>
@@ -1683,7 +1717,7 @@ def _send_product_rejection_email(seller_email: str, product_name: str, reason: 
   <p>If you have questions, contact us at <a href="mailto:{EmailConfig.SUPPORT_EMAIL}">{EmailConfig.SUPPORT_EMAIL}</a>.</p>
   <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
 </div>"""
-    send_email(seller_email, f"Product review update: {product_name}", html)
+    send_email(seller_email, subject, html)
 
 
 def _notify_premium_users_new_product(product_data: dict, product_id: str) -> None:
@@ -1793,7 +1827,7 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     if is_digital:
         dead_urls = _check_digital_url_reachability(product_id, product_data)
         if dead_urls:
-            seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
+            seller_email, seller_lang = _get_seller_email_and_lang(product_data.get(Fields.SELLER_ID))
             reason = f"Download URL(s) unreachable: {', '.join(dead_urls)}"
             product_ref.update(
                 {
@@ -1802,7 +1836,7 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
                 }
             )
             if seller_email:
-                _send_product_rejection_email(seller_email, product_data.get(Fields.NAME, ""), reason)
+                _send_product_rejection_email(seller_email, product_data.get(Fields.NAME, ""), reason, lang=seller_lang)
             return create_success_response(
                 {"approved": False, "rejected": True, "reason": reason},
                 message=f"Product auto-rejected: {reason}",
@@ -1829,14 +1863,23 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
         algolia_warning = "Product approved but Algolia indexing failed — product may not appear in search immediately"
 
     # Email seller
-    seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
+    seller_email, seller_lang = _get_seller_email_and_lang(product_data.get(Fields.SELLER_ID))
     if seller_email:
         try:
-            _send_product_approval_email(seller_email, product_data.get(Fields.NAME, ""), product_id)
+            _send_product_approval_email(seller_email, product_data.get(Fields.NAME, ""), product_id, lang=seller_lang)
         except Exception as e:
             logger.error(f"Failed to send approval email for {product_id}: {e}")
 
     logger.info(f"Admin {user_id} approved product {product_id}")
+
+    # Audit log (non-blocking)
+    with contextlib.suppress(Exception):
+        get_db().collection(Collections.ADMIN_LOGS).add({
+            Fields.ACTION: "product_approved",
+            Fields.PRODUCT_ID: product_id,
+            Fields.ADMIN_ID: user_id,
+            Fields.CREATED_AT: get_server_timestamp(),
+        })
 
     # Notify premium users who opted in for new product alerts
     try:
@@ -1905,14 +1948,24 @@ def admin_reject_product(req: https_fn.CallableRequest) -> dict[str, Any]:
         algolia_delete_product(product_id)
 
     # Email seller
-    seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
+    seller_email, seller_lang = _get_seller_email_and_lang(product_data.get(Fields.SELLER_ID))
     if seller_email:
         try:
-            _send_product_rejection_email(seller_email, product_name, reason)
+            _send_product_rejection_email(seller_email, product_name, reason, lang=seller_lang)
         except Exception as e:
             logger.error(f"Failed to send rejection email for {product_id}: {e}")
 
     logger.info(f"Admin {user_id} rejected product {product_id}: {reason}")
+
+    # Audit log (non-blocking)
+    with contextlib.suppress(Exception):
+        get_db().collection(Collections.ADMIN_LOGS).add({
+            Fields.ACTION: "product_rejected",
+            Fields.PRODUCT_ID: product_id,
+            Fields.ADMIN_ID: user_id,
+            Fields.APPROVAL_REJECTION_REASON: reason[:500],
+            Fields.CREATED_AT: get_server_timestamp(),
+        })
     return create_success_response({}, message="Product rejected")
 
 
@@ -1925,6 +1978,18 @@ def _get_seller_email(seller_id: str | None) -> str | None:
         return (doc.to_dict() or {}).get(Fields.EMAIL)
     except Exception:
         return None
+
+
+def _get_seller_email_and_lang(seller_id: str | None) -> tuple[str | None, str]:
+    """Fetch seller email and preferred language from Firestore."""
+    if not seller_id:
+        return None, "en"
+    try:
+        doc = get_db().collection(Collections.USERS).document(seller_id).get()
+        data = doc.to_dict() or {}
+        return data.get(Fields.EMAIL), data.get(Fields.PREFERRED_LANGUAGE, "en")
+    except Exception:
+        return None, "en"
 
 
 def _check_digital_url_reachability(product_id: str, product_data: dict) -> list[str]:
@@ -3215,6 +3280,11 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     if not product_id:
         raise https_fn.HttpsError("invalid-argument", "productId required")
 
+    # Validate variantKey length if provided
+    variant_key_raw = data.get(Fields.VARIANT_KEY)
+    if variant_key_raw and len(str(variant_key_raw)) > 500:
+        raise https_fn.HttpsError("invalid-argument", "variantKey too long")
+
     # Verify product exists and is actually out of stock
     product_doc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
     if not product_doc.exists:
@@ -3226,7 +3296,7 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
 
     # When a variantKey is provided, check that specific variant's stock instead
     # of top-level stockQuantity, which would be > 0 if other variants are in stock.
-    variant_key = data.get(Fields.VARIANT_KEY)
+    variant_key = variant_key_raw  # already read and validated above
     has_variants = product_data.get(Fields.HAS_VARIANTS, False)
     if variant_key and has_variants:
         variants_raw = product_data.get(Fields.VARIANTS) or []

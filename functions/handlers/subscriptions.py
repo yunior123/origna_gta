@@ -25,9 +25,10 @@ from schema_constants import (
     UserRoleValues,
 )
 from utils.db import get_db as _get_db
+from utils.db import get_firestore as _get_firestore
 from utils.db import get_server_timestamp as _get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS
-from utils.db import get_db as _get_db  # already imported above — alias kept for clarity
+
 
 def _fetch_user_for_email(uid: str) -> dict:
     """Fetch user doc fields needed for email sending (email, name, language)."""
@@ -344,43 +345,41 @@ def handle_subscription_deleted(event: stripe.Event | dict) -> None:
     db = _get_db()
     now = datetime.now(UTC)
 
-    batch = db.batch()
-
     sub_id = sub["id"] if isinstance(sub, dict) else sub.id
     current_period_end = sub.get("current_period_end") if isinstance(sub, dict) else sub.current_period_end
 
     sub_ref = db.collection(Collections.SUBSCRIPTIONS).document(uid)
-    batch.set(
-        sub_ref,
-        {
-            Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
-            Fields.STATUS: SubscriptionStatusValues.CANCELED,
-            Fields.CANCEL_AT_PERIOD_END: False,
-            Fields.CURRENT_PERIOD_END: _ts_to_datetime(current_period_end),
-            Fields.UPDATED_AT: now,
-        },
-        merge=True,
-    )
-
-    # Clear premium cache on user doc — in same batch to avoid partial writes.
     user_ref = db.collection(Collections.USERS).document(uid)
-    user_doc = user_ref.get()
-    if not user_doc.exists:
-        logger.warning(f"handle_subscription_deleted: user {uid} not found — skipping user doc update, still clearing sub doc")
-        batch.commit()
-        return
-    batch.update(
-        user_ref,
-        {
-            Fields.IS_PREMIUM: False,
-            Fields.PREMIUM_EXPIRES_AT: None,
-            Fields.STRIPE_SUBSCRIPTION_ID: None,
-            Fields.PREMIUM_SINCE: None,
-            Fields.UPDATED_AT: now,
-        }
-    )
 
-    batch.commit()
+    @_get_firestore().transactional
+    def _clear_premium(transaction: _fs.Transaction) -> None:
+        user_doc = user_ref.get(transaction=transaction)
+        transaction.set(
+            sub_ref,
+            {
+                Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
+                Fields.STATUS: SubscriptionStatusValues.CANCELED,
+                Fields.CANCEL_AT_PERIOD_END: False,
+                Fields.CURRENT_PERIOD_END: _ts_to_datetime(current_period_end),
+                Fields.UPDATED_AT: now,
+            },
+            merge=True,
+        )
+        if user_doc.exists:
+            transaction.update(
+                user_ref,
+                {
+                    Fields.IS_PREMIUM: False,
+                    Fields.PREMIUM_EXPIRES_AT: None,
+                    Fields.STRIPE_SUBSCRIPTION_ID: None,
+                    Fields.PREMIUM_SINCE: None,
+                    Fields.UPDATED_AT: now,
+                },
+            )
+        else:
+            logger.warning(f"handle_subscription_deleted: user {uid} not found — clearing sub doc only")
+
+    _clear_premium(_get_db().transaction())
     logger.info(f"Premium cleared for user {uid} (subscription deleted)")
 
     # FIX F7-5: Send subscription expired/ended email
