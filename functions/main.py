@@ -116,6 +116,7 @@ from handlers.admin import (  # noqa: E402
 from handlers.chat import (  # noqa: E402
     get_or_create_chat,
     mark_messages_read,
+    report_message,
     send_message,
 )
 from handlers.coupons import (  # noqa: E402
@@ -222,11 +223,13 @@ from handlers.products import (  # noqa: E402
     submit_product_rating,
     subscribe_stock_notification,
     unsubscribe_stock_notification,
+    update_product,
     update_warehouse,
     upload_product_images,
     upload_review_images,
     vote_review_helpful,
 )
+from handlers.shipping import calculate_shipping_cost  # noqa: E402
 from handlers.subscriptions import (  # noqa: E402
     cancel_subscription,
     create_subscription,
@@ -254,7 +257,6 @@ from handlers.users import (  # noqa: E402
 # This wrapper re-exports calculate_shipping_cost for external HTTP callers.
 # The checkout flow (payment_stripe.py) imports directly from services.shipping_service.
 # ===============================================
-from services.shipping_service import calculate_shipping_cost  # noqa: E402, F811
 
 init_sentry()
 
@@ -297,12 +299,7 @@ __all__ = [
     "get_or_create_chat",
     "mark_messages_read",
     "send_message",
-    # Dispute handlers
-    "process_charge_refunded",
-    "process_dispute_created",
-    "process_dispute_closed",
-    "process_dispute_updated",
-    "process_dispute_funds_reinstated",
+    "report_message",
     # Products
     "upload_product_images",
     "upload_review_images",
@@ -319,6 +316,7 @@ __all__ = [
     "on_product_created",
     "on_product_updated",
     "on_product_deleted",
+    "update_product",
     # Back-in-stock (TASK 07)
     "subscribe_stock_notification",
     "unsubscribe_stock_notification",

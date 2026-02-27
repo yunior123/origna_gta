@@ -25,8 +25,22 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfileAsync = ref.watch(userProfileProvider);
+    final profileState = ref.watch(profileViewModelProvider);
     final viewModel = ref.read(profileViewModelProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Listen for success/error messages
+    ref.listen(profileViewModelProvider, (previous, next) {
+      if (next.successMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.successMessage!), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating),
+        );
+      } else if (next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error, behavior: SnackBarBehavior.floating),
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'profile.settings'.tr()),
@@ -257,6 +271,29 @@ class ProfileScreen extends ConsumerWidget {
                               subtitle: 'profile.get_in_touch'.tr(),
                               onTap: () => _showContactDialog(context),
                             ),
+                            _buildMenuItem(
+                              context,
+                              key: const Key('profile_language_button'),
+                              icon: Icons.language,
+                              semanticLabel: 'menu-language',
+                              title: 'profile.language'.tr(),
+                              subtitle: context.locale.languageCode == 'fr' ? 'Français' : 'English',
+                              onTap: () async {
+                                final newLocale = context.locale.languageCode == 'fr' ? const Locale('en') : const Locale('fr');
+                                await context.setLocale(newLocale);
+                                await viewModel.updateLanguage(newLocale.languageCode);
+                              },
+                            ),
+                            _buildMenuItem(
+                              context,
+                              key: const Key('profile_export_button'),
+                              icon: Icons.download_for_offline_outlined,
+                              semanticLabel: 'menu-export-data',
+                              title: 'profile.export_data'.tr(),
+                              subtitle: 'profile.export_desc'.tr(),
+                              isLoading: profileState.isLoading,
+                              onTap: () => viewModel.exportData(),
+                            ),
                           ],
                         ),
                       ),
@@ -327,6 +364,7 @@ class ProfileScreen extends ConsumerWidget {
     String? semanticLabel,
     required String title,
     String? subtitle,
+    bool isLoading = false,
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -387,7 +425,10 @@ class ProfileScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right, color: DesignTokens.textDisabled, size: 20),
+                  if (isLoading)
+                    const ModernLoadingIndicator.small()
+                  else
+                    Icon(Icons.chevron_right, color: DesignTokens.textDisabled, size: 20),
                 ],
               ),
             ),
@@ -773,7 +814,7 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
               FadeSlideIn(
                 delay: const Duration(milliseconds: 50),
                 child: Text(
-                  'Verify Your Email',
+                  'profile.verify_email_title'.tr(),
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
                 ),
               ),

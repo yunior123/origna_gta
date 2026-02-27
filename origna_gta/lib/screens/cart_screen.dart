@@ -860,6 +860,7 @@ extension CartItemDetailModelExtension on CartItemDetailModel {
     dynamic createdAt,
     Address? sellerAddress,
     String? sellerId,
+    String? sellerName,
     String? status,
     bool? isDigital,
   }) {
@@ -873,6 +874,7 @@ extension CartItemDetailModelExtension on CartItemDetailModel {
       createdAt: createdAt ?? this.createdAt,
       sellerAddress: sellerAddress ?? this.sellerAddress,
       sellerId: sellerId ?? this.sellerId,
+      sellerName: sellerName ?? this.sellerName,
       status: status ?? this.status,
       isDigital: isDigital ?? this.isDigital,
     );

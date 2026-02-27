@@ -69,6 +69,7 @@ abstract final class ApiKeys {
   static const approved = 'approved';
   static const newShippingCost = 'newShippingCost';
   static const subtotal = 'subtotal';
+  static const subtotalCents = 'subtotalCents';
   static const itemIds = 'itemIds';
   static const idempotencyKey = 'idempotencyKey';
 
@@ -154,6 +155,11 @@ abstract final class BusinessRules {
   static const localDeliveryRadiusKm = 50.0; // 50km radius for local delivery Eligibility (BUG-L1)
   // Sellers can be from any country — no country restriction on seller addresses
 
+  // F-103: Coupon & Margin safety
+  static const minCheckoutTotalCents = 100; // $1.00 minimum to cover Stripe's $0.30 fixed fee
+  static const maxCouponDiscountRatio = 0.95; // Max 95% off via automated coupons
+  static const maxAdminCouponDiscountPercent = 90; // Admin-created coupons capped at 90%
+
   /// Tax rates by province
   static const taxRates = {
     'AB': {'GST': 5.0},
@@ -233,6 +239,8 @@ abstract final class CloudFunctionEndpoints {
 
   // === AUTH ENDPOINTS ===
   static const deleteAccount = 'delete_account';
+  static const createUserProfile = 'create_user_profile';
+  static const exportUserData = 'export_user_data';
 
   // === ADMIN ENDPOINTS ===
   static const updateUserRoles = 'update_user_roles';
@@ -254,6 +262,7 @@ abstract final class CloudFunctionEndpoints {
   static const uploadReviewImages = 'upload_review_images';
   static const deleteProductImages = 'delete_product_images';
   static const createProductAtomic = 'create_product_atomic';
+  static const updateProduct = 'update_product';
   static const submitProductRating = 'submit_product_rating';
   // Review helpfulness (N-04)
   static const voteReviewHelpful = 'vote_review_helpful';
@@ -335,6 +344,7 @@ abstract final class Collections {
   static const config = 'config';
   static const adminLogs = 'admin_logs';
   static const productRatings = 'product_ratings';
+  static const sellerRatings = 'seller_ratings'; // F-315: Separate seller performance
   static const reviewVotes = 'review_votes'; // subcollection of product_ratings/{ratingId}
   static const algoliaSyncFailures = 'algolia_sync_failures';
   static const cronLocks = '_cron_locks';
@@ -378,6 +388,7 @@ abstract final class Collections {
 
   // Temporary pre-verification storage (cleared after user doc creation)
   static const pendingProfiles = 'pending_profiles'; // pending_profiles/{uid}
+  static const messageReports = 'message_reports'; // F-121: Flagged messages for review
 }
 
 /// Confirmation values for sensitive operations requiring explicit confirmation
@@ -389,13 +400,26 @@ abstract final class ConfirmationValues {
 /// Consent method values for CASL compliance tracking
 abstract final class ConsentMethodValues {
   static const signup = 'signup';
+  static const signupForm = 'signup_form';
+  static const googleOauth = 'google_oauth';
+  static const appleOauth = 'apple_oauth';
   static const checkbox = 'checkbox';
   static const doubleOptIn = 'double_opt_in';
   static const implied = 'implied';
   static const userPreference = 'user_preference';
   static const unsubscribe = 'unsubscribe';
 
-  static const all = {signup, checkbox, doubleOptIn, implied, userPreference, unsubscribe};
+  static const all = {
+    signup,
+    signupForm,
+    googleOauth,
+    appleOauth,
+    checkbox,
+    doubleOptIn,
+    implied,
+    userPreference,
+    unsubscribe,
+  };
 }
 
 /// Valid values for country fields
@@ -447,6 +471,8 @@ abstract final class DeliveryTypeValues {
   static const express = 'express';
   static const sameDay = 'same_day';
   static const localDelivery = 'local_delivery';
+  static const international = 'international';
+  static const internationalExpress = 'international_express';
   static const custom = 'custom';
 }
 
@@ -580,6 +606,8 @@ abstract final class Fields {
   static const payoutHoldDays = 'payoutHoldDays';
   static const avgRating = 'avgRating';
   static const totalReviews = 'totalReviews';
+  static const itemRating = 'rating'; // F-315: Product quality rating
+  static const itemRatingCount = 'ratingCount'; // F-315: Number of product reviews
   static const totalSales = 'totalSales';
   static const bankAccountLast4 = 'bankAccountLast4';
   static const acceptsReturns = 'acceptsReturns';
@@ -608,6 +636,7 @@ abstract final class Fields {
 
   // === PRODUCT FIELDS ===
   static const productId = 'productId';
+  static const madeInCountry = 'madeInCountry'; // F-277: For USMCA/Origin differentiation
   static const price = 'price';
   static const priceCents = 'priceCents'; // Integer cents derived from price — use for arithmetic
 
@@ -654,9 +683,11 @@ abstract final class Fields {
   static const accessToken = 'accessToken';
   static const productName = 'productName'; // stored in license doc; denormalized from product
   static const weightKg = 'weightKg';
+  static const weightUnit = 'weightUnit'; // F-280: 'kg' or 'lb'
   static const lengthCm = 'lengthCm';
   static const widthCm = 'widthCm';
   static const heightCm = 'heightCm';
+  static const dimensionUnit = 'dimensionUnit'; // F-280: 'cm' or 'in'
   static const isLocalDeliveryOnly = 'isLocalDeliveryOnly';
   static const isPerishable = 'isPerishable';
   static const estimatedShipDays = 'estimatedShipDays';
@@ -784,6 +815,8 @@ abstract final class Fields {
   static const marketingOptIn = 'marketingOptIn';
   static const consentTimestamp = 'consentTimestamp';
   static const consentMethod = 'consentMethod';
+  static const englishOnlyConsent = 'englishOnlyConsent'; // F-279: Bill 96 compliance
+  static const dateOfBirth = 'dateOfBirth'; // F-282: age verification (ISO YYYY-MM-DD)
   static const privacyAcceptedAt = 'privacyAcceptedAt';
   static const termsAcceptedAt = 'termsAcceptedAt';
   static const privacyPolicyVersion = 'privacyPolicyVersion';
@@ -1150,8 +1183,9 @@ abstract final class NotificationTypes {
   static const returnStatus = 'return_status';
   static const backInStock = 'back_in_stock';
   static const refundIssued = 'refund_issued';
+  static const messageReport = 'message_report'; // F-121: Flagged chat message
 
-  static const all = {orderStatus, orderUpdate, newMessage, promo, system, account, returnRequest, returnStatus, backInStock, refundIssued};
+  static const all = {orderStatus, orderUpdate, newMessage, promo, system, account, returnRequest, returnStatus, backInStock, refundIssued, messageReport};
 }
 
 // =============================================================================

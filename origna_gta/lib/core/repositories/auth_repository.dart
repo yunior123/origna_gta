@@ -52,13 +52,12 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> ensureUserDocumentExists() async {
-    /// ✅ Create Firestore document for verified users
-    /// This is called on app startup to ensure verified users have their profile
+    /// ✅ Create Firestore document for authenticated users (verified or not)
+    /// This is called on app startup to ensure users have their profile
     final user = _auth.currentUser;
     if (user == null) return;
 
     // Reload to get fresh verification status
-    // Critical: after clicking email verification link, the cached user may still show emailVerified=false
     try {
       await user.reload();
     } catch (e) {
@@ -67,17 +66,10 @@ class FirebaseAuthRepository implements AuthRepository {
     final freshUser = _auth.currentUser;
     if (freshUser == null) return;
 
-    // Only create document if email is verified (or in emulator mode)
-    if (!freshUser.emailVerified && !EnvConfig().isEmulator) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Email not verified for ${freshUser.email}, skipping Firestore document creation');
-      }
-      return;
-    }
-
+    // F-80: Create document regardless of verification status to avoid "Broken Auth"
     await _createUserDocumentIfNeeded(freshUser);
     if (kDebugMode) {
-      debugPrint('✅ Firestore document ensured for verified user ${freshUser.email}');
+      debugPrint('✅ Firestore document ensured for user ${freshUser.email}');
     }
   }
 
@@ -110,33 +102,23 @@ class FirebaseAuthRepository implements AuthRepository {
 
     final userCredential = await _auth.createUserWithEmailAndPassword(email: trimmedEmail, password: password);
 
-    // ⚠️ Store displayName in Firebase Auth profile (NOT in Firestore yet)
-    // Firestore document will only be created after email verification
+    // [F-80] Create Firestore document IMMEDIATELY to avoid "Broken Auth"
     if (userCredential.user != null) {
       await userCredential.user!.updateDisplayName(name);
       if (kDebugMode) debugPrint('✅ Display name "$name" saved to Firebase Auth profile');
-      // Cache marketingOptIn in Firestore so it survives process restarts before email verification
-      if (marketingOptIn) {
-        await _firestore.collection(Collections.pendingProfiles).doc(userCredential.user!.uid).set({Fields.marketingOptIn: true});
-      }
+
+      // Call profile creation service BEFORE email verification
+      await _createUserDocumentIfNeeded(userCredential.user, name: name, initialMarketingOptIn: marketingOptIn);
     }
 
     // AUTO-SEND VERIFICATION EMAIL after registration
-    // User must verify email before Firestore document is created
     if (userCredential.user != null) {
       try {
         await userCredential.user!.sendEmailVerification();
         if (kDebugMode) {
           debugPrint('✅ Verification email sent to $trimmedEmail during registration');
-          debugPrint('⚠️ Firestore document will be created after email verification');
-          debugPrint('');
-          debugPrint('📧 EMULATOR MODE: No real email sent!');
-          debugPrint('   To verify email, open: http://localhost:4000/auth');
-          debugPrint('   Find user "$trimmedEmail" and toggle "Email Verified" ON');
-          debugPrint('');
         }
       } catch (e) {
-        // Email verification send failed - user can resend from login screen
         debugPrint('Failed to send verification email: $e');
       }
     }
@@ -230,6 +212,18 @@ class FirebaseAuthRepository implements AuthRepository {
       fullName = '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'.trim();
     }
 
+    // F-88: Persistent name capture for Apple Sign-In
+    if (fullName != null && fullName.isNotEmpty && userCredential.user != null) {
+      try {
+        await _firestore.collection(Collections.pendingProfiles).doc(userCredential.user!.uid).set({
+          Fields.name: fullName,
+          Fields.updatedAt: FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ Failed to save Apple name to pending_profiles: $e');
+      }
+    }
+
     await _createUserDocumentIfNeeded(userCredential.user, name: fullName);
     return userCredential;
   }
@@ -244,16 +238,9 @@ class FirebaseAuthRepository implements AuthRepository {
 
     final userCredential = await _auth.signInWithEmailAndPassword(email: trimmedEmail, password: password);
 
-    // ✅ Only create Firestore document if email is verified
-    if (userCredential.user != null && userCredential.user!.emailVerified) {
+    // [F-80] Ensure profile exists regardless of verification status
+    if (userCredential.user != null) {
       await _createUserDocumentIfNeeded(userCredential.user);
-      if (kDebugMode) {
-        debugPrint('✅ Email verified - Firestore document created/updated for $trimmedEmail');
-      }
-    } else {
-      if (kDebugMode) {
-        debugPrint('⚠️ Email NOT verified - Firestore document NOT created for $trimmedEmail');
-      }
     }
 
     return userCredential;
@@ -353,7 +340,7 @@ class FirebaseAuthRepository implements AuthRepository {
     });
   }
 
-  Future<void> _createUserDocumentIfNeeded(User? user, {String? name}) async {
+  Future<void> _createUserDocumentIfNeeded(User? user, {String? name, bool? initialMarketingOptIn}) async {
     if (user == null) return;
 
     // Check if the doc already exists before calling the server (avoids unnecessary CF invocation)
@@ -361,30 +348,62 @@ class FirebaseAuthRepository implements AuthRepository {
     final docSnapshot = await userDoc.get();
 
     if (!docSnapshot.exists) {
-      final callable = _functions.httpsCallable('create_user_profile');
-      bool marketingOptIn = false;
+      // F-82/F-90: Only call the profile creation function if the email is verified
+      // to avoid 'failed-precondition' errors for unverified users.
+      // Bypass in emulator mode.
+      if (!user.emailVerified && !EnvConfig().isEmulator) {
+        // [F-88] Save name to pending_profiles so it's not lost when they eventually verify
+        if ((name != null && name.isNotEmpty) || initialMarketingOptIn != null) {
+          try {
+            final Map<String, dynamic> dataToSave = {
+              Fields.updatedAt: FieldValue.serverTimestamp(),
+            };
+            if (name != null) dataToSave[Fields.name] = name;
+            if (initialMarketingOptIn != null) dataToSave[Fields.marketingOptIn] = initialMarketingOptIn;
+            
+            await _firestore.collection(Collections.pendingProfiles).doc(user.uid).set(dataToSave, SetOptions(merge: true));
+            if (kDebugMode) debugPrint('✅ Saved unverified user data to pending_profiles for ${user.email}');
+          } catch (e) {
+            if (kDebugMode) debugPrint('⚠️ Failed to save unverified user data to pending_profiles: $e');
+          }
+        }
+        return;
+      }
+
+      final callable = _functions.httpsCallable(CloudFunctionEndpoints.createUserProfile);
+      
+      String? savedName = name;
+      bool marketingOptIn = initialMarketingOptIn ?? false;
+      
+      // F-88: Attempt to recover name from pending_profiles if not provided
       try {
         final pendingDoc = await _firestore.collection(Collections.pendingProfiles).doc(user.uid).get();
         if (pendingDoc.exists) {
-          marketingOptIn = (pendingDoc.data()?[Fields.marketingOptIn] as bool?) ?? false;
+          final data = pendingDoc.data();
+          if (savedName == null || savedName.isEmpty) {
+            savedName = data?[Fields.name] as String?;
+          }
+          if (initialMarketingOptIn == null) {
+            marketingOptIn = data?[Fields.marketingOptIn] as bool? ?? false;
+          }
+          // Clean up
           await _firestore.collection(Collections.pendingProfiles).doc(user.uid).delete();
         }
       } catch (e) {
-        if (kDebugMode) debugPrint('⚠️ Could not read pending_profiles for ${user.uid}: $e');
+        if (kDebugMode) debugPrint('⚠️ Could not check pending_profiles: $e');
       }
+
       // SECURITY: All legal-compliance fields (CASL/PIPEDA/Law 25) are set server-side.
-      // The server controls dataProcessingConsent, emailConsent, consentTimestamp, etc.
-      // F-81: Pass sign-in provider so backend can stamp the correct consentMethod.
       final providerData = user.providerData;
       final isGoogle = providerData.any((p) => p.providerId == 'google.com');
       final isApple = providerData.any((p) => p.providerId == 'apple.com');
 
-      String consentMethod = 'signup_form';
-      if (isGoogle) consentMethod = 'google_oauth';
-      if (isApple) consentMethod = 'apple_oauth';
+      String consentMethod = ConsentMethodValues.signupForm;
+      if (isGoogle) consentMethod = ConsentMethodValues.googleOauth;
+      if (isApple) consentMethod = ConsentMethodValues.appleOauth;
 
       await callable.call<Map<String, dynamic>>({
-        Fields.name: name ?? user.displayName ?? 'User',
+        Fields.name: savedName ?? user.displayName ?? 'User',
         Fields.preferredLanguage: _deviceLanguage(),
         Fields.marketingOptIn: marketingOptIn,
         Fields.consentMethod: consentMethod,

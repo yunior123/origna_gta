@@ -34,15 +34,39 @@ def _is_premium(uid: str) -> bool:
     return is_premium_authoritative(uid, db=_get_db())
 
 def _sanitize_text(text: str) -> str:
-    """Strip HTML/script injection and off-platform contact info from user text."""
+    """
+    Strip HTML/script injection and off-platform contact info from user text.
+    F-123: Enhanced detection for obfuscated contact info.
+    """
+    # Remove HTML/script
     text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
     text = re.sub(r'<[^>]+>', '', text)
     text = re.sub(r'javascript:', '', text, flags=re.IGNORECASE)
-    # Redact off-platform contact info to protect marketplace transaction flow
-    text = re.sub(r'\b[\w._%+\-]+@[\w.\-]+\.[a-zA-Z]{2,}\b', '[email removed]', text)
-    text = re.sub(r'\b(\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}\b', '[phone removed]', text)
+
+    # 1. Standard patterns
+    # Redact email: standard + [at]/ (at) obfuscation
+    email_pat = r'\b[\w._%+\-]+(\s*[@\[(]at[\])]\s*|@)[\w.\-]+\.[a-zA-Z]{2,}\b'
+    text = re.sub(email_pat, '[email removed]', text, flags=re.IGNORECASE)
+    
+    # Redact links
     text = re.sub(r'https?://[^\s]+', '[link removed]', text, flags=re.IGNORECASE)
     text = re.sub(r'www\.[^\s]+', '[link removed]', text, flags=re.IGNORECASE)
+
+    # 2. Obfuscated phone patterns (e.g., 555-555-5555, 555.555.5555, 5 5 5 5 5 5 5 5 5 5)
+    # This matches sequences of 10+ digits potentially separated by non-alphanumeric chars
+    # but only if they form a valid looking phone block to avoid nuking product IDs.
+    def redact_phone(match):
+        raw = match.group(0)
+        digits = re.sub(r'\D', '', raw)
+        if 10 <= len(digits) <= 15:
+            return '[phone removed]'
+        return raw
+
+    # Match blocks that look like phone numbers (digits with separators)
+    # Starts with digit or +, ends with digit, at least 7 separators/digits
+    phone_obf_pat = r'(\+?[\d\s\-\.()]{10,20}\d)'
+    text = re.sub(phone_obf_pat, redact_phone, text)
+
     return text.strip()
 
 
@@ -217,15 +241,21 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     uid = req.auth.uid
     chat_id = (req.data.get(Fields.CHAT_ID) or "").strip()
     raw_text = req.data.get(Fields.MESSAGE_TEXT, "")
+    image_urls = req.data.get(Fields.IMAGE_URLS)
     message_id = (req.data.get("messageId") or "").strip()
 
     if not chat_id:
         raise https_fn.HttpsError("invalid-argument", "chatId is required.")
-    if not raw_text or not isinstance(raw_text, str):
-        raise https_fn.HttpsError("invalid-argument", "text is required.")
+    
+    # Text is optional if images are provided
+    if (not raw_text or not isinstance(raw_text, str)) and not image_urls:
+        raise https_fn.HttpsError("invalid-argument", "text or imageUrls is required.")
+
+    if image_urls and (not isinstance(image_urls, list) or len(image_urls) > 5):
+        raise https_fn.HttpsError("invalid-argument", "imageUrls must be a list of up to 5 URLs.")
 
     # Sanitize before any Firestore write
-    text = _sanitize_text(raw_text)
+    text = _sanitize_text(raw_text) if raw_text else ""
     if len(text.strip()) < ValidationLimits.MIN_MESSAGE_LENGTH:
         raise https_fn.HttpsError("invalid-argument", "Message text is empty or too short.")
     if len(text) > ValidationLimits.MAX_MESSAGE_LENGTH:
@@ -286,6 +316,7 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.SENDER_ID: uid,
             Fields.SENDER_DISPLAY_NAME: sender_name,
             Fields.MESSAGE_TEXT: text,
+            Fields.IMAGE_URLS: image_urls if image_urls else [],
             Fields.CREATED_AT: now,
             Fields.IS_READ: False,
         }
@@ -333,3 +364,55 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
         logger.warning(f"Push notification failed for chat {chat_id}: {push_err}")
 
     return {"success": True, "messageId": msg_ref.id}
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def report_message(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    F-121: Flag a chat message for admin review.
+    Request data: { chatId: str, messageId: str, reason: str }
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Authentication required.")
+
+    uid = req.auth.uid
+    chat_id = (req.data.get(Fields.CHAT_ID) or "").strip()
+    message_id = (req.data.get("messageId") or "").strip()
+    reason = (req.data.get(Fields.REASON) or "").strip()
+
+    if not chat_id or not message_id or not reason:
+        raise https_fn.HttpsError("invalid-argument", "chatId, messageId, and reason are required.")
+
+    db = _get_db()
+    
+    # 1. Verify chat exists and user is a participant
+    chat_snap = db.collection(Collections.CHATS).document(chat_id).get()
+    if not chat_snap.exists:
+        raise https_fn.HttpsError("not-found", "Chat thread not found.")
+    
+    chat_data = chat_snap.to_dict() or {}
+    if uid not in (chat_data.get(Fields.BUYER_ID), chat_data.get(Fields.SELLER_ID)):
+        raise https_fn.HttpsError("permission-denied", "Access denied.")
+
+    # 2. Verify message exists
+    msg_ref = db.collection(Collections.CHATS).document(chat_id).collection(Collections.CHAT_MESSAGES).document(message_id)
+    msg_snap = msg_ref.get()
+    if not msg_snap.exists:
+        raise https_fn.HttpsError("not-found", "Message not found.")
+
+    # 3. Create report
+    report_ref = db.collection(Collections.MESSAGE_REPORTS).document()
+    report_ref.set({
+        "reportId": report_ref.id,
+        Fields.CHAT_ID: chat_id,
+        "messageId": message_id,
+        "reporterId": uid,
+        Fields.REASON: reason,
+        "messageContent": msg_snap.to_dict().get(Fields.MESSAGE_TEXT),
+        Fields.CREATED_AT: get_server_timestamp(),
+        "resolved": False,
+    })
+
+    logger.info(f"Message {message_id} in chat {chat_id} flagged by user {uid}")
+    
+    return {"success": True, "reportId": report_ref.id}

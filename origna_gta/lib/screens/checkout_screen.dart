@@ -844,6 +844,34 @@ class _OrderSummary extends ConsumerWidget {
                 'checkout.tax_confirm_notice'.tr(),
                 style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
               ),
+              Builder(builder: (context) {
+                final hasIntl = ref.watch(checkoutStateProvider.select((s) => s.hasInternationalItems));
+                if (!hasIntl) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: DesignTokens.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.warning),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'checkout.brokerage_fee_warning'.tr(),
+                            style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
             ],
           ),
         ),

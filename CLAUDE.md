@@ -21,7 +21,7 @@ Operate using a strict **Research → Strategy → Execution → Verification** 
 ## 📏 ENGINEERING RULES
 1. **CHAIN OF VERIFICATION:** First answer the question. Second, list at least 3 ways your answer could be wrong. Third, verify your concern and update your answer. 
 2. **NO LEGACY:** Using the word "legacy" is forbidden. No backward compatibility handling—we fix forward. DB is empty, launch is in 10-25 days.
-3. **PRODUCTION:** Production website is `www.orignagta.ca` (NOT .com).
+3. **PRODUCTION:** 1.Production website is `www.orignagta.ca` (NOT .com).2. Premium users can have access to chat, phot reviews, only premium users, it would cost too much to have those features for everyone, we are supposed to distinguish premium from non-premium.3. audit reports may contain false positives, so be carefull, the source of truth is ClAUDE.md 4. chat should have limitations to avoid long conversations and abbuse of the system.5. improve pre push hooks all the time to prevent bugs.
 4. **COMPLIANCE:** All code must comply with Canadian (including Quebec Bill 96/Law 25) and international laws.
 5. **AUTOMATION:** Do all work using tools (Stripe CLI, gcloud, firebase, etc.). Avoid asking Yunior for manual setup.
 6. **DEPLOYMENT:** Every deploy (indexes, rules, functions) MUST target dev, staging, and prod.

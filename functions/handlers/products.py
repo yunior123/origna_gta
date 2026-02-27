@@ -30,9 +30,10 @@ from config import (
     get_geoapify_api_key,
     get_r2_credentials,
 )
-from models.product import ProductCreate
+from models.product import ProductCreate, ProductUpdate
 from schema_constants import (
     COUNTRY_CANADA,
+    ApiKeys,
     AppConfig,
     BusinessRules,
     CategoryIds,
@@ -579,6 +580,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     product_id = data.get(Fields.PRODUCT_ID)
     order_id = data.get(Fields.ORDER_ID)
     rating = data.get(Fields.RATING)
+    seller_rating = data.get(Fields.SELLER_RATING) # F-315: Optional seller rating
     review_raw = data.get(Fields.REVIEW, "")
     review_image_urls_raw = data.get(Fields.REVIEW_IMAGE_URLS, [])
 
@@ -648,6 +650,20 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         # FIX C-1: Mark as verified purchase (order ownership + delivery already validated above)
         Fields.VERIFIED_PURCHASE: True,
     }
+
+    # F-312: Security - Related Party Gaming Detection
+    # If shipping address matches seller address EXACTLY, it's a high-risk gaming attempt (friends/family)
+    shipping_addr = order_data.get(Fields.SHIPPING_ADDRESS, {})
+    seller_addr = rated_item.get(Fields.SELLER_ADDRESS, {}) if rated_item else {}
+    
+    # Comparison keys for "Related Party" detection (approximate for now)
+    cmp_keys = ["street", "city", "state", "postalCode"]
+    is_related = all(shipping_addr.get(k) == seller_addr.get(k) for k in cmp_keys if shipping_addr.get(k))
+    
+    if is_related:
+        rating_doc[Fields.IS_RELATED_PARTY] = True
+        logger.warning(f"Related party review detected: buyer={user_id} seller={rated_item.get(Fields.SELLER_ID)} product={product_id}")
+
     if review_image_urls:
         rating_doc[Fields.REVIEW_IMAGE_URLS] = review_image_urls
 
@@ -684,13 +700,10 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
             _txn_error["err"] = https_fn.HttpsError("already-exists", "You have already rated this product")
             return None, None
 
-        product_doc = product_ref.get(transaction=transaction)
-        if not product_doc.exists:
-            return None, None
-
         product_data = product_doc.to_dict()
         current_rating = product_data.get(Fields.RATING, 0)
         rating_count = product_data.get(Fields.RATING_COUNT, 0)
+        seller_id = product_data.get(Fields.SELLER_ID)
 
         # Calculate new average atomically
         total_rating = current_rating * rating_count
@@ -699,6 +712,35 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         transaction.create(new_rating_ref, rating_doc)
         transaction.update(product_ref, {Fields.RATING: new_average, Fields.RATING_COUNT: new_rating_count})
+
+        # F-315: Handle optional seller rating
+        if seller_rating is not None and isinstance(seller_rating, (int, float)) and 1 <= seller_rating <= 5 and seller_id:
+            seller_ref = get_db().collection(Collections.USERS).document(seller_id)
+            seller_doc = seller_ref.get(transaction=transaction)
+            if seller_doc.exists:
+                seller_data = seller_doc.to_dict() or {}
+                s_rating = seller_data.get(Fields.AVG_RATING, 0)
+                s_count = seller_data.get(Fields.TOTAL_REVIEWS, 0)
+                
+                new_s_count = s_count + 1
+                new_s_rating = ((s_rating * s_count) + seller_rating) / new_s_count
+                
+                transaction.update(seller_ref, {
+                    Fields.AVG_RATING: new_s_rating,
+                    Fields.TOTAL_REVIEWS: new_s_count,
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                })
+                
+                # Create separate seller rating entry for audit trail
+                seller_rating_ref = get_db().collection(Collections.SELLER_RATINGS).document()
+                transaction.create(seller_rating_ref, {
+                    Fields.SELLER_ID: seller_id,
+                    Fields.BUYER_ID: user_id,
+                    Fields.ORDER_ID: order_id,
+                    Fields.RATING: seller_rating,
+                    Fields.CREATED_AT: get_server_timestamp(),
+                })
+
         return new_average, new_rating_count
 
     txn_fn = get_firestore().transactional(update_rating_transaction)
@@ -889,10 +931,10 @@ def _validate_warehouse_address(address: dict) -> None:
     postal = (address.get(Fields.POSTAL_CODE) or "").strip().upper()
     # For Canadian warehouses validate province + postal format
     if not country or country in ("canada", "ca"):
-        if state and state not in AppConfig.VALID_PROVINCES:
+        if state and state not in BusinessRules.VALID_PROVINCES:
             raise https_fn.HttpsError(
                 "invalid-argument",
-                f"Invalid province '{state}'. Must be one of: {sorted(AppConfig.VALID_PROVINCES)}",
+                f"Invalid province '{state}'. Must be one of: {sorted(BusinessRules.VALID_PROVINCES)}",
             )
         if postal:
             ca_postal_re = re.compile(r"^[A-Z]\d[A-Z][ -]?\d[A-Z]\d$")
@@ -1167,10 +1209,20 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
             w_doc = warehouse_docs.get(wid)
             if w_doc is None or not w_doc.exists:
                 raise https_fn.HttpsError("not-found", f"Warehouse '{wid}' not found. Please update your warehouse selection.")
-            addr = (w_doc.to_dict() or {}).get("address", {})
+            
+            wh_data = w_doc.to_dict() or {}
+            addr = wh_data.get("address", {})
             if not addr.get("city") or not addr.get("country"):
                 raise https_fn.HttpsError(
                     "invalid-argument", f"Warehouse '{wid}' has an incomplete address (city and country are required)."
+                )
+            
+            # F-89: Geocoding Bypass Prevention
+            if addr.get(Fields.LATITUDE) is None or addr.get(Fields.LONGITUDE) is None:
+                logger.warning(f"Warehouse {wid} (seller={user_id}) is missing geocoding data.")
+                raise https_fn.HttpsError(
+                    "failed-precondition", 
+                    f"Warehouse '{wid}' is not geocoded. Please update its address to calculate shipping costs accurately."
                 )
 
     # Warehouse denormalization (reuses existing helper)
@@ -1575,7 +1627,7 @@ def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
 
     # Fetch admin users (limit to prevent unbounded reads)
     admin_docs = (
-        get_db().collection(Collections.USERS).where(Fields.ROLES, "array-contains", UserRoleValues.ADMIN).limit(50).get()
+        get_db().collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.ADMIN).limit(50).get()
     )
 
     subject = f"[Origna] New Product Pending Review: {safe_product_name}"
@@ -2125,6 +2177,20 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             _track_price_history(product_id, before_data, product_data)
         except Exception as e:
             logger.error(f"Price history tracking error for {product_id}: {e}")
+
+        # F-276: Fire price-drop notifications if price decreased
+        try:
+            before_price = before_data.get(Fields.PRICE, 0)
+            after_price = product_data.get(Fields.PRICE, 0)
+            if after_price < before_price:
+                _fire_price_drop_notifications(
+                    product_id, 
+                    float(before_price), 
+                    float(after_price), 
+                    product_data.get(Fields.NAME, "A product you favorited")
+                )
+        except Exception as e:
+            logger.error(f"Price drop notification error for {product_id}: {e}")
 
         return
         # Track whether address changed — skip geocoding if it didn't
@@ -4164,3 +4230,112 @@ def deactivate_supplier_platform(req: https_fn.CallableRequest) -> dict:
 
     logger.info(f"deactivate_supplier_platform: admin={user_id} supplier_type={supplier_type} updated={updated} skipped={skipped}")
     return create_success_response({"updated": updated, "skipped": skipped})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def update_product(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Update a product with server-side validation.
+    
+    Security:
+    - Ownership check
+    - Pydantic schema enforcement
+    - XSS sanitization
+    - Automatic re-review if digital links change (F-90)
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    product_id = data.get(ApiKeys.PRODUCT_ID)
+    update_data = data.get(ApiKeys.PRODUCT_DATA)
+
+    if not product_id or not update_data:
+        raise https_fn.HttpsError("invalid-argument", "productId and productData are required")
+
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    product_snap = product_ref.get()
+
+    if not product_snap.exists:
+        raise https_fn.HttpsError("not-found", "Product not found")
+
+    existing_data = product_snap.to_dict() or {}
+    if existing_data.get(Fields.SELLER_ID) != user_id:
+        # Admin can also edit products? Check roles if needed.
+        user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+        user_roles = (user_doc.to_dict() or {}).get(Fields.ROLES, [])
+        if UserRoleValues.ADMIN not in user_roles:
+            raise https_fn.HttpsError("permission-denied", "You do not own this product")
+
+    # Validate update payload
+    try:
+        # ProductUpdate ensures partial fields are valid
+        validated = ProductUpdate(**update_data)
+        clean_update = validated.model_dump(exclude_unset=True)
+    except ValidationError as e:
+        raise https_fn.HttpsError("invalid-argument", f"Validation failed: {e.errors()[0]['msg']}")
+
+    # Strip server-managed fields
+    PROTECTED_FIELDS = {
+        Fields.PRODUCT_ID, Fields.SELLER_ID, Fields.RATING, 
+        Fields.RATING_COUNT, Fields.CREATED_AT, Fields.UPDATED_AT
+    }
+    for field in PROTECTED_FIELDS:
+        clean_update.pop(field, None)
+
+    # F-90: Re-trigger UNDER_REVIEW if sensitive digital fields change
+    SENSITIVE_FIELDS = {Fields.DIGITAL_BUILDS, Fields.BOOK_SOURCE_URL, Fields.IS_DIGITAL}
+    has_sensitive_change = any(field in clean_update for field in SENSITIVE_FIELDS)
+    
+    if has_sensitive_change:
+        # Logic: if digital links are swapped after approval, product must be re-vetted
+        current_status = existing_data.get(Fields.LIFECYCLE_STATUS)
+        if current_status in {ProductLifecycleStatusValues.ACTIVE, ProductLifecycleStatusValues.APPROVED}:
+            clean_update[Fields.LIFECYCLE_STATUS] = ProductLifecycleStatusValues.UNDER_REVIEW
+            logger.info(f"Product {product_id} returned to UNDER_REVIEW due to digital link update")
+
+    clean_update[Fields.UPDATED_AT] = get_server_timestamp()
+    
+    # Commit to Firestore
+    product_ref.update(clean_update)
+    
+    return create_success_response({"updated": True})
+
+
+def _fire_price_drop_notifications(product_id: str, before_price: float, after_price: float, product_name: str) -> None:
+    """F-276: Notify users who have favorited a product when its price drops by >= 10%."""
+    if before_price <= 0 or after_price >= before_price:
+        return
+
+    drop_percent = (before_price - after_price) / before_price
+    if drop_percent < 0.10: # Only notify for drops of 10% or more to avoid spam
+        return
+
+    logger.info(f"Price drop detected for {product_id} ({product_name}): {before_price} -> {after_price} (-{drop_percent*100:.1f}%)")
+
+    # Find users who have this product in their favorites
+    # collection_group query over all users' favorites subcollections
+    favs_ref = get_db().collection_group(Collections.FAVORITES)
+    fav_query = favs_ref.where(Fields.PRODUCT_ID, "==", product_id).stream()
+
+    from services.push_service import send_push_notification
+    
+    # Batch or aggregate notifications if many users
+    count = 0
+    for fav_doc in fav_query:
+        # parent.parent is users/{uid}
+        user_id = fav_doc.reference.parent.parent.id
+        try:
+            send_push_notification(
+                user_id,
+                "Price Drop Alert! 📉",
+                f"Great news! '{product_name}' just dropped from ${before_price:.2f} to ${after_price:.2f}.",
+                data={"type": "price_drop", "productId": product_id}
+            )
+            count += 1
+        except Exception as e:
+            logger.warning(f"Failed to send price drop push to {user_id}: {e}")
+
+    if count > 0:
+        logger.info(f"Sent price drop notifications to {count} users for {product_id}")

@@ -45,6 +45,7 @@ class Collections:
     CONFIG = "config"
     ADMIN_LOGS = "admin_logs"
     PRODUCT_RATINGS = "product_ratings"
+    SELLER_RATINGS = "seller_ratings" # F-315: Separate seller performance from product quality
     REVIEW_VOTES = "review_votes"  # subcollection of product_ratings/{ratingId}
     ALGOLIA_SYNC_FAILURES = "algolia_sync_failures"
     CRON_LOCKS = "_cron_locks"
@@ -89,6 +90,7 @@ class Collections:
 
     # Financial audit (backend-only)
     PLATFORM_DEBT = "platform_debt"  # A-05/F-139: debt records when seller reversal fails due to zero balance
+    MESSAGE_REPORTS = "message_reports" # F-121: Flagged messages for review
 
 class Documents:
     """Singleton document IDs within collections"""
@@ -245,6 +247,8 @@ class Fields:
     TOTAL_SALES = "totalSales"
     BANK_ACCOUNT_LAST4 = "bankAccountLast4"
     ACCEPTS_RETURNS = "acceptsReturns"
+    ITEM_RATING = "rating" # F-315: Product quality rating
+    ITEM_RATING_COUNT = "ratingCount" # F-315: Number of product reviews
     RETURN_WINDOW_DAYS_FIELD = "returnWindowDays"  # seller-profile field; see BusinessRules.RETURN_WINDOW_DAYS for default value
     MFA_ENABLED = "mfaEnabled"
     MFA_SECRET = "mfaSecret"
@@ -284,6 +288,8 @@ class Fields:
     STOCK_QUANTITY = "stockQuantity"
     RATING = "rating"
     RATING_COUNT = "ratingCount"
+    SELLER_RATING = "sellerRating" # F-315: Average seller rating
+    SELLER_RATING_COUNT = "sellerRatingCount" # F-315: Number of seller ratings
     REVIEW = "review"
     KEYWORDS = "keywords"
     SEARCH_KEYWORDS = "searchKeywords"
@@ -305,10 +311,13 @@ class Fields:
     ACCESS_TOKEN = "accessToken"
     BOOK_ACCESS_TOKEN = "bookAccessToken"
     PRODUCT_NAME = "productName"  # stored in license doc; denormalized from product
+    MADE_IN_COUNTRY = "madeInCountry"  # F-277
     WEIGHT_KG = "weightKg"
+    WEIGHT_UNIT = "weightUnit"  # F-280: 'kg' or 'lb'
     LENGTH_CM = "lengthCm"
     WIDTH_CM = "widthCm"
     HEIGHT_CM = "heightCm"
+    DIMENSION_UNIT = "dimensionUnit"  # F-280: 'cm' or 'in'
     IS_LOCAL_DELIVERY_ONLY = "isLocalDeliveryOnly"
     IS_PERISHABLE = "isPerishable"
     ESTIMATED_SHIP_DAYS = "estimatedShipDays"
@@ -332,12 +341,15 @@ class Fields:
     TAX_EXEMPTION = "taxExemption"
     GST_NUMBER = "gstNumber"
     IS_SMALL_SUPPLIER = "isSmallSupplier" # F-129: <$30k revenue sellers don't charge GST/HST
+    IS_RELATED_PARTY = "isRelatedParty" # F-312: Gaming prevention
 
     # === CONSENT & COMPLIANCE FIELDS (CASL + PIPEDA + Quebec Law 25) ===
     EMAIL_CONSENT = "emailConsent"  # bool — user accepted transactional emails
     MARKETING_OPT_IN = "marketingOptIn"  # bool — explicit opt-in for marketing emails
     CONSENT_TIMESTAMP = "consentTimestamp"  # datetime — when consent was given
     CONSENT_METHOD = "consentMethod"  # str — how consent was obtained (signup, checkbox, etc.)
+    ENGLISH_ONLY_CONSENT = "englishOnlyConsent"  # bool — F-279: Bill 96 explicit consent for English
+    DATE_OF_BIRTH = "dateOfBirth"  # str — F-282: age verification (ISO YYYY-MM-DD)
     PRIVACY_ACCEPTED_AT = "privacyAcceptedAt"  # datetime — when privacy policy was accepted
     TERMS_ACCEPTED_AT = "termsAcceptedAt"  # datetime — when ToS was accepted
     PRIVACY_POLICY_VERSION = "privacyPolicyVersion"  # str — version of privacy policy accepted
@@ -970,9 +982,11 @@ class DeliveryTypeValues:
     EXPRESS = "express"
     SAME_DAY = "same_day"
     LOCAL_DELIVERY = "local_delivery"
+    INTERNATIONAL = "international"
+    INTERNATIONAL_EXPRESS = "international_express"
     CUSTOM = "custom"
 
-    ALL: frozenset[str] = frozenset({PICKUP, STANDARD, EXPRESS, SAME_DAY, LOCAL_DELIVERY, CUSTOM})
+    ALL: frozenset[str] = frozenset({PICKUP, STANDARD, EXPRESS, SAME_DAY, LOCAL_DELIVERY, INTERNATIONAL, INTERNATIONAL_EXPRESS, CUSTOM})
 
 
 class WebhookStatusValues:
@@ -1062,13 +1076,18 @@ class ConsentMethodValues:
     """Valid values for consentMethod field (CASL / PIPEDA)"""
 
     SIGNUP = "signup"
+    SIGNUP_FORM = "signup_form"
+    GOOGLE_OAUTH = "google_oauth"
+    APPLE_OAUTH = "apple_oauth"
     CHECKBOX = "checkbox"
     DOUBLE_OPT_IN = "double_opt_in"
     IMPLIED = "implied"
     USER_PREFERENCE = "user_preference"  # User toggled consent in settings
     UNSUBSCRIBE = "unsubscribe"  # User clicked unsubscribe link
 
-    ALL: frozenset[str] = frozenset({SIGNUP, CHECKBOX, DOUBLE_OPT_IN, IMPLIED, USER_PREFERENCE, UNSUBSCRIBE})
+    ALL: frozenset[str] = frozenset(
+        {SIGNUP, SIGNUP_FORM, GOOGLE_OAUTH, APPLE_OAUTH, CHECKBOX, DOUBLE_OPT_IN, IMPLIED, USER_PREFERENCE, UNSUBSCRIBE}
+    )
 
 
 class PolicyVersionValues:
@@ -1414,6 +1433,14 @@ class BusinessRules:
     CHECKOUT_RATE_LIMIT = 5  # Per minute per user
     CONNECT_ACCOUNT_RATE_LIMIT = 3  # Per hour per user
 
+    # F-312: Security - Related Party Gaming Prevention
+    MIN_ITEM_PRICE_CENTS = 100  # $1.00 minimum to prevent $0.01 rating spam
+
+    # F-103: Coupon & Margin safety
+    MIN_CHECKOUT_TOTAL_CENTS = 100  # $1.00 minimum to cover Stripe's $0.30 fixed fee
+    MAX_COUPON_DISCOUNT_RATIO = 0.95  # Max 95% off via automated coupons
+    MAX_ADMIN_COUPON_DISCOUNT_PERCENT = 90  # Admin-created coupons capped at 90%
+
     # MFA security constants
     MFA_VERIFICATION_VALIDITY_MINUTES = 5
     MFA_MAX_ATTEMPTS = 5
@@ -1660,8 +1687,13 @@ class ApiKeys:
     APPROVED = "approved"
     NEW_SHIPPING_COST = "newShippingCost"
     SUBTOTAL = "subtotal"
+    SUBTOTAL_CENTS = "subtotalCents"
     ITEM_IDS = "itemIds"
     IDEMPOTENCY_KEY = "idempotencyKey"
+    PRODUCT_DATA = "productData"
+    IMAGES = "images"
+    TEST_IMAGE_URLS = "testImageUrls"
+    PRODUCT_ID = "productId"
 
     # === RESPONSE KEYS (returned from Cloud Functions) ===
     SUCCESS = "success"
@@ -1866,6 +1898,7 @@ class NotificationTypes:
     RETURN_STATUS = "return_status"
     BACK_IN_STOCK = "back_in_stock"
     REFUND_ISSUED = "refund_issued"
+    MESSAGE_REPORT = "message_report" # F-121: Flagged chat message
 
     ALL: frozenset[str] = frozenset({
         ORDER_STATUS,
@@ -1878,6 +1911,7 @@ class NotificationTypes:
         RETURN_STATUS,
         BACK_IN_STOCK,
         REFUND_ISSUED,
+        MESSAGE_REPORT,
     })
 
 

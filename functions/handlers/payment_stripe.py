@@ -645,8 +645,17 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Validate required fields
     items = data.get(Fields.ITEMS, [])
     shipping_address = data.get(Fields.SHIPPING_ADDRESS, {})
-    # Note: 'subtotal' is not in Fields as it's an API parameter (dollars) vs Firestore field (cents)
-    client_subtotal = data.get(ApiKeys.SUBTOTAL, 0)
+    
+    # F-317: Prioritize integer cents from client to avoid float precision drift
+    client_subtotal_cents_raw = data.get(ApiKeys.SUBTOTAL_CENTS)
+    if client_subtotal_cents_raw is not None and isinstance(client_subtotal_cents_raw, int):
+        client_subtotal_cents = client_subtotal_cents_raw
+        client_subtotal = client_subtotal_cents / 100.0
+    else:
+        # Legacy fallback
+        client_subtotal = data.get(ApiKeys.SUBTOTAL, 0)
+        client_subtotal_cents = round(client_subtotal * 100)
+
     client_idempotency_key = data.get(ApiKeys.IDEMPOTENCY_KEY)
 
     if not items or len(items) == 0:
@@ -941,7 +950,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Verify subtotal (exact cent comparison — prices already validated per-item)
     actual_subtotal_cents = round(actual_subtotal * 100)
-    client_subtotal_cents = round(client_subtotal * 100)
     if actual_subtotal_cents != client_subtotal_cents:
         raise https_fn.HttpsError(
             "invalid-argument", f"Subtotal mismatch: expected ${actual_subtotal:.2f}, got ${client_subtotal:.2f}"
@@ -1759,8 +1767,8 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             logger.warning(f"⚠️ Stripe webhook rate limit exceeded for IP: {client_ip[:10]}...")  # Sanitized log
             return https_fn.Response("Rate limit exceeded", status=429)
 
-    # SECURITY FIX #2: Get payload and signature
-    payload = req.data
+    # SECURITY FIX #2: Get raw payload and signature
+    payload = req.get_data()
     sig_header = req.headers.get(HeaderKeys.STRIPE_SIGNATURE)
 
     if not sig_header:

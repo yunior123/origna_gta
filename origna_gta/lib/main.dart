@@ -62,75 +62,42 @@ void main() {
           firebaseOptions = FirebaseConfigProd.currentPlatform;
           break;
         case AppEnvironment.emulator:
-          // Use dev config as base — emulators intercept all network calls regardless of projectId.
-          // This prevents emulator analytics events from polluting the production Firebase project.
           firebaseOptions = FirebaseConfigDev.currentPlatform;
           break;
       }
 
+      // F-284: Phase 1 Parallel Initialization (Keep launch time < 2s)
       await Firebase.initializeApp(options: firebaseOptions);
 
-      // Print environment info (debug only)
-      if (!kReleaseMode) {
-        envConfig.printInfo();
-        // Also print to browser console (more visible)
-        if (kIsWeb) {
-          // ignore: avoid_print
-          print('🔧 ENV: ${envConfig.displayName}, shouldUseEmulators: ${envConfig.shouldUseEmulators}');
-          // ignore: avoid_print
-          print('🔧 Uri.base.host: ${Uri.base.host}');
-        }
-      }
-
-      // EMULATOR CONFIGURATION - Uses env_config to determine if emulators should be used
+      // EMULATOR CONFIGURATION
       if (envConfig.shouldUseEmulators) {
         try {
           await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
           FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
           FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
           await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
-          debugPrint('✅ Connected to Firebase Emulators (${envConfig.displayName})');
-          // ignore: avoid_print
-          if (kIsWeb) print('✅ EMULATORS CONNECTED');
         } catch (e) {
           debugPrint('❌ Failed to connect to emulators: $e');
-          // ignore: avoid_print
-          if (kIsWeb) print('❌ EMULATOR CONNECTION FAILED: $e');
         }
-      } else {
-        debugPrint('🌐 Using Production Firebase (${envConfig.displayName})');
-        // ignore: avoid_print
-        if (kIsWeb) print('⚠️ PRODUCTION MODE - NOT USING EMULATORS');
       }
 
-      // Set auth persistence to LOCAL for web (survives page refreshes and browser restarts)
+      // F-284: Phase 2 Parallel Initialization
+      await Future.wait([
+        ConfigService().initialize(),
+        if (kIsWeb)
+          FirebaseAuth.instance.setPersistence(Persistence.LOCAL)
+        else
+          Future.value(null),
+      ]);
+
+      // F-285: Enable Firestore web persistence (survive refreshes)
       if (kIsWeb) {
         try {
-          await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
-          debugPrint('🔐 Auth persistence set to LOCAL');
-          
-
-
+          FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
         } catch (e) {
-          debugPrint('⚠️ Could not set auth persistence: $e');
+          debugPrint('⚠️ Firestore persistence error: $e');
         }
       }
-
-      // Explicitly enable Firestore persistence for Web if valid
-      // Note: Persistence can sometimes cause issues with multiple tabs or restrictive browser environments.
-      // But for E2E it might mask network failure as success.
-      // We want to verify it SYNCED.
-      /*
-      if (kIsWeb) {
-         try {
-           await FirebaseFirestore.instance.enablePersistence(const PersistenceSettings(synchronizeTabs: true));
-         } catch(e) {
-           debugPrint('Persistence init error: $e');
-         }
-      }
-      */
-
-      await ConfigService().initialize();
 
       // Register FCM background handler before runApp — FCM requires this to be
       // called at app startup before any other Firebase Messaging calls.

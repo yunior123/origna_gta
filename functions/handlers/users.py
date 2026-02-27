@@ -56,8 +56,23 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     user_id = req.auth.uid
-    email = req.auth.token.get("email", "")
+    token = req.auth.token
+    email = token.get("email", "")
+    email_verified = token.get("email_verified", False)
     data = req.data or {}
+
+    # F-90: OAuth Account Takeover Prevention
+    # Ensure email is verified before creating a profile to prevent hijacking.
+    # Bypass only in emulator mode for testing.
+    from os import environ
+    is_emulator = environ.get("FUNCTIONS_EMULATOR") == "true" or environ.get("FIRESTORE_EMULATOR_HOST")
+    
+    if not email_verified and not is_emulator:
+        logger.warning("Attempted profile creation for unverified email: %s (uid=%s)", email, user_id)
+        raise https_fn.HttpsError(
+            "failed-precondition", 
+            "Email verification required before profile creation. Please check your inbox."
+        )
 
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     doc = user_ref.get()
@@ -81,10 +96,15 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
     # F-81: Accept consentMethod from client (google_oauth vs signup_form) for CASL compliance.
     # Validate against allowlist — never trust client strings blindly.
     consent_method_raw = data.get(Fields.CONSENT_METHOD, "")
-    if consent_method_raw in ("google_oauth", ConsentMethodValues.SIGNUP):
+    if consent_method_raw in (
+        ConsentMethodValues.GOOGLE_OAUTH,
+        ConsentMethodValues.APPLE_OAUTH,
+        ConsentMethodValues.SIGNUP_FORM,
+        ConsentMethodValues.SIGNUP,
+    ):
         consent_method = consent_method_raw
     else:
-        consent_method = ConsentMethodValues.SIGNUP  # Safe default
+        consent_method = ConsentMethodValues.SIGNUP_FORM
 
     server_ts = get_server_timestamp()
 
@@ -98,11 +118,13 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         # === LEGAL COMPLIANCE — server-only (CASL / PIPEDA / Law 25) ===
         Fields.DATA_PROCESSING_CONSENT: True,
         Fields.EMAIL_CONSENT: True,
-    Fields.MARKETING_OPT_IN: bool(data.get(Fields.MARKETING_OPT_IN, False)),  # CASL: explicit opt-in required
+        Fields.MARKETING_OPT_IN: bool(data.get(Fields.MARKETING_OPT_IN, False)),  # CASL: explicit opt-in required
         Fields.CONSENT_TIMESTAMP: server_ts,
         Fields.TERMS_ACCEPTED_AT: server_ts,
         Fields.PRIVACY_ACCEPTED_AT: server_ts,
         Fields.CONSENT_METHOD: consent_method,
+        Fields.ENGLISH_ONLY_CONSENT: bool(data.get(Fields.ENGLISH_ONLY_CONSENT, False)), # F-279
+        Fields.DATE_OF_BIRTH: data.get(Fields.DATE_OF_BIRTH), # F-282: optional DOB
         Fields.PRIVACY_POLICY_VERSION: PolicyVersionValues.DEFAULT,
         Fields.TERMS_VERSION: PolicyVersionValues.DEFAULT,
         Fields.PUSH_ENABLED: bool(data.get(Fields.PUSH_ENABLED, True)),  # Default to True unless explicitly denied

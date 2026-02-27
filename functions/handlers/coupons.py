@@ -43,18 +43,35 @@ def _compute_discount(coupon_data: dict, cart_subtotal_cents: int) -> int:
     """
     Compute discount amount in cents.
     - percent: integer arithmetic to avoid float drift (rounds down)
-    - fixed_cents: min(discountValue, cart_subtotal_cents) — never discount more than cart total
+    - fixed_cents: min(discountValue, cart_subtotal_cents - MIN_REMAINING)
+    
+    F-103: Enforce a minimum checkout total ($1.00) to cover Stripe's $0.30 fixed fee.
     """
     discount_type = coupon_data.get(Fields.DISCOUNT_TYPE)
     discount_value = coupon_data.get(Fields.DISCOUNT_VALUE, 0)
+    
+    # F-103: Minimum amount that must remain after discount
+    min_remaining = BusinessRules.MIN_CHECKOUT_TOTAL_CENTS 
+    max_percent = BusinessRules.MAX_COUPON_DISCOUNT_RATIO
+
+    if cart_subtotal_cents <= min_remaining:
+        return 0
 
     if discount_type == CouponDiscountTypeValues.PERCENT:
-        # Integer arithmetic: avoid float * float before truncation
-        # discountValue is stored as 0-100; multiply by 1000 for milli-percent precision
-        discount_value_millipercent = int(round(discount_value * 1000))
-        return cart_subtotal_cents * discount_value_millipercent // 100000
+        # F-103: Cap percent discount
+        effective_value = min(float(discount_value), max_percent * 100)
+        discount_value_millipercent = int(round(effective_value * 1000))
+        discount = cart_subtotal_cents * discount_value_millipercent // 100000
+        
+        # Final safety check: ensure at least $1 remains
+        if cart_subtotal_cents - discount < min_remaining:
+            return cart_subtotal_cents - min_remaining
+        return discount
+
     elif discount_type == CouponDiscountTypeValues.FIXED_CENTS:
-        return min(int(discount_value), cart_subtotal_cents)
+        # F-103: Fixed discount cannot reduce total below $1
+        return min(int(discount_value), cart_subtotal_cents - min_remaining)
+    
     return 0
 
 
@@ -320,10 +337,20 @@ def admin_create_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("invalid-argument", "discountValue must be a positive number")
 
     if discount_type == CouponDiscountTypeValues.PERCENT:
-        if not (1 <= discount_value <= 100):
-            raise https_fn.HttpsError("invalid-argument", "Percent discount must be between 1 and 100")
-    elif discount_type == CouponDiscountTypeValues.FIXED_CENTS and discount_value < 100:
-        raise https_fn.HttpsError("invalid-argument", "Fixed discount must be at least 100 cents ($1.00)")
+        if not (1 <= discount_value <= BusinessRules.MAX_ADMIN_COUPON_DISCOUNT_PERCENT):
+            raise https_fn.HttpsError("invalid-argument", f"Percent discount must be between 1 and {BusinessRules.MAX_ADMIN_COUPON_DISCOUNT_PERCENT} to cover platform fees.")
+    elif discount_type == CouponDiscountTypeValues.FIXED_CENTS:
+        if discount_value < 100:
+            raise https_fn.HttpsError("invalid-argument", "Fixed discount must be at least 100 cents ($1.00)")
+        
+        # F-103: Fixed discounts require a minimum order to ensure margin
+        min_order_cents = data.get(Fields.MIN_ORDER_CENTS)
+        required_min = int(discount_value) + (BusinessRules.MIN_CHECKOUT_TOTAL_CENTS * 5) # Require at least $5 margin for admin fixed coupons
+        if min_order_cents is None or int(min_order_cents) < required_min:
+            raise https_fn.HttpsError(
+                "invalid-argument", 
+                f"Fixed discount of ${discount_value/100:.2f} requires a minOrderCents of at least ${required_min/100:.2f}"
+            )
 
     min_order_cents = data.get(Fields.MIN_ORDER_CENTS)
     if min_order_cents is not None and (not isinstance(min_order_cents, int) or min_order_cents < 0):

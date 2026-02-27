@@ -132,7 +132,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final subtotal = _ref.read(cartSubtotalProvider);
 
       // Use circuit breaker for external service calls
-      final sellerCosts = await _shippingCircuitBreaker.execute(() => calculateShippingCost(items, state.address));
+      final sellerCosts = await _shippingCircuitBreaker.execute(() => calculateShippingCost(items, state.address, chosenSpeed: state.deliverySpeed));
 
       // Calculate total raw cost
       final double rawCost = sellerCosts.values.fold(0.0, (sum, cost) => sum + cost);
@@ -159,11 +159,22 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
       // Build delivery item checks from cart items
       final itemChecks = items
-          .map((item) => DeliveryItemCheck(estimatedShipDays: item.estimatedShipDays, isPerishable: item.isPerishable, isLocalOnly: item.isLocalDeliveryOnly))
+          .map((item) => DeliveryItemCheck(
+                estimatedShipDays: item.estimatedShipDays,
+                isPerishable: item.isPerishable,
+                isLocalOnly: item.isLocalDeliveryOnly,
+                isInternational: item.madeInCountry != null &&
+                    item.madeInCountry!.isNotEmpty &&
+                    item.madeInCountry != CountryValues.canada &&
+                    item.madeInCountry != CountryValues.canadaCode,
+              ))
           .toList();
 
       // Determine available delivery speeds
       final availableSpeeds = DeliverySpeed.values.where((speed) => speed.isAvailableForItems(itemChecks, isLocal)).toList();
+
+      // F-74: Check for international items to trigger brokerage warning
+      final hasIntl = itemChecks.any((item) => item.isInternational);
 
       state = state.copyWith(
         baseShippingCost: cost,
@@ -171,8 +182,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         sellerNames: sellerNames,
         isLocalDelivery: isLocal,
         availableDeliverySpeeds: availableSpeeds,
-        deliverySpeed: DeliverySpeed.standard,
+        deliverySpeed: availableSpeeds.contains(state.deliverySpeed) ? state.deliverySpeed : (availableSpeeds.isNotEmpty ? availableSpeeds.first : DeliverySpeed.standard),
         isCalculatingShipping: false,
+        hasInternationalItems: hasIntl,
       );
 
       // Recalculate taxes — GST/HST applies to shipping costs in Canada
@@ -230,6 +242,11 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   void setDeliverySpeed(DeliverySpeed speed) {
     if (state.availableDeliverySpeeds.contains(speed)) {
       state = state.copyWith(deliverySpeed: speed);
+      
+      // F-74: Recalculate shipping whenever speed changes to update international costs
+      _ref.read(cartWithDetailsProvider).whenData((items) {
+        calculateShipping(items);
+      });
     }
   }
 
@@ -343,7 +360,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
               },
             )
             .toList(),
-        ApiKeys.subtotal: subtotal,
+        ApiKeys.subtotalCents: (subtotal * 100).round(),
         Fields.shippingAddress: state.address?.toMap() ?? {},
         // Send delivery speed so backend applies correct multiplier
         Fields.deliverySpeed: state.deliverySpeed.value,

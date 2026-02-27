@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -44,6 +46,10 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
   final productData = productCache[productId];
   if (productData == null) return null;
 
+  // Find the exact cart item to get variant info
+  final cartItems = ref.read(cartItemsProvider).valueOrNull ?? [];
+  final cartItem = cartItems.where((i) => i.cartItemId == cartItemDocId).firstOrNull;
+
   return CartItemDetailModel(
     productId: productId,
     name: productData[Fields.name] ?? '',
@@ -72,6 +78,9 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
     minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
     freeShipping: productData[Fields.freeShipping] ?? false,
     isDigital: productData[Fields.isDigital] ?? false,
+    variantId: cartItem?.variantId,
+    variantTitle: cartItem?.variantTitle,
+    variantOptions: cartItem?.variantOptions,
   );
 });
 
@@ -147,6 +156,7 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
               createdAt: cartItem.createdAt,
               sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
               sellerId: productData[Fields.sellerId] ?? '',
+              sellerName: productData[Fields.sellerName] ?? 'Unknown Seller',
               weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
               lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
               widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
@@ -165,6 +175,9 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
               freeShipping: productData[Fields.freeShipping] ?? false,
               isDigital: productData[Fields.isDigital] ?? false,
               buyerNote: cartItem.buyerNote,
+              variantId: cartItem.variantId,
+              variantTitle: cartItem.variantTitle,
+              variantOptions: cartItem.variantOptions,
             ),
           );
         }
@@ -179,6 +192,42 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
 
 // Provider for delivery instructions (stored during cart/checkout flow)
 final deliveryInstructionsProvider = StateProvider.autoDispose<String>((ref) => '');
+
+/// Validates that all cart items can be shipped to the buyer's default address.
+/// Returns a list of product IDs that are UN-SHIPPABLE to the current destination.
+final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+  final cartItems = await ref.watch(cartWithDetailsProvider.future);
+  if (cartItems.isEmpty) return [];
+
+  final userProfile = await ref.watch(userProfileProvider.future);
+  final destinationState = userProfile?.address?.state;
+
+  // Digital items always shippable.
+  // Physical items: check deliveryOptions. If any option is availableNationwide or matches the state, it's shippable.
+  final unshippable = <String>[];
+
+  for (final item in cartItems) {
+    if (item.isDigital) continue;
+
+    final isLocalOnly = item.isLocalDeliveryOnly || item.isPerishable;
+    final sellerState = item.sellerAddress.state;
+
+    // If local-only and different province, it's un-shippable unless there's a nationwide option
+    bool canShip = false;
+    if (item.deliveryOptions.isEmpty) {
+      // Fallback: if no delivery options defined, assume standard nationwide unless explicitly restricted
+      canShip = !isLocalOnly || (sellerState == destinationState);
+    } else {
+      canShip = item.deliveryOptions.any((opt) => opt.availableNationwide || (opt.type == DeliveryTypeValues.standard && !isLocalOnly) || (isLocalOnly && sellerState == destinationState));
+    }
+
+    if (!canShip) {
+      unshippable.add(item.productId);
+    }
+  }
+
+  return unshippable;
+});
 
 // ============================================================================
 // SINGLE CART ITEM DETAIL PROVIDER (Family)

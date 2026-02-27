@@ -761,13 +761,13 @@ def is_valid_transition(current_status, new_status):
 
 
 def test_generate_product_slug_format():
-    """Slug is lowercase, hyphenated, ends with 4-char hex suffix"""
+    """Slug is lowercase, hyphenated, ends with 8-char hex suffix"""
     import re
 
     from handlers.products import _generate_product_slug
 
     slug = _generate_product_slug("MacBook Cleaner Pro!")
-    assert re.match(r"^[a-z0-9\-]+-[a-f0-9]{4}$", slug), f"Bad slug format: {slug}"
+    assert re.match(r"^[a-z0-9\-]+-[a-f0-9]{8}$", slug), f"Bad slug format: {slug}"
     assert slug.startswith("macbook-cleaner-pro-")
     assert len(slug) <= 85
 

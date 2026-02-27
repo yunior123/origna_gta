@@ -326,6 +326,7 @@ class Product(BaseModel):
     descriptionF: str | None = Field(default=None, max_length=5000, description="French product description")
     imageUrls: list[str] = Field(..., min_length=1, max_length=5, description="Product image URLs (1-5 images)")
     sellerId: str = Field(..., min_length=1, description="Seller user ID")
+    madeInCountry: str | None = Field(default=None, max_length=100, description="F-277: Country of manufacture (for USMCA/Duty info)")
     sellerAddress: Address | None = Field(default=None, description="Seller's address for shipping calculations")
     categoryId: int = Field(..., ge=CategoryIds.MIN, le=CategoryIds.MAX, description="Product category ID")
     stockQuantity: int = Field(..., ge=0, description="Available stock quantity")
@@ -341,9 +342,11 @@ class Product(BaseModel):
 
     # Optional shipping metadata
     weightKg: float | None = Field(default=None, gt=0, le=1000, description="Product weight in kilograms")
+    weightUnit: str = Field(default="kg", description="F-280: Original weight unit: 'kg' or 'lb'")
     lengthCm: float | None = Field(default=None, gt=0, le=1000, description="Package length in centimeters")
     widthCm: float | None = Field(default=None, gt=0, le=1000, description="Package width in centimeters")
     heightCm: float | None = Field(default=None, gt=0, le=1000, description="Package height in centimeters")
+    dimensionUnit: str = Field(default="cm", description="F-280: Original dimension unit: 'cm' or 'in'")
 
     # Delivery options
     isLocalDeliveryOnly: bool = Field(default=False, description="Only available for local delivery")
@@ -568,7 +571,7 @@ class ProductCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=120)
     nameF: str | None = Field(default=None, max_length=200)
-    price: float = Field(..., gt=0, le=100000)
+    price: float = Field(..., gt=0.99, le=100000)
     compareAtPrice: float | None = Field(
         default=None, gt=0, le=100000, description="Original/crossed-out price (must be > price when set)"
     )
@@ -576,6 +579,7 @@ class ProductCreate(BaseModel):
     descriptionF: str | None = Field(default=None, max_length=5000)
     imageUrls: list[str] = Field(..., min_length=1, max_length=5)
     sellerId: str = Field(..., min_length=1)
+    madeInCountry: str | None = Field(default=None, max_length=100)
     sellerAddress: Address | None = Field(
         default=None, description="Seller address; required if warehouseIds is not provided"
     )
@@ -584,9 +588,36 @@ class ProductCreate(BaseModel):
     rating: float = Field(default=0.0, ge=0, le=5)
     lifecycleStatus: str = Field(default=ProductLifecycleStatusValues.DRAFT)
     weightKg: float | None = Field(default=None, gt=0, le=1000)
+    weightUnit: str = Field(default="kg", description="Original weight unit: 'kg' or 'lb'")
     lengthCm: float | None = Field(default=None, gt=0, le=1000)
     widthCm: float | None = Field(default=None, gt=0, le=1000)
     heightCm: float | None = Field(default=None, gt=0, le=1000)
+    dimensionUnit: str = Field(default="cm", description="Original dimension unit: 'cm' or 'in'")
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_units_to_metric(cls, data: dict) -> dict:
+        """F-280: Automatically convert imperial units to metric before validation."""
+        if not isinstance(data, dict):
+            return data
+
+        # Weight conversion: lb -> kg
+        weight = data.get("weightKg")
+        unit_w = data.get("weightUnit", "kg").lower()
+        if weight is not None and unit_w == "lb":
+            data["weightKg"] = round(float(weight) * 0.453592, 3)
+            data["weightUnit"] = "kg"  # Normalize to kg after conversion
+
+        # Dimension conversion: in -> cm
+        unit_d = data.get("dimensionUnit", "cm").lower()
+        if unit_d == "in":
+            for field in ["lengthCm", "widthCm", "heightCm"]:
+                val = data.get(field)
+                if val is not None:
+                    data[field] = round(float(val) * 2.54, 2)
+            data["dimensionUnit"] = "cm"  # Normalize to cm after conversion
+
+        return data
     isLocalDeliveryOnly: bool = Field(default=False)
     isPerishable: bool = Field(default=False)
     estimatedShipDays: int = Field(default=3, ge=0, le=90)
@@ -718,3 +749,95 @@ class ProductCreate(BaseModel):
             elif self.digitalType == "book" and not self.bookSourceUrl:
                 raise ValueError("bookSourceUrl is required for book products")
         return self
+
+
+class ProductUpdate(BaseModel):
+    """
+    Model for updating existing products (partial update).
+    Ensures sellers can't bypass validation via direct Firestore writes.
+    """
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    nameF: str | None = Field(default=None, max_length=200)
+    price: float | None = Field(default=None, gt=0.99, le=100000)
+    compareAtPrice: float | None = Field(default=None, gt=0, le=100000)
+    description: str | None = Field(default=None, min_length=10, max_length=4000)
+    descriptionF: str | None = Field(default=None, max_length=5000)
+    imageUrls: list[str] | None = Field(default=None, max_length=5)
+    sellerAddress: Address | None = Field(default=None)
+    madeInCountry: str | None = Field(default=None, max_length=100)
+    categoryId: int | None = Field(default=None, ge=CategoryIds.MIN, le=CategoryIds.MAX)
+    stockQuantity: int | None = Field(default=None, ge=0)
+    lifecycleStatus: str | None = Field(default=None)
+    weightKg: float | None = Field(default=None, gt=0, le=1000)
+    weightUnit: str | None = Field(default=None)
+    lengthCm: float | None = Field(default=None, gt=0, le=1000)
+    widthCm: float | None = Field(default=None, gt=0, le=1000)
+    heightCm: float | None = Field(default=None, gt=0, le=1000)
+    dimensionUnit: str | None = Field(default=None)
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_units_to_metric_update(cls, data: dict) -> dict:
+        """F-280: Automatically convert imperial units to metric before validation."""
+        if not isinstance(data, dict):
+            return data
+
+        # Weight conversion: lb -> kg
+        weight = data.get("weightKg")
+        unit_w = data.get("weightUnit")
+        if weight is not None and unit_w == "lb":
+            data["weightKg"] = round(float(weight) * 0.453592, 3)
+            data["weightUnit"] = "kg"
+
+        # Dimension conversion: in -> cm
+        unit_d = data.get("dimensionUnit")
+        if unit_d == "in":
+            for field in ["lengthCm", "widthCm", "heightCm"]:
+                val = data.get(field)
+                if val is not None:
+                    data[field] = round(float(val) * 2.54, 2)
+            data["dimensionUnit"] = "cm"
+
+        return data
+    isLocalDeliveryOnly: bool | None = Field(default=None)
+    isPerishable: bool | None = Field(default=None)
+    estimatedShipDays: int | None = Field(default=None, ge=0, le=90)
+    deliveryOptions: list[SellerDeliveryOption] | None = Field(default=None)
+    minimumOrderQuantity: int | None = Field(default=None, ge=1, le=100)
+    freeShipping: bool | None = Field(default=None)
+    isDigital: bool | None = Field(default=None)
+    taxCode: str | None = None
+    keywords: list[str] | None = Field(default_factory=list)
+    # Multi-warehouse support
+    sellerSku: str | None = Field(default=None, max_length=100)
+    warehouseIds: list[str] | None = Field(default=None)
+    warehouseStockMap: dict[str, int] | None = Field(default=None)
+    shipFromCity: str | None = Field(default=None, max_length=100)
+    shipFromProvince: str | None = Field(default=None, max_length=10)
+    shipFromCountry: str | None = Field(default=None, max_length=100)
+    shipFromCountries: list[str] | None = Field(default=None)
+    hasVariants: bool | None = Field(default=None)
+    variants: list[ProductVariant] | None = Field(default=None)
+    variantOptions: list[VariantOption] | None = Field(default=None)
+    subcategory: str | None = Field(default=None, max_length=100)
+    inventory: InventoryConfig | None = Field(default=None)
+    # Digital product fields
+    condition: str | None = Field(default=None)
+    digitalType: str | None = Field(default=None)
+    digitalBuilds: dict[str, str] | None = Field(default=None)
+    bookSourceUrl: str | None = Field(default=None)
+    deviceLimit: int | None = Field(default=None, ge=1, le=100)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_update(cls, v: str | None) -> str | None:
+        if v is None: return v
+        import re
+        if re.search(r"[<>]", v):
+            raise ValueError("Name contains disallowed characters")
+        dangerous_patterns = ["javascript:", "data:text/html", "vbscript:", "expression("]
+        v_lower = v.lower()
+        for pattern in dangerous_patterns:
+            if pattern in v_lower:
+                raise ValueError("Name contains disallowed content")
+        return v

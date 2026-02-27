@@ -1,12 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart' hide Address, UserModel, ProductModel, CartModel, CartItemModel, SellerPayout;
 import 'package:origna_gta/models/models.dart';
 
 void main() {
   group('Shipping Calculation Logic', () {
-    final mockAddress = Address(street: '123 Test St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada');
+    final mockAddress = Address(
+      street: '123 Test St',
+      city: 'Toronto',
+      state: ProvinceCodeValues.ontario,
+      postalCode: PlaceholderAddressValues.defaultPostalCode,
+      country: CountryValues.canada,
+    );
 
     CartItemDetailModel createMockItem({
       double? weightKg,
@@ -26,6 +33,7 @@ void main() {
         createdAt: Timestamp.now(),
         sellerAddress: mockAddress,
         sellerId: 'seller_123',
+        sellerName: 'Test Seller',
         weightKg: weightKg,
         lengthCm: lengthCm,
         widthCm: widthCm,
@@ -92,11 +100,11 @@ void main() {
       final items = [createMockItem()];
 
       // Same province: 12.99
-      final sameProv = calculateFallbackShipping(items, 'ON', 'ON');
+      final sameProv = calculateFallbackShipping(items, ProvinceCodeValues.ontario, ProvinceCodeValues.ontario);
       expect(sameProv, closeTo(12.99, 0.01));
 
       // Different province: 18.99+
-      final diffProv = calculateFallbackShipping(items, 'ON', 'BC');
+      final diffProv = calculateFallbackShipping(items, ProvinceCodeValues.ontario, ProvinceCodeValues.britishColumbia);
       expect(diffProv, greaterThan(12.99));
     });
 

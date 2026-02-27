@@ -490,6 +490,23 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
         if not chargeable_items:
             continue
 
+        # F-74: Handle International Shipping
+        is_international = any(i.get(Fields.IS_INTERNATIONAL) for i in seller_items)
+        if is_international:
+            seller_intl_total = 0.0
+            # International shipping is calculated per-item (dropshipping model)
+            for item in chargeable_items:
+                supplier_type = item.get(Fields.SUPPLIER_TYPE, "other")
+                # Map checkout speeds to international speeds
+                intl_speed = DeliveryTypeValues.EXPRESS if speed in [DeliveryTypeValues.EXPRESS, DeliveryTypeValues.INTERNATIONAL_EXPRESS] else DeliveryTypeValues.STANDARD
+                
+                weight = float(item.get(Fields.WEIGHT_KG, ShippingTiers.DEFAULT_WEIGHT_KG))
+                estimate = get_international_shipping_estimate(supplier_type, speed=intl_speed, weight_kg=weight)
+                seller_intl_total += estimate["cost"] * int(item.get(Fields.QUANTITY, 1))
+            
+            total_shipping += seller_intl_total
+            continue
+
         # Check Local/Perishable restrictions early
         has_local_restriction = any(i.get(Fields.IS_LOCAL_DELIVERY_ONLY) for i in seller_items)
         has_perishable = any(i.get(Fields.IS_PERISHABLE) for i in seller_items)

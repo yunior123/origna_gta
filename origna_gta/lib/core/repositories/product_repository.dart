@@ -2,14 +2,12 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/services/conf_services.dart';
-import 'package:origna_gta/utils/utils.dart';
 
 class FirebaseProductRepository implements ProductRepository {
   final FirebaseFirestore _firestore;
@@ -303,55 +301,14 @@ class FirebaseProductRepository implements ProductRepository {
     String productId,
     Map<String, dynamic> data,
   ) async {
-    final sanitized = sanitizeProductForFirestore(data);
-
-    // Re-denormalize shipFrom fields when warehouseIds are updated
-    final rawWarehouseIds = data[Fields.warehouseIds];
-    if (rawWarehouseIds is List && rawWarehouseIds.isNotEmpty) {
-      final sellerId = data[Fields.sellerId] as String?;
-      if (sellerId != null && sellerId.isNotEmpty) {
-        try {
-          final warehouseIds = rawWarehouseIds.cast<String>();
-          final warehouseDocs = await Future.wait(
-            warehouseIds.map((wId) => _firestore
-                .collection(Collections.users)
-                .doc(sellerId)
-                .collection(Collections.warehouses)
-                .doc(wId)
-                .get()),
-          );
-
-          final primaryData = warehouseDocs
-              .where((d) => d.exists)
-              .map((d) => d.data()!)
-              .firstWhereOrNull((d) => d[Fields.isDefault] == true) ??
-              warehouseDocs.where((d) => d.exists).map((d) => d.data()!).firstOrNull;
-          if (primaryData != null) {
-            final addr = primaryData['address'] as Map<String, dynamic>?;
-            sanitized[Fields.shipFromCity] = addr?[Fields.city];
-            sanitized[Fields.shipFromProvince] = addr?[Fields.state];
-            sanitized[Fields.shipFromCountry] = addr?[Fields.country];
-          }
-
-          final countries = warehouseDocs
-              .where((d) => d.exists)
-              .map((d) => (d.data()!['address'] as Map<String, dynamic>?)?[Fields.country] as String?)
-              .whereType<String>()
-              .toSet()
-              .toList();
-          if (countries.isNotEmpty) {
-            sanitized[Fields.shipFromCountries] = countries;
-          }
-        } catch (e) {
-          AppError.log(e, context: 'updateProduct.warehouseDenorm');
-        }
-      }
-    }
-
-    await _firestore
-        .collection(Collections.products)
-        .doc(productId)
-        .update(sanitized);
+    // F-90: Use Cloud Function for updates to ensure server-side validation.
+    // Client-side denormalization is removed; the backend handles it via ProductUpdate validation.
+    await _functions
+        .httpsCallable(CloudFunctionEndpoints.updateProduct)
+        .call({
+      Fields.productId: productId,
+      'productData': data,
+    });
   }
 
   @override

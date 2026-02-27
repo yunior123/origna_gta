@@ -164,10 +164,13 @@ class CartItemDetailModel {
   final String status;
   final String? trackingNumber;
   final bool confirmedByBuyer; // Buyer confirmed receipt of this item
+  final String? madeInCountry; // F-277
   final double? weightKg;
+  final String? weightUnit; // F-280
   final double? lengthCm;
   final double? widthCm;
   final double? heightCm;
+  final String? dimensionUnit; // F-280
   final bool isLocalDeliveryOnly;
   final bool isPerishable;
   final int estimatedShipDays;
@@ -195,10 +198,13 @@ class CartItemDetailModel {
     this.status = DeliveryStatusValues.pending,
     this.trackingNumber,
     this.confirmedByBuyer = false,
+    this.madeInCountry,
     this.weightKg,
+    this.weightUnit,
     this.lengthCm,
     this.widthCm,
     this.heightCm,
+    this.dimensionUnit,
     this.isLocalDeliveryOnly = false,
     this.isPerishable = false,
     this.estimatedShipDays = 3,
@@ -229,10 +235,13 @@ class CartItemDetailModel {
       status: map[Fields.status] ?? DeliveryStatus.pending.value,
       trackingNumber: map[Fields.trackingNumber],
       confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
+      madeInCountry: map[Fields.madeInCountry] as String?,
       weightKg: map[Fields.weightKg] != null ? (map[Fields.weightKg] as num).toDouble() : null,
+      weightUnit: map[Fields.weightUnit] as String?,
       lengthCm: map[Fields.lengthCm] != null ? (map[Fields.lengthCm] as num).toDouble() : null,
       widthCm: map[Fields.widthCm] != null ? (map[Fields.widthCm] as num).toDouble() : null,
       heightCm: map[Fields.heightCm] != null ? (map[Fields.heightCm] as num).toDouble() : null,
+      dimensionUnit: map[Fields.dimensionUnit] as String?,
       isLocalDeliveryOnly: map[Fields.isLocalDeliveryOnly] ?? false,
       isPerishable: map[Fields.isPerishable] ?? false,
       estimatedShipDays: map[Fields.estimatedShipDays] ?? 3,
@@ -272,10 +281,13 @@ class CartItemDetailModel {
       Fields.status: status,
       Fields.trackingNumber: trackingNumber,
       Fields.confirmedByBuyer: confirmedByBuyer,
+      if (madeInCountry != null) Fields.madeInCountry: madeInCountry,
       Fields.weightKg: weightKg,
+      if (weightUnit != null) Fields.weightUnit: weightUnit,
       Fields.lengthCm: lengthCm,
       Fields.widthCm: widthCm,
       Fields.heightCm: heightCm,
+      if (dimensionUnit != null) Fields.dimensionUnit: dimensionUnit,
       Fields.isLocalDeliveryOnly: isLocalDeliveryOnly,
       Fields.isPerishable: isPerishable,
       Fields.estimatedShipDays: estimatedShipDays,
@@ -495,7 +507,7 @@ class OrderModel {
 
     // Convert the list of items
     final itemsData = data[Fields.items] as List<dynamic>? ?? [];
-    final items = itemsData.map((item) {
+    final items = itemsData.map<CartItemDetailModel>((item) {
       final map = item as Map<String, dynamic>;
       return CartItemDetailModel(
         productId: map[Fields.productId] ?? '',
@@ -507,6 +519,7 @@ class OrderModel {
         createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
+        sellerName: map[Fields.sellerName] ?? '',
         status: map[Fields.status] ?? DeliveryStatus.pending.value,
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
@@ -565,7 +578,7 @@ class OrderModel {
   factory OrderModel.fromMap(Map<String, dynamic> data) {
     // Convert the list of items
     final itemsData = data[Fields.items] as List<dynamic>? ?? [];
-    final items = itemsData.map((item) {
+    final items = itemsData.map<CartItemDetailModel>((item) {
       final map = item as Map<String, dynamic>;
       return CartItemDetailModel(
         productId: map[Fields.productId] ?? '',
@@ -577,6 +590,7 @@ class OrderModel {
         createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
+        sellerName: map[Fields.sellerName] ?? '',
         status: map[Fields.status] ?? DeliveryStatus.pending.value,
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
@@ -798,7 +812,7 @@ class ProductModel {
       digitalType: map[Fields.digitalType]?.toString(),
       digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
       approvalRejectionReason: map[Fields.approvalRejectionReason]?.toString(),
-      lifecycleStatus: map[Fields.lifecycleStatus]?.toString() ?? 'draft',
+      lifecycleStatus: map[Fields.lifecycleStatus]?.toString() ?? ProductLifecycleStatusValues.draft,
       weightKg: map[Fields.weightKg] != null ? _parseDouble(map[Fields.weightKg]) : null,
       lengthCm: map[Fields.lengthCm] != null ? _parseDouble(map[Fields.lengthCm]) : null,
       widthCm: map[Fields.widthCm] != null ? _parseDouble(map[Fields.widthCm]) : null,

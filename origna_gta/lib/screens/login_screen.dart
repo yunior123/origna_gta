@@ -162,8 +162,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                       if (value == null || value.isEmpty) {
                                         return 'auth.password_required'.tr();
                                       }
-                                      if (!state.isLogin && value.length < 8) {
-                                        return 'auth.validation.password_min_8'.tr();
+                                      if (!state.isLogin) {
+                                        if (value.length < ValidationConstants.minPasswordLength) {
+                                          return 'auth.validation.password_min_8'.tr();
+                                        }
+                                        if (!ValidationConstants.passwordRegex.hasMatch(value)) {
+                                          return 'auth.validation.password_weak'.tr();
+                                        }
                                       }
                                       if (state.isLogin && value.length < 6) {
                                         return 'auth.password_min_length'.tr();

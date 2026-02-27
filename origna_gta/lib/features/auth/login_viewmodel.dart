@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/utils/env_config.dart';
 
 import 'login_state.dart';
 
@@ -103,41 +102,18 @@ class LoginViewModel extends StateNotifier<LoginState> {
     try {
       if (state.isLogin) {
         await repository.signInWithEmail(email, password);
-        final isVerified = await repository.isEmailVerified();
-        if (!isVerified && !envConfig.isDev && !envConfig.isTest) {
-          try {
-            await repository.sendEmailVerification();
-          } catch (_) {
-            // Ignore send failures - user can resend later
-          }
-          await repository.signOut();
-          state = state.copyWith(
-            isLoading: false,
-            errorMessage: null,
-            successMessage: 'auth.errors.email_verification_required'.tr(namedArgs: {'email': email}),
-          );
-          return;
-        }
+        // [F-82] Allow sign-in even if not verified, but show a warning or hint in UI if needed.
+        // The business logic elsewhere (checkout) will block actions requiring verification.
       } else {
         await repository.registerWithEmail(email, password, name ?? 'User', marketingOptIn: marketingOptIn);
 
-        // SECURITY FIX: Force logout and require email verification before login
-        // BYPASS for integration tests/dev
-        if (envConfig.isDev || envConfig.isTest) {
-          state = state.copyWith(isLoading: false, isSuccess: true);
-          return;
-        }
-
-        await repository.signOut();
+        // [F-80] Stay signed in after registration so profile is created immediately
         state = state.copyWith(
           isLoading: false,
-          isLogin: true, // Redirect to Login mode
-          acceptedTerms: false, // Reset
-
           successMessage: 'auth.errors.registration_success'.tr(namedArgs: {'email': email}),
           errorMessage: null,
+          isSuccess: true,
         );
-        // Do NOT set isSuccess=true, as that triggers navigation to home
         return;
       }
       state = state.copyWith(isLoading: false, isSuccess: true);
@@ -212,11 +188,11 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
     final trimmedEmail = email.trim().toLowerCase();
 
-    if (trimmedEmail.length < 6) {
+    if (trimmedEmail.length < ValidationConstants.minEmailLength) {
       return 'auth.validation.email_too_short';
     }
 
-    if (trimmedEmail.length > 254) {
+    if (trimmedEmail.length > ValidationConstants.maxEmailLength) {
       return 'auth.validation.email_too_long';
     }
 
@@ -235,11 +211,11 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
     final trimmedName = name.trim();
 
-    if (trimmedName.length < 2) {
+    if (trimmedName.length < ValidationConstants.minNameLength) {
       return 'auth.validation.name_too_short';
     }
 
-    if (trimmedName.length > 60) {
+    if (trimmedName.length > ValidationConstants.maxNameLength) {
       return 'auth.validation.name_too_long';
     }
 
@@ -254,25 +230,22 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
   /// Validate password strength (SECURITY FIX M-3)
   String? _validatePasswordStrength(String password) {
-    if (password.length < 8) {
+    // F-84: Enforce centralised password policy for registration
+    if (password.length < ValidationConstants.minPasswordLength) {
       return 'auth.validation.password_min_8';
     }
-    if (!password.contains(RegExp(r'[A-Z]'))) {
-      return 'auth.validation.password_uppercase';
-    }
-    if (!password.contains(RegExp(r'[a-z]'))) {
-      return 'auth.validation.password_lowercase';
-    }
-    if (!password.contains(RegExp(r'[0-9]'))) {
-      return 'auth.validation.password_number';
-    }
-    if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-      return 'auth.validation.password_special';
+    
+    if (!ValidationConstants.passwordRegex.hasMatch(password)) {
+      // Specific hints for better UX
+      if (!password.contains(RegExp(r'[A-Z]'))) return 'auth.validation.password_uppercase';
+      if (!password.contains(RegExp(r'[a-z]'))) return 'auth.validation.password_lowercase';
+      if (!password.contains(RegExp(r'[0-9]'))) return 'auth.validation.password_number';
+      if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return 'auth.validation.password_special';
+      return 'auth.validation.password_weak';
     }
 
     // Check against common passwords
-    final commonPasswords = ['password', '12345678', 'qwerty123', 'abc123456', 'password1'];
-    if (commonPasswords.contains(password.toLowerCase())) {
+    if (ValidationConstants.commonPasswords.contains(password.toLowerCase())) {
       return 'auth.validation.password_common';
     }
 

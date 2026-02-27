@@ -57,6 +57,8 @@ class CheckoutState {
   /// F-77: Server-calculated tax amount in cents returned from create_checkout_session.
   /// Use this for display in the review screen instead of client-side estimates.
   final int serverTaxAmountCents;
+  /// F-74: Indicates if any item in the cart is shipped from outside Canada.
+  final bool hasInternationalItems;
 
   const CheckoutState({
     this.address,
@@ -78,6 +80,7 @@ class CheckoutState {
     this.isCouponLoading = false,
     this.couponError,
     this.serverTaxAmountCents = 0,
+    this.hasInternationalItems = false,
   });
 
   /// Total shipping cost including delivery speed surcharge
@@ -111,6 +114,7 @@ class CheckoutState {
     bool? isCouponLoading,
     String? couponError,
     int? serverTaxAmountCents,
+    bool? hasInternationalItems,
     bool clearShippingError = false,
     bool clearCheckoutError = false,
     bool clearIdempotencyKey = false,
@@ -137,6 +141,7 @@ class CheckoutState {
       isCouponLoading: isCouponLoading ?? this.isCouponLoading,
       couponError: clearCouponError ? null : (couponError ?? this.couponError),
       serverTaxAmountCents: serverTaxAmountCents ?? this.serverTaxAmountCents,
+      hasInternationalItems: hasInternationalItems ?? this.hasInternationalItems,
     );
   }
 }

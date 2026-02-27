@@ -55,15 +55,25 @@ class DeliveryItemCheck {
   final int estimatedShipDays;
   final bool isPerishable; // Food, flowers, etc.
   final bool isLocalOnly;
+  final bool isInternational;
+  final String? supplierType;
 
-  const DeliveryItemCheck({required this.estimatedShipDays, this.isPerishable = false, this.isLocalOnly = false});
+  const DeliveryItemCheck({
+    required this.estimatedShipDays,
+    this.isPerishable = false,
+    this.isLocalOnly = false,
+    this.isInternational = false,
+    this.supplierType,
+  });
 }
 
 /// Delivery speed options for checkout
 enum DeliverySpeed {
   standard('standard', 'Free Delivery', '3-5 business days', 0.0),
   express('express', 'Express', '1-2 business days', 9.99),
-  sameDay('same_day', 'Same Day', 'Delivered today', 14.99);
+  sameDay('same_day', 'Same Day', 'Delivered today', 14.99),
+  international('international', 'International Standard', '15-30 business days', 0.0),
+  internationalExpress('international_express', 'International Express', '7-15 business days', 19.99);
 
   final String value;
   final String displayName;
@@ -82,23 +92,36 @@ enum DeliverySpeed {
         return now.add(const Duration(days: 2)); // 1-2 days
       case DeliverySpeed.sameDay:
         return now; // Same day
+      case DeliverySpeed.international:
+        return now.add(const Duration(days: 30));
+      case DeliverySpeed.internationalExpress:
+        return now.add(const Duration(days: 15));
     }
   }
 
   /// Check if this delivery speed is available for given items
   /// Same-day only available for local/perishable items within delivery radius
   bool isAvailableForItems(List<DeliveryItemCheck> items, bool isLocalDelivery) {
+    final hasInternational = items.any((item) => item.isInternational);
+
     switch (this) {
       case DeliverySpeed.standard:
-        return true; // Always available
       case DeliverySpeed.express:
-        // Express available if any seller ships within 2 days
-        return items.any((item) => item.estimatedShipDays <= 2);
       case DeliverySpeed.sameDay:
-        // Same-day only for local delivery (within ~50km)
-        // and if seller supports same-day (estimatedShipDays == 0 or isPerishable)
+        // Domestic speeds only available if NO international items in cart
+        if (hasInternational) return false;
+        
+        if (this == DeliverySpeed.standard) return true;
+        if (this == DeliverySpeed.express) return items.any((item) => item.estimatedShipDays <= 2);
+        
+        // sameDay logic
         if (!isLocalDelivery) return false;
         return items.every((item) => item.estimatedShipDays <= 1 || item.isPerishable);
+
+      case DeliverySpeed.international:
+      case DeliverySpeed.internationalExpress:
+        // International speeds only available if cart contains international items
+        return hasInternational;
     }
   }
 
