@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
@@ -131,10 +132,27 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final subtotal = _ref.read(cartSubtotalProvider);
 
       // Use circuit breaker for external service calls
-      final rawCost = await _shippingCircuitBreaker.execute(() => calculateShippingCost(items, state.address));
+      final sellerCosts = await _shippingCircuitBreaker.execute(() => calculateShippingCost(items, state.address));
+
+      // Calculate total raw cost
+      final double rawCost = sellerCosts.values.fold(0.0, (sum, cost) => sum + cost);
 
       // Apply free shipping threshold — orders at or above $75 CAD get free standard shipping
-      final cost = (subtotal * 100).round() >= BusinessRules.freeShippingThresholdCents ? 0.0 : rawCost;
+      // If free shipping applies, we zero out the total but keep the breakdown for reference (optionally)
+      // Actually, if it's free, it's free for everyone.
+      final isFree = (subtotal * 100).round() >= BusinessRules.freeShippingThresholdCents;
+      final cost = isFree ? 0.0 : rawCost;
+
+      // Adjusted breakdown if free shipping applies
+      final adjustedSellerCosts = isFree ? sellerCosts.map((k, v) => MapEntry(k, 0.0)) : sellerCosts;
+
+      // Extract seller names for display
+      final Map<String, String> sellerNames = {};
+      for (var item in items) {
+        if (item.sellerId.isNotEmpty) {
+          sellerNames[item.sellerId] = item.sellerName;
+        }
+      }
 
       // Determine if local delivery (check if any seller is within ~50km)
       final isLocal = await _checkLocalDelivery(items, state.address!);
@@ -149,6 +167,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
       state = state.copyWith(
         baseShippingCost: cost,
+        sellerShippingCosts: adjustedSellerCosts,
+        sellerNames: sellerNames,
         isLocalDelivery: isLocal,
         availableDeliverySpeeds: availableSpeeds,
         deliverySpeed: DeliverySpeed.standard,
@@ -263,6 +283,32 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     state = state.copyWith(isProcessing: true, clearCheckoutError: true);
 
     try {
+      // F-108: Biometric Guard for high-value transactions (> $100 CAD)
+      if (subtotal >= 100.0) {
+        final localAuth = LocalAuthentication();
+        final canAuthenticateWithBiometrics = await localAuth.canCheckBiometrics;
+        final canAuthenticate = canAuthenticateWithBiometrics || await localAuth.isDeviceSupported();
+
+        if (canAuthenticate) {
+          try {
+            final didAuthenticate = await localAuth.authenticate(
+              localizedReason: 'auth_biometric_required_higher_value'.tr(), // "Please authenticate to confirm this high-value transaction"
+              biometricOnly: true,
+            );
+
+            if (!didAuthenticate) {
+              state = state.copyWith(isProcessing: false);
+              return CheckoutError(message: 'checkout.errors.biometric_failed'.tr());
+            }
+          } catch (e) {
+            // If biometric auth fails due to system error, we might want to allow PIN fallback or block.
+            // Requirement says "biometric confirmation", so we block if it fails but exists.
+            state = state.copyWith(isProcessing: false);
+            return CheckoutError(message: 'checkout.errors.biometric_error'.tr());
+          }
+        }
+      }
+
       final userId = _userId;
       if (userId == null) {
         throw Exception('User not logged in');
@@ -291,6 +337,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
                 Fields.imageUrls: item.imageUrls,
                 Fields.isDigital: item.isDigital,
                 if (item.buyerNote != null && item.buyerNote!.isNotEmpty) Fields.buyerNote: item.buyerNote,
+                if (item.variantId != null) Fields.variantId: item.variantId,
+                if (item.variantTitle != null) Fields.variantTitle: item.variantTitle,
+                if (item.variantOptions != null) Fields.variantOptions: item.variantOptions,
               },
             )
             .toList(),

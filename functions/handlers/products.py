@@ -32,6 +32,7 @@ from config import (
 )
 from models.product import ProductCreate
 from schema_constants import (
+    COUNTRY_CANADA,
     AppConfig,
     BusinessRules,
     CategoryIds,
@@ -45,15 +46,18 @@ from schema_constants import (
     UserRoleValues,
     WarehouseTypeValues,
 )
-from services.rate_limiter import RateLimiter
 from services.algolia_service import delete_product as algolia_delete_product
 from services.algolia_service import index_product
 from services.algolia_service import partial_update_product as algolia_partial_update
+from services.rate_limiter import RateLimiter
 from utils.db import get_db, get_firestore, get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS, FIRESTORE_TRIGGER_OPTIONS
 from utils.helpers import create_success_response
 
 logger = logging.getLogger(__name__)
+
+# Module-level alias for convenience — single source of truth remains BusinessRules.CDN_BASE_URL
+CDN_BASE_URL: str = BusinessRules.CDN_BASE_URL
 
 # Constants
 DEFAULT_PAGE_SIZE = 20
@@ -94,11 +98,11 @@ def _get_cached_s3_client():
 
 
 def _generate_product_slug(title: str) -> str:
-    """Generate a URL-safe slug: {title-slug}-{4 random hex chars}.
+    """Generate a URL-safe slug: {title-slug}-{8 random hex chars}.
     Collisions checked by caller — retry with new suffix if needed.
     """
     base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40]
-    suffix = secrets.token_hex(2)  # 4 hex chars
+    suffix = secrets.token_hex(4)  # 8 hex chars
     return f"{base}-{suffix}"
 
 
@@ -1022,12 +1026,12 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("resource-exhausted", msg)
 
     data = req.data
-    product_data: dict = dict(data.get("productData") or {})
-    images_raw = data.get("images", [])
-    test_image_urls = data.get("testImageUrls", [])
+    product_data: dict = dict(data.get(ApiKeys.PRODUCT_DATA) or {})
+    images_raw = data.get(ApiKeys.IMAGES, [])
+    test_image_urls = data.get(ApiKeys.TEST_IMAGE_URLS, [])
 
     if not product_data:
-        raise https_fn.HttpsError("invalid-argument", "productData is required")
+        raise https_fn.HttpsError("invalid-argument", f"{ApiKeys.PRODUCT_DATA} is required")
     if not isinstance(images_raw, list):
         raise https_fn.HttpsError("invalid-argument", "images must be a list")
     if len(images_raw) > BusinessRules.MAX_PRODUCT_IMAGES:
@@ -1102,6 +1106,16 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
     product_data.pop(Fields.PRODUCT_ID, None)  # Generated server-side below
     product_data.pop("rating", None)
     product_data.pop("ratingCount", None)
+
+    # International shipping enforcement (T-4)
+    if product_data.get(Fields.IS_INTERNATIONAL) is None:
+        product_data[Fields.IS_INTERNATIONAL] = False
+
+    if product_data[Fields.IS_INTERNATIONAL] and not product_data.get(Fields.SHIP_FROM_COUNTRY):
+        raise https_fn.HttpsError("invalid-argument", "shipFromCountry is required for international products")
+
+    if not product_data[Fields.IS_INTERNATIONAL] and not product_data.get(Fields.SHIP_FROM_COUNTRY):
+        product_data[Fields.SHIP_FROM_COUNTRY] = COUNTRY_CANADA
 
     # Normalize apartment: empty string → null (Firestore rules requirement)
     seller_address = product_data.get(Fields.SELLER_ADDRESS)
@@ -1547,7 +1561,6 @@ def on_product_created(event: firestore_fn.Event) -> None:
 
 def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
     """Email all admin users when a product is submitted for review."""
-    from services.email_service import send_email
 
     product_name = product_data.get(Fields.NAME, "Unknown Product")
     seller_id = product_data.get(Fields.SELLER_ID, "unknown")
@@ -1588,13 +1601,18 @@ def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
   </p>
   <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
 </div>"""
-        send_email(admin_email, subject, html)
+        from services.email_task import enqueue_email_task
+        enqueue_email_task(
+            to_email=admin_email,
+            subject=subject,
+            html_content=html,
+            event_type="admin_new_product_review"
+        )
         logger.info(f"Admin notification sent to {admin_email} for product {product_id}")
 
 
 def _send_product_approval_email(seller_email: str, product_name: str, product_id: str, lang: str = "en") -> None:
     """Notify seller that their product has been approved and is now live. Bilingual (Bill 96)."""
-    from services.email_service import send_email
 
     if lang == "fr":
         subject = f"✅ Votre produit est en ligne\u202f: {product_name}"
@@ -1624,12 +1642,17 @@ def _send_product_approval_email(seller_email: str, product_name: str, product_i
   <p>Thank you for selling on Origna GTA!</p>
   <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
 </div>"""
-    send_email(seller_email, subject, html)
+    from services.email_task import enqueue_email_task
+    enqueue_email_task(
+        to_email=seller_email,
+        subject=subject,
+        html_content=html,
+        event_type="product_approved"
+    )
 
 
 def _send_product_rejection_email(seller_email: str, product_name: str, reason: str, lang: str = "en") -> None:
     """Notify seller that their product has been rejected with the reason. Bilingual (Bill 96)."""
-    from services.email_service import send_email
 
     if lang == "fr":
         subject = f"Mise à jour de l'examen de votre produit\u202f: {product_name}"
@@ -1661,7 +1684,13 @@ def _send_product_rejection_email(seller_email: str, product_name: str, reason: 
   <p>If you have questions, contact us at <a href="mailto:{EmailConfig.SUPPORT_EMAIL}">{EmailConfig.SUPPORT_EMAIL}</a>.</p>
   <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
 </div>"""
-    send_email(seller_email, subject, html)
+    from services.email_task import enqueue_email_task
+    enqueue_email_task(
+        to_email=seller_email,
+        subject=subject,
+        html_content=html,
+        event_type="product_rejected"
+    )
 
 
 def _notify_premium_users_new_product(product_data: dict, product_id: str) -> None:
@@ -2817,13 +2846,13 @@ def update_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("invalid-argument", "warehouseId is required")
 
         # Verify ownership
-        wh_ref = (
+        wh_col = (
             get_db()
             .collection(Collections.USERS)
             .document(seller_id)
             .collection(Collections.WAREHOUSES)
-            .document(warehouse_id)
         )
+        wh_ref = wh_col.document(warehouse_id)
         wh_doc = wh_ref.get()
         if not wh_doc.exists:
             raise https_fn.HttpsError("not-found", "Warehouse not found")
@@ -2849,14 +2878,55 @@ def update_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         if "isDefault" in data:
             patches["isDefault"] = bool(data["isDefault"])
-            if patches["isDefault"]:
-                _clear_default_warehouse(seller_id, exclude_id=warehouse_id)
 
         if not patches:
             raise https_fn.HttpsError("invalid-argument", "No valid fields to update")
 
-        wh_ref.update(patches)
+        from firebase_admin import firestore as _fs_admin
+
+        @_fs_admin.transactional
+        def _txn_update(transaction, wh_ref, patches, wh_col):
+            if patches.get("isDefault"):
+                # Clear other defaults atomically
+                existing_defaults = wh_col.where("isDefault", "==", True).stream(transaction=transaction)
+                for d in existing_defaults:
+                    if d.id != warehouse_id:
+                        transaction.update(d.reference, {"isDefault": False})
+            transaction.update(wh_ref, patches)
+
+        _txn_update(get_db().transaction(), wh_ref, patches, wh_col)
         logger.info(f"Warehouse {warehouse_id} updated for seller {seller_id}: {list(patches.keys())}")
+
+        # SYNC FIX: If address or isDefault changed, we must update denormalized shipFrom fields in products
+        if "address" in patches or "isDefault" in patches:
+            logger.info(f"Syncing shipFrom fields for seller {seller_id} products due to warehouse update")
+            # Find all products that might be using this warehouse (or use ANY warehouse if isDefault changed)
+            prod_query = get_db().collection(Collections.PRODUCTS).where(Fields.SELLER_ID, "==", seller_id)
+            # Only non-digital products that use warehouses
+            while True:
+                batch_docs = prod_query.where(Fields.IS_DIGITAL, "==", False).limit(200).get()
+                if not batch_docs:
+                    break
+
+                sync_batch = get_db().batch()
+                needs_commit = False
+                for pdoc in batch_docs:
+                    pdata = pdoc.to_dict() or {}
+                    if not pdata.get(Fields.WAREHOUSE_IDS):
+                        continue
+
+                    # Re-derive shipFrom fields
+                    ship_from = _derive_ship_from_fields(seller_id, pdata)
+                    if ship_from:
+                        sync_batch.update(pdoc.reference, ship_from)
+                        needs_commit = True
+
+                if needs_commit:
+                    sync_batch.commit()
+
+                if len(batch_docs) < 200:
+                    break
+
         return create_success_response({"warehouseId": warehouse_id})
 
     except https_fn.HttpsError:
@@ -2869,7 +2939,7 @@ def update_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
     """Delete a warehouse. Blocked if any product still has stock in this warehouse
-    or if in-flight orders reference it."""
+    or if in-flight orders reference it. Cleans up all associated products with pagination."""
     try:
         if not req.auth:
             raise https_fn.HttpsError("unauthenticated", "Authentication required")
@@ -2888,21 +2958,21 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
             .collection(Collections.WAREHOUSES)
             .document(warehouse_id)
         )
-        if not wh_ref.get().exists:
+        wh_doc_snap = wh_ref.get()
+        if not wh_doc_snap.exists:
             raise https_fn.HttpsError("not-found", "Warehouse not found")
 
         # GUARD 1: Block if any product has stock > 0 in this warehouse
-        products_with_wh = (
+        products_query = (
             get_db()
             .collection(Collections.PRODUCTS)
             .where(Fields.SELLER_ID, "==", seller_id)
             .where(Fields.WAREHOUSE_IDS, "array_contains", warehouse_id)
-            .limit(50)
-            .get()
         )
-        for pdoc in products_with_wh:
+
+        # Use stream to avoid memory/limit issues during stock check
+        for pdoc in products_query.stream():
             pdata = pdoc.to_dict() or {}
-            # Check inventoryLevels subcollection for stock
             inv_doc = (
                 get_db()
                 .collection(Collections.PRODUCTS)
@@ -2912,8 +2982,6 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
                 .get()
             )
             wh_stock = inv_doc.to_dict().get(Fields.AVAILABLE_QUANTITY, 0) if inv_doc.exists else 0
-            # FIX H-01: Also check the flat warehouseStock map on the product doc
-            # (products that haven't migrated to inventoryLevels subcollection use this map)
             flat_stock = int((pdata.get(Fields.WAREHOUSE_STOCK) or {}).get(warehouse_id, 0) or 0)
             effective_stock = max(wh_stock, flat_stock)
             if effective_stock > 0:
@@ -2946,52 +3014,57 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
                         f"Cannot delete warehouse: order {odoc.id} has an in-flight item fulfilled from this warehouse.",
                     )
 
-        # Delete the warehouse doc
+        # Delete the warehouse doc first to prevent new references
         wh_ref.delete()
 
-        # Cleanup: remove warehouse reference from products + delete inventoryLevels subdoc
-        cleanup_batch = get_db().batch()
-        count = 0
-        for pdoc in products_with_wh:
-            pdata = pdoc.to_dict() or {}
-            p_ref = get_db().collection(Collections.PRODUCTS).document(pdoc.id)
-            current_wh_ids = list(pdata.get(Fields.WAREHOUSE_IDS) or [])
-            if warehouse_id in current_wh_ids:
-                current_wh_ids.remove(warehouse_id)
+        # Cleanup Loop: Remove warehouse from products and subcollections
+        from firebase_admin import firestore as _fs_admin_cleanup
 
-            from firebase_admin import firestore as _fs_admin_cleanup
-            product_patch = {
-                Fields.WAREHOUSE_IDS: current_wh_ids,
-                # FIX C-02: Remove the stale key from the warehouseStock flat map.
-                # Without this, the map retains a dead key that corrupts inventory routing.
-                f"{Fields.WAREHOUSE_STOCK}.{warehouse_id}": _fs_admin_cleanup.DELETE_FIELD,
-            }
-            cleanup_batch.update(p_ref, product_patch)
+        total_cleaned = 0
+        while True:
+            # Re-fetch batch until query returns empty (products are removed from query as we update WAREHOUSE_IDS)
+            batch_docs = products_query.limit(200).get()
+            if not batch_docs:
+                break
 
-            # Delete inventoryLevels/{warehouseId} subdoc
-            inv_ref = p_ref.collection(Collections.INVENTORY_LEVELS).document(warehouse_id)
-            cleanup_batch.delete(inv_ref)
-
-            count += 1
-            if count >= 450:
-                cleanup_batch.commit()
-                cleanup_batch = get_db().batch()
-                count = 0
-
-        if count > 0:
-            cleanup_batch.commit()
-
-        # Re-derive shipFrom* fields for affected products
-        for pdoc in products_with_wh:
-            try:
+            cleanup_batch = get_db().batch()
+            for pdoc in batch_docs:
+                p_ref = get_db().collection(Collections.PRODUCTS).document(pdoc.id)
                 pdata = pdoc.to_dict() or {}
-                ship_from = _derive_ship_from_fields(seller_id, pdata)
-                if ship_from:
-                    get_db().collection(Collections.PRODUCTS).document(pdoc.id).update(ship_from)
-            except Exception as e:
-                logger.error(f"Failed to re-derive shipFrom for {pdoc.id}: {e}")
 
-        logger.info(f"Warehouse {warehouse_id} deleted for seller {seller_id} (cleaned {len(products_with_wh)} products)")
+                # Update product doc
+                current_wh_ids = list(pdata.get(Fields.WAREHOUSE_IDS) or [])
+                if warehouse_id in current_wh_ids:
+                    current_wh_ids.remove(warehouse_id)
+
+                product_patch = {
+                    Fields.WAREHOUSE_IDS: current_wh_ids,
+                    f"{Fields.WAREHOUSE_STOCK}.{warehouse_id}": _fs_admin_cleanup.DELETE_FIELD,
+                }
+
+                # Optimized re-derivation inlined to avoid repeated reads in _derive_ship_from_fields
+                # (We don't call the helper here for speed; since the warehouse is gone,
+                # any remaining warehouses will be used for shipFrom in subsequent updates or jobs)
+
+                # Re-derive shipFrom fields (warehouse_id is already removed from current_wh_ids above)
+                pdata_for_derive = pdata.copy()
+                pdata_for_derive[Fields.WAREHOUSE_IDS] = current_wh_ids
+                ship_from = _derive_ship_from_fields(seller_id, pdata_for_derive)
+                if ship_from:
+                    product_patch.update(ship_from)
+
+                cleanup_batch.update(p_ref, product_patch)
+
+                # Delete inventoryLevels subdoc
+                inv_ref = p_ref.collection(Collections.INVENTORY_LEVELS).document(warehouse_id)
+                cleanup_batch.delete(inv_ref)
+
+                total_cleaned += 1
+
+            cleanup_batch.commit()
+            total_cleaned += len(batch_docs)
+
+        logger.info(f"Warehouse {warehouse_id} deleted for seller {seller_id} (cleaned {total_cleaned} products)")
         return create_success_response({"warehouseId": warehouse_id})
 
     except https_fn.HttpsError:
@@ -3074,7 +3147,6 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
         if after_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
             return
 
-    from services.email_service import send_email
 
     product_name = after_data.get(Fields.NAME, "A product you wanted")
     safe_name = _html.escape(product_name)
@@ -3146,7 +3218,13 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                         # duplicate email/push on Cloud Function retry.
                         sub_data_uid = sub_data.get(Fields.USER_ID)
                         sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
-                        send_email(email, subject, html_body)
+                        from services.email_task import enqueue_email_task
+                        enqueue_email_task(
+                            to_email=email,
+                            subject=subject,
+                            html_content=html_body,
+                            event_type="back_in_stock_alert"
+                        )
                         # FIX-4 (HIGH): Also send FCM push so mobile users see a notification
                         # tray entry, not just email.
                         if sub_data_uid:
@@ -3204,7 +3282,13 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                 # FIX-7 (MEDIUM): Claim notifiedAt before send to prevent duplicate delivery on retry.
                 sub_data_uid = sub_data.get(Fields.USER_ID)
                 sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
-                send_email(email, subject, html_body)
+                from services.email_task import enqueue_email_task
+                enqueue_email_task(
+                    to_email=email,
+                    subject=subject,
+                    html_content=html_body,
+                    event_type="back_in_stock_alert"
+                )
                 # FIX-4 (HIGH): FCM push so mobile users get a tray notification.
                 if sub_data_uid:
                     from services.push_service import send_push_notification as _push
@@ -3434,7 +3518,6 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Email seller about new question
     try:
-        from services.email_service import send_email
 
         seller_doc = db.collection(Collections.USERS).document(seller_id).get()
         if seller_doc.exists:
@@ -3459,7 +3542,13 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     Answering buyer questions improves conversions and builds trust.
   </p>
 </div>"""
-                send_email(seller_email, subject, html)
+                from services.email_task import enqueue_email_task
+                enqueue_email_task(
+                    to_email=seller_email,
+                    subject=subject,
+                    html_content=html,
+                    event_type="new_product_question"
+                )
     except Exception as e:
         logger.error(f"Failed to email seller about new question for product {product_id}: {e}")
 
@@ -3531,7 +3620,6 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Email asker about the answer
     try:
-        from services.email_service import send_email
 
         asker_id = question_data.get(Fields.ASKER_ID)
         product_id = question_data.get(Fields.PRODUCT_ID)
@@ -3561,7 +3649,13 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
   {"<p><a href='https://orignagta.ca/products/" + product_id + "' style='background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;'>View product</a></p>" if product_id else ""}
   <p style="color:#999; font-size:12px; margin-top:24px;">Origna Ventures Inc.</p>
 </div>"""
-                    send_email(asker_email, subject, html)
+                    from services.email_task import enqueue_email_task
+                    enqueue_email_task(
+                        to_email=asker_email,
+                        subject=subject,
+                        html_content=html,
+                        event_type="product_question_answered"
+                    )
     except Exception as e:
         logger.error(f"Failed to email asker about answer for question {question_id}: {e}")
 

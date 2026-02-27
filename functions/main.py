@@ -235,6 +235,7 @@ from handlers.subscriptions import (  # noqa: E402
 )
 from handlers.users import (  # noqa: E402
     add_buyer_address,
+    cleanup_fcm_token,
     create_user_profile,
     delete_buyer_address,
     get_user_profile,
@@ -376,6 +377,7 @@ __all__ = [
     "e2e_seed_license",
     # User Profile
     "add_buyer_address",
+    "cleanup_fcm_token",
     "create_user_profile",
     "delete_buyer_address",
     "get_user_profile",

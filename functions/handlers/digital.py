@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from firebase_functions import https_fn
 
 from schema_constants import (
+    ApiKeys,
     Collections,
     DigitalTypeValues,
     Fields,
@@ -163,7 +164,7 @@ def _generate_book_download_session_impl(license_key: str, caller_uid: str) -> d
     }
     db.collection(Collections.BOOK_ACCESS_TOKENS).document(token).set(token_doc)
 
-    return {"downloadUrl": f"{APP_BASE_URL}/dl?t={token}"}
+    return {ApiKeys.DOWNLOAD_URL: f"{APP_BASE_URL}/dl?t={token}"}
 
 
 def _get_book_redirect_impl(token: str) -> str:
@@ -449,14 +450,14 @@ def _generate_software_download_session_impl(license_key: str, platform: str, ca
         Fields.USER_ID: caller_uid,
         Fields.PRODUCT_ID: lic.get(Fields.PRODUCT_ID),
         "platform": platform,
-        "downloadUrl": download_url,  # stored server-side only
+        ApiKeys.DOWNLOAD_URL: download_url,  # stored server-side only
         "expiresAt": now + timedelta(minutes=15),
         "used": False,
         Fields.CREATED_AT: now,
     }
     db.collection(Collections.SOFTWARE_ACCESS_TOKENS).document(token).set(token_doc)
 
-    return {"downloadUrl": f"{APP_BASE_URL}/sdl?t={token}"}
+    return {ApiKeys.DOWNLOAD_URL: f"{APP_BASE_URL}/sdl?t={token}"}
 
 
 def _get_software_redirect_impl(token: str) -> str:
@@ -492,7 +493,7 @@ def _get_software_redirect_impl(token: str) -> str:
 
     data = _mark_used(db.transaction(), token_ref)
 
-    url = data.get("downloadUrl", "")
+    url = data.get(ApiKeys.DOWNLOAD_URL, "")
     if not url:
         raise ValueError("missing_source_url")
     return url

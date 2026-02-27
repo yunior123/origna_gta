@@ -20,7 +20,7 @@ def enqueue_email_task(
     subject: str,
     html_content: str,
     event_type: str = "",
-    order_id: str = "",
+    **kwargs
 ) -> None:
     """
     Enqueue an email for async delivery via Cloud Tasks.
@@ -37,15 +37,14 @@ def enqueue_email_task(
         from firebase_admin import functions as admin_functions
 
         queue = admin_functions.task_queue("sendEmailTask")
-        queue.enqueue(
-            {
-                "to": to_email,
-                "subject": subject,
-                "html": html_content,
-                "event_type": event_type,
-                "order_id": order_id,
-            }
-        )
+        payload = {
+            "to": to_email,
+            "subject": subject,
+            "html": html_content,
+            "event_type": event_type,
+        }
+        payload.update(kwargs)
+        queue.enqueue(payload)
     except Exception as e:
         logger.error(f"Failed to enqueue email task for {to_email}: {e}. Falling back to sync send.")
         _sync_send(to_email, subject, html_content)

@@ -934,6 +934,161 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "product_questions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isAnswered",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "FIX T-1 2026-02-26: Q&A feature — list questions per product ordered by time"
+    },
+    {
+      "collectionGroup": "product_questions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isAnswered",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-26: Seller unanswered Q&A badge count — product_repository.dart watchUnansweredQuestionsCount + algolia_product_repository.dart (sellerId + isAnswered == false, limit 500)"
+    },
+    {
+      "collectionGroup": "return_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "returnStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-26: escalate_stale_return_requests cron — returnStatus == requested AND createdAt < cutoff (cron_jobs.py _run_return_escalation)"
+    },
+    {
+      "collectionGroup": "return_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orderId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "buyerId",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-26: Duplicate return check — orderId + productId + buyerId equality (orders.py request_return, limit 1)"
+    },
+    {
+      "collectionGroup": "stock_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "variantKey",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-26: StockNotificationNotifier.init — userId + productId + variantKey equality check (stock_notification_provider.dart lines 42-49, limit 1)"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lifecycleStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "suspendedAt",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-26: unsuspend_seller — sellerId + lifecycleStatus == paused + suspendedAt != None (admin.py lines 620-622); inequality on suspendedAt requires composite"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sellerSku",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lifecycleStatus",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-26: Duplicate SKU guard — sellerId + sellerSku + lifecycleStatus != archived (products.py on_product_created lines 1285-1287); inequality requires composite"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "supplier.type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lifecycleStatus",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-26: deactivate_supplier_platform — supplier.type + lifecycleStatus == active (products.py lines 4124-4126)"
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isPremium",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "notifyNewProducts",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-26: notify_new_product_to_premium — isPremium == true AND notifyNewProducts == true (products.py lines 1722-1724, paginated)"
     }
   ],
   "fieldOverrides": []

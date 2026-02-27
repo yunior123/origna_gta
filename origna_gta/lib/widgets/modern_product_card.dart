@@ -29,7 +29,7 @@ class ModernProductCard extends StatefulWidget {
     required this.price,
     required this.imageUrl,
     required this.sellerName,
-    this.rating = 4.5,
+    this.rating = 0.0,
     this.reviewCount = 0,
     required this.onTap,
     this.onAddToCart,
@@ -176,17 +176,18 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                             ],
                             const Spacer(),
                             // Rating
-                            Row(
-                              children: [
-                                Icon(Icons.star_rounded, size: 14, color: DesignTokens.warning),
-                                const SizedBox(width: 4),
-                                Text(widget.rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                                if (widget.reviewCount > 0) ...[
+                            if (widget.reviewCount > 0)
+                              Row(
+                                children: [
+                                  Icon(Icons.star_rounded, size: 14, color: DesignTokens.warning),
+                                  const SizedBox(width: 4),
+                                  Text(widget.rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                                   const SizedBox(width: 4),
                                   Text('(${widget.reviewCount})', style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
                                 ],
-                              ],
-                            ),
+                              )
+                            else
+                              Text('No reviews yet', style: TextStyle(fontSize: 11, color: DesignTokens.textTertiary)),
                             const SizedBox(height: DesignTokens.spacing8),
                             // Price and CTA
                             Row(

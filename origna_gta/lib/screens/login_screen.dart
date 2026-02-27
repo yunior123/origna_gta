@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -319,6 +320,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               isLoading: state.isLoading,
                               onPressed: state.isLoading ? null : viewModel.handleGoogleSignIn,
                             ),
+                            const SizedBox(height: 12),
+                            if (!kIsWeb && (Theme.of(context).platform == TargetPlatform.iOS || Theme.of(context).platform == TargetPlatform.macOS))
+                              ModernButton(
+                                key: const Key('login_apple_button'),
+                                label: 'Apple',
+                                icon: Icons.apple,
+                                isPrimary: false,
+                                isLoading: state.isLoading,
+                                onPressed: state.isLoading ? null : viewModel.handleAppleSignIn,
+                              ),
                             const SizedBox(height: 20),
                           ],
 

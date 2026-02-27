@@ -209,10 +209,18 @@ def cancel_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
             if recipient_email:
                 sub_snap2 = _get_db().collection("subscriptions").document(uid).get()
                 period_end = (sub_snap2.to_dict() or {}).get("currentPeriodEnd") if sub_snap2.exists else None
-                from services.email_service import get_premium_cancellation_email, send_email
+                from services.email_service import get_premium_cancellation_email
+                from services.email_task import enqueue_email_task
+
                 html_body = get_premium_cancellation_email(user_data, period_end=period_end, lang=lang)
                 subj = "Subscription Cancellation Confirmed" if lang == "en" else "Annulation d'abonnement confirmée"
-                send_email(to_email=recipient_email, subject=subj, html_content=html_body)
+                enqueue_email_task(
+                    to_email=recipient_email,
+                    subject=subj,
+                    html_content=html_body,
+                    event_type="premium_cancellation",
+                    user_id=uid
+                )
                 logger.info(f"Premium cancellation email sent to {recipient_email} (uid={uid})")
         except Exception as _e:
             logger.error(f"cancel_subscription: failed to send cancellation email: {_e}")
@@ -319,10 +327,18 @@ def handle_subscription_created(event: stripe.Event | dict) -> None:
             lang = user_data.get("preferredLanguage", "en")
             recipient_email = user_data.get("email")
             if recipient_email:
-                from services.email_service import get_premium_welcome_email, send_email
+                from services.email_service import get_premium_welcome_email
+                from services.email_task import enqueue_email_task
+
                 html_body = get_premium_welcome_email(user_data, period_end=period_end, lang=lang)
                 subj = "Welcome to Origna Premium! 🌟" if lang == "en" else "Bienvenue dans Origna Premium ! 🌟"
-                send_email(to_email=recipient_email, subject=subj, html_content=html_body)
+                enqueue_email_task(
+                    to_email=recipient_email,
+                    subject=subj,
+                    html_content=html_body,
+                    event_type="premium_welcome",
+                    user_id=uid
+                )
                 logger.info(f"Premium welcome email sent to {recipient_email} (uid={uid})")
     except Exception as _e:
         logger.error(f"handle_subscription_created: failed to send welcome email: {_e}")
@@ -391,10 +407,18 @@ def handle_subscription_deleted(event: stripe.Event | dict) -> None:
         lang = user_data.get("preferredLanguage", "en")
         recipient_email = user_data.get("email")
         if recipient_email:
-            from services.email_service import get_premium_expired_email, send_email
+            from services.email_service import get_premium_expired_email
+            from services.email_task import enqueue_email_task
+
             html_body = get_premium_expired_email(user_data, lang=lang)
             subj = "Your Origna Premium Has Ended" if lang == "en" else "Votre Origna Premium a pris fin"
-            send_email(to_email=recipient_email, subject=subj, html_content=html_body)
+            enqueue_email_task(
+                to_email=recipient_email,
+                subject=subj,
+                html_content=html_body,
+                event_type="premium_expired",
+                user_id=uid
+            )
             logger.info(f"Premium expired email sent to {recipient_email} (uid={uid})")
     except Exception as _e:
         logger.error(f"handle_subscription_deleted: failed to send expired email: {_e}")
@@ -429,10 +453,18 @@ def handle_invoice_payment_failed(event: stripe.Event | dict) -> None:
             lang = user_data.get("preferredLanguage", "en")
             recipient_email = user_data.get("email")
             if recipient_email:
-                from services.email_service import get_premium_payment_failed_email, send_email
+                from services.email_service import get_premium_payment_failed_email
+                from services.email_task import enqueue_email_task
+
                 html_body = get_premium_payment_failed_email(user_data, lang=lang)
                 subj = "⚠️ Premium Payment Failed — Action Required" if lang == "en" else "⚠️ Paiement premium échoué — Action requise"
-                send_email(to_email=recipient_email, subject=subj, html_content=html_body)
+                enqueue_email_task(
+                    to_email=recipient_email,
+                    subject=subj,
+                    html_content=html_body,
+                    event_type="premium_payment_failed",
+                    user_id=uid
+                )
                 logger.info(f"Premium payment-failed email sent to {recipient_email} (uid={uid})")
     except Exception as _e:
         logger.error(f"handle_invoice_payment_failed: failed to send payment-failed email: {_e}")

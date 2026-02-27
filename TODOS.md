@@ -72,3 +72,20 @@ For future manual setup:
 | productId     | productId        | PRODUCT_ID        | 'productId'     | ✅ Match |
 | questionId    | questionId       | QUESTION_ID       | 'questionId'    | ✅ Match |
 | upvotes       | upvotes          | UPVOTES           | 'upvotes'       | ✅ Match |
+
+
+
+- **[F-175]** Missing variant-specific images (High return rate risk).
+
+- **[F-43]** No UCP machine-readable discovery (Agentic commerce gap).
+
+### [F-47] AI-Assisted Listing
+Implement "Magic Upload": generate product name, description, and categories from a single image.
+- **Priority:** P1 (Seller experience).
+
+### [F-44] AI-Dispute Mediation
+Use RAG-based LLMs to auto-resolve 70% of buyer/seller disputes without admin intervention.
+- **Priority:** P1 (Scalability).
+
+- **[F-43]** No UCP machine-readable discovery (Agentic commerce gap).
+- **Decision [F-43]**: UCP (Universal Commerce Protocol) implementation needs detailed specification for the machine-readable endpoint.

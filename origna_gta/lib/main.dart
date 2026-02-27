@@ -23,7 +23,6 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// Keep the semantics handle alive so it doesn't get GC'd in release mode.
 /// Without this, ensureSemantics() has no lasting effect.
-// ignore: unused_element
 SemanticsHandle? _semanticsHandle;
 
 void main() {
@@ -45,6 +44,9 @@ void main() {
       // debug always on, profile only if FORCE_SEMANTICS=true, release never
       if (kIsWeb && (kDebugMode || const bool.fromEnvironment('FORCE_SEMANTICS'))) {
         _semanticsHandle = SemanticsBinding.instance.ensureSemantics();
+        if (kDebugMode) {
+          debugPrint('♿ Semantics enabled: ${_semanticsHandle != null}');
+        }
       }
 
       FirebaseOptions firebaseOptions;
@@ -154,7 +156,7 @@ void main() {
             event.user = SentryUser(
               id: user.id,
               username: user.username,
-              ipAddress: user.ipAddress,
+              ipAddress: null, // F-286: IP is PII under PIPEDA — never forward to Sentry
               data: user.data,
             );
           }

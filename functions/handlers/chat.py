@@ -271,7 +271,7 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     sender_name = (sender_snap.to_dict() or {}).get(Fields.NAME, "Someone") if sender_snap.exists else "Someone"
 
     chat_messages_ref = db.collection(Collections.CHATS).document(chat_id).collection(Collections.CHAT_MESSAGES)
-    
+
     if message_id:
         msg_ref = chat_messages_ref.document(message_id)
         if msg_ref.get().exists:

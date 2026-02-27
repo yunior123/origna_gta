@@ -8,6 +8,10 @@ import 'package:origna_gta/utils/env_config.dart';
 
 import 'login_state.dart';
 
+final loginViewModelProvider = StateNotifierProvider.autoDispose<LoginViewModel, LoginState>((ref) {
+  return LoginViewModel(ref);
+});
+
 /// Maps Firebase Auth error codes to translation keys.
 /// On web, [FirebaseAuthException.message] is often just "Error",
 /// so we must rely on [FirebaseAuthException.code] instead.
@@ -43,14 +47,29 @@ String _friendlyAuthError(FirebaseAuthException e) {
   }
 }
 
-final loginViewModelProvider = StateNotifierProvider.autoDispose<LoginViewModel, LoginState>((ref) {
-  return LoginViewModel(ref);
-});
-
 class LoginViewModel extends StateNotifier<LoginState> {
   final Ref _ref;
 
   LoginViewModel(this._ref) : super(LoginState());
+
+  Future<void> handleAppleSignIn() async {
+    if (state.isLoading) return;
+
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    final repository = _ref.read(authRepositoryProvider);
+
+    try {
+      await repository.signInWithApple();
+      state = state.copyWith(isLoading: false, isSuccess: true);
+    } on FirebaseAuthException catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      if (!e.toString().contains('cancelled') && !e.toString().contains('user_cancelled')) {
+        state = state.copyWith(errorMessage: 'auth.errors.apple_signin_failed'.tr());
+      }
+    }
+  }
 
   Future<void> handleAuth({required String email, required String password, String? name, bool marketingOptIn = false}) async {
     if (state.isLoading) return;
@@ -69,7 +88,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
         state = state.copyWith(errorMessage: passwordError.tr());
         return;
       }
-      
+
       // Validate name
       final nameError = _validateName(name);
       if (nameError != null) {
@@ -101,7 +120,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
         }
       } else {
         await repository.registerWithEmail(email, password, name ?? 'User', marketingOptIn: marketingOptIn);
-        
+
         // SECURITY FIX: Force logout and require email verification before login
         // BYPASS for integration tests/dev
         if (envConfig.isDev || envConfig.isTest) {
@@ -114,7 +133,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
           isLoading: false,
           isLogin: true, // Redirect to Login mode
           acceptedTerms: false, // Reset
-         
+
           successMessage: 'auth.errors.registration_success'.tr(namedArgs: {'email': email}),
           errorMessage: null,
         );
@@ -126,10 +145,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
       if (kDebugMode) {
         debugPrint('🔐 FirebaseAuthException — code: ${e.code}, message: ${e.message}');
       }
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: _friendlyAuthError(e),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
     } catch (e) {
       if (kDebugMode) {
         debugPrint('🔐 Unexpected auth error: $e');
@@ -138,9 +154,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
       final errorStr = e.toString().toLowerCase();
 
       if (errorStr.contains('permission-denied') || errorStr.contains('permission_denied')) {
-        errorMessage = state.isLogin
-            ? 'auth.errors.profile_setup_failed'
-            : 'auth.errors.account_creation_failed';
+        errorMessage = state.isLogin ? 'auth.errors.profile_setup_failed' : 'auth.errors.account_creation_failed';
       } else if (errorStr.contains('network')) {
         errorMessage = 'auth.errors.network_error';
       } else if (errorStr.contains('email-already-in-use')) {
@@ -190,6 +204,54 @@ class LoginViewModel extends StateNotifier<LoginState> {
     state = state.copyWith(obscurePassword: !state.obscurePassword);
   }
 
+  /// Validate email format
+  String? _validateEmail(String? email) {
+    if (email == null || email.trim().isEmpty) {
+      return 'auth.validation.email_required_validation';
+    }
+
+    final trimmedEmail = email.trim().toLowerCase();
+
+    if (trimmedEmail.length < 6) {
+      return 'auth.validation.email_too_short';
+    }
+
+    if (trimmedEmail.length > 254) {
+      return 'auth.validation.email_too_long';
+    }
+
+    if (!ValidationConstants.emailRegex.hasMatch(trimmedEmail)) {
+      return 'auth.validation.email_invalid_validation';
+    }
+
+    return null; // Valid
+  }
+
+  /// Validate name format (must match Firestore rules)
+  String? _validateName(String? name) {
+    if (name == null || name.trim().isEmpty) {
+      return 'auth.validation.name_required_validation';
+    }
+
+    final trimmedName = name.trim();
+
+    if (trimmedName.length < 2) {
+      return 'auth.validation.name_too_short';
+    }
+
+    if (trimmedName.length > 60) {
+      return 'auth.validation.name_too_long';
+    }
+
+    // Allow any Unicode letter + space/hyphen/apostrophe/period — mirrors backend
+    final nameRegex = RegExp(r"^[\p{L} '\-\.·]+$", unicode: true);
+    if (!nameRegex.hasMatch(trimmedName)) {
+      return 'auth.validation.name_invalid_format';
+    }
+
+    return null; // Valid
+  }
+
   /// Validate password strength (SECURITY FIX M-3)
   String? _validatePasswordStrength(String password) {
     if (password.length < 8) {
@@ -214,54 +276,6 @@ class LoginViewModel extends StateNotifier<LoginState> {
       return 'auth.validation.password_common';
     }
 
-    return null; // Valid
-  }
-
-  /// Validate email format
-  String? _validateEmail(String? email) {
-    if (email == null || email.trim().isEmpty) {
-      return 'auth.validation.email_required_validation';
-    }
-    
-    final trimmedEmail = email.trim().toLowerCase();
-    
-    if (trimmedEmail.length < 6) {
-      return 'auth.validation.email_too_short';
-    }
-    
-    if (trimmedEmail.length > 254) {
-      return 'auth.validation.email_too_long';
-    }
-
-    if (!ValidationConstants.emailRegex.hasMatch(trimmedEmail)) {
-      return 'auth.validation.email_invalid_validation';
-    }
-    
-    return null; // Valid
-  }
-
-  /// Validate name format (must match Firestore rules)
-  String? _validateName(String? name) {
-    if (name == null || name.trim().isEmpty) {
-      return 'auth.validation.name_required_validation';
-    }
-    
-    final trimmedName = name.trim();
-    
-    if (trimmedName.length < 2) {
-      return 'auth.validation.name_too_short';
-    }
-    
-    if (trimmedName.length > 60) {
-      return 'auth.validation.name_too_long';
-    }
-    
-    // Allow any Unicode letter + space/hyphen/apostrophe/period — mirrors backend
-    final nameRegex = RegExp(r"^[\p{L} '\-\.·]+$", unicode: true);
-    if (!nameRegex.hasMatch(trimmedName)) {
-      return 'auth.validation.name_invalid_format';
-    }
-    
     return null; // Valid
   }
 }

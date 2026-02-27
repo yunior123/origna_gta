@@ -1,7 +1,10 @@
 """PDF Invoice Generator for Origna GTA
 
-Generates professional PDF invoices attached to order confirmation emails.
+Generates professional bilingual (EN/FR) PDF invoices attached to order confirmation emails.
 Uses reportlab for PDF generation.
+
+Quebec Bill 96 Compliance: All invoices support both English and French based on
+the buyer's preferredLanguage field.
 
 Dependencies: reportlab (add to requirements.txt)
 """
@@ -28,12 +31,48 @@ except ImportError:
     logger.warning("reportlab not installed — PDF invoice generation disabled. Run: pip install reportlab")
 
 
-def generate_invoice_pdf(order_data: dict, order_id: str) -> bytes | None:
-    """Generate a PDF invoice for an order.
+# ===========================================================================
+# BILINGUAL INVOICE STRINGS (EN / FR — Quebec Bill 96 Compliance)
+# ===========================================================================
+
+_INVOICE_STRINGS: dict[str, dict[str, str]] = {
+    "invoice_title": {"en": "INVOICE", "fr": "FACTURE"},
+    "bill_to": {"en": "Bill To / Ship To:", "fr": "Facturer à / Expédier à :"},
+    "order_id_label": {"en": "Order ID:", "fr": "N° de commande :"},
+    "order_date_label": {"en": "Date:", "fr": "Date :"},
+    "gst_hst_label": {"en": "GST/HST:", "fr": "TPS/TVH :"},
+    "status_label": {"en": "Status:", "fr": "Statut :"},
+    "phone_label": {"en": "Phone:", "fr": "Tél. :"},
+    "email_label": {"en": "Email:", "fr": "Courriel :"},
+    "items_header": {"en": "Items", "fr": "Articles"},
+    "col_product": {"en": "Product", "fr": "Produit"},
+    "col_qty": {"en": "Qty", "fr": "Qté"},
+    "col_unit_price": {"en": "Unit Price", "fr": "Prix unitaire"},
+    "col_total": {"en": "Total", "fr": "Total"},
+    "subtotal": {"en": "Subtotal", "fr": "Sous-total"},
+    "shipping": {"en": "Shipping", "fr": "Livraison"},
+    "shipping_free": {"en": "Free", "fr": "Gratuit"},
+    "taxes_total": {"en": "Taxes Total", "fr": "Total des taxes"},
+    "total_cad": {"en": "TOTAL (CAD)", "fr": "TOTAL (CAD)"},
+    "footer_thanks": {
+        "en": "Thank you for shopping with Origna! For questions:",
+        "fr": "Merci de magasiner chez Origna ! Pour toute question :",
+    },
+}
+
+
+def _t(key: str, lang: str) -> str:
+    """Translate a key to the given language (defaults to 'en' if key or lang not found)."""
+    return _INVOICE_STRINGS.get(key, {}).get(lang if lang in ("en", "fr") else "en", key)
+
+
+def generate_invoice_pdf(order_data: dict, order_id: str, preferred_language: str = "en") -> bytes | None:
+    """Generate a bilingual PDF invoice for an order.
 
     Args:
         order_data: Order dict from Firestore
         order_id: Order document ID
+        preferred_language: 'en' or 'fr' (Quebec Bill 96 compliance). Defaults to 'en'.
 
     Returns:
         PDF bytes or None if reportlab is not installed
@@ -41,6 +80,11 @@ def generate_invoice_pdf(order_data: dict, order_id: str) -> bytes | None:
     if not HAS_REPORTLAB:
         logger.warning("reportlab not available — skipping PDF invoice generation")
         return None
+
+    # Normalize language
+    lang = preferred_language.lower()[:2] if preferred_language else "en"
+    if lang not in ("en", "fr"):
+        lang = "en"
 
     try:
         buffer = io.BytesIO()
@@ -108,24 +152,37 @@ def generate_invoice_pdf(order_data: dict, order_id: str) -> bytes | None:
 
         # ── HEADER ──────────────────────────────────────────────
         short_oid = order_id[:8] if len(order_id) > 8 else order_id
-        order_date = datetime.now().strftime("%B %d, %Y")
+
+        # Localized date format
+        now = datetime.now()
+        if lang == "fr":
+            months_fr = [
+                "janvier", "février", "mars", "avril", "mai", "juin",
+                "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+            ]
+            order_date = f"{now.day} {months_fr[now.month - 1]} {now.year}"
+        else:
+            order_date = now.strftime("%B %d, %Y")
 
         header_data = [
             [
                 Paragraph("ORIGNA", title_style),
-                Paragraph(f'<b>INVOICE</b><br/><font size="9">#{short_oid}</font>', right_style),
+                Paragraph(
+                    f'<b>{_t("invoice_title", lang)}</b><br/><font size="9">#{short_oid}</font>',
+                    right_style,
+                ),
             ],
             [
                 Paragraph("Origna Ventures Inc.", subtitle_style),
                 Paragraph(
-                    f"Date: {order_date}",
+                    f'{_t("order_date_label", lang)} {order_date}',
                     ParagraphStyle("rd", parent=right_style, fontSize=9, textColor=colors.HexColor("#666666")),
                 ),
             ],
             [
                 Paragraph(EmailConfig.PHYSICAL_ADDRESS, subtitle_style),
                 Paragraph(
-                    f"GST/HST: {EmailConfig.GST_HST_NUMBER}",
+                    f'{_t("gst_hst_label", lang)} {EmailConfig.GST_HST_NUMBER}',
                     ParagraphStyle("rd2", parent=right_style, fontSize=9, textColor=colors.HexColor("#666666")),
                 ),
             ],
@@ -156,16 +213,19 @@ def generate_invoice_pdf(order_data: dict, order_id: str) -> bytes | None:
         address_text = "<br/>".join(line for line in address_lines if line and line.strip())
         phone = shipping.get(Fields.PHONE_NUMBER, "")
         if phone:
-            address_text += f"<br/>Phone: {phone}"
+            address_text += f"<br/>{_t('phone_label', lang)} {phone}"
 
         bill_data = [
             [
-                Paragraph("<b>Bill To / Ship To:</b>", normal_style),
-                Paragraph(f"<b>Order ID:</b> {order_id}", normal_style),
+                Paragraph(f"<b>{_t('bill_to', lang)}</b>", normal_style),
+                Paragraph(f"<b>{_t('order_id_label', lang)}</b> {order_id}", normal_style),
             ],
             [
-                Paragraph(f"{address_text}<br/>Email: {customer_email}", normal_style),
-                Paragraph(f"<b>Status:</b> {order_data.get(Fields.ORDER_STATUS, 'confirmed').title()}", normal_style),
+                Paragraph(f"{address_text}<br/>{_t('email_label', lang)} {customer_email}", normal_style),
+                Paragraph(
+                    f"<b>{_t('status_label', lang)}</b> {order_data.get(Fields.ORDER_STATUS, 'confirmed').title()}",
+                    normal_style,
+                ),
             ],
         ]
         bill_table = Table(bill_data, colWidths=[3.5 * inch, 3.5 * inch])
@@ -181,24 +241,25 @@ def generate_invoice_pdf(order_data: dict, order_id: str) -> bytes | None:
         elements.append(Spacer(1, 20))
 
         # ── ITEMS TABLE ─────────────────────────────────────────
-        elements.append(Paragraph("Items", header_style))
+        elements.append(Paragraph(_t("items_header", lang), header_style))
 
         items = order_data.get(Fields.ITEMS, [])
         table_data = [
             [
                 Paragraph(
-                    "<b>Product</b>", ParagraphStyle("th", parent=normal_style, textColor=colors.white, fontSize=9)
+                    f"<b>{_t('col_product', lang)}</b>",
+                    ParagraphStyle("th", parent=normal_style, textColor=colors.white, fontSize=9),
                 ),
                 Paragraph(
-                    "<b>Qty</b>",
+                    f"<b>{_t('col_qty', lang)}</b>",
                     ParagraphStyle("thc", parent=normal_style, textColor=colors.white, fontSize=9, alignment=TA_CENTER),
                 ),
                 Paragraph(
-                    "<b>Unit Price</b>",
+                    f"<b>{_t('col_unit_price', lang)}</b>",
                     ParagraphStyle("thr", parent=normal_style, textColor=colors.white, fontSize=9, alignment=TA_RIGHT),
                 ),
                 Paragraph(
-                    "<b>Total</b>",
+                    f"<b>{_t('col_total', lang)}</b>",
                     ParagraphStyle("thr2", parent=normal_style, textColor=colors.white, fontSize=9, alignment=TA_RIGHT),
                 ),
             ]
@@ -253,18 +314,21 @@ def generate_invoice_pdf(order_data: dict, order_id: str) -> bytes | None:
         total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
 
         summary_data = [
-            ["Subtotal", f"${subtotal:.2f}"],
-            ["Shipping", "Free" if shipping_cost == 0 else f"${shipping_cost:.2f}"],
+            [_t("subtotal", lang), f"${subtotal:.2f}"],
+            [
+                _t("shipping", lang),
+                _t("shipping_free", lang) if shipping_cost == 0 else f"${shipping_cost:.2f}",
+            ],
         ]
 
         # Itemized tax breakdown
         for tax_name, tax_amount in sorted(taxes_dict.items()):
             summary_data.append([f"  {tax_name}", f"${tax_amount:.2f}"])
 
-        summary_data.append(["Taxes Total", f"${taxes_total:.2f}"])
+        summary_data.append([_t("taxes_total", lang), f"${taxes_total:.2f}"])
 
         # Total row (special styling)
-        summary_data.append(["TOTAL (CAD)", f"${total:.2f}"])
+        summary_data.append([_t("total_cad", lang), f"${total:.2f}"])
 
         summary_table = Table(summary_data, colWidths=[2 * inch, 1.5 * inch])
         summary_table.setStyle(
@@ -295,7 +359,10 @@ def generate_invoice_pdf(order_data: dict, order_id: str) -> bytes | None:
         elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e0e3f0")))
         elements.append(Spacer(1, 8))
         elements.append(
-            Paragraph(f"Thank you for shopping with Origna! For questions: {EmailConfig.SUPPORT_EMAIL}", center_style)
+            Paragraph(
+                f"{_t('footer_thanks', lang)} {EmailConfig.SUPPORT_EMAIL}",
+                center_style,
+            )
         )
         elements.append(
             Paragraph(f"{EmailConfig.PHYSICAL_ADDRESS} | GST/HST: {EmailConfig.GST_HST_NUMBER}", center_style)
@@ -306,7 +373,7 @@ def generate_invoice_pdf(order_data: dict, order_id: str) -> bytes | None:
         pdf_bytes = buffer.getvalue()
         buffer.close()
 
-        logger.info(f"📄 PDF invoice generated for order {order_id} ({len(pdf_bytes)} bytes)")
+        logger.info(f"📄 PDF invoice generated for order {order_id} ({len(pdf_bytes)} bytes, lang={lang})")
         return pdf_bytes
 
     except Exception as e:

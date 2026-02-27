@@ -78,11 +78,17 @@ class Collections:
     SELLER_PROFILES = "seller_profiles"  # Seller-only profile data — buyers never have this doc
     SELLER_SKUS = "seller_skus"  # Collision docs for atomic SKU uniqueness: {sellerId}_{sku}
 
+    # Email infrastructure (backend-only — never accessed from client)
+    MAIL_LOGS = "_mail_logs"  # Transactional email delivery audit log
+    PENDING_REDEMPTIONS = "pending_redemptions"  # Pending coupon/gift card redemption records
+
     # Premium & Chat
     SUBSCRIPTIONS = "subscriptions"  # top-level: subscriptions/{userId}
     CHATS = "chats"  # top-level: chats/{chatId}
     CHAT_MESSAGES = "messages"  # subcollection: chats/{chatId}/messages/{msgId}
 
+    # Financial audit (backend-only)
+    PLATFORM_DEBT = "platform_debt"  # A-05/F-139: debt records when seller reversal fails due to zero balance
 
 class Documents:
     """Singleton document IDs within collections"""
@@ -315,11 +321,17 @@ class Fields:
     TAX_CODE = "taxCode"
     DEACTIVATION_REASON = "deactivationReason"
 
+    # === INTERNATIONAL SHIPPING (T-4) ===
+    IS_INTERNATIONAL = "isInternational"
+    SHIP_FROM_COUNTRY = "shipFromCountry"
+    SUPPLIER_TYPE = "supplierType"
+
     # === TAX FIELDS (new) ===
     ITEM_TAXES = "itemTaxes"
     TAX_EXEMPT = "taxExempt"
     TAX_EXEMPTION = "taxExemption"
     GST_NUMBER = "gstNumber"
+    IS_SMALL_SUPPLIER = "isSmallSupplier" # F-129: <$30k revenue sellers don't charge GST/HST
 
     # === CONSENT & COMPLIANCE FIELDS (CASL + PIPEDA + Quebec Law 25) ===
     EMAIL_CONSENT = "emailConsent"  # bool — user accepted transactional emails
@@ -1011,6 +1023,14 @@ class SeverityLevels:
     CRITICAL = "critical"
 
 
+class PlatformDebtStatusValues:
+    """Status values for platform_debt collection (A-05/F-139)."""
+
+    OPEN = "open"  # Debt recorded, not yet recovered
+    RECOVERED = "recovered"  # Successfully collected from seller
+    WRITTEN_OFF = "written_off"  # Irrecoverable — written off after manual review
+
+
 class DiscountTypeValues:
     """Valid values for shipping discount types"""
 
@@ -1491,16 +1511,92 @@ class StripeConstants:
     SHIPPING_REFERENCE = "shipping"
     TAX_EXEMPT_NONE = "none"
     ADDRESS_SOURCE_SHIPPING = "shipping"
+    ADDRESS_SOURCE = "address_source"
+    VALUE = "value"
+
+    # Line item keys (Checkout Sessions / Invoices)
+    PRICE_DATA = "price_data"
+    PRODUCT_DATA = "product_data"
+    UNIT_AMOUNT = "unit_amount"
+    CURRENCY = "currency"
+    QUANTITY = "quantity"
+    IMAGES = "images"
+    TAX_CODE = "tax_code"
+    DESCRIPTION = "description"
+    NAME = "name"
+
+    # Session / Intent modes & statuses
+    MODE_PAYMENT = "payment"
+    PAYMENT_METHOD_CARD = "card"
+    STATUS_PAID = "paid"
+    STATUS_SUCCEEDED = "succeeded"
+    STATUS_REQUIRES_CAPTURE = "requires_capture"
+    ACCOUNT_TYPE_EXPRESS = "express"
+    TYPE_ACCOUNT_ONBOARDING = "account_onboarding"
+
     # Metadata keys
     METADATA_ORDER_ID = "order_id"
     METADATA_USER_ID = "user_id"
-    # Line item keys
-    LINE_ITEM_AMOUNT = "amount"
-    LINE_ITEM_REFERENCE = "reference"
-    LINE_ITEM_TAX_CODE = "tax_code"
+
+    # Stripe Tax Calculation keys (Stripe Tax API specifically uses these names)
+    TAX_CALC_AMOUNT = "amount"
+    TAX_CALC_REFERENCE = "reference"
+    TAX_CALC_TAX_CODE = "tax_code"
+
     # Customer details keys
     CUSTOMER_TAX_ID = "tax_id"
     CUSTOMER_TAX_EXEMPT = "tax_exempt"
+    CUSTOMER_EMAIL = "customer_email"
+
+    # Stripe Event object keys
+    OBJECT_ID = "id"
+    DATA = "data"
+    OBJECT = "object"
+    METADATA = "metadata"
+    PAYMENT_INTENT = "payment_intent"
+    PAYMENT_INTENT_DATA = "payment_intent_data"
+    PAYMENT_STATUS = "payment_status"
+    SUBSCRIPTION = "subscription"
+    CHARGE = "charge"
+    CREATED = "created"
+    AMOUNT = "amount"
+    REASON = "reason"
+
+    # Stripe Tax types to internal tax labels
+    TAX_TYPE_MAP = {
+        "gst_hst": "GST",
+        "gst": "GST",
+        "hst": "HST",
+        "pst": "PST",
+        "qst": "QST",
+        "rst": "PST",
+    }
+
+
+class StripeEventTypes:
+    """Stripe webhook event types"""
+
+    CHECKOUT_COMPLETED = "checkout.session.completed"
+    ASYNC_PAYMENT_SUCCEEDED = "checkout.session.async_payment_succeeded"
+    ASYNC_PAYMENT_FAILED = "checkout.session.async_payment_failed"
+    SESSION_EXPIRED = "checkout.session.expired"
+    PAYMENT_INTENT_SUCCEEDED = "payment_intent.succeeded"
+    PAYMENT_INTENT_PAYMENT_FAILED = "payment_intent.payment_failed"
+    PAYMENT_INTENT_CANCELED = "payment_intent.canceled"
+    CHARGE_REFUNDED = "charge.refunded"
+    DISPUTE_CREATED = "charge.dispute.created"
+    DISPUTE_UPDATED = "charge.dispute.updated"
+    DISPUTE_CLOSED = "charge.dispute.closed"
+    DISPUTE_FUNDS_REINSTATED = "charge.dispute.funds_reinstated"
+    TRANSFER_REVERSED = "transfer.reversed"
+    PAYOUT_FAILED = "payout.failed"
+    REFUND_FAILED = "refund.failed"
+    ACCOUNT_UPDATED = "account.updated"
+    SUBSCRIPTION_CREATED = "customer.subscription.created"
+    SUBSCRIPTION_UPDATED = "customer.subscription.updated"
+    SUBSCRIPTION_DELETED = "customer.subscription.deleted"
+    INVOICE_PAYMENT_FAILED = "invoice.payment_failed"
+    INVOICE_PAID = "invoice.paid"
 
 
 # =============================================================================
@@ -1576,6 +1672,7 @@ class ApiKeys:
     CHECKOUT_URL = "checkoutUrl"
     SESSION_ID = "sessionId"
     URL = "url"
+    DOWNLOAD_URL = "downloadUrl"
     SECRET = "secret"
     QR_CODE_URL = "qrCodeUrl"
     PROVISIONING_URI = "provisioning_uri"
@@ -1602,6 +1699,9 @@ class ApiKeys:
     PRODUCT_NAME = "productName"
     APPROVAL_REQUIRED = "approvalRequired"
     CART_SUBTOTAL_CENTS = "cartSubtotalCents"
+    PRODUCT_DATA = "productData"
+    IMAGES = "images"
+    TEST_IMAGE_URLS = "testImageUrls"
 
     # === PAYMENT PROVIDER RESPONSE KEYS ===
     SUPPORTED_CURRENCIES = "supportedCurrencies"
@@ -1618,6 +1718,14 @@ class ApiKeys:
     EXPECTED_COST_CENTS = "expectedCostCents"
     LICENSE_KEY = "licenseKey"
     PLATFORM = "platform"
+
+
+class HeaderKeys:
+    """HTTP header keys used across functions."""
+
+    X_FORWARDED_FOR = "X-Forwarded-For"
+    X_REAL_IP = "X-Real-IP"
+    STRIPE_SIGNATURE = "Stripe-Signature"
 
 
 class ErrorCodeValues:
@@ -1729,10 +1837,14 @@ class OrderEventTypes:
     CANCELLATION_CONFIRMED = "cancellation_confirmed"
     NOTE_ADDED = "note_added"
     AUTO_CONFIRMED = "auto_confirmed"
+    ORDER_CONFIRMED_BUYER = "order_confirmed_buyer"
+    ORDER_CONFIRMED_SELLER = "order_confirmed_seller"
+    DISPUTE_CREATED = "dispute_created"
+    DISPUTE_RESOLVED = "dispute_resolved"
     ALL: frozenset[str] = frozenset({
         "status_changed", "payment_authorized", "payment_captured", "payment_failed",
         "refund_issued", "item_shipped", "item_delivered", "cancellation_confirmed", "note_added",
-        "auto_confirmed",
+        "auto_confirmed", "order_confirmed_buyer", "order_confirmed_seller", "dispute_created", "dispute_resolved",
     })
 
 # =============================================================================
@@ -1753,6 +1865,7 @@ class NotificationTypes:
     RETURN_REQUEST = "return_request"
     RETURN_STATUS = "return_status"
     BACK_IN_STOCK = "back_in_stock"
+    REFUND_ISSUED = "refund_issued"
 
     ALL: frozenset[str] = frozenset({
         ORDER_STATUS,
@@ -1764,4 +1877,32 @@ class NotificationTypes:
         RETURN_REQUEST,
         RETURN_STATUS,
         BACK_IN_STOCK,
+        REFUND_ISSUED,
     })
+
+
+class TransactionSentinel:
+    """Internal sentinel values for transactional function results."""
+
+    ALREADY_REFUNDED = "already_refunded"
+    REFUNDED = "refunded"
+
+
+class CancellationReasonValues:
+    """Standardized reasons for order cancellation."""
+
+    BUYER_REQUESTED = "requested_by_customer"
+    SELLER_CANCELLED = "seller_cancelled"
+    SHIPPING_REJECTED = "Buyer rejected shipping cost"
+    PAYMENT_FAILED = "payment_failed"
+    EXPIRED = "authorization_expired"
+
+
+class RefundReasonValues:
+    """Standardized reasons for item/order refunds."""
+
+    RETURN_APPROVED = "Return approved"
+    OUT_OF_STOCK = "item_out_of_stock"
+    BUYER_REQUESTED = "requested_by_customer"
+    DAMAGED = "item_damaged"
+    INCORRECT_ITEM = "incorrect_item"

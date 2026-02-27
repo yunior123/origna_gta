@@ -235,6 +235,7 @@ void main() {
         Fields.weightKg: 0.5,
         Fields.isLocalDeliveryOnly: false,
         Fields.estimatedShipDays: 3,
+        Fields.lifecycleStatus: 'active',
       };
 
       final product = ProductModel.fromMap(map);

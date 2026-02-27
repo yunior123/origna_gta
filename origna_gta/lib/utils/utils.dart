@@ -291,7 +291,8 @@ double calculateFallbackShipping(
 
 /// Calculate shipping cost based on distance, quantity, weight, and delivery speed.
 /// Aligns with backend shipping_service.py for deterministic totals.
-Future<double> calculateShippingCost(
+/// Returns a Map of sellerId to shipping cost.
+Future<Map<String, double>> calculateShippingCost(
   List<CartItemDetailModel> items,
   Address? buyerAddress, {
   DeliverySpeed chosenSpeed = DeliverySpeed.standard,
@@ -299,10 +300,10 @@ Future<double> calculateShippingCost(
   if (buyerAddress == null ||
       buyerAddress.latitude == null ||
       buyerAddress.longitude == null) {
-    return 0.0;
+    return {};
   }
 
-  double totalShipping = 0.0;
+  final Map<String, double> sellerCosts = {};
   final String apiKey = ConfigService().geoapifyKey;
 
   final Map<String, List<CartItemDetailModel>> itemsBySeller = {};
@@ -310,13 +311,18 @@ Future<double> calculateShippingCost(
     itemsBySeller.putIfAbsent(item.sellerId, () => []).add(item);
   }
 
-  for (var sellerItems in itemsBySeller.values) {
+  for (var entry in itemsBySeller.entries) {
+    final sellerId = entry.key;
+    final sellerItems = entry.value;
+    double sellerTotal = 0.0;
+
     final seller = sellerItems.first.sellerAddress;
     final sellerState = seller.state;
     final buyerState = buyerAddress.state;
 
     final chargeableItems = sellerItems.where((i) => !i.freeShipping).toList();
     if (chargeableItems.isEmpty) {
+      sellerCosts[sellerId] = 0.0;
       continue;
     }
 
@@ -324,12 +330,13 @@ Future<double> calculateShippingCost(
       (i) => i.isLocalDeliveryOnly || i.isPerishable,
     );
     if (hasLocalRestriction && sellerState != buyerState) {
-      totalShipping += 50.0;
+      sellerTotal += 50.0;
     }
 
     final hasFixedPrice = _hasFixedPriceForSpeed(chargeableItems, chosenSpeed);
     if (hasFixedPrice.isEnabled) {
-      totalShipping += hasFixedPrice.total;
+      sellerTotal += hasFixedPrice.total;
+      sellerCosts[sellerId] = sellerTotal;
       continue;
     }
 
@@ -369,15 +376,17 @@ Future<double> calculateShippingCost(
           final distanceKm = distanceMeters / 1000.0;
 
           if (hasLocalRestriction && distanceKm > 100) {
-            totalShipping += 75.0;
+            sellerTotal += 75.0;
+            sellerCosts[sellerId] = sellerTotal;
             continue;
           }
 
-          totalShipping += _calculateTieredShipping(
+          sellerTotal += _calculateTieredShipping(
             distanceKm,
             chargeableItems,
             chosenSpeed,
           );
+          sellerCosts[sellerId] = sellerTotal;
           continue;
         }
       } catch (e, stack) {
@@ -385,14 +394,15 @@ Future<double> calculateShippingCost(
       }
     }
 
-    totalShipping += calculateFallbackShipping(
+    sellerTotal += calculateFallbackShipping(
       chargeableItems,
       sellerState,
       buyerState,
     );
+    sellerCosts[sellerId] = sellerTotal;
   }
 
-  return totalShipping;
+  return sellerCosts;
 }
 
 double calculateTieredShipping(

@@ -160,6 +160,7 @@ class CartItemDetailModel {
   final Timestamp createdAt;
   final Address sellerAddress;
   final String sellerId;
+  final String sellerName;
   final String status;
   final String? trackingNumber;
   final bool confirmedByBuyer; // Buyer confirmed receipt of this item
@@ -175,6 +176,10 @@ class CartItemDetailModel {
   final bool freeShipping;
   final bool isDigital;
   final String? buyerNote;
+  final bool isSmallSupplier;
+  final String? variantId;
+  final String? variantTitle;
+  final Map<String, String>? variantOptions;
 
   CartItemDetailModel({
     required this.productId,
@@ -186,6 +191,7 @@ class CartItemDetailModel {
     required this.createdAt,
     required this.sellerAddress,
     required this.sellerId,
+    required this.sellerName,
     this.status = DeliveryStatusValues.pending,
     this.trackingNumber,
     this.confirmedByBuyer = false,
@@ -201,6 +207,10 @@ class CartItemDetailModel {
     this.freeShipping = false,
     this.isDigital = false,
     this.buyerNote,
+    this.isSmallSupplier = false,
+    this.variantId,
+    this.variantTitle,
+    this.variantOptions,
   });
 
   // Convert Firestore Map to CartItemDetailModel
@@ -215,6 +225,7 @@ class CartItemDetailModel {
       createdAt: _parseTimestamp(map[Fields.createdAt]),
       sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
       sellerId: map[Fields.sellerId] ?? '',
+      sellerName: map[Fields.sellerName] ?? '',
       status: map[Fields.status] ?? DeliveryStatus.pending.value,
       trackingNumber: map[Fields.trackingNumber],
       confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
@@ -236,6 +247,12 @@ class CartItemDetailModel {
       freeShipping: map[Fields.freeShipping] ?? false,
       isDigital: map[Fields.isDigital] ?? false,
       buyerNote: map[Fields.buyerNote] as String?,
+      isSmallSupplier: map[Fields.isSmallSupplier] ?? false,
+      variantId: map[Fields.variantId] as String?,
+      variantTitle: map[Fields.variantTitle] as String?,
+      variantOptions: map[Fields.variantOptions] != null 
+          ? Map<String, String>.from(map[Fields.variantOptions] as Map)
+          : null,
     );
   }
 
@@ -251,6 +268,7 @@ class CartItemDetailModel {
       Fields.createdAt: createdAt,
       Fields.sellerAddress: sellerAddress.toMap(),
       Fields.sellerId: sellerId,
+      Fields.sellerName: sellerName,
       Fields.status: status,
       Fields.trackingNumber: trackingNumber,
       Fields.confirmedByBuyer: confirmedByBuyer,
@@ -266,6 +284,10 @@ class CartItemDetailModel {
       Fields.freeShipping: freeShipping,
       Fields.isDigital: isDigital,
       if (buyerNote != null) Fields.buyerNote: buyerNote,
+      Fields.isSmallSupplier: isSmallSupplier,
+      if (variantId != null) Fields.variantId: variantId,
+      if (variantTitle != null) Fields.variantTitle: variantTitle,
+      if (variantOptions != null) Fields.variantOptions: variantOptions,
     };
   }
 }
@@ -316,11 +338,7 @@ class CartItemModel {
   }
 
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{
-      Fields.quantity: quantity,
-      Fields.productId: productId,
-      Fields.createdAt: createdAt,
-    };
+    final map = <String, dynamic>{Fields.quantity: quantity, Fields.productId: productId, Fields.createdAt: createdAt};
     if (buyerNote != null) map[Fields.buyerNote] = buyerNote;
     if (variantId != null) map[Fields.variantId] = variantId;
     if (variantTitle != null) map[Fields.variantTitle] = variantTitle;
@@ -378,11 +396,7 @@ class CartModel {
   }
 
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{
-      Fields.productId: productId,
-      Fields.quantity: quantity,
-      Fields.createdAt: Timestamp.fromDate(createdAt),
-    };
+    final map = <String, dynamic>{Fields.productId: productId, Fields.quantity: quantity, Fields.createdAt: Timestamp.fromDate(createdAt)};
     if (variantId != null) map[Fields.variantId] = variantId;
     if (variantTitle != null) map[Fields.variantTitle] = variantTitle;
     if (variantOptions != null) map[Fields.variantOptions] = variantOptions;

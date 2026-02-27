@@ -782,7 +782,38 @@ class _OrderSummary extends ConsumerWidget {
                     Text('\$${shippingCost.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                 ],
               ),
-              if (!isCalculating && shippingError == null && shippingCost > 0)
+              if (!isCalculating && shippingError == null && shippingCost > 0) ...[
+                const SizedBox(height: 4),
+                // Per-seller shipping breakdown (FEAT-3)
+                Builder(builder: (context) {
+                  final sellerCosts = ref.watch(checkoutStateProvider.select((s) => s.sellerShippingCosts));
+                  final sellerNames = ref.watch(checkoutStateProvider.select((s) => s.sellerNames));
+                  if (sellerCosts.length <= 1) return const SizedBox.shrink();
+
+                  return Column(
+                    children: sellerCosts.entries.map((entry) {
+                      final name = sellerNames[entry.key] ?? entry.key;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 2, left: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              ' • $name',
+                              style: TextStyle(fontSize: 11, color: DesignTokens.textTertiary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '\$${entry.value.toStringAsFixed(2)}',
+                              style: TextStyle(fontSize: 11, color: DesignTokens.textTertiary),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }),
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
@@ -790,6 +821,7 @@ class _OrderSummary extends ConsumerWidget {
                     style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
                   ),
                 ),
+              ],
               const Divider(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

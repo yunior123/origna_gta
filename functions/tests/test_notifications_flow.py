@@ -48,17 +48,17 @@ class TestPushNotifications:
             Fields.UID: "test_user_2",
             Fields.PUSH_ENABLED: True,
         }
-        
+
         # Mock subcollection tokens
         token_doc1 = MagicMock()
         token_doc1.to_dict.return_value = {"token": "token_A"}
         token_doc2 = MagicMock()
         token_doc2.to_dict.return_value = {"token": "token_B"}
-        
+
         user_ref = mock_db.collection.return_value.document.return_value
         user_ref.get.return_value = user_doc
         user_ref.collection.return_value.stream.return_value = [token_doc1, token_doc2]
-        
+
         mock_response = MagicMock()
         mock_response.success_count = 2
         mock_response.responses = [MagicMock(success=True), MagicMock(success=True)]
@@ -80,23 +80,23 @@ class TestPushNotifications:
         user_doc = MagicMock()
         user_doc.exists = True
         user_doc.to_dict.return_value = {Fields.UID: "test_user_3", Fields.PUSH_ENABLED: True}
-        
+
         token_doc_valid = MagicMock()
         token_doc_valid.to_dict.return_value = {"token": "valid_token"}
         token_doc_valid.reference = MagicMock()
-        
+
         token_doc_stale = MagicMock()
         token_doc_stale.to_dict.return_value = {"token": "stale_token"}
         token_doc_stale.reference = MagicMock()
-        
+
         user_ref = mock_db.collection.return_value.document.return_value
         user_ref.get.return_value = user_doc
         user_ref.collection.return_value.stream.return_value = [token_doc_valid, token_doc_stale]
-        
+
         # Simulate one success, one failure
         mock_response = MagicMock()
         mock_response.success_count = 1
-        
+
         resp_success = MagicMock(success=True)
         resp_fail = MagicMock(success=False, exception=Exception("registration-token-not-registered"))
         mock_response.responses = [resp_success, resp_fail]
@@ -135,7 +135,7 @@ class TestUserPushPreferences:
         # Bypass rate limiter and timestamps for simple check
         with patch("handlers.users.get_server_timestamp", return_value="2026-01-01T00:00:00Z"):
             resp = create_user_profile(req)
-            
+
         assert resp["success"] is True
         user_ref.set.assert_called_once()
         set_data = user_ref.set.call_args[0][0]
@@ -160,6 +160,6 @@ class TestUserPushPreferences:
 
         with patch("handlers.users.get_server_timestamp", return_value="2026-01-01T00:00:00Z"):
             create_user_profile(req)
-            
+
         set_data = user_ref.set.call_args[0][0]
         assert set_data[Fields.PUSH_ENABLED] is True

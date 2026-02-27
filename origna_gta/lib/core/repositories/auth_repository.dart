@@ -7,6 +7,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/services/notification_service.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 /// Returns the device's preferred language if it's one we support (en/fr), else 'en'.
 String _deviceLanguage() {
@@ -21,6 +22,7 @@ abstract class AuthRepository {
   Future<UserCredential> registerWithEmail(String email, String password, String name, {bool marketingOptIn = false});
   Future<void> sendEmailVerification();
   Future<void> sendPasswordResetEmail(String email);
+  Future<UserCredential> signInWithApple();
   Future<UserCredential> signInWithEmail(String email, String password);
   Future<UserCredential> signInWithGoogle();
   Future<void> signOut();
@@ -213,6 +215,26 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<UserCredential> signInWithApple() async {
+    final appleCredential = await SignInWithApple.getAppleIDCredential(scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName]);
+
+    final OAuthCredential credential = OAuthProvider(
+      'apple.com',
+    ).credential(idToken: appleCredential.identityToken, accessToken: appleCredential.authorizationCode);
+
+    final userCredential = await _auth.signInWithCredential(credential);
+
+    // Pass name if provided by Apple (Apple only provides it ONCE on first sign-in)
+    String? fullName;
+    if (appleCredential.givenName != null || appleCredential.familyName != null) {
+      fullName = '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'.trim();
+    }
+
+    await _createUserDocumentIfNeeded(userCredential.user, name: fullName);
+    return userCredential;
+  }
+
+  @override
   Future<UserCredential> signInWithEmail(String email, String password) async {
     final trimmedEmail = email.trim().toLowerCase();
 
@@ -355,11 +377,17 @@ class FirebaseAuthRepository implements AuthRepository {
       // F-81: Pass sign-in provider so backend can stamp the correct consentMethod.
       final providerData = user.providerData;
       final isGoogle = providerData.any((p) => p.providerId == 'google.com');
+      final isApple = providerData.any((p) => p.providerId == 'apple.com');
+
+      String consentMethod = 'signup_form';
+      if (isGoogle) consentMethod = 'google_oauth';
+      if (isApple) consentMethod = 'apple_oauth';
+
       await callable.call<Map<String, dynamic>>({
         Fields.name: name ?? user.displayName ?? 'User',
         Fields.preferredLanguage: _deviceLanguage(),
         Fields.marketingOptIn: marketingOptIn,
-        Fields.consentMethod: isGoogle ? 'google_oauth' : 'signup_form',
+        Fields.consentMethod: consentMethod,
       });
     }
     // If doc already exists, roles are managed server-side by the CF — no direct write here.

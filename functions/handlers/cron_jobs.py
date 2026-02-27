@@ -304,6 +304,7 @@ def _run_auto_capture() -> None:
                     if item.get(Fields.STATUS) == DeliveryStatusValues.SHIPPED:
                         item[Fields.STATUS] = DeliveryStatusValues.DELIVERED
                         item[Fields.DELIVERED_AT] = _now
+                        item[Fields.CONFIRMED_AT] = _now  # Stamp confirmation time
                 transaction.update(
                     _doc.reference,
                     {
@@ -704,9 +705,18 @@ def _run_expired_authorizations() -> None:
             stock_batch = get_db().batch()
             for item in fresh_items:
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-                stock_batch.update(
-                    product_ref, {Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY])}
-                )
+                qty = item[Fields.QUANTITY]
+                stock_patch = {Fields.STOCK_QUANTITY: get_firestore().Increment(qty)}
+                fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID, "")
+                if fulfillment_wh:
+                    stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(qty)
+                stock_batch.update(product_ref, stock_patch)
+                if fulfillment_wh:
+                    inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+                    stock_batch.set(inv_ref, {
+                        Fields.AVAILABLE_QUANTITY: get_firestore().Increment(qty),
+                        Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                    }, merge=True)
             try:
                 stock_batch.commit()
                 stock_restored_ok = True
@@ -886,9 +896,8 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
 
     cutoff_time = datetime.now(UTC) - timedelta(hours=1)
 
-    # Limit and batch delete
     rate_limits = (
-        get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500).stream()
+        get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).stream()
     )
 
     deleted_count = 0
@@ -1042,7 +1051,7 @@ def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
     cutoff_time = datetime.now(UTC) - timedelta(days=BusinessRules.WEBHOOK_EVENT_RETENTION_DAYS)
 
     webhook_docs = (
-        get_db().collection(Collections.WEBHOOK_EVENTS).where(Fields.TIMESTAMP, "<=", cutoff_time).limit(500).stream()
+        get_db().collection(Collections.WEBHOOK_EVENTS).where(Fields.TIMESTAMP, "<=", cutoff_time).stream()
     )
 
     deleted_count = 0
@@ -1082,7 +1091,6 @@ def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
         .collection(Collections.SECURITY_ALERTS)
         .where(Fields.RESOLVED, "==", True)
         .where(Fields.TIMESTAMP, "<=", cutoff_time)
-        .limit(500)
         .stream()
     )
 
@@ -1128,27 +1136,27 @@ def retry_failed_algolia_syncs(event: scheduler_fn.ScheduledEvent) -> None:
     try:
         from services.algolia_service import delete_product as algolia_delete_product
         from services.algolia_service import index_product as algolia_index_product
-    
+
         # Fetch unresolved sync failures (max 50 per run)
         failures = (
             get_db().collection(Collections.ALGOLIA_SYNC_FAILURES).where(Fields.RESOLVED, "==", False).limit(50).stream()
         )
-    
+
         retried = 0
         resolved = 0
         max_retries = BusinessRules.ALGOLIA_DLQ_MAX_RETRIES
-    
+
         for failure_doc in failures:
             failure_data = failure_doc.to_dict()
             product_id = failure_data.get(Fields.PRODUCT_ID)
             action = failure_data.get(Fields.ACTION, AlgoliaActionValues.INDEX)
             retry_count = failure_data.get(Fields.RETRY_COUNT, 0)
-    
+
             if not product_id:
                 failure_doc.reference.update({Fields.RESOLVED: True})
                 resolved += 1
                 continue
-    
+
             # Max retries exceeded — mark as resolved (needs manual intervention)
             if retry_count >= max_retries:
                 failure_doc.reference.update(
@@ -1161,7 +1169,7 @@ def retry_failed_algolia_syncs(event: scheduler_fn.ScheduledEvent) -> None:
                 resolved += 1
                 logger.warning(f"Algolia sync for {product_id} exceeded max retries — marking as resolved")
                 continue
-    
+
             try:
                 if action == AlgoliaActionValues.DELETE:
                     algolia_delete_product(product_id)
@@ -1177,7 +1185,7 @@ def retry_failed_algolia_syncs(event: scheduler_fn.ScheduledEvent) -> None:
                             algolia_index_product(product_id, product_data)
                         else:
                             algolia_delete_product(product_id)
-    
+
                 # Success — resolve the failure
                 failure_doc.reference.update(
                     {
@@ -1197,7 +1205,7 @@ def retry_failed_algolia_syncs(event: scheduler_fn.ScheduledEvent) -> None:
                     }
                 )
                 logger.warning(f"Algolia retry failed for {product_id}: {type(e).__name__}")
-    
+
         logger.info(f"Algolia DLQ retry completed: {retried} retried, {resolved} resolved")
     finally:
         release_cron_lock("retry_failed_algolia_syncs")  # FIX (H3): always release lock
@@ -1223,7 +1231,7 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
     try:
         checked = 0
         deactivated = 0
-    
+
         products = (
             get_db()
             .collection(Collections.PRODUCTS)
@@ -1231,12 +1239,12 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
             .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
             .stream()
         )
-    
+
         for doc in products:
             product_data = doc.to_dict() or {}
             product_id = doc.id
             checked += 1
-    
+
             urls_to_check: list[tuple[str, str]] = []
             book_url = product_data.get(Fields.BOOK_SOURCE_URL)
             if book_url:
@@ -1245,7 +1253,7 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
             for platform, url in builds.items():
                 if url:
                     urls_to_check.append((f"digitalBuilds.{platform}", url))
-    
+
             dead = []
             for label, url in urls_to_check:
                 try:
@@ -1254,7 +1262,7 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
                         dead.append(label)
                 except requests.exceptions.RequestException:
                     dead.append(label)
-    
+
             if dead:
                 reason = f"Download URL(s) became unreachable: {', '.join(dead)}"
                 doc.reference.update(
@@ -1266,11 +1274,11 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
                 # Remove from Algolia
                 try:
                     from services.algolia_service import delete_product as algolia_delete
-    
+
                     algolia_delete(product_id)
                 except (ImportError, RuntimeError, ValueError) as algolia_err:
                     logger.warning(f"Failed to remove product {product_id} from Algolia after URL revalidation: {algolia_err}")
-    
+
                 # Notify seller
                 seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
                 if seller_email:
@@ -1278,10 +1286,10 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
                         _send_product_rejection_email(seller_email, product_data.get(Fields.NAME, ""), reason)
                     except Exception as e:
                         logger.error(f"Failed to email seller for dead URL on {product_id}: {e}")
-    
+
                 deactivated += 1
                 logger.warning(f"Deactivated product {product_id} — dead URLs: {dead}")
-    
+
         logger.info(f"Digital URL revalidation done: {checked} checked, {deactivated} deactivated")
     finally:
         release_cron_lock("revalidate_digital_product_urls")  # CRITICAL FIX (C2): always release lock
@@ -1302,7 +1310,7 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     - stockQuantity <= inventory.lowStockThreshold
     - lastLowStockAlertAt is None OR > 23 hours ago (avoid daily spam)
     """
-    from services.email_service import send_email
+    from services.email_task import enqueue_email_task
 
     logger.info("Running check_low_stock_alerts cron job")
 
@@ -1315,38 +1323,37 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     try:
         alerted_count = 0
         checked_count = 0
-    
-        # Fetch active + approved products in batches of 500
+
+        # Fetch active + approved products
         query = (
             get_db()
             .collection(Collections.PRODUCTS)
             .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
-            .limit(500)
         )
-    
+
         now_utc = datetime.now(UTC)
         alert_cooldown = timedelta(hours=23)
-    
+
         # First pass: collect products needing alerts and unique seller IDs
         products_needing_alert = []
         unique_seller_ids: set = set()
-    
+
         for doc in query.stream():
             checked_count += 1
             data = doc.to_dict() or {}
-    
+
             inventory = data.get(Fields.INVENTORY) or {}
             threshold = inventory.get(Fields.LOW_STOCK_THRESHOLD, 0)
             track_quantity = inventory.get(Fields.TRACK_QUANTITY, True)
-    
+
             # Skip if seller hasn't opted in (threshold=0) or tracking is disabled
             if not threshold or not track_quantity:
                 continue
-    
+
             stock = data.get(Fields.STOCK_QUANTITY, 0)
             if stock > threshold:
                 continue
-    
+
             # Check cooldown — don't re-alert within 23 hours
             last_alert = data.get(Fields.LAST_LOW_STOCK_ALERT_AT)
             if last_alert:
@@ -1356,14 +1363,14 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
                     last_alert = None
             if last_alert and (now_utc - last_alert) < alert_cooldown:
                 continue
-    
+
             seller_id = data.get(Fields.SELLER_ID)
             if not seller_id:
                 continue
-    
+
             products_needing_alert.append((doc, data, stock, threshold))
             unique_seller_ids.add(seller_id)
-    
+
         # Batch-read all seller docs to avoid N+1
         seller_data_map: dict = {}
         if unique_seller_ids:
@@ -1371,18 +1378,18 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
             for seller_snap in get_db().get_all(seller_refs):
                 if seller_snap.exists:
                     seller_data_map[seller_snap.id] = seller_snap.to_dict() or {}
-    
+
         # Second pass: send low stock alert emails
         for doc, data, stock, threshold in products_needing_alert:
             seller_id = data.get(Fields.SELLER_ID)
             seller_info = seller_data_map.get(seller_id)
             if not seller_info:
                 continue
-    
+
             seller_email = seller_info.get(Fields.EMAIL)
             if not seller_email:
                 continue
-    
+
             product_name = data.get(Fields.NAME, "Your product")
             subject = f"[Origna] Low stock alert: {product_name}"
             html = f"""
@@ -1409,15 +1416,21 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
         Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}
       </p>
     </div>"""
-    
+
             try:
-                send_email(seller_email, subject, html)
+                enqueue_email_task(
+                    to_email=seller_email,
+                    subject=subject,
+                    html_content=html,
+                    event_type="low_stock_alert",
+                    id_params={"product_id": doc.id}
+                )
                 get_db().collection(Collections.PRODUCTS).document(doc.id).update({Fields.LAST_LOW_STOCK_ALERT_AT: now_utc})
                 alerted_count += 1
                 logger.info(f"Low stock alert sent for product {doc.id} (stock={stock}, threshold={threshold})")
             except Exception as e:
                 logger.error(f"Failed to send low stock alert for {doc.id}: {e}")
-    
+
         logger.info(f"check_low_stock_alerts done: {checked_count} checked, {alerted_count} alerted")
     finally:
         release_cron_lock("check_low_stock_alerts")  # FIX (H3): always release lock
@@ -1435,7 +1448,7 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
     - lastCartAbandonEmailAt is None OR > 72h ago (3-day cooldown)
     - Skip users whose cart items are all deactivated/deleted
     """
-    from services.email_service import send_email
+    from services.email_task import enqueue_email_task
 
     logger.info("Running send_abandoned_cart_emails cron job")
 
@@ -1451,7 +1464,7 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
         skipped_count = 0
 
         # Fetch users who opted into marketing and haven't been emailed in 3 days
-        users_query = get_db().collection(Collections.USERS).where(Fields.MARKETING_OPT_IN, "==", True).limit(500)
+        users_query = get_db().collection(Collections.USERS).where(Fields.MARKETING_OPT_IN, "==", True)
 
         for user_doc in users_query.stream():
             user_data = user_doc.to_dict() or {}
@@ -1514,30 +1527,66 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
                 if len(cart_items) > len(active_product_names)
                 else ""
             )
+            from services.email_service import APP_BASE_URL, _email_wrapper
+
             display_name = user_data.get(Fields.NAME) or "there"
-            subject = "You left something in your cart — Origna"
-            html = f"""
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-  <h2 style="color: #5B30F6;">Your cart is waiting 🛒</h2>
-  <p>Hi {display_name},</p>
-  <p>You have items in your cart that are still available:</p>
-  <ul style="margin:12px 0; padding-left:20px;">
-    {product_list_html}
-  </ul>
-  {f'<p style="color:#666; font-size:13px;">{more_label}</p>' if more_label else ""}
-  <p style="margin-top:20px;">
-    <a href="{APP_BASE_URL}/cart" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
-      Complete your purchase
-    </a>
-  </p>
-  <p style="color:#999; font-size:12px; margin-top:24px;">
-    You are receiving this reminder because you opted in to marketing emails.<br>
-    <a href="{APP_BASE_URL}/settings/notifications" style="color:#999;">Unsubscribe</a> · Origna Ventures Inc.
-  </p>
-</div>"""
+            lang = user_data.get(Fields.PREFERRED_LANGUAGE, "en")
+
+            if lang == "fr":
+                subject = "Votre panier vous attend — Origna"
+                content_html = f"""
+                <tr><td style="padding: 32px 40px 24px 40px;">
+                  <h2 style="color: #1a1a2e; margin-top: 0; font-size: 20px;">Votre panier vous attend 🛒</h2>
+                  <p style="color: #555; font-size: 15px;">Bonjour {display_name},</p>
+                  <p style="color: #555; font-size: 15px;">Vous avez des articles dans votre panier qui sont encore disponibles :</p>
+                  <ul style="margin:16px 0; padding-left:24px; color: #1a1a2e; font-weight: 500; line-height: 1.6;">
+                    {product_list_html}
+                  </ul>
+                  {f'<p style="color:#888; font-size:13px; font-style: italic;">{more_label}</p>' if more_label else ""}
+                  <div style="margin-top:32px; text-align: center;">
+                    <a href="{APP_BASE_URL}/cart" style="background: linear-gradient(135deg, #667EEA, #764BA2); color:#fff; padding:12px 28px; border-radius:8px; text-decoration:none; font-weight:700; display: inline-block;">
+                      Compléter mon achat
+                    </a>
+                  </div>
+                </td></tr>
+                """
+                title = "Votre panier vous attend"
+            else:
+                subject = "You left something in your cart — Origna"
+                content_html = f"""
+                <tr><td style="padding: 32px 40px 24px 40px;">
+                  <h2 style="color: #1a1a2e; margin-top: 0; font-size: 20px;">Your cart is waiting 🛒</h2>
+                  <p style="color: #555; font-size: 15px;">Hi {display_name},</p>
+                  <p style="color: #555; font-size: 15px;">You have items in your cart that are still available:</p>
+                  <ul style="margin:16px 0; padding-left:24px; color: #1a1a2e; font-weight: 500; line-height: 1.6;">
+                    {product_list_html}
+                  </ul>
+                  {f'<p style="color:#888; font-size:13px; font-style: italic;">{more_label}</p>' if more_label else ""}
+                  <div style="margin-top:32px; text-align: center;">
+                    <a href="{APP_BASE_URL}/cart" style="background: linear-gradient(135deg, #667EEA, #764BA2); color:#fff; padding:12px 28px; border-radius:8px; text-decoration:none; font-weight:700; display: inline-block;">
+                      Complete your purchase
+                    </a>
+                  </div>
+                </td></tr>
+                """
+                title = "Your cart is waiting"
+
+            html = _email_wrapper(
+                title=title,
+                content=content_html,
+                include_gst=False,
+                lang=lang,
+                recipient_email=user_email
+            )
 
             try:
-                send_email(user_email, subject, html)
+                enqueue_email_task(
+                    to_email=user_email,
+                    subject=subject,
+                    html_content=html,
+                    event_type="abandoned_cart",
+                    user_id=user_id
+                )
                 get_db().collection(Collections.USERS).document(user_id).update(
                     {Fields.LAST_CART_ABANDON_EMAIL_AT: now_utc}
                 )
@@ -1605,29 +1654,28 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
         window_start = now_utc - timedelta(days=30)
         processed_count = 0
         alerted_count = 0
-    
+
         DISPUTE_THRESHOLD = BusinessRules.SELLER_DISPUTE_RATE_THRESHOLD
         REFUND_THRESHOLD = BusinessRules.SELLER_REFUND_RATE_THRESHOLD
         CANCEL_THRESHOLD = BusinessRules.SELLER_CANCEL_RATE_THRESHOLD
-    
+
         # Get all sellers
-        sellers_query = get_db().collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.SELLER).limit(500)
-    
+        sellers_query = get_db().collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.SELLER)
+
         for seller_doc in sellers_query.stream():
             seller_id = seller_doc.id
-    
+
             # Fetch orders containing at least one item from this seller
             orders_query = (
                 get_db()
                 .collection(Collections.ORDERS)
                 .where(Fields.SELLER_IDS, "array_contains", seller_id)
                 .where(Fields.CREATED_AT, ">=", window_start)
-                .limit(500)
             )
-    
+
             orders = list(orders_query.stream())
             total_orders = len(orders)
-    
+
             if total_orders == 0:
                 # Write zero-metrics doc (no alert)
                 get_db().collection(Collections.SELLER_METRICS).document(seller_id).set(
@@ -1645,7 +1693,7 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                 )
                 processed_count += 1
                 continue
-    
+
             # Tally metrics with item-level isolation
             disputed_orders = 0
             refunded_items = 0
@@ -1653,29 +1701,29 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
             late_shipped_items = 0
             total_seller_items = 0
             total_revenue_cents = 0
-    
+
             for order_doc in orders:
                 od = order_doc.to_dict() or {}
-    
+
                 # Dispute is order-level — if order has dispute, all sellers are affected
                 if od.get(Fields.HAS_DISPUTE):
                     disputed_orders += 1
-    
+
                 # Isolate items for this seller
                 items = od.get(Fields.ITEMS, [])
                 for item in items:
                     if item.get(Fields.SELLER_ID) == seller_id:
                         total_seller_items += 1
                         item_status = item.get(Fields.STATUS)
-    
+
                         if item_status == DeliveryStatusValues.REFUNDED:
                             refunded_items += 1
-    
+
                         # Cancellation: if order was cancelled by seller or item is cancelled
                         # (Note: OrderStatusValues.CANCELLED is order-level)
                         if od.get(Fields.ORDER_STATUS) == OrderStatusValues.CANCELLED:
                             cancelled_items += 1
-    
+
                         # Late shipment: check item-level shippedAt
                         shipped_at = item.get(Fields.SHIPPED_AT)
                         created_at = od.get(Fields.CREATED_AT)
@@ -1687,19 +1735,19 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                                 created_at = created_at.replace(tzinfo=UTC)
                             if (shipped_at - created_at).days > est_days:
                                 late_shipped_items += 1
-    
+
                 # Revenue: extract seller's portion from payout snapshot
                 payouts = od.get(Fields.SELLER_PAYOUTS) or []
                 for payout in payouts:
                     if isinstance(payout, dict) and payout.get(Fields.SELLER_ID) == seller_id:
                         total_revenue_cents += payout.get(Fields.SELLER_AMOUNT_CENTS, 0)
-    
+
             # Calculate rates based on isolated totals
             dispute_rate = disputed_orders / total_orders
             refund_rate = refunded_items / total_seller_items if total_seller_items > 0 else 0
             cancel_rate = cancelled_items / total_seller_items if total_seller_items > 0 else 0
             late_rate = late_shipped_items / total_seller_items if total_seller_items > 0 else 0
-    
+
             # Write metrics
             get_db().collection(Collections.SELLER_METRICS).document(seller_id).set(
                 {
@@ -1715,7 +1763,7 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                 }
             )
             processed_count += 1
-    
+
             # Check threshold breaches
             breaches = []
             if dispute_rate > DISPUTE_THRESHOLD:
@@ -1724,7 +1772,7 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                 breaches.append(f"refundRate={refund_rate:.1%}")
             if cancel_rate > CANCEL_THRESHOLD:
                 breaches.append(f"cancellationRate={cancel_rate:.1%}")
-    
+
             if breaches:
                 # FIX (H1): Deduplicate — only create a new alert if no unresolved
                 # SELLER_METRICS_BREACH alert already exists for this seller.
@@ -1755,9 +1803,9 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                     logger.warning("Seller %s metrics breach: %s", seller_id, ", ".join(breaches))
                 else:
                     logger.info(f"Seller {seller_id} metrics breach already alerted (unresolved alert exists)")
-    
+
         logger.info(f"compute_seller_metrics done: {processed_count} sellers processed, {alerted_count} alerts raised")
-    
+
     finally:
         release_cron_lock("compute_seller_metrics")  # FIX (H1): always release lock
 
@@ -1922,7 +1970,8 @@ def send_premium_renewal_reminders(event: scheduler_fn.ScheduledEvent) -> None:
     try:
         from datetime import UTC, datetime, timedelta
 
-        from services.email_service import get_premium_renewal_reminder_email, send_email
+        from services.email_service import get_premium_renewal_reminder_email
+        from services.email_task import enqueue_email_task
 
         db = get_db()
         now = datetime.now(UTC)
@@ -1973,7 +2022,13 @@ def send_premium_renewal_reminders(event: scheduler_fn.ScheduledEvent) -> None:
                     subj_fr = f"Votre Origna Premium se renouvelle dans {days_ahead} jour{'s' if days_ahead > 1 else ''}"
                     subject = subj_fr if lang == "fr" else subj_en
 
-                    send_email(to_email=recipient_email, subject=subject, html_content=html_body)
+                    enqueue_email_task(
+                        to_email=recipient_email,
+                        subject=subject,
+                        html_content=html_body,
+                        event_type="premium_renewal_reminder",
+                        user_id=uid
+                    )
 
                     # Mark reminder as sent to prevent re-sending in next run
                     db.collection(Collections.SUBSCRIPTIONS).document(uid).update(

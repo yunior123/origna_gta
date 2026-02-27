@@ -38,6 +38,8 @@ class CheckoutAlreadyProcessed extends CheckoutResult {
 class CheckoutState {
   final Address? address;
   final double baseShippingCost; // Base shipping before delivery speed surcharge
+  final Map<String, double> sellerShippingCosts; // Breakdown per seller
+  final Map<String, String> sellerNames; // Seller names for display
   final DeliverySpeed deliverySpeed;
   final List<DeliverySpeed> availableDeliverySpeeds;
   final bool isLocalDelivery; // Within ~50km of seller
@@ -59,6 +61,8 @@ class CheckoutState {
   const CheckoutState({
     this.address,
     this.baseShippingCost = 0.0,
+    this.sellerShippingCosts = const {},
+    this.sellerNames = const {},
     this.deliverySpeed = DeliverySpeed.standard,
     this.availableDeliverySpeeds = const [DeliverySpeed.standard],
     this.isLocalDelivery = false,
@@ -90,6 +94,8 @@ class CheckoutState {
   CheckoutState copyWith({
     Address? address,
     double? baseShippingCost,
+    Map<String, double>? sellerShippingCosts,
+    Map<String, String>? sellerNames,
     DeliverySpeed? deliverySpeed,
     List<DeliverySpeed>? availableDeliverySpeeds,
     bool? isLocalDelivery,
@@ -114,6 +120,8 @@ class CheckoutState {
     return CheckoutState(
       address: address ?? this.address,
       baseShippingCost: baseShippingCost ?? this.baseShippingCost,
+      sellerShippingCosts: sellerShippingCosts ?? this.sellerShippingCosts,
+      sellerNames: sellerNames ?? this.sellerNames,
       deliverySpeed: deliverySpeed ?? this.deliverySpeed,
       availableDeliverySpeeds: availableDeliverySpeeds ?? this.availableDeliverySpeeds,
       isLocalDelivery: isLocalDelivery ?? this.isLocalDelivery,

@@ -131,7 +131,7 @@ void main() {
         'name': 'Product with Flags',
         'price': 12.99,
         'categoryId': 7,
-        'isActive': false,
+        'lifecycleStatus': 'inactive', // isActive replaced by lifecycleStatus
         'freeShipping': true,
         'isPerishable': true,
         'isLocalDeliveryOnly': true,
@@ -141,7 +141,7 @@ void main() {
       final result = AlgoliaService.hitToProductMap(hit);
 
       // Assert
-      expect(result['isActive'], false);
+      expect(result['lifecycleStatus'], 'inactive'); // isActive replaced by lifecycleStatus
       expect(result['freeShipping'], true);
       expect(result['isPerishable'], true);
       expect(result['isLocalDeliveryOnly'], true);

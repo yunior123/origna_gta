@@ -1665,36 +1665,36 @@ class TestChatMessaging:
         # Setup mock DB
         chat_id = "prod123_buyer123"
         message_id = "msg_abc123"
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         # Mock chat thread
         chat_doc = make_mock_doc({"buyerId": "buyer123", "sellerId": "seller123"})
         mock_db.collection.return_value.document.return_value.get.return_value = chat_doc
-        
+
         # Mock rate limiter Check
         with patch("services.rate_limiter.RateLimiter.check_rate_limit", return_value=(True, "OK")):
             # Mock sender profile
             sender_doc = make_mock_doc({"name": "Test Buyer"})
-            
+
             # Setup the collection path for message checking
             mock_msgs_coll = MagicMock()
             mock_db.collection.return_value.document.return_value.collection.return_value = mock_msgs_coll
-            
+
             # Message DOES exist (idempotent case)
             mock_existing_msg_ref = MagicMock()
             mock_existing_msg_doc = make_mock_doc(data={}, exists=True, doc_id=message_id)
             mock_existing_msg_ref.get.return_value = mock_existing_msg_doc
             mock_existing_msg_ref.id = message_id
-            
+
             mock_msgs_coll.document.return_value = mock_existing_msg_ref
 
             req = make_mock_request(uid="buyer123", data={"chatId": chat_id, "text": "Hello seller", "messageId": message_id})
-            
+
             # Call handler
             result = send_message(req)
-            
+
             # Should return success True and messageId without re-writing
             assert result["success"] is True
             assert result["messageId"] == message_id
@@ -1714,16 +1714,17 @@ class TestWarehouseManagement:
     def test_delete_warehouse_blocked_by_stock(self, mock_get_db):
         """Scenario 114: Cannot delete a warehouse if any product has stock there."""
         from firebase_functions.https_fn import HttpsError
+
         from handlers.products import delete_warehouse
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         # Mock warehouse exists
         mock_wh_doc = make_mock_doc({}, exists=True)
         # We need mock_db.collection(Users).document(seller).collection(Wh).document(wh).get()
         # and mock_db.collection(Products).where...
-        
+
         def mock_collection_call(name):
             coll = MagicMock()
             if name == "users":
@@ -1732,18 +1733,18 @@ class TestWarehouseManagement:
                 # Returns products with the warehouse
                 pdoc = make_mock_doc({"name": "Test Product", "warehouseStock": {"wh_123": 10}})
                 coll.where.return_value.where.return_value.limit.return_value.get.return_value = [pdoc]
-                
+
                 # Mock the inventoryLevels subcollection check
                 inv_doc = make_mock_doc({"availableQuantity": 0})
                 coll.document.return_value.collection.return_value.document.return_value.get.return_value = inv_doc
             elif name == "orders":
                 coll.where.return_value.where.return_value.limit.return_value.get.return_value = []
             return coll
-            
+
         mock_db.collection.side_effect = mock_collection_call
 
         req = make_mock_request(uid="seller_123", data={"warehouseId": "wh_123"})
-        
+
         with pytest.raises(HttpsError) as exc_info:
             delete_warehouse(req)
         assert exc_info.value.code == "failed-precondition"

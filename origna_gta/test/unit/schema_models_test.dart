@@ -316,7 +316,7 @@ void main() {
       expect(PaymentStatus.awaitingPayment.name, 'awaitingPayment');
       expect(PaymentStatus.paid.name, 'paid');
       expect(PaymentStatus.disputed.name, 'disputed');
-      expect(PaymentStatus.values.length, 14);
+      expect(PaymentStatus.values.length, 16); // cancelling, expiring, partiallyRefunded, voided added
     });
 
     test('DeliveryStatus values', () {

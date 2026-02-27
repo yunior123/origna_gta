@@ -1,6 +1,7 @@
 ---
 name: rival-agent
-description: Competitive intelligence agent. Fetches known features, patterns, and UX flows from Amazon, AliExpress, Shopify, eBay, Etsy, Walmart, Temu, Shein, Mercado Libre, Wish, Rakuten, Instacart and Flipkart — then compares against our app to suggest critical fixes and high-value features.
+description: Competitive intelligence agent. Fetches known features, patterns, and UX flows from Amazon, AliExpress, Shopify, eBay, Etsy, Walmart, Temu, Shein, Mercado Libre, Wish, Rakuten, Instacart and Flipkart — then compares against our app to suggest critical fixes and high-value features. Github repos for open source e-commerce like Spree, Saleor, Reaction Commerce, Medusa, Vendure, Sylius, Bagisto, OpenCart, WooCommerce, Magento, PrestaShop, nopCommerce, osCommerce, Zen Cart can be analyzed thoroughly for backend logic, frontend logic and data models. Focus on actionable insights that can be implemented within 1-2 sprints.
+argument-hint: "Run this agent to get a comprehensive competitive analysis report."
 tools: Read, Grep, Glob, Bash, WebSearch
 model: opus
 memory: project
@@ -9,7 +10,7 @@ memory: project
 # Rival Agent — Competitive Intelligence
 
 ## Mission
-Compare our e-commerce app against 12 major platforms to find bugs in our logic, missing standard features, and UX gaps. Focus on ACTIONABLE findings — things we can implement that will meaningfully improve the app.
+Compare our e-commerce app against major platforms to find bugs in our logic, missing standard features, and UX gaps. Focus on ACTIONABLE findings — things we can implement that will meaningfully improve the app.
 
 ## Target Platforms
 1. **Amazon** — gold standard for product detail, reviews, Q&A, checkout

@@ -80,6 +80,7 @@ abstract final class ApiKeys {
   static const checkoutUrl = 'checkoutUrl';
   static const sessionId = 'sessionId';
   static const url = 'url';
+  static const downloadUrl = 'downloadUrl';
   static const secret = 'secret';
   static const qrCodeUrl = 'qrCodeUrl';
   static const provisioningUri = 'provisioning_uri';
@@ -104,6 +105,9 @@ abstract final class ApiKeys {
   static const requested = 'requested';
   static const available = 'available';
   static const productName = 'productName';
+  static const productData = 'productData';
+  static const images = 'images';
+  static const testImageUrls = 'testImageUrls';
 
   // === PAYMENT PROVIDER RESPONSE KEYS ===
   static const supportedCurrencies = 'supportedCurrencies';
@@ -131,7 +135,7 @@ abstract final class ApiKeys {
 abstract final class BusinessRules {
   static const platformFeePercent = 2.5;
   static const autoConfirmDays = 5; // Must be < authorizationExpiryDays (2-day safety margin)
-  static const authorizationExpiryDays = 7;
+  static const authorizationExpiryDays = 6; // 6-day cutoff gives 24h safety margin before Stripe auto-voids at day 7
   static const returnWindowDays = 7; // No returns/refunds after 7 days post-delivery
   static const maxCaptureAttempts = 3;
   static const defaultCurrency = 'cad';
@@ -166,6 +170,14 @@ abstract final class BusinessRules {
     'SK': {'GST': 5.0, 'PST': 6.0},
     'YT': {'GST': 5.0},
   };
+}
+
+abstract final class CancellationReasonValues {
+  static const buyerRequested = 'requested_by_customer';
+  static const sellerCancelled = 'seller_cancelled';
+  static const shippingRejected = 'Buyer rejected shipping cost';
+  static const paymentFailed = 'payment_failed';
+  static const expired = 'authorization_expired';
 }
 
 /// Normalized shipping carrier identifiers
@@ -290,6 +302,7 @@ abstract final class CloudFunctionEndpoints {
 
   // === USER PROFILE ENDPOINTS ===
   static const updateNotificationPreferences = 'update_notification_preferences';
+  static const cleanupFcmToken = 'cleanup_fcm_token'; // T-3: FCM token cleanup on logout
 
   // === SELLER ENDPOINTS ===
   static const createStripeLoginLink = 'create_stripe_login_link';
@@ -356,6 +369,10 @@ abstract final class Collections {
   static const sellerProfiles = 'seller_profiles'; // Seller-only profile data
   static const sellerSkus = 'seller_skus'; // Collision docs for atomic SKU uniqueness
 
+  // Email infrastructure (backend-only — never accessed from client)
+  static const mailLogs = '_mail_logs'; // Transactional email delivery audit log
+  static const pendingRedemptions = 'pending_redemptions'; // Pending coupon/gift card redemption records
+
   // Return tracking
   static const returnRequests = 'return_requests';
 
@@ -375,8 +392,10 @@ abstract final class ConsentMethodValues {
   static const checkbox = 'checkbox';
   static const doubleOptIn = 'double_opt_in';
   static const implied = 'implied';
+  static const userPreference = 'user_preference';
+  static const unsubscribe = 'unsubscribe';
 
-  static const all = {signup, checkbox, doubleOptIn, implied};
+  static const all = {signup, checkbox, doubleOptIn, implied, userPreference, unsubscribe};
 }
 
 /// Valid values for country fields
@@ -491,16 +510,16 @@ abstract final class ErrorCodeValues {
 }
 
 // =============================================================================
+// EMAIL & COMPLIANCE CONFIGURATION
+// =============================================================================
+
+// =============================================================================
 // EXTERNAL URLS — centralised to avoid magic strings
 // =============================================================================
 
 abstract final class ExternalUrls {
   static const stripeDashboard = 'https://dashboard.stripe.com/express';
 }
-
-// =============================================================================
-// EMAIL & COMPLIANCE CONFIGURATION
-// =============================================================================
 
 /// Firestore document field names.
 ///
@@ -1076,7 +1095,12 @@ abstract final class Fields {
   // === N-11: Subcategories ===
   static const subcategory = 'subcategory';
   static const condition = 'condition'; // Product condition: new|like_new|good|fair|for_parts
+  static const isSmallSupplier = 'isSmallSupplier';
 }
+
+// =============================================================================
+// BUSINESS CONSTANTS
+// =============================================================================
 
 /// Filter sentinel values — special values used in query filters to mean "no filter"
 abstract final class FilterValues {
@@ -1084,24 +1108,20 @@ abstract final class FilterValues {
   static const all = 'all';
 }
 
+// =============================================================================
+// CATEGORY IDS
+// =============================================================================
+
 /// Geographic constants
 abstract final class GeoValues {
   static const countryCanada = 'Canada';
 }
-
-// =============================================================================
-// BUSINESS CONSTANTS
-// =============================================================================
 
 /// Language preference defaults (ISO 639-1 codes)
 abstract final class LanguageValues {
   static const english = 'en';
   static const french = 'fr';
 }
-
-// =============================================================================
-// CATEGORY IDS
-// =============================================================================
 
 /// Valid values for license status field
 abstract final class LicenseStatusValues {
@@ -1129,8 +1149,9 @@ abstract final class NotificationTypes {
   static const returnRequest = 'return_request';
   static const returnStatus = 'return_status';
   static const backInStock = 'back_in_stock';
+  static const refundIssued = 'refund_issued';
 
-  static const all = {orderStatus, orderUpdate, newMessage, promo, system, account, returnRequest, returnStatus, backInStock};
+  static const all = {orderStatus, orderUpdate, newMessage, promo, system, account, returnRequest, returnStatus, backInStock, refundIssued};
 }
 
 // =============================================================================
@@ -1152,6 +1173,10 @@ abstract final class OrderEventTypes {
   static const cancellationConfirmed = 'cancellation_confirmed';
   static const noteAdded = 'note_added';
   static const autoConfirmed = 'auto_confirmed';
+  static const orderConfirmedBuyer = 'order_confirmed_buyer';
+  static const orderConfirmedSeller = 'order_confirmed_seller';
+  static const disputeCreated = 'dispute_created';
+  static const disputeResolved = 'dispute_resolved';
 }
 
 /// Special values for itemId parameter in updateItemStatus.
@@ -1187,11 +1212,11 @@ abstract final class OrderStatusValues {
     processing: [shipped, cancelled],
     shipped: [inTransit, delivered],
     inTransit: [delivered, cancelled],
-    delivered: [disputed, refunded, partiallyRefunded],
+    delivered: [disputed], // Must dispute first; refund is resolved via disputed state
     cancelled: [], // Terminal
     failed: [pending], // Retry
     expired: [pending], // Retry
-    disputed: [refunded, partiallyRefunded], // Resolved via payment refund
+    disputed: [], // Terminal via Stripe webhook only — resolved by charge.refunded or dispute.closed events
     refunded: [], // Terminal
     partiallyRefunded: [], // Terminal
   };
@@ -1349,6 +1374,14 @@ abstract final class ProvinceCodeValues {
   };
 }
 
+abstract final class RefundReasonValues {
+  static const returnApproved = 'Return approved';
+  static const outOfStock = 'item_out_of_stock';
+  static const buyerRequested = 'requested_by_customer';
+  static const damaged = 'item_damaged';
+  static const incorrectItem = 'incorrect_item';
+}
+
 /// Firebase RemoteConfig keys
 abstract final class RemoteConfigKeys {
   static const algoliaAppId = 'algolia_app_id';
@@ -1487,20 +1520,100 @@ abstract final class SubcategoryConstants {
   }
 }
 
-abstract final class SubscriptionStatusValues {
-  static const active = 'active';
-  static const canceled = 'canceled';
-  static const pastDue = 'past_due';
-  static const incomplete = 'incomplete';
-  static const incompleteExpired = 'incomplete_expired';
-  static const trialing = 'trialing';
-  static const unpaid = 'unpaid';
+/// Stripe API specific constants to avoid magic strings
+abstract final class StripeConstants {
+  static const reverseCharge = 'reverse_charge';
+  static const shippingReference = 'shipping';
+  static const taxExemptNone = 'none';
+  static const addressSourceShipping = 'shipping';
+  static const addressSource = 'address_source';
+  static const value = 'value';
 
-  /// Statuses that grant premium access
-  static const inactive = 'inactive'; // Internal: no subscription doc exists
-  static const premiumActive = {active, trialing};
+  // Session / Intent modes & statuses
+  static const modePayment = 'payment';
+  static const paymentMethodCard = 'card';
+  static const statusPaid = 'paid';
+  static const statusSucceeded = 'succeeded';
+  static const statusRequiresCapture = 'requires_capture';
+  static const accountTypeExpress = 'express';
+  static const typeAccountOnboarding = 'account_onboarding';
+  static const amount = 'amount';
+  static const reason = 'reason';
+
+  // Line item keys (Checkout Sessions / Invoices)
+  static const priceData = 'price_data';
+  static const productData = 'product_data';
+  static const unitAmount = 'unit_amount';
+  static const currency = 'currency';
+  static const quantity = 'quantity';
+  static const images = 'images';
+  static const taxCode = 'tax_code';
+  static const description = 'description';
+  static const name = 'name';
+
+  // Metadata keys
+  static const metadataOrderId = 'order_id';
+  static const metadataUserId = 'user_id';
+
+  // Stripe Tax Calculation keys (Stripe Tax API specifically uses these names)
+  static const taxCalcAmount = 'amount';
+  static const taxCalcReference = 'reference';
+  static const taxCalcTaxCode = 'tax_code';
+
+  // Customer details keys
+  static const customerTaxId = 'tax_id';
+  static const customerTaxExempt = 'tax_exempt';
+  static const customerEmail = 'customer_email';
+
+  // Stripe Event object keys
+  static const objectId = 'id';
+  static const data = 'data';
+  static const object = 'object';
+  static const metadata = 'metadata';
+  static const paymentIntent = 'payment_intent';
+  static const paymentIntentData = 'payment_intent_data';
+  static const paymentStatus = 'payment_status';
+  static const subscription = 'subscription';
+  static const charge = 'charge';
+  static const created = 'created';
+
+  // Stripe Tax types to internal tax labels
+  static const taxTypeMap = {
+    'gst_hst': 'GST',
+    'gst': 'GST',
+    'hst': 'HST',
+    'pst': 'PST',
+    'qst': 'QST',
+    'rst': 'PST',
+  };
 }
 
+/// Stripe webhook event types
+abstract final class StripeEventTypes {
+  static const checkoutCompleted = 'checkout.session.completed';
+  static const asyncPaymentSucceeded = 'checkout.session.async_payment_succeeded';
+  static const asyncPaymentFailed = 'checkout.session.async_payment_failed';
+  static const sessionExpired = 'checkout.session.expired';
+  static const paymentIntentSucceeded = 'payment_intent.succeeded';
+  static const paymentIntentPaymentFailed = 'payment_intent.payment_failed';
+  static const paymentIntentCanceled = 'payment_intent.canceled';
+  static const chargeRefunded = 'charge.refunded';
+  static const disputeCreated = 'charge.dispute.created';
+  static const disputeUpdated = 'charge.dispute.updated';
+  static const disputeClosed = 'charge.dispute.closed';
+  static const disputeFundsReinstated = 'charge.dispute.funds_reinstated';
+  static const transferReversed = 'transfer.reversed';
+  static const payoutFailed = 'payout.failed';
+  static const refundFailed = 'refund.failed';
+  static const accountUpdated = 'account.updated';
+  static const subscriptionCreated = 'customer.subscription.created';
+  static const subscriptionUpdated = 'customer.subscription.updated';
+  static const subscriptionDeleted = 'customer.subscription.deleted';
+  static const invoicePaymentFailed = 'invoice.payment_failed';
+  static const invoicePaid = 'invoice.paid';
+}
+
+/// Valid values for supplier currency — mirrors Python SupplierCurrencyValues
 abstract final class SupplierCurrencyValues {
   static const cad = 'CAD';
   static const usd = 'USD';
@@ -1586,6 +1699,11 @@ abstract final class SupplierTypeValues {
   static const international = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping};
 }
 
+abstract final class TransactionSentinel {
+  static const alreadyRefunded = 'already_refunded';
+  static const refunded = 'refunded';
+}
+
 /// User-facing UI messages
 abstract final class UIMessages {
   static const sessionExpired = 'Session expired due to inactivity. Please login again.';
@@ -1595,6 +1713,21 @@ abstract final class UIMessages {
 // =============================================================================
 // N-11: SUBCATEGORIES — Maps categoryId to list of subcategory names
 // =============================================================================
+
+/// Stripe subscription status values
+abstract final class SubscriptionStatusValues {
+  static const active = 'active';
+  static const canceled = 'canceled';
+  static const inactive = 'inactive';
+  static const pastDue = 'past_due';
+  static const incomplete = 'incomplete';
+  static const incompleteExpired = 'incomplete_expired';
+  static const trialing = 'trialing';
+  static const unpaid = 'unpaid';
+
+  static const all = [active, canceled, inactive, pastDue, incomplete, incompleteExpired, trialing, unpaid];
+  static const premiumActive = {active, trialing};
+}
 
 /// Valid values for roles array
 abstract final class UserRoleValues {

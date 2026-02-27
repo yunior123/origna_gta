@@ -19,6 +19,7 @@ from schema_constants import (
     Fields,
     UserRoleValues,
 )
+from services.rate_limiter import RateLimiter
 from utils.db import get_db, get_firestore
 from utils.function_options import DEFAULT_OPTIONS
 from utils.helpers import create_success_response
@@ -81,6 +82,19 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     user_id = req.auth.uid
     data = req.data
+
+    # S-04 FIX: Rate limit coupon code attempts
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id,
+        action="apply_coupon",
+        max_requests=20,
+        window_minutes=60,
+        fail_closed=False,
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", "Too many coupon attempts. Please try again later.")
+
     code_raw = data.get(Fields.COUPON_CODE, "")
     cart_subtotal_cents = data.get(ApiKeys.CART_SUBTOTAL_CENTS)
     seller_ids = data.get(Fields.SELLER_IDS) or []

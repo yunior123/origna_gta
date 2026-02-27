@@ -89,16 +89,16 @@ class TestPaymentSecurity(unittest.TestCase):
 
         # Create default mock db and rate limiter for all tests
         self.mock_db = MagicMock()
-        
+
         # Default mock documents for user and seller
         mock_user = MagicMock()
         mock_user.exists = True
         mock_user.to_dict.return_value = {"suspended": False, "roles": ["buyer"]}
-        
+
         mock_seller = MagicMock()
         mock_seller.exists = True
         mock_seller.to_dict.return_value = {"suspended": False, "roles": ["seller"]}
-        
+
         mock_seller_profile = MagicMock()
         mock_seller_profile.exists = True
         mock_seller_profile.to_dict.return_value = {
@@ -106,7 +106,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "chargesEnabled": True,
             "payoutsEnabled": True,
         }
-        
+
         # We need a default product mock too so other tests don't break if they rely on the default
         mock_default_product = MagicMock()
         mock_default_product.exists = True
@@ -116,7 +116,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "lifecycleStatus": "active",
             "stockQuantity": 10,
         }
-        
+
         def mock_collection(name):
             mock_coll = MagicMock()
             def mock_document(doc_id=None):
@@ -136,9 +136,9 @@ class TestPaymentSecurity(unittest.TestCase):
                 return mock_doc_ref
             mock_coll.document = mock_document
             return mock_coll
-            
+
         self.mock_db.collection.side_effect = mock_collection
-        
+
         self.mock_rate_limiter = MagicMock()
         self.mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
 

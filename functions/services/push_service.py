@@ -49,14 +49,14 @@ def send_push_notification(user_id: str, title: str, body: str, data: dict | Non
 
         # Collect all tokens from subcollection (multi-device)
         token_docs = list(user_ref.collection(Collections.FCM_TOKENS).stream())
-        
+
         # Deduplicate tokens to avoid sending multiple pushes to the same device
         unique_tokens: dict[str, object] = {}
         for d in token_docs:
             token_str = d.to_dict().get("token")
             if token_str:
                 unique_tokens[token_str] = d.reference
-                
+
         tokens_with_refs: list[tuple[str, object]] = list(unique_tokens.items())
 
         if not tokens_with_refs:

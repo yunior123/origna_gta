@@ -121,7 +121,7 @@ class TestCreateCheckoutSession:
         assert result["success"] is True
         assert "sessionId" in result
         mock_stripe_create.assert_called_once()
-        
+
         # Verify Stripe Link prevention logic
         create_kwargs = mock_stripe_create.call_args[1]
         assert create_kwargs.get("payment_method_types") == ["card"], "Stripe Link prevention failed: must use only 'card'"

@@ -559,3 +559,47 @@ def update_notification_preferences(req: https_fn.CallableRequest) -> dict[str, 
     updates[Fields.UPDATED_AT] = get_server_timestamp()
     db.collection(Collections.USERS).document(uid).update(updates)
     return create_success_response({})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def cleanup_fcm_token(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Delete a specific FCM push token for the authenticated user on logout.
+
+    T-3: FCM token cleanup — prevents push notifications to stale/logged-out devices.
+
+    Call this from the Flutter client immediately before FirebaseAuth.signOut().
+
+    Request data:
+        - token: str — the FCM registration token (used as the Firestore doc ID)
+
+    Returns:
+        {success: True, deleted: bool}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    uid = req.auth.uid
+    data = req.data or {}
+    token_id = data.get(Fields.FCM_TOKEN_KEY, "")
+
+    if not token_id or not isinstance(token_id, str):
+        raise https_fn.HttpsError("invalid-argument", "token (the FCM registration token) is required")
+
+    db = get_db()
+    token_ref = (
+        db.collection(Collections.USERS)
+        .document(uid)
+        .collection(Collections.FCM_TOKENS)
+        .document(token_id)
+    )
+    doc = token_ref.get()
+
+    if not doc.exists:
+        # Idempotent — token already gone is not an error
+        logger.info("FCM token already removed for uid=%s (idempotent)", uid)
+        return create_success_response({"deleted": False})
+
+    token_ref.delete()
+    logger.info("FCM token cleaned up on logout for uid=%s", uid)
+    return create_success_response({"deleted": True})
+

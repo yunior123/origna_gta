@@ -251,6 +251,10 @@ abstract class Order with _$Order {
           return OrderStatus.expired;
         case OrderStatusValues.disputed:
           return OrderStatus.disputed;
+        case OrderStatusValues.refunded:
+          return OrderStatus.refunded;
+        case OrderStatusValues.partiallyRefunded:
+          return OrderStatus.partiallyRefunded;
         default:
           return OrderStatus.pending;
       }

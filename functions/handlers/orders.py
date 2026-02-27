@@ -24,6 +24,7 @@ from schema_constants import (
     DeliveryStatusValues,
     DeliveryTypeValues,
     Fields,
+    NotificationTypes,
     OrderEventTypes,
     OrderItemIdValues,
     OrderStatusValues,
@@ -53,7 +54,6 @@ from services.email_service import (
     get_return_request_rejected_email,
     get_return_request_submitted_email,
     get_seller_notification_email,
-    send_email,
 )
 from services.email_task import enqueue_email_task
 from services.push_service import send_push_notification
@@ -119,11 +119,6 @@ def confirm_item_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
         if order_data.get(Fields.USER_ID) != user_id:
             raise https_fn.HttpsError("permission-denied", "Only the order owner can confirm receipt")
 
-        # B4: Self-purchase check — sellers cannot confirm receipt of their own orders
-        seller_ids = order_data.get(Fields.SELLER_IDS, [])
-        if user_id in seller_ids:
-            raise https_fn.HttpsError("permission-denied", "Sellers cannot confirm receipt of their own orders")
-
         items = order_data.get(Fields.ITEMS, [])
         item_index = next((i for i, it in enumerate(items) if it.get(Fields.CART_ITEM_ID) == cart_item_id), None)
 
@@ -131,6 +126,11 @@ def confirm_item_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("not-found", "Item not found in order")
 
         item = items[item_index]
+
+        # B4: Self-purchase check — sellers cannot confirm receipt of their own items
+        if item.get(Fields.SELLER_ID) == user_id:
+            raise https_fn.HttpsError("permission-denied", "Sellers cannot confirm receipt of their own items")
+
         current_item_status = item.get(Fields.STATUS)
 
         if current_item_status == DeliveryStatusValues.DELIVERED:
@@ -244,7 +244,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     is_admin = UserRoleValues.ADMIN in user_data.get(Fields.ROLES, [])
 
     # Check if user is seller for any item in order
-    seller_items = [item for item in order_data.get(Fields.ITEMS, []) if item[Fields.SELLER_ID] == user_id]
+    seller_items = [item for item in order_data.get(Fields.ITEMS, []) if item.get(Fields.SELLER_ID) == user_id]
     is_seller = len(seller_items) > 0
 
     if not (is_admin or is_seller):
@@ -261,7 +261,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # For multi-seller orders, a seller can only affect status if they own ALL items
         # or they should use update_item_status instead
-        all_seller_ids = set(item[Fields.SELLER_ID] for item in order_data.get(Fields.ITEMS, []))
+        all_seller_ids = set(item.get(Fields.SELLER_ID) for item in order_data.get(Fields.ITEMS, []) if item.get(Fields.SELLER_ID))
         if len(all_seller_ids) > 1:
             raise https_fn.HttpsError(
                 "failed-precondition",
@@ -720,7 +720,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
 
     # SECURITY FIX: Use proper state machine validation instead of blocklist
-    current_status = order_data[Fields.ORDER_STATUS]
+    current_status = order_data.get(Fields.ORDER_STATUS)
 
     if not is_valid_order_status_transition(current_status, OrderStatusValues.CANCELLED):
         raise https_fn.HttpsError("failed-precondition", f"Cannot cancel order with status: {current_status}")
@@ -823,7 +823,8 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
     cancel_batch = get_db().batch()
 
     if not order_data.get(Fields.STOCK_RESTORED, False):
-        _restore_stock_to_batch(cancel_batch, order_data[Fields.ITEMS])
+        # Restore stock using the helper function
+        _restore_stock_to_batch(cancel_batch, order_data.get(Fields.ITEMS, []))
 
     cancel_batch.update(
         order_ref,
@@ -1097,19 +1098,18 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
         # (Returns go through approve_return_request for stock restore instead.)
         is_digital = found_item.get(Fields.IS_DIGITAL, False)
         if not is_digital:
-            transaction.update(
-                product_ref,
-                {
-                    Fields.STOCK_QUANTITY: get_firestore().Increment(item_quantity),
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                },
-            )
-            # Restore warehouse-level inventory
+            product_updates = {
+                Fields.STOCK_QUANTITY: get_firestore().Increment(item_quantity),
+                Fields.UPDATED_AT: get_server_timestamp(),
+            }
+
             fulfillment_wh = found_item.get(Fields.FULFILLMENT_WAREHOUSE_ID) if found_item else None
-            if fulfillment_wh and not is_digital:
-                transaction.update(product_ref, {
-                    f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}": get_firestore().Increment(item_quantity),
-                })
+            if fulfillment_wh:
+                product_updates[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(item_quantity)
+
+            transaction.update(product_ref, product_updates)
+
+            if fulfillment_wh:
                 inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
                 transaction.set(inv_ref, {
                     Fields.AVAILABLE_QUANTITY: get_firestore().Increment(item_quantity),
@@ -1248,8 +1248,8 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_data = order_doc.to_dict()
 
-    # Verify buyer
-    if order_data[Fields.USER_ID] != user_id:
+    # Permission check: Only the buyer (order owner) can confirm receipt
+    if order_data.get(Fields.USER_ID) != user_id:
         raise https_fn.HttpsError("permission-denied", "Not your order")
 
     shipping_approval = order_data.get(Fields.SHIPPING_APPROVAL, {})
@@ -1640,13 +1640,22 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         update_data = {
             Fields.SHIPPING_COST_CENTS: new_shipping_cents,
-            Fields.TAX_AMOUNT_CENTS: new_tax_cents,
-            Fields.TOTAL_AMOUNT_CENTS: new_total_cents,
             Fields.ACTUAL_SHIPPING_CENTS: new_shipping_cents,
             Fields.UPDATED_AT: get_server_timestamp(),
         }
-        if updated_taxes:
-            update_data[Fields.TAXES] = updated_taxes
+
+        # AUDIT FIX (H4): Only update totals if payment NOT yet captured.
+        # Captured totals must remain fixed to reflect actual money taken.
+        payment_status = order_data.get(Fields.PAYMENT_STATUS)
+        if payment_status != PaymentStatusValues.CAPTURED:
+            update_data[Fields.TAX_AMOUNT_CENTS] = new_tax_cents
+            update_data[Fields.TOTAL_AMOUNT_CENTS] = new_total_cents
+            if updated_taxes:
+                update_data[Fields.TAXES] = updated_taxes
+        else:
+            # If captured, we still record the discrepancy
+            update_data[Fields.SHIPPING_DIFF_CENTS] = difference_cents
+            update_data[Fields.TAX_DIFF_CENTS] = tax_difference_cents
 
         # AUDIT FIX (H4): Update Stripe PaymentIntent BEFORE Firestore
         if difference_cents + tax_difference_cents != 0:
@@ -1800,6 +1809,7 @@ def create_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.PRODUCT_ID: product_id,
         Fields.PRODUCT_NAME: item_data.get(Fields.NAME, ""),
         Fields.QUANTITY: item_data.get(Fields.QUANTITY, 1),
+        Fields.FULFILLMENT_WAREHOUSE_ID: item_data.get(Fields.FULFILLMENT_WAREHOUSE_ID, ""),
         Fields.RETURN_STATUS: ReturnStatusValues.REQUESTED,
         Fields.RETURN_REASON: return_reason,
         Fields.REQUESTED_AT: now_utc,
@@ -2018,25 +2028,49 @@ def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
         )
 
     elif action == "mark_received":
-        if "received" not in ReturnStatusValues.VALID_TRANSITIONS.get(current_status, set()):
-            raise https_fn.HttpsError("failed-precondition", f"Cannot mark received from status '{current_status}'")
-        new_status = ReturnStatusValues.RECEIVED
-
-        # Atomic batch: status update + stock restore
-        received_batch = get_db().batch()
-        received_batch.update(return_ref, {
-            Fields.RETURN_STATUS: new_status,
-            Fields.UPDATED_AT: get_server_timestamp(),
-        })
-
-        # Restore stock now that physical return is confirmed
-        product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+        fs = get_firestore()
+        db = get_db()
+        product_ref = db.collection(Collections.PRODUCTS).document(product_id)
         qty = return_data.get(Fields.QUANTITY, 1)
-        received_batch.update(product_ref, {
-            Fields.STOCK_QUANTITY: get_firestore().Increment(qty),
-            Fields.UPDATED_AT: get_server_timestamp(),
-        })
-        received_batch.commit()
+
+        @fs.transactional
+        def _mark_received_txn(transaction):
+            ret_snap = return_ref.get(transaction=transaction)
+            if not ret_snap.exists:
+                raise https_fn.HttpsError("not-found", "Return request not found")
+
+            curr_status = ret_snap.to_dict().get(Fields.RETURN_STATUS)
+            if "received" not in ReturnStatusValues.VALID_TRANSITIONS.get(curr_status, set()):
+                raise https_fn.HttpsError("failed-precondition", f"Cannot mark received from status '{curr_status}'")
+
+            new_status = ReturnStatusValues.RECEIVED
+
+            transaction.update(return_ref, {
+                Fields.RETURN_STATUS: new_status,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+
+            stock_patch = {
+                Fields.STOCK_QUANTITY: fs.Increment(qty),
+                Fields.UPDATED_AT: get_server_timestamp(),
+            }
+            fulfillment_wh = return_data.get(Fields.FULFILLMENT_WAREHOUSE_ID, "")
+            if fulfillment_wh:
+                stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = fs.Increment(qty)
+            transaction.update(product_ref, stock_patch)
+
+            # Restore inventoryLevels subcollection (best-effort inside transaction)
+            if fulfillment_wh:
+                inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+                transaction.set(inv_ref, {
+                    Fields.AVAILABLE_QUANTITY: fs.Increment(qty),
+                    Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                }, merge=True)
+
+            return new_status
+
+        txn = get_db().transaction()
+        new_status = _mark_received_txn(txn)
 
         # Initiate Stripe refund and transition return to 'refunded'
         try:
@@ -2182,11 +2216,23 @@ def _handle_payment_status_email(order_id: str, after_data: dict, payment_status
         if payment_status == PaymentStatusValues.REFUNDED:
             refund_amount = after_data.get(Fields.CUMULATIVE_REFUNDED_CENTS, 0)
             refunded_html = get_order_refunded_email(after_data, order_id, refund_amount, lang=lang)
-            send_email(to_email=buyer_email, subject=_email_t("sub.refunded", lang).replace("{oid}", oid_short), html_content=refunded_html)
+            enqueue_email_task(
+                to_email=buyer_email,
+                subject=_email_t("sub.refunded", lang).replace("{oid}", oid_short),
+                html_content=refunded_html,
+                event_type="order_refunded",
+                order_id=order_id,
+            )
         elif payment_status == PaymentStatusValues.PARTIALLY_REFUNDED:
             refund_amount = after_data.get(Fields.PARTIAL_REFUND_AMOUNT_CENTS, 0)
             partial_html = get_order_partially_refunded_email(after_data, order_id, refund_amount, lang=lang)
-            send_email(to_email=buyer_email, subject=_email_t("sub.partial", lang).replace("{oid}", oid_short), html_content=partial_html)
+            enqueue_email_task(
+                to_email=buyer_email,
+                subject=_email_t("sub.partial", lang).replace("{oid}", oid_short),
+                html_content=partial_html,
+                event_type="order_partially_refunded",
+                order_id=order_id,
+            )
     except Exception as e:
         logger.error(f"🚨 Failed to send refund email for order {order_id}: {str(e)}")
 
@@ -2826,7 +2872,13 @@ def on_order_item_shipped(event: firestore_fn.Event[firestore_fn.Change[firestor
         if is_pickup:
             subject = f"Ready for Pickup - Order #{order_id[:8]}" if lang == "en" else f"Prêt pour ramassage - Commande #{order_id[:8]}"
 
-        send_email(customer_email, subject, email_html)
+        from services.email_task import enqueue_email_task
+        enqueue_email_task(
+            to_email=customer_email,
+            subject=subject,
+            html_content=email_html,
+            event_type="order_shipped_alert"
+        )
 
         logger.info(f"✅ Notified buyer {user_id} for shipment of {len(shipped_this_update)} items in order {order_id}")
 
@@ -2927,7 +2979,13 @@ def on_order_item_delivered(event: firestore_fn.Event[firestore_fn.Change[firest
                 lang=lang
             )
             subject = f"Delivery Update - Order #{order_id[:8]}" if lang == "en" else f"Mise à jour de livraison - Commande #{order_id[:8]}"
-            send_email(customer_email, subject, email_html)
+            from services.email_task import enqueue_email_task
+            enqueue_email_task(
+                to_email=customer_email,
+                subject=subject,
+                html_content=email_html,
+                event_type="order_delivered_alert"
+            )
 
         logger.info(f"✅ Notified buyer {user_id} for delivery of {len(delivered_this_update)} items in order {order_id}")
     except Exception as e:

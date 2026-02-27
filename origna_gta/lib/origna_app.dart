@@ -23,6 +23,7 @@ import 'package:origna_gta/screens/editaddress_screen.dart';
 import 'package:origna_gta/screens/editproduct_screen.dart' deferred as edit_product;
 import 'package:origna_gta/screens/favorites_screen.dart';
 import 'package:origna_gta/screens/login_screen.dart';
+import 'package:origna_gta/screens/order_detail_screen.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/screens/payment_screens.dart';
@@ -242,7 +243,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     );
   }
 
-  // Order Detail screen — navigates to orders for now; will be a dedicated detail view later
+  // Order Detail screen
   if (uri.path == AppRoutes.orderDetail) {
     // Accept orderId from typed args or query params (for deep-links)
     final args = settings.arguments as OrderDetailArgs?;
@@ -253,10 +254,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
         page: const AuthRequiredGate(child: OrdersScreen()),
       );
     }
-    // TODO: Replace with a dedicated OrderDetailScreen that accepts orderId
     return SlidePageRoute(
       settings: settings,
-      page: const AuthRequiredGate(child: OrdersScreen()),
+      page: AuthRequiredGate(child: OrderDetailScreen(orderId: orderId)),
     );
   }
 

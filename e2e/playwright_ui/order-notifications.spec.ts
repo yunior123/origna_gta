@@ -31,7 +31,7 @@ test.describe('Order Notifications', () => {
   test.beforeAll(async () => {
     const auth = await signIn(BUYER_EMAIL);
     const products = await discoverProducts(auth.idToken);
-    
+
     // Use stable E2E products
     productA = products.find(p => p.id === 'e2e_product_admin_seller') || null;
     productB = products.find(p => p.id === 'e2e_product_test_seller') || null;
@@ -68,7 +68,7 @@ test.describe('Order Notifications', () => {
 
     const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: BUYER_EMAIL }, adminAuth.idToken);
     const logs = mailLogsResult.logs;
-    
+
     const shipmentMail = logs.find((l: any) => l.subject.includes('Shipment Update') || l.subject.includes('Mise à jour de livraison'));
     expect(shipmentMail, 'Should find a shipment notification email').toBeTruthy();
     expect(shipmentMail.to).toBe(BUYER_EMAIL);
@@ -82,7 +82,7 @@ test.describe('Order Notifications', () => {
       { productId: productA!.id, quantity: 1 },
     ]);
     const orderId = checkoutResult.orderId;
-    
+
     const auth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
 
@@ -100,7 +100,7 @@ test.describe('Order Notifications', () => {
     const adminAuth = await signIn(ADMIN_EMAIL);
     const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: BUYER_EMAIL }, adminAuth.idToken);
     const logs = mailLogsResult.logs;
-    
+
     const deliveryMail = logs.find((l: any) => l.subject.includes('Delivery Update') || l.subject.includes('Mise à jour de livraison'));
     expect(deliveryMail, 'Should find an item delivery notification email').toBeTruthy();
     expect(deliveryMail.to).toBe(BUYER_EMAIL);
@@ -109,7 +109,7 @@ test.describe('Order Notifications', () => {
   test('Local pickup order receives "Ready for Pickup" notification', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
     const adminAuth = await signIn(ADMIN_EMAIL);
-    
+
     // We manually build the payload to specify 'pickup' delivery speed
     const payload = {
       userId: auth.localId,
@@ -158,13 +158,72 @@ test.describe('Order Notifications', () => {
     // 3. Verify notification subject contains "Ready for Pickup"
     const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: BUYER_EMAIL }, adminAuth.idToken);
     const logs = mailLogsResult.logs;
-    
-    const pickupMail = logs.find((l: any) => 
-      l.subject.toLowerCase().includes('ready for pickup') || 
+
+    const pickupMail = logs.find((l: any) =>
+      l.subject.toLowerCase().includes('ready for pickup') ||
       l.subject.toLowerCase().includes('prêt pour ramassage')
     );
-    
+
     expect(pickupMail, 'Should find a "Ready for Pickup" notification email').toBeTruthy();
     expect(pickupMail.to).toBe(BUYER_EMAIL);
+  });
+
+  test('Seller receives notification when a new order is placed', async ({ page }) => {
+    // 1. Create a single-item order for productB (Test Seller)
+    const checkoutResult = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
+      { productId: productB!.id, quantity: 1 },
+    ]);
+    const orderId = checkoutResult.orderId;
+
+    const auth = await signIn(BUYER_EMAIL);
+    const adminAuth = await signIn(ADMIN_EMAIL);
+    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+
+    await page.waitForTimeout(10000);
+
+    // 2. Verify Seller receives "New Order" email
+    const sellerAuth = await signIn(TEST_ACCOUNTS.SELLER_EMAIL);
+    const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: TEST_ACCOUNTS.SELLER_EMAIL }, adminAuth.idToken);
+    const logs = mailLogsResult.logs;
+
+    const newOrderMail = logs.find((l: any) =>
+      l.subject.toLowerCase().includes('new order') ||
+      l.subject.toLowerCase().includes('nouvelle commande')
+    );
+    expect(newOrderMail, 'Seller should receive a new order notification').toBeTruthy();
+  });
+
+  test('Seller receives notification when a return is requested', async ({ page }) => {
+    // 1. Create a single-item order and mark as DELIVERED
+    const checkoutResult = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
+      { productId: productA!.id, quantity: 1 },
+    ]);
+    const orderId = checkoutResult.orderId;
+    const auth = await signIn(BUYER_EMAIL);
+    const adminAuth = await signIn(ADMIN_EMAIL);
+
+    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+
+    // Mark as delivered
+    await callOk('confirm_item_receipt', { orderId, productId: productA!.id }, auth.idToken);
+
+    // 2. Create return request
+    await callOk('create_return_request', {
+      orderId,
+      productId: productA!.id,
+      returnReason: 'E2E Test Reason'
+    }, auth.idToken);
+
+    await page.waitForTimeout(10000);
+
+    // 3. Verify Seller (Admin for productA) receives return request notification
+    const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: ADMIN_EMAIL }, adminAuth.idToken);
+    const logs = mailLogsResult.logs;
+
+    const returnMail = logs.find((l: any) =>
+      l.subject.toLowerCase().includes('return request') ||
+      l.subject.toLowerCase().includes('demande de retour')
+    );
+    expect(returnMail, 'Seller should receive a return request notification').toBeTruthy();
   });
 });

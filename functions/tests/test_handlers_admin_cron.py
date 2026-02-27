@@ -448,9 +448,9 @@ class TestCheckLowStockAlerts:
         check_low_stock_alerts(Mock())
 
         mock_send_email.assert_called_once()
-        call_args = mock_send_email.call_args
-        assert "seller@example.com" in call_args[0]
-        assert "Low stock" in call_args[0][1]
+        call_kwargs = mock_send_email.call_args.kwargs
+        assert call_kwargs.get("to_email") == "seller@example.com"
+        assert "Low stock" in call_kwargs.get("subject", "")
 
     @patch("handlers.cron_jobs.get_db")
     @patch("services.email_service.send_email")

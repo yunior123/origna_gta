@@ -24,11 +24,7 @@ from config import (
     PLATFORM_FEE_RATIO,
     STRIPE_TAX_CODE_BASIC_GROCERIES,
     STRIPE_TAX_CODE_CHILDRENS_CLOTHING,
-    STRIPE_TAX_CODE_GENERAL,
-    STRIPE_TAX_CODE_SHIPPING,
     STRIPE_TAX_ENABLED,
-    STRIPE_TAX_EXEMPT_NONE,
-    STRIPE_TAX_TYPE_CA_GST_HST,
     get_stripe_secret_key,
     get_stripe_webhook_secret,
 )
@@ -51,9 +47,13 @@ from schema_constants import (
     PaymentStatusValues,
     PayoutStatusValues,
     PlaceholderAddressValues,
+    PlatformDebtStatusValues,
     ProductLifecycleStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
+    StripeConstants,
+    StripeEventTypes,
+    HeaderKeys,
     UserRoleValues,
     ValidationLimits,
     WebhookStatusValues,
@@ -180,16 +180,27 @@ def _rollback_checkout(validated_items: list, order_ref, coupon_code: str | None
             for item in validated_items:
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
                 product_snapshot = product_ref.get(transaction=transaction)
-                refs_and_snapshots.append((product_ref, product_snapshot, item[Fields.QUANTITY]))
+                refs_and_snapshots.append((
+                    product_ref,
+                    product_snapshot,
+                    item[Fields.QUANTITY],
+                    item.get(Fields.FULFILLMENT_WAREHOUSE_ID),  # Stamped at line 1462
+                ))
 
             # Phase 2: Write ALL updates after all reads
-            for ref, snapshot, qty in refs_and_snapshots:
+            for ref, snapshot, qty, fulfillment_wh in refs_and_snapshots:
                 if snapshot.exists:
-                    # Use server-side Increment — atomic even if this transaction is ever
-                    # removed or the decorator changes; avoids read-compute-write divergence.
                     _firestore = get_firestore()
                     patch = {Fields.STOCK_QUANTITY: _firestore.Increment(qty)}
+                    if fulfillment_wh:
+                        patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = _firestore.Increment(qty)
                     transaction.update(ref, patch)
+                    if fulfillment_wh:
+                        inv_ref = ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+                        transaction.set(inv_ref, {
+                            Fields.AVAILABLE_QUANTITY: _firestore.Increment(qty),
+                            Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                        }, merge=True)
 
         transaction = get_db().transaction()
         rollback_stock(transaction)
@@ -386,15 +397,20 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
     try:
         line_items = []
         for item in validated_items:
+            # F-129: Small Suppliers (<$30k revenue) are exempt from collecting GST/HST
+            if item.get(Fields.IS_SMALL_SUPPLIER, False):
+                logger.info(f"F-129: Skipping tax for item {item[Fields.PRODUCT_ID]} (Small Supplier)")
+                continue
+
             # Get tax code from category mapping
             category_id = item.get(Fields.CATEGORY_ID, 0)
             tax_code = CATEGORY_TAX_CODE_MAP.get(category_id, BusinessRules.TAX_CODE_GENERAL_GOODS)
 
             line_items.append(
                 {
-                    StripeConstants.LINE_ITEM_AMOUNT: int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY],
-                    StripeConstants.LINE_ITEM_REFERENCE: item[Fields.PRODUCT_ID],
-                    StripeConstants.LINE_ITEM_TAX_CODE: tax_code,
+                    StripeConstants.TAX_CALC_AMOUNT: int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY],
+                    StripeConstants.TAX_CALC_REFERENCE: item[Fields.PRODUCT_ID],
+                    StripeConstants.TAX_CALC_TAX_CODE: tax_code,
                 }
             )
 
@@ -402,9 +418,9 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         if shipping_cost_cents > 0:
             line_items.append(
                 {
-                    StripeConstants.LINE_ITEM_AMOUNT: shipping_cost_cents,
-                    StripeConstants.LINE_ITEM_REFERENCE: StripeConstants.SHIPPING_REFERENCE,
-                    StripeConstants.LINE_ITEM_TAX_CODE: BusinessRules.TAX_CODE_SHIPPING,  # Shipping tax code
+                    StripeConstants.TAX_CALC_AMOUNT: shipping_cost_cents,
+                    StripeConstants.TAX_CALC_REFERENCE: StripeConstants.SHIPPING_REFERENCE,
+                    StripeConstants.TAX_CALC_TAX_CODE: BusinessRules.TAX_CODE_SHIPPING,  # Shipping tax code
                 }
             )
 
@@ -417,14 +433,14 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
                 Fields.POSTAL_CODE: shipping_address.get(Fields.POSTAL_CODE, ""),
                 Fields.COUNTRY: AppConfig.DEFAULT_COUNTRY_CODE,
             },
-            "address_source": StripeConstants.ADDRESS_SOURCE_SHIPPING,
+            StripeConstants.ADDRESS_SOURCE: StripeConstants.ADDRESS_SOURCE_SHIPPING,
         }
 
         # Add GST number for B2B validation (Stripe will validate and apply reverse charge if valid)
         if gst_number:
             customer_details[StripeConstants.CUSTOMER_TAX_ID] = {
                 Fields.TYPE: BusinessRules.STRIPE_TAX_TYPE_CA_GST_HST,  # Canadian GST/HST
-                "value": gst_number,
+                StripeConstants.VALUE: gst_number,
             }
             customer_details[StripeConstants.CUSTOMER_TAX_EXEMPT] = StripeConstants.TAX_EXEMPT_NONE  # Let Stripe determine
 
@@ -437,16 +453,8 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         )
 
         # Stripe Tax returns amounts in cents — convert to dollars for consistency with manual calc
-        STRIPE_TAX_TYPE_MAP = {
-            "gst_hst": "GST",
-            "gst": "GST",
-            "hst": "HST",
-            "pst": "PST",
-            "qst": "QST",
-            "rst": "PST",
-        }
         tax_breakdown = {
-            STRIPE_TAX_TYPE_MAP.get(detail.tax_type, detail.tax_type.upper()): detail.amount / 100.0
+            StripeConstants.TAX_TYPE_MAP.get(detail.tax_type, detail.tax_type.upper()): detail.amount / 100.0
             for detail in calculation.tax_breakdown
         }
         # Also convert tax_amount_cents from the Stripe response (already in cents, rename for clarity)
@@ -919,9 +927,14 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.LENGTH_CM: product_data.get(Fields.LENGTH_CM),
             Fields.WIDTH_CM: product_data.get(Fields.WIDTH_CM),
             Fields.HEIGHT_CM: product_data.get(Fields.HEIGHT_CM),
+            # International Shipping (T-4)
+            Fields.IS_INTERNATIONAL: product_data.get(Fields.IS_INTERNATIONAL, False),
+            Fields.SHIP_FROM_COUNTRY: product_data.get(Fields.SHIP_FROM_COUNTRY, PlaceholderAddressValues.DEFAULT_COUNTRY),
+            Fields.SUPPLIER_TYPE: product_data.get(Fields.SUPPLIER_TYPE),
             # Supplier info for international shipping estimation (e.g., AliExpress/DHGate)
             Fields.SUPPLIER: product_data.get(Fields.SUPPLIER),
             Fields.BUYER_NOTE: item.get(Fields.BUYER_NOTE),
+            Fields.IS_SMALL_SUPPLIER: sp_data.get(Fields.IS_SMALL_SUPPLIER, False), # F-129
         }
         validated_items.append(validated_item)
         actual_subtotal += db_price * item[Fields.QUANTITY]
@@ -1069,6 +1082,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 for item in validated_items:
                     item_subtotal_cents = round(int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY] * discount_ratio)
                     item_tax_rate = get_item_tax_rate(item, state_code)
+                    # F-129: Small Suppliers (<$30k revenue) are exempt from GST/HST
+                    if item.get(Fields.IS_SMALL_SUPPLIER, False):
+                        item_tax_rate = 0.0
                     item_tax_cents = round(item_subtotal_cents * item_tax_rate)
                     tax_amount_cents += item_tax_cents
                     item_taxes.append(
@@ -1105,6 +1121,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             for item in validated_items:
                 item_subtotal_cents = round(int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY] * discount_ratio)
                 item_tax_rate = get_item_tax_rate(item, state_code)
+
+                # F-129: Small Suppliers are exempt from GST/HST
+                if item.get(Fields.IS_SMALL_SUPPLIER, False):
+                    item_tax_rate = 0.0
+
                 item_tax_cents = round(item_subtotal_cents * item_tax_rate)
                 tax_amount_cents += item_tax_cents
                 item_taxes.append(
@@ -1385,9 +1406,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                     merge=True,
                 )
 
-    transaction = get_db().transaction()
     try:
-        reserve_stock_transaction(transaction)
+        reserve_stock_transaction(get_db().transaction())
     except https_fn.HttpsError:
         raise  # Re-raise HttpsErrors (already safe messages)
     except Exception as e:
@@ -1530,36 +1550,73 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Create Stripe Checkout Session
     try:
+        # CRITICAL FIX: Stripe Checkout does NOT support negative unit_amount values.
+        # Apply the coupon discount proportionally to each item's unit_amount so the
+        # line items sum to discounted_subtotal_cents without any negative line items.
+        _stripe_discount_ratio = (
+            discounted_subtotal_cents / actual_subtotal_cents if actual_subtotal_cents > 0 else 1.0
+        )
         line_items = []
+        stripe_product_sum = 0  # Track actual Stripe-side subtotal to correct rounding
         for item in validated_items:
-            product_data = {Fields.NAME: item[Fields.NAME], "images": [u for u in item.get(Fields.IMAGE_URLS, [])[:1] if u]}
+            product_data = {
+                StripeConstants.NAME: item[Fields.NAME],
+                StripeConstants.IMAGES: [u for u in item.get(Fields.IMAGE_URLS, [])[:1] if u]
+            }
 
             # Add tax code if available
             tax_code = CATEGORY_TAX_CODE_MAP.get(item.get(Fields.CATEGORY_ID, 0))
             if tax_code:
-                product_data["tax_code"] = tax_code
+                product_data[StripeConstants.TAX_CODE] = tax_code
 
+            unit_amount = max(1, round(item[Fields.PRICE] * 100 * _stripe_discount_ratio))
+            stripe_product_sum += unit_amount * item[Fields.QUANTITY]
             line_items.append(
                 {
-                    "price_data": {
-                        Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
-                        "product_data": product_data,
-                        "unit_amount": round(item[Fields.PRICE] * 100),  # Convert to cents (round to avoid float truncation)
+                    StripeConstants.PRICE_DATA: {
+                        StripeConstants.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
+                        StripeConstants.PRODUCT_DATA: product_data,
+                        StripeConstants.UNIT_AMOUNT: unit_amount,
                     },
-                    Fields.QUANTITY: item[Fields.QUANTITY],
+                    StripeConstants.QUANTITY: item[Fields.QUANTITY],
                 }
             )
+
+        # Remainder correction: adjust last product item so Stripe product subtotal
+        # matches discounted_subtotal_cents exactly (rounding per-item can drift by N cents).
+        # When last_qty > 1, integer division leaves a leftover [0, last_qty-1] cents;
+        # that leftover is emitted as a separate 1-qty "Price adjustment" line item.
+        rounding_delta = discounted_subtotal_cents - stripe_product_sum
+        if rounding_delta != 0 and line_items:
+            last_item = line_items[-1]
+            last_qty = last_item[StripeConstants.QUANTITY]
+            per_item_adj = rounding_delta // last_qty
+            leftover = rounding_delta - per_item_adj * last_qty  # always >= 0 (Python % semantics)
+            adjusted = last_item[StripeConstants.PRICE_DATA][StripeConstants.UNIT_AMOUNT] + per_item_adj
+            if adjusted >= 1:
+                last_item[StripeConstants.PRICE_DATA][StripeConstants.UNIT_AMOUNT] = adjusted
+                if leftover > 0:
+                    line_items.append({
+                        StripeConstants.PRICE_DATA: {
+                            StripeConstants.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
+                            StripeConstants.PRODUCT_DATA: {StripeConstants.NAME: "Price adjustment"},
+                            StripeConstants.UNIT_AMOUNT: leftover,
+                        },
+                        StripeConstants.QUANTITY: 1,
+                    })
+            else:
+                logger.warning(f"create_checkout: rounding correction would make unit_amount={adjusted} (delta={rounding_delta}, qty={last_qty}) — skipping correction entirely")
 
         # Add shipping as line item (already in cents)
         if shipping_cost_cents > 0:
             line_items.append(
                 {
-                    "price_data": {
-                        Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
-                        "product_data": {Fields.NAME: "Shipping"},
-                        "unit_amount": shipping_cost_cents,
+                    StripeConstants.PRICE_DATA: {
+                        StripeConstants.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
+                        StripeConstants.PRODUCT_DATA: {StripeConstants.NAME: "Shipping"},
+                        StripeConstants.UNIT_AMOUNT: shipping_cost_cents,
                     },
-                    Fields.QUANTITY: 1,
+                    StripeConstants.QUANTITY: 1,
                 }
             )
 
@@ -1569,45 +1626,29 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         if tax_amount_cents > 0:
             line_items.append(
                 {
-                    "price_data": {
-                        Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
-                        "product_data": {Fields.NAME: f"Tax ({state_code})"},
-                        "unit_amount": tax_amount_cents,
+                    StripeConstants.PRICE_DATA: {
+                        StripeConstants.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
+                        StripeConstants.PRODUCT_DATA: {StripeConstants.NAME: f"Tax ({state_code})"},
+                        StripeConstants.UNIT_AMOUNT: tax_amount_cents,
                     },
-                    Fields.QUANTITY: 1,
-                }
-            )
-
-        # AUDIT FIX (CRITICAL-C1): Discount must appear as a negative line item so the
-        # Stripe PaymentIntent amount equals the post-discount total recorded in Firestore.
-        # Without this, Stripe charges full price while the order doc shows the discounted
-        # amount — a guaranteed overcharge of exactly discount_amount_cents on every coupon use.
-        if discount_amount_cents > 0 and coupon_code:
-            line_items.append(
-                {
-                    "price_data": {
-                        Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
-                        "product_data": {Fields.NAME: f"Discount ({coupon_code})"},
-                        "unit_amount": -discount_amount_cents,  # Negative = credit/discount
-                    },
-                    Fields.QUANTITY: 1,
+                    StripeConstants.QUANTITY: 1,
                 }
             )
 
         session = stripe.checkout.Session.create(
             line_items=line_items,
-            mode="payment",
+            mode=StripeConstants.MODE_PAYMENT,
             # Explicit payment_method_types disables Stripe Link while keeping card/wallets.
             # Apple Pay and Google Pay work transparently via 'card' type in CA.
-            payment_method_types=["card"],
+            payment_method_types=[StripeConstants.PAYMENT_METHOD_CARD],
             success_url=f"{BASE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{BASE_URL}{AppConfig.CHECKOUT_CANCEL_PATH}",
             client_reference_id=user_id,
-            metadata={Fields.ORDER_ID: order_id, Fields.USER_ID: user_id},
-            payment_intent_data={
-                "metadata": {Fields.ORDER_ID: order_id},
-            },
-            **({"customer_email": buyer_email} if buyer_email else {}),
+            metadata={StripeConstants.METADATA_ORDER_ID: order_id, StripeConstants.METADATA_USER_ID: user_id},
+            **{StripeConstants.PAYMENT_INTENT_DATA: {
+                StripeConstants.METADATA: {StripeConstants.METADATA_ORDER_ID: order_id},
+            }},
+            **({StripeConstants.CUSTOMER_EMAIL: buyer_email} if buyer_email else {}),
             # NOTE: automatic_tax disabled - we calculate tax server-side to avoid double taxation
             # AUDIT FIX (CRITICAL-001): Idempotency key prevents duplicate sessions on retry
             idempotency_key=client_idempotency_key or f"checkout_{order_id}",
@@ -1617,7 +1658,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         order_ref.update(
             {
                 Fields.STRIPE_SESSION_ID: session.id,
-                Fields.STRIPE_PAYMENT_INTENT_ID: session.payment_intent if hasattr(session, "payment_intent") else None,
+                Fields.STRIPE_PAYMENT_INTENT_ID: session.payment_intent if hasattr(session, StripeConstants.PAYMENT_INTENT) else None,
             }
         )
 
@@ -1703,7 +1744,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     # SECURITY FIX #1: Rate limiting by IP FIRST (prevent DDoS)
     # Skip rate limiting in emulator mode to avoid Firestore transaction issues
-    client_ip = req.headers.get("X-Forwarded-For", req.headers.get("X-Real-IP", "unknown")).split(",")[0].strip()
+    client_ip = req.headers.get(HeaderKeys.X_FORWARDED_FOR, req.headers.get(HeaderKeys.X_REAL_IP, "unknown")).split(",")[0].strip()
 
     if not IS_EMULATOR:
         allowed, message = get_rate_limiter().check_rate_limit(
@@ -1720,7 +1761,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     # SECURITY FIX #2: Get payload and signature
     payload = req.data
-    sig_header = req.headers.get("Stripe-Signature")
+    sig_header = req.headers.get(HeaderKeys.STRIPE_SIGNATURE)
 
     if not sig_header:
         logger.warning(f"⚠️ Stripe webhook missing signature from IP: {client_ip[:10]}...")
@@ -1740,7 +1781,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         logger.warning(f"⚠️ Stripe webhook verification error: {type(e).__name__}")  # Sanitized (no details)
         return https_fn.Response("Signature verification error", status=500)
 
-    event_id = event["id"]
+    event_id = event[StripeConstants.OBJECT_ID]
     event_type = event[Fields.TYPE]
 
     # SECURITY FIX #3b: Reject stale webhooks (replay attack prevention)
@@ -1749,7 +1790,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     import time as _time
 
     _STALE_CHECK_EVENT_PREFIXES = ("payment_intent.", "checkout.session.")
-    event_created = event.get("created", 0)
+    event_created = event.get(StripeConstants.CREATED, 0)
     current_time = int(_time.time())
     event_age_seconds = current_time - event_created
     _needs_stale_check = any(event_type.startswith(p) for p in _STALE_CHECK_EVENT_PREFIXES)
@@ -1760,7 +1801,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     # SECURITY FIX #4: Atomic idempotency check using create() to prevent race conditions.
     # If two webhook deliveries arrive simultaneously, only one create() will succeed.
     webhook_ref = get_db().collection(Collections.WEBHOOK_EVENTS).document(event_id)
-    order_id = event.get("data", {}).get("object", {}).get("metadata", {}).get(Fields.ORDER_ID, "N/A")
+    order_id = event.get(StripeConstants.DATA, {}).get(StripeConstants.OBJECT, {}).get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID, "N/A")
 
     try:
         webhook_ref.create(
@@ -1797,63 +1838,63 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     # Route event to appropriate handler
     try:
         ensure_stripe_key()
-        if event_type == "checkout.session.completed":
-            process_checkout_session_completed(event["data"]["object"])
-        elif event_type == "checkout.session.async_payment_succeeded":
-            process_async_payment_succeeded(event["data"]["object"])
-        elif event_type == "checkout.session.async_payment_failed":
-            process_async_payment_failed(event["data"]["object"])
-        elif event_type == "checkout.session.expired":
-            process_session_expired(event["data"]["object"])
-        elif event_type == "payment_intent.succeeded":
-            process_payment_intent_succeeded(event["data"]["object"])
-        elif event_type == "payment_intent.payment_failed":
-            process_payment_intent_failed(event["data"]["object"])
-        elif event_type == "charge.refunded":
-            process_charge_refunded(event["data"]["object"])
-        elif event_type == "charge.dispute.created":
-            process_dispute_created(event["data"]["object"])
-        elif event_type == "charge.dispute.updated":
-            process_dispute_updated(event["data"]["object"])
-        elif event_type == "charge.dispute.closed":
-            process_dispute_closed(event["data"]["object"])
-        elif event_type == "charge.dispute.funds_reinstated":
-            process_dispute_funds_reinstated(event["data"]["object"])
-        elif event_type == "transfer.reversed":
-            process_transfer_reversed(event["data"]["object"])
-        elif event_type == "payout.failed":
-            process_payout_failed(event["data"]["object"])
-        elif event_type == "refund.failed":
-            process_refund_failed(event["data"]["object"])
-        elif event_type == "payment_intent.canceled":
-            process_payment_intent_canceled(event["data"]["object"])
-        elif event_type == "account.updated":
-            process_account_updated(event["data"]["object"])
-        elif event_type == "customer.subscription.created":
+        if event_type == StripeEventTypes.CHECKOUT_COMPLETED:
+            process_checkout_session_completed(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.ASYNC_PAYMENT_SUCCEEDED:
+            process_async_payment_succeeded(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.ASYNC_PAYMENT_FAILED:
+            process_async_payment_failed(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.SESSION_EXPIRED:
+            process_session_expired(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.PAYMENT_INTENT_SUCCEEDED:
+            process_payment_intent_succeeded(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.PAYMENT_INTENT_PAYMENT_FAILED:
+            process_payment_intent_failed(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.CHARGE_REFUNDED:
+            process_charge_refunded(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.DISPUTE_CREATED:
+            process_dispute_created(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.DISPUTE_UPDATED:
+            process_dispute_updated(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.DISPUTE_CLOSED:
+            process_dispute_closed(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.DISPUTE_FUNDS_REINSTATED:
+            process_dispute_funds_reinstated(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.TRANSFER_REVERSED:
+            process_transfer_reversed(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.PAYOUT_FAILED:
+            process_payout_failed(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.REFUND_FAILED:
+            process_refund_failed(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.PAYMENT_INTENT_CANCELED:
+            process_payment_intent_canceled(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.ACCOUNT_UPDATED:
+            process_account_updated(event[StripeConstants.DATA][StripeConstants.OBJECT])
+        elif event_type == StripeEventTypes.SUBSCRIPTION_CREATED:
             from handlers.subscriptions import handle_subscription_created
 
             handle_subscription_created(event)
-        elif event_type == "customer.subscription.updated":
+        elif event_type == StripeEventTypes.SUBSCRIPTION_UPDATED:
             from handlers.subscriptions import handle_subscription_updated
 
             handle_subscription_updated(event)
-        elif event_type == "customer.subscription.deleted":
+        elif event_type == StripeEventTypes.SUBSCRIPTION_DELETED:
             from handlers.subscriptions import handle_subscription_deleted
 
             handle_subscription_deleted(event)
-        elif event_type == "invoice.payment_failed":
+        elif event_type == StripeEventTypes.INVOICE_PAYMENT_FAILED:
             from handlers.subscriptions import handle_invoice_payment_failed
 
             handle_invoice_payment_failed(event)
-        elif event_type == "invoice.paid":
+        elif event_type == StripeEventTypes.INVOICE_PAID:
             # Handles successful recurring subscription renewals — keeps currentPeriodEnd fresh
             from handlers.subscriptions import handle_subscription_updated
 
-            invoice_obj = event["data"]["object"]
-            sub_id = invoice_obj.get("subscription")
+            invoice_obj = event[StripeConstants.DATA][StripeConstants.OBJECT]
+            sub_id = invoice_obj.get(StripeConstants.SUBSCRIPTION)
             if sub_id:
                 sub = stripe.Subscription.retrieve(sub_id)
-                sub_event = {"data": {"object": sub}}
+                sub_event = {StripeConstants.DATA: {StripeConstants.OBJECT: sub}}
                 handle_subscription_updated(sub_event)
         else:
             logger.info(f"ℹ️ Unhandled Stripe event type: {event_type}")
@@ -2170,7 +2211,7 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
                     to_email=buyer_email,
                     subject=_email_t("sub.confirmed", buyer_lang),
                     html_content=buyer_email_html,
-                    event_type="order_confirmed_buyer",
+                    event_type=OrderEventTypes.ORDER_CONFIRMED_BUYER,
                     order_id=order_id,
                 )
 
@@ -2187,7 +2228,7 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
                         to_email=seller_email,
                         subject=_email_t("sub.new_order", seller_lang),
                         html_content=seller_email_html,
-                        event_type="order_confirmed_seller",
+                        event_type=OrderEventTypes.ORDER_CONFIRMED_SELLER,
                         order_id=order_id,
                     )  # FIX F5-3: Non-blocking seller notification
     except Exception as e:
@@ -2229,13 +2270,13 @@ def process_checkout_session_completed(session: dict) -> str | None:
     """
     # SECURITY: For async payment methods (bank transfers, Interac), the session
     # completes before payment arrives. Defer to async_payment_succeeded webhook.
-    if session.get("payment_status") != "paid":
+    if session.get(StripeConstants.PAYMENT_STATUS) != StripeConstants.STATUS_PAID:
         logger.info(
-            f"Session {session.get('id')} payment_status={session.get('payment_status')}, deferring to async_payment webhook"
+            f"Session {session.get(StripeConstants.OBJECT_ID)} payment_status={session.get(StripeConstants.PAYMENT_STATUS)}, deferring to async_payment webhook"
         )
         return None
 
-    order_id = session.get("metadata", {}).get(Fields.ORDER_ID)
+    order_id = session.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
 
     if not order_id:
         logger.info("No orderId in session metadata")
@@ -2347,7 +2388,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
             round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1)
             for item in bad_items
         )
-        pi_id_for_partial = session.get("payment_intent")
+        pi_id_for_partial = session.get(StripeConstants.PAYMENT_INTENT)
         if pi_id_for_partial and bad_amount_cents > 0:
             try:
                 ensure_stripe_key()
@@ -2375,7 +2416,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
         logger.info(f"Order {order_id}: removed items from bad sellers {bad_seller_ids}, order continues with {len(good_items)} items")
 
     # Update order status — auto-capture: payment is captured immediately at checkout
-    pi_id = session.get("payment_intent")
+    pi_id = session.get(StripeConstants.PAYMENT_INTENT)
 
     # Initialize update data with CAPTURED status (auto-capture mode)
     # expiresAt stamped here (at Stripe authorization) so 7-day window is accurate
@@ -2441,7 +2482,7 @@ def process_async_payment_succeeded(session: dict) -> str | None:
     """Handles async payment success (e.g., bank transfers, Interac).
     Mirrors process_checkout_session_completed side effects.
     """
-    order_id = session.get("metadata", {}).get(Fields.ORDER_ID)
+    order_id = session.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
@@ -2474,7 +2515,7 @@ def process_async_payment_succeeded(session: dict) -> str | None:
         logger.warning(f"Failed to write order event for {order_id}: {e}")
 
     # Retrieve charge_id for seller payouts
-    pi_id = session.get("payment_intent")
+    pi_id = session.get(StripeConstants.PAYMENT_INTENT)
     charge_id = None
     if pi_id:
         try:
@@ -2497,7 +2538,7 @@ def process_async_payment_succeeded(session: dict) -> str | None:
 
 def process_async_payment_failed(session: dict) -> str | None:
     """Handles async payment failure"""
-    order_id = session.get("metadata", {}).get(Fields.ORDER_ID)
+    order_id = session.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
@@ -2579,8 +2620,14 @@ def _add_stock_restore_to_transaction(transaction, order_data: dict) -> None:
             patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = _fs.Increment(qty)
 
         transaction.update(product_ref, patch)
-        # Note: inventoryLevels subcollection requires batch.set(merge=True) which
-        # is not supported in transactions. Synced via _restore_stock_for_order post-txn.
+
+        # F-69: Restore inventoryLevels subcollection (transaction.set with merge=True is supported)
+        if fulfillment_wh:
+            inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+            transaction.set(inv_ref, {
+                Fields.AVAILABLE_QUANTITY: _fs.Increment(qty),
+                Fields.LAST_SYNCED_AT: get_server_timestamp(),
+            }, merge=True)
 
 
 def _restore_stock_for_order(order_data: dict) -> None:
@@ -2593,28 +2640,38 @@ def _restore_stock_for_order(order_data: dict) -> None:
 def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str) -> None:
     """
     Restores stock and cancels order when validation fails post-payment.
-    Uses batch write for atomicity — stock restore + order cancel in one commit.
+    Uses a transaction to ensure stock is only restored once (F-69).
     """
-    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    @get_transactional()
+    def _do_rollback(transaction):
+        order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+        # Re-read within transaction for atomicity
+        order_snap = order_ref.get(transaction=transaction)
+        if not order_snap.exists:
+            return
 
-    # Atomic: restore stock + cancel order in a single batch
-    batch = get_db().batch()
+        fresh_data = order_snap.to_dict()
+        if fresh_data.get(Fields.STOCK_RESTORED, False):
+            logger.info(f"Stock already restored for order {order_id} - skipping")
+            return
 
-    if not order_data.get(Fields.STOCK_RESTORED, False):
-        _add_stock_restore_to_batch(batch, order_data)
+        # Restore stock using atomic increment
+        _add_stock_restore_to_transaction(transaction, fresh_data)
 
-    batch.update(
-        order_ref,
-        {
-            Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
-            Fields.PAYMENT_STATUS: PaymentStatusValues.CANCELLED,
-            Fields.CANCELLATION_REASON: reason,
-            Fields.STOCK_RESTORED: True,
-            Fields.CANCELLED_AT: get_server_timestamp(),
-            Fields.UPDATED_AT: get_server_timestamp(),
-        },
-    )
-    batch.commit()
+        # Update order status
+        transaction.update(
+            order_ref,
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CANCELLED,
+                Fields.CANCELLATION_REASON: reason,
+                Fields.STOCK_RESTORED: True,
+                Fields.CANCELLED_AT: get_server_timestamp(),
+                Fields.UPDATED_AT: get_server_timestamp(),
+            },
+        )
+
+    _do_rollback(get_db().transaction())
 
     # Refund/cancel the PaymentIntent to release buyer funds
     # With auto-capture, PI is in 'succeeded' state — must use refund, not cancel
@@ -2625,7 +2682,7 @@ def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str
             # Try to retrieve PI to check its current state
             ensure_stripe_key()
             pi = stripe.PaymentIntent.retrieve(payment_intent_id)
-            if pi.status == "succeeded":
+            if pi.status == StripeConstants.STATUS_SUCCEEDED:
                 # Auto-captured: must refund (cannot cancel a succeeded PI)
                 stripe.Refund.create(
                     payment_intent=payment_intent_id,
@@ -2634,7 +2691,7 @@ def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str
                     idempotency_key=f"refund_invalidated_{order_id}",
                 )
                 refund_succeeded = True
-            elif pi.status == "requires_capture":
+            elif pi.status == StripeConstants.STATUS_REQUIRES_CAPTURE:
                 # Manual capture mode: cancel releases the authorization
                 stripe.PaymentIntent.cancel(
                     payment_intent_id,
@@ -2679,7 +2736,7 @@ def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str
 
 def process_session_expired(session: dict) -> str | None:
     """Handles expired checkout sessions"""
-    order_id = session.get("metadata", {}).get(Fields.ORDER_ID)
+    order_id = session.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
@@ -2743,7 +2800,7 @@ def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
     AUTHORIZED → CAPTURING → CAPTURED transition. This webhook fires when
     capture succeeds, so we only update if still in 'capturing' state.
     """
-    order_id = payment_intent.get("metadata", {}).get(Fields.ORDER_ID)
+    order_id = payment_intent.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
@@ -2777,7 +2834,7 @@ def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
 
 def process_payment_intent_failed(payment_intent: dict) -> str | None:
     """Handles failed payment intents"""
-    order_id = payment_intent.get("metadata", {}).get(Fields.ORDER_ID)
+    order_id = payment_intent.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
@@ -2818,7 +2875,7 @@ def process_payment_intent_canceled(payment_intent: dict) -> str | None:
     Restores stock and cancels the order when a PI is canceled
     (e.g., session expired, user abandon, or admin cancellation).
     """
-    order_id = payment_intent.get("metadata", {}).get(Fields.ORDER_ID)
+    order_id = payment_intent.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
@@ -2869,7 +2926,7 @@ def process_charge_refunded(charge: dict) -> str | None:
     AUDIT FIX (CRITICAL-019): Automatically reverses transfers to sellers
     when a refund is processed, preventing platform financial loss.
     """
-    payment_intent_id = charge.get("payment_intent")
+    payment_intent_id = charge.get(StripeConstants.PAYMENT_INTENT)
 
     if not payment_intent_id:
         return None
@@ -2944,7 +3001,7 @@ def process_charge_refunded(charge: dict) -> str | None:
 
             try:
                 reversal_kwargs = {
-                    "metadata": {
+                    StripeConstants.METADATA: {
                         Fields.REASON: "refund",
                         Fields.ORDER_ID: order_id,
                         "refundType": "full" if is_full_refund else "partial",
@@ -3031,10 +3088,32 @@ def process_charge_refunded(charge: dict) -> str | None:
                                 }
                             )
                             logger.error(f"🚫 Auto-suspended seller {fp_seller_id} due to failed transfer reversal")
+
+                            # A-05/F-139: Record platform debt for audit trail and manual recovery
+                            # This fires when seller has zero Stripe balance and reversal fails.
+                            debt_amount = fp_doc.to_dict().get(Fields.AMOUNT_CENTS, 0)
+                            get_db().collection(Collections.PLATFORM_DEBT).add(
+                                {
+                                    Fields.ORDER_ID: order_id,
+                                    Fields.SELLER_ID: fp_seller_id,
+                                    Fields.TRANSFER_ID: failed_transfer_id,
+                                    Fields.AMOUNT_CENTS: debt_amount,
+                                    Fields.STATUS: PlatformDebtStatusValues.OPEN,
+                                    Fields.REASON: "Transfer reversal failed — seller zero balance",
+                                    Fields.CREATED_AT: get_server_timestamp(),
+                                    Fields.RESOLVED: False,
+                                }
+                            )
+                            logger.critical(
+                                f"🚨 PLATFORM DEBT created for seller {fp_seller_id}: order={order_id} "
+                                f"transfer={failed_transfer_id} amount={debt_amount} cents"
+                            )
                         except Exception as suspend_err:
                             logger.critical(
                                 f"🚨 CRITICAL: Failed to suspend seller {fp_seller_id} after transfer reversal failure: {type(suspend_err).__name__}"
                             )
+
+
 
         # Revoke digital licenses on any refund (lifetime license model — any refund invalidates)
         try:
@@ -3082,10 +3161,10 @@ def process_dispute_created(dispute: dict) -> str | None:
     When a buyer disputes a charge, we must immediately reverse transfers to sellers
     to prevent double-loss (platform refunds buyer + already paid seller).
     """
-    charge_id = dispute.get("charge")
+    charge_id = dispute.get(StripeConstants.CHARGE)
     # CRITICAL FIX: Use payment_intent from dispute (not charge_id!)
     # charge_id is 'ch_xxx' but orders store 'pi_xxx' as stripePaymentIntentId
-    payment_intent_id = dispute.get("payment_intent")
+    payment_intent_id = dispute.get(StripeConstants.PAYMENT_INTENT)
     dispute_amount = dispute.get(Fields.AMOUNT, 0)
 
     # Log security alert (ORDER_ID added after lookup below)
@@ -3107,7 +3186,7 @@ def process_dispute_created(dispute: dict) -> str | None:
     )
 
     if not payment_intent_id:
-        logger.warning(f"⚠️ Dispute {dispute.get('id')} has no payment_intent, cannot find order")
+        logger.warning(f"⚠️ Dispute {dispute.get(StripeConstants.OBJECT_ID)} has no payment_intent, cannot find order")
         return f"Dispute logged for charge {charge_id}, no payment_intent to look up order"
 
     # CRITICAL: Auto-reverse all transfers linked to this payment intent
@@ -3168,9 +3247,9 @@ def process_dispute_created(dispute: dict) -> str | None:
                 # AUDIT FIX (MEDIUM-025): For partial disputes, reverse proportional
                 # amount instead of full transfer to avoid penalizing uninvolved sellers.
                 reversal_kwargs = {
-                    "metadata": {
+                    StripeConstants.METADATA: {
                         Fields.REASON: "dispute",
-                        Fields.DISPUTE_ID: dispute.get("id"),
+                        Fields.DISPUTE_ID: dispute.get(StripeConstants.OBJECT_ID),
                         Fields.ORDER_ID: order_id,
                     }
                 }
@@ -3201,7 +3280,7 @@ def process_dispute_created(dispute: dict) -> str | None:
                 reversal = stripe.Transfer.create_reversal(
                     transfer_id,
                     **reversal_kwargs,
-                    idempotency_key=f"dispute_reversal_{dispute.get('id')}_{transfer_id}",
+                    idempotency_key=f"dispute_reversal_{dispute.get(StripeConstants.OBJECT_ID)}_{transfer_id}",
                 )
 
                 # Mark payout as reversed with cumulative tracking
@@ -3257,7 +3336,7 @@ def process_dispute_created(dispute: dict) -> str | None:
                             get_db().collection(Collections.USERS).document(seller_id_from_payout).update(
                                 {
                                     Fields.SUSPENDED: True,
-                                    Fields.SUSPENSION_REASON: f"Dispute reversal failed (insufficient funds) for dispute {dispute.get('id')}. Manual review required.",
+                                    Fields.SUSPENSION_REASON: f"Dispute reversal failed (insufficient funds) for dispute {dispute.get(StripeConstants.OBJECT_ID)}. Manual review required.",
                                     Fields.SUSPENDED_AT: get_server_timestamp(),
                                 }
                             )
@@ -3293,7 +3372,7 @@ def process_dispute_created(dispute: dict) -> str | None:
             {
                 Fields.ORDER_STATUS: OrderStatusValues.DISPUTED,
                 Fields.PRE_DISPUTE_STATUS: current_status,
-                Fields.DISPUTE_ID: dispute.get("id"),
+                Fields.DISPUTE_ID: dispute.get(StripeConstants.OBJECT_ID),
                 Fields.DISPUTED_AT: get_server_timestamp(),
                 Fields.UPDATED_AT: get_server_timestamp(),
             }
@@ -3318,13 +3397,13 @@ def process_dispute_created(dispute: dict) -> str | None:
                             <h2>A payment dispute has been filed</h2>
                             <p>A buyer has filed a dispute for an order containing your products.</p>
                             <p><strong>Order ID:</strong> {order_id}</p>
-                            <p><strong>Dispute reason:</strong> {dispute.get("reason", "Not specified")}</p>
-                            <p><strong>Amount:</strong> ${dispute.get("amount", 0) / 100:.2f} {dispute.get("currency", "CAD").upper()}</p>
+                            <p><strong>Dispute reason:</strong> {dispute.get(StripeConstants.REASON, "Not specified")}</p>
+                            <p><strong>Amount:</strong> ${dispute.get(StripeConstants.AMOUNT, 0) / 100:.2f} {dispute.get(StripeConstants.CURRENCY, "CAD").upper()}</p>
                             <p>Your seller transfers for this order have been reversed pending dispute resolution.</p>
                             <p>Please review your order records and prepare any evidence (shipping confirmation, delivery proof, communication) that may help resolve this dispute.</p>
                             <p>— Origna Team</p>
                             """,
-                            event_type="dispute_created",
+                            event_type=OrderEventTypes.DISPUTE_CREATED,
                             order_id=order_id,
                         )
     except Exception as e:
@@ -3342,9 +3421,9 @@ def process_dispute_updated(dispute: dict) -> str | None:
     - Dispute status changes (e.g., needs_response → under_review)
     - Evidence due date changes
     """
-    dispute_id = dispute.get("id")
-    charge_id = dispute.get("charge")
-    payment_intent_id = dispute.get("payment_intent")
+    dispute_id = dispute.get(StripeConstants.OBJECT_ID)
+    charge_id = dispute.get(StripeConstants.CHARGE)
+    payment_intent_id = dispute.get(StripeConstants.PAYMENT_INTENT)
     status = dispute.get(Fields.STATUS)
     reason = dispute.get(Fields.REASON)
 
@@ -3398,9 +3477,9 @@ def process_dispute_funds_reinstated(dispute: dict) -> str | None:
     This is sent when Stripe returns funds to the platform after a won dispute.
     We log it and ensure the order/payout state is correct.
     """
-    dispute_id = dispute.get("id")
-    charge_id = dispute.get("charge")
-    payment_intent_id = dispute.get("payment_intent")
+    dispute_id = dispute.get(StripeConstants.OBJECT_ID)
+    charge_id = dispute.get(StripeConstants.CHARGE)
+    payment_intent_id = dispute.get(StripeConstants.PAYMENT_INTENT)
     amount_reinstated = dispute.get(Fields.AMOUNT, 0)
 
     logger.info(f"Dispute funds reinstated: {dispute_id} amount={amount_reinstated}")
@@ -3423,7 +3502,7 @@ def process_dispute_funds_reinstated(dispute: dict) -> str | None:
 
 def process_dispute_closed(dispute: dict) -> str | None:
     """Handles dispute resolution — updates security alert AND order status."""
-    charge_id = dispute.get("charge")
+    charge_id = dispute.get(StripeConstants.CHARGE)
     status = dispute.get(Fields.STATUS)
 
     # Update security alert
@@ -3442,7 +3521,7 @@ def process_dispute_closed(dispute: dict) -> str | None:
         )
 
     # Update order status based on dispute outcome
-    payment_intent_id = dispute.get("payment_intent")
+    payment_intent_id = dispute.get(StripeConstants.PAYMENT_INTENT)
     if payment_intent_id:
         orders = (
             get_db()
@@ -3550,7 +3629,8 @@ def process_dispute_closed(dispute: dict) -> str | None:
                     if seller_doc.exists:
                         seller_email = seller_doc.to_dict().get(Fields.EMAIL)
                         if seller_email:
-                            send_email(
+                            from services.email_task import enqueue_email_task
+                            enqueue_email_task(
                                 to_email=seller_email,
                                 subject=f"Dispute Resolved ({status.title()}) - Origna",
                                 html_content=f"""
@@ -3559,6 +3639,7 @@ def process_dispute_closed(dispute: dict) -> str | None:
                                 {"<p>Your seller transfers have been restored.</p>" if status == "won" else "<p>The order has been cancelled and no further action is needed.</p>"}
                                 <p>— Origna Team</p>
                                 """,
+                                event_type=OrderEventTypes.DISPUTE_RESOLVED
                             )
             except Exception as e:
                 logger.error(f"Failed to send dispute resolution emails: {type(e).__name__}")
@@ -3568,7 +3649,7 @@ def process_dispute_closed(dispute: dict) -> str | None:
 
 def process_transfer_reversed(transfer: dict) -> str | None:
     """Handles reversed payouts"""
-    transfer_id = transfer.get("id")
+    transfer_id = transfer.get(StripeConstants.OBJECT_ID)
 
     # Find payout by transfer ID
     payouts = (
@@ -3588,7 +3669,7 @@ def process_transfer_reversed(transfer: dict) -> str | None:
 def process_payout_failed(payout: dict) -> None:
     """Handles failed payouts — creates security alert AND updates payout records."""
     destination = payout.get(Fields.DESTINATION)
-    _payout_id = payout.get("id")
+    _payout_id = payout.get(StripeConstants.OBJECT_ID)
 
     # Create security alert
     get_db().collection(Collections.SECURITY_ALERTS).add(
@@ -3626,7 +3707,7 @@ def process_payout_failed(payout: dict) -> None:
 
 def process_refund_failed(refund: dict) -> None:
     """Handles failed refunds"""
-    charge_id = refund.get("charge")
+    charge_id = refund.get(StripeConstants.CHARGE)
 
     get_db().collection(Collections.SECURITY_ALERTS).add(
         {
@@ -3679,7 +3760,7 @@ def process_account_updated(account: dict) -> None:
     """
     logger.info("\n🏪 Processing: account.updated")
 
-    account_id = account.get("id")
+    account_id = account.get(StripeConstants.OBJECT_ID)
     if not account_id:
         logger.warning("  ⚠️ No account ID in event")
         return
@@ -3822,7 +3903,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     try:
         account = stripe.Account.create(
-            type="express",
+            type=StripeConstants.ACCOUNT_TYPE_EXPRESS,
             country=country_upper,
             email=email,
             capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
@@ -3904,7 +3985,7 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
         # For Express accounts, always use account_onboarding
         # Stripe automatically shows any pending requirements
         account_link = stripe.AccountLink.create(
-            account=account_id, refresh_url=refresh_url, return_url=return_url, type="account_onboarding"
+            account=account_id, refresh_url=refresh_url, return_url=return_url, type=StripeConstants.TYPE_ACCOUNT_ONBOARDING
         )
 
         return {ApiKeys.SUCCESS: True, ApiKeys.URL: account_link.url}
@@ -4263,7 +4344,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Validate PI is in capturable state
         payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
 
-        if payment_intent.status != "requires_capture":
+        if payment_intent.status != StripeConstants.STATUS_REQUIRES_CAPTURE:
             raise https_fn.HttpsError(
                 "failed-precondition", f"Payment cannot be captured (status: {payment_intent.status})"
             )
