@@ -1,5 +1,6 @@
-import 'package:origna_gta/utils/utils.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 import 'variant_models.dart';
 
@@ -13,12 +14,14 @@ class AddProductState {
   final double? latitude;
   final double? longitude;
   final List<ImageModel> imageModels;
+  final XFile? videoFile;
+  final int? videoDurationSeconds;
   final List<Map<String, dynamic>> addressSuggestions;
   final bool showSuggestions;
   final bool addressVerified; // true when address selected from Geoapify
   final bool isPerishable;
   final bool isDigital;
-  final String? digitalType;          // 'software' | 'book' | null
+  final String? digitalType; // 'software' | 'book' | null
   final String? macosDownloadUrl;
   final String? windowsDownloadUrl;
   final String? linuxDownloadUrl;
@@ -35,7 +38,7 @@ class AddProductState {
   final bool savedStandardEnabled; // Saved state when digital mode toggled on
   final String? errorMessage;
   final bool isSuccess;
-  
+
   // C-03: Business logic state moved from Screen to ViewModel/State
   final String selectedSupplierType;
   final String selectedSupplierCurrency;
@@ -54,7 +57,7 @@ class AddProductState {
   final String? sellerSku;
   final List<String> selectedWarehouseIds;
   final Map<String, int> warehouseStockMap; // warehouseId → stock qty
-  
+
   // N-09: Variant builder fields
   final bool hasVariants;
   final List<VariantOption> variantOptions;
@@ -68,6 +71,8 @@ class AddProductState {
     this.latitude,
     this.longitude,
     this.imageModels = const [],
+    this.videoFile,
+    this.videoDurationSeconds,
     this.addressSuggestions = const [],
     this.showSuggestions = false,
     this.addressVerified = false,
@@ -89,7 +94,7 @@ class AddProductState {
     this.savedStandardEnabled = true,
     this.errorMessage,
     this.isSuccess = false,
-    
+
     // C-03 defaults
     this.selectedSupplierType = SupplierTypeValues.aliexpress,
     this.selectedSupplierCurrency = SupplierCurrencyValues.usd,
@@ -122,6 +127,8 @@ class AddProductState {
     Object? latitude = _sentinel,
     Object? longitude = _sentinel,
     List<ImageModel>? imageModels,
+    Object? videoFile = _sentinel,
+    Object? videoDurationSeconds = _sentinel,
     List<Map<String, dynamic>>? addressSuggestions,
     bool? showSuggestions,
     bool? addressVerified,
@@ -143,7 +150,7 @@ class AddProductState {
     bool? savedStandardEnabled,
     Object? errorMessage = _sentinel,
     bool? isSuccess,
-    
+
     // C-03 fields
     String? selectedSupplierType,
     String? selectedSupplierCurrency,
@@ -173,6 +180,8 @@ class AddProductState {
       latitude: latitude == _sentinel ? this.latitude : latitude as double?,
       longitude: longitude == _sentinel ? this.longitude : longitude as double?,
       imageModels: imageModels ?? this.imageModels,
+      videoFile: videoFile == _sentinel ? this.videoFile : videoFile as XFile?,
+      videoDurationSeconds: videoDurationSeconds == _sentinel ? this.videoDurationSeconds : videoDurationSeconds as int?,
       addressSuggestions: addressSuggestions ?? this.addressSuggestions,
       showSuggestions: showSuggestions ?? this.showSuggestions,
       addressVerified: addressVerified ?? this.addressVerified,
@@ -194,7 +203,7 @@ class AddProductState {
       savedStandardEnabled: savedStandardEnabled ?? this.savedStandardEnabled,
       errorMessage: errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
       isSuccess: isSuccess ?? this.isSuccess,
-      
+
       // C-03
       selectedSupplierType: selectedSupplierType ?? this.selectedSupplierType,
       selectedSupplierCurrency: selectedSupplierCurrency ?? this.selectedSupplierCurrency,

@@ -173,6 +173,8 @@ const _$OrderStatusEnumMap = {
   OrderStatus.failed: 'failed',
   OrderStatus.expired: 'expired',
   OrderStatus.disputed: 'disputed',
+  OrderStatus.refunded: 'refunded',
+  OrderStatus.partiallyRefunded: 'partially_refunded',
 };
 
 const _$PaymentStatusEnumMap = {
@@ -190,6 +192,8 @@ const _$PaymentStatusEnumMap = {
   PaymentStatus.capturing: 'capturing',
   PaymentStatus.cancelling: 'cancelling',
   PaymentStatus.expiring: 'expiring',
+  PaymentStatus.partiallyRefunded: 'partially_refunded',
+  PaymentStatus.voided: 'voided',
 };
 
 const _$ShippingApprovalStatusEnumMap = {

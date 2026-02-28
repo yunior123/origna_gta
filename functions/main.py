@@ -226,6 +226,7 @@ from handlers.products import (  # noqa: E402
     update_product,
     update_warehouse,
     upload_product_images,
+    upload_product_video,
     upload_review_images,
     vote_review_helpful,
 )
@@ -302,6 +303,7 @@ __all__ = [
     "report_message",
     # Products
     "upload_product_images",
+    "upload_product_video",
     "upload_review_images",
     "delete_product_images",
     "create_product_atomic",

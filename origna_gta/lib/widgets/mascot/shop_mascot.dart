@@ -130,24 +130,106 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
     });
   }
 
-  Future<void> _launchSupportEmail() async {
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-      path: 'support@orignaventures.ca',
-      queryParameters: {
-        'subject': 'Support Request - Origna GTA App',
-        'body': 'Hello Origna GTA Support Team,\n\n',
-      },
-    );
+  Future<void> _launchUrl(Uri uri) async {
     try {
-      if (await canLaunchUrl(emailUri)) {
-        await launchUrl(emailUri);
-      } else {
-        await launchUrl(Uri.parse('mailto:support@orignaventures.ca'));
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
-      debugPrint('Could not launch email: $e');
+      debugPrint('Could not launch url: $e');
     }
+  }
+
+  void _showContactDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Theme.of(ctx).brightness == Brightness.dark ? DesignTokens.darkSurface : Colors.white,
+        title: Text(
+          'profile.contact_us'.tr(),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(ctx).brightness == Brightness.dark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'profile.contact_us_desc'.tr(),
+              style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Semantics(
+              link: true,
+              label: 'link-email-support',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _launchUrl(Uri(
+                    scheme: 'mailto',
+                    path: 'support@orignaventures.ca',
+                    queryParameters: {
+                      'subject': 'Support Request - Origna GTA App',
+                      'body': 'Hello Origna GTA Support Team,\n\n',
+                    },
+                  )),
+                  borderRadius: BorderRadius.circular(12),
+                  splashColor: DesignTokens.primary.withValues(alpha: 0.1),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.email_outlined, color: DesignTokens.primary, size: 20),
+                        const SizedBox(width: 12),
+                        Text(
+                          'support@orignaventures.ca',
+                          style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Semantics(
+              link: true,
+              label: 'link-website',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _launchUrl(Uri.parse('https://orignaventures.ca')),
+                  borderRadius: BorderRadius.circular(12),
+                  splashColor: DesignTokens.primary.withValues(alpha: 0.1),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.language, color: DesignTokens.primary, size: 20),
+                        const SizedBox(width: 12),
+                        Text(
+                          'orignaventures.ca',
+                          style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('common.close'.tr(), style: TextStyle(color: DesignTokens.primary)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -298,7 +380,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 8),
               GestureDetector(
-                onTap: _launchSupportEmail,
+                onTap: () => _showContactDialog(context),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(

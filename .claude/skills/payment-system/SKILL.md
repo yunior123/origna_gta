@@ -338,7 +338,7 @@ All test cards: expiry = any future date, CVC = any 3 digits, postal = any valid
 |------|-------|----------|
 | Platform fee | 2.5% | `BusinessRules.PLATFORM_FEE_RATIO = 0.025` |
 | Auto-confirm days | 5 | `BusinessRules.AUTO_CONFIRM_DAYS = 5` |
-| Auth expiry | 7 days | `BusinessRules.AUTHORIZATION_EXPIRY_DAYS = 7` |
+| Auth expiry | 6 days | `BusinessRules.AUTHORIZATION_EXPIRY_DAYS = 6` |
 | Max capture attempts | 3 | `BusinessRules.MAX_CAPTURE_ATTEMPTS = 3` |
 | Currency | CAD | `BusinessRules.DEFAULT_CURRENCY = "cad"` |
 | Max order amount | $100,000 CAD | `BusinessRules.MAX_ORDER_AMOUNT_CAD = 100000` |

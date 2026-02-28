@@ -40,35 +40,28 @@ test.describe('1. Stock Notification Subscribe/Unsubscribe', () => {
   let buyerToken: string;
   let buyerUid: string;
   let productId: string;
-  const variantKey = 'color:red';
 
   test.beforeAll(async () => {
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
     buyerUid = auth.localId;
-    // Use a dedicated out-of-stock product — subscribe_stock_notification requires stockQuantity=0
+    // product_oos_001 has no variants — use product-level subscriptions throughout
     productId = 'product_oos_001';
   });
 
-  test('1.1 Subscribe to out-of-stock notification', async () => {
+  test('1.1 Subscribe to out-of-stock notification (product-level)', async () => {
     const result = await callOk(
       'subscribe_stock_notification',
-      { productId, variantKey },
+      { productId },
       buyerToken,
     );
     expect(result.subscribed, 'subscribe_stock_notification must return subscribed:true').toBe(true);
-
-    // Verify Firestore document created
-    const docPath = `stock_notifications/${productId}_${buyerUid}_${variantKey.replace(':', '_')}`;
-    const doc = await readDoc(docPath, buyerToken);
-    // Doc may be keyed differently; just verify the callable succeeded
-    expect(result.subscribed).toBe(true);
   });
 
   test('1.2 Duplicate subscribe is idempotent', async () => {
     const result = await callOk(
       'subscribe_stock_notification',
-      { productId, variantKey },
+      { productId },
       buyerToken,
     );
     // Should succeed again (idempotent)
@@ -78,13 +71,13 @@ test.describe('1. Stock Notification Subscribe/Unsubscribe', () => {
   test('1.3 Unsubscribe removes stock notification', async () => {
     const result = await callOk(
       'unsubscribe_stock_notification',
-      { productId, variantKey },
+      { productId },
       buyerToken,
     );
     expect(result.unsubscribed, 'unsubscribe must return unsubscribed:true').toBe(true);
   });
 
-  test('1.4 Subscribe without variantKey (product-level) works', async () => {
+  test('1.4 Subscribe and unsubscribe (product-level cleanup)', async () => {
     const result = await callOk(
       'subscribe_stock_notification',
       { productId },

@@ -357,6 +357,8 @@ service cloud.firestore {
           ]) &&
           // Never allow ratings from client updates
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rating', 'ratingCount']) &&
+          // Admin-only toggles (not editable by sellers)
+          (isAdmin() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isTrending', 'trendingAt'])) &&
           (isAdmin() || request.resource.data.sellerId == resource.data.sellerId) &&
           isStringWithLen(request.resource.data.name, 2, 120) &&
           isStringWithLen(request.resource.data.description, 10, 4000) &&
@@ -714,10 +716,12 @@ service cloud.firestore {
     // Only the owner can create; all other access is denied (backend reads via Admin SDK).
     // ================================================================
     match /pending_profiles/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['marketingOptIn'])
-        && request.resource.data.marketingOptIn is bool;
-      allow read, update, delete: if false;
+      allow write: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['marketingOptIn', 'name', 'updatedAt'])
+        && (!request.resource.data.keys().hasAny(['marketingOptIn']) || request.resource.data.marketingOptIn is bool)
+        && (!request.resource.data.keys().hasAny(['name']) || request.resource.data.name is string)
+        && (!request.resource.data.keys().hasAny(['updatedAt']) || request.resource.data.updatedAt == request.time);
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // ================================================================

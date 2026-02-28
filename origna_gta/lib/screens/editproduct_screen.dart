@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
+import 'package:origna_gta/screens/productaddvideo_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -214,11 +215,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     ),
                     validator: (v) => v == null || v.isEmpty || isValidTaxCode(v) ? null : 'product.invalid_tax_code'.tr(),
                   ),
-                  _buildTappableInfoHint(
-                    'product.tax_code_learn_more'.tr(),
-                    'product.stripe_tax_codes'.tr(),
-                    'product.stripe_tax_codes_body'.tr(),
-                  ),
+                  _buildTappableInfoHint('product.tax_code_learn_more'.tr(), 'product.stripe_tax_codes'.tr(), 'product.stripe_tax_codes_body'.tr()),
                   const SizedBox(height: 12),
                   SwitchListTile(
                     title: Text('product.mark_sold_out'.tr()),
@@ -404,6 +401,15 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   _buildImageGrid(state, viewModel),
                   const SizedBox(height: 12),
                   ProductAddImages(imageModels: state.newImages),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('product.product_video'.tr()),
+                  ProductAddVideo(
+                    videoFile: state.videoFile,
+                    existingVideoUrl: state.existingVideoUrl,
+                    onVideoAdded: (file, duration) => viewModel.setVideo(file, duration),
+                    onVideoRemoved: () => viewModel.removeVideo(),
+                  ),
+                  const SizedBox(height: 32),
                   const SizedBox(height: 32),
 
                   Semantics(
@@ -714,10 +720,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         ),
         if (state.digitalType == DigitalTypeValues.software) ...[
           const SizedBox(height: 16),
-          Text(
-            'product.download_links'.tr(),
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('product.download_links'.tr(), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
           _editUrlField(
             key: const Key('editproduct_macos_url'),
@@ -748,10 +751,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[
           const SizedBox(height: 16),
-          Text(
-            'product.reenter_download_url_update'.tr(),
-            style: const TextStyle(fontSize: 12, color: Colors.orange),
-          ),
+          Text('product.reenter_download_url_update'.tr(), style: const TextStyle(fontSize: 12, color: Colors.orange)),
           const SizedBox(height: 6),
           _editUrlField(
             key: const Key('editproduct_book_url'),
@@ -802,6 +802,25 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       child: Text(
         title,
         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: DesignTokens.primary),
+      ),
+    );
+  }
+
+  Widget _buildTappableInfoHint(String shortText, String title, String body) {
+    return GestureDetector(
+      onTap: () => _showInfoSheet(title, body),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.info.withValues(alpha: 0.6)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(shortText, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 14, color: DesignTokens.textDisabled),
+          ],
+        ),
       ),
     );
   }
@@ -903,32 +922,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     Navigator.pop(context, true);
   }
 
-  String? _validatePostalCode(String? v) {
-    if (v == null || v.isEmpty) return 'common.required'.tr();
-    final reg = RegExp(r'^[A-Z]\d[A-Z] \d[A-Z]\d$');
-    if (!reg.hasMatch(v.toUpperCase().trim())) return 'product.invalid_postal'.tr();
-    return null;
-  }
-
-  Widget _buildTappableInfoHint(String shortText, String title, String body) {
-    return GestureDetector(
-      onTap: () => _showInfoSheet(title, body),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Row(
-          children: [
-            Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.info.withValues(alpha: 0.6)),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(shortText, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
-            ),
-            Icon(Icons.chevron_right_rounded, size: 14, color: DesignTokens.textDisabled),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showInfoSheet(String title, String body) {
     showModalBottomSheet(
       context: context,
@@ -971,10 +964,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            Text(
-              body,
-              style: TextStyle(fontSize: 14, color: DesignTokens.darkSurface.withValues(alpha: 0.8), height: 1.5),
-            ),
+            Text(body, style: TextStyle(fontSize: 14, color: DesignTokens.darkSurface.withValues(alpha: 0.8), height: 1.5)),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -994,5 +984,12 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         ),
       ),
     );
+  }
+
+  String? _validatePostalCode(String? v) {
+    if (v == null || v.isEmpty) return 'common.required'.tr();
+    final reg = RegExp(r'^[A-Z]\d[A-Z] \d[A-Z]\d$');
+    if (!reg.hasMatch(v.toUpperCase().trim())) return 'product.invalid_postal'.tr();
+    return null;
   }
 }

@@ -90,20 +90,11 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
 
 /// Provider that returns the current quantity for a specific product in cart
 /// Uses document-level stream to prevent rebuilds when other items change
-final cartItemQuantityProvider = StreamProvider.autoDispose.family<int, String>((ref, productId) {
-  final userId = ref.watch(userIdProvider);
-  if (userId == null) return Stream.value(0);
-
-  return ref
-      .watch(firestoreProvider)
-      .collection(Collections.users)
-      .doc(userId)
-      .collection(Collections.cart)
-      .where(Fields.productId, isEqualTo: productId)
-      .snapshots()
-      .map((snapshot) {
-        return snapshot.docs.fold<int>(0, (total, doc) => total + ((doc.data()[Fields.quantity] as num?)?.toInt() ?? 0));
-      });
+final cartItemQuantityProvider = Provider.autoDispose.family<AsyncValue<int>, String>((ref, productId) {
+  final itemsAsync = ref.watch(cartItemsProvider);
+  return itemsAsync.whenData((items) {
+    return items.where((item) => item.productId == productId).fold<int>(0, (total, item) => total + item.quantity);
+  });
 });
 
 // ============================================================================

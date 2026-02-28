@@ -259,9 +259,7 @@ class CartItemDetailModel {
       isSmallSupplier: map[Fields.isSmallSupplier] ?? false,
       variantId: map[Fields.variantId] as String?,
       variantTitle: map[Fields.variantTitle] as String?,
-      variantOptions: map[Fields.variantOptions] != null 
-          ? Map<String, String>.from(map[Fields.variantOptions] as Map)
-          : null,
+      variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
     );
   }
 
@@ -1040,10 +1038,11 @@ class UserModel {
       lastCheckoutSession: map[Fields.lastCheckoutSession] as String?,
       lastOrderId: map[Fields.lastOrderId] as String?,
       lastCheckoutTimestamp: _parseDateTime(map[Fields.lastCheckoutTimestamp]),
-      stripeAccountId: map[Fields.stripeAccountId] as String?,
-      payoutsEnabled: map[Fields.payoutsEnabled] ?? false,
-      chargesEnabled: map[Fields.chargesEnabled] ?? false,
-      onboardingCompleted: map[Fields.onboardingCompleted] ?? map['stripeOnboardingComplete'] ?? false,
+      // C-6: These fields are now exclusively mastered in seller_profiles/{uid}
+      stripeAccountId: null,
+      payoutsEnabled: false,
+      chargesEnabled: false,
+      onboardingCompleted: false,
       suspended: map[Fields.suspended] ?? false,
       suspendedAt: _parseDateTime(map[Fields.suspendedAt]),
       paymentProvider: map[Fields.paymentProvider] ?? PaymentProviderValues.stripe,

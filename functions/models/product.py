@@ -325,6 +325,7 @@ class Product(BaseModel):
     description: str = Field(..., min_length=10, max_length=4000, description="Product description")
     descriptionF: str | None = Field(default=None, max_length=5000, description="French product description")
     imageUrls: list[str] = Field(..., min_length=1, max_length=5, description="Product image URLs (1-5 images)")
+    videoUrl: str | None = Field(default=None, description="Product video URL")
     sellerId: str = Field(..., min_length=1, description="Seller user ID")
     madeInCountry: str | None = Field(default=None, max_length=100, description="F-277: Country of manufacture (for USMCA/Duty info)")
     sellerAddress: Address | None = Field(default=None, description="Seller's address for shipping calculations")
@@ -497,6 +498,17 @@ class Product(BaseModel):
                 raise ValueError(f"Invalid image URL: {url}")
         return v
 
+    @field_validator("videoUrl")
+    @classmethod
+    def validate_video_url(cls, v: str | None) -> str | None:
+        """Validate video URL origin"""
+        if v is None:
+            return v
+        from schema_constants import BusinessRules
+        if not v.startswith(BusinessRules.CDN_BASE_URL + "/"):
+             raise ValueError(f"Video URL must originate from {BusinessRules.CDN_BASE_URL}")
+        return v
+
     @field_validator("description")
     @classmethod
     def validate_description(cls, v: str) -> str:
@@ -578,6 +590,7 @@ class ProductCreate(BaseModel):
     description: str = Field(..., min_length=10, max_length=4000)
     descriptionF: str | None = Field(default=None, max_length=5000)
     imageUrls: list[str] = Field(..., min_length=1, max_length=5)
+    videoUrl: str | None = Field(default=None)
     sellerId: str = Field(..., min_length=1)
     madeInCountry: str | None = Field(default=None, max_length=100)
     sellerAddress: Address | None = Field(
@@ -763,6 +776,7 @@ class ProductUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=10, max_length=4000)
     descriptionF: str | None = Field(default=None, max_length=5000)
     imageUrls: list[str] | None = Field(default=None, max_length=5)
+    videoUrl: str | None = Field(default=None)
     sellerAddress: Address | None = Field(default=None)
     madeInCountry: str | None = Field(default=None, max_length=100)
     categoryId: int | None = Field(default=None, ge=CategoryIds.MIN, le=CategoryIds.MAX)

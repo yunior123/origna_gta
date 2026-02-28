@@ -1,8 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart'; // For UserModel
 import 'package:origna_gta/widgets/custom_app_bar.dart'; // Assuming this exists based on your code
@@ -130,7 +130,10 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             ),
           ),
           error: (error, stack) => Center(
-            child: Padding(padding: const EdgeInsets.all(24), child: Text('seller.error_loading_profile'.tr(namedArgs: {'error': error.toString()}))),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('seller.error_loading_profile'.tr(namedArgs: {'error': error.toString()})),
+            ),
           ),
           data: (userModel) {
             if (userModel == null) {
@@ -192,25 +195,22 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                         label: 'chk-seller-terms',
                         checked: _termsAccepted,
                         child: CheckboxListTile(
-                        key: const Key('seller_terms_checkbox'),
-                        value: _termsAccepted,
-                        onChanged: (value) => setState(() => _termsAccepted = value ?? false),
-                        title: Text('seller.accept_terms'.tr()),
-                        subtitle: !_termsAccepted
-                            ? Text(
-                                'seller.accept_terms_required'.tr(),
-                                style: TextStyle(color: DesignTokens.warning, fontSize: 12),
-                              )
-                            : null,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return DesignTokens.primary;
-                          }
-                          return null;
-                        }),
-                        contentPadding: EdgeInsets.zero,
-                      ),
+                          key: const Key('seller_terms_checkbox'),
+                          value: _termsAccepted,
+                          onChanged: (value) => setState(() => _termsAccepted = value ?? false),
+                          title: Text('seller.accept_terms'.tr()),
+                          subtitle: !_termsAccepted
+                              ? Text('seller.accept_terms_required'.tr(), style: TextStyle(color: DesignTokens.warning, fontSize: 12))
+                              : null,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return DesignTokens.primary;
+                            }
+                            return null;
+                          }),
+                          contentPadding: EdgeInsets.zero,
+                        ),
                       ),
                       const SizedBox(height: 12),
 
@@ -251,81 +251,17 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     WidgetsBinding.instance.addObserver(this);
   }
 
-  /// Build verification status info card — reads Stripe status from seller_profiles/{uid}
-  /// via sellerAccountStatusProvider (not UserModel, which only reads users/{uid}).
-  Widget _buildVerificationStatusCard(UserModel user) {
-    // Stripe status fields live in seller_profiles/{uid}, not users/{uid}.
-    // Use sellerAccountStatusProvider which correctly combines both collections.
-    final statusAsync = ref.watch(sellerAccountStatusProvider);
-    final status = statusAsync.valueOrNull;
-
-    final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
-    final onboardingCompleted = status?.detailsSubmitted ?? false;
-    final chargesEnabled = status?.chargesEnabled ?? false;
-    final payoutsEnabled = status?.chargesEnabled ?? false; // chargesEnabled combines both in SellerAccountStatus
-
-    // Only show if user has account but verification is pending
-    if (!hasAccount || (chargesEnabled && payoutsEnabled)) return const SizedBox.shrink();
-    
-    String title;
-    String message;
-    IconData icon;
-    Color color;
-    
-    if (!onboardingCompleted) {
-      title = 'seller.complete_your_setup'.tr();
-      message = 'seller.complete_setup_card_body'.tr();
-      icon = Icons.assignment_outlined;
-      color = DesignTokens.primary;
-    } else if (!chargesEnabled || !payoutsEnabled) {
-      title = 'seller.identity_pending'.tr();
-      message = 'seller.identity_pending_card_body'.tr();
-      icon = Icons.hourglass_empty;
-      color = DesignTokens.warning;
-    } else {
-      return const SizedBox.shrink();
-    }
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 15),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, height: 1.4),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActionButton(UserModel user, SellerRegistrationState viewState, SellerRegistrationViewModel viewModel) {
     final isLoading = viewState.isLoading;
 
-    final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
-    final canReceivePayouts = user.payoutsEnabled;
-    final onboardingCompleted = user.onboardingCompleted;
+    final statusAsync = ref.watch(sellerAccountStatusProvider);
+    final status = statusAsync.valueOrNull;
+
+    // C-5: Read from sellerAccountStatusProvider instead of UserModel
+    final hasAccount = status != null && status.isSeller; // isSeller implies a seller profile exists
+    final canReceivePayouts = status?.chargesEnabled ?? false; // In SellerAccountStatus, chargesEnabled implies payoutsEnabled
+    final onboardingCompleted = status?.detailsSubmitted ?? false;
+    final hasPendingRequirements = status?.hasPendingRequirements ?? false;
     final hasError = viewState.error != null && viewState.error!.isNotEmpty;
 
     String buttonText;
@@ -335,7 +271,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       // Already set up - can manage without accepting terms again
       buttonText = 'seller.manage_stripe'.tr();
       onPressed = viewModel.openStripeDashboard;
-    } else if (hasAccount && onboardingCompleted && user.hasPendingRequirements && !hasError) {
+    } else if (hasAccount && onboardingCompleted && hasPendingRequirements && !hasError) {
       // Has account, submitted details, but still has requirements to complete
       buttonText = 'seller.complete_documents'.tr();
       onPressed = viewModel.continueOnboarding;
@@ -361,16 +297,16 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       button: true,
       label: 'btn-seller-action',
       child: ModernButton(
-      key: const Key('seller_action_button'),
-      onPressed: isLoading ? null : onPressed,
-      label: buttonText,
-      isLoading: isLoading,
-      icon: canReceivePayouts
-          ? Icons.dashboard
-          : hasAccount
-          ? Icons.check_circle
-          : Icons.store,
-    ),
+        key: const Key('seller_action_button'),
+        onPressed: isLoading ? null : onPressed,
+        label: buttonText,
+        isLoading: isLoading,
+        icon: canReceivePayouts
+            ? Icons.dashboard
+            : hasAccount
+            ? Icons.check_circle
+            : Icons.store,
+      ),
     );
   }
 
@@ -484,7 +420,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       error: (_, _) => true,
     );
     final isDisabled = config.comingSoon || !isConfiguredInBackend;
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -537,7 +473,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
   Widget _buildProviderSelector(UserModel user, SellerRegistrationState state, SellerRegistrationViewModel viewModel) {
     final provider = user.paymentProvider.isNotEmpty ? user.paymentProvider : state.paymentProvider;
     final selectedConfig = availablePaymentProviders.firstWhere((p) => p.id == provider, orElse: () => availablePaymentProviders.first);
-    
+
     // Watch backend provider status once — pass resolved value into the map to avoid double-watch
     final backendStatus = ref.watch(paymentProviderStatusProvider);
     final backendStatusMap = backendStatus.valueOrNull ?? {};
@@ -557,14 +493,14 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             runSpacing: 8,
             children: availablePaymentProviders.map((config) {
               final isSelected = provider == config.id;
-              
+
               // Check if provider is configured in backend (defaults to true if unknown)
               final providerStatus = backendStatusMap[config.id];
               final isConfiguredInBackend = providerStatus == null ? true : providerStatus[ApiKeys.configured] == true;
-              
+
               // Provider is disabled if it's marked "comingSoon" OR not configured in backend
               final isDisabled = config.comingSoon || !isConfiguredInBackend;
-              
+
               return Stack(
                 children: [
                   ChoiceChip(
@@ -606,6 +542,72 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
           _buildProviderInfoCard(selectedConfig),
           const SizedBox(height: 8),
           Text(selectedConfig.recommendedFor, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  /// Build verification status info card — reads Stripe status from seller_profiles/{uid}
+  /// via sellerAccountStatusProvider (not UserModel, which only reads users/{uid}).
+  Widget _buildVerificationStatusCard(UserModel user) {
+    // Stripe status fields live in seller_profiles/{uid}, not users/{uid}.
+    // Use sellerAccountStatusProvider which correctly combines both collections.
+    final statusAsync = ref.watch(sellerAccountStatusProvider);
+    final status = statusAsync.valueOrNull;
+
+    final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
+    final onboardingCompleted = status?.detailsSubmitted ?? false;
+    final chargesEnabled = status?.chargesEnabled ?? false;
+    final payoutsEnabled = status?.chargesEnabled ?? false; // chargesEnabled combines both in SellerAccountStatus
+
+    // Only show if user has account but verification is pending
+    if (!hasAccount || (chargesEnabled && payoutsEnabled)) return const SizedBox.shrink();
+
+    String title;
+    String message;
+    IconData icon;
+    Color color;
+
+    if (!onboardingCompleted) {
+      title = 'seller.complete_your_setup'.tr();
+      message = 'seller.complete_setup_card_body'.tr();
+      icon = Icons.assignment_outlined;
+      color = DesignTokens.primary;
+    } else if (!chargesEnabled || !payoutsEnabled) {
+      title = 'seller.identity_pending'.tr();
+      message = 'seller.identity_pending_card_body'.tr();
+      icon = Icons.hourglass_empty;
+      color = DesignTokens.warning;
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 15),
+                ),
+                const SizedBox(height: 4),
+                Text(message, style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, height: 1.4)),
+              ],
+            ),
+          ),
         ],
       ),
     );

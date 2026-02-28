@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
@@ -15,6 +16,11 @@ class AlgoliaProductRepository implements ProductRepository {
   final FirebaseFunctions _functions;
 
   AlgoliaProductRepository(this._algoliaService, this._firestore, this._functions);
+
+  @override
+  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls, String? bookSourceUrl}) async {
+    throw UnimplementedError('createProductAtomic should be handled by FirebaseProductRepository');
+  }
 
   @override
   Future<void> deleteProduct(String productId) async {
@@ -74,10 +80,7 @@ class AlgoliaProductRepository implements ProductRepository {
     for (int i = 0; i < productIds.length; i += 30) {
       final chunk = productIds.skip(i).take(30).toList();
       // F-79: No lifecycleStatus filter — inactive items show "unavailable" in cart.
-      final snapshot = await _firestore
-          .collection(Collections.products)
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get();
+      final snapshot = await _firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: chunk).get();
       results.addAll(snapshot.docs.map((doc) => Product.fromFirestore(doc)));
     }
     return results;
@@ -111,13 +114,18 @@ class AlgoliaProductRepository implements ProductRepository {
   }
 
   @override
+  Future<String?> getUploadUrl(String fileName) async {
+    throw UnimplementedError('Image upload URLs should be handled by FirebaseProductRepository');
+  }
+
+  @override
   Future<Map<String, String>?> getUploadUrlInfo(String fileName) async {
     throw UnimplementedError('Image upload URLs should be handled by FirebaseProductRepository');
   }
 
   @override
-  Future<String?> getUploadUrl(String fileName) async {
-    throw UnimplementedError('Image upload URLs should be handled by FirebaseProductRepository');
+  Future<Map<String, String>?> getUploadVideoUrlInfo(String fileName, String contentType) async {
+    throw UnimplementedError('Video upload URLs should be handled by FirebaseProductRepository');
   }
 
   @override
@@ -159,13 +167,13 @@ class AlgoliaProductRepository implements ProductRepository {
   }
 
   @override
-  Future<List<String>> uploadReviewImages(List<Uint8List> images, String userId) async {
-    throw UnimplementedError('Review image upload should be handled by FirebaseProductRepository');
+  Future<String?> uploadProductVideo(XFile videoFile, String sellerId) async {
+    throw UnimplementedError('Video upload should be handled by FirebaseProductRepository');
   }
 
   @override
-  Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls, String? bookSourceUrl}) async {
-    throw UnimplementedError('createProductAtomic should be handled by FirebaseProductRepository');
+  Future<List<String>> uploadReviewImages(List<Uint8List> images, String userId) async {
+    throw UnimplementedError('Review image upload should be handled by FirebaseProductRepository');
   }
 
   @override
@@ -234,7 +242,7 @@ class AlgoliaProductRepository implements ProductRepository {
 
     final snapshot = await query.get(const GetOptions(source: Source.server));
     if (kDebugMode) debugPrint('[AlgoliaProductRepository] Fallback Snapshot length: ${snapshot.docs.length}');
-    
+
     final hasMore = snapshot.docs.length > pageSize;
     final docsToMap = hasMore ? snapshot.docs.take(pageSize) : snapshot.docs;
 
@@ -243,11 +251,7 @@ class AlgoliaProductRepository implements ProductRepository {
       return Product.fromFirestore(doc);
     }).toList();
 
-    return ProductQueryResult(
-      products: products,
-      hasMore: hasMore,
-      lastDocument: docsToMap.isNotEmpty ? docsToMap.last : null,
-    );
+    return ProductQueryResult(products: products, hasMore: hasMore, lastDocument: docsToMap.isNotEmpty ? docsToMap.last : null);
   }
 
   Future<ProductQueryResult> _searchWithAlgolia(String query, int? categoryId, String? subcategory, int pageSize) async {

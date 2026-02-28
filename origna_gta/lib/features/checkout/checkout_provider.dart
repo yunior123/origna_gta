@@ -310,7 +310,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
           try {
             final didAuthenticate = await localAuth.authenticate(
               localizedReason: 'auth_biometric_required_higher_value'.tr(), // "Please authenticate to confirm this high-value transaction"
-              biometricOnly: true,
+              biometricOnly: false,
             );
 
             if (!didAuthenticate) {

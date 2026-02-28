@@ -147,6 +147,8 @@ abstract final class BusinessRules {
   static const sellerDisputeRateThreshold = 0.05; // 5% dispute rate triggers health alert
   static const sellerRefundRateThreshold = 0.10; // 10% refund rate threshold
   static const maxProductImages = 5; // Maximum number of images per product listing
+  static const maxVideoBytes = 100 * 1024 * 1024; // 100 MB max video size
+  static const maxVideoDurationSeconds = 60; // 60s max video duration
   static const trendingTopN = 20; // Number of products to mark as trending
   static const trendingWindowHours = 24; // Rolling window for trending calculation
   static const trendingPurchaseWeight = 3; // Weight for purchase events
@@ -261,6 +263,7 @@ abstract final class CloudFunctionEndpoints {
   static const uploadProductImages = 'upload_product_images';
   static const uploadReviewImages = 'upload_review_images';
   static const deleteProductImages = 'delete_product_images';
+  static const uploadProductVideo = 'upload_product_video';
   static const createProductAtomic = 'create_product_atomic';
   static const updateProduct = 'update_product';
   static const submitProductRating = 'submit_product_rating';
@@ -409,17 +412,7 @@ abstract final class ConsentMethodValues {
   static const userPreference = 'user_preference';
   static const unsubscribe = 'unsubscribe';
 
-  static const all = {
-    signup,
-    signupForm,
-    googleOauth,
-    appleOauth,
-    checkbox,
-    doubleOptIn,
-    implied,
-    userPreference,
-    unsubscribe,
-  };
+  static const all = {signup, signupForm, googleOauth, appleOauth, checkbox, doubleOptIn, implied, userPreference, unsubscribe};
 }
 
 /// Valid values for country fields
@@ -698,6 +691,7 @@ abstract final class Fields {
   static const minimumOrderQuantity = 'minimumOrderQuantity';
   static const freeShipping = 'freeShipping';
   static const taxCode = 'taxCode';
+  static const videoUrl = 'videoUrl';
   static const supplier = 'supplier';
   static const inventory = 'inventory';
   // Inventory sub-fields (keys inside the `inventory` map)
@@ -1505,55 +1499,6 @@ abstract final class ShippingSourceValues {
   static const domestic = 'domestic';
 }
 
-/// Subcategory constants — maps category display name to subcategory list.
-/// Used by add/edit product screens to show subcategory dropdowns. (N-11)
-abstract final class SubcategoryConstants {
-  static const Map<String, List<String>> map = {
-    'Fashion': ["Men's Clothing", "Women's Clothing", "Kids' Clothing", 'Shoes', 'Accessories', 'Bags', 'Jewelry'],
-    'Electronics': ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'],
-    'Home & Garden': ['Furniture', 'Decor', 'Kitchen', 'Bedding', 'Lighting', 'Garden & Outdoor', 'Storage'],
-    'Beauty & Personal Care': ['Skincare', 'Haircare', 'Makeup', 'Fragrance', "Men's Grooming"],
-    'Sports & Outdoors': ['Fitness', 'Outdoor Recreation', 'Team Sports', 'Water Sports', 'Winter Sports'],
-    'Toys & Games': ['Puzzles & Board Games', 'Building Toys', 'Dolls & Playsets', 'Video Games', 'Outdoor Play'],
-    'Food & Grocery': ['Snacks', 'Beverages', 'Health Foods', 'Specialty Foods', 'Baking'],
-    'Books & Media': ['Books', 'Music', 'Movies & TV', 'Magazines'],
-    'Automotive': ['Car Accessories', 'Motorcycle', 'Tools & Equipment'],
-    'Health': ['Vitamins & Supplements', 'Medical Devices', 'Personal Care'],
-    'Art & Crafts': ['Drawing & Painting', 'Yarn & Fiber Arts', 'Paper Crafts', 'Photography'],
-    'Baby': ['Baby Clothing', 'Feeding', 'Nursery', 'Strollers', 'Toys'],
-  };
-
-  /// Lookup subcategories by category ID (matches productCategories list in utils.dart).
-  static const Map<int, List<String>> _byId = {
-    1: ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'], // Electronics
-    2: ['Laptops', 'Desktops', 'Monitors', 'Components', 'Networking', 'Accessories'], // Computers
-    3: ['Consoles', 'Video Games', 'Controllers', 'Headsets', 'PC Gaming', 'VR'], // Gaming
-    4: ['Furniture', 'Decor', 'Kitchen', 'Bedding', 'Lighting', 'Garden & Outdoor', 'Storage'], // Home & Kitchen
-    5: ["Men's Clothing", "Women's Clothing", "Kids' Clothing", 'Outerwear', 'Activewear', 'Underwear'], // Fashion
-    6: ['Sneakers', 'Boots', 'Sandals', 'Bags', 'Belts', 'Hats', 'Sunglasses'], // Shoes & Accessories
-    7: ['Watches', 'Necklaces', 'Rings', 'Earrings', 'Bracelets', 'Fine Jewelry'], // Jewelry & Watches
-    8: ['Skincare', 'Haircare', 'Makeup', 'Fragrance', "Men's Grooming"], // Beauty & Personal Care
-    9: ['Vitamins & Supplements', 'Medical Devices', 'Personal Care', 'Diet & Nutrition'], // Health & Wellness
-    10: ['Fitness', 'Outdoor Recreation', 'Team Sports', 'Water Sports', 'Winter Sports', 'Cycling'], // Sports & Fitness
-    11: ['Car Accessories', 'Motorcycle', 'Tools & Equipment', 'Replacement Parts', 'Car Care'], // Automotive
-    12: ['Power Tools', 'Hand Tools', 'Hardware', 'Plumbing', 'Electrical', 'Building Materials'], // Tools & Hardware
-    13: ['Pens & Pencils', 'Paper', 'Binders & Folders', 'Desk Accessories', 'Printers & Ink', 'School Supplies'], // Office Supplies
-    14: ['Fiction', 'Non-Fiction', 'Children', 'Textbooks', 'Comics & Graphic Novels', 'Audiobooks'], // Books
-    15: ['Guitars', 'Keyboards', 'Drums', 'Recording Equipment', 'DJ Gear', 'Accessories'], // Music & Instruments
-    16: ['Puzzles & Board Games', 'Building Toys', 'Dolls & Playsets', 'Action Figures', 'Outdoor Play'], // Toys & Games
-    17: ['Baby Clothing', 'Feeding', 'Nursery', 'Strollers', 'Toys', 'Diapering'], // Baby & Kids
-    18: ['Dogs', 'Cats', 'Fish', 'Birds', 'Small Animals', 'Reptiles'], // Pet Supplies
-    19: ['Snacks', 'Beverages', 'Health Foods', 'Specialty Foods', 'Baking', 'Pantry Staples'], // Groceries
-    20: ['Painting', 'Sculpture', 'Photography', 'Mixed Media', 'Antiques', 'Coins & Stamps'], // Art & Collectibles
-    21: ['Software', 'eBooks', 'Digital Art', 'Audio & Music', 'Courses & Tutorials', 'Templates'], // Digital Products
-  };
-
-  /// Lookup subcategories by category ID (matches productCategories list in utils.dart).
-  static List<String> forCategoryId(int categoryId) {
-    return _byId[categoryId] ?? const [];
-  }
-}
-
 /// Stripe API specific constants to avoid magic strings
 abstract final class StripeConstants {
   static const reverseCharge = 'reverse_charge';
@@ -1612,14 +1557,7 @@ abstract final class StripeConstants {
   static const created = 'created';
 
   // Stripe Tax types to internal tax labels
-  static const taxTypeMap = {
-    'gst_hst': 'GST',
-    'gst': 'GST',
-    'hst': 'HST',
-    'pst': 'PST',
-    'qst': 'QST',
-    'rst': 'PST',
-  };
+  static const taxTypeMap = {'gst_hst': 'GST', 'gst': 'GST', 'hst': 'HST', 'pst': 'PST', 'qst': 'QST', 'rst': 'PST'};
 }
 
 /// Stripe webhook event types
@@ -1645,6 +1583,70 @@ abstract final class StripeEventTypes {
   static const subscriptionDeleted = 'customer.subscription.deleted';
   static const invoicePaymentFailed = 'invoice.payment_failed';
   static const invoicePaid = 'invoice.paid';
+}
+
+/// Subcategory constants — maps category display name to subcategory list.
+/// Used by add/edit product screens to show subcategory dropdowns. (N-11)
+abstract final class SubcategoryConstants {
+  static const Map<String, List<String>> map = {
+    'Fashion': ["Men's Clothing", "Women's Clothing", "Kids' Clothing", 'Shoes', 'Accessories', 'Bags', 'Jewelry'],
+    'Electronics': ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'],
+    'Home & Garden': ['Furniture', 'Decor', 'Kitchen', 'Bedding', 'Lighting', 'Garden & Outdoor', 'Storage'],
+    'Beauty & Personal Care': ['Skincare', 'Haircare', 'Makeup', 'Fragrance', "Men's Grooming"],
+    'Sports & Outdoors': ['Fitness', 'Outdoor Recreation', 'Team Sports', 'Water Sports', 'Winter Sports'],
+    'Toys & Games': ['Puzzles & Board Games', 'Building Toys', 'Dolls & Playsets', 'Video Games', 'Outdoor Play'],
+    'Food & Grocery': ['Snacks', 'Beverages', 'Health Foods', 'Specialty Foods', 'Baking'],
+    'Books & Media': ['Books', 'Music', 'Movies & TV', 'Magazines'],
+    'Automotive': ['Car Accessories', 'Motorcycle', 'Tools & Equipment'],
+    'Health': ['Vitamins & Supplements', 'Medical Devices', 'Personal Care'],
+    'Art & Crafts': ['Drawing & Painting', 'Yarn & Fiber Arts', 'Paper Crafts', 'Photography'],
+    'Baby': ['Baby Clothing', 'Feeding', 'Nursery', 'Strollers', 'Toys'],
+  };
+
+  /// Lookup subcategories by category ID (matches productCategories list in utils.dart).
+  static const Map<int, List<String>> _byId = {
+    1: ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'], // Electronics
+    2: ['Laptops', 'Desktops', 'Monitors', 'Components', 'Networking', 'Accessories'], // Computers
+    3: ['Consoles', 'Video Games', 'Controllers', 'Headsets', 'PC Gaming', 'VR'], // Gaming
+    4: ['Furniture', 'Decor', 'Kitchen', 'Bedding', 'Lighting', 'Garden & Outdoor', 'Storage'], // Home & Kitchen
+    5: ["Men's Clothing", "Women's Clothing", "Kids' Clothing", 'Outerwear', 'Activewear', 'Underwear'], // Fashion
+    6: ['Sneakers', 'Boots', 'Sandals', 'Bags', 'Belts', 'Hats', 'Sunglasses'], // Shoes & Accessories
+    7: ['Watches', 'Necklaces', 'Rings', 'Earrings', 'Bracelets', 'Fine Jewelry'], // Jewelry & Watches
+    8: ['Skincare', 'Haircare', 'Makeup', 'Fragrance', "Men's Grooming"], // Beauty & Personal Care
+    9: ['Vitamins & Supplements', 'Medical Devices', 'Personal Care', 'Diet & Nutrition'], // Health & Wellness
+    10: ['Fitness', 'Outdoor Recreation', 'Team Sports', 'Water Sports', 'Winter Sports', 'Cycling'], // Sports & Fitness
+    11: ['Car Accessories', 'Motorcycle', 'Tools & Equipment', 'Replacement Parts', 'Car Care'], // Automotive
+    12: ['Power Tools', 'Hand Tools', 'Hardware', 'Plumbing', 'Electrical', 'Building Materials'], // Tools & Hardware
+    13: ['Pens & Pencils', 'Paper', 'Binders & Folders', 'Desk Accessories', 'Printers & Ink', 'School Supplies'], // Office Supplies
+    14: ['Fiction', 'Non-Fiction', 'Children', 'Textbooks', 'Comics & Graphic Novels', 'Audiobooks'], // Books
+    15: ['Guitars', 'Keyboards', 'Drums', 'Recording Equipment', 'DJ Gear', 'Accessories'], // Music & Instruments
+    16: ['Puzzles & Board Games', 'Building Toys', 'Dolls & Playsets', 'Action Figures', 'Outdoor Play'], // Toys & Games
+    17: ['Baby Clothing', 'Feeding', 'Nursery', 'Strollers', 'Toys', 'Diapering'], // Baby & Kids
+    18: ['Dogs', 'Cats', 'Fish', 'Birds', 'Small Animals', 'Reptiles'], // Pet Supplies
+    19: ['Snacks', 'Beverages', 'Health Foods', 'Specialty Foods', 'Baking', 'Pantry Staples'], // Groceries
+    20: ['Painting', 'Sculpture', 'Photography', 'Mixed Media', 'Antiques', 'Coins & Stamps'], // Art & Collectibles
+    21: ['Software', 'eBooks', 'Digital Art', 'Audio & Music', 'Courses & Tutorials', 'Templates'], // Digital Products
+  };
+
+  /// Lookup subcategories by category ID (matches productCategories list in utils.dart).
+  static List<String> forCategoryId(int categoryId) {
+    return _byId[categoryId] ?? const [];
+  }
+}
+
+/// Stripe subscription status values
+abstract final class SubscriptionStatusValues {
+  static const active = 'active';
+  static const canceled = 'canceled';
+  static const inactive = 'inactive';
+  static const pastDue = 'past_due';
+  static const incomplete = 'incomplete';
+  static const incompleteExpired = 'incomplete_expired';
+  static const trialing = 'trialing';
+  static const unpaid = 'unpaid';
+
+  static const all = [active, canceled, inactive, pastDue, incomplete, incompleteExpired, trialing, unpaid];
+  static const premiumActive = {active, trialing};
 }
 
 /// Valid values for supplier currency — mirrors Python SupplierCurrencyValues
@@ -1738,29 +1740,14 @@ abstract final class TransactionSentinel {
   static const refunded = 'refunded';
 }
 
-/// User-facing UI messages
-abstract final class UIMessages {
-  static const sessionExpired = 'Session expired due to inactivity. Please login again.';
-  static const sessionExpiredTitle = 'Session Expired';
-}
-
 // =============================================================================
 // N-11: SUBCATEGORIES — Maps categoryId to list of subcategory names
 // =============================================================================
 
-/// Stripe subscription status values
-abstract final class SubscriptionStatusValues {
-  static const active = 'active';
-  static const canceled = 'canceled';
-  static const inactive = 'inactive';
-  static const pastDue = 'past_due';
-  static const incomplete = 'incomplete';
-  static const incompleteExpired = 'incomplete_expired';
-  static const trialing = 'trialing';
-  static const unpaid = 'unpaid';
-
-  static const all = [active, canceled, inactive, pastDue, incomplete, incompleteExpired, trialing, unpaid];
-  static const premiumActive = {active, trialing};
+/// User-facing UI messages
+abstract final class UIMessages {
+  static const sessionExpired = 'Session expired due to inactivity. Please login again.';
+  static const sessionExpiredTitle = 'Session Expired';
 }
 
 /// Valid values for roles array

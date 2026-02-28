@@ -16,6 +16,23 @@ from firebase_admin import firestore
 from firebase_functions import https_fn
 
 
+def _build_get_all(all_docs):
+    """Return a get_all() mock that resolves doc refs from all_docs."""
+    def get_all_impl(refs):
+        results = []
+        for ref in refs:
+            doc_id = ref.id if hasattr(ref, "id") else str(ref)
+            if doc_id in all_docs:
+                results.append(all_docs[doc_id])
+            else:
+                not_found = MagicMock()
+                not_found.exists = False
+                not_found.id = doc_id
+                results.append(not_found)
+        return results
+    return get_all_impl
+
+
 @pytest.fixture
 def setup_unified_mock_db():
     """Creates a unified mock database that handles all document lookups"""
@@ -283,6 +300,7 @@ class TestCreateCheckoutSession:
         mock_collection = MagicMock()
         mock_collection.document = make_doc_ref
         mock_db.collection.return_value = mock_collection
+        mock_db.get_all = _build_get_all(all_docs)
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
@@ -420,6 +438,7 @@ class TestCreateCheckoutSession:
         mock_collection = MagicMock()
         mock_collection.document = make_doc_ref
         mock_db.collection.return_value = mock_collection
+        mock_db.get_all = _build_get_all(all_docs)
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
@@ -497,6 +516,7 @@ class TestCreateCheckoutSession:
         mock_collection = MagicMock()
         mock_collection.document = make_doc_ref
         mock_db.collection.return_value = mock_collection
+        mock_db.get_all = _build_get_all(all_docs)
 
         mock_stripe_create.return_value = Mock(id="cs_test", url="https://test.com", payment_intent="pi_test")
 

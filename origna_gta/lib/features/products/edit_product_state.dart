@@ -1,3 +1,4 @@
+import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/products/variant_models.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -21,6 +22,9 @@ class EditProductState {
   final int? deviceLimit;
   final List<String> existingImageUrls;
   final List<ImageModel> newImages;
+  final String? existingVideoUrl;
+  final XFile? videoFile;
+  final int? videoDurationSeconds;
   final List<Map<String, dynamic>> addressSuggestions;
   final bool showSuggestions;
   final String selectedProvince;
@@ -58,6 +62,9 @@ class EditProductState {
     this.deviceLimit,
     this.existingImageUrls = const [],
     this.newImages = const [],
+    this.existingVideoUrl,
+    this.videoFile,
+    this.videoDurationSeconds,
     this.addressSuggestions = const [],
     this.showSuggestions = false,
     this.selectedProvince = ProvinceCodeValues.ontario,
@@ -94,6 +101,9 @@ class EditProductState {
     Object? deviceLimit = _sentinel,
     List<String>? existingImageUrls,
     List<ImageModel>? newImages,
+    Object? existingVideoUrl = _sentinel,
+    Object? videoFile = _sentinel,
+    Object? videoDurationSeconds = _sentinel,
     List<Map<String, dynamic>>? addressSuggestions,
     bool? showSuggestions,
     String? selectedProvince,
@@ -129,6 +139,9 @@ class EditProductState {
       deviceLimit: deviceLimit == _sentinel ? this.deviceLimit : deviceLimit as int?,
       existingImageUrls: existingImageUrls ?? this.existingImageUrls,
       newImages: newImages ?? this.newImages,
+      existingVideoUrl: existingVideoUrl == _sentinel ? this.existingVideoUrl : existingVideoUrl as String?,
+      videoFile: videoFile == _sentinel ? this.videoFile : videoFile as XFile?,
+      videoDurationSeconds: videoDurationSeconds == _sentinel ? this.videoDurationSeconds : videoDurationSeconds as int?,
       addressSuggestions: addressSuggestions ?? this.addressSuggestions,
       showSuggestions: showSuggestions ?? this.showSuggestions,
       selectedProvince: selectedProvince ?? this.selectedProvince,

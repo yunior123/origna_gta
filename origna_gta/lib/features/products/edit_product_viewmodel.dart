@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -45,6 +46,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           bookSourceUrl: null, // server-side only, seller must re-enter
           deviceLimit: _product.deviceLimit,
           existingImageUrls: List.from(_product.imageUrls),
+          existingVideoUrl: _product.videoUrl,
           selectedProvince: _product.sellerAddress?.state.isNotEmpty == true ? _product.sellerAddress!.state : ProvinceCodeValues.ontario,
           latitude: _product.sellerAddress?.latitude,
           longitude: _product.sellerAddress?.longitude,
@@ -86,6 +88,10 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     state = state.copyWith(existingImageUrls: newList);
   }
 
+  void removeVideo() {
+    state = state.copyWith(videoFile: null, videoDurationSeconds: null, existingVideoUrl: null);
+  }
+
   void selectAddress(Map<String, dynamic> suggestion) {
     final details = parseAddressSuggestion(suggestion);
     state = state.copyWith(
@@ -117,10 +123,15 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
 
   void setMacosDownloadUrl(String? url) => state = state.copyWith(macosDownloadUrl: url);
+
   void setMinimumOrderQuantity(int value) => state = state.copyWith(minimumOrderQuantity: value);
   void setProvince(String province) => state = state.copyWith(selectedProvince: province);
   void setSameDayEnabled(bool value) => state = state.copyWith(sameDayEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
   void setStandardEnabled(bool value) => state = state.copyWith(standardEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
+  void setVideo(XFile file, int durationSeconds) {
+    state = state.copyWith(videoFile: file, videoDurationSeconds: durationSeconds, existingVideoUrl: null);
+  }
+
   void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
 
   void toggleDigital(bool value) => state = state.copyWith(
@@ -285,6 +296,22 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         allImageUrls.addAll(successfulUrls);
       }
 
+      String? uploadedVideoUrl;
+      // If a new video is selected, validate limits and upload
+      if (state.videoFile != null) {
+        if ((state.videoDurationSeconds ?? 0) > BusinessRules.maxVideoDurationSeconds) {
+          throw Exception('product.video_too_long'.tr());
+        }
+        // Manual size check before repository call for early failure
+        final bytes = await state.videoFile!.readAsBytes();
+        if (bytes.length > BusinessRules.maxVideoBytes) {
+          throw Exception('product.video_too_large'.tr());
+        }
+        uploadedVideoUrl = await _repository.uploadProductVideo(state.videoFile!, _product.sellerId);
+      } else if (state.existingVideoUrl != null) {
+        uploadedVideoUrl = state.existingVideoUrl;
+      }
+
       final sanitizedDeliveryOptions = state.isDigital ? <models.SellerDeliveryOption>[] : deliveryOptions;
       final updatedProduct = _product.copyWith(
         name: name,
@@ -334,6 +361,13 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       final updateMap = updatedProduct.toJson();
       if (state.isDigital && state.digitalType == DigitalTypeValues.book && state.bookSourceUrl?.isNotEmpty == true) {
         updateMap[Fields.bookSourceUrl] = state.bookSourceUrl!;
+      }
+
+      if (uploadedVideoUrl != null) {
+        updateMap[Fields.videoUrl] = uploadedVideoUrl;
+      } else {
+        // If neither videoFile nor existingVideoUrl is set, ensure videoUrl is cleared in firestore
+        updateMap[Fields.videoUrl] = null;
       }
 
       await _repository.updateProduct(_product.productId, updateMap);

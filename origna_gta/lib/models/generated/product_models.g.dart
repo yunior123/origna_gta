@@ -41,6 +41,7 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   imageUrls: (json['imageUrls'] as List<dynamic>)
       .map((e) => e as String)
       .toList(),
+  videoUrl: json['videoUrl'] as String?,
   sellerId: json['sellerId'] as String,
   sellerAddress: json['sellerAddress'] == null
       ? null
@@ -135,6 +136,7 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'description': instance.description,
   'descriptionF': instance.descriptionF,
   'imageUrls': instance.imageUrls,
+  'videoUrl': instance.videoUrl,
   'sellerId': instance.sellerId,
   'sellerAddress': instance.sellerAddress,
   'categoryId': instance.categoryId,
@@ -198,6 +200,7 @@ _ProductCreate _$ProductCreateFromJson(
   imageUrls: (json['imageUrls'] as List<dynamic>)
       .map((e) => e as String)
       .toList(),
+  videoUrl: json['videoUrl'] as String?,
   sellerId: json['sellerId'] as String,
   sellerAddress: json['sellerAddress'] == null
       ? null
@@ -274,6 +277,7 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'description': instance.description,
       'descriptionF': instance.descriptionF,
       'imageUrls': instance.imageUrls,
+      'videoUrl': instance.videoUrl,
       'sellerId': instance.sellerId,
       'sellerAddress': instance.sellerAddress,
       'categoryId': instance.categoryId,

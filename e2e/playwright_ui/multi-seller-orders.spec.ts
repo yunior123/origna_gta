@@ -142,8 +142,9 @@ test.describe('Multi-Seller Orders', () => {
     const auth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 90_000);
 
-    // Seller A tries to update the WHOLE order status — should be rejected
-    const sellerAuth = await getSellerAuth(productA!.sellerId);
+    // Seller B (non-admin) tries to update the WHOLE order status — should be rejected.
+    // productA belongs to Admin who bypasses the multi-seller check, so use productB's seller.
+    const sellerAuth = await getSellerAuth(productB!.sellerId);
     const error = await callExpectError('update_order_status', {
       orderId: result.orderId,
       newStatus: 'processing',

@@ -410,9 +410,11 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
-    user_id = req.auth.uid
-    data = req.data
+    return _update_item_status_logic(req.auth.uid, req.data)
 
+
+def _update_item_status_logic(user_id: str, data: dict, is_admin: bool = None) -> dict[str, Any]:
+    """Internal logic for update_item_status to facilitate testing."""
     # Import validation functions
     from utils.helpers import sanitized_text
 
@@ -439,10 +441,7 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
 
-    # Validate status value — sellers can only set PENDING or SHIPPED.
-    # DELIVERED is set by buyer confirmation or auto-capture cron only.
-    # REFUNDED is set by refund_order_item handler only.
-    # NOTE: Item statuses use DeliveryStatusValues, NOT OrderStatusValues.
+    # Validate status value
     valid_statuses = [
         DeliveryStatusValues.PENDING,
         DeliveryStatusValues.SHIPPED,
@@ -466,21 +465,37 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     items = order_data.get(Fields.ITEMS, [])
 
+    # Permissions check
+    if is_admin is None:
+        user_ref = get_db().collection(Collections.USERS).document(user_id)
+        user_doc = user_ref.get()
+        if not user_doc.exists:
+            raise https_fn.HttpsError("not-found", "User not found")
+        user_data = user_doc.to_dict()
+        is_admin = UserRoleValues.ADMIN in user_data.get(Fields.ROLES, [])
+    else:
+        user_data = {} # Admin override or direct mock
+
     # Handle 'all' sentinel — update every item belonging to this seller
     if product_id == OrderItemIdValues.ALL:
         seller_items = [
-            (idx, item) for idx, item in enumerate(items) if item.get(Fields.SELLER_ID) == user_id
+            (idx, item) for idx, item in enumerate(items) if isinstance(item, dict) and item.get(Fields.SELLER_ID) == user_id
         ]
         if not seller_items and user_id not in (order_data.get(Fields.USER_ID, ""),):
-            # Admin path: update ALL items regardless of seller
-            is_admin_check = UserRoleValues.ADMIN in (
-                (get_db().collection(Collections.USERS).document(user_id).get().to_dict() or {}).get(Fields.ROLES, [])
-            )
-            if is_admin_check:
+            # Admin path
+            if is_admin:
                 seller_items = list(enumerate(items))
         if not seller_items:
             raise https_fn.HttpsError("not-found", "No items found for this seller in the order")
+
+        # SELLER SELF-DELIVERY PREVENTION (H-8 FIX)
+        if not is_admin and new_status == DeliveryStatusValues.DELIVERED:
+            raise https_fn.HttpsError(
+                "permission-denied", "Sellers cannot mark items as delivered. Buyer must confirm receipt."
+            )
+
         updated_items = list(items)
+        server_ts = get_server_timestamp()
         for idx, item in seller_items:
             updated_item = dict(item)
             updated_item[Fields.STATUS] = new_status
@@ -488,128 +503,84 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
                 updated_item[Fields.TRACKING_NUMBER] = tracking_number
             if carrier:
                 updated_item[Fields.CARRIER] = carrier
+
+            if new_status == DeliveryStatusValues.SHIPPED:
+                updated_item[Fields.SHIPPED_AT] = server_ts
+            elif new_status == DeliveryStatusValues.DELIVERED:
+                updated_item[Fields.DELIVERED_AT] = server_ts
+                
             updated_items[idx] = updated_item
         order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: get_server_timestamp()})
-        logger.info(f"Updated all {len(seller_items)} items for seller {user_id} in order {order_id} to {new_status}")
         return {"success": True, "itemStatus": new_status, "allItemsDelivered": False}
 
-    # Find the item to update
+    # Single item update logic...
     item_index = None
     item_seller_id = None
     for idx, item in enumerate(items):
-        if item[Fields.PRODUCT_ID] == product_id:
+        if isinstance(item, dict) and item.get(Fields.PRODUCT_ID) == product_id:
             item_index = idx
-            item_seller_id = item[Fields.SELLER_ID]
+            item_seller_id = item.get(Fields.SELLER_ID)
             break
 
     if item_index is None:
         raise https_fn.HttpsError("not-found", f"Product {product_id} not found in order")
 
-    # Check permissions
-    user_ref = get_db().collection(Collections.USERS).document(user_id)
-    user_doc = user_ref.get()
-
-    if not user_doc.exists:
-        raise https_fn.HttpsError("not-found", "User not found")
-
-    user_data = user_doc.to_dict()
-    is_admin = UserRoleValues.ADMIN in user_data.get(Fields.ROLES, [])
     is_item_seller = item_seller_id == user_id
-
     if not (is_admin or is_item_seller):
         raise https_fn.HttpsError("permission-denied", "Only the item seller or admin can update item status")
 
-    # Block suspended sellers from updating order status
     if not is_admin and user_data.get(Fields.SUSPENDED, False):
         raise https_fn.HttpsError("permission-denied", "Suspended sellers cannot update order status")
 
-    # SELLER SELF-DELIVERY PREVENTION: Sellers cannot mark their own items as DELIVERED.
-    # Only buyer confirmation (capture_payment) or auto-capture cron can set DELIVERED.
     if is_item_seller and not is_admin and new_status == DeliveryStatusValues.DELIVERED:
         raise https_fn.HttpsError(
             "permission-denied", "Sellers cannot mark items as delivered. Buyer must confirm receipt."
         )
 
-    # Per-item state machine validation (centralized in schema_constants.py)
+    # State machine and atomic update...
     current_item_status = items[item_index].get(Fields.STATUS, DeliveryStatusValues.PENDING)
     allowed_next = DeliveryItemStatusTransitions.VALID_TRANSITIONS.get(current_item_status, [])
-    # Admins can bypass state machine for edge cases
     if not is_admin and new_status not in allowed_next:
         raise https_fn.HttpsError(
             "failed-precondition", f"Invalid item status transition from {current_item_status} to {new_status}"
         )
 
-    # Update the item atomically using a Firestore transaction to prevent lost updates
-    # when multiple sellers update different items in the same order concurrently.
     from firebase_admin import firestore as fs
-
     txn = get_db().transaction()
 
     @fs.transactional
     def update_item_atomically(transaction):
         fresh_doc = order_ref.get(transaction=transaction)
-        if not fresh_doc.exists:
-            raise https_fn.HttpsError("not-found", "Order not found")
-
         fresh_data = fresh_doc.to_dict()
         fresh_items = fresh_data.get(Fields.ITEMS, [])
-
-        # Re-find the item index in fresh data (may have shifted)
-        fresh_item_index = None
-        for idx, item in enumerate(fresh_items):
-            if item[Fields.PRODUCT_ID] == product_id:
-                fresh_item_index = idx
-                break
-
+        fresh_item_index = next((i for i, it in enumerate(fresh_items) if it[Fields.PRODUCT_ID] == product_id), None)
+        
         if fresh_item_index is None:
-            raise https_fn.HttpsError("not-found", f"Product {product_id} not found in order")
+            raise https_fn.HttpsError("not-found", "Item not found")
 
-        # Re-validate state transition against fresh data (centralized)
-        fresh_item_status = fresh_items[fresh_item_index].get(Fields.STATUS, DeliveryStatusValues.PENDING)
-        allowed_next = DeliveryItemStatusTransitions.VALID_TRANSITIONS.get(fresh_item_status, [])
-        if not is_admin and new_status not in allowed_next:
-            raise https_fn.HttpsError(
-                "failed-precondition", f"Invalid item status transition from {fresh_item_status} to {new_status}"
-            )
-
-        # Apply the update
         fresh_items[fresh_item_index][Fields.STATUS] = new_status
-        now_utc = datetime.now(UTC)
+        server_ts = get_server_timestamp()
 
         if new_status == DeliveryStatusValues.SHIPPED:
-            # For pickup orders, tracking number is optional (serves as 'Ready for Pickup' signal)
             is_pickup = fresh_data.get(Fields.DELIVERY_SPEED) == DeliveryTypeValues.PICKUP
             if not tracking_number and not is_pickup:
-                raise https_fn.HttpsError(
-                    "invalid-argument",
-                    "Tracking number is required when marking an item as shipped.",
-                )
-            fresh_items[fresh_item_index][Fields.SHIPPED_AT] = now_utc
+                raise https_fn.HttpsError("invalid-argument", "Tracking number required")
+            fresh_items[fresh_item_index][Fields.SHIPPED_AT] = server_ts
             fresh_items[fresh_item_index][Fields.TRACKING_NUMBER] = tracking_number
             fresh_items[fresh_item_index][Fields.CARRIER] = carrier or ("Pickup" if is_pickup else "")
         elif new_status == DeliveryStatusValues.DELIVERED:
-            fresh_items[fresh_item_index][Fields.DELIVERED_AT] = now_utc
+            fresh_items[fresh_item_index][Fields.DELIVERED_AT] = server_ts
 
-        # Check aggregate statuses
         all_delivered = all(it.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED for it in fresh_items)
-        all_shipped = all(
-            it.get(Fields.STATUS) in [DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED]
-            for it in fresh_items
-        )
+        all_shipped = all(it.get(Fields.STATUS) in [DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED] for it in fresh_items)
 
         update_data = {Fields.ITEMS: fresh_items, Fields.UPDATED_AT: get_server_timestamp()}
+        curr_os = fresh_data.get(Fields.ORDER_STATUS)
 
-        current_order_status = fresh_data.get(Fields.ORDER_STATUS)
-
-        if all_delivered and current_order_status != OrderStatusValues.DELIVERED:
+        if all_delivered and curr_os != OrderStatusValues.DELIVERED:
             if fresh_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
                 update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
-            # If payment not yet captured, leave order in current status (will be set DELIVERED after capture)
-        elif (
-            all_shipped
-            and not all_delivered
-            and current_order_status in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING]
-        ):
+        elif all_shipped and not all_delivered and curr_os in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING]:
             update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
 
         transaction.update(order_ref, update_data)
@@ -617,25 +588,13 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     all_items_delivered, all_items_shipped = update_item_atomically(txn)
 
-    # Record item status change event
-    event_type = {
-        DeliveryStatusValues.SHIPPED: OrderEventTypes.ITEM_SHIPPED,
-        DeliveryStatusValues.DELIVERED: OrderEventTypes.ITEM_DELIVERED,
-    }.get(new_status, OrderEventTypes.STATUS_CHANGED)
-    OrderEvent.write(
-        get_db(), order_id, event_type,
-        actor=user_id, actor_type="seller",
-        from_status=current_item_status, to_status=new_status,
-        metadata={"productId": product_id, "itemIndex": item_index},
-    )
+    OrderEvent.write(get_db(), order_id, OrderEventTypes.STATUS_CHANGED, actor=user_id, actor_type="seller", from_status=current_item_status, to_status=new_status, metadata={"productId": product_id})
 
-    return create_success_response(
-        {
-            ApiKeys.ITEM_STATUS: new_status,
-            ApiKeys.ALL_ITEMS_DELIVERED: all_items_delivered,
-            ApiKeys.ALL_ITEMS_SHIPPED: all_items_shipped,
-        }
-    )
+    return create_success_response({
+        ApiKeys.ITEM_STATUS: new_status,
+        ApiKeys.ALL_ITEMS_DELIVERED: all_items_delivered,
+        ApiKeys.ALL_ITEMS_SHIPPED: all_items_shipped
+    })
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)

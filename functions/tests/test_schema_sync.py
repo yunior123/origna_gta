@@ -102,14 +102,14 @@ class TestExtractBusinessRules:
         python_file.write_text("""
 PLATFORM_FEE_PERCENT = 2.5  # 2.5%
 AUTO_CONFIRM_DAYS = 5
-AUTHORIZATION_EXPIRY_DAYS = 7
+AUTHORIZATION_EXPIRY_DAYS = 6
 """)
 
         result = extract_business_rules(python_file)
 
         assert result["platformFeePercent"] == 2.5
         assert result["autoConfirmDays"] == 5
-        assert result["authorizationExpiryDays"] == 7
+        assert result["authorizationExpiryDays"] == 6
 
     def test_missing_values(self, tmp_path):
         """Should handle missing values gracefully."""

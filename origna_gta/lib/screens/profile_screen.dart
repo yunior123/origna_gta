@@ -13,7 +13,6 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 import '../features/auth/auth_provider.dart';
 import '../features/subscription/subscription_provider.dart';
@@ -261,15 +260,6 @@ class ProfileScreen extends ConsumerWidget {
                               title: 'profile.privacy_policy'.tr(),
                               subtitle: 'profile.how_we_protect'.tr(),
                               onTap: () => openPrivacyPolicy(context),
-                            ),
-                            _buildMenuItem(
-                              context,
-                              key: const Key('profile_contact_button'),
-                              icon: Icons.mail_outline,
-                              semanticLabel: 'menu-contact-us',
-                              title: 'profile.contact_us'.tr(),
-                              subtitle: 'profile.get_in_touch'.tr(),
-                              onTap: () => _showContactDialog(context),
                             ),
                             _buildMenuItem(
                               context,
@@ -582,98 +572,6 @@ class ProfileScreen extends ConsumerWidget {
           ),
         );
       },
-    );
-  }
-
-  void _showContactDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
-        backgroundColor: Theme.of(context).brightness == Brightness.dark ? DesignTokens.darkSurface : Colors.white,
-        title: Text(
-          'profile.contact_us'.tr(),
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('profile.contact_us_desc'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
-            const SizedBox(height: 16),
-            Semantics(
-              link: true,
-              label: 'link-email-support',
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () async {
-                    const url = 'mailto:support@orignaventures.ca';
-                    if (await canLaunchUrlString(url)) {
-                      await launchUrlString(url, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                  splashColor: DesignTokens.primary.withValues(alpha: 0.1),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    child: Row(
-                      children: [
-                        Icon(Icons.email_outlined, color: DesignTokens.primary, size: 20),
-                        const SizedBox(width: 12),
-                        Text(
-                          'support@orignaventures.ca',
-                          style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Semantics(
-              link: true,
-              label: 'link-website',
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () async {
-                    const url = 'https://orignaventures.ca';
-                    if (await canLaunchUrlString(url)) {
-                      await launchUrlString(url, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                  splashColor: DesignTokens.primary.withValues(alpha: 0.1),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    child: Row(
-                      children: [
-                        Icon(Icons.language, color: DesignTokens.primary, size: 20),
-                        const SizedBox(width: 12),
-                        Text(
-                          'orignaventures.ca',
-                          style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('common.close'.tr(), style: TextStyle(color: DesignTokens.primary)),
-          ),
-        ],
-      ),
     );
   }
 

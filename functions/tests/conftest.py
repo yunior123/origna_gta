@@ -1079,6 +1079,30 @@ class FirestoreMockBuilder:
         mock_db.transaction = transaction_impl
         mock_db.batch = MagicMock(return_value=MagicMock())
 
+        # Implement get_all() — batch fetch used by create_checkout_session
+        def get_all_impl(doc_refs):
+            results = []
+            for doc_ref in doc_refs:
+                doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)
+                found = False
+                for col_docs in builder.documents.values():
+                    if doc_id in col_docs:
+                        mock_doc = MagicMock()
+                        mock_doc.exists = True
+                        mock_doc.id = doc_id
+                        mock_doc.to_dict.return_value = col_docs[doc_id]
+                        results.append(mock_doc)
+                        found = True
+                        break
+                if not found:
+                    mock_doc = MagicMock()
+                    mock_doc.exists = False
+                    mock_doc.id = doc_id
+                    results.append(mock_doc)
+            return results
+
+        mock_db.get_all = get_all_impl
+
         return mock_db
 
 

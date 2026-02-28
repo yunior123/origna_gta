@@ -740,12 +740,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     seller_profiles_cache = {}  # Cache seller_profiles docs to avoid N+1 reads
     warehouse_cache: dict[str, dict] = {}  # key: "sellerId:warehouseId" → warehouse data
 
-    # Pre-load unique product docs (dedup by product_id to avoid redundant reads)
-    _product_docs_batch: dict = {}
-    for _item in items:
-        _pid = _item.get(Fields.PRODUCT_ID)
-        if _pid and _pid not in _product_docs_batch:
-            _product_docs_batch[_pid] = get_db().collection(Collections.PRODUCTS).document(_pid).get()
+    # FIX H-2: Pre-load unique product docs using a single batched read to prevent N+1 queries
+    _product_ids = list(set(_item.get(Fields.PRODUCT_ID) for _item in items if _item.get(Fields.PRODUCT_ID)))
+    _product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in _product_ids]
+    _product_snapshots = get_db().get_all(_product_refs) if _product_refs else []
+    _product_docs_batch = {doc.id: doc for doc in _product_snapshots}
 
     for item in items:
         # Check quantity limits
@@ -1777,7 +1776,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     try:
         # SECURITY FIX #3: Verify webhook signature (HMAC with timing-safe comparison)
-        event = stripe.Webhook.construct_event(payload, sig_header, _get_webhook_secret())
+        event = stripe.Webhook.construct_event(payload, sig_header, _get_webhook_secret(), tolerance=300)
     except ValueError:
         logger.warning(f"⚠️ Stripe webhook invalid payload from IP: {client_ip[:10]}...")  # Sanitized
         return https_fn.Response("Invalid payload", status=400)
@@ -2427,7 +2426,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
     pi_id = session.get(StripeConstants.PAYMENT_INTENT)
 
     # Initialize update data with CAPTURED status (auto-capture mode)
-    # expiresAt stamped here (at Stripe authorization) so 7-day window is accurate
+    # expiresAt stamped here (at Stripe authorization) — 6-day window (24h safety margin before Stripe auto-voids at day 7)
     update_data = {
         Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
         Fields.STRIPE_PAYMENT_INTENT_ID: pi_id,
@@ -2509,9 +2508,26 @@ def process_async_payment_succeeded(session: dict) -> str | None:
         logger.info(f"Order {order_id} already captured — skipping async_payment_succeeded")
         return f"Order {order_id} already captured"
 
-    order_ref.update({Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED, Fields.UPDATED_AT: get_server_timestamp()})
+    # SECURITY: Verify payment amount matches order amount
+    # H-5: Cancel order on mismatch in async payment
+    session_amount = session.get("amount_total", 0)
+    expected_amount = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0)
+    if session_amount != expected_amount:
+        logger.info(f"ASYNC AMOUNT MISMATCH: session={session_amount}, expected={expected_amount} for {order_id}")
+        _restore_stock_and_cancel_order(
+            order_id, order_data, f"Amount mismatch in async payment: paid {session_amount} expected {expected_amount}"
+        )
+        return f"Order {order_id} cancelled - amount mismatch"
+
+    # C-3: Set ORDER_STATUS to CONFIRMED when async payment succeeds
+    order_ref.update({
+        Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED, 
+        Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+        Fields.UPDATED_AT: get_server_timestamp()
+    })
     # Refresh order_data with new payment status for side effects
     order_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
+    order_data[Fields.ORDER_STATUS] = OrderStatusValues.CONFIRMED
 
     try:
         OrderEvent.write(
@@ -3017,8 +3033,9 @@ def process_charge_refunded(charge: dict) -> str | None:
                 }
                 # For partial refunds, only reverse proportional amount
                 # but cap at max_reversible to prevent over-reversal
-                if not is_full_refund and amount_total > 0:
-                    reversal_amount = round(payout_net * amount_refunded / amount_total)
+                order_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, amount_total)
+                if not is_full_refund and order_subtotal > 0:
+                    reversal_amount = round(payout_net * amount_refunded / order_subtotal)
                     reversal_amount = min(reversal_amount, max_reversible)
                     if reversal_amount > 0:
                         reversal_kwargs[Fields.AMOUNT] = reversal_amount
@@ -3134,13 +3151,24 @@ def process_charge_refunded(charge: dict) -> str | None:
             # Non-fatal: log but do not fail the refund webhook
             logger.error(f"License revocation failed for order {order_id}: {revoke_err}")
 
+        # C-1: Restore stock when a charge is fully refunded
         if is_full_refund:
+            if not order_data.get(Fields.STOCK_RESTORED, False):
+                try:
+                    _restore_stock_for_order(order_data)
+                    # We will update STOCK_RESTORED in the big update below
+                    order_data[Fields.STOCK_RESTORED] = True
+                    logger.info(f"Restored stock for refunded order {order_id}")
+                except Exception as e:
+                    logger.error(f"Failed to restore stock for refunded order {order_id}: {e}")
+
             _fs = get_firestore()
             order_ref.update(
                 {
                     Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED,
                     Fields.TRANSFERS_REVERSED: reversed_count,
                     Fields.CUMULATIVE_REFUNDED_CENTS: _fs.Increment(amount_refunded),
+                    Fields.STOCK_RESTORED: order_data.get(Fields.STOCK_RESTORED, False),
                     Fields.REFUNDED_AT: get_server_timestamp(),
                     Fields.UPDATED_AT: get_server_timestamp(),
                 }
@@ -3573,8 +3601,9 @@ def process_dispute_closed(dispute: dict) -> str | None:
                     seller_id = payout_data.get(Fields.SELLER_ID, "")
                     reversed_cents = payout_data.get(Fields.CUMULATIVE_REVERSED_CENTS, 0)
 
-                    # Use checkout-time snapshot first — prevents seller swapping Stripe account
-                    seller_stripe_id = seller_stripe_snapshot.get(seller_id, {}).get(Fields.STRIPE_ACCOUNT_ID)
+                    # FIX C-2: seller_stripe_snapshot maps seller_id directly to account string (or dict if legacy)
+                    seller_stripe_obj = seller_stripe_snapshot.get(seller_id)
+                    seller_stripe_id = seller_stripe_obj.get(Fields.STRIPE_ACCOUNT_ID) if isinstance(seller_stripe_obj, dict) else seller_stripe_obj
                     if not seller_stripe_id:
                         # Fall back to current seller profile only if snapshot missing
                         sp = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
@@ -3839,7 +3868,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # AUDIT FIX: Rate limit account creation
     allowed, message = get_rate_limiter().check_rate_limit(
-        identifier=user_id, action="create_connect_account", max_requests=3, window_minutes=60, fail_closed=False
+        identifier=user_id, action="create_connect_account", max_requests=3, window_minutes=60, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", message)

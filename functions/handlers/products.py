@@ -42,6 +42,7 @@ from schema_constants import (
     EmailConfig,
     Fields,
     OrderStatusValues,
+    ProductConstraints,
     ProductLifecycleStatusValues,
     SupplierTypeValues,
     UserRoleValues,
@@ -241,6 +242,106 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"ERROR: Failed to generate upload URLs: {e}")
         raise https_fn.HttpsError("internal", "Failed to generate upload URLs. Please try again.") from e
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def upload_product_video(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Generates a presigned URL for uploading a single product video to Cloudflare R2.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+
+    # SECURITY: Verify seller onboarding is complete before allowing uploads
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError("not-found", "User not found")
+    user_data = user_doc.to_dict()
+    if user_data.get(Fields.SUSPENDED, False):
+        raise https_fn.HttpsError("permission-denied", "Your account is suspended")
+    
+    roles = user_data.get(Fields.ROLES, [])
+    if UserRoleValues.SELLER not in roles and UserRoleValues.ADMIN not in roles:
+        raise https_fn.HttpsError("permission-denied", "Seller role required")
+        
+    if UserRoleValues.ADMIN not in roles:
+        # SECURITY: Verify onboarding from seller_profiles
+        sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(user_id).get()
+        sp_data = sp_doc.to_dict() if sp_doc.exists else {}
+        if not sp_data.get(Fields.ONBOARDING_COMPLETED, False):
+            raise https_fn.HttpsError("failed-precondition", "Please complete seller onboarding before uploading products")
+
+    # Rate limiting
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action="upload_video", max_requests=3, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", msg)
+
+    data = req.data
+    file_name_raw = data.get("fileName")
+    content_type = data.get("contentType")
+
+    from utils.helpers import sanitize_path
+
+    if not file_name_raw:
+        raise https_fn.HttpsError("invalid-argument", "No file specified")
+
+    # SECURITY: Validate MIME types
+    if content_type not in ProductConstraints.ALLOWED_VIDEO_MIME_TYPES:
+        raise https_fn.HttpsError(
+            "invalid-argument", 
+            f"Invalid content type '{content_type}'. Allowed: {', '.join(sorted(ProductConstraints.ALLOWED_VIDEO_MIME_TYPES))}"
+        )
+
+    # Sanitize file name
+    file_name = sanitize_path(file_name_raw)
+
+    # SECURITY: Validate file extensions
+    ALLOWED_EXTENSIONS = {"mp4", "mov", "webm"}
+    ext = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise https_fn.HttpsError(
+            "invalid-argument", 
+            f"Invalid file extension '.{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+        )
+
+    # Get cached S3 client (module-level)
+    s3_client = _get_cached_s3_client()
+    bucket_name = R2Config.BUCKET_NAME
+
+    try:
+        # Generate unique key
+        unique_key = R2Config.get_image_path("products", f"{uuid.uuid4()}.{ext}")
+
+        # Generate presigned URL for upload
+        presigned_url = s3_client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": bucket_name,
+                "Key": unique_key,
+                "ContentType": content_type,
+                "ContentDisposition": "inline",
+            },
+            ExpiresIn=3600,  # 1 hour
+        )
+
+        public_url = f"{CDN_BASE_URL}/{unique_key}"
+
+        return create_success_response({
+            "uploadUrl": presigned_url,
+            "publicUrl": public_url,
+            "fileName": file_name,
+            "key": unique_key
+        })
+
+    except Exception as e:
+        logger.error(f"ERROR: Failed to generate video upload URL: {e}")
+        raise https_fn.HttpsError("internal", "Failed to generate video upload URL. Please try again.") from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -1148,6 +1249,12 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
     product_data.pop(Fields.PRODUCT_ID, None)  # Generated server-side below
     product_data.pop("rating", None)
     product_data.pop("ratingCount", None)
+
+    # Validate videoUrl
+    video_url = product_data.get(Fields.VIDEO_URL)
+    if video_url:
+        if not str(video_url).startswith(CDN_BASE_URL):
+            raise https_fn.HttpsError("invalid-argument", "Invalid video URL origin")
 
     # International shipping enforcement (T-4)
     if product_data.get(Fields.IS_INTERNATIONAL) is None:
@@ -2722,15 +2829,15 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
         }
     """
     # AUDIT FIX: Rate limit read endpoint to prevent scraping
-    if req.auth:
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated to read ratings")
 
-
-        _limiter = RateLimiter(get_db())
-        allowed, msg = _limiter.check_rate_limit(
-            identifier=req.auth.uid, action="get_product_ratings", max_requests=30, window_minutes=1, fail_closed=False
-        )
-        if not allowed:
-            raise https_fn.HttpsError("resource-exhausted", msg)
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action="get_product_ratings", max_requests=30, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     data = req.data or {}
 
@@ -4294,6 +4401,23 @@ def update_product(req: https_fn.CallableRequest) -> dict[str, Any]:
         if current_status in {ProductLifecycleStatusValues.ACTIVE, ProductLifecycleStatusValues.APPROVED}:
             clean_update[Fields.LIFECYCLE_STATUS] = ProductLifecycleStatusValues.UNDER_REVIEW
             logger.info(f"Product {product_id} returned to UNDER_REVIEW due to digital link update")
+
+    # Handle videoUrl replacement/deletion
+    if Fields.VIDEO_URL in clean_update:
+        new_video_url = clean_update.get(Fields.VIDEO_URL)
+        old_video_url = existing_data.get(Fields.VIDEO_URL)
+        
+        # Validate new origin if present
+        if new_video_url and not str(new_video_url).startswith(CDN_BASE_URL):
+            raise https_fn.HttpsError("invalid-argument", "Invalid video URL origin")
+            
+        # Delete old video from R2 if changed or removed
+        if old_video_url and old_video_url != new_video_url:
+            old_key = old_video_url.replace(f"{CDN_BASE_URL}/", "")
+            s3_client = _get_cached_s3_client()
+            import contextlib
+            with contextlib.suppress(Exception):
+                s3_client.delete_object(Bucket=R2Config.BUCKET_NAME, Key=old_key)
 
     clean_update[Fields.UPDATED_AT] = get_server_timestamp()
     

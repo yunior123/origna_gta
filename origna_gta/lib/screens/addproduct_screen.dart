@@ -8,6 +8,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
+import 'package:origna_gta/screens/productaddvideo_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -334,15 +335,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       hint: 'product.sku_hint'.tr(),
                                       onChanged: (v) => viewModel.setSellerSku(v),
                                     ),
-                                    _buildTappableInfoHint(
-                                      'product.sku_what_is'.tr(),
-                                      'product.sku'.tr(),
-                                      'product.sku_info_body'.tr(),
-                                    ),
-                                    if (!state.isDigital) ...[
-                                      const SizedBox(height: 16),
-                                      _buildConditionSelector(state, viewModel),
-                                    ],
+                                    _buildTappableInfoHint('product.sku_what_is'.tr(), 'product.sku'.tr(), 'product.sku_info_body'.tr()),
+                                    if (!state.isDigital) ...[const SizedBox(height: 16), _buildConditionSelector(state, viewModel)],
                                   ],
                                 ),
                                 const SizedBox(height: 16),
@@ -351,14 +345,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 if (state.hasVariants) const SizedBox(height: 16),
 
                                 _buildSectionCard(
-                                  key: const Key('addproduct_section_images'),
+                                  key: const Key('addproduct_section_media'),
                                   index: 1,
-                                  icon: Icons.photo_library_rounded,
-                                  title: 'product.product_images'.tr(),
-                                  subtitle: 'product.up_to_5_photos'.tr(),
+                                  icon: Icons.perm_media_rounded,
+                                  title: 'product.product_media'.tr(), // Changed to media
+                                  subtitle: 'product.photos_and_video'.tr(),
                                   state: state,
                                   viewModel: viewModel,
-                                  children: [ProductAddImages(imageModels: state.imageModels, onImagesChanged: viewModel.updateImages)],
+                                  children: [
+                                    ProductAddImages(imageModels: state.imageModels, onImagesChanged: viewModel.updateImages),
+                                    const SizedBox(height: 24),
+                                    ProductAddVideo(videoFile: state.videoFile, onVideoAdded: viewModel.setVideo, onVideoRemoved: viewModel.removeVideo),
+                                  ],
                                 ),
                                 const SizedBox(height: 16),
 
@@ -797,16 +795,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     });
   }
 
-  void _validateDiscountTiers() {
-    final d3 = double.tryParse(_shippingDiscount3Controller.text);
-    final d5 = double.tryParse(_shippingDiscount5Controller.text);
-    final hasError = d3 != null && d5 != null && d5 < d3;
-    final state = ref.read(addProductViewModelProvider);
-    if (hasError != state.discountTierError) {
-      ref.read(addProductViewModelProvider.notifier).setDiscountTierError(hasError);
-    }
-  }
-
   Widget _buildAddressSuggestions(AddProductState state, AddProductViewModel viewModel) {
     return Container(
       key: const Key('addproduct_address_suggestions'),
@@ -944,6 +932,62 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           children: children,
         ),
       ),
+    );
+  }
+
+  Widget _buildConditionSelector(AddProductState state, AddProductViewModel viewModel) {
+    const conditions = [
+      (ProductConditionValues.newCondition, 'product.condition_new'),
+      (ProductConditionValues.likeNew, 'product.condition_like_new'),
+      (ProductConditionValues.good, 'product.condition_good'),
+      (ProductConditionValues.fair, 'product.condition_fair'),
+      (ProductConditionValues.forParts, 'product.condition_for_parts'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.grade_rounded, size: 16, color: DesignTokens.textSecondary),
+            const SizedBox(width: 6),
+            Text(
+              'product.product_condition'.tr(),
+              style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(width: 4),
+            Text('common.optional'.tr(), style: TextStyle(color: DesignTokens.textDisabled, fontSize: 12)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: conditions.map(((String, String) entry) {
+            final (value, labelKey) = entry;
+            final selected = state.condition == value;
+            return ChoiceChip(
+              label: Text(
+                labelKey.tr(),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: selected ? Colors.white : DesignTokens.textPrimary,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+              selected: selected,
+              onSelected: (_) => viewModel.setCondition(selected ? null : value),
+              selectedColor: DesignTokens.primary,
+              backgroundColor: DesignTokens.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: selected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.3)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              showCheckmark: false,
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
@@ -1102,10 +1146,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ),
         if (state.digitalType == DigitalTypeValues.software) ...[
           const SizedBox(height: 16),
-          Text(
-            'product.download_links'.tr(),
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('product.download_links'.tr(), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'product.mac_os_label'.tr(),
@@ -1128,20 +1169,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           const SizedBox(height: 8),
           TextFormField(
             initialValue: state.deviceLimit?.toString(),
-            decoration: InputDecoration(
-              labelText: 'product.device_limit_label'.tr(),
-              hintText: 'product.device_limit_hint'.tr(),
-            ),
+            decoration: InputDecoration(labelText: 'product.device_limit_label'.tr(), hintText: 'product.device_limit_hint'.tr()),
             keyboardType: TextInputType.number,
             onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v.trim())),
           ),
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[
           const SizedBox(height: 16),
-          Text(
-            'product.book_download_url'.tr(),
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('product.book_download_url'.tr(), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'product.download_source_url_label'.tr(),
@@ -1633,10 +1668,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
       ),
-      hint: Text(
-        'product.select_subcategory'.tr(),
-        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
-      ),
+      hint: Text('product.select_subcategory'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
       items: subcategories
           .map(
             (s) => DropdownMenuItem(
@@ -1646,49 +1678,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           )
           .toList(),
       onChanged: viewModel.setSubcategory,
-    );
-  }
-
-  Widget _buildConditionSelector(AddProductState state, AddProductViewModel viewModel) {
-    const conditions = [
-      (ProductConditionValues.newCondition, 'product.condition_new'),
-      (ProductConditionValues.likeNew, 'product.condition_like_new'),
-      (ProductConditionValues.good, 'product.condition_good'),
-      (ProductConditionValues.fair, 'product.condition_fair'),
-      (ProductConditionValues.forParts, 'product.condition_for_parts'),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.grade_rounded, size: 16, color: DesignTokens.textSecondary),
-            const SizedBox(width: 6),
-            Text('product.product_condition'.tr(), style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-            const SizedBox(width: 4),
-            Text('common.optional'.tr(), style: TextStyle(color: DesignTokens.textDisabled, fontSize: 12)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: conditions.map(((String, String) entry) {
-            final (value, labelKey) = entry;
-            final selected = state.condition == value;
-            return ChoiceChip(
-              label: Text(labelKey.tr(), style: TextStyle(fontSize: 12, color: selected ? Colors.white : DesignTokens.textPrimary, fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
-              selected: selected,
-              onSelected: (_) => viewModel.setCondition(selected ? null : value),
-              selectedColor: DesignTokens.primary,
-              backgroundColor: DesignTokens.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: selected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.3))),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              showCheckmark: false,
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 
@@ -2232,14 +2221,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     const SizedBox(width: 6),
                     Text(
                       state.selectedWarehouseIds.length > 1
-                          ? 'product.warehouse_total_stock_plural'.tr(namedArgs: {
-                              'total': state.warehouseStockMap.values.fold(0, (a, b) => a + b).toString(),
-                              'count': state.selectedWarehouseIds.length.toString(),
-                            })
-                          : 'product.warehouse_total_stock'.tr(namedArgs: {
-                              'total': state.warehouseStockMap.values.fold(0, (a, b) => a + b).toString(),
-                              'count': state.selectedWarehouseIds.length.toString(),
-                            }),
+                          ? 'product.warehouse_total_stock_plural'.tr(
+                              namedArgs: {
+                                'total': state.warehouseStockMap.values.fold(0, (a, b) => a + b).toString(),
+                                'count': state.selectedWarehouseIds.length.toString(),
+                              },
+                            )
+                          : 'product.warehouse_total_stock'.tr(
+                              namedArgs: {
+                                'total': state.warehouseStockMap.values.fold(0, (a, b) => a + b).toString(),
+                                'count': state.selectedWarehouseIds.length.toString(),
+                              },
+                            ),
                       style: TextStyle(fontSize: 12, color: DesignTokens.success, fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -2291,47 +2284,47 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       builder: (ctx) => SafeArea(
         minimum: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
         child: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: DesignTokens.textOnPrimary,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: DesignTokens.info.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.lightbulb_rounded, color: DesignTokens.info, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface),
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: DesignTokens.textOnPrimary,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: DesignTokens.info.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.lightbulb_rounded, color: DesignTokens.info, size: 20),
                   ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(ctx),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(color: DesignTokens.surfaceVariant, shape: BoxShape.circle),
-                    child: const Icon(Icons.close_rounded, size: 16, color: DesignTokens.textSecondary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(body, style: TextStyle(fontSize: 14, color: DesignTokens.textPrimary, height: 1.6)),
-            const SizedBox(height: 8),
-          ],
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(color: DesignTokens.surfaceVariant, shape: BoxShape.circle),
+                      child: const Icon(Icons.close_rounded, size: 16, color: DesignTokens.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(body, style: TextStyle(fontSize: 14, color: DesignTokens.textPrimary, height: 1.6)),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
-      ),
       ), // SafeArea
     );
   }
@@ -2341,6 +2334,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     if (v.trim().length < 2) return 'product.city_too_short'.tr();
     if (v.trim().length > 50) return 'product.city_too_long'.tr();
     return null;
+  }
+
+  void _validateDiscountTiers() {
+    final d3 = double.tryParse(_shippingDiscount3Controller.text);
+    final d5 = double.tryParse(_shippingDiscount5Controller.text);
+    final hasError = d3 != null && d5 != null && d5 < d3;
+    final state = ref.read(addProductViewModelProvider);
+    if (hasError != state.discountTierError) {
+      ref.read(addProductViewModelProvider.notifier).setDiscountTierError(hasError);
+    }
   }
 
   String? _validatePostalCode(String? v) {
@@ -2480,13 +2483,8 @@ class _DigitalTypeCard extends StatelessWidget {
           duration: DesignTokens.durationFast,
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: selected
-                ? DesignTokens.primary.withValues(alpha: 0.08)
-                : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
-            border: Border.all(
-              color: selected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.3),
-              width: selected ? 2 : 1,
-            ),
+            color: selected ? DesignTokens.primary.withValues(alpha: 0.08) : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+            border: Border.all(color: selected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.3), width: selected ? 2 : 1),
             borderRadius: BorderRadius.circular(12),
             boxShadow: selected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 2))] : null,
           ),
@@ -2653,13 +2651,13 @@ class _VariantRow extends StatelessWidget {
                 width: 8,
                 height: 8,
                 margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: DesignTokens.secondary.withValues(alpha: 0.6),
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: DesignTokens.secondary.withValues(alpha: 0.6), shape: BoxShape.circle),
               ),
               Expanded(
-                child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: DesignTokens.darkSurface)),
+                child: Text(
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: DesignTokens.darkSurface),
+                ),
               ),
             ],
           ),

@@ -889,7 +889,7 @@ test.describe('I. Digital Business Rules', () => {
       price: 29.99,
       quantity: 1,
       imageUrls: ['https://example.com/fx.jpg'],
-      sellerId: TEST_UIDS.SELLER_1,
+      sellerId: TEST_UIDS.SELLER,
       isDigital: true,
       status: 'delivered',
       deliveredAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago

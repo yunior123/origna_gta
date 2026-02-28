@@ -61,6 +61,21 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
     email_verified = token.get("email_verified", False)
     data = req.data or {}
 
+    from services.rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id,
+        action="create_user_profile",
+        max_requests=5,
+        window_minutes=60,
+        fail_closed=True,
+    )
+    if not allowed:
+        logger.warning(f"Rate limit exceeded for create_user_profile uid={user_id}")
+        raise https_fn.HttpsError(
+            "resource-exhausted", "Too many profile creation attempts. Please try again later."
+        )
+
     # F-90: OAuth Account Takeover Prevention
     # Ensure email is verified before creating a profile to prevent hijacking.
     # Bypass only in emulator mode for testing.

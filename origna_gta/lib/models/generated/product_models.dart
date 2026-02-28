@@ -106,6 +106,7 @@ abstract class Product with _$Product {
     required String description,
     String? descriptionF,
     required List<String> imageUrls,
+    String? videoUrl,
     required String sellerId,
     // sellerAddress is optional — products with warehouses use warehouseIds instead
     Address? sellerAddress,
@@ -248,6 +249,7 @@ abstract class ProductCreate with _$ProductCreate {
     required String description,
     String? descriptionF,
     required List<String> imageUrls,
+    String? videoUrl,
     required String sellerId,
     // sellerAddress is optional — required only when warehouseIds is not provided
     Address? sellerAddress,

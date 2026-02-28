@@ -108,6 +108,8 @@ void main() {
         Fields.address: {Fields.street: '123 Main St', Fields.city: 'Toronto', Fields.state: 'ON', Fields.postalCode: 'M5V 1A1', Fields.country: 'Canada'},
         Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 15)),
         Fields.customerId: 'cus_123',
+        // Stripe fields are mastered in seller_profiles/{uid}, NOT users/{uid} (C-6 fix)
+        // Including them in the map is ignored by fromMap intentionally.
         Fields.stripeAccountId: 'acct_456',
         Fields.payoutsEnabled: true,
         Fields.chargesEnabled: true,
@@ -122,10 +124,11 @@ void main() {
       expect(user.roles, ['buyer', 'seller']);
       expect(user.address?.city, 'Toronto');
       expect(user.customerId, 'cus_123');
-      expect(user.stripeAccountId, 'acct_456');
-      expect(user.payoutsEnabled, true);
-      expect(user.chargesEnabled, true);
-      expect(user.onboardingCompleted, true);
+      // Stripe fields are always null/false from fromMap — loaded separately from seller_profiles
+      expect(user.stripeAccountId, null);
+      expect(user.payoutsEnabled, false);
+      expect(user.chargesEnabled, false);
+      expect(user.onboardingCompleted, false);
     });
 
     test('fromMap handles missing optional fields', () {

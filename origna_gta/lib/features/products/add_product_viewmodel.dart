@@ -1,3 +1,4 @@
+import 'package:cross_file/cross_file.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,11 +6,15 @@ import 'package:image/image.dart' as img;
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
-import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/utils/env_config.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 import 'add_product_state.dart';
 import 'variant_models.dart';
+
+final addProductViewModelProvider = StateNotifierProvider.autoDispose<AddProductViewModel, AddProductState>((ref) {
+  return AddProductViewModel(ref);
+});
 
 /// Top-level isolate function for image compression — runs in a separate thread.
 Uint8List? _compressImageAddIsolate(Uint8List bytes) {
@@ -23,30 +28,12 @@ Uint8List? _compressImageAddIsolate(Uint8List bytes) {
   return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
 }
 
-final addProductViewModelProvider = StateNotifierProvider.autoDispose<AddProductViewModel, AddProductState>((ref) {
-  return AddProductViewModel(ref);
-});
-
 class AddProductViewModel extends StateNotifier<AddProductState> {
   final Ref _ref;
 
   AddProductViewModel(this._ref) : super(AddProductState());
 
   void addImage(ImageModel image) => state = state.copyWith(imageModels: [...state.imageModels, image]);
-
-  // C-03: Setters for business logic state
-  void setSupplierType(String type) => state = state.copyWith(selectedSupplierType: type);
-  void setSupplierCurrency(String currency) => state = state.copyWith(selectedSupplierCurrency: currency);
-  void setHasTracking(bool value) => state = state.copyWith(hasTracking: value);
-  void setInventoryManaged(bool value) => state = state.copyWith(inventoryManaged: value);
-  void setTrackQuantity(bool value) => state = state.copyWith(trackQuantity: value);
-  void setAllowBackorder(bool value) => state = state.copyWith(allowBackorder: value);
-  void setLowStockAlertEnabled(bool value) => state = state.copyWith(lowStockAlertEnabled: value);
-  void setActiveStep(int step) => state = state.copyWith(activeStep: step);
-  void setCategoryId(String? id) => state = state.copyWith(selectedCategoryId: id, selectedSubcategory: null);
-  void setSubcategory(String? sub) => state = state.copyWith(selectedSubcategory: sub);
-  void setHasAttemptedSubmit(bool value) => state = state.copyWith(hasAttemptedSubmit: value);
-  void setDiscountTierError(bool value) => state = state.copyWith(discountTierError: value);
 
   /// Validates all inputs, compresses images, and creates the product via [createProductAtomic].
   ///
@@ -247,6 +234,19 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       }
     }
 
+    if (state.videoFile != null) {
+      final size = await state.videoFile!.length();
+      if (size > BusinessRules.maxVideoBytes) {
+        state = state.copyWith(errorMessage: 'product.video_too_large'.tr());
+        return;
+      }
+      final duration = state.videoDurationSeconds ?? 0;
+      if (duration > BusinessRules.maxVideoDurationSeconds) {
+        state = state.copyWith(errorMessage: 'product.video_too_long'.tr());
+        return;
+      }
+    }
+
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
@@ -302,8 +302,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       final effectiveStock = state.hasVariants
           ? state.variants.fold(0, (int sum, v) => sum + (v.stockQuantity))
           : useWarehouses
-              ? state.warehouseStockMap.values.fold(0, (a, b) => a + b)
-              : stock;
+          ? state.warehouseStockMap.values.fold(0, (a, b) => a + b)
+          : stock;
 
       final uid = _ref.read(userIdProvider);
       if (uid == null) {
@@ -312,7 +312,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       }
 
       // Build the product model — imageUrls and productId are set server-side
-      final product = models.Product(
+      var product = models.Product(
         productId: '',
         sellerId: uid,
         name: name,
@@ -378,7 +378,14 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         variants: state.hasVariants ? state.variants.map((v) => v.toMap()).toList() : const [],
         variantOptions: state.hasVariants ? state.variantOptions.map((o) => o.toMap()).toList() : const [],
         condition: state.isDigital ? null : state.condition,
+        videoUrl: null, // Will be set after upload
       );
+
+      String? uploadedVideoUrl;
+      if (state.videoFile != null) {
+        uploadedVideoUrl = await productRepository.uploadProductVideo(state.videoFile!, uid);
+        product = product.copyWith(videoUrl: uploadedVideoUrl);
+      }
 
       await productRepository.createProductAtomic(
         product,
@@ -387,15 +394,24 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         // Pass bookSourceUrl for digital book products — excluded from Dart Product model
         // (buyer-protected: never read back by client) but required by Python backend
         // to store the download URL server-side.
-        bookSourceUrl: (state.isDigital && state.digitalType == DigitalTypeValues.book)
-            ? state.bookSourceUrl
-            : null,
+        bookSourceUrl: (state.isDigital && state.digitalType == DigitalTypeValues.book) ? state.bookSourceUrl : null,
       );
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'AddProductViewModel.addProduct');
       state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'product.add_product_failed'.tr()));
     }
+  }
+
+  /// Adds a new variant option axis and regenerates all variant combinations.
+  ///
+  /// [name] The option axis label (e.g., "Color"). [values] The selectable values (e.g., ["Red", "Blue"]).
+  /// Existing variant price/stock/sku data is preserved where option values match.
+  void addVariantOption(String name, List<String> values) {
+    final options = List<VariantOption>.from(state.variantOptions);
+    options.add(VariantOption(name: name, values: values));
+    state = state.copyWith(variantOptions: options);
+    _regenerateVariants();
   }
 
   /// Bug #16: Invalidate lat/lng when user manually edits address fields
@@ -421,6 +437,22 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   void removeImage(int index) => state = state.copyWith(imageModels: List<ImageModel>.from(state.imageModels)..removeAt(index));
+  void removeVariantOption(int index) {
+    final options = List<VariantOption>.from(state.variantOptions);
+    options.removeAt(index);
+    state = state.copyWith(variantOptions: options);
+    _regenerateVariants();
+  }
+
+  void removeVideo() => state = state.copyWith(videoFile: null, videoDurationSeconds: null);
+
+  /// F-58: Reset form state when re-entering the screen after a previous success.
+  /// Call from screen's initState if state.isSuccess == true.
+  void resetIfSuccess() {
+    if (state.isSuccess) {
+      state = AddProductState();
+    }
+  }
 
   /// Populates state with the parsed province, latitude, and longitude from a Geoapify suggestion.
   ///
@@ -438,14 +470,26 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     );
   }
 
-  void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
-  void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
+  void setActiveStep(int step) => state = state.copyWith(activeStep: step);
+  void setAllowBackorder(bool value) => state = state.copyWith(allowBackorder: value);
 
+  void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
+
+  void setCategoryId(String? id) => state = state.copyWith(selectedCategoryId: id, selectedSubcategory: null);
   void setCondition(String? condition) => state = state.copyWith(condition: condition);
+
+  void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
 
   void setDigitalType(String? type) => state = state.copyWith(digitalType: type);
 
+  void setDiscountTierError(bool value) => state = state.copyWith(discountTierError: value);
+
   void setExpressEnabled(bool value) => state = state.copyWith(expressEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
+
+  void setHasAttemptedSubmit(bool value) => state = state.copyWith(hasAttemptedSubmit: value);
+
+  void setHasTracking(bool value) => state = state.copyWith(hasTracking: value);
+  void setInventoryManaged(bool value) => state = state.copyWith(inventoryManaged: value);
 
   void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
 
@@ -456,12 +500,25 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
 
+  void setLowStockAlertEnabled(bool value) => state = state.copyWith(lowStockAlertEnabled: value);
+
   void setMacosDownloadUrl(String? url) => state = state.copyWith(macosDownloadUrl: url);
+
   void setMinimumOrderQuantity(int value) => state = state.copyWith(minimumOrderQuantity: value);
+
   void setProvince(String province) => state = state.copyWith(selectedProvince: province);
   void setSameDayEnabled(bool value) => state = state.copyWith(sameDayEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
   void setSellerSku(String? sku) => state = state.copyWith(sellerSku: sku?.trim().isEmpty == true ? null : sku?.trim());
   void setStandardEnabled(bool value) => state = state.copyWith(standardEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
+  void setSubcategory(String? sub) => state = state.copyWith(selectedSubcategory: sub);
+  void setSupplierCurrency(String currency) => state = state.copyWith(selectedSupplierCurrency: currency);
+
+  // C-03: Setters for business logic state
+  void setSupplierType(String type) => state = state.copyWith(selectedSupplierType: type);
+
+  void setTrackQuantity(bool value) => state = state.copyWith(trackQuantity: value);
+
+  void setVideo(XFile? file, int? durationSeconds) => state = state.copyWith(videoFile: file, videoDurationSeconds: durationSeconds);
 
   void setWarehouseStock(String warehouseId, int qty) {
     final stockMap = Map<String, int>.from(state.warehouseStockMap);
@@ -527,23 +584,23 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
   }
 
-  /// Adds a new variant option axis and regenerates all variant combinations.
-  ///
-  /// [name] The option axis label (e.g., "Color"). [values] The selectable values (e.g., ["Red", "Blue"]).
-  /// Existing variant price/stock/sku data is preserved where option values match.
-  void addVariantOption(String name, List<String> values) {
-    final options = List<VariantOption>.from(state.variantOptions);
-    options.add(VariantOption(name: name, values: values));
-    state = state.copyWith(variantOptions: options);
-    _regenerateVariants();
+  void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
+
+  void toggleWarehouseSelection(String warehouseId) {
+    final current = List<String>.from(state.selectedWarehouseIds);
+    if (current.contains(warehouseId)) {
+      current.remove(warehouseId);
+      // Remove stock entry too
+      final stockMap = Map<String, int>.from(state.warehouseStockMap)..remove(warehouseId);
+      state = state.copyWith(selectedWarehouseIds: current, warehouseStockMap: stockMap);
+    } else {
+      current.add(warehouseId);
+      state = state.copyWith(selectedWarehouseIds: current);
+    }
   }
 
-  void removeVariantOption(int index) {
-    final options = List<VariantOption>.from(state.variantOptions);
-    options.removeAt(index);
-    state = state.copyWith(variantOptions: options);
-    _regenerateVariants();
-  }
+  /// Bug #1: Allow ProductAddImages widget to sync images back to ViewModel
+  void updateImages(List<ImageModel> images) => state = state.copyWith(imageModels: images);
 
   void updateVariantOption(int index, String name, List<String> values) {
     final options = List<VariantOption>.from(state.variantOptions);
@@ -559,16 +616,21 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     state = state.copyWith(variants: variants);
   }
 
+  void updateVariantSku(int index, String? sku) {
+    final variants = List<ProductVariantEntry>.from(state.variants);
+    variants[index] = variants[index].copyWith(sku: sku);
+    state = state.copyWith(variants: variants);
+  }
+
   void updateVariantStock(int index, int stockQuantity) {
     final variants = List<ProductVariantEntry>.from(state.variants);
     variants[index] = variants[index].copyWith(stockQuantity: stockQuantity);
     state = state.copyWith(variants: variants);
   }
 
-  void updateVariantSku(int index, String? sku) {
-    final variants = List<ProductVariantEntry>.from(state.variants);
-    variants[index] = variants[index].copyWith(sku: sku);
-    state = state.copyWith(variants: variants);
+  Future<List<Uint8List>> _compressImages(List<ImageModel> imageModels) async {
+    final results = await Future.wait(imageModels.map((m) => _validateAndCompressImage(m.bytes)));
+    return results.whereType<Uint8List>().toList();
   }
 
   /// Auto-generates all variant combinations from variantOptions.
@@ -611,39 +673,6 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }).toList();
 
     state = state.copyWith(variants: newVariants);
-  }
-
-  void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
-
-  void toggleWarehouseSelection(String warehouseId) {
-    final current = List<String>.from(state.selectedWarehouseIds);
-    if (current.contains(warehouseId)) {
-      current.remove(warehouseId);
-      // Remove stock entry too
-      final stockMap = Map<String, int>.from(state.warehouseStockMap)..remove(warehouseId);
-      state = state.copyWith(selectedWarehouseIds: current, warehouseStockMap: stockMap);
-    } else {
-      current.add(warehouseId);
-      state = state.copyWith(selectedWarehouseIds: current);
-    }
-  }
-
-  /// Bug #1: Allow ProductAddImages widget to sync images back to ViewModel
-  void updateImages(List<ImageModel> images) => state = state.copyWith(imageModels: images);
-
-  /// F-58: Reset form state when re-entering the screen after a previous success.
-  /// Call from screen's initState if state.isSuccess == true.
-  void resetIfSuccess() {
-    if (state.isSuccess) {
-      state = AddProductState();
-    }
-  }
-
-  Future<List<Uint8List>> _compressImages(List<ImageModel> imageModels) async {
-    final results = await Future.wait(
-      imageModels.map((m) => _validateAndCompressImage(m.bytes)),
-    );
-    return results.whereType<Uint8List>().toList();
   }
 
   Future<Uint8List?> _validateAndCompressImage(Uint8List bytes) async {

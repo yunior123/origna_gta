@@ -117,7 +117,7 @@ test.describe('Stripe Payment Flow', () => {
     expect(r1.orderId, 'Duplicate checkout must return same orderId').toBe(r2.orderId);
   });
 
-  test('[BONUS] Order expiresAt is within 7-day authorization window', async ({ page }) => {
+  test('[BONUS] Order expiresAt is within 6-day authorization window', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
     await invalidateProductCache();
     const product = await getTestProduct(auth.idToken, auth.localId);
@@ -131,10 +131,10 @@ test.describe('Stripe Payment Flow', () => {
         ts?._seconds ?? (typeof ts === 'string' ? Math.floor(new Date(ts).getTime() / 1000) : Number(ts));
       const expiresSec = toSec(order.expiresAt);
       const nowSec = Math.floor(Date.now() / 1000);
-      // expiresAt is set when the payment_intent.succeeded webhook fires (7 days from webhook time)
-      // Allow ±10 minutes tolerance for test execution time
-      expect(expiresSec, 'expiresAt must be ~7 days from now').toBeGreaterThanOrEqual(nowSec + 7 * 86_400 - 600);
-      expect(expiresSec, 'expiresAt must be ~7 days from now').toBeLessThanOrEqual(nowSec + 7 * 86_400 + 600);
+      // Backend sets expiresAt = now + 6 days (AUTHORIZATION_EXPIRY_DAYS=6) as a safety
+      // margin before Stripe auto-voids at day 7. Allow ±10 minutes tolerance.
+      expect(expiresSec, 'expiresAt must be ~6 days from now').toBeGreaterThanOrEqual(nowSec + 6 * 86_400 - 600);
+      expect(expiresSec, 'expiresAt must be ~6 days from now').toBeLessThanOrEqual(nowSec + 6 * 86_400 + 600);
     }
     // If expiresAt is absent, that's acceptable for auto-capture mode
   });

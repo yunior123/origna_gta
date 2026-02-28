@@ -180,6 +180,20 @@ class AppConfig:
     ]
 
 
+class ProductConstraints:
+    """Constraints for product-related data."""
+
+    # Video Upload constraints
+    MAX_VIDEO_BYTES = 100 * 1024 * 1024  # 100 MB
+    MAX_VIDEO_DURATION_SECONDS = 60
+    ALLOWED_VIDEO_MIME_TYPES = {
+        "video/mp4",
+        "video/quicktime",
+        "video/webm",
+    }
+
+
+
 # =============================================================================
 # FIELD NAMES - All Firestore document field names
 # =============================================================================
@@ -329,6 +343,9 @@ class Fields:
     FREE_SHIPPING = "freeShipping"
     TAX_CODE = "taxCode"
     DEACTIVATION_REASON = "deactivationReason"
+
+    # === VIDEO UPLOAD FIELDS ===
+    VIDEO_URL = "videoUrl"
 
     # === INTERNATIONAL SHIPPING (T-4) ===
     IS_INTERNATIONAL = "isInternational"
@@ -1412,7 +1429,7 @@ class BusinessRules:
     PREMIUM_MONTHLY_PRICE_CENTS = 786  # Premium subscription monthly price in cents
     FREE_SHIPPING_THRESHOLD_CENTS = 7500  # $75 CAD — subtotals at or above qualify for free standard shipping
     LOCAL_DELIVERY_RADIUS_KM = 50.0  # 50km radius for local delivery Eligibility (BUG-L1)
-    AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (2-day safety margin)
+    AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (1-day safety margin)
     AUTHORIZATION_EXPIRY_DAYS = 6  # FIX (M1): 6-day cutoff gives 24h safety margin before Stripe auto-voids at day 7
     RETURN_WINDOW_DAYS = 7  # No returns/refunds after 7 days post-delivery (Amazon-style policy)
     RETURN_ESCALATION_DAYS = 3  # Return requests auto-escalated after 3 days without seller action
@@ -1440,6 +1457,9 @@ class BusinessRules:
     MIN_CHECKOUT_TOTAL_CENTS = 100  # $1.00 minimum to cover Stripe's $0.30 fixed fee
     MAX_COUPON_DISCOUNT_RATIO = 0.95  # Max 95% off via automated coupons
     MAX_ADMIN_COUPON_DISCOUNT_PERCENT = 90  # Admin-created coupons capped at 90%
+
+    # TASK 11: Seller health metrics window
+    SELLER_METRICS_WINDOW_DAYS = 30  # Rolling 30-day window for metrics calculation
 
     # MFA security constants
     MFA_VERIFICATION_VALIDITY_MINUTES = 5

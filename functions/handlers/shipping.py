@@ -11,6 +11,9 @@ def calculate_shipping_cost(req: https_fn.CallableRequest) -> dict:
     Cloud Function wrapper for shipping cost calculation.
     Allows clients to get accurate shipping estimates without exposing Geoapify keys.
     """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
     try:
         items = req.data.get("items", [])
         address = req.data.get("address", {})

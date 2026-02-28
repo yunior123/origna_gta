@@ -179,148 +179,112 @@ def _run_auto_capture() -> None:
     failed_count = 0
 
     for order_doc in all_orders:
-        order_data = order_doc.to_dict()
-        order_id = order_doc.id
-        payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+        try:
+            order_data = order_doc.to_dict()
+            order_id = order_doc.id
+            payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
 
-        if not payment_intent_id:
-            logger.info(f"Order {order_id} has no payment intent, skipping")
-            continue
+            if not payment_intent_id:
+                logger.info(f"Order {order_id} has no payment intent, skipping")
+                continue
 
-        # CRITICAL FIX (CRITICAL-001): Capture payment if it's only authorized
-        if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED:
-            try:
-                # Emulator mode: skip real Stripe capture for fake payment intents
-                if IS_EMULATOR and not payment_intent_id.startswith("pi_3"):
-                    order_doc.reference.update(
-                        {
-                            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
-                            # M2: Use server timestamps consistently, even in emulator
-                            Fields.CAPTURED_AT: get_server_timestamp(),
-                            Fields.UPDATED_AT: get_server_timestamp(),
-                        }
-                    )
-                    order_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
-                else:
-                    # 1. Fetch PI status
-                    pi = stripe.PaymentIntent.retrieve(payment_intent_id)
-                    if pi.status == "requires_capture":
-                        # 2. Capture the funds
-                        logger.info(f"Auto-capturing funds for order {order_id} (PI: {payment_intent_id})")
-                        pi = stripe.PaymentIntent.capture(
-                            payment_intent_id, idempotency_key=f"auto_capture_{order_id}_{payment_intent_id}"
-                        )
+            # CRITICAL FIX (CRITICAL-001): Capture payment if it's only authorized
+            if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED:
+                # Add transaction lock to prevent race with cancel (C-8 fix)
+                @get_firestore().transactional
+                def lock_for_auto_capture(transaction, order_ref=order_doc.reference):
+                    fresh = order_ref.get(transaction=transaction)
+                    if not fresh.exists or fresh.to_dict().get(Fields.PAYMENT_STATUS) != PaymentStatusValues.AUTHORIZED:
+                        return False
+                    transaction.update(order_ref, {
+                        Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURING,
+                        Fields.UPDATED_AT: get_server_timestamp()
+                    })
+                    return True
 
-                    # 3. Update Firestore status immediately
-                    if pi.status in ["succeeded", "processing"]:
+                try:
+                    if not lock_for_auto_capture(get_db().transaction()):
+                        logger.info(f"Order {order_id} cannot be auto-captured: payment status changed")
+                        continue
+                except Exception as e:
+                    logger.warning(f"Failed to lock order {order_id} for auto-capture: {e}")
+                    continue
+
+                try:
+                    # Emulator mode: skip real Stripe capture for fake payment intents
+                    if IS_EMULATOR and not payment_intent_id.startswith("pi_3"):
                         order_doc.reference.update(
                             {
                                 Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
-                                Fields.CAPTURED_AT: datetime.now(UTC),
-                                Fields.UPDATED_AT: datetime.now(UTC),
+                                # M2: Use server timestamps consistently, even in emulator
+                                Fields.CAPTURED_AT: get_server_timestamp(),
+                                Fields.UPDATED_AT: get_server_timestamp(),
                             }
                         )
-                        # Refresh order_data for the rest of the loop
                         order_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
-                        logger.info(f"Successfully auto-captured order {order_id}")
                     else:
-                        logger.warning(
-                            f"⚠️ Auto-capture for order {order_id} resulted in unexpected PI status: {pi.status}"
-                        )
-                        continue
-            except (
-                stripe.error.StripeError,
-                google_exceptions.GoogleAPICallError,
-                google_exceptions.RetryError,
-                ValueError,
-                TypeError,
-                RuntimeError,
-            ) as capture_err:
-                logger.error(f"Error during auto-capture for order {order_id}: {capture_err}")
+                        # 1. Fetch PI status
+                        pi = stripe.PaymentIntent.retrieve(payment_intent_id)
+                        if pi.status == "requires_capture":
+                            # 2. Capture the funds
+                            logger.info(f"Auto-capturing funds for order {order_id} (PI: {payment_intent_id})")
+                            pi = stripe.PaymentIntent.capture(
+                                payment_intent_id, idempotency_key=f"auto_capture_{order_id}_{payment_intent_id}"
+                            )
+
+                        # 3. Update Firestore status immediately
+                        if pi.status in ["succeeded", "processing"]:
+                            order_doc.reference.update(
+                                {
+                                    Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                                    Fields.CAPTURED_AT: get_server_timestamp(),
+                                    Fields.UPDATED_AT: get_server_timestamp(),
+                                }
+                            )
+                            # Refresh order_data for the rest of the loop
+                            order_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
+                            logger.info(f"Successfully auto-captured order {order_id}")
+                        else:
+                            logger.warning(
+                                f"⚠️ Auto-capture for order {order_id} resulted in unexpected PI status: {pi.status}"
+                            )
+                            continue
+                except (
+                    stripe.error.StripeError,
+                    google_exceptions.GoogleAPICallError,
+                    google_exceptions.RetryError,
+                    ValueError,
+                    TypeError,
+                    RuntimeError,
+                ) as capture_err:
+                    logger.error(f"Error during auto-capture for order {order_id}: {capture_err}")
+                    # Revert lock on failure
+                    order_doc.reference.update({
+                        Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
+                        Fields.UPDATED_AT: get_server_timestamp()
+                    })
+                    continue
+
+            # Skip orders that already have completed payouts
+            payout_status = order_data.get(Fields.PAYOUT_STATUS)
+            if payout_status == PayoutStatusValues.COMPLETED:
                 continue
 
-        # Skip orders that already have completed payouts
-        payout_status = order_data.get(Fields.PAYOUT_STATUS)
-        if payout_status == PayoutStatusValues.COMPLETED:
-            continue
-
-        # AUDIT FIX (HIGH-024): Check for active disputes before auto-payout.
-        try:
-            dispute_alerts = (
-                get_db()
-                .collection(Collections.SECURITY_ALERTS)
-                .where(Fields.TYPE, "==", SecurityAlertTypes.DISPUTE_CREATED)
-                .where(Fields.RESOLVED, "==", False)
-                .where(Fields.ORDER_ID, "==", order_id)
-                .limit(1)
-                .get()
-            )
-
-            if len(dispute_alerts) > 0:
-                logger.warning(f"⚠️ Order {order_id} has active dispute, skipping auto-payout")
-                continue
-        except (
-            google_exceptions.GoogleAPICallError,
-            google_exceptions.RetryError,
-            ValueError,
-            TypeError,
-            RuntimeError,
-        ) as e:
-            logger.warning(f"⚠️ Failed to check disputes for order {order_id}: {str(e)}, skipping for safety")
-            continue
-
-        # FIX S23: Verify actual delivery/ship time before payout.
-        items = order_data.get(Fields.ITEMS, [])
-        latest_event_time = None
-        for item in items:
-            ts = item.get(Fields.DELIVERED_AT) or item.get(Fields.SHIPPED_AT)
-            if ts:
-                if isinstance(ts, str):
-                    try:
-                        ts = datetime.fromisoformat(ts)
-                    except ValueError:
-                        continue
-                if latest_event_time is None or ts > latest_event_time:
-                    latest_event_time = ts
-
-        if latest_event_time and latest_event_time > cutoff_date:
-            logger.info(f"Order {order_id} item-level timestamp too recent ({latest_event_time}), skipping")
-            continue
-
-        # Auto-confirm SHIPPED orders as DELIVERED after cutoff (transactional to prevent race conditions)
-        if order_data.get(Fields.ORDER_STATUS) == OrderStatusValues.SHIPPED:
-            _confirm_now = datetime.now(UTC)
-
-            @get_firestore().transactional
-            def _try_auto_confirm(transaction, _doc=order_doc, _now=_confirm_now):
-                fresh = _doc.reference.get(transaction=transaction)
-                if not fresh.exists:
-                    return None
-                fresh_data = fresh.to_dict()
-                if fresh_data.get(Fields.ORDER_STATUS) != OrderStatusValues.SHIPPED:
-                    return None  # already confirmed by a concurrent cron run
-                items = fresh_data.get(Fields.ITEMS, [])
-                for item in items:
-                    if item.get(Fields.STATUS) == DeliveryStatusValues.SHIPPED:
-                        item[Fields.STATUS] = DeliveryStatusValues.DELIVERED
-                        item[Fields.DELIVERED_AT] = _now
-                        item[Fields.CONFIRMED_AT] = _now  # Stamp confirmation time
-                transaction.update(
-                    _doc.reference,
-                    {
-                        Fields.ITEMS: items,
-                        Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
-                        Fields.AUTO_CONFIRMED: True,
-                        # C2: Add DELIVERED_AT and CONFIRMED_AT for auto-confirmed orders
-                        Fields.DELIVERED_AT: get_server_timestamp(),
-                        Fields.CONFIRMED_AT: get_server_timestamp(),
-                        Fields.UPDATED_AT: get_server_timestamp(),
-                    },
-                )
-                return items
-
+            # AUDIT FIX (HIGH-024): Check for active disputes before auto-payout.
             try:
-                confirmed_items = _try_auto_confirm(get_db().transaction())
+                dispute_alerts = (
+                    get_db()
+                    .collection(Collections.SECURITY_ALERTS)
+                    .where(Fields.TYPE, "==", SecurityAlertTypes.DISPUTE_CREATED)
+                    .where(Fields.RESOLVED, "==", False)
+                    .where(Fields.ORDER_ID, "==", order_id)
+                    .limit(1)
+                    .get()
+                )
+
+                if len(dispute_alerts) > 0:
+                    logger.warning(f"⚠️ Order {order_id} has active dispute, skipping auto-payout")
+                    continue
             except (
                 google_exceptions.GoogleAPICallError,
                 google_exceptions.RetryError,
@@ -328,264 +292,352 @@ def _run_auto_capture() -> None:
                 TypeError,
                 RuntimeError,
             ) as e:
-                logger.error(f"Failed to auto-confirm order {order_id}: {e}")
+                logger.warning(f"⚠️ Failed to check disputes for order {order_id}: {str(e)}, skipping for safety")
                 continue
 
-            if confirmed_items is None:
-                logger.info(f"Order {order_id} skipped auto-confirm (already processed)")
+            # M-7 FIX: Check for active return requests before auto-payout/auto-confirm.
+            try:
+                active_returns = (
+                    get_db()
+                    .collection(Collections.RETURN_REQUESTS)
+                    .where(Fields.ORDER_ID, "==", order_id)
+                    .where(Fields.STATUS, "in", [
+                        ReturnStatusValues.REQUESTED,
+                        ReturnStatusValues.APPROVED,
+                        ReturnStatusValues.LABEL_ISSUED,
+                        ReturnStatusValues.RECEIVED,
+                        ReturnStatusValues.ESCALATED
+                    ])
+                    .limit(1)
+                    .get()
+                )
+                if len(active_returns) > 0:
+                    logger.warning(f"⚠️ Order {order_id} has active return request, skipping auto-confirm/payout")
+                    continue
+            except (
+                google_exceptions.GoogleAPICallError,
+                google_exceptions.RetryError,
+                ValueError,
+                TypeError,
+                RuntimeError,
+            ) as e:
+                logger.warning(f"⚠️ Failed to check return requests for order {order_id}: {str(e)}, skipping for safety")
                 continue
 
-            order_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
-            # C2: Sync local items with confirmed items from transaction
-            # Without this, the payout loop reads stale SHIPPED status and produces zero payout
-            order_data[Fields.ITEMS] = confirmed_items
-            from models.order_event import OrderEvent
-            OrderEvent.write(
-                get_db(), order_id, OrderEventTypes.AUTO_CONFIRMED,
-                actor="system", actor_type="system",
-                from_status=OrderStatusValues.SHIPPED, to_status=OrderStatusValues.DELIVERED,
-            )
-            logger.info(f"Auto-confirmed order {order_id} as delivered (was shipped, {BusinessRules.AUTO_CONFIRM_DAYS}+ days)")
-
-        try:
-            # Payment is already captured — just mark payout in progress
-            order_doc.reference.update(
-                {
-                    Fields.PAYOUT_STATUS: PayoutStatusValues.PROCESSING,
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                }
-            )
-
-            # Create payouts ONLY for sellers whose items are DELIVERED
-            # SECURITY FIX: Removed PENDING fallback — only pay for confirmed deliveries
+            # FIX S23: Verify actual delivery/ship time before payout.
             items = order_data.get(Fields.ITEMS, [])
-            sellers_total_cents = {}
+            latest_event_time = None
             for item in items:
-                item_status = item.get(Fields.STATUS, DeliveryStatusValues.PENDING)
-                if item_status == DeliveryStatusValues.DELIVERED:
-                    seller_id = item[Fields.SELLER_ID]
-                    item_price_cents = round(item.get(Fields.PRICE, 0) * 100)  # price is dollar float → convert to cents
-                    item_total_cents = item_price_cents * item[Fields.QUANTITY]
-                    sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
-
-            # AUDIT FIX (CRITICAL-001): Use stored fee rate from checkout, not current config
-            # Fee is calculated on subtotal, so we must divide by subtotal to get the rate
-            stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
-            order_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 1)
-
-            stored_fee_rate = (
-                (stored_fee_total / order_subtotal) if stored_fee_total and order_subtotal > 0 else PLATFORM_FEE_RATIO
-            )
-
-            expected_seller_count = len(sellers_total_cents)
-            current_order_success_count = 0  # Track successful transfers for this order
-
-            # F-80: Batch-read all sellers for this order in two round-trips instead of 2N
-            seller_ids_for_order = list(sellers_total_cents.keys())
-            user_refs = [get_db().collection(Collections.USERS).document(sid) for sid in seller_ids_for_order]
-            sp_refs = [get_db().collection(Collections.SELLER_PROFILES).document(sid) for sid in seller_ids_for_order]
-            user_docs_batch = {doc.id: doc for doc in get_db().get_all(user_refs)} if user_refs else {}
-            sp_docs_batch = {doc.id: doc for doc in get_db().get_all(sp_refs)} if sp_refs else {}
-
-            for seller_id, amount_cents in sellers_total_cents.items():
-                platform_fee_cents = round(amount_cents * stored_fee_rate)
-                net_amount_cents = amount_cents - platform_fee_cents
-
-                # Use snapshot of seller's Stripe account from time of checkout.
-                # Prevents "Account Swap" attack where seller changes account after order.
-                seller_stripe_accounts = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
-                stripe_account_id = seller_stripe_accounts.get(seller_id)
-
-                # Use batch-read results for suspension and charges check
-                seller_doc = user_docs_batch.get(seller_id)
-
-                if seller_doc and seller_doc.exists:
-                    seller_data = seller_doc.to_dict()
-
-                    # Fallback to current profile if snapshot missing
-                    if not stripe_account_id:
-                        stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
-                        if stripe_account_id:
-                            logger.warning(f"⚠️ Using current Stripe account for seller {seller_id} (snapshot missing)")
-
-                    # SECURITY FIX: Check chargesEnabled (not payoutsEnabled) for consistency
-                    # with capture_payment. Also check seller is not suspended.
-                    seller_suspended = seller_data.get(Fields.SUSPENDED, False)
-                    sp_doc = sp_docs_batch.get(seller_id)
-                    seller_charges_ok = (sp_doc.to_dict() or {}).get(Fields.CHARGES_ENABLED, False) if sp_doc and sp_doc.exists else False
-
-                    if seller_suspended:
-                        logger.warning(f"⚠️ Skipping auto-payout to suspended seller {seller_id} for order {order_id}")
-                        order_doc.reference.update(
-                            {
-                                Fields.REQUIRES_MANUAL_REVIEW: True,
-                                Fields.MANUAL_REVIEW_REASON: f"Seller {seller_id} suspended at auto-capture",
-                            }
-                        )
-                        continue
-
-                    if stripe_account_id and seller_charges_ok:
+                ts = item.get(Fields.DELIVERED_AT) or item.get(Fields.SHIPPED_AT)
+                if ts:
+                    if isinstance(ts, str):
                         try:
-                            # CRITICAL FIX: Stripe Transfer requires a Charge ID (ch_xxx),
-                            # not a PaymentIntent ID (pi_xxx). Retrieve the charge from the PI.
-                            charge_id = None
-                            try:
-                                pi = stripe.PaymentIntent.retrieve(payment_intent_id)
-                                charge_id = pi.latest_charge
-                            except stripe.error.StripeError as pi_err:
-                                logger.error(f"Failed to retrieve charge for PI {payment_intent_id}: {str(pi_err)}")
+                            ts = datetime.fromisoformat(ts)
+                        except ValueError:
+                            continue
+                    if latest_event_time is None or ts > latest_event_time:
+                        latest_event_time = ts
 
-                            if not charge_id:
-                                logger.warning(
-                                    f"⚠️ No charge found for PI {payment_intent_id}, skipping transfer for seller {seller_id}"
-                                )
-                                order_doc.reference.update(
-                                    {
-                                        Fields.REQUIRES_MANUAL_REVIEW: True,
-                                        Fields.MANUAL_REVIEW_REASON: f"No charge ID found for auto-payout to seller {seller_id}",
-                                    }
-                                )
-                                continue
+            if latest_event_time and latest_event_time > cutoff_date:
+                logger.info(f"Order {order_id} item-level timestamp too recent ({latest_event_time}), skipping")
+                continue
 
-                            # Create PENDING payout record BEFORE Stripe transfer (idempotent)
-                            existing_payouts = list(
-                                get_db()
-                                .collection(Collections.PAYOUTS)
-                                .where(Fields.ORDER_ID, "==", order_id)
-                                .where(Fields.SELLER_ID, "==", seller_id)
-                                .limit(1)
-                                .get()
+            # Auto-confirm SHIPPED orders as DELIVERED after cutoff (transactional to prevent race conditions)
+            if order_data.get(Fields.ORDER_STATUS) == OrderStatusValues.SHIPPED:
+                _confirm_now = datetime.now(UTC)
+
+                @get_firestore().transactional
+                def _try_auto_confirm(transaction, _doc=order_doc, _now=_confirm_now):
+                    fresh = _doc.reference.get(transaction=transaction)
+                    if not fresh.exists:
+                        return None
+                    fresh_data = fresh.to_dict()
+                    if fresh_data.get(Fields.ORDER_STATUS) != OrderStatusValues.SHIPPED:
+                        return None  # already confirmed by a concurrent cron run
+                    items = fresh_data.get(Fields.ITEMS, [])
+                    for item in items:
+                        if item.get(Fields.STATUS) == DeliveryStatusValues.SHIPPED:
+                            item[Fields.STATUS] = DeliveryStatusValues.DELIVERED
+                            item[Fields.DELIVERED_AT] = _now
+                            item[Fields.CONFIRMED_AT] = _now  # Stamp confirmation time
+                    transaction.update(
+                        _doc.reference,
+                        {
+                            Fields.ITEMS: items,
+                            Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                            Fields.AUTO_CONFIRMED: True,
+                            # C2: Add DELIVERED_AT and CONFIRMED_AT for auto-confirmed orders
+                            Fields.DELIVERED_AT: get_server_timestamp(),
+                            Fields.CONFIRMED_AT: get_server_timestamp(),
+                            Fields.UPDATED_AT: get_server_timestamp(),
+                        },
+                    )
+                    return items
+
+                try:
+                    confirmed_items = _try_auto_confirm(get_db().transaction())
+                except (
+                    google_exceptions.GoogleAPICallError,
+                    google_exceptions.RetryError,
+                    ValueError,
+                    TypeError,
+                    RuntimeError,
+                ) as e:
+                    logger.error(f"Failed to auto-confirm order {order_id}: {e}")
+                    continue
+
+                if confirmed_items is None:
+                    logger.info(f"Order {order_id} skipped auto-confirm (already processed)")
+                    continue
+
+                order_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+                # C2: Sync local items with confirmed items from transaction
+                # Without this, the payout loop reads stale SHIPPED status and produces zero payout
+                order_data[Fields.ITEMS] = confirmed_items
+                from models.order_event import OrderEvent
+                OrderEvent.write(
+                    get_db(), order_id, OrderEventTypes.AUTO_CONFIRMED,
+                    actor="system", actor_type="system",
+                    from_status=OrderStatusValues.SHIPPED, to_status=OrderStatusValues.DELIVERED,
+                )
+                logger.info(f"Auto-confirmed order {order_id} as delivered (was shipped, {BusinessRules.AUTO_CONFIRM_DAYS}+ days)")
+
+            try:
+                # Payment is already captured — just mark payout in progress
+                order_doc.reference.update(
+                    {
+                        Fields.PAYOUT_STATUS: PayoutStatusValues.PROCESSING,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
+
+                # Create payouts ONLY for sellers whose items are DELIVERED
+                # SECURITY FIX: Removed PENDING fallback — only pay for confirmed deliveries
+                items = order_data.get(Fields.ITEMS, [])
+                sellers_total_cents = {}
+                for item in items:
+                    item_status = item.get(Fields.STATUS, DeliveryStatusValues.PENDING)
+                    if item_status == DeliveryStatusValues.DELIVERED:
+                        seller_id = item[Fields.SELLER_ID]
+                        item_price_cents = round(item.get(Fields.PRICE, 0) * 100)  # price is dollar float → convert to cents
+                        item_total_cents = item_price_cents * item[Fields.QUANTITY]
+                        sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
+
+                # AUDIT FIX (CRITICAL-001): Use stored fee rate from checkout, not current config
+                stored_fee_rate = order_data.get(Fields.PLATFORM_FEE_RATIO, PLATFORM_FEE_RATIO)
+
+                expected_seller_count = len(sellers_total_cents)
+                current_order_success_count = 0  # Track successful transfers for this order
+
+                # F-80: Batch-read all sellers for this order in two round-trips instead of 2N
+                seller_ids_for_order = list(sellers_total_cents.keys())
+                user_refs = [get_db().collection(Collections.USERS).document(sid) for sid in seller_ids_for_order]
+                sp_refs = [get_db().collection(Collections.SELLER_PROFILES).document(sid) for sid in seller_ids_for_order]
+                user_docs_batch = {doc.id: doc for doc in get_db().get_all(user_refs)} if user_refs else {}
+                sp_docs_batch = {doc.id: doc for doc in get_db().get_all(sp_refs)} if sp_refs else {}
+
+                for seller_id, amount_cents in sellers_total_cents.items():
+                    platform_fee_cents = round(amount_cents * stored_fee_rate)
+                    net_amount_cents = amount_cents - platform_fee_cents
+
+                    # Use snapshot of seller's Stripe account from time of checkout.
+                    # Prevents "Account Swap" attack where seller changes account after order.
+                    seller_stripe_accounts = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
+                    stripe_account_id = seller_stripe_accounts.get(seller_id)
+
+                    # Use batch-read results for suspension and charges check
+                    seller_doc = user_docs_batch.get(seller_id)
+
+                    if seller_doc and seller_doc.exists:
+                        seller_data = seller_doc.to_dict()
+
+                        # Fallback to current profile if snapshot missing
+                        if not stripe_account_id:
+                            stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
+                            if stripe_account_id:
+                                logger.warning(f"⚠️ Using current Stripe account for seller {seller_id} (snapshot missing)")
+
+                        # SECURITY FIX: Check chargesEnabled (not payoutsEnabled) for consistency
+                        # with capture_payment. Also check seller is not suspended.
+                        seller_suspended = seller_data.get(Fields.SUSPENDED, False)
+                        sp_doc = sp_docs_batch.get(seller_id)
+                        seller_charges_ok = (sp_doc.to_dict() or {}).get(Fields.CHARGES_ENABLED, False) if sp_doc and sp_doc.exists else False
+
+                        if seller_suspended:
+                            logger.warning(f"⚠️ Skipping auto-payout to suspended seller {seller_id} for order {order_id}")
+                            order_doc.reference.update(
+                                {
+                                    Fields.REQUIRES_MANUAL_REVIEW: True,
+                                    Fields.MANUAL_REVIEW_REASON: f"Seller {seller_id} suspended at auto-capture",
+                                }
                             )
-                            if existing_payouts:
-                                payout_ref = existing_payouts[0].reference
-                                existing_status = (existing_payouts[0].to_dict() or {}).get(Fields.STATUS)
-                                if existing_status == PayoutStatusValues.COMPLETED:
-                                    logger.info(f"Payout already completed for {order_id}/{seller_id}, skipping")
-                                    current_order_success_count += 1
+                            continue
+
+                        if stripe_account_id and seller_charges_ok:
+                            try:
+                                # CRITICAL FIX: Stripe Transfer requires a Charge ID (ch_xxx),
+                                # not a PaymentIntent ID (pi_xxx). Retrieve the charge from the PI.
+                                charge_id = None
+                                try:
+                                    pi = stripe.PaymentIntent.retrieve(payment_intent_id)
+                                    charge_id = pi.latest_charge
+                                except stripe.error.StripeError as pi_err:
+                                    logger.error(f"Failed to retrieve charge for PI {payment_intent_id}: {str(pi_err)}")
+
+                                if not charge_id:
+                                    logger.warning(
+                                        f"⚠️ No charge found for PI {payment_intent_id}, skipping transfer for seller {seller_id}"
+                                    )
+                                    order_doc.reference.update(
+                                        {
+                                            Fields.REQUIRES_MANUAL_REVIEW: True,
+                                            Fields.MANUAL_REVIEW_REASON: f"No charge ID found for auto-payout to seller {seller_id}",
+                                        }
+                                    )
                                     continue
-                            else:
-                                doc_id = f"{order_id}_{seller_id}"
-                                payout_ref = get_db().collection(Collections.PAYOUTS).document(doc_id)
-                            payout_ref.set(
-                                {
-                                    Fields.ORDER_ID: order_id,
-                                    Fields.SELLER_ID: seller_id,
-                                    Fields.AMOUNT_CENTS: amount_cents,
-                                    Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
-                                    Fields.NET_AMOUNT_CENTS: net_amount_cents,
-                                    Fields.STATUS: PayoutStatusValues.PENDING,
-                                    Fields.AUTO_CAPTURED: True,
-                                    Fields.CREATED_AT: get_server_timestamp(),
-                                }
-                            )
 
-                            transfer = stripe.Transfer.create(
-                                amount=net_amount_cents,
-                                currency=BusinessRules.DEFAULT_CURRENCY,
-                                destination=stripe_account_id,
-                                source_transaction=charge_id,
-                                transfer_group=order_id,
-                                metadata={
-                                    Fields.ORDER_ID: order_id,
-                                    Fields.SELLER_ID: seller_id,
-                                    Fields.AUTO_CAPTURED: True,
-                                },
-                                idempotency_key=f"auto_transfer_{order_id}_{seller_id}",
-                            )
-
-                            # Update payout record with transfer details
-                            payout_ref.update(
-                                {
-                                    Fields.STATUS: PayoutStatusValues.COMPLETED,
-                                    Fields.STRIPE_TRANSFER_ID: transfer.id,
-                                    Fields.PAYOUT_DATE: get_server_timestamp(),
-                                }
-                            )
-
-                            current_order_success_count += 1
-
-                        except stripe.error.StripeError as e:
-                            logger.error(f"Payout failed for seller {seller_id}: {str(e)}")
-
-                            # AUDIT FIX: Sanitize Stripe error before storing in Firestore
-                            safe_error = f"{type(e).__name__}: {getattr(e, 'code', 'unknown')}"
-
-                            # Update existing payout record to FAILED
-                            try:
-                                payout_ref.update(
-                                    {
-                                        Fields.STATUS: PayoutStatusValues.FAILED,
-                                        Fields.FAILURE_REASON: safe_error,
-                                    }
+                                # Create PENDING payout record BEFORE Stripe transfer (idempotent)
+                                existing_payouts = list(
+                                    get_db()
+                                    .collection(Collections.PAYOUTS)
+                                    .where(Fields.ORDER_ID, "==", order_id)
+                                    .where(Fields.SELLER_ID, "==", seller_id)
+                                    .limit(1)
+                                    .get()
                                 )
-                            except Exception:
-                                # Fallback: create a new failure record if payout_ref wasn't set
-                                get_db().collection(Collections.PAYOUTS).add(
+                                if existing_payouts:
+                                    payout_ref = existing_payouts[0].reference
+                                    existing_status = (existing_payouts[0].to_dict() or {}).get(Fields.STATUS)
+                                    if existing_status == PayoutStatusValues.COMPLETED:
+                                        logger.info(f"Payout already completed for {order_id}/{seller_id}, skipping")
+                                        current_order_success_count += 1
+                                        continue
+                                else:
+                                    doc_id = f"{order_id}_{seller_id}"
+                                    payout_ref = get_db().collection(Collections.PAYOUTS).document(doc_id)
+                                payout_ref.set(
                                     {
                                         Fields.ORDER_ID: order_id,
                                         Fields.SELLER_ID: seller_id,
                                         Fields.AMOUNT_CENTS: amount_cents,
                                         Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
                                         Fields.NET_AMOUNT_CENTS: net_amount_cents,
-                                        Fields.STATUS: PayoutStatusValues.FAILED,
-                                        Fields.FAILURE_REASON: safe_error,
+                                        Fields.STATUS: PayoutStatusValues.PENDING,
                                         Fields.AUTO_CAPTURED: True,
                                         Fields.CREATED_AT: get_server_timestamp(),
                                     }
                                 )
 
-            if current_order_success_count == expected_seller_count and current_order_success_count > 0:
-                payout_count += 1
-                logger.info(f"Auto-payout completed for order {order_id} ({current_order_success_count} transfers)")
+                                transfer = stripe.Transfer.create(
+                                    amount=net_amount_cents,
+                                    currency=BusinessRules.DEFAULT_CURRENCY,
+                                    destination=stripe_account_id,
+                                    source_transaction=charge_id,
+                                    transfer_group=order_id,
+                                    metadata={
+                                        Fields.ORDER_ID: order_id,
+                                        Fields.SELLER_ID: seller_id,
+                                        Fields.AUTO_CAPTURED: True,
+                                    },
+                                    idempotency_key=f"transfer_{order_id}_{seller_id}",
+                                )
 
-                # Mark order payout as completed so it's not reprocessed next cron run
-                order_doc.reference.update(
-                    {
-                        Fields.PAYOUT_STATUS: PayoutStatusValues.COMPLETED,
-                        Fields.UPDATED_AT: get_server_timestamp(),
-                    }
-                )
-            elif current_order_success_count > 0:
-                payout_count += 1
-                logger.warning(
-                    f"Partial payout for order {order_id} ({current_order_success_count}/{expected_seller_count} transfers)"
-                )
-                order_doc.reference.update(
-                    {
-                        Fields.PAYOUT_STATUS: PayoutStatusValues.PARTIAL,
-                        Fields.REQUIRES_MANUAL_REVIEW: True,
-                        Fields.MANUAL_REVIEW_REASON: f"Partial payout: {current_order_success_count}/{expected_seller_count} sellers paid",
-                        Fields.UPDATED_AT: get_server_timestamp(),
-                    }
-                )
-            else:
-                logger.warning(f"No successful payouts for order {order_id}, marking as FAILED")
+                                # Update payout record with transfer details
+                                payout_ref.update(
+                                    {
+                                        Fields.STATUS: PayoutStatusValues.COMPLETED,
+                                        Fields.STRIPE_TRANSFER_ID: transfer.id,
+                                        Fields.PAYOUT_DATE: get_server_timestamp(),
+                                    }
+                                )
+
+                                current_order_success_count += 1
+
+                            except stripe.error.StripeError as e:
+                                logger.error(f"Payout failed for seller {seller_id}: {str(e)}")
+
+                                # AUDIT FIX: Sanitize Stripe error before storing in Firestore
+                                safe_error = f"{type(e).__name__}: {getattr(e, 'code', 'unknown')}"
+
+                                # Update existing payout record to FAILED
+                                try:
+                                    payout_ref.update(
+                                        {
+                                            Fields.STATUS: PayoutStatusValues.FAILED,
+                                            Fields.FAILURE_REASON: safe_error,
+                                        }
+                                    )
+                                except Exception:
+                                    # Fallback: create a new failure record if payout_ref wasn't set
+                                    get_db().collection(Collections.PAYOUTS).add(
+                                        {
+                                            Fields.ORDER_ID: order_id,
+                                            Fields.SELLER_ID: seller_id,
+                                            Fields.AMOUNT_CENTS: amount_cents,
+                                            Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
+                                            Fields.NET_AMOUNT_CENTS: net_amount_cents,
+                                            Fields.STATUS: PayoutStatusValues.FAILED,
+                                            Fields.FAILURE_REASON: safe_error,
+                                            Fields.AUTO_CAPTURED: True,
+                                            Fields.CREATED_AT: get_server_timestamp(),
+                                        }
+                                    )
+
+                if current_order_success_count == expected_seller_count and current_order_success_count > 0:
+                    payout_count += 1
+                    logger.info(f"Auto-payout completed for order {order_id} ({current_order_success_count} transfers)")
+
+                    # Mark order payout as completed so it's not reprocessed next cron run
+                    order_doc.reference.update(
+                        {
+                            Fields.PAYOUT_STATUS: PayoutStatusValues.COMPLETED,
+                            Fields.UPDATED_AT: get_server_timestamp(),
+                        }
+                    )
+                elif current_order_success_count > 0:
+                    payout_count += 1
+                    logger.warning(
+                        f"Partial payout for order {order_id} ({current_order_success_count}/{expected_seller_count} transfers)"
+                    )
+                    order_doc.reference.update(
+                        {
+                            Fields.PAYOUT_STATUS: PayoutStatusValues.PARTIAL,
+                            Fields.REQUIRES_MANUAL_REVIEW: True,
+                            Fields.MANUAL_REVIEW_REASON: f"Partial payout: {current_order_success_count}/{expected_seller_count} sellers paid",
+                            Fields.UPDATED_AT: get_server_timestamp(),
+                        }
+                    )
+                else:
+                    logger.warning(f"No successful payouts for order {order_id}, marking as FAILED")
+                    order_doc.reference.update(
+                        {
+                            Fields.PAYOUT_STATUS: PayoutStatusValues.FAILED,
+                            Fields.UPDATED_AT: get_server_timestamp(),
+                        }
+                    )
+
+            except stripe.error.StripeError as e:
+                failed_count += 1
+                logger.error(f"Failed to process payout for order {order_id}: {str(e)}")
+
                 order_doc.reference.update(
                     {
                         Fields.PAYOUT_STATUS: PayoutStatusValues.FAILED,
+                        Fields.LAST_CAPTURE_ERROR: f"{type(e).__name__}: {getattr(e, 'code', 'unknown')}",
                         Fields.UPDATED_AT: get_server_timestamp(),
                     }
                 )
 
-        except stripe.error.StripeError as e:
-            failed_count += 1
-            logger.error(f"Failed to process payout for order {order_id}: {str(e)}")
-
-            order_doc.reference.update(
-                {
-                    Fields.PAYOUT_STATUS: PayoutStatusValues.FAILED,
-                    Fields.LAST_CAPTURE_ERROR: f"{type(e).__name__}: {getattr(e, 'code', 'unknown')}",
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                }
-            )
-
+        except Exception as e:
+            import logging
+            logging.error(f'Error processing item in batch: {e}')
     logger.info(f"Auto-payout completed: {payout_count} paid out, {failed_count} failed")
 
 
 @scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
 def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     """
-    Expires orders with authorizations older than 7 days.
+    Expires orders with authorizations older than AUTHORIZATION_EXPIRY_DAYS (6) days.
 
     Runs: Daily at 02:00 UTC
 
@@ -638,111 +690,121 @@ def _run_expired_authorizations() -> None:
     expired_count = 0
 
     for order_doc in orders:
-        order_data = order_doc.to_dict()
-        order_id = order_doc.id
-
-        # FIX 1: Cancel Stripe authorization BEFORE marking EXPIRED in Firestore
-        if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED:
-            pi_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
-            if pi_id:
-                try:
-                    logger.info(f"Cancelling stale authorization for order {order_id} (PI: {pi_id})")
-                    # M4: stripe.api_key already set at top of _run_expired_authorizations()
-                    stripe.PaymentIntent.cancel(pi_id, idempotency_key=f"cancel_auth_{order_id}")
-                except Exception as cancel_err:
-                    logger.warning(f"⚠️ Failed to cancel Stripe PI {pi_id} for expired order {order_id}: {cancel_err}")
-
-        # FIX 2: Check STOCK_RESTORED from fresh doc inside transaction
-        @get_firestore().transactional
-        def try_expire_order(transaction, order_doc=order_doc, order_data=order_data):
-            fresh_doc = order_doc.reference.get(transaction=transaction)
-            if not fresh_doc.exists:
-                return "not_found", False, []
-            fresh_data = fresh_doc.to_dict()
-            current_status = fresh_data.get(Fields.ORDER_STATUS)
-            if current_status not in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED]:
-                return f"invalid_status:{current_status}", False, []
-            stock_already_restored = fresh_data.get(Fields.STOCK_RESTORED, False)
-            payment_status = (
-                PaymentStatusValues.AUTHORIZATION_EXPIRED
-                if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED
-                else PaymentStatusValues.SESSION_EXPIRED
-            )
-            transaction.update(
-                order_doc.reference,
-                {
-                    Fields.ORDER_STATUS: OrderStatusValues.EXPIRED,
-                    Fields.PAYMENT_STATUS: payment_status,
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                },
-            )
-            return "locked", stock_already_restored, fresh_data.get(Fields.ITEMS, [])
-
         try:
-            expire_result, stock_already_restored, fresh_items = try_expire_order(get_db().transaction())
-            if expire_result != "locked":
-                logger.info(f"Order {order_id} cannot be expired: {expire_result}")
-                continue
-        except (
-            google_exceptions.GoogleAPICallError,
-            google_exceptions.RetryError,
-            ValueError,
-            TypeError,
-            RuntimeError,
-        ) as e:
-            logger.warning(f"⚠️ Failed to lock order {order_id} for expiry: {str(e)}")
-            continue
+            order_data = order_doc.to_dict()
+            order_id = order_doc.id
 
-        # Use fresh stock_already_restored from transaction (Fix 2)
-        stock_restored_ok = stock_already_restored  # assume True if already done
-        if stock_already_restored:
-            logger.info(f"Stock already restored for expired order {order_id}")
-        else:
-            # CRITICAL FIX: Only mark STOCK_RESTORED=True if the batch actually succeeds.
-            # A crash or Firestore error here previously left stock permanently decremented
-            # because STOCK_RESTORED=True was written unconditionally after the try/except,
-            # hiding the failure and preventing any retry mechanism from detecting it.
-            stock_batch = get_db().batch()
-            for item in fresh_items:
-                product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-                qty = item[Fields.QUANTITY]
-                stock_patch = {Fields.STOCK_QUANTITY: get_firestore().Increment(qty)}
-                fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID, "")
-                if fulfillment_wh:
-                    stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(qty)
-                stock_batch.update(product_ref, stock_patch)
-                if fulfillment_wh:
-                    inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
-                    stock_batch.set(inv_ref, {
-                        Fields.AVAILABLE_QUANTITY: get_firestore().Increment(qty),
-                        Fields.LAST_SYNCED_AT: get_server_timestamp(),
-                    }, merge=True)
-            try:
-                stock_batch.commit()
-                stock_restored_ok = True
-            except Exception as e:
-                logger.error(
-                    f"Failed to restore stock batch for order {order_id}: {str(e)} — "
-                    f"STOCK_RESTORED will NOT be set; order will remain in EXPIRED state "
-                    f"with stock un-restored. Manual intervention required."
+            # FIX 2: Check STOCK_RESTORED from fresh doc inside transaction
+            @get_firestore().transactional
+            def try_expire_order(transaction, order_doc=order_doc, order_data=order_data):
+                fresh_doc = order_doc.reference.get(transaction=transaction)
+                if not fresh_doc.exists:
+                    return "not_found", False, [], None
+                fresh_data = fresh_doc.to_dict()
+                current_status = fresh_data.get(Fields.ORDER_STATUS)
+                fresh_payment_status = fresh_data.get(Fields.PAYMENT_STATUS)
+                
+                # C-10: Prevent race condition with capture.
+                if fresh_payment_status in [PaymentStatusValues.CAPTURING, PaymentStatusValues.CAPTURED]:
+                    return f"locked_by_capture:{fresh_payment_status}", False, [], None
+                    
+                if current_status not in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED]:
+                    return f"invalid_status:{current_status}", False, [], None
+                    
+                stock_already_restored = fresh_data.get(Fields.STOCK_RESTORED, False)
+                new_payment_status = (
+                    PaymentStatusValues.AUTHORIZATION_EXPIRED
+                    if fresh_payment_status == PaymentStatusValues.AUTHORIZED
+                    else PaymentStatusValues.SESSION_EXPIRED
                 )
-                stock_restored_ok = False
+                transaction.update(
+                    order_doc.reference,
+                    {
+                        Fields.ORDER_STATUS: OrderStatusValues.EXPIRED,
+                        Fields.PAYMENT_STATUS: new_payment_status,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    },
+                )
+                return "locked", stock_already_restored, fresh_data.get(Fields.ITEMS, []), fresh_payment_status
 
-        # Update order with remaining fields NOT set in the transaction.
-        # NOTE: ORDER_STATUS and PAYMENT_STATUS are already set in the transaction.
-        # Only set STOCK_RESTORED, EXPIRES_AT here to avoid duplicating writes.
-        # FIX: STOCK_RESTORED is only set True when stock was actually restored.
-        update_fields: dict = {
-            Fields.EXPIRES_AT: get_server_timestamp(),
-            Fields.UPDATED_AT: get_server_timestamp(),
-        }
-        if stock_restored_ok:
-            update_fields[Fields.STOCK_RESTORED] = True
-        order_doc.reference.update(update_fields)
+            try:
+                expire_result, stock_already_restored, fresh_items, prev_payment_status = try_expire_order(get_db().transaction())
+                if expire_result != "locked":
+                    logger.info(f"Order {order_id} cannot be expired: {expire_result}")
+                    continue
+            except (
+                google_exceptions.GoogleAPICallError,
+                google_exceptions.RetryError,
+                ValueError,
+                TypeError,
+                RuntimeError,
+            ) as e:
+                logger.warning(f"⚠️ Failed to lock order {order_id} for expiry: {str(e)}")
+                continue
 
-        expired_count += 1
-        logger.info(f"Expired order {order_id} (stock_restored={stock_restored_ok})")
+            # C-10 FIX 1: Cancel Stripe authorization AFTER successful Firestore lock
+            if prev_payment_status == PaymentStatusValues.AUTHORIZED:
+                pi_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+                if pi_id:
+                    try:
+                        logger.info(f"Cancelling stale authorization for order {order_id} (PI: {pi_id})")
+                        stripe.PaymentIntent.cancel(pi_id, idempotency_key=f"cancel_auth_{order_id}")
+                    except Exception as cancel_err:
+                        logger.warning(f"⚠️ Failed to cancel Stripe PI {pi_id} for expired order {order_id}: {cancel_err}")
 
+            # Use fresh stock_already_restored from transaction (Fix 2)
+            stock_restored_ok = stock_already_restored  # assume True if already done
+            if stock_already_restored:
+                logger.info(f"Stock already restored for expired order {order_id}")
+            else:
+                # CRITICAL FIX: Only mark STOCK_RESTORED=True if the batch actually succeeds.
+                # A crash or Firestore error here previously left stock permanently decremented
+                # because STOCK_RESTORED=True was written unconditionally after the try/except,
+                # hiding the failure and preventing any retry mechanism from detecting it.
+                stock_batch = get_db().batch()
+                for item in fresh_items:
+                    product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+                    qty = item[Fields.QUANTITY]
+                    stock_patch = {Fields.STOCK_QUANTITY: get_firestore().Increment(qty)}
+                    fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID, "")
+                    if fulfillment_wh:
+                        stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(qty)
+                    stock_batch.update(product_ref, stock_patch)
+                    if fulfillment_wh:
+                        inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
+                        stock_batch.set(inv_ref, {
+                            Fields.AVAILABLE_QUANTITY: get_firestore().Increment(qty),
+                            Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                        }, merge=True)
+                try:
+                    stock_batch.commit()
+                    stock_restored_ok = True
+                except Exception as e:
+                    logger.error(
+                        f"Failed to restore stock batch for order {order_id}: {str(e)} — "
+                        f"STOCK_RESTORED will NOT be set; order will remain in EXPIRED state "
+                        f"with stock un-restored. Manual intervention required."
+                    )
+                    stock_restored_ok = False
+
+            # Update order with remaining fields NOT set in the transaction.
+            # NOTE: ORDER_STATUS and PAYMENT_STATUS are already set in the transaction.
+            # Only set STOCK_RESTORED, EXPIRES_AT here to avoid duplicating writes.
+            # FIX: STOCK_RESTORED is only set True when stock was actually restored.
+            update_fields: dict = {
+                Fields.EXPIRES_AT: get_server_timestamp(),
+                Fields.UPDATED_AT: get_server_timestamp(),
+            }
+            if stock_restored_ok:
+                update_fields[Fields.STOCK_RESTORED] = True
+            order_doc.reference.update(update_fields)
+
+            expired_count += 1
+            logger.info(f"Expired order {order_id} (stock_restored={stock_restored_ok})")
+
+        except Exception as e:
+            import logging
+            logging.error(f'Error processing item in batch: {e}')
     logger.info(f"Stale order cleanup completed: {expired_count} orders expired")
 
 
@@ -788,24 +850,28 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
         batch = get_db().batch()
 
         for order_doc in orders:
-            if order_doc.to_dict().get(Fields.ARCHIVED, False):
-                continue
+            try:
+                if order_doc.to_dict().get(Fields.ARCHIVED, False):
+                    continue
 
-            batch.update(
-                order_doc.reference,
-                {
-                    Fields.ARCHIVED: True,
-                    Fields.ARCHIVED_AT: get_server_timestamp(),
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                },
-            )
-            archived_count += 1
+                batch.update(
+                    order_doc.reference,
+                    {
+                        Fields.ARCHIVED: True,
+                        Fields.ARCHIVED_AT: get_server_timestamp(),
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    },
+                )
+                archived_count += 1
 
-            # Commit every 500 operations
-            if archived_count % 500 == 0:
-                batch.commit()
-                batch = get_db().batch()
+                # Commit every 500 operations
+                if archived_count % 500 == 0:
+                    batch.commit()
+                    batch = get_db().batch()
 
+            except Exception as e:
+                import logging
+                logging.error(f'Error processing item in batch: {e}')
         # Commit remaining
         if archived_count % 500 != 0:
             batch.commit()
@@ -896,22 +962,32 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
 
     cutoff_time = datetime.now(UTC) - timedelta(hours=1)
 
-    rate_limits = (
-        get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).stream()
-    )
+    query = get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500)
 
     deleted_count = 0
     batch = get_db().batch()
 
-    for doc in rate_limits:
-        batch.delete(doc.reference)
-        deleted_count += 1
+    while True:
+        docs = list(query.stream())
+        if not docs:
+            break
 
-        # Commit every 500 deletes
-        if deleted_count % 500 == 0:
-            batch.commit()
-            batch = get_db().batch()
+        for doc in docs:
+            try:
+                batch.delete(doc.reference)
+                deleted_count += 1
 
+                # Commit every 500 deletes
+                if deleted_count % 500 == 0:
+                    batch.commit()
+                    batch = get_db().batch()
+
+            except Exception as e:
+                import logging
+                logging.error(f'Error processing item in batch: {e}')
+                
+        last_doc = docs[-1]
+        query = get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500).start_after(last_doc)
     # Commit remaining
     if deleted_count % 500 != 0:
         batch.commit()
@@ -942,23 +1018,35 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
     # Collect all image URLs currently referenced by products
     # select() fetches only imageUrls field — avoids reading full product docs
     referenced_keys = set()
-    products = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).stream()
-
-    for product_doc in products:
-        product_data = product_doc.to_dict()
-        image_urls = product_data.get(Fields.IMAGE_URLS, [])
-        for url in image_urls:
-            # Extract R2 key from CDN URL
-            # URL format: https://cdn.origna.ca/products/uuid.ext
-            if isinstance(url, str) and "/" in url:
-                # Get path after domain
-                path_parts = url.split("/")
-                # Reconstruct key: e.g. "products/uuid.ext" or "dev/products/uuid.ext"
-                for i, part in enumerate(path_parts):
-                    if part in ("products", "dev"):
-                        key = "/".join(path_parts[i:])
-                        referenced_keys.add(key)
-                        break
+    
+    query = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).limit(500)
+    while True:
+        docs = list(query.stream())
+        if not docs:
+            break
+            
+        for product_doc in docs:
+            try:
+                product_data = product_doc.to_dict()
+                image_urls = product_data.get(Fields.IMAGE_URLS, [])
+                for url in image_urls:
+                    # Extract R2 key from CDN URL
+                    # URL format: https://cdn.origna.ca/products/uuid.ext
+                    if isinstance(url, str) and "/" in url:
+                        # Get path after domain
+                        path_parts = url.split("/")
+                        # Reconstruct key: e.g. "products/uuid.ext" or "dev/products/uuid.ext"
+                        for i, part in enumerate(path_parts):
+                            if part in ("products", "dev"):
+                                key = "/".join(path_parts[i:])
+                                referenced_keys.add(key)
+                                break
+            except Exception as e:
+                import logging
+                logging.error(f'Error processing item in batch: {e}')
+                
+        last_doc = docs[-1]
+        query = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).limit(500).start_after(last_doc)
 
     logger.info(f"  Found {len(referenced_keys)} referenced image keys")
 
@@ -1058,13 +1146,17 @@ def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
     batch = get_db().batch()
 
     for doc in webhook_docs:
-        batch.delete(doc.reference)
-        deleted_count += 1
+        try:
+            batch.delete(doc.reference)
+            deleted_count += 1
 
-        if deleted_count % 500 == 0:
-            batch.commit()
-            batch = get_db().batch()
+            if deleted_count % 500 == 0:
+                batch.commit()
+                batch = get_db().batch()
 
+        except Exception as e:
+            import logging
+            logging.error(f'Error processing item in batch: {e}')
     if deleted_count % 500 != 0:
         batch.commit()
 
@@ -1098,13 +1190,17 @@ def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     batch = get_db().batch()
 
     for doc in alert_docs:
-        batch.delete(doc.reference)
-        deleted_count += 1
+        try:
+            batch.delete(doc.reference)
+            deleted_count += 1
 
-        if deleted_count % 500 == 0:
-            batch.commit()
-            batch = get_db().batch()
+            if deleted_count % 500 == 0:
+                batch.commit()
+                batch = get_db().batch()
 
+        except Exception as e:
+            import logging
+            logging.error(f'Error processing item in batch: {e}')
     if deleted_count % 500 != 0:
         batch.commit()
 
@@ -1629,142 +1725,166 @@ def _compute_avg_response_time(seller_id: str, window_start: object) -> float:
 
 
 @scheduler_fn.on_schedule(schedule="every 168 hours", **CRON_OPTIONS)  # weekly
+@scheduler_fn.on_schedule(schedule="every 168 hours", **CRON_OPTIONS)  # weekly
 def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
     """
     TASK 11 — Weekly cron: compute seller health metrics and raise security alerts for threshold breaches.
 
-    Multi-seller isolation fix:
-    - Only items belonging to the seller are counted for their refund/cancellation rates.
-    - Dispute rate is per-order (if an order has a dispute, all sellers in it are affected).
-    - Metrics are written to seller_metrics/{sellerId}.
+    H-9 FIX: Bulk fetch orders and chats to eliminate N+1 query vulnerability.
     """
-    from schema_constants import SecurityAlertTypes, SeverityLevels
-
     logger.info("Running compute_seller_metrics cron job")
 
-    # FIX (H1): Add distributed lock to prevent concurrent runs that create
-    # duplicate SELLER_METRICS_BREACH security alerts on each weekly execution.
     if not acquire_cron_lock("compute_seller_metrics"):
         logger.info("compute_seller_metrics: already running, skipping")
         return
 
+    try:
+        _compute_seller_metrics_logic()
+    finally:
+        release_cron_lock("compute_seller_metrics")
+
+
+def _compute_seller_metrics_logic() -> None:
+    """Internal logic for compute_seller_metrics to facilitate testing."""
+    from schema_constants import SecurityAlertTypes, SeverityLevels
 
     now_utc = datetime.now(UTC)
     try:
-        window_start = now_utc - timedelta(days=30)
-        processed_count = 0
-        alerted_count = 0
-
+        window_start = now_utc - timedelta(days=BusinessRules.SELLER_METRICS_WINDOW_DAYS)
         DISPUTE_THRESHOLD = BusinessRules.SELLER_DISPUTE_RATE_THRESHOLD
         REFUND_THRESHOLD = BusinessRules.SELLER_REFUND_RATE_THRESHOLD
         CANCEL_THRESHOLD = BusinessRules.SELLER_CANCEL_RATE_THRESHOLD
 
-        # Get all sellers
-        sellers_query = get_db().collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.SELLER)
+        db = get_db()
+        # 1. Fetch all orders from the window (Bulk)
+        orders_ref = db.collection(Collections.ORDERS).where(Fields.CREATED_AT, ">=", window_start)
+        orders_stream = orders_ref.stream()
 
-        for seller_doc in sellers_query.stream():
-            seller_id = seller_doc.id
+        # Aggregate data by seller
+        # seller_data[seller_id] = { ...metrics... }
+        seller_stats = {}
 
-            # Fetch orders containing at least one item from this seller
-            orders_query = (
-                get_db()
-                .collection(Collections.ORDERS)
-                .where(Fields.SELLER_IDS, "array_contains", seller_id)
-                .where(Fields.CREATED_AT, ">=", window_start)
-            )
-
-            orders = list(orders_query.stream())
-            total_orders = len(orders)
-
-            if total_orders == 0:
-                # Write zero-metrics doc (no alert)
-                get_db().collection(Collections.SELLER_METRICS).document(seller_id).set(
-                    {
-                        Fields.SELLER_ID: seller_id,
-                        Fields.DISPUTE_RATE: 0.0,
-                        Fields.REFUND_RATE: 0.0,
-                        Fields.CANCELLATION_RATE: 0.0,
-                        Fields.LATE_SHIPMENT_RATE: 0.0,
-                        Fields.AVG_RESPONSE_TIME_HOURS: _compute_avg_response_time(seller_id, window_start),
-                        Fields.TOTAL_ORDERS_30D: 0,
-                        Fields.TOTAL_REVENUE_CENTS_30D: 0,
-                        Fields.COMPUTED_AT: now_utc,
-                    }
-                )
-                processed_count += 1
-                continue
-
-            # Tally metrics with item-level isolation
-            disputed_orders = 0
-            refunded_items = 0
-            cancelled_items = 0
-            late_shipped_items = 0
-            total_seller_items = 0
-            total_revenue_cents = 0
-
-            for order_doc in orders:
-                od = order_doc.to_dict() or {}
-
-                # Dispute is order-level — if order has dispute, all sellers are affected
-                if od.get(Fields.HAS_DISPUTE):
-                    disputed_orders += 1
-
-                # Isolate items for this seller
-                items = od.get(Fields.ITEMS, [])
-                for item in items:
-                    if item.get(Fields.SELLER_ID) == seller_id:
-                        total_seller_items += 1
-                        item_status = item.get(Fields.STATUS)
-
-                        if item_status == DeliveryStatusValues.REFUNDED:
-                            refunded_items += 1
-
-                        # Cancellation: if order was cancelled by seller or item is cancelled
-                        # (Note: OrderStatusValues.CANCELLED is order-level)
-                        if od.get(Fields.ORDER_STATUS) == OrderStatusValues.CANCELLED:
-                            cancelled_items += 1
-
-                        # Late shipment: check item-level shippedAt
-                        shipped_at = item.get(Fields.SHIPPED_AT)
-                        created_at = od.get(Fields.CREATED_AT)
-                        est_days = item.get(Fields.ESTIMATED_SHIP_DAYS, 3)
-                        if shipped_at and created_at:
-                            if hasattr(shipped_at, "tzinfo") and shipped_at.tzinfo is None:
-                                shipped_at = shipped_at.replace(tzinfo=UTC)
-                            if hasattr(created_at, "tzinfo") and created_at.tzinfo is None:
-                                created_at = created_at.replace(tzinfo=UTC)
-                            if (shipped_at - created_at).days > est_days:
-                                late_shipped_items += 1
-
-                # Revenue: extract seller's portion from payout snapshot
-                payouts = od.get(Fields.SELLER_PAYOUTS) or []
-                for payout in payouts:
-                    if isinstance(payout, dict) and payout.get(Fields.SELLER_ID) == seller_id:
-                        total_revenue_cents += payout.get(Fields.SELLER_AMOUNT_CENTS, 0)
-
-            # Calculate rates based on isolated totals
-            dispute_rate = disputed_orders / total_orders
-            refund_rate = refunded_items / total_seller_items if total_seller_items > 0 else 0
-            cancel_rate = cancelled_items / total_seller_items if total_seller_items > 0 else 0
-            late_rate = late_shipped_items / total_seller_items if total_seller_items > 0 else 0
-
-            # Write metrics
-            get_db().collection(Collections.SELLER_METRICS).document(seller_id).set(
-                {
-                    Fields.SELLER_ID: seller_id,
-                    Fields.DISPUTE_RATE: round(dispute_rate, 4),
-                    Fields.REFUND_RATE: round(refund_rate, 4),
-                    Fields.CANCELLATION_RATE: round(cancel_rate, 4),
-                    Fields.LATE_SHIPMENT_RATE: round(late_rate, 4),
-                    Fields.AVG_RESPONSE_TIME_HOURS: _compute_avg_response_time(seller_id, window_start),
-                    Fields.TOTAL_ORDERS_30D: total_orders,
-                    Fields.TOTAL_REVENUE_CENTS_30D: total_revenue_cents,
-                    Fields.COMPUTED_AT: now_utc,
+        def _get_seller_entry(sid):
+            if sid not in seller_stats:
+                seller_stats[sid] = {
+                    "total_orders": 0,
+                    "disputed_orders": 0,
+                    "total_seller_items": 0,
+                    "refunded_items": 0,
+                    "cancelled_items": 0,
+                    "late_shipped_items": 0,
+                    "total_revenue_cents": 0,
                 }
-            )
+            return seller_stats[sid]
+
+        for order_doc in orders_stream:
+            od = order_doc.to_dict() or {}
+            order_seller_ids = od.get(Fields.SELLER_IDS, [])
+            has_dispute = od.get(Fields.HAS_DISPUTE, False)
+            order_status = od.get(Fields.ORDER_STATUS)
+            items = od.get(Fields.ITEMS, [])
+            created_at = od.get(Fields.CREATED_AT)
+            if created_at and hasattr(created_at, "tzinfo") and created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+
+            # Update per-seller order counts and disputes
+            for sid in order_seller_ids:
+                stats = _get_seller_entry(sid)
+                stats["total_orders"] += 1
+                if has_dispute:
+                    stats["disputed_orders"] += 1
+
+            # Update per-item metrics
+            for item in items:
+                sid = item.get(Fields.SELLER_ID)
+                if not sid:
+                    continue
+                stats = _get_seller_entry(sid)
+                stats["total_seller_items"] += 1
+                
+                item_status = item.get(Fields.STATUS)
+                if item_status == DeliveryStatusValues.REFUNDED:
+                    stats["refunded_items"] += 1
+                if order_status == OrderStatusValues.CANCELLED:
+                    stats["cancelled_items"] += 1
+
+                # Late shipment
+                shipped_at = item.get(Fields.SHIPPED_AT)
+                est_days = item.get(Fields.ESTIMATED_SHIP_DAYS, 3)
+                if shipped_at and created_at:
+                    if hasattr(shipped_at, "tzinfo") and shipped_at.tzinfo is None:
+                        shipped_at = shipped_at.replace(tzinfo=UTC)
+                    if (shipped_at - created_at).days > est_days:
+                        stats["late_shipped_items"] += 1
+
+            # Revenue
+            payouts = od.get(Fields.SELLER_PAYOUTS) or []
+            for payout in payouts:
+                sid = payout.get(Fields.SELLER_ID)
+                if sid:
+                    stats = _get_seller_entry(sid)
+                    stats["total_revenue_cents"] += payout.get(Fields.SELLER_AMOUNT_CENTS, 0)
+
+        # 2. Fetch all relevant chats in the window (Bulk)
+        # We need FIRST_REPLY_HOURS for chats where FIRST_SELLER_REPLY_AT >= window_start
+        chats_ref = db.collection(Collections.CHATS).where(Fields.FIRST_SELLER_REPLY_AT, ">=", window_start)
+        chats_stream = chats_ref.stream()
+        
+        # seller_chats[seller_id] = [hours1, hours2, ...]
+        seller_chats = {}
+        for chat_doc in chats_stream:
+            cd = chat_doc.to_dict() or {}
+            sid = cd.get(Fields.SELLER_ID)
+            hours = cd.get(Fields.FIRST_REPLY_HOURS)
+            if sid and isinstance(hours, (int, float)):
+                if sid not in seller_chats:
+                    seller_chats[sid] = []
+                seller_chats[sid].append(hours)
+
+        # 3. Process all sellers
+        sellers_ref = db.collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.SELLER)
+        processed_count = 0
+        alerted_count = 0
+
+        for seller_doc in sellers_ref.stream():
+            seller_id = seller_doc.id
+            stats = seller_stats.get(seller_id, {
+                "total_orders": 0,
+                "disputed_orders": 0,
+                "total_seller_items": 0,
+                "refunded_items": 0,
+                "cancelled_items": 0,
+                "late_shipped_items": 0,
+                "total_revenue_cents": 0,
+            })
+
+            total_orders = stats["total_orders"]
+            total_items = stats["total_seller_items"]
+            
+            dispute_rate = stats["disputed_orders"] / total_orders if total_orders > 0 else 0.0
+            refund_rate = stats["refunded_items"] / total_items if total_items > 0 else 0.0
+            cancel_rate = stats["cancelled_items"] / total_items if total_items > 0 else 0.0
+            late_rate = stats["late_shipped_items"] / total_items if total_items > 0 else 0.0
+
+            # Response time from pre-fetched chats
+            hours_list = seller_chats.get(seller_id, [])
+            avg_response = round(sum(hours_list) / len(hours_list), 4) if hours_list else 0.0
+
+            # Write metrics doc
+            db.collection(Collections.SELLER_METRICS).document(seller_id).set({
+                Fields.SELLER_ID: seller_id,
+                Fields.DISPUTE_RATE: round(dispute_rate, 4),
+                Fields.REFUND_RATE: round(refund_rate, 4),
+                Fields.CANCELLATION_RATE: round(cancel_rate, 4),
+                Fields.LATE_SHIPMENT_RATE: round(late_rate, 4),
+                Fields.AVG_RESPONSE_TIME_HOURS: avg_response,
+                Fields.TOTAL_ORDERS_30D: total_orders,
+                Fields.TOTAL_REVENUE_CENTS_30D: stats["total_revenue_cents"],
+                Fields.COMPUTED_AT: now_utc,
+            })
             processed_count += 1
 
-            # Check threshold breaches
+            # Check breaches
             breaches = []
             if dispute_rate > DISPUTE_THRESHOLD:
                 breaches.append(f"disputeRate={dispute_rate:.1%}")
@@ -1774,40 +1894,31 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
                 breaches.append(f"cancellationRate={cancel_rate:.1%}")
 
             if breaches:
-                # FIX (H1): Deduplicate — only create a new alert if no unresolved
-                # SELLER_METRICS_BREACH alert already exists for this seller.
-                # Without this check, every weekly run creates a new alert for
-                # sellers who persistently breach thresholds, flooding the dashboard.
-                existing_breach = (
-                    get_db()
-                    .collection(Collections.SECURITY_ALERTS)
-                    .where(Fields.TYPE, "==", SecurityAlertTypes.SELLER_METRICS_BREACH)
-                    .where(Fields.SELLER_ID, "==", seller_id)
-                    .where(Fields.RESOLVED, "==", False)
-                    .limit(1)
-                    .get()
-                )
-                if not existing_breach:
-                    get_db().collection(Collections.SECURITY_ALERTS).add(
-                        {
-                            Fields.TYPE: SecurityAlertTypes.SELLER_METRICS_BREACH,
-                            Fields.SELLER_ID: seller_id,
-                            Fields.BREACHES: breaches,
-                            Fields.TOTAL_ORDERS: total_orders,
-                            Fields.SEVERITY: SeverityLevels.HIGH,
-                            Fields.CREATED_AT: now_utc,
-                            Fields.RESOLVED: False,
-                        }
-                    )
+                # Deduplicate security alerts
+                existing = db.collection(Collections.SECURITY_ALERTS)\
+                    .where(Fields.TYPE, "==", SecurityAlertTypes.SELLER_METRICS_BREACH)\
+                    .where(Fields.SELLER_ID, "==", seller_id)\
+                    .where(Fields.RESOLVED, "==", False)\
+                    .limit(1).get()
+                
+                if not existing:
+                    db.collection(Collections.SECURITY_ALERTS).add({
+                        Fields.TYPE: SecurityAlertTypes.SELLER_METRICS_BREACH,
+                        Fields.SELLER_ID: seller_id,
+                        Fields.BREACHES: breaches,
+                        Fields.TOTAL_ORDERS: total_orders,
+                        Fields.SEVERITY: SeverityLevels.HIGH,
+                        Fields.CREATED_AT: now_utc,
+                        Fields.RESOLVED: False,
+                    })
                     alerted_count += 1
-                    logger.warning("Seller %s metrics breach: %s", seller_id, ", ".join(breaches))
-                else:
-                    logger.info(f"Seller {seller_id} metrics breach already alerted (unresolved alert exists)")
+                    logger.warning(f"Seller {seller_id} metrics breach: {', '.join(breaches)}")
 
         logger.info(f"compute_seller_metrics done: {processed_count} sellers processed, {alerted_count} alerts raised")
-
+    except Exception as e:
+        logger.error(f"compute_seller_metrics failed: {e}")
     finally:
-        release_cron_lock("compute_seller_metrics")  # FIX (H1): always release lock
+        release_cron_lock("compute_seller_metrics")
 
 # ============================================================================
 # TRENDING PRODUCTS CRON

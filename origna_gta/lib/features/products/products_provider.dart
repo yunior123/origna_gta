@@ -106,10 +106,10 @@ final sellerUnansweredQaProvider = StreamProvider.autoDispose.family<int, String
 // ============================================================================
 
 /// Current search query
-final searchQueryProvider = StateProvider<String>((ref) => '');
+final searchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 
 /// Currently selected category ID (null = all categories)
-final selectedCategoryProvider = StateProvider<int?>((ref) => null);
+final selectedCategoryProvider = StateProvider.autoDispose<int?>((ref) => null);
 
 class FavoritesController {
   final Ref _ref;

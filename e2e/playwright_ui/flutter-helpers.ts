@@ -78,7 +78,7 @@ export async function waitForFlutter(page: Page, timeout = 180000): Promise<void
     await page
         .locator('flt-semantics')
         .first()
-        .waitFor({ state: 'attached', timeout: 30000 })
+        .waitFor({ state: 'attached', timeout: Math.min(timeout, 90000) })
         .catch(() => { });
 
     console.log(`   ✅ Flutter initialized in ${Date.now() - startTime}ms`);
@@ -122,14 +122,14 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     // Ensure we're at home before checking auth state
     if (!page.url().startsWith(targetUrl) || page.url().includes('/login') || page.url().includes('/profile')) {
         await page.goto(`${targetUrl}/`);
-        await waitForFlutter(page, 60000);
+        await waitForFlutter(page, 120000);
     }
 
     // Click Settings — this reveals auth state:
     //   logged in  → navigates to /profile (no dialog)
     //   logged out → shows "Connexion requise" / "Login required" dialog
-    const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
-    await expect(settingsBtn).toBeAttached({ timeout: 20000 });
+    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
+    await expect(settingsBtn).toBeAttached({ timeout: 60000 });
     await settingsBtn.click();
 
     // Check for sign-in dialog button (unauthenticated state)
@@ -200,7 +200,7 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     // Verify login: Settings button should be visible (home screen loaded)
     // 60s timeout — 8 parallel workers create resource contention on dev; button is
     // always present, just sometimes slow to render under load (confirmed by screenshots).
-    const verifySettingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+    const verifySettingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
     await expect(verifySettingsBtn).toBeAttached({ timeout: 60000 });
 
     // Extra check: clicking Settings should navigate to /profile (not show dialog)
@@ -265,7 +265,7 @@ export async function navigateHome(page: Page, targetUrl: string): Promise<void>
  */
 export async function navigateToSubscription(page: Page): Promise<void> {
     // Go to profile screen via settings button
-    const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
     await expect(settingsBtn).toBeAttached({ timeout: 15000 });
     await settingsBtn.click();
     await page.waitForURL(/\/profile/i, { timeout: 20000 }).catch(() => { });
@@ -287,7 +287,7 @@ export async function navigateToSubscription(page: Page): Promise<void> {
  */
 export async function navigateToAdmin(page: Page): Promise<void> {
     // Go to profile screen via settings button
-    const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
     await expect(settingsBtn).toBeAttached({ timeout: 15000 });
     await settingsBtn.click();
     await page.waitForURL(/\/profile/i, { timeout: 20000 }).catch(() => { });
@@ -305,7 +305,7 @@ export async function navigateToAdmin(page: Page): Promise<void> {
 // ─── SIGN OUT HELPER ─────────────────────────────────────────────────
 
 export async function performSignOut(page: Page, targetUrl: string): Promise<void> {
-    const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
     await settingsBtn.click();
     await page.waitForURL(/\/profile/i, { timeout: 20000 }).catch(() => { });
     await waitForFlutter(page, 30000);
@@ -318,7 +318,7 @@ export async function performSignOut(page: Page, targetUrl: string): Promise<voi
 
     // After sign-out, the app rebuilds to home (logged out).
     // Verify by clicking Settings — should show login dialog.
-    const homeSettingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+    const homeSettingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
     await expect(homeSettingsBtn).toBeAttached({ timeout: 15000 });
     await homeSettingsBtn.click();
     await expect(

@@ -3,15 +3,10 @@ import {
   TEST_ACCOUNTS,
   callOk,
   discoverProducts,
-  fullMultiSellerCheckoutAndPay,
-  parseDoc,
-  readDoc,
-  signIn,
-  TEST_UIDS,
-  waitForOrderStatus,
-  writeDoc,
-  toFirestoreFields,
   fillStripeCheckout,
+  fullMultiSellerCheckoutAndPay,
+  signIn,
+  waitForOrderStatus,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
@@ -63,8 +58,9 @@ test.describe('Order Notifications', () => {
       carrier: 'Canada Post'
     }, adminAuth.idToken);
 
-    // 3. Verify notification in mail_logs (via e2e_get_mail_logs)
-    await page.waitForTimeout(10000);
+    // 3. Verify notification in mail_logs — allow 30s for async email pipeline
+    // (Firestore trigger → Cloud Task queue → Mailjet → _mail_logs write)
+    await page.waitForTimeout(30000);
 
     const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: BUYER_EMAIL }, adminAuth.idToken);
     const logs = mailLogsResult.logs;
@@ -84,20 +80,31 @@ test.describe('Order Notifications', () => {
     const orderId = checkoutResult.orderId;
 
     const auth = await signIn(BUYER_EMAIL);
-    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+    const adminAuth = await signIn(ADMIN_EMAIL);
+    const order = await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
 
-    // 2. Mark Item as DELIVERED
-    // Note: DELIVERED is usually set by buyer confirmation or auto-capture.
-    // For testing, we can use confirm_item_receipt
+    // 2a. Must ship before buyer can confirm receipt
+    await callOk('update_item_status', {
+      orderId,
+      productId: productA!.id,
+      newStatus: 'shipped',
+      trackingNumber: 'TRK-DELIVER',
+      carrier: 'Canada Post',
+    }, adminAuth.idToken);
+
+    // 2b. Mark Item as DELIVERED via confirm_item_receipt (requires cartItemId, not productId)
+    const item = order.items?.find((i: any) => i.productId === productA!.id);
+    const cartItemId = item?.cartItemId;
+    if (!cartItemId) throw new Error('cartItemId not found for productA in order');
+
     await callOk('confirm_item_receipt', {
       orderId,
-      productId: productA!.id
+      cartItemId,
     }, auth.idToken);
 
     await page.waitForTimeout(10000);
 
     // 3. Verify notification
-    const adminAuth = await signIn(ADMIN_EMAIL);
     const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: BUYER_EMAIL }, adminAuth.idToken);
     const logs = mailLogsResult.logs;
 
@@ -111,18 +118,20 @@ test.describe('Order Notifications', () => {
     const adminAuth = await signIn(ADMIN_EMAIL);
 
     // We manually build the payload to specify 'pickup' delivery speed
+    // Use actual product price (backend rejects if it doesn't match Firestore price)
+    const actualPrice = (productA as any).price ?? 9.99;
     const payload = {
       userId: auth.localId,
       items: [{
         productId: productA!.id,
         name: 'E2E Test Product A',
-        price: 15.99,
+        price: actualPrice,
         quantity: 1,
         sellerId: productA!.sellerId,
         imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
         isDigital: false
       }],
-      subtotal: 15.99,
+      subtotal: actualPrice,
       shippingAddress: {
         street: '100 Queen St W',
         city: 'Toronto',
@@ -202,10 +211,22 @@ test.describe('Order Notifications', () => {
     const auth = await signIn(BUYER_EMAIL);
     const adminAuth = await signIn(ADMIN_EMAIL);
 
-    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+    const order = await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
 
-    // Mark as delivered
-    await callOk('confirm_item_receipt', { orderId, productId: productA!.id }, auth.idToken);
+    // Ship first (confirm_item_receipt requires SHIPPED status)
+    await callOk('update_item_status', {
+      orderId,
+      productId: productA!.id,
+      newStatus: 'shipped',
+      trackingNumber: 'TRK-RETURN',
+      carrier: 'Canada Post',
+    }, adminAuth.idToken);
+
+    // Mark as delivered (requires cartItemId, not productId)
+    const item = order.items?.find((i: any) => i.productId === productA!.id);
+    const cartItemId = item?.cartItemId;
+    if (!cartItemId) throw new Error('cartItemId not found for productA in order');
+    await callOk('confirm_item_receipt', { orderId, cartItemId }, auth.idToken);
 
     // 2. Create return request
     await callOk('create_return_request', {

@@ -169,3 +169,17 @@ guard rails to prevent that.
 
 28. encrypt pII data including pci for creadit card data
 use data masking and anonymization where possible.
+
+cd e2e && npx playwright test playwright_ui/add-product-e2e.spec.ts -g "T06" --config pl… (Tab to focus) │
+│          
+
+recatchpa google
+
+
+ npx playwright show-report 
+
+  cd e2e && npx playwright test playwright_ui/add-product-e2e.spec.ts -g "T06" --config playwright.config… │
+│          
+ell cd e2e && npx playwright test playwright_ui/add-product-e2e.spec.ts -g "T13" --config playwright.config.dev.ts [current … │
+│                                                                                                                                    │
+│    ✅ Flutter initialized in 679ms                

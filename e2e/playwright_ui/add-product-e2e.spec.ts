@@ -38,8 +38,8 @@ import * as os from 'os';
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-const TARGET_URL     = process.env.E2E_TARGET_URL     ?? 'https://orignagta-dev.web.app';
-const ADMIN_EMAIL    = process.env.E2E_ADMIN_EMAIL    ?? 'yr62813@gmail.com';
+const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
+const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? 'yr62813@gmail.com';
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -52,8 +52,10 @@ const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'REDACTED_TEST_PASSWORD
  */
 async function scrollToBottom(page: Parameters<typeof waitForFlutter>[0]) {
     await page.mouse.move(640, 400); // Over Flutter canvas content, not the dark sidebar
-    await page.mouse.wheel(0, 3000);
-    await page.waitForTimeout(400);
+    for (let i = 0; i < 6; i++) {
+        await page.mouse.wheel(0, 4000);
+        await page.waitForTimeout(300);
+    }
 }
 
 /**
@@ -237,9 +239,9 @@ test.describe('PW IT Replica — Add Product Flow', () => {
         // No-warehouse path button: "Add Warehouse / Address" (product.warehouse_add_button)
         // Has-warehouse path button: "Manage" (product.warehouse_manage)
         await page.mouse.move(640, 400); // Center of Flutter canvas content area
-        for (let i = 0; i < 4; i++) {
-            await page.mouse.wheel(0, 3000); // [LK-3]
-            await page.waitForTimeout(500);
+        for (let i = 0; i < 8; i++) {
+            await page.mouse.wheel(0, 4000); // [LK-3]
+            await page.waitForTimeout(400);
         }
 
         // Try the "Add Warehouse / Address" button (no-warehouse case) first.
@@ -285,8 +287,9 @@ test.describe('PW IT Replica — Add Product Flow', () => {
         const weightInput = page.getByRole('textbox', { name: /weight|poids/i }).first();
         if (await weightInput.isVisible()) {
             await weightInput.click();
-            await weightInput.click({ clickCount: 3 }); // Clear existing value
-            await weightInput.pressSequentially('2.5', { delay: 30 }); // [LK-2]
+            await weightInput.click({ clickCount: 3 }); // Select-all before overwriting
+            await page.waitForTimeout(800); // Let Flutter focus settle before typing [LK-2]
+            await weightInput.pressSequentially('2.5', { delay: 30 });
 
             // [LK-5] inputValue() — not toHaveValue().
             const value = await weightInput.inputValue();
@@ -370,5 +373,25 @@ test.describe('PW IT Replica — Add Product Flow', () => {
         const nameInputNew = page.getByRole('textbox', { name: /product name/i }).first();
         const value = await nameInputNew.inputValue();
         expect(value).toBe('');
+    });
+
+    // ── T13: Product Video Upload flow ───────────────────────────────────────
+
+    test('T13: Product Video Upload flow', async ({ page }) => {
+        // Scroll down to the media section
+        await page.mouse.move(640, 400);
+        for (let i = 0; i < 4; i++) {
+            await page.mouse.wheel(0, 3000);
+            await page.waitForTimeout(300);
+        }
+
+        // Verify the media section is present
+        const mediaSection = page.getByText(/product media|photos and video|médias du produit/i).first();
+        await expect(mediaSection).toBeVisible({ timeout: 10000 });
+
+        // Verify the Add Video button is present
+        // [LK-7] Semantic label is 'btn-add-video' (Semantics(label:) in Dart) — not the visible text.
+        const addVideoBtn = page.getByRole('button', { name: /btn-add-video|add video|ajouter une vidéo|ajouter.*vidéo/i }).first();
+        await expect(addVideoBtn).toBeVisible({ timeout: 10000 });
     });
 });

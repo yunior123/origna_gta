@@ -270,7 +270,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
       stockQuantity: 0,
       lifecycleStatus: 'active',
       isDigital: false,
-      sellerId: TEST_UIDS.SELLER_1,
+      sellerId: TEST_UIDS.SELLER,
       categoryId: 1,
       imageUrls: [],
       hasVariants: false,
