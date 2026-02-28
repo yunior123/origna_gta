@@ -283,6 +283,21 @@ All test cards: expiry = any future date, CVC = any 3 digits, postal = any valid
 
 ---
 
+## ⚠️ Active Incidents (check before debugging)
+
+### Staging Webhook Failure (2026-02-24 onwards)
+- **URL:** `https://northamerica-northeast1-orignagta-staging.cloudfunctions.net/stripe_webhook`
+- **Symptom:** 3,655+ failed webhook retries; Stripe stops retrying 2026-03-05
+- **Impact:** Subscription invoices delayed ≤3 days; `checkout.session.completed` may not process
+- **Fix:** Redeploy staging functions OR disable this webhook endpoint in Stripe dashboard
+- **Diagnose:** `gcloud functions logs read stripe_webhook --project=orignagta-staging --limit=50`
+
+### Webhook OOM (fixed, deployed)
+- Default 256 MiB insufficient — stripe_webhook processes orders + payouts + digital licenses
+- Fix: `WEBHOOK_OPTIONS` uses `memory: options.MemoryOption.MB_512` in `functions/utils/function_options.py`
+
+---
+
 ## Known Bugs Found & Fixed (February 2026 Audit + E2E Marathon)
 
 ### P0 — `source_transaction` received PI ID instead of Charge ID

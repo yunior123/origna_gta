@@ -44,3 +44,61 @@ description: Mastermind logic for predicting and mitigating malicious behavior, 
 - High-scale systems attract malicious actors.
 - "Logic-First" prevents bugs that traditional tests might miss.
 - Bulletproof architecture is the only way to reach 100M+ users safely.
+
+---
+
+## Red Team Vulnerability Checklist
+
+Use when doing a security audit pass. Check each class:
+
+### A. AuthN/AuthZ
+- [ ] Callable functions missing `if not req.auth:` guard → IDOR
+- [ ] Admin endpoints accessible without `UserRoleValues.ADMIN` in `req.auth.token`
+- [ ] Seller reading other seller's orders via crafted `sellerId`
+- [ ] Buyer impersonating seller via `sellerId` injection in request body
+- [ ] MFA bypass: brute-force `mfaBackupCodes`, lockout bypass
+
+### B. Injection & Sanitization
+- [ ] Firestore rule gaps — client-supplied IDs not ownership-checked server-side
+- [ ] `sanitized_text()` bypass: Unicode homoglyphs, zero-width chars, RLO bidi spoofing
+- [ ] Client-supplied `orderId`, `productId`, `userId` not re-verified server-side
+
+### C. Business Logic
+- [ ] Self-purchase: `sellerId == userId` check present in checkout
+- [ ] Stock race condition: two concurrent buys of `stock=1` both succeed
+- [ ] Coupon double-spend: apply same coupon in parallel from two clients
+- [ ] Return window bypass: manufactured `deliveredAt` timestamp
+- [ ] Platform fee manipulation: crafted `platformFeeRatio` in order metadata
+
+### D. Payment & Financial
+- [ ] Stripe webhook signature verified (`stripe.WebhookSignature.verify_header`)
+- [ ] Checkout session `metadata` verified server-side before fulfillment
+- [ ] Stripe Connect `account_id` not swappable (payout to attacker account)
+- [ ] Negative price injection: `priceCents < 0` rejected
+- [ ] Zero-balance reversal deadlock: seller has no funds, refund stuck
+
+### E. Rate Limiting & DoS
+- [ ] Email flooding via consent endpoints called in loop
+- [ ] Review spam: `submit_product_rating` per-user limit enforced
+- [ ] Webhook replay: same Stripe `event.id` processed twice
+- [ ] Back-in-stock subscription spam (1000 subscriptions/user)
+
+### F. Data Exfiltration
+- [ ] `export_my_data` does NOT expose `mfaSecret`, `mfaBackupCodes`
+- [ ] Chat messages unreadable by non-participants
+- [ ] `_mail_logs` and `user_security` unreadable from client (Firestore rules)
+- [ ] Digital license `bookSourceUrl` not in client-readable path
+
+### G. File Upload (R2)
+- [ ] MIME type bypass: `.html`/`.js` disguised as image → rejected
+- [ ] Path traversal in `object_path` parameter → sanitized
+- [ ] SVG with embedded `<script>` rejected as product image
+
+### Reporting Format
+```
+## [SEVERITY] VULN-###: Short Title
+**Attack Vector:** Exact exploit steps
+**Affected Code:** path/to/file.py:LineNumber
+**Impact:** What attacker gains
+**Fix:** Exact code change needed
+```

@@ -166,3 +166,6 @@ guard rails to prevent that.
 
 26. use nids to monitor network and endpoint detection and response
 -scan emails and attachements to prevent malware infections.
+
+28. encrypt pII data including pci for creadit card data
+use data masking and anonymization where possible.

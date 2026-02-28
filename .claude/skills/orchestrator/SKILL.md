@@ -41,10 +41,10 @@ gemini -p "YOUR PROMPT" --yolo
 ### With Model Selection (auto-select based on task)
 ```bash
 # FAST: Large codebase analysis, research, summarization
-gemini -m gemini-2.0-flash -p "PROMPT" --yolo
+gemini -m gemini-2.5-flash -p "PROMPT" --yolo
 
 # PRO: Complex reasoning, architecture decisions, synthesis
-gemini -m gemini-1.5-pro -p "PROMPT" --yolo
+gemini -m gemini-2.5-pro -p "PROMPT" --yolo
 ```
 
 ### With Specific Directory Context
@@ -72,8 +72,8 @@ gemini -p "PROMPT" --yolo > .orch/results/gemini-task-name.txt 2>&1
 ## Model Selection Rules
 
 ```
-Task involves >50 files OR web search OR "summarize everything" → gemini-2.0-flash
-Task is "compare approaches" OR "design architecture" OR "synthesize findings" → gemini-1.5-pro
+Task involves >50 files OR web search OR "summarize everything" → gemini-2.5-flash
+Task is "compare approaches" OR "design architecture" OR "synthesize findings" → gemini-2.5-pro
 Task is a domain audit (payment, security, schema, orders) → Claude subagent
 Task involves parallel independent work → multiple Task tool calls simultaneously
 ```
@@ -94,7 +94,7 @@ For multi-step orchestration, use `.orch/` as shared state:
 **Create a task file:**
 ```bash
 mkdir -p .orch/tasks .orch/results .orch/synthesis
-echo '{"id":"t1","type":"gemini","model":"gemini-2.0-flash","prompt":"..."}' > .orch/tasks/t1.json
+echo '{"id":"t1","type":"gemini","model":"gemini-2.5-flash","prompt":"..."}' > .orch/tasks/t1.json
 ```
 
 **Execute and store result:**
@@ -144,17 +144,48 @@ Before marking orchestration complete:
 ```bash
 find . -name "*.py" -not -path "*/node_modules/*" | head -100 | xargs cat | \
   gemini -p "Analyze this Python backend codebase. Identify: 1) architecture patterns, 2) potential bugs, 3) missing features. Be specific with file:line references." \
-  --yolo -m gemini-2.0-flash
+  --yolo -m gemini-2.5-flash
 ```
 
 ### Competitive Research
 ```bash
 gemini -p "Search the web for: how do top e-commerce apps handle multi-seller cart splitting? Compare Medusa, Saleor, Vendure. Return concrete implementation patterns." \
-  --yolo -m gemini-1.5-pro
+  --yolo -m gemini-2.5-pro
 ```
 
 ### Full-Stack Audit (Claude subagent)
 Use the Task tool with `subagent_type: logic-auditor` — Gemini is NOT used for this because logic-auditor has project memory and knows the codebase architecture.
+
+---
+
+## Claude Model Selection (Cost vs. Quality)
+
+| Model | Use When | Avoid When |
+|-------|----------|------------|
+| `claude-haiku-4-5` | Classification, simple extraction, schema validation, status checks | Complex reasoning, multi-file analysis |
+| `claude-sonnet-4-6` | Code generation, audit tasks, most subagents (default) | Trivial single-field lookups |
+| `claude-opus-4-6` | Architecture decisions, security design, adversarial analysis | High-volume tasks (cost) |
+
+**Decision rule:** Single file, simple answer → Haiku. Multi-file, code gen → Sonnet. System-wide architecture → Opus.
+
+---
+
+## Evaluator-Optimizer Pattern (from Anthropic Cookbook)
+
+Use when output quality is uncertain and needs iterative refinement.
+
+```
+Round 1: Generator produces output (Sonnet)
+Round 2: Evaluator scores against criteria (Haiku for speed)
+Round 3: If findings > 0 → fix and re-evaluate
+```
+
+**When to use:**
+- Schema design: generate → `logic-auditor` evaluates → fix CRITICAL findings → re-audit
+- Security rules: `firebase-architect` generates → `security-auditor` evaluates
+- E2E coverage: `qa-engineer` generates tests → `code-reviewer` evaluates gaps → fill gaps
+
+**Anti-pattern:** Running one round and assuming it's correct. The second pass always finds something.
 
 ---
 

@@ -1,52 +1,47 @@
 ---
 name: e2e-test-suites
-description: Catalog of all 279 E2E Playwright tests and 288 backend pytest tests with file locations. Use when running tests, adding tests, or debugging test failures.
+description: 'Catalog of all 33 E2E Playwright tests files (~272 test cases) and 449 backend pytest tests with file locations. Use when running tests, adding tests, or debugging test failures.'
 ---
 
 # E2E Test Suite Reference
 
-## Test Count: 279 E2E (9 files) + 288 Backend
+## Test Suite (33 E2E Spec Files — ~272 test cases) + 449 Backend
 
-### Test Results Summary (Last Run: Feb 10 2026 — Run 7, 266 passed)
-
-| File | Tests | Passing | Status |
-|------|-------|---------|--------|
-| regression-e2e.spec.ts | 42 | 42/42 | ✅ All pass |
-| comprehensive-flows-e2e.spec.ts | 34 | 34/34 | ✅ All pass |
-| payment-workflow-e2e.spec.ts | 62 | 62/62 | ✅ All pass |
-| logic-failures-e2e.spec.ts | 29 | 29/29 | ✅ (E.2 flaky, passes on retry) |
-| flutter-web-e2e.spec.ts | 16 | 16/16 | ✅ All pass |
-| fullstack-e2e.spec.ts | 37 | 37/37 | ✅ All pass |
-| shipping-lifecycle-e2e.spec.ts | 48 | 48/48 | ✅ All pass |
-| admin-email-test.spec.ts | 3 | 3/3 | ✅ Requires real Stripe + Mailjet |
-| full-marketplace-e2e.spec.ts | 17 | 5/5+12skip | ✅ 12 intentionally skipped (CanvasKit) |
-
-**Total: 266/267 passing (12 intentionally skipped), 1 flaky (passes on retry)**
-
-### E2E Run Progression (Feb 2026)
-| Run | Passed | Failed | Key Fixes Applied |
-|-----|--------|--------|-------------------|
-| 1 | 200 | 25 | Initial baseline |
-| 2 | 194 | 29 | Webhook URL, fillStripeCheckout |
-| 3 | 222 | 17 | SERVER_TIMESTAMP, paymentStatus, seller restrictions |
-| 4 | 251 | 10 | Multi-seller Suite B rewrite, auto-promote SHIPPED |
-| 5 | 262 | 2 | _capture_payment_impl, Yahoo isActive, stock assertion |
-| 6 | 264 | 2 | A.6 idToken fix, more SERVER_TIMESTAMP ArrayUnion |
-| 7 | 266 | 0 | Payout records in idempotent path, rating cleanup |
-
-### Root Causes FIXED (Feb 2026 — 12 root causes)
-1. **SERVER_TIMESTAMP in arrays** — Firestore sentinel cannot serialize inside array items or ArrayUnion. 8 instances fixed. Use `datetime.now(timezone.utc)`.
-2. **Auto-capture mode** — `paymentStatus` is always `'captured'`, never `'authorized'`.
-3. **Seller delivery restriction** — Sellers cannot mark delivered. Use admin.
-4. **Multi-seller order-level blocked** — Use `update_item_status` per item.
-5. **Missing auto-promote to SHIPPED** — `update_item_status` now auto-promotes.
-6. **CallableRequest vs Flask Request** — `_capture_payment_impl` extraction.
-7. **Yahoo product missing isActive** — Need both `status: 'active'` AND `isActive: true`.
-8. **signIn returns {idToken}** — NOT `.token`.
-9. **Missing payout records** — Auto-capture idempotent path now creates payouts.
-10. **Rating test pollution** — Clean existing ratings before rating tests.
-11. **Webhook URL project ID** — `orignagta` (NO hyphen).
-12. **Stock field = stockQuantity** — Not `stock`. Assertion threshold 500.
+| File | ~Tests | Focus |
+|------|--------|-------|
+| premium-subscription.spec.ts | 49 | Subscription lifecycle, Stripe 3DS |
+| digital-product-e2e.spec.ts | 34 | Digital delivery, license, download |
+| stock-notif.spec.ts | 23 | Back-in-stock notifications |
+| edge-cases-security.spec.ts | 22 | Adversarial/security scenarios |
+| new-coverage-e2e.spec.ts | 14 | Gap coverage |
+| checkout-validation.spec.ts | 14 | Cart/checkout guards |
+| add-product-e2e.spec.ts | 12 | Product creation flow |
+| admin-panel.spec.ts | 11 | Admin dashboard |
+| stripe-payment.spec.ts | 7 | Payment pipeline |
+| shipping-calculation.spec.ts | 7 | Cost calculation |
+| order-cancellation-refund.spec.ts | 7 | Cancel/refund lifecycle |
+| multi-seller-orders.spec.ts | 6 | Split-order handling |
+| warehouse-multi-location.spec.ts | 5 | Multi-warehouse ops |
+| order-notifications.spec.ts | 5 | Order status emails |
+| order-lifecycle.spec.ts | 5 | Full order state machine |
+| admin-security.spec.ts | 5 | Admin access controls |
+| seller-registration.spec.ts | 4 | Stripe Connect onboarding |
+| seller-product-management.spec.ts | 4 | Seller CRUD |
+| search-products.spec.ts | 4 | Algolia search |
+| profile-management.spec.ts | 4 | User profile CRUD |
+| payment-edge-cases.spec.ts | 4 | Stripe edge cases |
+| notifications.spec.ts | 4 | Notification flows |
+| password-reset.spec.ts | 3 | Auth recovery |
+| new-notification-features.spec.ts | 3 | Push/in-app notifications |
+| admin-actions.spec.ts | 3 | Admin-only operations |
+| trending-products.spec.ts | 2 | Trending algorithm |
+| shipping-approval.spec.ts | 2 | Shipping workflow |
+| return-request.spec.ts | 2 | Return/refund requests |
+| rate-limiting.spec.ts | 2 | Rate limit enforcement |
+| favorites.spec.ts | 2 | Wishlist operations |
+| smoke-home-profile.spec.ts | 1 | Smoke tests |
+| seller-flow.spec.ts | 1 | Seller journey |
+| buyer-flow.spec.ts | 1 | Full buyer journey |
 
 ### Critical: api-helpers.ts — Canonical E2E Module
 **ALL spec files import from `e2e/api-helpers.ts`** (~830 lines, 40+ exports). Never duplicate these utilities.
@@ -67,6 +62,7 @@ Key exports:
 - "VerificationModal" is Stripe's "Link" login popup — dismiss with `page.locator('[data-testid="VerificationModal"]')` close button
 - `fillStripeCheckout()` handles: Link popup dismissal → iframe card fill → Pay button → wait for navigation
 - Tests needing Stripe webhooks require `stripe listen --forward-to localhost:5001/orignagta/us-central1/stripeWebhook` running
+- NOTE: fill() IS correct for Stripe native HTML inputs (card number, expiry, CVC, email fields). The pressSequentially() rule applies only to Flutter Web semantic DOM elements.
 
 ---
 

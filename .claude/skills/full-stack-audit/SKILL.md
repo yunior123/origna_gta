@@ -36,6 +36,18 @@ Run a comprehensive audit of ALL cross-stack interfaces in the project.
 ### 7. Shipping
 - `origna_gta/lib/features/checkout/checkout_provider.dart` ↔ `functions/services/shipping_service.py`
 
+### 8. Digital Products
+- `origna_gta/lib/features/products/add_product_viewmodel.dart` ↔ `functions/handlers/digital.py`
+
+### 9. Subscriptions / Premium
+- `origna_gta/lib/features/subscription/subscription_provider.dart` ↔ `functions/handlers/subscriptions.py`
+
+### 10. Returns
+- `origna_gta/lib/models/generated/return_request_models.dart` ↔ `functions/handlers/orders.py` (return_request handler)
+
+### 11. Notifications
+- `origna_gta/lib/features/notifications/notification_provider.dart` ↔ `functions/handlers/users.py` (FCM token mgmt)
+
 ## For Each Pair
 1. Read both files completely
 2. Compare: field names, types, enums, error handling, response format

@@ -303,3 +303,54 @@ cd origna_gta && flutter test --coverage && genhtml coverage/lcov.info -o covera
 | Contract | pytest + JSON Schema | Free | 🟡 Add |
 | CI | GitHub Actions | Free (2000 min) | ✅ Have |
 
+---
+
+## Adversarial Test Patterns (Mandatory — 50+ scenarios per CLAUDE.md)
+
+Every feature must be tested against these attack classes before shipping:
+
+### Authentication
+- Expired token accepted → should fail with `unauthenticated`
+- Seller token used for buyer-only operation → `permission-denied`
+- Admin endpoint called without admin custom claim → `permission-denied`
+- Token from dev environment replayed on staging → should fail
+
+### Payment Manipulation
+- Price tampered in checkout payload → backend re-reads from Firestore, ignores client price
+- Double-click checkout (same idempotency key twice) → second call is deduplicated
+- Webhook replayed (same `event.id`) → second processing is no-op
+- Self-purchase (seller buys own product) → `failed-precondition`
+- Negative price or zero stock in payload → rejected by backend validation
+
+### Race Conditions
+- Two buyers purchase last item simultaneously → stock cannot go below 0 (transaction)
+- Order cancel + payment capture race → atomic state check required
+- Concurrent coupon redemption × 2 users → usage limit enforced atomically
+
+### Data Isolation
+- Seller A queries Seller B's orders via crafted `sellerId` → Firestore rules block
+- Buyer reads another buyer's cart/addresses → rules block
+- `export_my_data` cannot expose `mfaSecret`, `mfaBackupCodes`, internal fields
+
+### Input Boundaries
+- Empty strings, null, undefined in all required fields → validation error
+- 1000+ char product names, descriptions → max-length enforced
+- Past expiry dates on coupons → rejected
+- Unicode homoglyphs / zero-width chars in product titles → sanitized
+
+### File Upload (R2)
+- MIME type bypass — upload `.html` disguised as image → rejected
+- Path traversal in `object_path` param → sanitized
+- Presigned URL reuse across users → URL is user-scoped
+
+### E2E Test Pattern for Adversarial Cases
+```typescript
+// Use callCallable (never throws) + check .error property
+const [legitResult, attackResult] = await Promise.all([
+  callCallable('functionName', legitimatePayload, validToken),
+  callCallable('functionName', attackPayload, validToken),
+]);
+expect(legitResult.error).toBeUndefined();
+expect(attackResult.error?.code).toBe('permission-denied');
+```
+
