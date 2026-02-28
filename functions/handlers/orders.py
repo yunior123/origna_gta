@@ -1778,7 +1778,9 @@ def create_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
     }
     return_ref.set(return_doc)
 
-    # Notify seller via push
+    # Notify seller via push + email
+    # NOTE: on_return_request_status_changed is on_document_updated — skips creates.
+    # This is the only path that sends the initial REQUESTED notification.
     seller_id = item_data.get(Fields.SELLER_ID)
     if seller_id:
         send_push_notification(
@@ -1787,6 +1789,26 @@ def create_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
             f"A buyer has requested a return for order #{order_id[:8].upper()}",
             data={"type": "return_request", "orderId": order_id, "returnId": return_id},
         )
+        try:
+            seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+            if seller_doc.exists:
+                seller_data = seller_doc.to_dict()
+                seller_email = seller_data.get(Fields.EMAIL)
+                if seller_email:
+                    seller_lang = seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
+                    oid_short = order_id[:8]
+                    seller_html = get_return_request_submitted_email(
+                        return_doc, return_id, order_id, recipient=UserRoleValues.SELLER, lang=seller_lang
+                    )
+                    enqueue_email_task(
+                        to_email=seller_email,
+                        subject=_email_t("sub.return_requested_seller", seller_lang).replace("{oid}", oid_short),
+                        html_content=seller_html,
+                        event_type="return_requested_seller",
+                        order_id=order_id,
+                    )
+        except Exception as e:
+            logger.error(f"create_return_request: failed to email seller {seller_id}: {e}")
 
     return create_success_response({Fields.RETURN_ID: return_id})
 

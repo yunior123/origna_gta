@@ -10,6 +10,7 @@ import contextlib
 import logging
 import secrets
 import string as _string
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -943,6 +944,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.SUPPLIER: product_data.get(Fields.SUPPLIER),
             Fields.BUYER_NOTE: item.get(Fields.BUYER_NOTE),
             Fields.IS_SMALL_SUPPLIER: sp_data.get(Fields.IS_SMALL_SUPPLIER, False), # F-129
+            # Generate stable per-item ID for confirm_item_receipt; client may provide one (cart doc ID)
+            Fields.CART_ITEM_ID: item.get(Fields.CART_ITEM_ID) or str(uuid.uuid4()),
         }
         validated_items.append(validated_item)
         actual_subtotal += db_price * item[Fields.QUANTITY]

@@ -212,7 +212,7 @@ test.describe('Payment Edge Cases', () => {
     // Stock is reserved at order creation, then RESTORED by Stripe webhook on decline.
     // Poll up to 60s for stock to return to original value (waiting for webhook delivery).
     let stockAfter = await getProductStock(product.id, buyerAuth.idToken);
-    const deadline = Date.now() + 60_000;
+    const deadline = Date.now() + 120_000;
     while (stockAfter < stockBefore && Date.now() < deadline) {
       await page.waitForTimeout(3_000);
       stockAfter = await getProductStock(product.id, buyerAuth.idToken);

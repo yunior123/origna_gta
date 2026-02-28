@@ -57,7 +57,7 @@ echo "✅ Backend tests passed."
 # 6. Run Playwright E2E Tests against Dev
 echo "Running Playwright E2E Tests against dev environment..."
 cd e2e
-if ! npx playwright test --config=playwright.config.dev.ts --retries=1; then
+if ! npx playwright test --config=playwright.config.dev.ts --retries=1 --workers=4; then
     echo "❌ ERROR: Playwright E2E tests failed on dev."
     exit 1
 fi

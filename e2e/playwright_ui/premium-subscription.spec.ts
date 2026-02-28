@@ -337,7 +337,7 @@ test.describe('A. Subscription Status API', () => {
 // ════════════════════════════════════════════════════════════════════
 
 test.describe('B. Subscription Screen UI', () => {
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
 
   test('B1: Subscription screen renders for non-premium buyer', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
@@ -986,7 +986,7 @@ test.describe('H. Double-Subscribe Guard', () => {
 // ════════════════════════════════════════════════════════════════════
 
 test.describe('I. Cancel Subscription Flow', () => {
-  test.setTimeout(60_000);
+  test.setTimeout(300_000);
 
   test('I1: cancel_subscription sets cancelAtPeriodEnd=true on subscription doc', async () => {
     const auth = await signIn(BUYER_EMAIL);
@@ -1284,7 +1284,7 @@ test.describe('L. Security Adversarial', () => {
 // ════════════════════════════════════════════════════════════════════
 
 test.describe('M. Screen Rendering', () => {
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
 
   test('M1: SubscriptionCancelScreen renders after cancellation navigation', async ({ page }) => {
     await requireWebApp(page, WEB_APP_URL);

@@ -54,10 +54,11 @@ import { waitForFlutter, ensureLoggedInAsAdmin } from './flutter-helpers';
 const SCREENSHOTS_DIR = `${process.env.HOME}/Desktop/origna-screenshots/dev`;
 
 /**
- * Out-of-stock product — created/updated in beforeAll with stockQuantity=0.
- * Uses a stable product that can be temporarily set to OOS for tests.
+ * Dedicated out-of-stock product for stock-notif tests ONLY.
+ * Always has stockQuantity=0 in Firestore. NOT shared with any other test file.
+ * Owner: ADMIN (RU9MI8vYFkQCakMrJfG8iGTuc012). Seeded by mega_seed_dev.py.
  */
-const OOS_PRODUCT_ID = 'e2e_product_admin_seller';
+const OOS_PRODUCT_ID = 'e2e_product_oos';
 
 /**
  * In-stock product — uses a different stable product.
@@ -94,17 +95,7 @@ async function loginAndNavigate(page: Page, baseURL: string, productId: string) 
 test.describe('1. UI — Notify Me Button on OOS Product', () => {
   test.setTimeout(90_000);
 
-  test.beforeAll(async () => {
-    // Ensure OOS_PRODUCT_ID has stockQuantity=0 for UI tests to show "Notify Me"
-    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-    await writeDoc(`products/${OOS_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 0 }), adminAuth.idToken, true);
-  });
-
-  test.afterAll(async () => {
-    // Restore stock so other test suites and runs can use this product normally
-    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-    await writeDoc(`products/${OOS_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 10 }), adminAuth.idToken, true);
-  });
+  // No beforeAll/afterAll needed — e2e_product_oos is dedicated OOS product (stock always 0)
 
   test('1.1 OOS product shows notify section (not add-to-cart)', async ({ page, baseURL }) => {
     await loginAndNavigate(page, baseURL!, OOS_PRODUCT_ID);
@@ -343,9 +334,7 @@ test.describe('3. API — subscribe_stock_notification / unsubscribe_stock_notif
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
     buyerUid = auth.localId;
-    // Ensure OOS_PRODUCT_ID has stockQuantity=0 for API tests
-    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-    await writeDoc(`products/${OOS_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 0 }), adminAuth.idToken, true);
+    // e2e_product_oos is dedicated OOS product — no stock reset needed
     // Ensure clean subscription state before API suite
     await callOk('unsubscribe_stock_notification', { productId: OOS_PRODUCT_ID }, buyerToken)
       .catch(() => {});
@@ -355,6 +344,7 @@ test.describe('3. API — subscribe_stock_notification / unsubscribe_stock_notif
     // Cleanup any subscriptions created during tests
     await callOk('unsubscribe_stock_notification', { productId: OOS_PRODUCT_ID }, buyerToken)
       .catch(() => {});
+    // No stock restore needed — e2e_product_oos is always OOS (stock=0)
   });
 
   test('3.1 Subscribe to OOS product returns subscribed:true', async () => {
@@ -502,9 +492,7 @@ test.describe('4. Security — Adversarial Scenarios', () => {
     // Use SELLER (not ADMIN) as "sellerToken" — ADMIN owns OOS_PRODUCT_ID so cannot subscribe to it
     const sellerAuth = await signIn(TEST_ACCOUNTS.SELLER_EMAIL);
     sellerToken = sellerAuth.idToken;
-    // Ensure OOS product has stock=0 for security tests
-    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-    await writeDoc(`products/${OOS_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 0 }), adminAuth.idToken, true);
+    // e2e_product_oos is dedicated OOS product — no stock reset needed
   });
 
   test('4.1 Buyer cannot unsubscribe another user\'s notification', async () => {
