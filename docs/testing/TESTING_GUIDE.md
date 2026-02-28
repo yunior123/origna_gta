@@ -1,43 +1,22 @@
-# Backend Testing Guide
+# Testing Guide
 
-## Unit Tests
-Run unit tests using `pytest` to verify logic in isolation.
-```bash
-cd functions
-pytest
-```
+> **Source of truth:** `.claude/skills/e2e-test-suites/SKILL.md` (34 specs, kept current)
 
-## Integration Tests (Postman-like)
-Run the API integration runner to verify deployed endpoints are reachable and responding correctly.
-This script hits the actual Production URLs (or Emulator if specified).
+## E2E Tests (Playwright)
+- **Config:** `e2e/playwright.config.dev.ts`
+- **Specs:** `e2e/playwright_ui/*.spec.ts` (34 files)
+- **Helpers:** `e2e/playwright_ui/api-helpers.ts`, `flutter-helpers.ts`
+- **Base URL:** `https://orignagta-dev.web.app`
+- **Run all:** `npx playwright test --config=e2e/playwright.config.dev.ts`
+- **Run one:** `npx playwright test e2e/playwright_ui/<spec>.spec.ts --config=e2e/playwright.config.dev.ts`
 
-### Usage
-**Test Production:**
-```bash
-cd functions
-python3 scripts/run_api_tests.py
-```
+## Backend Tests (pytest)
+- **Run:** `cd functions && pytest`
+- **Config:** `functions/pytest.ini`
 
-**Test Emulator:**
-```bash
-cd functions
-python3 scripts/run_api_tests.py --emulator
-```
-
-### Endpoints Covered
-1. **Stripe Webhook**: Verifies signature protection.
-2. **Airwallex Webhook**: Verifies signature protection.
-3. **Create Checkout Session**: Verifies Cloud Function unauthenticated rejection.
-4. **Get R2 Presigned URL**: Verifies validation logic.
-
-### Adding New Tests
-Edit `functions/scripts/run_api_tests.py` and add entries to the `tests` list.
-```python
-{
-    "name": "My New Function",
-    "endpoint": "my_function_name",
-    "method": "POST",
-    "body": {"data": "test"},
-    "expected_status": [200]
-}
-```
+## Non-Negotiable Rules
+- Never `fill()` — always `pressSequentially()`
+- Never `page.goto()` after login — use `page.goBack()`
+- No dynamic product creation in `beforeAll` — use stable product IDs from MEMORY.md
+- Tests run against dev Firebase only — emulators forbidden (8GB RAM)
+- `DELIVERED` status = admin-only — sign in as admin for that transition

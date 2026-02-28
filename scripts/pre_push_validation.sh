@@ -20,6 +20,10 @@ python3 scripts/validate_indexes.py
 echo "Validating Firestore rules against dev, staging, and prod..."
 python3 scripts/validate_rules.py
 
+# 3.1. Validate Firebase Storage rules across all environments
+echo "Validating Firebase Storage rules against dev, staging, and prod..."
+python3 scripts/validate_storage_rules.py
+
 # 3.5. Validate Cloud Functions sync across all environments
 echo "Validating Cloud Functions sync against dev, staging, and prod..."
 python3 scripts/verify_functions_sync.py

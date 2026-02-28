@@ -48,6 +48,7 @@ import 'package:origna_gta/utils/animations.dart';
 import 'package:origna_gta/utils/deferred_widget.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
+import 'package:origna_gta/widgets/env_preview_banner.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Handle initial route from URL (critical for web redirects from Stripe)
@@ -132,6 +133,20 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   // Handle seller registration refresh (user needs to retry)
   if (uri != null && uri.path == AppRoutes.sellerRefresh) {
     return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupRefreshScreen()))];
+  }
+
+  // Handle Admin Panel direct access (to ensure AdminRequiredGate takes effect)
+  if (uri != null && uri.path == AppRoutes.adminPanel) {
+    return [
+      SlidePageRoute(page: const AuthWrapper()),
+      SlidePageRoute(
+        page: AuthRequiredGate(
+          child: AdminRequiredGate(
+            child: DeferredWidget(loader: admin_panel.loadLibrary, builder: () => admin_panel.AdminPanelScreen()),
+          ),
+        ),
+      ),
+    ];
   }
 
   // Default: show AuthWrapper (home)
@@ -524,6 +539,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
         child: MaterialApp(
           navigatorKey: _navigatorKey,
           scaffoldMessengerKey: NotificationService.scaffoldMessengerKey,
+          builder: (context, child) => EnvPreviewBanner(child: child ?? const SizedBox.shrink()),
           // === i18n: easy_localization (Quebec Bill 96 / Loi 96 compliance) ===
           localizationsDelegates: context.localizationDelegates,
           supportedLocales: context.supportedLocales,

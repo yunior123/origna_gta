@@ -1809,7 +1809,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     # SECURITY FIX #4: Atomic idempotency check using create() to prevent race conditions.
     # If two webhook deliveries arrive simultaneously, only one create() will succeed.
     webhook_ref = get_db().collection(Collections.WEBHOOK_EVENTS).document(event_id)
-    order_id = event.get(StripeConstants.DATA, {}).get(StripeConstants.OBJECT, {}).get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID, "N/A")
+    order_id = event.get(StripeConstants.DATA, {}).get(StripeConstants.OBJECT, {}).get(StripeConstants.METADATA, {}).get(StripeConstants.METADATA_ORDER_ID, "N/A")
 
     try:
         webhook_ref.create(
@@ -2284,7 +2284,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
         )
         return None
 
-    order_id = session.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
+    order_id = session.get(StripeConstants.METADATA, {}).get(StripeConstants.METADATA_ORDER_ID)
 
     if not order_id:
         logger.info("No orderId in session metadata")
@@ -2490,7 +2490,7 @@ def process_async_payment_succeeded(session: dict) -> str | None:
     """Handles async payment success (e.g., bank transfers, Interac).
     Mirrors process_checkout_session_completed side effects.
     """
-    order_id = session.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
+    order_id = session.get(StripeConstants.METADATA, {}).get(StripeConstants.METADATA_ORDER_ID)
 
     if not order_id:
         return None
@@ -2546,7 +2546,7 @@ def process_async_payment_succeeded(session: dict) -> str | None:
 
 def process_async_payment_failed(session: dict) -> str | None:
     """Handles async payment failure"""
-    order_id = session.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
+    order_id = session.get(StripeConstants.METADATA, {}).get(StripeConstants.METADATA_ORDER_ID)
 
     if not order_id:
         return None
@@ -2744,7 +2744,7 @@ def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str
 
 def process_session_expired(session: dict) -> str | None:
     """Handles expired checkout sessions"""
-    order_id = session.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
+    order_id = session.get(StripeConstants.METADATA, {}).get(StripeConstants.METADATA_ORDER_ID)
 
     if not order_id:
         return None
@@ -2808,7 +2808,7 @@ def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
     AUTHORIZED → CAPTURING → CAPTURED transition. This webhook fires when
     capture succeeds, so we only update if still in 'capturing' state.
     """
-    order_id = payment_intent.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
+    order_id = payment_intent.get(StripeConstants.METADATA, {}).get(StripeConstants.METADATA_ORDER_ID)
 
     if not order_id:
         return None
@@ -2842,7 +2842,7 @@ def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
 
 def process_payment_intent_failed(payment_intent: dict) -> str | None:
     """Handles failed payment intents"""
-    order_id = payment_intent.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
+    order_id = payment_intent.get(StripeConstants.METADATA, {}).get(StripeConstants.METADATA_ORDER_ID)
 
     if not order_id:
         return None
@@ -2883,7 +2883,7 @@ def process_payment_intent_canceled(payment_intent: dict) -> str | None:
     Restores stock and cancels the order when a PI is canceled
     (e.g., session expired, user abandon, or admin cancellation).
     """
-    order_id = payment_intent.get(StripeConstants.METADATA, {}).get(Fields.ORDER_ID)
+    order_id = payment_intent.get(StripeConstants.METADATA, {}).get(StripeConstants.METADATA_ORDER_ID)
 
     if not order_id:
         return None

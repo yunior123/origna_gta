@@ -270,6 +270,7 @@ test.describe('C. Mixed Cart — Digital + Physical', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('D. License Activation & Book Download', () => {
+  test.describe.configure({ mode: 'serial' });
   test.setTimeout(180_000);
 
   let softwareLicenseKey: string;
@@ -692,6 +693,7 @@ test.describe('G. Software Download Session', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('H. License Management — Deactivate, Verify, Device Limit, Revoke', () => {
+  test.describe.configure({ mode: 'serial' });
   test.setTimeout(60_000);
 
   let manageLicenseKey: string;
@@ -976,13 +978,14 @@ test.describe('I. Digital Business Rules', () => {
     // Belt-and-suspenders: confirm the Firestore order created for a digital-only checkout
     // has shippingCostCents=0 and no shippingAddress requirement.
     const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const { data } = await buildCheckoutPayload(auth.localId, DIGITAL_BOOK_ID, 1, auth.idToken);
     const session = await callOk('create_checkout_session', { ...data, shippingAddress: {} }, auth.idToken);
     expect(session.orderId).toBeTruthy();
 
     const order = parseDoc(await readDoc(`orders/${session.orderId}`, auth.idToken));
     expect(order.shippingCostCents, 'Digital order: zero shipping').toBe(0);
-    // Cleanup
-    await deleteDoc(`orders/${session.orderId}`, auth.idToken);
+    // Cleanup — admin token required; buyers cannot delete order documents
+    await deleteDoc(`orders/${session.orderId}`, adminAuth.idToken);
   });
 });

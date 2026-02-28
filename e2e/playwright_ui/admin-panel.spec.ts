@@ -22,6 +22,7 @@ import { TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';
 const TARGET_URL = process.env.E2E_TARGET_URL ?? WEB_APP_URL;
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? TEST_ACCOUNTS.ADMIN_PASS;
+const NON_ADMIN_PASSWORD = process.env.E2E_BUYER_PASSWORD ?? TEST_ACCOUNTS.BUYER_PASS;
 // Buyer account (non-admin) for access-control test
 const NON_ADMIN_EMAIL = process.env.E2E_BUYER_EMAIL ?? TEST_ACCOUNTS.BUYER_EMAIL;
 
@@ -32,17 +33,32 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         await requireWebApp(page, TARGET_URL);
         await page.goto(`${TARGET_URL}/`);
         await waitForFlutter(page);
-        
+
         // Login as non-admin buyer
-        await ensureLoggedInAsAdmin(page, TARGET_URL, NON_ADMIN_EMAIL, ADMIN_PASSWORD);
-        
-        // Try to navigate to /admin directly
-        await page.goto(`${TARGET_URL}/admin`);
+        await ensureLoggedInAsAdmin(page, TARGET_URL, NON_ADMIN_EMAIL, NON_ADMIN_PASSWORD);
+
+        // Try to navigate to /admin directly using an intercepted anchor click
+        // This forces Flutter to route internally instead of doing a hard browser reload
+        await page.evaluate((url) => {
+            window.history.pushState({}, '', url + '/admin');
+            window.dispatchEvent(new Event('popstate'));
+        }, TARGET_URL);
         await waitForFlutter(page);
-        
+
         // Should be redirected or show "unauthorized"
-        expect(page.url()).not.toMatch(/\/admin$/);
-        
+        const accessDeniedText = page.getByText(/access denied|accès refusé/i).first();
+        await expect(accessDeniedText).toBeVisible({ timeout: 10000 });
+
+        // "Access Denied" screen has no home settings button — click "Go Home" first
+        const goHomeBtn = page.getByRole('button', { name: /go home|aller à l'accueil/i }).first();
+        if (await goHomeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await goHomeBtn.click();
+            await waitForFlutter(page);
+        } else {
+            await page.goBack();
+            await waitForFlutter(page);
+        }
+
         await performSignOut(page, TARGET_URL);
     });
 
@@ -80,7 +96,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
             await sellersTab.click();
             await page.waitForTimeout(1000);
             // Verify content loads (best effort)
-            const listItems = page.locator('role=listitem');
+            const listItems = page.getByRole('listitem');
             if (await listItems.count() > 0) {
                 await expect(listItems.first()).toBeVisible();
             }
@@ -91,7 +107,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
             const usersTab = page.getByRole('tab', { name: /users/i }).or(page.getByRole('button', { name: /admin-tab-users|users/i })).first();
             await usersTab.click();
             await page.waitForTimeout(600);
-            
+
             const searchField = page.getByRole('textbox', { name: /search users|rechercher des utilisateurs/i }).first();
             if (await searchField.isVisible()) {
                 await searchField.click();
@@ -162,17 +178,24 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
             const productsTab = page.getByRole('tab', { name: /products/i }).or(page.getByRole('button', { name: /admin-tab-products|products/i })).first();
             await productsTab.click();
             await page.waitForTimeout(500);
-            
+
             await page.reload();
             await waitForFlutter(page);
             // In Flutter Web, reload might reset state unless it's in URL
             // This test verifies current behavior
             expect(page.url()).toMatch(/\/admin/i);
+
+            // Admin panel has no btn-home-settings — click Back to reach profile so afterEach works
+            const backBtn = page.getByRole('button', { name: /^back$|^retour$/i }).first();
+            if (await backBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+                await backBtn.click();
+                await waitForFlutter(page);
+            }
         });
 
         test('T11: Admin UI — Return to Home visibility', async ({ page }) => {
             await navigateToAdmin(page);
-            const backBtn = page.getByTooltip(/back/i).or(page.locator('button[aria-label*="back"]')).first();
+            const backBtn = page.getByRole('button', { name: /back|retour/i }).first();
             await backBtn.click();
             await waitForFlutter(page);
             expect(page.url()).toMatch(/\/profile/i);

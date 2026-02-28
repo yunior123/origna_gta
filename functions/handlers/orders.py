@@ -802,12 +802,14 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             new_payment_status = PaymentStatusValues.CANCELLED
         except stripe.error.StripeError as e:
             # AUDIT FIX: PI cancel failed — buyer funds remain held!
-            # Flag for manual review and block cancellation to prevent orphaned authorization
+            # Flag for manual review and block cancellation to prevent orphaned authorization.
+            # Restore original payment_status to clear the CANCELLING lock so future retries work.
             logger.error(f"PaymentIntent cancel failed: {str(e)}")
             order_ref.update(
                 {
                     Fields.REQUIRES_MANUAL_REVIEW: True,
                     Fields.MANUAL_REVIEW_REASON: f"PI cancel failed during cancellation: {type(e).__name__}. Buyer funds may still be held.",
+                    Fields.PAYMENT_STATUS: payment_status,  # Restore original — clears CANCELLING lock
                     Fields.UPDATED_AT: get_server_timestamp(),
                 }
             )

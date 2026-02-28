@@ -17,6 +17,7 @@
  */
 
 import { Page, Locator, test, expect } from '@playwright/test';
+import { WEB_APP_URL } from './api-helpers';
 
 // ─── BILINGUAL PATTERNS ────────────────────────────────────────────
 const BTN_SETTINGS = /settings|paramètres/i;
@@ -162,7 +163,7 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     const emailInput = page.getByRole('textbox', { name: 'you@example.com' });
     // Wait for login form (URL or form appearance — URL may not update in nested nav)
     await Promise.race([
-        page.waitForURL(/\/login/i, { timeout: 20000 }).catch(() => {}),
+        page.waitForURL(/\/login/i, { timeout: 20000 }).catch(() => { }),
         emailInput.waitFor({ state: 'visible', timeout: 20000 }),
     ]);
     await expect(emailInput).toBeVisible({ timeout: 10000 });
@@ -188,14 +189,19 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     // isolated browser contexts. Use in-app navigation only.
 
     // Wait for the login form to disappear (auth succeeded, app rebuilt)
-    await expect(emailInput).not.toBeVisible({ timeout: 20000 });
+    // Note: once email is typed the hint-text locator may resolve immediately — so also
+    // wait for the submit button loading state to resolve via a broader Flutter wait.
+    await expect(emailInput).not.toBeVisible({ timeout: 30000 });
 
-    // Wait for the home screen to render with auth-dependent elements
+    // Wait for Flutter to rebuild the home screen after login (dev server can be slow)
     await page.waitForTimeout(3000);
+    await waitForFlutter(page, 60000);
 
     // Verify login: Settings button should be visible (home screen loaded)
+    // 60s timeout — 8 parallel workers create resource contention on dev; button is
+    // always present, just sometimes slow to render under load (confirmed by screenshots).
     const verifySettingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
-    await expect(verifySettingsBtn).toBeAttached({ timeout: 15000 });
+    await expect(verifySettingsBtn).toBeAttached({ timeout: 60000 });
 
     // Extra check: clicking Settings should navigate to /profile (not show dialog)
     await verifySettingsBtn.click();
@@ -280,18 +286,20 @@ export async function navigateToSubscription(page: Page): Promise<void> {
  * Never uses page.goto() which would kill Firebase Auth state.
  */
 export async function navigateToAdmin(page: Page): Promise<void> {
+    // Go to profile screen via settings button
     const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
     await expect(settingsBtn).toBeAttached({ timeout: 15000 });
     await settingsBtn.click();
     await page.waitForURL(/\/profile/i, { timeout: 20000 }).catch(() => { });
-    await waitForFlutter(page, 15000);
 
-    const adminBtn = page.getByRole('button', { name: /menu-admin-panel|admin.panel/i }).first();
-    await expect(adminBtn).toBeAttached({ timeout: 20000 });
-    await adminBtn.scrollIntoViewIfNeeded().catch(() => { });
+    // Wait for profile-specific content - Admin Panel menu item
+    const adminBtn = page.getByRole('button', { name: /menu-admin-panel|admin panel/i }).first();
+    await expect(adminBtn).toBeAttached({ timeout: 30000 });
+    await adminBtn.scrollIntoViewIfNeeded();
+
     await adminBtn.click();
     await page.waitForURL(/\/admin/i, { timeout: 20000 }).catch(() => { });
-    await waitForFlutter(page, 15000);
+    await waitForFlutter(page, 30000);
 }
 
 // ─── SIGN OUT HELPER ─────────────────────────────────────────────────
@@ -318,7 +326,7 @@ export async function performSignOut(page: Page, targetUrl: string): Promise<voi
     ).toBeVisible({ timeout: 20000 });
     // Dismiss the dialog
     const cancelBtn = page.getByRole('button', { name: /cancel|annuler/i }).first();
-    await cancelBtn.click().catch(() => {});
+    await cancelBtn.click().catch(() => { });
     await page.waitForTimeout(500);
     console.log('   ✅ Sign-out confirmed');
 }

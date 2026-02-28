@@ -882,12 +882,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             (c) => DropdownMenuItem(
               key: Key('category_item_${c.name}'),
               value: c.categoryId.toString(),
-              child: Row(
-                children: [
-                  Icon(c.icon, size: 18, color: DesignTokens.primary),
-                  const SizedBox(width: 10),
-                  Text(c.name.tr()),
-                ],
+              child: Semantics(
+                label: 'category-option-${c.categoryId}',
+                child: Row(
+                  children: [
+                    Icon(c.icon, size: 18, color: DesignTokens.primary),
+                    const SizedBox(width: 10),
+                    Text(c.name.tr()),
+                  ],
+                ),
               ),
             ),
           )

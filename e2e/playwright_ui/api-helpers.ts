@@ -37,10 +37,14 @@ export const STRIPE_CARD = {
 // ════════════════════════════════════════════════════════════════════
 
 export const TEST_ACCOUNTS = {
-  ADMIN_EMAIL: 'yr62813@gmail.com',              // roles: buyer+seller+admin, chargesEnabled, onboardingCompleted
+  ADMIN_EMAIL: 'yr62813@gmail.com',               // roles: buyer+seller+admin, chargesEnabled, onboardingCompleted
   ADMIN_PASS: 'REDACTED_TEST_PASSWORD',
-  SELLER_EMAIL: 'yuniorrodriguezo4601@yahoo.com', // roles: buyer+seller, chargesEnabled
-  BUYER_EMAIL: 'yuniorrodriguezo460@gmail.com',   // roles: buyer+admin, NOT a seller-approved account
+  SELLER_EMAIL: 'yuniorrodriguezo4601@yahoo.com',  // roles: buyer+seller, chargesEnabled
+  SELLER_PASS: 'REDACTED_TEST_PASSWORD',
+  BUYER_EMAIL: 'yuniorrodriguezo460@gmail.com',    // roles: buyer+admin, NOT a seller-approved account
+  BUYER_PASS: 'REDACTED_TEST_PASSWORD',
+  BUYER2_EMAIL: 'yuniorrodriguezo4601@yahoo.com',  // Seller account; also has buyer role — used for adversarial tests
+  BUYER2_PASS: 'REDACTED_TEST_PASSWORD',
 };
 
 export const TEST_UIDS = {
@@ -867,9 +871,9 @@ export function invalidateProductCache(): void {
  * issues — Firestore rules evaluate `resource.data` reliably for individual GETs.
  */
 const STABLE_TEST_PRODUCTS: Array<{ id: string; sellerUid: string; prefix: string; country?: string }> = [
-  { id: 'e2e_product_admin_seller',  sellerUid: TEST_UIDS.ADMIN,  prefix: 'A' },
-  { id: 'e2e_product_test_seller',   sellerUid: TEST_UIDS.SELLER, prefix: 'B' },
-  { id: 'e2e_product_intl_seller',   sellerUid: TEST_UIDS.SELLER, prefix: 'C', country: 'China' },
+  { id: 'e2e_product_admin_seller', sellerUid: TEST_UIDS.ADMIN, prefix: 'A' },
+  { id: 'e2e_product_test_seller', sellerUid: TEST_UIDS.SELLER, prefix: 'B' },
+  { id: 'e2e_product_intl_seller', sellerUid: TEST_UIDS.SELLER, prefix: 'C', country: 'China' },
 ];
 
 /**
@@ -917,7 +921,7 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
     } catch { /* will create below */ }
 
     if (!product) {
-      const address = country === 'China' 
+      const address = country === 'China'
         ? { street: 'Nanjing Rd', city: 'Shanghai', state: 'SH', postalCode: '200001', country: 'China' }
         : undefined;
       product = await createDummyProduct(sellerUid, prefix, id, address);
@@ -998,8 +1002,8 @@ export async function getTwoSellerProducts(token: string): Promise<[DiscoveredPr
 }
 
 export async function createDummyProduct(
-  sellerUid: string, 
-  prefix: string, 
+  sellerUid: string,
+  prefix: string,
   productId?: string,
   customAddress?: { street: string; city: string; state: string; postalCode: string; country: string }
 ): Promise<DiscoveredProduct> {

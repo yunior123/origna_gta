@@ -602,15 +602,14 @@ service cloud.firestore {
 
     // ================================================================
     // LICENSES COLLECTION
-    // Buyers read their own licenses. Backend-only write (Admin SDK bypasses rules).
+    // Buyers read their own licenses. Backend uses Admin SDK (bypasses rules).
+    // Admin can write for E2E test seeding (same pattern as subscriptions).
     // ================================================================
     match /licenses/{licenseKey} {
       // Buyer reads their own license
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      // Admin reads all
-      allow read: if isAdmin();
-      // Backend Admin SDK bypasses Firestore rules — no client write path needed
-      allow write: if false;
+      // Admin reads and writes (Admin SDK + E2E seeding)
+      allow read, write: if isAdmin();
     }
 
     // ================================================================

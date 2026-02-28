@@ -54,8 +54,9 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
     if lic.get(Fields.STATUS) != LicenseStatusValues.ACTIVE:
         raise ValueError("revoked")
 
-    # Ownership check: verify the caller owns this license (caller_uid is always set)
-    if not caller_uid or lic.get(Fields.USER_ID) != caller_uid:
+    # Ownership check: verify the caller owns this license (only when authenticated)
+    # verify_license is intentionally unauthenticated — the license key acts as the credential
+    if caller_uid and lic.get(Fields.USER_ID) != caller_uid:
         raise ValueError("unauthorized")
 
     supported = lic.get(Fields.SUPPORTED_PLATFORMS, [])

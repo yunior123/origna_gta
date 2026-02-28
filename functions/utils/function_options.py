@@ -42,8 +42,10 @@ FIRESTORE_PAYMENT_TRIGGER_OPTIONS: dict = {
     "secrets": _SECRETS,
 }
 
-# Webhooks: 90s timeout (Stripe retries on timeout, need margin)
+# Webhooks: 512MB memory (stripe_webhook processes orders + payouts + digital licenses),
+# 90s timeout (Stripe retries on timeout, need margin)
 WEBHOOK_OPTIONS = {
+    "memory": options.MemoryOption.MB_512,
     "timeout_sec": 90,
     "region": _REGION,
     "secrets": _SECRETS,

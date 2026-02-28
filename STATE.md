@@ -1,10 +1,4 @@
-> **Source of Truth:** [CLAUDE.md](./CLAUDE.md), [GEMINI.md](./GEMINI.md), [LEARNED.md](./.claude/LEARNED.md).
+> **Source of Truth:** [CLAUDE.md](./CLAUDE.md) — single source of truth.
 > **Goal:** Launch by March 2026.
 
-egression Fixes Unit Tests AppError.getMessage sanitizes backend errors                                          │
-│ [🌎 Easy Localization] [WARNING] Localization key [errors.generic_error] not found                                │
-│ [🌎 Easy Localization] [WARNING] Localization key [errors.service_unavailable] not found                          │
-│ [🌎 Easy Localization] [WARNING] Localization key [errors.generic_error] not found                                │
-│ [🌎 Easy Localization] [WARNING] Localization key [errors.service_unavailable] not found        
-
-11. show preview flag in prod during first 3 month of launch
+1. new feature: allow sellers to upload 1 video per product, the video size should be 100mb max, and the duration should be 1 minute max. add validation to prevent users from uploading videos that are too large or too long.     
