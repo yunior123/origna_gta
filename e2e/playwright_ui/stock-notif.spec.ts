@@ -94,6 +94,18 @@ async function loginAndNavigate(page: Page, baseURL: string, productId: string) 
 test.describe('1. UI — Notify Me Button on OOS Product', () => {
   test.setTimeout(90_000);
 
+  test.beforeAll(async () => {
+    // Ensure OOS_PRODUCT_ID has stockQuantity=0 for UI tests to show "Notify Me"
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+    await writeDoc(`products/${OOS_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 0 }), adminAuth.idToken, true);
+  });
+
+  test.afterAll(async () => {
+    // Restore stock so other test suites and runs can use this product normally
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+    await writeDoc(`products/${OOS_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 10 }), adminAuth.idToken, true);
+  });
+
   test('1.1 OOS product shows notify section (not add-to-cart)', async ({ page, baseURL }) => {
     await loginAndNavigate(page, baseURL!, OOS_PRODUCT_ID);
 
@@ -261,7 +273,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
   test.beforeAll(async () => {
     const auth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
     // Seed a temporary OOS product that mimics an active product
-    await writeDoc(`products/${TEMP_PRODUCT_ID}`, {
+    await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({
       productId: TEMP_PRODUCT_ID,
       name: 'Test Stock Restore Product',
       description: 'Temporary product for stock restore test',
@@ -279,7 +291,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
       rating: 0,
       ratingCount: 0,
       createdAt: new Date().toISOString(),
-    });
+    }), auth.idToken, true);
   });
 
   test.afterAll(async () => {
@@ -297,7 +309,8 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-2-1a-oos-before.png` });
 
     // Restore stock via Firestore write (simulates admin restoring stock)
-    await writeDoc(`products/${TEMP_PRODUCT_ID}`, { stockQuantity: 10 });
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+    await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 10 }), adminAuth.idToken, true);
 
     // Re-navigate to force provider re-fetch
     await page.goto(`${baseURL}/product/${TEMP_PRODUCT_ID}`);
@@ -330,7 +343,10 @@ test.describe('3. API — subscribe_stock_notification / unsubscribe_stock_notif
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
     buyerUid = auth.localId;
-    // Ensure clean state before API suite
+    // Ensure OOS_PRODUCT_ID has stockQuantity=0 for API tests
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+    await writeDoc(`products/${OOS_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 0 }), adminAuth.idToken, true);
+    // Ensure clean subscription state before API suite
     await callOk('unsubscribe_stock_notification', { productId: OOS_PRODUCT_ID }, buyerToken)
       .catch(() => {});
   });
@@ -483,12 +499,16 @@ test.describe('4. Security — Adversarial Scenarios', () => {
   test.beforeAll(async () => {
     const buyerAuth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = buyerAuth.idToken;
+    // Use SELLER (not ADMIN) as "sellerToken" — ADMIN owns OOS_PRODUCT_ID so cannot subscribe to it
+    const sellerAuth = await signIn(TEST_ACCOUNTS.SELLER_EMAIL);
+    sellerToken = sellerAuth.idToken;
+    // Ensure OOS product has stock=0 for security tests
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-    sellerToken = adminAuth.idToken;
+    await writeDoc(`products/${OOS_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 0 }), adminAuth.idToken, true);
   });
 
   test('4.1 Buyer cannot unsubscribe another user\'s notification', async () => {
-    // Seller subscribes first
+    // Seller (non-owner) subscribes to OOS_PRODUCT_ID first
     await callOk('subscribe_stock_notification', { productId: OOS_PRODUCT_ID }, sellerToken);
 
     // Buyer (different user) attempts to unsubscribe the seller's notification

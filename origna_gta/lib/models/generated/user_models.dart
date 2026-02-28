@@ -83,6 +83,7 @@ abstract class User with _$User {
     String? stripeSubscriptionId,
     @Default(false) bool notifyNewProducts,
     @Default(false) bool notifyTrending,
+    @Default(true) bool pushEnabled,
     // === FCM (push notifications) ===
     String? fcmToken,
     DateTime? fcmTokenUpdatedAt,
@@ -137,6 +138,7 @@ abstract class User with _$User {
       stripeSubscriptionId: data[Fields.stripeSubscriptionId] as String?,
       notifyNewProducts: data[Fields.notifyNewProducts] ?? false,
       notifyTrending: data[Fields.notifyTrending] ?? false,
+      pushEnabled: data[Fields.pushEnabled] ?? true,
       fcmToken: data[Fields.fcmToken] as String?,
       fcmTokenUpdatedAt: _parseDateTime(data[Fields.fcmTokenUpdatedAt]),
     );

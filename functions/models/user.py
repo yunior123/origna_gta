@@ -109,6 +109,9 @@ class User(BaseModel):
     notifyTrending: bool = Field(
         default=False, description="Opt-in: receive FCM notification for trending products (premium only)"
     )
+    pushEnabled: bool = Field(
+        default=True, description="User opted into push notifications — False means opt-out"
+    )
     fcmToken: str | None = Field(
         default=None, description="Firebase Cloud Messaging device token for push notifications"
     )

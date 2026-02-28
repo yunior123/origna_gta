@@ -12,7 +12,16 @@ for PROJECT in orignagta-dev orignagta-staging orignagta; do
   [[ "$PROJECT" == "orignagta" ]] && ENV_NAME="prod"
   echo ""
   echo "→ [$ENV_NAME] $PROJECT"
-  firebase deploy --only firestore:rules,firestore:indexes,storage,hosting --project "$PROJECT"
+  # Deploy Firestore rules, indexes, and hosting (always)
+  firebase deploy --only firestore:rules,firestore:indexes,hosting --project "$PROJECT"
+  # Deploy storage rules separately — gracefully skip if Firebase Storage not provisioned
+  storage_out=$(firebase deploy --only storage --project "$PROJECT" 2>&1) || storage_exit=$?
+  if echo "$storage_out" | grep -q "Firebase Storage has not been set up"; then
+    echo "⚠️  [$ENV_NAME] Firebase Storage not provisioned — skipping (deny-all default applies)"
+  elif [ "${storage_exit:-0}" -ne 0 ]; then
+    echo "$storage_out"
+    exit "${storage_exit}"
+  fi
 done
 
 echo ""

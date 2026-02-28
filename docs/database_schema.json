@@ -237,6 +237,11 @@
           "default": false,
           "description": "Opt-in: FCM notification for trending products (premium only)"
         },
+        "pushEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "User opted into push notifications — false means opt-out"
+        },
         "fcmToken": {
           "type": "string",
           "nullable": true,

@@ -176,11 +176,12 @@ service cloud.firestore {
           'lastOrderId',
           'lastCheckoutTimestamp',
           'notifyNewProducts',
-          'notifyTrending'
+          'notifyTrending',
+          'pushEnabled'
         ])) ||
       // Simplified rule for notification-only updates (avoids address validation edge cases)
       (isOwner(userId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notifyNewProducts', 'notifyTrending']));
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notifyNewProducts', 'notifyTrending', 'pushEnabled']));
       
       // Users can create their own profile with strict fields only.
       // NOTE: preferred path is the create_user_profile Cloud Function (server controls consent).
