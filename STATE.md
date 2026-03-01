@@ -103,5 +103,15 @@ All 6 previously shallow test files now verify Firestore state, not just DOM vis
 | Deep E2E (Playwright) | 34 | 0 | 34 |
 | **Total** | **625** | **0** | **625** |
 
+### Deployments (all 3 environments per CLAUDE.md rule 6)
+| Resource | dev | staging | prod |
+|----------|-----|---------|------|
+| `admin_approve_product` (fix `create_success_response` crash) | ✅ | ✅ | ✅ |
+| `admin_reject_product` (same fix) | ✅ | ✅ | ✅ |
+| Firestore indexes (removed invalid `fcm_tokens` single-field index) | ✅ | ✅ | ✅ |
+| Firestore rules | ✅ (earlier this session) | — | — |
+| Hosting (Flutter web build) | ✅ (earlier this session) | — | — |
+
 ### Pending
 - Re-run 10 auditors (logic, security, cross-stack, etc.) — hit bedrock quota limits last session
+- Deploy Firestore rules + hosting to staging and prod (functions + indexes done)
