@@ -1998,6 +1998,22 @@ class Subcategories:
 # =============================================================================
 
 
+class NotificationTypes:
+    """Push notification type identifiers — parity with NotificationTypes in schema_constants.dart."""
+
+    ORDER_STATUS = "order_status"
+    ORDER_UPDATE = "order_update"
+    NEW_MESSAGE = "new_message"
+    PROMO = "promo"
+    SYSTEM = "system"
+    ACCOUNT = "account"
+    RETURN_REQUEST = "return_request"
+    RETURN_STATUS = "return_status"
+    BACK_IN_STOCK = "back_in_stock"
+    REFUND_ISSUED = "refund_issued"
+    MESSAGE_REPORT = "message_report"
+
+
 class OrderEventTypes:
     """Valid event types for orders/{orderId}/events/{eventId}"""
 
