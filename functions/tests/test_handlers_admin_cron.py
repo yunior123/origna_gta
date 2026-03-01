@@ -417,7 +417,7 @@ class TestCheckLowStockAlerts:
         mock_seller_doc = Mock()
         mock_seller_doc.exists = True
         mock_seller_doc.id = "seller_1"
-        mock_seller_doc.to_dict.return_value = {"email": seller_email}
+        mock_seller_doc.to_dict.return_value = {"email": seller_email, "emailConsent": True}
 
         def collection_side_effect(name):
             coll = Mock()

@@ -20,16 +20,16 @@ class TestProductHandlers:
     @patch("handlers.products.create_success_response")
     @patch("handlers.products.get_db")
     @patch("handlers.products.get_r2_credentials", return_value={"access_key": "mock_key", "secret_key": "mock_secret", "account_id": "mock_account"})
-    @patch("handlers.products.boto3.client")
-    def test_upload_product_images_success(self, mock_boto_client, mock_get_r2_creds, mock_get_db, mock_create_response):
+    @patch("handlers.products._get_cached_s3_client")
+    def test_upload_product_images_success(self, mock_get_s3, mock_get_r2_creds, mock_get_db, mock_create_response):
         """Test successful image upload with presigned URLs"""
         from handlers.products import upload_product_images
 
         mock_create_response.return_value = {"success": True, "data": {"uploadUrls": [{}, {}]}}
 
-        # Mock boto3 S3 client
+        # Mock boto3 S3 client (boto3 import now deferred inside _get_cached_s3_client)
         mock_s3_client = Mock()
-        mock_boto_client.return_value = mock_s3_client
+        mock_get_s3.return_value = mock_s3_client
         mock_s3_client.generate_presigned_url.return_value = "https://r2.example.com/upload?signature=abc"
 
         # Mock user document with seller onboarding complete
@@ -60,8 +60,8 @@ class TestProductHandlers:
     @patch("handlers.products.create_success_response")
     @patch("handlers.products.get_db")
     @patch("handlers.products.get_r2_credentials", return_value={"access_key": "mock_key", "secret_key": "mock_secret", "account_id": "mock_account"})
-    @patch("handlers.products.boto3.client")
-    def test_upload_images_invalid_file_type_rejected(self, mock_boto_client, mock_get_r2_creds, mock_get_db, mock_create_response):
+    @patch("handlers.products._get_cached_s3_client")
+    def test_upload_images_invalid_file_type_rejected(self, mock_get_s3, mock_get_r2_creds, mock_get_db, mock_create_response):
         """SECURITY: Test non-image file types are rejected - verifies presigned URLs are only generated for images"""
         from handlers.products import upload_product_images
 
@@ -70,7 +70,7 @@ class TestProductHandlers:
         # Note: The current implementation allows any file type because it only validates
         # the number of files. This test documents the expected behavior.
         mock_s3_client = Mock()
-        mock_boto_client.return_value = mock_s3_client
+        mock_get_s3.return_value = mock_s3_client
         mock_s3_client.generate_presigned_url.return_value = "https://r2.example.com/upload?signature=abc"
 
         # Mock user document with seller onboarding complete

@@ -2020,3 +2020,6 @@ class OrderEventTypes:
     STATUS_CHANGED = "status_changed"
     PAYMENT_AUTHORIZED = "payment_authorized"
     PAYMENT_CAPTURED = "payment_captured"
+    CANCELLATION_CONFIRMED = "cancellation_confirmed"
+    REFUND_INITIATED = "refund_initiated"
+    ITEM_STATUS_CHANGED = "item_status_changed"
