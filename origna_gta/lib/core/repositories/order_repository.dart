@@ -32,7 +32,7 @@ class FirebaseOrderRepository implements OrderRepository {
         Fields.productId: productId,
       });
     } else {
-      // Whole-order payment capture (legacy / single-seller path)
+      // Whole-order payment capture (single-seller path)
       await _functions.httpsCallable(CloudFunctionEndpoints.capturePayment).call({
         Fields.orderId: orderId,
       });

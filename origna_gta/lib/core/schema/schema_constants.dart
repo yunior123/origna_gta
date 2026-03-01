@@ -327,6 +327,7 @@ abstract final class CloudFunctionEndpoints {
   static const getOrCreateChat = 'get_or_create_chat';
   static const markMessagesRead = 'mark_messages_read';
   static const sendMessage = 'send_message';
+  static const deleteMessage = 'delete_message'; // CHAT-H2/H3
 
   // === DIGITAL DOWNLOAD ENDPOINTS ===
   static const generateSoftwareDownloadSession = 'generate_software_download_session';

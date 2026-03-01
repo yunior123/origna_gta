@@ -62,10 +62,17 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
       return 'Ships from: ${countries.length} locations worldwide';
     }
     // Single location — show full city, province, country
+    // FAV-L2: also fall back to single country from list when no individual fields
     final parts = [
       if (widget.shipFromCity != null) widget.shipFromCity!,
       if (widget.shipFromProvince != null) widget.shipFromProvince!,
       if (widget.shipFromCountry != null) widget.shipFromCountry!,
+      // If no individual address fields but a single country is provided in the list, use it
+      if (widget.shipFromCity == null &&
+          widget.shipFromCountry == null &&
+          countries != null &&
+          countries.length == 1)
+        countries[0],
     ];
     return parts.isEmpty ? '' : 'Ships from: ${parts.join(', ')}';
   }
@@ -158,7 +165,9 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                               widget.sellerName,
                               style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                             ),
-                            if (widget.shipFromCity != null || (widget.shipFromCountries != null && widget.shipFromCountries!.isNotEmpty)) ...[
+                            // FAV-L2: only render when label is non-empty (guards against single-country list
+                            // with no city/province/country fields → avoids "Ships from: " with blank text)
+                            if (_shipFromLabel.isNotEmpty) ...[
                               const SizedBox(height: 2),
                               Row(
                                 children: [

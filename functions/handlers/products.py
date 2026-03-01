@@ -1027,18 +1027,30 @@ def _validate_warehouse_address(address: dict) -> None:
     """
     Validate warehouse address fields.
     FIX H-04: Enforces Canadian postal-code format and province whitelist on server side.
+    WH-H2 FIX: International warehouses skip CA-specific validation but still require
+    address, city, and country fields to be present.
     Raises https_fn.HttpsError("invalid-argument", ...) on failure.
     """
     if not isinstance(address, dict):
         raise https_fn.HttpsError("invalid-argument", "address must be a map")
+
+    # Required for all warehouses regardless of country
+    street = (address.get(Fields.STREET) or "").strip()
+    if not street:
+        raise https_fn.HttpsError("invalid-argument", "address.street is required")
     city = (address.get(Fields.CITY) or "").strip()
     if not city:
         raise https_fn.HttpsError("invalid-argument", "address.city is required")
-    country = (address.get(Fields.COUNTRY) or "").strip().lower()
+    country_raw = (address.get(Fields.COUNTRY) or "").strip()
+    if not country_raw:
+        raise https_fn.HttpsError("invalid-argument", "address.country is required")
+
+    country = country_raw.lower()
     state = (address.get(Fields.STATE) or "").strip().upper()
     postal = (address.get(Fields.POSTAL_CODE) or "").strip().upper()
-    # For Canadian warehouses validate province + postal format
-    if not country or country in ("canada", "ca"):
+
+    # Canadian-specific validation: province whitelist + postal code format
+    if country in ("canada", "ca"):
         if state and state not in BusinessRules.VALID_PROVINCES:
             raise https_fn.HttpsError(
                 "invalid-argument",
@@ -1051,6 +1063,7 @@ def _validate_warehouse_address(address: dict) -> None:
                     "invalid-argument",
                     f"Invalid Canadian postal code '{postal}'. Expected format: A1A 1A1",
                 )
+    # International warehouses: no CA-specific checks, required fields already validated above
 
 
 def _derive_ship_from_fields(seller_id: str, product_data: dict) -> dict:
@@ -2464,6 +2477,13 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     except Exception as e:
         logger.error(f"Back-in-stock notification error for {product_id}: {e}")
 
+    # STOCK-M1 FIX: Delete orphaned stock_notification subscriptions for variants that were
+    # removed from the product. Without this, zombie docs accumulate unboundedly.
+    try:
+        _cleanup_orphaned_variant_subscriptions(product_id, before_data, product_data)
+    except Exception as e:
+        logger.error(f"Orphaned variant subscription cleanup error for {product_id}: {e}")
+
     try:
         product_data["id"] = product_id
         # Only index if product is active — prevents bypassing the approval gate
@@ -3210,8 +3230,9 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
                 other_wh.reference.update({Fields.IS_DEFAULT: True})
                 break  # promote exactly one
 
-        # Delete the warehouse doc
-        wh_ref.delete()
+        # WH-H1 FIX: Clean up product associations BEFORE deleting the warehouse doc.
+        # Deleting first created a window where products still referenced the deleted warehouse,
+        # causing checkout failures. Products are updated first, then the warehouse is removed.
 
         # Cleanup Loop: Remove warehouse from products and subcollections
         from firebase_admin import firestore as _fs_admin_cleanup
@@ -3259,6 +3280,9 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
 
             cleanup_batch.commit()
             total_cleaned += len(batch_docs)
+
+        # WH-H1 FIX: Delete warehouse doc only after all products have been disassociated.
+        wh_ref.delete()
 
         logger.info(f"Warehouse {warehouse_id} deleted for seller {seller_id} (cleaned {total_cleaned} products)")
         return create_success_response({"warehouseId": warehouse_id})
@@ -3321,6 +3345,64 @@ def _clear_default_warehouse(seller_id: str, exclude_id: str | None = None) -> N
         if exclude_id and doc.id == exclude_id:
             continue
         doc.reference.update({"isDefault": False})
+
+
+# ================================================================
+# STOCK-M1 — ORPHANED VARIANT SUBSCRIPTION CLEANUP
+# ================================================================
+
+
+def _cleanup_orphaned_variant_subscriptions(product_id: str, before_data: dict, after_data: dict) -> None:
+    """
+    STOCK-M1 FIX: When a seller removes a variant from the variants[] array, delete all
+    stock_notification subscriptions for that removed variantKey. Without this, zombie docs
+    accumulate unboundedly and buyers receive phantom notifications for non-existent variants.
+    """
+    before_variants_raw = before_data.get(Fields.VARIANTS) or []
+    after_variants_raw = after_data.get(Fields.VARIANTS) or []
+
+    # No variants in before state — nothing could have been removed
+    if not before_variants_raw:
+        return
+
+    old_variant_keys: set[str] = {
+        v.get(Fields.VARIANT_KEY) or v.get(Fields.VARIANT_ID, "")
+        for v in before_variants_raw
+        if isinstance(v, dict)
+    }
+    new_variant_keys: set[str] = {
+        v.get(Fields.VARIANT_KEY) or v.get(Fields.VARIANT_ID, "")
+        for v in after_variants_raw
+        if isinstance(v, dict)
+    }
+    # Discard empty strings to avoid matching product-level (non-variant) subscriptions
+    old_variant_keys.discard("")
+    new_variant_keys.discard("")
+
+    removed_variant_keys = old_variant_keys - new_variant_keys
+    if not removed_variant_keys:
+        return
+
+    logger.info(
+        f"Product {product_id}: cleaning up subscriptions for removed variants {removed_variant_keys}"
+    )
+    for vk in removed_variant_keys:
+        subs = (
+            get_db()
+            .collection(Collections.STOCK_NOTIFICATIONS)
+            .where(Fields.PRODUCT_ID, "==", product_id)
+            .where(Fields.VARIANT_KEY, "==", vk)
+            .limit(500)
+            .stream()
+        )
+        cleanup_batch = get_db().batch()
+        count = 0
+        for sub in subs:
+            cleanup_batch.delete(sub.reference)
+            count += 1
+        if count:
+            cleanup_batch.commit()
+            logger.info(f"Product {product_id}: deleted {count} orphaned subscriptions for variant '{vk}'")
 
 
 # ================================================================
@@ -3409,9 +3491,9 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
   </p>
 </div>"""
                     try:
-                        # FIX-7 (MEDIUM): Stamp notifiedAt BEFORE sending so Firestore-triggered
-                        # retries see notifiedAt != None and skip this subscriber, preventing
-                        # duplicate email/push on Cloud Function retry.
+                        # Stamp notifiedAt BEFORE sending so Firestore-triggered retries see
+                        # notifiedAt != None and skip this subscriber, preventing duplicate
+                        # email/push on Cloud Function retry.
                         sub_data_uid = sub_data.get(Fields.USER_ID)
                         sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
                         from services.email_task import enqueue_email_task
@@ -3431,6 +3513,11 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                                 f"{product_name} (the variant you wanted) is back in stock.",
                                 data={"type": "back_in_stock", "productId": product_id, "variantKey": variant_key},
                             )
+                        # FIX STOCK-C1 (CRITICAL): Delete the subscription doc after successful
+                        # notification delivery. The notifiedAt stamp above already guards against
+                        # duplicate delivery on CF retry; deleting prevents unbounded collection
+                        # growth (100K+ zombie docs/year for popular products).
+                        sub_doc.reference.delete()
                     except Exception as e:
                         logger.error(f"Failed to send back-in-stock notification for sub {sub_doc.id}: {e}")
                         # Rollback notifiedAt so next run can retry this subscriber
@@ -3480,7 +3567,7 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
   </p>
 </div>"""
             try:
-                # FIX-7 (MEDIUM): Claim notifiedAt before send to prevent duplicate delivery on retry.
+                # Claim notifiedAt before send to prevent duplicate delivery on retry.
                 sub_data_uid = sub_data.get(Fields.USER_ID)
                 sub_doc.reference.update({Fields.NOTIFIED_AT: get_server_timestamp()})
                 from services.email_task import enqueue_email_task
@@ -3499,6 +3586,11 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                         f"{product_name} is back in stock.",
                         data={"type": "back_in_stock", "productId": product_id},
                     )
+                # FIX STOCK-C1 (CRITICAL): Delete the subscription doc after successful
+                # notification delivery. The notifiedAt stamp above already guards against
+                # duplicate delivery on CF retry; deleting prevents unbounded collection
+                # growth (100K+ zombie docs/year for popular products).
+                sub_doc.reference.delete()
             except Exception as e:
                 logger.error(f"Failed to send back-in-stock notification for sub {sub_doc.id}: {e}")
                 # Rollback notifiedAt so next run can retry this subscriber

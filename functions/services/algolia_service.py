@@ -82,6 +82,20 @@ def format_product_for_algolia(product_id: str, product_data: dict | Product) ->
         Fields.IS_LOCAL_DELIVERY_ONLY: data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False),
     }
 
+    # SRCH-H1: Compute availableInCanada — filters out international sellers with
+    # local-delivery-only products that can never ship to any Canadian buyer.
+    # Canadian-seller local-delivery products remain available (buyer/seller in same province).
+    # DEPLOY NOTE: 'availableInCanada' must be added as an "Attribute for Faceting"
+    # in Algolia index settings for Filter.facet() to work on this field.
+    is_local_only = data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
+    seller_addr = data.get(Fields.SELLER_ADDRESS) or {}
+    if hasattr(seller_addr, "model_dump"):
+        seller_addr = seller_addr.model_dump(exclude_none=True)
+    seller_country = (seller_addr.get(Fields.COUNTRY) or "").strip().upper()
+    is_canadian_seller = seller_country in ("CA", "CANADA")
+    # availableInCanada = True when: ships nationally OR is local-only but seller is Canadian
+    algolia_object["availableInCanada"] = (not is_local_only) or is_canadian_seller
+
     # Seller address - handle both dict and Address object
     seller_address = data.get(Fields.SELLER_ADDRESS)
     if seller_address:
@@ -410,6 +424,7 @@ def configure_algolia_index():
                         Fields.IS_PERISHABLE,
                         f"filterOnly({Fields.SHIP_FROM_COUNTRY})",
                         f"filterOnly({Fields.SHIP_FROM_COUNTRIES})",
+                        "filterOnly(availableInCanada)",  # SRCH-H1: Canada buyer filtering
                     ],
                     "customRanking": [
                         f"desc({Fields.RATING})",  # Sort by rating first
@@ -446,6 +461,7 @@ def configure_algolia_index():
                         Fields.SHIP_FROM_PROVINCE,
                         Fields.SHIP_FROM_COUNTRY,
                         Fields.SHIP_FROM_COUNTRIES,
+                        "availableInCanada",  # SRCH-H1
                     ],
                     "highlightPreTag": "<mark>",
                     "highlightPostTag": "</mark>",

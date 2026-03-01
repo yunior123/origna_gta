@@ -1114,11 +1114,16 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
                 # Build tax breakdown dict (matches Flutter provinceTaxRates)
                 # Tax base: post-discount subtotal + shipping (CRA requirement)
-                taxable_total = (discounted_subtotal_cents / 100) + (shipping_cost_cents / 100)
+                # PAY-C2 FIX: Use integer-cents arithmetic to eliminate float rounding errors.
+                # Compute per-component tax in cents then convert to dollars for display.
+                taxable_total_cents = discounted_subtotal_cents + shipping_cost_cents
                 province_rates = _PROVINCE_TAX_BREAKDOWN.get(
                     state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05})
                 )
-                taxes_breakdown = {name: round(taxable_total * rate, 2) for name, rate in province_rates.items()}
+                taxes_breakdown = {
+                    name: round(taxable_total_cents * rate) / 100
+                    for name, rate in province_rates.items()
+                }
 
                 # SECURITY: Force is_reverse_charge to False in fallback mode
                 is_reverse_charge = False
@@ -1155,11 +1160,16 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
             # Build tax breakdown dict (matches Flutter provinceTaxRates)
             # Tax base: post-discount subtotal + shipping (CRA requirement)
-            taxable_total = (discounted_subtotal_cents / 100) + (shipping_cost_cents / 100)
+            # PAY-C2 FIX: Use integer-cents arithmetic to eliminate float rounding errors.
+            # Compute per-component tax in cents then convert to dollars for display.
+            taxable_total_cents = discounted_subtotal_cents + shipping_cost_cents
             province_rates = _PROVINCE_TAX_BREAKDOWN.get(
                 state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05})
             )
-            taxes_breakdown = {name: round(taxable_total * rate, 2) for name, rate in province_rates.items()}
+            taxes_breakdown = {
+                name: round(taxable_total_cents * rate) / 100
+                for name, rate in province_rates.items()
+            }
 
             # No Stripe Tax API available — B2B exemption not possible
             is_reverse_charge = False
@@ -1519,12 +1529,14 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
         Fields.DELIVERY_SPEED: delivery_speed,
-        # Platform fee on post-discount subtotal (platform earns only on amount actually collected).
+        # PAY-C1 FIX: Platform fee on pre-discount (original) subtotal.
+        # Using actual_subtotal_cents (pre-discount) ensures sellers are not penalised for
+        # coupons they did not issue, and the platform earns on the catalogue value.
         # PLATFORM_FEE_RATIO = 2.5% (config.py). Premium buyers pay 0% as a subscription benefit.
         # P-03 FIX: Read from subscriptions/{uid} instead of cached isPremium to prevent race condition
         Fields.PLATFORM_FEE_TOTAL_CENTS: 0  # already in cents
         if _check_premium_from_sub(user_id)
-        else round(discounted_subtotal_cents * PLATFORM_FEE_RATIO),  # already in cents
+        else round(actual_subtotal_cents * PLATFORM_FEE_RATIO),  # already in cents
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
         Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
@@ -3042,6 +3054,10 @@ def process_charge_refunded(charge: dict) -> str | None:
                 continue
 
             try:
+                # PAY-M3: No pre-check on seller account status — if the account
+                # is deactivated or funds withdrawn, Stripe returns a StripeError
+                # which is caught below and escalated via SECURITY_ALERTS.
+                # This is monitored rather than pre-checked to avoid an extra API call per payout.
                 reversal_kwargs = {
                     StripeConstants.METADATA: {
                         Fields.REASON: "refund",
@@ -3619,7 +3635,7 @@ def process_dispute_closed(dispute: dict) -> str | None:
                     seller_id = payout_data.get(Fields.SELLER_ID, "")
                     reversed_cents = payout_data.get(Fields.CUMULATIVE_REVERSED_CENTS, 0)
 
-                    # FIX C-2: seller_stripe_snapshot maps seller_id directly to account string (or dict if legacy)
+                    # FIX C-2: seller_stripe_snapshot maps seller_id directly to account string (or dict from older format)
                     seller_stripe_obj = seller_stripe_snapshot.get(seller_id)
                     seller_stripe_id = seller_stripe_obj.get(Fields.STRIPE_ACCOUNT_ID) if isinstance(seller_stripe_obj, dict) else seller_stripe_obj
                     if not seller_stripe_id:

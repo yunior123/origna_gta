@@ -10,6 +10,7 @@ Scheduled Cron Jobs
 import logging
 from datetime import UTC, datetime, timedelta
 
+import sentry_sdk
 import stripe
 from firebase_functions import scheduler_fn
 from google.api_core import exceptions as google_exceptions
@@ -258,6 +259,7 @@ def _run_auto_capture() -> None:
                     RuntimeError,
                 ) as capture_err:
                     logger.error(f"Error during auto-capture for order {order_id}: {capture_err}")
+                    sentry_sdk.capture_exception(capture_err)
                     # Revert lock on failure
                     order_doc.reference.update({
                         Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
@@ -619,6 +621,7 @@ def _run_auto_capture() -> None:
             except stripe.error.StripeError as e:
                 failed_count += 1
                 logger.error(f"Failed to process payout for order {order_id}: {str(e)}")
+                sentry_sdk.capture_exception(e)
 
                 order_doc.reference.update(
                     {
@@ -629,8 +632,8 @@ def _run_auto_capture() -> None:
                 )
 
         except Exception as e:
-            import logging
-            logging.error(f'Error processing item in batch: {e}')
+            logger.error(f"Error processing item in batch: {e}")
+            sentry_sdk.capture_exception(e)
     logger.info(f"Auto-payout completed: {payout_count} paid out, {failed_count} failed")
 
 
@@ -639,7 +642,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Expires orders with authorizations older than AUTHORIZATION_EXPIRY_DAYS (6) days.
 
-    Runs: Daily at 02:00 UTC
+    Runs: Every 1 hour
 
     Logic:
     - With automatic capture, there are no authorization holds to expire.
@@ -785,6 +788,7 @@ def _run_expired_authorizations() -> None:
                         f"STOCK_RESTORED will NOT be set; order will remain in EXPIRED state "
                         f"with stock un-restored. Manual intervention required."
                     )
+                    sentry_sdk.capture_exception(e)
                     stock_restored_ok = False
 
             # Update order with remaining fields NOT set in the transaction.
@@ -802,9 +806,19 @@ def _run_expired_authorizations() -> None:
             expired_count += 1
             logger.info(f"Expired order {order_id} (stock_restored={stock_restored_ok})")
 
+            # EMAIL-C2 FIX: Send authorization expired email — only for AUTHORIZED orders
+            # (i.e. buyer had an active hold that was voided), not for abandoned sessions.
+            if prev_payment_status == PaymentStatusValues.AUTHORIZED:
+                try:
+                    from services.email_service import send_authorization_expired_email
+                    lang = order_data.get(Fields.PREFERRED_LANGUAGE, "en")
+                    send_authorization_expired_email(order_id, order_data, lang=lang)
+                except Exception as email_err:
+                    logger.warning(f"Failed to send authorization expired email for order {order_id}: {email_err}")
+
         except Exception as e:
-            import logging
-            logging.error(f'Error processing item in batch: {e}')
+            logger.error(f"Error processing item in batch: {e}")
+            sentry_sdk.capture_exception(e)
     logger.info(f"Stale order cleanup completed: {expired_count} orders expired")
 
 
@@ -870,8 +884,8 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
                     batch = get_db().batch()
 
             except Exception as e:
-                import logging
-                logging.error(f'Error processing item in batch: {e}')
+                logger.error(f"Error processing item in batch: {e}")
+                sentry_sdk.capture_exception(e)
         # Commit remaining
         if archived_count % 500 != 0:
             batch.commit()
@@ -945,6 +959,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
 
     except Exception as e:
         logger.error(f"Failed to monitor Algolia sync: {str(e)}")
+        sentry_sdk.capture_exception(e)
 
 
 @scheduler_fn.on_schedule(schedule="every 30 minutes", **CRON_OPTIONS)
@@ -960,7 +975,9 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running cleanup_stale_rate_limits cron job")
 
-    cutoff_time = datetime.now(UTC) - timedelta(hours=1)
+    # CRON-H2: 2hr cutoff (not 1hr) so entries at the edge of the 1hr window
+    # are never deleted while still potentially active.
+    cutoff_time = datetime.now(UTC) - timedelta(hours=2)
 
     query = get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500)
 
@@ -983,8 +1000,8 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
                     batch = get_db().batch()
 
             except Exception as e:
-                import logging
-                logging.error(f'Error processing item in batch: {e}')
+                logger.error(f"Error processing item in batch: {e}")
+                sentry_sdk.capture_exception(e)
 
         last_doc = docs[-1]
         query = get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500).start_after(last_doc)
@@ -1042,8 +1059,8 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
                                 referenced_keys.add(key)
                                 break
             except Exception as e:
-                import logging
-                logging.error(f'Error processing item in batch: {e}')
+                logger.error(f"Error processing item in batch: {e}")
+                sentry_sdk.capture_exception(e)
 
         last_doc = docs[-1]
         query = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).limit(500).start_after(last_doc)
@@ -1155,8 +1172,8 @@ def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
                 batch = get_db().batch()
 
         except Exception as e:
-            import logging
-            logging.error(f'Error processing item in batch: {e}')
+            logger.error(f"Error processing item in batch: {e}")
+            sentry_sdk.capture_exception(e)
     if deleted_count % 500 != 0:
         batch.commit()
 
@@ -1200,8 +1217,8 @@ def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
                 batch = get_db().batch()
 
         except Exception as e:
-            import logging
-            logging.error(f'Error processing item in batch: {e}')
+            logger.error(f"Error processing item in batch: {e}")
+            sentry_sdk.capture_exception(e)
     if deleted_count % 500 != 0:
         batch.commit()
 
@@ -1487,6 +1504,11 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
             if not seller_email:
                 continue
 
+            # CASL / Quebec Law 25: skip seller if they have not consented to emails
+            if not seller_info.get(Fields.EMAIL_CONSENT):
+                logger.info(f"Low stock alert skipped for seller {seller_id}: no emailConsent")
+                continue
+
             product_name = data.get(Fields.NAME, "Your product")
             subject = f"[Origna] Low stock alert: {product_name}"
             html = f"""
@@ -1569,6 +1591,11 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
             user_email = user_data.get(Fields.EMAIL)
 
             if not user_email:
+                continue
+
+            # CASL / Quebec Law 25: skip users who have not consented to emails
+            if not user_data.get(Fields.EMAIL_CONSENT):
+                skipped_count += 1
                 continue
 
             # 3-day cooldown check
@@ -1918,6 +1945,7 @@ def _compute_seller_metrics_logic() -> None:
         logger.info(f"compute_seller_metrics done: {processed_count} sellers processed, {alerted_count} alerts raised")
     except Exception as e:
         logger.error(f"compute_seller_metrics failed: {e}")
+        sentry_sdk.capture_exception(e)
     finally:
         release_cron_lock("compute_seller_metrics")
 
@@ -2111,6 +2139,10 @@ def send_premium_renewal_reminders(event: scheduler_fn.ScheduledEvent) -> None:
                 if sub_data.get(Fields.CANCEL_AT_PERIOD_END):
                     continue
 
+                # Skip users with a cancelled subscription status (defence-in-depth guard)
+                if sub_data.get(Fields.STATUS) == SubscriptionStatusValues.CANCELED:
+                    continue
+
                 # Dedup: skip if reminder already sent for this renewal cycle
                 if sub_data.get(dedup_field):
                     continue
@@ -2156,9 +2188,9 @@ def send_premium_renewal_reminders(event: scheduler_fn.ScheduledEvent) -> None:
         release_cron_lock("send_premium_renewal_reminders")
 
 
-@scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="0 */6 * * *", **CRON_OPTIONS)
 def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
-    """Hourly: detect and fix subscription-user cache mismatches. Catches missed webhooks."""
+    """Every 6 hours: detect and fix subscription-user cache mismatches. Catches missed webhooks."""
     if not acquire_cron_lock("sync_expired_subscriptions"):
         logger.info("sync_expired_subscriptions: already running, skipping")
         return
@@ -2194,6 +2226,7 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
                 synced_count += 1
             except Exception as e:
                 logger.error(f"sync_expired_subscriptions: failed for {uid}: {e}")
+                sentry_sdk.capture_exception(e)
                 error_count += 1
 
         # Fix orphaned isPremium=True with no subscription doc — paginate through all premium users
@@ -2334,10 +2367,12 @@ def _run_return_escalation() -> None:
                 escalated += 1
             except Exception as e:
                 logger.error(f"Failed to escalate return {return_id}: {e}")
+                sentry_sdk.capture_exception(e)
                 errors += 1
 
     except Exception as e:
         logger.error(f"escalate_stale_return_requests query failed: {e}")
+        sentry_sdk.capture_exception(e)
         return
 
     logger.info(f"escalate_stale_return_requests: escalated={escalated}, errors={errors}")

@@ -272,8 +272,11 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context) async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) return false;
 
-  // Emulator bypass
-  if (EnvConfig().isEmulator) {
+  // BOOT-H1: emulator bypass is intentional for local dev only.
+  // Restricted to kDebugMode to ensure it cannot fire in release builds.
+  // Logs a warning so behavior divergence is visible during development.
+  if (EnvConfig().isEmulator && kDebugMode) {
+    debugPrint('⚠️ BOOT-H1: email verification bypassed in emulator mode');
     return true;
   }
 

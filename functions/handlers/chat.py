@@ -17,9 +17,11 @@ from firebase_functions import https_fn
 from google.cloud import firestore
 
 from schema_constants import (
+    BusinessRules,
     Collections,
     Fields,
     ProductLifecycleStatusValues,
+    UserRoleValues,
     ValidationLimits,
 )
 from utils.db import get_db as _get_db
@@ -274,8 +276,15 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     if uid not in (buyer_id, seller_id):
         raise https_fn.HttpsError("permission-denied", "Access denied.")
 
-    # Buyers must be premium to send messages
-    if uid == buyer_id and not _is_premium(uid):
+    # F-70: Fetch sender doc once — reused for premium check (buyers) and sender name.
+    # This avoids a separate subscriptions read for the premium gate by using the
+    # cached isPremium field written by the subscriptions handler on every status change.
+    sender_snap = db.collection(Collections.USERS).document(uid).get()
+    sender_data = (sender_snap.to_dict() or {}) if sender_snap.exists else {}
+    sender_name = sender_data.get(Fields.NAME, "Someone")
+
+    # Buyers must be premium to send messages (use cached isPremium — avoids a second read)
+    if uid == buyer_id and not sender_data.get(Fields.IS_PREMIUM, False):
         raise https_fn.HttpsError(
             "permission-denied",
             "Premium subscription required to send messages.",
@@ -294,12 +303,25 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", "Too many messages. Please slow down.")
 
+    # Thread message cap — prevent unbounded storage growth
+    msg_count_result = (
+        db.collection(Collections.CHATS)
+        .document(chat_id)
+        .collection(Collections.CHAT_MESSAGES)
+        .count()
+        .get()
+    )
+    msg_count = msg_count_result[0][0].value
+    if msg_count >= BusinessRules.CHAT_MAX_MESSAGES_PER_THREAD:
+        raise https_fn.HttpsError(
+            "resource-exhausted",
+            f"Thread message limit of {BusinessRules.CHAT_MAX_MESSAGES_PER_THREAD} reached. "
+            "Please start a new conversation.",
+        )
+
     now = datetime.now(UTC)
 
-    # F-70: Read sender name once and denormalize into the message doc to avoid
-    # a separate Firestore read on every push notification sent.
-    sender_snap = db.collection(Collections.USERS).document(uid).get()
-    sender_name = (sender_snap.to_dict() or {}).get(Fields.NAME, "Someone") if sender_snap.exists else "Someone"
+    # sender_name already resolved above (F-70 — single user doc fetch reused for both checks)
 
     chat_messages_ref = db.collection(Collections.CHATS).document(chat_id).collection(Collections.CHAT_MESSAGES)
 
@@ -417,3 +439,64 @@ def report_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     logger.info(f"Message {message_id} in chat {chat_id} flagged by user {uid}")
 
     return {"success": True, "reportId": report_ref.id}
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def delete_message(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    CHAT-H2 (sender delete) / CHAT-H3 (admin delete): Soft-delete a chat message.
+    Clears text and imageUrls; sets deleted=true. Content is unrecoverable client-side.
+
+    Request data: { threadId: str, messageId: str }
+    Returns: { success: bool }
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Authentication required.")
+
+    uid = req.auth.uid
+    thread_id = (req.data.get("threadId") or "").strip()
+    message_id = (req.data.get("messageId") or "").strip()
+
+    if not thread_id or not message_id:
+        raise https_fn.HttpsError("invalid-argument", "threadId and messageId are required.")
+
+    db = _get_db()
+
+    # Fetch the message first to check ownership
+    msg_ref = (
+        db.collection(Collections.CHATS)
+        .document(thread_id)
+        .collection(Collections.CHAT_MESSAGES)
+        .document(message_id)
+    )
+    msg_snap = msg_ref.get()
+    if not msg_snap.exists:
+        raise https_fn.HttpsError("not-found", "Message not found.")
+
+    msg_data = msg_snap.to_dict() or {}
+
+    # Authorization: sender OR admin
+    is_sender = msg_data.get(Fields.SENDER_ID) == uid
+
+    if not is_sender:
+        # Check admin role — single user doc read only when not the sender
+        caller_snap = db.collection(Collections.USERS).document(uid).get()
+        caller_data = (caller_snap.to_dict() or {}) if caller_snap.exists else {}
+        is_admin = UserRoleValues.ADMIN in caller_data.get(Fields.ROLES, [])
+        if not is_admin:
+            raise https_fn.HttpsError("permission-denied", "You can only delete your own messages.")
+
+    # Guard: already deleted — idempotent
+    if msg_data.get(Fields.DELETED):
+        return {"success": True}
+
+    msg_ref.update({
+        Fields.DELETED: True,
+        Fields.MESSAGE_TEXT: "",
+        Fields.IMAGE_URLS: [],
+        Fields.UPDATED_AT: get_server_timestamp(),
+    })
+
+    logger.info(f"Message {message_id} soft-deleted in chat {thread_id} by user {uid}")
+
+    return {"success": True}

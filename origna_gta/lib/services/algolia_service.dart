@@ -29,9 +29,11 @@ class AlgoliaService {
     if (_hitsSearcher == null) return;
     _hitsSearcher.applyState((state) {
       var newState = state.copyWith(query: searchQuery, page: 0);
-      // Always filter to active products only — guards against stale index entries
+      // Always filter to active products available to Canadian buyers (SRCH-H1)
       final filters = <FilterFacet>{
         Filter.facet(Fields.lifecycleStatus, ProductLifecycleStatusValues.active),
+        // Exclude international sellers with local-delivery-only products that cannot ship to Canada
+        Filter.facet('availableInCanada', true),
       };
       if (categoryId != null) {
         filters.add(Filter.facet(Fields.categoryId, categoryId));

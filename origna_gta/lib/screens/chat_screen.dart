@@ -205,16 +205,30 @@ class _MessagesList extends ConsumerWidget {
             ),
           );
         }
-        return ListView.builder(
-          controller: scrollController,
-          padding: const EdgeInsets.all(16),
-          itemCount: messages.length,
-          itemBuilder: (ctx, i) => _AnimatedMessageBubble(
-            key: ValueKey(messages[i].id),
-            index: i,
-            message: messages[i],
-            isMe: messages[i].senderId == myUid,
-            isDark: isDark,
+        // CHAT-H2: provide delete callback to bubbles via InheritedWidget
+        return _ChatDeleteScope(
+          onDelete: (messageId) async {
+            try {
+              await ref.read(chatRepositoryProvider).deleteMessage(chatId, messageId);
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('chat.delete_failed'.tr()), backgroundColor: DesignTokens.error),
+                );
+              }
+            }
+          },
+          child: ListView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.all(16),
+            itemCount: messages.length,
+            itemBuilder: (ctx, i) => _AnimatedMessageBubble(
+              key: ValueKey(messages[i].id),
+              index: i,
+              message: messages[i],
+              isMe: messages[i].senderId == myUid,
+              isDark: isDark,
+            ),
           ),
         );
       },
@@ -297,6 +311,25 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // CHAT-H2: show placeholder for soft-deleted messages
+    if (message.deleted) {
+      return Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Text(
+            'chat.message_deleted'.tr(),
+            style: TextStyle(
+              color: isDark ? DesignTokens.textDisabled : DesignTokens.textTertiary,
+              fontSize: 13,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      );
+    }
+
     final semanticLabel = isMe
         ? 'chat-message-me: ${message.text}'
         : 'chat-message-other: ${message.text}';
@@ -306,10 +339,44 @@ class _MessageBubble extends StatelessWidget {
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: GestureDetector(
           onLongPress: () {
-            Clipboard.setData(ClipboardData(text: message.text));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('chat.message_copied'.tr()), duration: const Duration(seconds: 1)),
-            );
+            // CHAT-H2: sender can delete their own messages
+            if (isMe) {
+              showModalBottomSheet<void>(
+                context: context,
+                builder: (_) => SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.copy_outlined),
+                        title: Text('chat.copy_message'.tr()),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Clipboard.setData(ClipboardData(text: message.text));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('chat.message_copied'.tr()), duration: const Duration(seconds: 1)),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: Icon(Icons.delete_outline, color: DesignTokens.error),
+                        title: Text('chat.delete_message'.tr(), style: TextStyle(color: DesignTokens.error)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          // Delegate deletion to parent via callback stored in context
+                          _ChatDeleteScope.of(context)?.onDelete(message.id);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            } else {
+              Clipboard.setData(ClipboardData(text: message.text));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('chat.message_copied'.tr()), duration: const Duration(seconds: 1)),
+              );
+            }
           },
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
@@ -338,6 +405,20 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
   }
+}
+
+/// InheritedWidget scope that lets _MessageBubble call the delete handler
+/// without needing direct access to the repository or chat ID.
+class _ChatDeleteScope extends InheritedWidget {
+  final void Function(String messageId) onDelete;
+
+  const _ChatDeleteScope({required this.onDelete, required super.child});
+
+  static _ChatDeleteScope? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_ChatDeleteScope>();
+
+  @override
+  bool updateShouldNotify(_ChatDeleteScope old) => onDelete != old.onDelete;
 }
 
 class _MessageInput extends StatelessWidget {

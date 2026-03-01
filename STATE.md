@@ -5,7 +5,7 @@
 
 # FULL REPO AUDIT — 2026-02-28
 
-## STATUS: Audit complete (19/33 + Gemini fallback + 6 new auditors 2026-03-01). All critical + most high fixes applied.
+## STATUS: Massive fix session 2026-03-01. ALL CRITICAL fixed. Most HIGH/MEDIUM fixed. Auditors hit 429 quota — rerun next session.
 
 ## PENDING TASKS
 1. ✅ Full audit (complete — findings below)
@@ -56,6 +56,35 @@
 | LEG-H1: CircularProgressIndicator → ModernLoadingIndicator | productaddvideo_screen.dart | ✅ |
 | LEG-H2: FirebaseAuth.instance → ref.read(firebaseAuthProvider) | profile_screen.dart | ✅ |
 | SRCH-H3: admin API key guard in update_remote_config.py | scripts/update_remote_config.py | ✅ |
+| SRCH-H1: availableInCanada computed field in Algolia index | algolia_service.py + algolia_service.dart | ✅ |
+| CHAT-H2/H3: delete_message callable + Firestore rules + UI | chat.py, main.py, firestore.rules, chat_screen.dart | ✅ |
+| CRON-H2: rate limiter cleanup cutoff 1hr → 2hr | cron_jobs.py | ✅ |
+| BOOT-H1: email verification bypass restricted to kDebugMode | utils.dart | ✅ |
+| BOOT-M1: CORS dev.orignagta.ca + staging.orignagta.ca added | schema_constants.py | ✅ |
+| BOOT-M2: Algolia index names — currently in sync, documented | env_config.dart | ✅ documented |
+| BOOT-M4: R2/Algolia ternary chains → switch expressions | env_config.dart | ✅ |
+| BOOT-L1: sessionTimeoutMinutes constant extracted | schema_constants.dart + session_timeout_service.dart | ✅ |
+| BOOT-L2: orphaned sellerSetup route removed | routes.dart | ✅ |
+| CRON-L1: check_expired_authorizations docstring corrected | cron_jobs.py | ✅ |
+| CRON-H1: auto-confirm vs expiry race — existing guards verified | cron_jobs.py | ✅ verified safe |
+| FAV-L2: empty _shipFromLabel guard added | modern_product_card.dart | ✅ |
+| FAV-M2: sellerProductsPageSize constant + used in query | schema_constants.dart + seller_products_viewmodel.dart | ✅ |
+| FE-M2: notificationPermissionProvider autoDispose justification | notification_provider.dart | ✅ |
+| FE-M3: Q&A badge added to seller_products_screen | seller_products_screen.dart | ✅ |
+| LEG-L1: "legacy" removed from 3 code comments | payment_stripe.py, order_repository.dart, seller_warehouses_screen.dart | ✅ |
+| LEG-H1: CircularProgressIndicator → ModernLoadingIndicator | productaddvideo_screen.dart | ✅ |
+| LEG-H2: FirebaseAuth.instance → firebaseAuthProvider | profile_screen.dart | ✅ |
+| LEG-H3: hardcoded "users" → Collections.USERS | subscriptions.py | ✅ |
+| NOTIF-H2: FCM stale cleanup already reactive in push_service.py | push_service.py | ✅ verified |
+| NOTIF-M1: refund_issued deep link routing | notification_service.dart | ✅ |
+| PAY-M3: transfer reversal account status — monitored via SECURITY_ALERTS | payment_stripe.py | ✅ documented |
+| SRCH-H2: retry_failed_algolia_syncs already implemented | cron_jobs.py | ✅ verified |
+| ADDR-L1: 10-address limit enforced client-side (add button disabled) | addressmanagement_screen.dart | ✅ |
+| ADDR-M2: province validated via dropdown — false positive | editaddress_screen.dart | ✅ false positive |
+| ADDR-M3: postal code regex validator — false positive | editaddress_screen.dart | ✅ false positive |
+| CHAT-H1: message_reports Firestore rules — already existed | firestore.rules | ✅ verified |
+| SCH-M1: payment status rules — admin-only + Pydantic validated | firestore.rules + models/base.py | ✅ verified |
+| BOOT-H3: Riverpod before auth — false positive | origna_app.dart | ✅ false positive |
 
 ## FIXES APPLIED (commits: 6de9999, d7dd13b, cd7602e, 06016ba)
 
@@ -99,11 +128,19 @@ From Gemini audits:
 - **premium**: reactivate_subscription was false positive — _sync_subscription called synchronously ✅
 - **auth**: Sellers lack MFA for payout actions (MEDIUM, deferred)
 
-### Ran in session 2026-03-01 (parallel batch):
-logic-auditor, security-auditor, cross-stack-auditor, order-lifecycle-auditor, performance-auditor, premium-auditor, legal-compliance-auditor
+### Ran in session 2026-03-01 — ALL HIT 429 RATE LIMIT (quota exhausted):
+logic-auditor, security-auditor, cross-stack-auditor, order-lifecycle-auditor, performance-auditor, premium-auditor, legal-compliance-auditor, auth-onboarding-auditor, return-requests-auditor, admin-panel-auditor
 
-### Still Needed:
-product-lifecycle-auditor, return-requests-auditor, coupons-discounts-auditor, firebase-architect-agent, admin-panel-auditor, auth-onboarding-auditor
+### Still Needed (run in NEXT session with 30s gaps, max 6-8 per session):
+1. logic-auditor (MOST IMPORTANT — race conditions, state machine)
+2. security-auditor (Firestore rules bypass, privilege escalation)
+3. cross-stack-auditor (API field mismatches)
+4. order-lifecycle-auditor (state transitions)
+5. performance-auditor (N+1 reads, batch fixes)
+6. premium-auditor (subscription bypass)
+7. auth-onboarding-auditor
+8. legal-compliance-auditor (CASL, Quebec Bill 96)
+9. product-lifecycle-auditor, return-requests-auditor, coupons-discounts-auditor, firebase-architect-agent, admin-panel-auditor, cost-monitor
 
 ---
 

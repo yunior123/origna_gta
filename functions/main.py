@@ -114,6 +114,7 @@ from handlers.admin import (  # noqa: E402
     update_user_roles,
 )
 from handlers.chat import (  # noqa: E402
+    delete_message,
     get_or_create_chat,
     mark_messages_read,
     report_message,
@@ -301,6 +302,7 @@ __all__ = [
     "mark_messages_read",
     "send_message",
     "report_message",
+    "delete_message",
     # Products
     "upload_product_images",
     "upload_product_video",

@@ -99,7 +99,7 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
           required String country,
           required bool isDefault,
         }) async {
-          // FIX L-01: This legacy callback is never invoked — the form always calls
+          // FIX L-01: This callback is never invoked — the form always calls
           // onSaveFull with the complete address map.  Assert so any accidental
           // call surfaces immediately in tests rather than silently dropping a save.
           assert(false, 'onSave should never be called; use onSaveFull instead');

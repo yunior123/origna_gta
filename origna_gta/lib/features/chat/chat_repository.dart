@@ -12,6 +12,8 @@ class ChatMessage {
   final String text;
   final DateTime createdAt;
   final bool isRead;
+  // CHAT-H2: soft-delete flag — set by delete_message callable
+  final bool deleted;
 
   const ChatMessage({
     required this.id,
@@ -20,6 +22,7 @@ class ChatMessage {
     required this.text,
     required this.createdAt,
     required this.isRead,
+    this.deleted = false,
   });
 
   factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
@@ -32,6 +35,7 @@ class ChatMessage {
       text: data[Fields.messageText] as String? ?? '',
       createdAt: ts is Timestamp ? ts.toDate() : DateTime.now(),
       isRead: data[Fields.isRead] as bool? ?? false,
+      deleted: data[Fields.deleted] as bool? ?? false,
     );
   }
 }
@@ -171,6 +175,16 @@ class ChatRepository {
         .call<Map<String, dynamic>>({
       Fields.chatId: chatId,
       Fields.messageText: text.trim(),
+    });
+  }
+
+  /// Soft-delete a message (sender or admin). Sets deleted=true, clears text/images.
+  Future<void> deleteMessage(String chatId, String messageId) async {
+    await _functions
+        .httpsCallable(CloudFunctionEndpoints.deleteMessage)
+        .call<Map<String, dynamic>>({
+      Fields.chatId: chatId,
+      Fields.messageId: messageId,
     });
   }
 

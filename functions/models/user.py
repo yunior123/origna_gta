@@ -64,6 +64,7 @@ class User(BaseModel):
     # Account status
     suspended: bool = Field(default=False, description="Whether account is suspended")
     suspendedAt: datetime | None = Field(default=None, description="When account was suspended")
+    unsuspendedAt: datetime | None = Field(default=None, description="When account was unsuspended")
     paymentProvider: str | None = Field(
         default=PaymentProviderValues.STRIPE, description="Payment provider for seller payouts"
     )

@@ -2336,6 +2336,38 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 user_id, "Order Confirmed!", f"Your order #{oid_short} has been confirmed",
                 data={"type": NotificationTypes.ORDER_STATUS, "orderId": order_id, "status": new_status},
             )
+            # EMAIL-C4 fix: notify sellers on CONFIRMED via Firestore trigger path
+            # (Stripe webhook path handles seller notification for payment-triggered confirms)
+            _seller_ids_c = set(
+                item.get(Fields.SELLER_ID) for item in after_data.get(Fields.ITEMS, []) if item.get(Fields.SELLER_ID)
+            )
+            if _seller_ids_c:
+                _seller_refs_c = [get_db().collection(Collections.USERS).document(s) for s in _seller_ids_c]
+                _seller_docs_c = {doc.id: doc for doc in get_db().get_all(_seller_refs_c)}
+                for _sid_c in _seller_ids_c:
+                    try:
+                        _sdoc_c = _seller_docs_c.get(_sid_c)
+                        if _sdoc_c and _sdoc_c.exists:
+                            _sdata_c = _sdoc_c.to_dict()
+                            _seller_email_c = _sdata_c.get(Fields.EMAIL)
+                            if _seller_email_c:
+                                _slang_c = _sdata_c.get(Fields.PREFERRED_LANGUAGE, "en")
+                                _seller_html_c = get_seller_notification_email(
+                                    after_data, order_id, _sid_c, lang=_slang_c
+                                )
+                                enqueue_email_task(
+                                    to_email=_seller_email_c,
+                                    subject=_email_t("sub.new_order_seller", _slang_c).replace("{oid}", oid_short),
+                                    html_content=_seller_html_c,
+                                    event_type="order_confirmed_seller",
+                                    order_id=order_id,
+                                )
+                            send_push_notification(
+                                _sid_c, "New Order!", f"You have a new order #{oid_short}",
+                                data={"type": NotificationTypes.ORDER_STATUS, "orderId": order_id, "status": new_status},
+                            )
+                    except Exception as _ce:
+                        logger.warning(f"Failed to send confirmed notification to seller {_sid_c}: {_ce}")
 
         elif new_status == OrderStatusValues.PROCESSING:
             processing_html = get_order_processing_email(after_data, order_id, lang=lang)

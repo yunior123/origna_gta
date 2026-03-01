@@ -649,8 +649,18 @@ service cloud.firestore {
           get(/databases/$(database)/documents/chats/$(chatId)).data.sellerId == request.auth.uid ||
           isAdmin()
         );
-        // Messages are written only via backend (Admin SDK bypasses rules)
-        allow create, update, delete: if false;
+        // CHAT-H2: Sender may soft-delete their own message (sets deleted=true, clears text/imageUrls).
+        // Only the four fields written by delete_message callable are permitted — no other mutations.
+        // Admin deletes (CHAT-H3) use Admin SDK and bypass rules entirely.
+        allow update: if isAuthenticated() &&
+          resource.data.senderId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['deleted', 'text', 'imageUrls', 'updatedAt']) &&
+          request.resource.data.deleted == true &&
+          request.resource.data.text == "" &&
+          request.resource.data.imageUrls == [];
+        // Create and hard-delete are backend-only
+        allow create, delete: if false;
       }
     }
 
