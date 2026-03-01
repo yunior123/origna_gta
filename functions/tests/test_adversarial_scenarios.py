@@ -55,7 +55,9 @@ class TestPriceManipulationScenarios:
 
         def make_doc_ref(doc_id):
             mock_ref = Mock()
+            mock_ref.id = doc_id
             if doc_id == "prod_123":
+                mock_product.id = doc_id
                 mock_ref.get.return_value = mock_product
             elif doc_id == "seller_123":
                 mock_ref.get.return_value = mock_seller
@@ -127,7 +129,9 @@ class TestPriceManipulationScenarios:
 
         def make_doc_ref(doc_id):
             mock_ref = Mock()
+            mock_ref.id = doc_id
             if doc_id == "prod_123":
+                mock_product.id = doc_id
                 mock_ref.get.return_value = mock_product
             elif doc_id == "buyer_123":
                 mock_ref.get.return_value = mock_buyer

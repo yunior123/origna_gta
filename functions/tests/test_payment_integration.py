@@ -202,6 +202,17 @@ class TestPaymentFlow(unittest.TestCase):
 
         mock_db.collection.return_value.document.side_effect = mock_document_chain
 
+        def get_all_impl(refs):
+            results = []
+            for ref in refs:
+                doc = ref.get()
+                if isinstance(ref.id, str):
+                    doc.id = ref.id
+                results.append(doc)
+            return results
+
+        mock_db.get_all = MagicMock(side_effect=get_all_impl)
+
         # Execute
         resp = create_checkout_session(req)
 

@@ -3783,3 +3783,4550 @@ Still on Stripe Checkout after 45s — payment may still be processing
   201 passed (1.4h)
 ❌ ERROR: Playwright E2E tests failed on dev.
 error: failed to push some refs to 'https://github.com/yunior123/origna_gta.git'
+
+
+
+
+
+33. Deploying Firestore rules, indexes, storage rules, and hosting to all environments...
+
+→ [dev] orignagta-dev
+(node:31893) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+=== Deploying to 'orignagta-dev'...
+
+i  deploying firestore, hosting
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: reading indexes from firestore.indexes.json...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: latest version of firestore.rules already up to date, skipping upload...
+i  firestore: deploying indexes...
+✔  firestore: deployed indexes in firestore.indexes.json successfully for (default) database
+i  hosting[orignagta-dev]: beginning deploy...
+i  hosting[orignagta-dev]: found 103 files in origna_gta/build/web
+i  hosting: upload complete
+✔  hosting[orignagta-dev]: file upload complete
+✔  firestore: released rules firestore.rules to cloud.firestore
+i  hosting[orignagta-dev]: finalizing version...
+✔  hosting[orignagta-dev]: version finalized
+i  hosting[orignagta-dev]: releasing new version...
+✔  hosting[orignagta-dev]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/orignagta-dev/overview
+Hosting URL: https://orignagta-dev.web.app
+⚠️  [dev] Firebase Storage not provisioned — skipping (deny-all default applies)
+
+→ [staging] orignagta-staging
+(node:31933) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+=== Deploying to 'orignagta-staging'...
+
+i  deploying firestore, hosting
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: reading indexes from firestore.indexes.json...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: latest version of firestore.rules already up to date, skipping upload...
+i  firestore: deploying indexes...
+✔  firestore: deployed indexes in firestore.indexes.json successfully for (default) database
+i  hosting[orignagta-staging]: beginning deploy...
+i  hosting[orignagta-staging]: found 103 files in origna_gta/build/web
+i  hosting: upload complete
+✔  hosting[orignagta-staging]: file upload complete
+✔  firestore: released rules firestore.rules to cloud.firestore
+i  hosting[orignagta-staging]: finalizing version...
+✔  hosting[orignagta-staging]: version finalized
+i  hosting[orignagta-staging]: releasing new version...
+✔  hosting[orignagta-staging]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/orignagta-staging/overview
+Hosting URL: https://orignagta-staging.web.app
+⚠️  [staging] Firebase Storage not provisioned — skipping (deny-all default applies)
+
+→ [prod] orignagta
+(node:31966) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+=== Deploying to 'orignagta'...
+
+i  deploying firestore, hosting
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: reading indexes from firestore.indexes.json...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: latest version of firestore.rules already up to date, skipping upload...
+i  firestore: deploying indexes...
+✔  firestore: deployed indexes in firestore.indexes.json successfully for (default) database
+i  hosting[orignagta]: beginning deploy...
+i  hosting[orignagta]: found 103 files in origna_gta/build/web
+i  hosting: upload complete
+✔  hosting[orignagta]: file upload complete
+✔  firestore: released rules firestore.rules to cloud.firestore
+i  hosting[orignagta]: finalizing version...
+✔  hosting[orignagta]: version finalized
+i  hosting[orignagta]: releasing new version...
+✔  hosting[orignagta]: release complete
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/orignagta/overview
+Hosting URL: https://orignagta.web.app
+⚠️  [prod] Firebase Storage not provisioned — skipping (deny-all default applies)
+
+Recording deployed versions...
+
+[1;33mRecording deploy versions → orignagta-dev[0m
+[0;32m✅ Recorded versions for dev (orignagta-dev):[0m
+   functions              0a09cf980635
+   firestore_rules        16f0bbeb294a
+   firestore_indexes      389475e81645
+   storage_rules          e076d913f9c2
+   hosting                01d0cc750632
+   schema                 7f7ff3e8407d
+   git_sha                b22f501
+
+[1;33mRecording deploy versions → orignagta-staging[0m
+[0;32m✅ Recorded versions for staging (orignagta-staging):[0m
+   functions              0a09cf980635
+   firestore_rules        16f0bbeb294a
+   firestore_indexes      389475e81645
+   storage_rules          e076d913f9c2
+   hosting                01d0cc750632
+   schema                 7f7ff3e8407d
+   git_sha                b22f501
+
+[1;33mRecording deploy versions → orignagta[0m
+[0;32m✅ Recorded versions for prod (orignagta):[0m
+   functions              0a09cf980635
+   firestore_rules        16f0bbeb294a
+   firestore_indexes      389475e81645
+   storage_rules          e076d913f9c2
+   hosting                01d0cc750632
+   schema                 7f7ff3e8407d
+   git_sha                b22f501
+
+✓ Rules, indexes, storage, and hosting deployed to all environments
+Running Pre-Push Validation for State Regression Fixes...
+Checking for old admin password leaks...
+✅ No old admin password leaks found.
+Validating Firestore composite indexes against dev, staging, and prod...
+Fetching indexes for orignagta-dev...
+✅ Environment orignagta-dev has all required indexes.
+Fetching indexes for orignagta-staging...
+✅ Environment orignagta-staging has all required indexes.
+Fetching indexes for orignagta...
+✅ Environment orignagta has all required indexes.
+🎉 All environments have the correct Firestore indexes deployed.
+Validating Firestore rules against dev, staging, and prod...
+Fetching rules for orignagta-dev...
+✅ Environment orignagta-dev rules match local file.
+Fetching rules for orignagta-staging...
+✅ Environment orignagta-staging rules match local file.
+Fetching rules for orignagta...
+✅ Environment orignagta rules match local file.
+🎉 All environments have the correct Firestore rules deployed.
+Validating Firebase Storage rules against dev, staging, and prod...
+Fetching storage rules for orignagta-dev...
+⚠️  No Firebase Storage rules found for orignagta-dev — Storage not enabled, skipping.
+Fetching storage rules for orignagta-staging...
+⚠️  No Firebase Storage rules found for orignagta-staging — Storage not enabled, skipping.
+Fetching storage rules for orignagta...
+⚠️  No Firebase Storage rules found for orignagta — Storage not enabled, skipping.
+🎉 All environments have the correct Firebase Storage rules deployed.
+Validating Cloud Functions sync against dev, staging, and prod...
+✅ Found 118 functions defined locally in functions/main.py
+🔍 Fetching deployed functions for project: orignagta-dev...
+✅ DEV (orignagta-dev) is perfectly in sync.
+----------------------------------------
+🔍 Fetching deployed functions for project: orignagta-staging...
+⚠️ STAGING (orignagta-staging) has extra deployed functions not in repo:
+     - confirm_order_receipt
+----------------------------------------
+🔍 Fetching deployed functions for project: orignagta...
+✅ PROD (orignagta) is perfectly in sync.
+----------------------------------------
+✅ Cloud Functions sync verification passed.
+Validating deploy version parity across dev, staging, and prod...
+
+[1m[0;34m╔══════════════════════════════════════════╗[0m
+[1m[0;34m║   Deploy Version Parity Check            ║[0m
+[1m[0;34m╚══════════════════════════════════════════╝[0m
+
+  Fetching DEV       (orignagta-dev)...
+  Fetching STAGING   (orignagta-staging)...
+  Fetching PROD      (orignagta)...
+
+  COMPONENT                         DEV        STAGING           PROD
+  ────────────────────── ────────────── ────────────── ──────────────
+  [0;32m✓[0m functions                0a09cf980635   0a09cf980635   0a09cf980635
+  [0;32m✓[0m firestore_rules          16f0bbeb294a   16f0bbeb294a   16f0bbeb294a
+  [0;32m✓[0m firestore_indexes        389475e81645   389475e81645   389475e81645
+  [0;32m✓[0m storage_rules            e076d913f9c2   e076d913f9c2   e076d913f9c2
+  [0;32m✓[0m hosting                  01d0cc750632   01d0cc750632   01d0cc750632
+  [0;32m✓[0m schema                   7f7ff3e8407d   7f7ff3e8407d   7f7ff3e8407d
+
+  git_sha                       b22f501        b22f501        b22f501
+
+[0;32m✅ All environments are in sync — no drift detected.[0m
+
+Running ALL Flutter Tests...
+00:03 +6: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/circuit_breaker_test.dart: CircuitBreaker State Transitions should transition to OPEN after failure threshold  
+CircuitBreaker[test]: CLOSED → OPEN (3 failures)
+00:04 +7: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/circuit_breaker_test.dart: CircuitBreaker State Transitions should block requests when OPEN                    
+CircuitBreaker[test]: CLOSED → OPEN (1 failures)
+00:04 +8: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/circuit_breaker_test.dart: CircuitBreaker State Transitions should include retry-after info in exception       
+CircuitBreaker[test]: CLOSED → OPEN (1 failures)
+00:04 +9: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/circuit_breaker_test.dart: CircuitBreaker Recovery should transition to HALF_OPEN after reset timeout          
+CircuitBreaker[test]: CLOSED → OPEN (1 failures)
+00:04 +16: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/algolia_service_test.dart: Algolia Integration Validation AlgoliaService.create should initialize with valid credentials
+✅ Algolia initialized: index=products
+00:04 +17: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/circuit_breaker_test.dart: CircuitBreaker Recovery should transition to HALF_OPEN after reset timeout         
+CircuitBreaker[test]: OPEN → HALF_OPEN
+CircuitBreaker[test]: HALF_OPEN → CLOSED
+00:04 +18: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/circuit_breaker_test.dart: CircuitBreaker Recovery should close circuit after success threshold in half-open  
+CircuitBreaker[test]: CLOSED → OPEN (1 failures)
+CircuitBreaker[test]: OPEN → HALF_OPEN
+CircuitBreaker[test]: HALF_OPEN → CLOSED
+00:04 +19: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/circuit_breaker_test.dart: CircuitBreaker Recovery should reopen on failure in half-open state                
+CircuitBreaker[test]: CLOSED → OPEN (1 failures)
+CircuitBreaker[test]: OPEN → HALF_OPEN
+CircuitBreaker[test]: HALF_OPEN → OPEN
+00:04 +22: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/circuit_breaker_test.dart: CircuitBreaker Metrics should expose state in metrics                              
+CircuitBreaker[test]: CLOSED → OPEN (1 failures)
+00:04 +27: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/circuit_breaker_test.dart: CircuitBreaker Registry should reset all breakers                                  
+CircuitBreaker[reset-test]: CLOSED → OPEN (1 failures)
+00:09 +136: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/notification_service_test.dart: NotificationService Initializes and saves FCM token on authorized permission 
+FCM Token saved to fcm_tokens subcollection for user: user_123 (android)
+00:10 +141: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/algolia_search_test.dart: AlgoliaProductRepository Tests should use Algolia for non-empty search queries     
+✅ Algolia search returned 1 products
+00:10 +142: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/algolia_search_test.dart: AlgoliaProductRepository Tests should return empty results for no matches          
+✅ Algolia search returned 0 products
+00:10 +143: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/algolia_search_test.dart: AlgoliaProductRepository Tests should filter by category when provided             
+✅ Algolia search returned 2 products
+00:10 +144: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/test/unit/algolia_search_test.dart: AlgoliaProductRepository Tests should indicate hasMore when results equal page size
+✅ Algolia search returned 20 products
+00:12 +170: All tests passed!                                                                                                                                                                          
+✅ Flutter tests passed.
+Running Python Backend Tests...
+
+📁 Loading environment from: /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/functions/.env
+✅ Algolia credentials loaded: APP_ID=YPN6...
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE [ 62%]
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE                             [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestCreateCheckoutSession.test_successful_checkout_session_creation _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107a709d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+---------------------------- Captured stdout setup -----------------------------
+🔧 Firebase Admin: Mode test unitaire
+============================================================
+🔧 ENVIRONMENT: EMULATOR
+   IS_EMULATOR: True
+   R2 Products Folder: emulator/products
+   R2 Users Folder: emulator/users
+   Algolia Index: products_emulator
+   Stripe Test Mode: True
+============================================================
+_ ERROR at setup of TestCreateCheckoutSession.test_unauthenticated_user_rejected _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107de3150>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+___ ERROR at setup of TestCreateCheckoutSession.test_rate_limiting_enforced ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107da7a90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_____ ERROR at setup of TestCreateCheckoutSession.test_empty_cart_rejected _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094a1ed0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+______ ERROR at setup of TestCreateCheckoutSession.test_product_not_found ______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107e66d90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_____ ERROR at setup of TestCreateCheckoutSession.test_insufficient_stock ______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094572d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCreateCheckoutSession.test_backorder_allows_checkout_with_zero_stock _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107e66a50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCreateCheckoutSession.test_backorder_false_still_blocks_insufficient_stock _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107ddd690>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestCreateCheckoutSession.test_price_tampering_detection __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107b75210>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+____ ERROR at setup of TestStripeWebhook.test_webhook_signature_validation _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1078b8990>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_____ ERROR at setup of TestStripeWebhook.test_invalid_signature_rejected ______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107b0bf90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestStripeWebhook.test_idempotency_duplicate_webhook_ignored _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107df2f10>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestStripeWebhook.test_checkout_session_completed_creates_order _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107e41810>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_____ ERROR at setup of TestCapturePayment.test_successful_payment_capture _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107df3310>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestCapturePayment.test_capture_non_existent_order_fails __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107948450>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCapturePayment.test_capture_already_captured_payment_fails _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1078ab890>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCapturePayment.test_capture_expired_authorization_fails _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107874350>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestStripeConnectAccount.test_create_connect_account_success _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f28190>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestStripeConnectAccount.test_create_duplicate_connect_account_rejected _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107948450>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestEdgeCasesAndSecurity.test_negative_quantity_rejected __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10956dc90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+____ ERROR at setup of TestEdgeCasesAndSecurity.test_zero_quantity_rejected ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107e65210>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestEdgeCasesAndSecurity.test_extremely_large_quantity_rejected _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095c8510>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+___ ERROR at setup of TestEdgeCasesAndSecurity.test_negative_price_rejected ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094bf5d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestEdgeCasesAndSecurity.test_zero_price_allowed_for_free_products _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109449a10>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestEdgeCasesAndSecurity.test_price_precision_limited_to_2_decimals _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107ef2550>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestEdgeCasesAndSecurity.test_concurrent_checkout_race_condition _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094a5090>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestEdgeCasesAndSecurity.test_sql_injection_in_metadata ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109457990>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+______________ ERROR at setup of test_generate_license_key_format ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095cadd0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+______________ ERROR at setup of test_generate_license_key_unique ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107df3790>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__________ ERROR at setup of test_generate_digital_licenses_software ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1078b8990>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+___ ERROR at setup of test_generate_digital_licenses_skips_already_unlocked ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107e67290>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+____________ ERROR at setup of test_generate_digital_licenses_book _____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107df5050>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of test_digital_item_status_set_to_delivered_after_license_generation _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f67f50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_____ ERROR at setup of test_generate_digital_licenses_stores_product_name _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10956f590>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__________ ERROR at setup of test_all_digital_checkout_zero_shipping ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107dfec90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_________ ERROR at setup of test_full_refund_revokes_digital_licenses __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10956f390>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestWarehouseStockSync.test_warehouse_stock_drains_from_fullest_first _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109514850>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestWarehouseStockSync.test_warehouse_stock_drains_across_multiple_warehouses _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f2add0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestWarehouseStockSync.test_no_warehouse_stock_map_produces_no_patches _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1078abc50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestWarehouseStockSync.test_warehouse_stock_sum_equals_total_stock_after_drain _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095c9250>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+___ ERROR at setup of TestProductHandlers.test_upload_product_images_success ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109560c90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestProductHandlers.test_upload_images_invalid_file_type_rejected _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f018d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestProductHandlers.test_upload_images_too_many_files_rejected _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109562f90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+____ ERROR at setup of TestProductHandlers.test_delete_product_soft_delete _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094be210>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestProductHandlers.test_delete_product_unauthorized_seller_rejected _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10956df10>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+___ ERROR at setup of TestProductHandlers.test_submit_rating_validates_range ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109535410>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestProductHandlers.test_submit_rating_requires_verified_purchase _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10793ff50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestOrderHandlers.test_update_order_status_validates_state_machine _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107950a50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestOrderHandlers.test_cancel_order_refunds_and_restores_stock _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107dcf450>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+___ ERROR at setup of TestOrderHandlers.test_cancel_delivered_order_rejected ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107951c90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestOrderHandlers.test_approve_shipping_cost_seller_only __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094f0410>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestOrderHandlers.test_seller_cannot_cancel_multi_seller_order _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094e2890>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestOrderHandlers.test_seller_can_cancel_single_seller_order _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107ddd910>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestOrderHandlers.test_approve_shipping_recalculates_tax __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10793ff50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestOrderHandlers.test_approve_shipping_stripe_failure_flags_review _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f66d50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestOrderEdgeCases.test_partial_refund_calculation_correct _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109535250>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestOrderEdgeCases.test_concurrent_order_status_updates ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f67790>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestOrderEdgeCases.test_refund_after_capture_uses_reverse_transfer _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107fbcc90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestOrderEdgeCases.test_order_with_zero_total_free_product _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094a1190>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_____________ ERROR at setup of test_generate_product_slug_format ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107e65890>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+______ ERROR at setup of test_generate_product_slug_strips_special_chars _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094a3390>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_______ ERROR at setup of test_generate_product_slug_different_each_call _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095a1690>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestProductLifecycleStatus.test_all_states_have_transitions _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1079533d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestProductLifecycleStatus.test_active_is_buyer_visible ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107ddd0d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestAdminApproveProductStatusSync.test_approve_writes_status_active _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109595a10>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestAdminRejectProductStatusSync.test_reject_writes_status_paused _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107e656d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestAdminHandlers.test_update_user_roles_requires_admin ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107b56990>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+___ ERROR at setup of TestAdminHandlers.test_update_user_roles_requires_mfa ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107e65390>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestAdminHandlers.test_update_user_roles_success_with_mfa __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107941090>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestAdminHandlers.test_admin_mfa_enroll_generates_secret __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10955c550>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_____ ERROR at setup of TestAdminHandlers.test_admin_mfa_verify_valid_code _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094e2f50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestAdminHandlers.test_admin_mfa_verify_invalid_code_rejected _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107dcfb50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestAdminHandlers.test_suspend_seller_deactivates_products _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094bdf50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+___ ERROR at setup of TestSecurityEdgeCases.test_totp_time_window_validation ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107dfdcd0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+___ ERROR at setup of TestSecurityEdgeCases.test_mfa_brute_force_protection ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094bd550>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestSecurityEdgeCases.test_gdpr_anonymization_irreversible _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095a1d10>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestSecurityEdgeCases.test_admin_role_escalation_prevented _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094dab50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestSecurityEdgeCases.test_webhook_replay_attack_prevented _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10955e810>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+____ ERROR at setup of TestSecurityEdgeCases.test_sensitive_data_not_logged ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10793fa10>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_sends_alert_when_stock_at_threshold _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095c8e50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_sends_alert_when_stock_below_threshold _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107dffd90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_no_alert_when_stock_above_threshold _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094a3010>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_no_alert_when_threshold_zero __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109595050>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_no_alert_when_track_quantity_false _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10955f950>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_cooldown_blocks_second_alert_within_23h _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107a70e10>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_alert_allowed_after_23h_cooldown_expires _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109594210>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_email_failure_does_not_crash_cron _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109448250>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_no_alert_when_seller_has_no_email _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094e0cd0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+__ ERROR at setup of TestCheckLowStockAlerts.test_no_alert_when_no_seller_id ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10793f590>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCheckLowStockAlerts.test_uses_constants_not_magic_strings _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095a2790>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestRaceConditionsAndConcurrency.test_concurrent_checkout_last_item_race _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109537690>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestRaceConditionsAndConcurrency.test_concurrent_order_status_updates _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094a5290>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestRaceConditionsAndConcurrency.test_concurrent_rating_submissions _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107ddde10>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestRaceConditionsAndConcurrency.test_distributed_transaction_consistency _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107dcfa90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCryptographicSecurity.test_stripe_webhook_signature_algorithm _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095cb290>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCryptographicSecurity.test_webhook_timestamp_tolerance _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f2b0d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_____ ERROR at setup of TestCryptographicSecurity.test_totp_secret_entropy _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095276d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestCryptographicSecurity.test_password_hashing_not_exposed _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094f3690>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestInputValidationAndSanitization.test_xss_prevention_in_product_names _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107e0a610>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestInputValidationAndSanitization.test_sql_injection_prevention _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094dc590>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestInputValidationAndSanitization.test_nosql_injection_prevention _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10793f390>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestInputValidationAndSanitization.test_path_traversal_prevention _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094e3350>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestInputValidationAndSanitization.test_file_upload_mime_type_validation _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f658d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestBusinessLogicEdgeCases.test_refund_amount_calculation_precision _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094e1cd0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestBusinessLogicEdgeCases.test_timezone_handling_utc_consistency _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109405250>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestBusinessLogicEdgeCases.test_order_total_calculation_taxes_shipping _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094a3350>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestBusinessLogicEdgeCases.test_inventory_reservation_timeout _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109562e90>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestBusinessLogicEdgeCases.test_platform_fee_minimum_enforcement _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109483190>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestErrorHandlingAndRecovery.test_stripe_api_timeout_retry _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109470290>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestErrorHandlingAndRecovery.test_algolia_failure_fallback_to_firestore _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109408f50>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestErrorHandlingAndRecovery.test_partial_order_cancellation_handling _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109561290>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestErrorHandlingAndRecovery.test_email_failure_logs_but_continues _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107b31350>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestPerformanceAndScalability.test_pagination_limits_firestore_reads _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f67f10>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestPerformanceAndScalability.test_algolia_search_response_time _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094bf690>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestPerformanceAndScalability.test_firestore_index_coverage _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107f676d0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+_ ERROR at setup of TestPerformanceAndScalability.test_cdn_cache_headers_for_images _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1094f0dd0>
+
+    @pytest.fixture(scope="function", autouse=True)
+    def mock_firestore_client(monkeypatch):
+        """
+        Automatically mock Firestore client for all tests.
+        This patches get_db() in payment_stripe and products modules.
+        """
+        from unittest.mock import MagicMock, Mock
+    
+>       from handlers import admin, orders, payment_stripe, products
+
+tests/conftest.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+handlers/__init__.py:6: in <module>
+    from . import admin, cron_jobs, orders, payment_stripe, products
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """
+    Scheduled Cron Jobs
+    - Auto-capture confirmed receipts (daily)
+    - Check expired authorizations (daily)
+    - Monitor Algolia sync (every 15 min)
+    - Cleanup stale rate limits (every 30 min)
+    - Archive old orders (every 12 hours)
+    """
+    
+    import logging
+    from datetime import UTC, datetime, timedelta
+    
+>   import sentry_sdk
+E   ModuleNotFoundError: No module named 'sentry_sdk'
+
+handlers/cron_jobs.py:13: ModuleNotFoundError
+=========================== short test summary info ============================
+ERROR tests/test_handlers_payment_stripe.py::TestCreateCheckoutSession::test_successful_checkout_session_creation
+ERROR tests/test_handlers_payment_stripe.py::TestCreateCheckoutSession::test_unauthenticated_user_rejected
+ERROR tests/test_handlers_payment_stripe.py::TestCreateCheckoutSession::test_rate_limiting_enforced
+ERROR tests/test_handlers_payment_stripe.py::TestCreateCheckoutSession::test_empty_cart_rejected
+ERROR tests/test_handlers_payment_stripe.py::TestCreateCheckoutSession::test_product_not_found
+ERROR tests/test_handlers_payment_stripe.py::TestCreateCheckoutSession::test_insufficient_stock
+ERROR tests/test_handlers_payment_stripe.py::TestCreateCheckoutSession::test_backorder_allows_checkout_with_zero_stock
+ERROR tests/test_handlers_payment_stripe.py::TestCreateCheckoutSession::test_backorder_false_still_blocks_insufficient_stock
+ERROR tests/test_handlers_payment_stripe.py::TestCreateCheckoutSession::test_price_tampering_detection
+ERROR tests/test_handlers_payment_stripe.py::TestStripeWebhook::test_webhook_signature_validation
+ERROR tests/test_handlers_payment_stripe.py::TestStripeWebhook::test_invalid_signature_rejected
+ERROR tests/test_handlers_payment_stripe.py::TestStripeWebhook::test_idempotency_duplicate_webhook_ignored
+ERROR tests/test_handlers_payment_stripe.py::TestStripeWebhook::test_checkout_session_completed_creates_order
+ERROR tests/test_handlers_payment_stripe.py::TestCapturePayment::test_successful_payment_capture
+ERROR tests/test_handlers_payment_stripe.py::TestCapturePayment::test_capture_non_existent_order_fails
+ERROR tests/test_handlers_payment_stripe.py::TestCapturePayment::test_capture_already_captured_payment_fails
+ERROR tests/test_handlers_payment_stripe.py::TestCapturePayment::test_capture_expired_authorization_fails
+ERROR tests/test_handlers_payment_stripe.py::TestStripeConnectAccount::test_create_connect_account_success
+ERROR tests/test_handlers_payment_stripe.py::TestStripeConnectAccount::test_create_duplicate_connect_account_rejected
+ERROR tests/test_handlers_payment_stripe.py::TestEdgeCasesAndSecurity::test_negative_quantity_rejected
+ERROR tests/test_handlers_payment_stripe.py::TestEdgeCasesAndSecurity::test_zero_quantity_rejected
+ERROR tests/test_handlers_payment_stripe.py::TestEdgeCasesAndSecurity::test_extremely_large_quantity_rejected
+ERROR tests/test_handlers_payment_stripe.py::TestEdgeCasesAndSecurity::test_negative_price_rejected
+ERROR tests/test_handlers_payment_stripe.py::TestEdgeCasesAndSecurity::test_zero_price_allowed_for_free_products
+ERROR tests/test_handlers_payment_stripe.py::TestEdgeCasesAndSecurity::test_price_precision_limited_to_2_decimals
+ERROR tests/test_handlers_payment_stripe.py::TestEdgeCasesAndSecurity::test_concurrent_checkout_race_condition
+ERROR tests/test_handlers_payment_stripe.py::TestEdgeCasesAndSecurity::test_sql_injection_in_metadata
+ERROR tests/test_handlers_payment_stripe.py::test_generate_license_key_format
+ERROR tests/test_handlers_payment_stripe.py::test_generate_license_key_unique
+ERROR tests/test_handlers_payment_stripe.py::test_generate_digital_licenses_software
+ERROR tests/test_handlers_payment_stripe.py::test_generate_digital_licenses_skips_already_unlocked
+ERROR tests/test_handlers_payment_stripe.py::test_generate_digital_licenses_book
+ERROR tests/test_handlers_payment_stripe.py::test_digital_item_status_set_to_delivered_after_license_generation
+ERROR tests/test_handlers_payment_stripe.py::test_generate_digital_licenses_stores_product_name
+ERROR tests/test_handlers_payment_stripe.py::test_all_digital_checkout_zero_shipping
+ERROR tests/test_handlers_payment_stripe.py::test_full_refund_revokes_digital_licenses
+ERROR tests/test_handlers_payment_stripe.py::TestWarehouseStockSync::test_warehouse_stock_drains_from_fullest_first
+ERROR tests/test_handlers_payment_stripe.py::TestWarehouseStockSync::test_warehouse_stock_drains_across_multiple_warehouses
+ERROR tests/test_handlers_payment_stripe.py::TestWarehouseStockSync::test_no_warehouse_stock_map_produces_no_patches
+ERROR tests/test_handlers_payment_stripe.py::TestWarehouseStockSync::test_warehouse_stock_sum_equals_total_stock_after_drain
+ERROR tests/test_handlers_products_orders.py::TestProductHandlers::test_upload_product_images_success
+ERROR tests/test_handlers_products_orders.py::TestProductHandlers::test_upload_images_invalid_file_type_rejected
+ERROR tests/test_handlers_products_orders.py::TestProductHandlers::test_upload_images_too_many_files_rejected
+ERROR tests/test_handlers_products_orders.py::TestProductHandlers::test_delete_product_soft_delete
+ERROR tests/test_handlers_products_orders.py::TestProductHandlers::test_delete_product_unauthorized_seller_rejected
+ERROR tests/test_handlers_products_orders.py::TestProductHandlers::test_submit_rating_validates_range
+ERROR tests/test_handlers_products_orders.py::TestProductHandlers::test_submit_rating_requires_verified_purchase
+ERROR tests/test_handlers_products_orders.py::TestOrderHandlers::test_update_order_status_validates_state_machine
+ERROR tests/test_handlers_products_orders.py::TestOrderHandlers::test_cancel_order_refunds_and_restores_stock
+ERROR tests/test_handlers_products_orders.py::TestOrderHandlers::test_cancel_delivered_order_rejected
+ERROR tests/test_handlers_products_orders.py::TestOrderHandlers::test_approve_shipping_cost_seller_only
+ERROR tests/test_handlers_products_orders.py::TestOrderHandlers::test_seller_cannot_cancel_multi_seller_order
+ERROR tests/test_handlers_products_orders.py::TestOrderHandlers::test_seller_can_cancel_single_seller_order
+ERROR tests/test_handlers_products_orders.py::TestOrderHandlers::test_approve_shipping_recalculates_tax
+ERROR tests/test_handlers_products_orders.py::TestOrderHandlers::test_approve_shipping_stripe_failure_flags_review
+ERROR tests/test_handlers_products_orders.py::TestOrderEdgeCases::test_partial_refund_calculation_correct
+ERROR tests/test_handlers_products_orders.py::TestOrderEdgeCases::test_concurrent_order_status_updates
+ERROR tests/test_handlers_products_orders.py::TestOrderEdgeCases::test_refund_after_capture_uses_reverse_transfer
+ERROR tests/test_handlers_products_orders.py::TestOrderEdgeCases::test_order_with_zero_total_free_product
+ERROR tests/test_handlers_products_orders.py::test_generate_product_slug_format
+ERROR tests/test_handlers_products_orders.py::test_generate_product_slug_strips_special_chars
+ERROR tests/test_handlers_products_orders.py::test_generate_product_slug_different_each_call
+ERROR tests/test_handlers_products_orders.py::TestProductLifecycleStatus::test_all_states_have_transitions
+ERROR tests/test_handlers_products_orders.py::TestProductLifecycleStatus::test_active_is_buyer_visible
+ERROR tests/test_handlers_products_orders.py::TestAdminApproveProductStatusSync::test_approve_writes_status_active
+ERROR tests/test_handlers_products_orders.py::TestAdminRejectProductStatusSync::test_reject_writes_status_paused
+ERROR tests/test_handlers_admin_cron.py::TestAdminHandlers::test_update_user_roles_requires_admin
+ERROR tests/test_handlers_admin_cron.py::TestAdminHandlers::test_update_user_roles_requires_mfa
+ERROR tests/test_handlers_admin_cron.py::TestAdminHandlers::test_update_user_roles_success_with_mfa
+ERROR tests/test_handlers_admin_cron.py::TestAdminHandlers::test_admin_mfa_enroll_generates_secret
+ERROR tests/test_handlers_admin_cron.py::TestAdminHandlers::test_admin_mfa_verify_valid_code
+ERROR tests/test_handlers_admin_cron.py::TestAdminHandlers::test_admin_mfa_verify_invalid_code_rejected
+ERROR tests/test_handlers_admin_cron.py::TestAdminHandlers::test_suspend_seller_deactivates_products
+ERROR tests/test_handlers_admin_cron.py::TestSecurityEdgeCases::test_totp_time_window_validation
+ERROR tests/test_handlers_admin_cron.py::TestSecurityEdgeCases::test_mfa_brute_force_protection
+ERROR tests/test_handlers_admin_cron.py::TestSecurityEdgeCases::test_gdpr_anonymization_irreversible
+ERROR tests/test_handlers_admin_cron.py::TestSecurityEdgeCases::test_admin_role_escalation_prevented
+ERROR tests/test_handlers_admin_cron.py::TestSecurityEdgeCases::test_webhook_replay_attack_prevented
+ERROR tests/test_handlers_admin_cron.py::TestSecurityEdgeCases::test_sensitive_data_not_logged
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_sends_alert_when_stock_at_threshold
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_sends_alert_when_stock_below_threshold
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_no_alert_when_stock_above_threshold
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_no_alert_when_threshold_zero
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_no_alert_when_track_quantity_false
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_cooldown_blocks_second_alert_within_23h
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_alert_allowed_after_23h_cooldown_expires
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_email_failure_does_not_crash_cron
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_no_alert_when_seller_has_no_email
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_no_alert_when_no_seller_id
+ERROR tests/test_handlers_admin_cron.py::TestCheckLowStockAlerts::test_uses_constants_not_magic_strings
+ERROR tests/test_edge_cases_advanced.py::TestRaceConditionsAndConcurrency::test_concurrent_checkout_last_item_race
+ERROR tests/test_edge_cases_advanced.py::TestRaceConditionsAndConcurrency::test_concurrent_order_status_updates
+ERROR tests/test_edge_cases_advanced.py::TestRaceConditionsAndConcurrency::test_concurrent_rating_submissions
+ERROR tests/test_edge_cases_advanced.py::TestRaceConditionsAndConcurrency::test_distributed_transaction_consistency
+ERROR tests/test_edge_cases_advanced.py::TestCryptographicSecurity::test_stripe_webhook_signature_algorithm
+ERROR tests/test_edge_cases_advanced.py::TestCryptographicSecurity::test_webhook_timestamp_tolerance
+ERROR tests/test_edge_cases_advanced.py::TestCryptographicSecurity::test_totp_secret_entropy
+ERROR tests/test_edge_cases_advanced.py::TestCryptographicSecurity::test_password_hashing_not_exposed
+ERROR tests/test_edge_cases_advanced.py::TestInputValidationAndSanitization::test_xss_prevention_in_product_names
+ERROR tests/test_edge_cases_advanced.py::TestInputValidationAndSanitization::test_sql_injection_prevention
+ERROR tests/test_edge_cases_advanced.py::TestInputValidationAndSanitization::test_nosql_injection_prevention
+ERROR tests/test_edge_cases_advanced.py::TestInputValidationAndSanitization::test_path_traversal_prevention
+ERROR tests/test_edge_cases_advanced.py::TestInputValidationAndSanitization::test_file_upload_mime_type_validation
+ERROR tests/test_edge_cases_advanced.py::TestBusinessLogicEdgeCases::test_refund_amount_calculation_precision
+ERROR tests/test_edge_cases_advanced.py::TestBusinessLogicEdgeCases::test_timezone_handling_utc_consistency
+ERROR tests/test_edge_cases_advanced.py::TestBusinessLogicEdgeCases::test_order_total_calculation_taxes_shipping
+ERROR tests/test_edge_cases_advanced.py::TestBusinessLogicEdgeCases::test_inventory_reservation_timeout
+ERROR tests/test_edge_cases_advanced.py::TestBusinessLogicEdgeCases::test_platform_fee_minimum_enforcement
+ERROR tests/test_edge_cases_advanced.py::TestErrorHandlingAndRecovery::test_stripe_api_timeout_retry
+ERROR tests/test_edge_cases_advanced.py::TestErrorHandlingAndRecovery::test_algolia_failure_fallback_to_firestore
+ERROR tests/test_edge_cases_advanced.py::TestErrorHandlingAndRecovery::test_partial_order_cancellation_handling
+ERROR tests/test_edge_cases_advanced.py::TestErrorHandlingAndRecovery::test_email_failure_logs_but_continues
+ERROR tests/test_edge_cases_advanced.py::TestPerformanceAndScalability::test_pagination_limits_firestore_reads
+ERROR tests/test_edge_cases_advanced.py::TestPerformanceAndScalability::test_algolia_search_response_time
+ERROR tests/test_edge_cases_advanced.py::TestPerformanceAndScalability::test_firestore_index_coverage
+ERROR tests/test_edge_cases_advanced.py::TestPerformanceAndScalability::test_cdn_cache_headers_for_images
+116 errors in 6.50s
+❌ ERROR: Backend Python tests failed.
+error: failed to push some refs to 'https://github.com/yunior123/origna_gta.git'

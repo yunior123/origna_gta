@@ -374,6 +374,22 @@ def mock_firestore_client(monkeypatch):
     mock_collection.limit.return_value = mock_collection
     mock_collection.get.return_value = []
 
+    # Implement get_all() for batch product fetches (used by create_checkout_session)
+    def get_all_impl(doc_refs):
+        results = []
+        for ref in doc_refs:
+            doc = ref.get()
+            # Propagate the string ID from the ref to the returned snapshot
+            try:
+                if isinstance(ref.id, str):
+                    doc.id = ref.id
+            except Exception:
+                pass
+            results.append(doc)
+        return results
+
+    mock_db.get_all = Mock(side_effect=get_all_impl)
+
     # Patch get_db to return our mock in all handlers
     monkeypatch.setattr(payment_stripe, "get_db", lambda: mock_db)
     monkeypatch.setattr(products, "get_db", lambda: mock_db)
@@ -383,6 +399,19 @@ def mock_firestore_client(monkeypatch):
     # Also mock stripe to prevent API calls
     mock_stripe = MagicMock()
     mock_stripe.api_key = "STRIPE_SECRET_KEY_REDACTED"
+
+    # Set stripe error classes to valid exception subclasses so except clauses work
+    class _MockStripeError(Exception):
+        pass
+
+    mock_stripe.error = MagicMock()
+    mock_stripe.error.StripeError = _MockStripeError
+    mock_stripe.error.CardError = _MockStripeError
+    mock_stripe.error.RateLimitError = _MockStripeError
+    mock_stripe.error.APIConnectionError = _MockStripeError
+    mock_stripe.error.InvalidRequestError = _MockStripeError
+    mock_stripe.error.AuthenticationError = _MockStripeError
+
     monkeypatch.setattr(payment_stripe, "stripe", mock_stripe)
 
     yield mock_db

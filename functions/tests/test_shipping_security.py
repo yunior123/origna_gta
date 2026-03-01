@@ -72,7 +72,8 @@ module_mocks = {
 with patch.dict(sys.modules, module_mocks):
     import main
     from handlers import payment_stripe
-    from main import calculate_shipping_cost, create_checkout_session
+    from main import create_checkout_session
+    from services.shipping_service import calculate_shipping_cost
 
 
 class TestPaymentSecurity(unittest.TestCase):
@@ -138,6 +139,21 @@ class TestPaymentSecurity(unittest.TestCase):
             return mock_coll
 
         self.mock_db.collection.side_effect = mock_collection
+
+        # Implement get_all() for batch product fetches (used by create_checkout_session)
+        def _get_all_impl(refs):
+            results = []
+            for ref in refs:
+                doc = ref.get()
+                try:
+                    if isinstance(ref.id, str):
+                        doc.id = ref.id
+                except Exception:
+                    pass
+                results.append(doc)
+            return results
+
+        self.mock_db.get_all = MagicMock(side_effect=_get_all_impl)
 
         self.mock_rate_limiter = MagicMock()
         self.mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
@@ -220,14 +236,21 @@ class TestPaymentSecurity(unittest.TestCase):
 
         # Setup Database mocks
         original_side_effect = self.mock_db.collection.side_effect
+
         def custom_mock_collection(name):
             if name == "products":
                 mock_coll = MagicMock()
-                mock_doc_ref = MagicMock()
-                mock_doc_ref.get.return_value = mock_product
-                mock_coll.document.return_value = mock_doc_ref
+
+                def make_product_ref(doc_id=None):
+                    mock_doc_ref = MagicMock()
+                    mock_doc_ref.id = doc_id or "prod_1"
+                    mock_doc_ref.get.return_value = mock_product
+                    return mock_doc_ref
+
+                mock_coll.document = make_product_ref
                 return mock_coll
             return original_side_effect(name)
+
         self.mock_db.collection.side_effect = custom_mock_collection
 
         mock_transaction = MagicMock()

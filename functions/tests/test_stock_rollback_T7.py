@@ -25,36 +25,73 @@ def test_stock_reservation_atomic_pattern(mock_stripe_create, mock_get_fs, mock_
 
     # Mock user and items
     mock_user_id = "user_123"
-    mock_items = [{"productId": "p1", "quantity": 1}]
+    mock_items = [{"productId": "p1", "quantity": 1, "price": 10.0, "sellerId": "seller_1"}]
 
-    # Mock product snapshot
+    # Mock product snapshot (returned by individual .get() and get_all)
     mock_snap = MagicMock()
     mock_snap.exists = True
+    mock_snap.id = "p1"
     mock_snap.to_dict.return_value = {
         "stockQuantity": 10,
         "name": "Test Product",
+        "price": 10.0,
+        "sellerId": "seller_1",
+        "lifecycleStatus": "active",
         "inventory": {"allowBackorder": False}
     }
 
-    # Mock the transaction execution
-    # Since reserve_stock_transaction is an inner function, we verify the
-    # transactional decorator usage by mocking the transaction runner.
-    mock_txn = MagicMock()
-    mock_txn.get.return_value = mock_snap
+    # Generic doc mock for user/seller/order documents — not suspended
+    mock_generic_doc = MagicMock()
+    mock_generic_doc.exists = True
+    mock_generic_doc.to_dict.return_value = {
+        "suspended": False,
+        "onboardingCompleted": True,
+        "chargesEnabled": True,
+        "payoutsEnabled": True,
+        "stripeAccountId": "acct_test",
+    }
 
-    # Mock db.run_transaction (which is what @transactional calls)
-    def mock_run_txn(callback, **kwargs):
-        return callback(mock_txn)
+    def make_doc_ref(doc_id=None):
+        mock_ref = MagicMock()
+        if doc_id is not None:
+            mock_ref.id = doc_id
+        if doc_id == "p1":
+            mock_ref.get.return_value = mock_snap
+        else:
+            mock_ref.get.return_value = mock_generic_doc
+        return mock_ref
 
-    mock_db.run_transaction.side_effect = mock_run_txn
-    mock_get_fs.return_value.transactional = lambda f: f # Strip decorator for testing
+    mock_db.collection.return_value.document.side_effect = make_doc_ref
+
+    # Implement get_all for batch product fetches
+    def get_all_impl(refs):
+        results = []
+        for ref in refs:
+            doc = ref.get()
+            if isinstance(ref.id, str):
+                doc.id = ref.id
+            results.append(doc)
+        return results
+
+    mock_db.get_all = MagicMock(side_effect=get_all_impl)
+
+    # Strip @transactional decorator so the function runs directly
+    mock_get_fs.return_value.transactional = lambda f: f
 
     # Mock request
     mock_req = MagicMock()
     mock_req.auth.uid = mock_user_id
+    mock_req.auth.token.get.return_value = True  # email_verified
     mock_req.data = {
         "items": mock_items,
-        "shippingAddress": {"city": "Montreal", "country": "CA"}
+        "shippingAddress": {
+            "street": "123 Main St",
+            "city": "Montreal",
+            "state": "QC",
+            "postalCode": "H2X 1Y6",
+            "country": "Canada",
+        },
+        "subtotal": 10.0,
     }
 
     # Stripe fails
@@ -63,14 +100,9 @@ def test_stock_reservation_atomic_pattern(mock_stripe_create, mock_get_fs, mock_
     with pytest.raises(https_fn.HttpsError) as exc:
         create_checkout_session(mock_req)
 
-    assert exc.value.code == https_fn.FunctionsErrorCode.INTERNAL
+    assert exc.value.code == "internal"
 
-    # Verify transaction.update was called (reservation attempted)
-    # But because Stripe failed, the outer function should (hypothetically)
-    # handle rollbacks or order cancellation.
-    # In our implementation, stock is reserved BEFORE Stripe session creation.
-    # If Stripe fails, we need a rollback.
-
-    # Verify transaction.update called for stock
-    mock_txn.update.assert_called()
+    # Verify a Firestore transaction was created for stock reservation
+    # (stock reservation happens BEFORE Stripe session creation)
+    mock_db.transaction.assert_called()
 

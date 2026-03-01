@@ -148,6 +148,10 @@ class TestBuyerAddressHandlers:
         mock_doc.exists = True
         mock_doc.to_dict.return_value = {Fields.IS_DEFAULT: True}
         mock_address_ref.get.return_value = mock_doc
+        # Ownership check: address_ref.parent.parent.id must equal user_id
+        mock_address_ref.parent = Mock()
+        mock_address_ref.parent.parent = Mock()
+        mock_address_ref.parent.parent.id = "buyer_123"
 
         # Second address to promote
         mock_other_doc = Mock()

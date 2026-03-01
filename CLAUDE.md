@@ -65,3 +65,5 @@ Operate using a strict **Research → Strategy → Execution → Verification** 
 | prod | `orignagta` | ❌ never |
 
  export CLAUDE_CODE_USE_BEDROCK=1
+
+ unset CLAUDE_CODE_USE_BEDROCK

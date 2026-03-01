@@ -93,6 +93,21 @@ class TestTaxAudit(unittest.TestCase):
         self.patcher_rate_limiter.start()
         self.patcher_shipping.start()
 
+        # Implement get_all() so batch product fetches work in tests
+        def _get_all_impl(refs):
+            results = []
+            for ref in refs:
+                doc = ref.get()
+                try:
+                    if isinstance(ref.id, str):
+                        doc.id = ref.id
+                except Exception:
+                    pass
+                results.append(doc)
+            return results
+
+        self.mock_db.get_all = MagicMock(side_effect=_get_all_impl)
+
     def tearDown(self):
         self.patcher_db.stop()
         self.patcher_rate_limiter.stop()

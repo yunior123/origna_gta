@@ -81,7 +81,7 @@ class TestStockRevalidation:
         ):
             mock_retrieve.return_value = Mock(status="requires_capture")
             session = {
-                "metadata": {"orderId": "order_123"},
+                "metadata": {"order_id": "order_123"},
                 "payment_intent": "pi_test_123",
                 "payment_status": "paid",
                 "amount_total": 2000,
@@ -91,8 +91,8 @@ class TestStockRevalidation:
 
             # Order should be cancelled, not confirmed
             assert result is not None and "cancelled" in result.lower()
-            # Stock restore + cancel now uses batch.commit(), verify batch was used
-            mock_db.batch.assert_called()
+            # Stock restore uses a transaction
+            mock_db.transaction.assert_called()
             mock_cancel.assert_called_once()
 
     def test_seller_suspended_cancels_order(self, mock_firestore_client):
@@ -143,7 +143,7 @@ class TestStockRevalidation:
         ):
             mock_retrieve.return_value = Mock(status="requires_capture")
             session = {
-                "metadata": {"orderId": "order_123"},
+                "metadata": {"order_id": "order_123"},
                 "payment_intent": "pi_test_123",
                 "payment_status": "paid",
                 "amount_total": 2000,
@@ -195,7 +195,7 @@ class TestStockRevalidation:
         ):
             mock_retrieve.return_value = Mock(status="requires_capture")
             session = {
-                "metadata": {"orderId": "order_123"},
+                "metadata": {"order_id": "order_123"},
                 "payment_intent": "pi_test_123",
                 "payment_status": "paid",
                 "amount_total": 2000,
@@ -266,7 +266,7 @@ class TestStockRevalidation:
             patch("handlers.payment_stripe._clear_user_cart"),
         ):
             session = {
-                "metadata": {"orderId": "order_123"},
+                "metadata": {"order_id": "order_123"},
                 "payment_intent": "pi_test_123",
                 "payment_status": "paid",
                 "amount_total": 1000,

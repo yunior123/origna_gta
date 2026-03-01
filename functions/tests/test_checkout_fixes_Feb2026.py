@@ -50,7 +50,33 @@ class TestCheckoutFixesFeb2026:
             }
             return doc
 
-        mock_db.collection.return_value.document.return_value.get.side_effect = mock_doc_get
+        # Track all .set() calls across all document refs
+        set_calls_data = []
+
+        def make_doc_ref(doc_id=None):
+            mock_ref = MagicMock()
+            if doc_id is not None:
+                mock_ref.id = doc_id
+            mock_ref.get.side_effect = mock_doc_get
+
+            def capture_set(data, **kwargs):
+                set_calls_data.append(data)
+
+            mock_ref.set.side_effect = capture_set
+            return mock_ref
+
+        mock_db.collection.return_value.document.side_effect = make_doc_ref
+
+        def get_all_impl(refs):
+            results = []
+            for ref in refs:
+                doc = mock_doc_get()
+                if hasattr(ref, "id") and isinstance(ref.id, str):
+                    doc.id = ref.id
+                results.append(doc)
+            return results
+
+        mock_db.get_all = MagicMock(side_effect=get_all_impl)
 
         mock_shipping_calc.return_value = 15.00
         mock_premium.return_value = False
@@ -75,13 +101,9 @@ class TestCheckoutFixesFeb2026:
             with patch("handlers.payment_stripe.get_server_timestamp", return_value="mock_ts"):
                 create_checkout_session(mock_req)
 
-        order_save = None
-        for call in mock_db.collection.return_value.document.return_value.set.call_args_list:
-            data = call[0][0]
-            if Fields.SHIPPING_COST_CENTS in data:
-                order_save = data
-                break
+        order_save = next((d for d in set_calls_data if Fields.SHIPPING_COST_CENTS in d), None)
 
+        assert order_save is not None, f"Order was not saved. Set calls: {set_calls_data}"
         assert order_save[Fields.SHIPPING_COST_CENTS] == 0
 
     @patch("handlers.orders.get_db")
