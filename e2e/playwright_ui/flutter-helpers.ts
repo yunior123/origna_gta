@@ -45,46 +45,125 @@ async function clearServiceWorkers(page: Page): Promise<void> {
 // ─── FLUTTER INITIALIZATION ─────────────────────────────────────────
 
 export async function waitForFlutter(page: Page, timeout = 180000): Promise<void> {
-    console.log(`⏳ Waiting for Flutter Web to initialize (timeout: ${timeout}ms)...`);
-    const startTime = Date.now();
+    const t0 = Date.now();
 
-    await page.waitForFunction(() => {
-        const glasspane = document.querySelector('flt-glass-pane');
-        const flutterView = document.querySelector('flutter-view');
-        const canvas = document.querySelector('canvas');
-        return (
-            !!glasspane ||
-            !!flutterView ||
-            (canvas instanceof HTMLCanvasElement && canvas.getBoundingClientRect().width > 0)
+    // Fast path: if Flutter is already loaded (canvas exists + semantics present),
+    // skip all expensive checks. This makes subsequent calls near-instant.
+    const isLoaded = await page.evaluate(() => {
+        return !!(
+            document.querySelector('flt-glass-pane') ||
+            document.querySelector('flutter-view') ||
+            document.querySelector('canvas')
         );
-    }, { timeout }).catch(() => { });
-
-    await page
-        .waitForFunction(() => {
-            const splash = document.getElementById('splash');
-            return !splash || splash.style.display === 'none' || splash.getAttribute('hidden') !== null;
-        }, { timeout })
-        .catch(() => { });
-
-    const enableA11yBtn = page.locator('button:has-text("Enable accessibility")');
-    const placeholder = page.locator('flt-semantics-placeholder');
-    if ((await enableA11yBtn.count()) > 0) {
-        await enableA11yBtn.first().click({ force: true }).catch(() => { });
-    } else if ((await placeholder.count()) > 0) {
-        await placeholder.first().click({ force: true }).catch(() => { });
-        await page.keyboard.press('Tab');
+    });
+    const hasSem = await page.locator('flt-semantics').count();
+    if (isLoaded && hasSem > 0) {
+        // Flutter is fully loaded with semantics — no work needed.
+        await page.waitForTimeout(500); // minimal settle
+        return;
     }
 
-    // Use full timeout — dev builds on 8GB RAM can take 90-180s to initialize.
-    // The old Math.min(timeout, 90000) cap caused silent failures when Flutter
-    // took > 90s, making waitForFlutter return "success" on a stuck splash screen.
-    await page
-        .locator('flt-semantics')
-        .first()
-        .waitFor({ state: 'attached', timeout })
-        .catch(() => { });
+    // Step 1: Wait for Flutter's rendering host element (first load only).
+    if (!isLoaded) {
+        await page.waitForFunction(() => {
+            const glasspane = document.querySelector('flt-glass-pane');
+            const flutterView = document.querySelector('flutter-view');
+            const canvas = document.querySelector('canvas');
+            return (
+                !!glasspane ||
+                !!flutterView ||
+                (canvas instanceof HTMLCanvasElement && canvas.getBoundingClientRect().width > 0)
+            );
+        }, { timeout }).catch(() => { });
+    }
 
-    console.log(`   ✅ Flutter initialized in ${Date.now() - startTime}ms`);
+    // Step 2: Wait for loading indicator — short timeout only.
+    // Flutter paints OVER #loading div; it may never get display:none.
+    await page.waitForFunction(() => {
+        const loading = document.getElementById('loading');
+        return !loading || loading.style.display === 'none' || loading.getAttribute('hidden') !== null;
+    }, { timeout: 5000 }).catch(() => { });
+
+    // Step 3: Activate semantics if not already active (FORCE_SEMANTICS build skips this).
+    if (hasSem === 0) {
+        const semanticsTimeout = Math.min(timeout, 15000);
+
+        const enableA11yBtn = page.locator('button:has-text("Enable accessibility")');
+        if ((await enableA11yBtn.count()) > 0) {
+            await enableA11yBtn.first().click({ force: true }).catch(() => { });
+        }
+
+        const placeholder = page.locator('flt-semantics-placeholder');
+        await placeholder.first().waitFor({ state: 'attached', timeout: semanticsTimeout }).catch(() => { });
+        if ((await placeholder.count()) > 0) {
+            await placeholder.first().click({ force: true }).catch(() => { });
+        }
+
+        await page.keyboard.press('Tab');
+
+        await page.locator('flt-semantics').first()
+            .waitFor({ state: 'attached', timeout: semanticsTimeout })
+            .catch(() => {
+                console.log('   ⚠️  flt-semantics not found after activation attempts');
+            });
+    }
+
+    // Settle time for semantic tree flush.
+    await page.waitForTimeout(1000);
+
+    const elapsed = Date.now() - t0;
+    if (elapsed > 5000) {
+        console.log(`   ✅ Flutter ready in ${elapsed}ms`);
+    }
+}
+
+/**
+ * Wait for a specific semantic element to appear after navigation.
+ * Flutter Web rebuilds the semantic tree after route changes — this can take
+ * several seconds if the new screen loads data from remote Firestore.
+ * Returns the locator for further interaction.
+ */
+export async function waitForSemantic(
+    page: Page,
+    selector: string,
+    timeout = 30000,
+): Promise<Locator> {
+    const loc = page.locator(selector).first();
+    await loc.waitFor({ state: 'attached', timeout }).catch(() => {
+        console.log(`   ⚠️  Semantic element not found: ${selector} (waited ${timeout}ms)`);
+    });
+    return loc;
+}
+
+/**
+ * Wait for product cards to load from Firestore and appear in the semantic tree.
+ * Scrolls to trigger lazy loading and retries multiple times.
+ */
+export async function waitForProductCards(
+    page: Page,
+    timeout = 45000,
+): Promise<number> {
+    const startTime = Date.now();
+    const cards = page.locator('[aria-label^="product-card-"]');
+
+    // First, wait for at least one card to appear (Firestore data loading)
+    await cards.first().waitFor({ state: 'attached', timeout }).catch(() => {});
+
+    if ((await cards.count()) > 0) return cards.count();
+
+    // If no cards yet, scroll to trigger lazy loading and wait
+    for (let i = 0; i < 20; i++) {
+        if (Date.now() - startTime > timeout) break;
+        await page.mouse.wheel(0, 250);
+        await page.waitForTimeout(1500);
+        if ((await cards.count()) > 0) return cards.count();
+    }
+
+    const finalCount = await cards.count();
+    if (finalCount === 0) {
+        console.log(`   ⚠️  No product cards found after ${Date.now() - startTime}ms`);
+    }
+    return finalCount;
 }
 
 // ─── REPLICA UTILS ──────────────────────────────────────────────────
@@ -98,9 +177,24 @@ export async function requireWebApp(page: Page, targetUrl: string): Promise<void
 }
 
 export async function checkSemantics(page: Page): Promise<void> {
-    const sems = await page.locator('flt-semantics').count();
+    let sems = await page.locator('flt-semantics').count();
+    if (sems > 0) return;
+
+    // Retry: try activating semantics one more time before skipping.
+    // Sometimes the placeholder needs a second click or Tab press.
+    console.log('   ♿ checkSemantics: 0 flt-semantics found, retrying activation...');
+    const placeholder = page.locator('flt-semantics-placeholder');
+    if ((await placeholder.count()) > 0) {
+        await placeholder.first().click({ force: true }).catch(() => { });
+    }
+    await page.keyboard.press('Tab');
+    await page.locator('flt-semantics').first()
+        .waitFor({ state: 'attached', timeout: 15000 })
+        .catch(() => { });
+
+    sems = await page.locator('flt-semantics').count();
     if (sems === 0) {
-        test.skip(true, 'No <flt-semantics> — run debug build with ensureSemantics enabled.');
+        test.skip(true, 'No <flt-semantics> — build with --dart-define=FORCE_SEMANTICS=true');
     }
 }
 
@@ -138,7 +232,7 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     // Check for sign-in dialog button (unauthenticated state)
     // Dialog shows "Se connecter" / "Sign in" button
     const signInPrompt = page.getByRole('button', { name: BTN_SIGN_IN }).first();
-    const isLoggedOut = await signInPrompt.isVisible({ timeout: 10000 }).catch(() => false);
+    const isLoggedOut = await signInPrompt.isVisible({ timeout: 5000 }).catch(() => false);
 
     if (!isLoggedOut) {
         // Already logged in — might be on /profile or still at home
@@ -169,7 +263,7 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
         page.waitForURL(/\/login/i, { timeout: 20000 }).catch(() => { }),
         emailInput.waitFor({ state: 'visible', timeout: 20000 }),
     ]);
-    await expect(emailInput).toBeVisible({ timeout: 10000 });
+    await expect(emailInput).toBeVisible({ timeout: 20000 });
     await emailInput.click();
     await page.waitForTimeout(800); // Wait for Flutter focus to settle
     await page.keyboard.type(email, { delay: 30 });

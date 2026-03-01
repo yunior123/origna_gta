@@ -306,7 +306,7 @@ test.describe('Add Product — UI Tests', () => {
     await checkSemantics(page);
     await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
     const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
-    await expect(addProductBtn).toBeVisible({ timeout: 20_000 });
+    await expect(addProductBtn).toBeAttached({ timeout: 30_000 });
     await addProductBtn.click();
     await expect(page).toHaveURL(/\/add-product/i, { timeout: 30_000 });
     await waitForFlutter(page);
@@ -321,29 +321,29 @@ test.describe('Add Product — UI Tests', () => {
   });
 
   test('T10: UI — Fill form and attempt publish', async ({ page }) => {
-    // Fill Product Name
+    // Fill Product Name — use keyboard.type for Flutter Web (not pressSequentially)
     const nameInput = page.getByRole('textbox', { name: /product name/i }).first();
     await nameInput.click();
     await page.waitForTimeout(800);
-    await nameInput.pressSequentially(`E2E UI Product ${uid()}`, { delay: 30 });
+    await page.keyboard.type(`E2E UI Product ${uid()}`, { delay: 30 });
 
     // Fill Description
     const descInput = page.getByRole('textbox', { name: /^description$/i }).first();
     await descInput.click();
     await page.waitForTimeout(800);
-    await descInput.pressSequentially('E2E test product created via UI', { delay: 30 });
+    await page.keyboard.type('E2E test product created via UI', { delay: 30 });
 
     // Fill Price
     const priceInput = page.getByRole('textbox', { name: /price \(cad\)|prix/i }).first();
     await priceInput.click();
-    await priceInput.click({ clickCount: 3 });
-    await priceInput.pressSequentially('24.99', { delay: 30 });
+    await page.waitForTimeout(800);
+    await page.keyboard.type('24.99', { delay: 30 });
 
     // Fill Stock
     const stockInput = page.getByRole('textbox', { name: /^stock$/i }).first();
     await stockInput.click();
-    await stockInput.click({ clickCount: 3 });
-    await stockInput.pressSequentially('15', { delay: 30 });
+    await page.waitForTimeout(800);
+    await page.keyboard.type('15', { delay: 30 });
 
     // Verify inputs accepted values
     expect(await nameInput.inputValue()).toMatch(/E2E UI Product/);

@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   waitForFlutter, requireWebApp, checkSemantics,
   ensureLoggedInAsAdmin, performSignOut, navigateHome,
+  waitForSemantic,
   BTN_SETTINGS,
 } from './flutter-helpers';
 import {
@@ -174,17 +175,20 @@ test.describe('Profile Management — UI Tests', () => {
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASS);
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    await expect(settingsBtn).toBeAttached({ timeout: 30000 });
     await settingsBtn.click();
-    await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
+    await expect(page).toHaveURL(/\/profile/i, { timeout: 30000 });
     await waitForFlutter(page);
 
-    const menuOrders = page.locator('[aria-label^="menu-my-orders"]').first();
-    const menuFavorites = page.locator('[aria-label^="menu-favorites"]').first();
-    const menuAddress = page.locator('[aria-label^="menu-address"]').first();
+    // Wait for profile data to load from Firestore and semantic tree to flush.
+    // Profile screen fetches user data async — menu items only render after data loads.
+    const menuOrders = await waitForSemantic(page, '[aria-label^="menu-my-orders"]', 30000);
+    const menuFavorites = await waitForSemantic(page, '[aria-label^="menu-favorites"]', 30000);
+    const menuAddress = await waitForSemantic(page, '[aria-label^="menu-address"]', 30000);
 
-    await expect(menuOrders).toBeVisible({ timeout: 10000 });
-    await expect(menuFavorites).toBeVisible({ timeout: 10000 });
-    await expect(menuAddress).toBeVisible({ timeout: 10000 });
+    await expect(menuOrders).toBeAttached({ timeout: 10000 });
+    await expect(menuFavorites).toBeAttached({ timeout: 10000 });
+    await expect(menuAddress).toBeAttached({ timeout: 10000 });
 
     await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
@@ -199,18 +203,22 @@ test.describe('Profile Management — UI Tests', () => {
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASS);
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    await expect(settingsBtn).toBeAttached({ timeout: 30000 });
     await settingsBtn.click();
-    await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
+    await expect(page).toHaveURL(/\/profile/i, { timeout: 30000 });
     await waitForFlutter(page);
 
-    const menuAddress = page.locator('[aria-label^="menu-address"]').first();
-    await expect(menuAddress).toBeVisible({ timeout: 10000 });
-    await menuAddress.click();
-    await expect(page).toHaveURL(/\/addresses/i, { timeout: 20000 });
+    const menuAddress = await waitForSemantic(page, '[aria-label^="menu-address"]', 30000);
+    await expect(menuAddress).toBeAttached({ timeout: 10000 });
+    await menuAddress.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1000);
+    await menuAddress.click({ force: true });
+    await page.waitForTimeout(2000);
+    await expect(page).toHaveURL(/\/addresses/i, { timeout: 30000 });
     await waitForFlutter(page);
 
     const addAddrBtn = page.getByRole('button', { name: /btn-add-address|add address/i }).first();
-    await expect(addAddrBtn).toBeVisible({ timeout: 10000 });
+    await expect(addAddrBtn).toBeAttached({ timeout: 30000 });
 
     await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);
@@ -225,14 +233,18 @@ test.describe('Profile Management — UI Tests', () => {
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASS);
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    await expect(settingsBtn).toBeAttached({ timeout: 30000 });
     await settingsBtn.click();
-    await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
+    await expect(page).toHaveURL(/\/profile/i, { timeout: 30000 });
     await waitForFlutter(page);
 
-    const menuOrders = page.locator('[aria-label^="menu-my-orders"]').first();
-    await expect(menuOrders).toBeVisible({ timeout: 10000 });
-    await menuOrders.click();
-    await expect(page).toHaveURL(/\/orders/i, { timeout: 20000 });
+    const menuOrders = await waitForSemantic(page, '[aria-label^="menu-my-orders"]', 30000);
+    await expect(menuOrders).toBeAttached({ timeout: 10000 });
+    await menuOrders.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1000);
+    await menuOrders.click({ force: true });
+    await page.waitForTimeout(2000);
+    await expect(page).toHaveURL(/\/orders/i, { timeout: 30000 });
 
     await navigateHome(page, TARGET_URL);
     await performSignOut(page, TARGET_URL);

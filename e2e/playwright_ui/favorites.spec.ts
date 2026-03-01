@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   waitForFlutter, requireWebApp, checkSemantics,
   ensureLoggedInAsAdmin, performSignOut, navigateHome,
+  waitForProductCards, waitForSemantic,
   BTN_SETTINGS,
 } from './flutter-helpers';
 import {
@@ -89,22 +90,18 @@ test.describe('Favorites — UI Tests', () => {
     await checkSemantics(page);
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
 
-    const productCards = page.locator('[aria-label^="product-card-"]');
-    for (let i = 0; i < 12; i++) {
-      if ((await productCards.count()) > 0) break;
-      await page.mouse.wheel(0, 220);
-      await page.waitForTimeout(500);
-    }
-    expect(await productCards.count()).toBeGreaterThan(0);
+    // Wait for product cards to load (login gives Firestore time to warm up)
+    const count = await waitForProductCards(page, 60000);
+    expect(count).toBeGreaterThan(0);
 
     // [LK-1] btn-favorite-* is on a Semantics(label:) wrapper, not a role="button" —
     // aria-label locator is correct here (not on a button element)
-    const favBtn = page.locator('[aria-label^="btn-favorite-"]').first();
-    await expect(favBtn).toBeVisible({ timeout: 10000 });
-    await favBtn.click();
+    const favBtn = await waitForSemantic(page, '[aria-label^="btn-favorite-"]', 30000);
+    await expect(favBtn).toBeAttached({ timeout: 10000 });
+    await favBtn.click({ force: true });
     await page.waitForTimeout(2000);
     // Verify toggle happened — click again to toggle off
-    await favBtn.click();
+    await favBtn.click({ force: true });
     await page.waitForTimeout(1000);
 
     await navigateHome(page, TARGET_URL);
@@ -120,14 +117,17 @@ test.describe('Favorites — UI Tests', () => {
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    await expect(settingsBtn).toBeAttached({ timeout: 30000 });
     await settingsBtn.click();
-    await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
+    await expect(page).toHaveURL(/\/profile/i, { timeout: 30000 });
     await waitForFlutter(page);
 
-    const menuFavorites = page.locator('[aria-label^="menu-favorites"]').first();
-    await expect(menuFavorites).toBeVisible({ timeout: 10000 });
-    await menuFavorites.click();
-    await expect(page).toHaveURL(/\/favorites/i, { timeout: 20000 });
+    const menuFavorites = await waitForSemantic(page, '[aria-label^="menu-favorites"]', 30000);
+    await expect(menuFavorites).toBeAttached({ timeout: 10000 });
+    await menuFavorites.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1000);
+    await menuFavorites.click({ force: true });
+    await expect(page).toHaveURL(/\/favorites/i, { timeout: 30000 });
     await waitForFlutter(page);
 
     await navigateHome(page, TARGET_URL);

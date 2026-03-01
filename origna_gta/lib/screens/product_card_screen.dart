@@ -276,16 +276,19 @@ class _ProductCardState extends ConsumerState<ProductCard>
                             child: InkWell(
                               onTap: () => _toggleFavorite(),
                               customBorder: const CircleBorder(),
-                              child: Padding(
-                                padding: EdgeInsets.all(isCompact ? 6 : 8),
-                                child: Icon(
-                                  isFavorite
-                                      ? Icons.bookmark_rounded
-                                      : Icons.bookmark_border_rounded,
-                                  color: isFavorite
-                                      ? DesignTokens.primary
-                                      : DesignTokens.textSecondary,
-                                  size: favIconSize,
+                              child: Semantics(
+                                container: true,
+                                child: Padding(
+                                  padding: EdgeInsets.all(isCompact ? 6 : 8),
+                                  child: Icon(
+                                    isFavorite
+                                        ? Icons.bookmark_rounded
+                                        : Icons.bookmark_border_rounded,
+                                    color: isFavorite
+                                        ? DesignTokens.primary
+                                        : DesignTokens.textSecondary,
+                                    size: favIconSize,
+                                  ),
                                 ),
                               ),
                             ),

@@ -313,13 +313,12 @@ class ProfileScreen extends ConsumerWidget {
                             Semantics(
                               button: true,
                               label: 'btn-delete-account',
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  key: const Key('profile_delete_account_button'),
-                                  onTap: () => _showDeleteAccountDialog(context, ref),
-                                  borderRadius: BorderRadius.circular(12),
-                                  splashColor: DesignTokens.error.withValues(alpha: 0.1),
+                              child: GestureDetector(
+                                key: const Key('profile_delete_account_button'),
+                                onTap: () => _showDeleteAccountDialog(context, ref),
+                                behavior: HitTestBehavior.opaque,
+                                child: Semantics(
+                                  container: true,
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                     child: Center(
@@ -377,18 +376,17 @@ class ProfileScreen extends ConsumerWidget {
       child: Semantics(
         button: true,
         label: semanticLabel ?? 'menu-${title.toLowerCase().replaceAll(' ', '-')}',
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              onTap();
-            },
-            borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            splashColor: DesignTokens.primary.withValues(alpha: 0.1),
+        child: GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Semantics(
+            container: true,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
@@ -423,8 +421,8 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
+          ),
         ),
-      ),
     );
   }
 
@@ -450,14 +448,14 @@ class ProfileScreen extends ConsumerWidget {
       child: Semantics(
         button: true,
         label: 'menu-premium',
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              Navigator.pushNamed(context, AppRoutes.subscription);
-            },
-            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        child: GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.pushNamed(context, AppRoutes.subscription);
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Semantics(
+            container: true,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
@@ -507,8 +505,8 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
+          ),
         ),
-      ),
     );
   }
 
