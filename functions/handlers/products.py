@@ -17,7 +17,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-import boto3
 import requests
 from botocore.config import Config
 from firebase_functions import firestore_fn, https_fn
@@ -78,7 +77,10 @@ def _get_cached_r2_credentials() -> dict:
 
 
 def _get_cached_s3_client():
-    """Return a module-level boto3 S3 client, creating it on first call."""
+    """Return a module-level boto3 S3 client, creating it on first call.
+    boto3 import is deferred to avoid adding it to cold start time for functions that don't use R2.
+    """
+    import boto3  # Deferred import — reduces cold start for non-R2 functions
     global _s3_client_cache
     if _s3_client_cache is not None:
         return _s3_client_cache
