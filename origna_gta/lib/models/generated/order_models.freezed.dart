@@ -864,7 +864,8 @@ mixin _$OrderItem {
  DateTime? get shippedAt; DateTime? get deliveredAt; DateTime? get refundedAt; String? get refundReason; int? get refundAmountCents; String? get refundId; bool get confirmedByBuyer;// Variant tracking (immutable snapshot at order creation)
  String? get variantId; String? get variantTitle; Map<String, String>? get variantOptions; String? get variantSku;// Shipping metadata
  double? get weightKg; double? get lengthCm; double? get widthCm; double? get heightCm; bool get isLocalDeliveryOnly; bool get isPerishable; int get estimatedShipDays; List<SellerDeliveryOption> get deliveryOptions; int get minimumOrderQuantity; bool get freeShipping; bool get isDigital; String? get licenseKey; bool get digitalUnlocked; String? get digitalType; Map<String, String>? get digitalBuilds;// Tax field (new)
- String? get taxCode; String? get buyerNote; String? get fulfillmentWarehouseId;
+ String? get taxCode; String? get buyerNote;// ADDED
+ String? get fulfillmentWarehouseId;
 /// Create a copy of OrderItem
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1193,6 +1194,7 @@ class _OrderItem extends OrderItem {
 // Tax field (new)
 @override final  String? taxCode;
 @override final  String? buyerNote;
+// ADDED
 @override final  String? fulfillmentWarehouseId;
 
 /// Create a copy of OrderItem

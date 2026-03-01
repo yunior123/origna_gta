@@ -108,6 +108,7 @@ abstract class Product with _$Product {
     required List<String> imageUrls,
     String? videoUrl,
     required String sellerId,
+    String? madeInCountry,
     // sellerAddress is optional — products with warehouses use warehouseIds instead
     Address? sellerAddress,
     required int categoryId,
@@ -119,9 +120,11 @@ abstract class Product with _$Product {
     @Default(ProductLifecycleStatusValues.draft) String lifecycleStatus,
     // Optional shipping metadata
     double? weightKg,
+    String? weightUnit,
     double? lengthCm,
     double? widthCm,
     double? heightCm,
+    String? dimensionUnit,
     // Delivery options
     @Default(false) bool isLocalDeliveryOnly,
     @Default(false) bool isPerishable,
@@ -181,11 +184,11 @@ abstract class Product with _$Product {
     /// Whether this product has variants (size, color, etc.)
     @Default(false) bool hasVariants,
 
-    /// List of variant objects: {variantId, optionValues, price?, stockQuantity, sku?, isActive}
-    @Default([]) List<Map<String, dynamic>> variants,
+    /// List of variant objects
+    @Default([]) List<ProductVariant> variants,
 
-    /// Variant option definitions: [{name: 'Size', values: ['S','M','L']}, ...]
-    @Default([]) List<Map<String, dynamic>> variantOptions,
+    /// Variant option definitions
+    @Default([]) List<VariantOption> variantOptions,
 
     // === N-11: Subcategories ===
     /// Optional subcategory within the main category
@@ -293,14 +296,45 @@ abstract class ProductCreate with _$ProductCreate {
 
     // === N-09: Product Variants ===
     @Default(false) bool hasVariants,
-    @Default([]) List<Map<String, dynamic>> variants,
-    @Default([]) List<Map<String, dynamic>> variantOptions,
-
+    @Default([]) List<ProductVariant> variants,
+    @Default([]) List<VariantOption> variantOptions,
     // === N-11: Subcategories ===
     String? subcategory,
-  }) = _ProductCreate;
+    }) = _ProductCreate;
 
   factory ProductCreate.fromJson(Map<String, dynamic> json) => _$ProductCreateFromJson(json);
+}
+
+// ============================================================================
+// VARIANT OPTION MODEL
+// ============================================================================
+
+@freezed
+abstract class VariantOption with _$VariantOption {
+  const factory VariantOption({
+    required String name,
+    required List<String> values,
+  }) = _VariantOption;
+
+  factory VariantOption.fromJson(Map<String, dynamic> json) => _$VariantOptionFromJson(json);
+}
+
+// ============================================================================
+// PRODUCT VARIANT MODEL
+// ============================================================================
+
+@freezed
+abstract class ProductVariant with _$ProductVariant {
+  const factory ProductVariant({
+    @Default('') String variantId,
+    required Map<String, String> optionValues,
+    int? priceCents,
+    required int stockQuantity,
+    String? sku,
+    @Default(true) bool isActive,
+  }) = _ProductVariant;
+
+  factory ProductVariant.fromJson(Map<String, dynamic> json) => _$ProductVariantFromJson(json);
 }
 
 // ============================================================================

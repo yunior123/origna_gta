@@ -40,6 +40,10 @@ class AddressManagementScreen extends ConsumerWidget {
       }
     });
 
+    // ADDR-L1: disable add button client-side when at the 10-address limit
+    final addressCount = addressesAsync.valueOrNull?.length ?? 0;
+    final atAddressLimit = addressCount >= 10;
+
     return Container(
       decoration: BoxDecoration(
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
@@ -50,10 +54,12 @@ class AddressManagementScreen extends ConsumerWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.add, color: Colors.white),
-              tooltip: 'address.add_address'.tr(),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.addEditAddress);
-              },
+              tooltip: atAddressLimit
+                  ? 'address.limit_reached'.tr()
+                  : 'address.add_address'.tr(),
+              onPressed: atAddressLimit
+                  ? null
+                  : () => Navigator.pushNamed(context, AppRoutes.addEditAddress),
             ),
           ],
         ),

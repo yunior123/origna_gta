@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:video_player/video_player.dart';
 
 class ProductAddVideo extends StatefulWidget {
@@ -267,7 +268,7 @@ class _VideoTile extends StatelessWidget {
 
   Widget _buildVideoContent() {
     if (isInitializing) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: DesignTokens.primary));
+      return const Center(child: ModernLoadingIndicator());
     }
     if (errorMessage != null || controller == null) {
       return Center(child: Icon(Icons.broken_image_rounded, color: Colors.white.withValues(alpha: 0.5), size: 30));

@@ -33,7 +33,7 @@ from utils.function_options import DEFAULT_OPTIONS
 def _fetch_user_for_email(uid: str) -> dict:
     """Fetch user doc fields needed for email sending (email, name, language)."""
     try:
-        doc = _get_db().collection("users").document(uid).get()
+        doc = _get_db().collection(Collections.USERS).document(uid).get()
         if doc.exists:
             return doc.to_dict() or {}
     except Exception as e:
@@ -254,13 +254,8 @@ def reactivate_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _stripe_init()
     try:
-        stripe.Subscription.modify(stripe_sub_id, cancel_at_period_end=False)
-        _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).update(
-            {
-                Fields.CANCEL_AT_PERIOD_END: False,
-                Fields.UPDATED_AT: _get_server_timestamp(),
-            }
-        )
+        updated_stripe_sub = stripe.Subscription.modify(stripe_sub_id, cancel_at_period_end=False)
+        _sync_subscription(updated_stripe_sub)
         return {"success": True, "message": "Subscription reactivated."}
     except stripe.StripeError as e:
         logger.error(f"Stripe error reactivating subscription for {uid}: {e}")

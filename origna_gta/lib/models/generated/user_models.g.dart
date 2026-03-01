@@ -42,6 +42,9 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
   mfaEnrolledAt: json['mfaEnrolledAt'] == null
       ? null
       : DateTime.parse(json['mfaEnrolledAt'] as String),
+  lastMfaVerify: json['lastMfaVerify'] == null
+      ? null
+      : DateTime.parse(json['lastMfaVerify'] as String),
   emailConsent: json['emailConsent'] as bool? ?? true,
   marketingOptIn: json['marketingOptIn'] as bool? ?? false,
   consentTimestamp: json['consentTimestamp'] == null
@@ -100,6 +103,7 @@ Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'taxExemption': instance.taxExemption,
   'mfaEnabled': instance.mfaEnabled,
   'mfaEnrolledAt': instance.mfaEnrolledAt?.toIso8601String(),
+  'lastMfaVerify': instance.lastMfaVerify?.toIso8601String(),
   'emailConsent': instance.emailConsent,
   'marketingOptIn': instance.marketingOptIn,
   'consentTimestamp': instance.consentTimestamp?.toIso8601String(),

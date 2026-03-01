@@ -8,6 +8,10 @@ class NotificationPermissionNotifier extends StateNotifier<bool> {
   void setGranted(bool granted) => state = granted;
 }
 
+// FE-M2: No .autoDispose intentionally — permission state must persist for the
+// entire app session. NotificationService.initialize() is called once at app
+// startup and writes the result here; losing it on screen disposal would
+// cause stale "denied" state after navigation.
 final notificationPermissionProvider =
     StateNotifierProvider<NotificationPermissionNotifier, bool>(
   (ref) => NotificationPermissionNotifier(),

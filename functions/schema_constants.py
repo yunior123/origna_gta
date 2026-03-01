@@ -169,16 +169,135 @@ class AppConfig:
         "https://www.orignagta.ca",
         "https://orignagta.web.app",
         "https://orignagta.firebaseapp.com",
-        # Dev & Staging Firebase hosting
+        # Dev & Staging Firebase hosting + custom domains (BOOT-M1)
         "https://orignagta-dev.web.app",
         "https://orignagta-dev.firebaseapp.com",
+        "https://dev.orignagta.ca",
         "https://orignagta-staging.web.app",
         "https://orignagta-staging.firebaseapp.com",
+        "https://staging.orignagta.ca",
         # Local development (Firebase Emulator & Flutter Web)
         "http://localhost:5005",  # Firebase Emulator hosting / Flutter Web
         "http://localhost:5001",  # Firebase Functions (for preflight checks)
     ]
 
+class ExternalUrls:
+    """External URLs and deep links."""
+
+    SUPPORT_CHAT = "https://tawk.to/chat/65d836479131ed19d9703644/1hnb2980k"
+    PRIVACY_POLICY = "https://orignagta.ca/privacy"
+    TERMS_OF_SERVICE = "https://orignagta.ca/terms"
+    REFUND_POLICY = "https://orignagta.ca/refund"
+
+class FilterValues:
+    """Valid values for filtering product listings."""
+
+    RECENT = "recent"
+    POPULAR = "popular"
+    PRICE_LOW_TO_HIGH = "price_low_to_high"
+    PRICE_HIGH_TO_LOW = "price_high_to_low"
+    TOP_RATED = "top_rated"
+
+    ALL: frozenset[str] = frozenset({RECENT, POPULAR, PRICE_LOW_TO_HIGH, PRICE_HIGH_TO_LOW, TOP_RATED})
+
+
+class GeoValues:
+    """Standardized geographic values."""
+
+    CANADA = "CA"
+    US = "US"
+    MEXICO = "MX"
+    WORLDWIDE = "WW"
+
+
+class ProvinceCodeValues:
+    """Standardized Canadian province and territory codes."""
+
+    AB = "AB"
+    BC = "BC"
+    MB = "MB"
+    NB = "NB"
+    NL = "NL"
+    NS = "NS"
+    NT = "NT"
+    NU = "NU"
+    ON = "ON"
+    PE = "PE"
+    QC = "QC"
+    SK = "SK"
+    YT = "YT"
+
+
+class RemoteConfigKeys:
+    """Firebase Remote Config keys."""
+
+    FIREBASE_PROJECT_ID = "firebase_project_id"
+
+
+class UIMessages:
+    """Standardized user-facing messages."""
+
+    PASSWORD_RESET_EMAIL_SENT = "Password reset email sent. Check your inbox."
+    PASSWORD_RESET_SUCCESS = "Password has been reset successfully."
+    ACCOUNT_DELETION_SUCCESS = "Your account has been deleted."
+    EMAIL_VERIFICATION_SENT = "Verification email sent. Check your inbox."
+    EMAIL_VERIFIED_SUCCESS = "Email verified successfully!"
+    PROFILE_UPDATE_SUCCESS = "Profile updated successfully."
+    PASSWORD_CHANGE_SUCCESS = "Password changed successfully."
+    MFA_ENABLED_SUCCESS = "Two-factor authentication enabled."
+    MFA_DISABLED_SUCCESS = "Two-factor authentication disabled."
+    MFA_VERIFY_SUCCESS = "Two-factor code verified."
+    MFA_BACKUP_CODES_GENERATED = "New backup codes generated."
+    FCM_TOKEN_UPDATED = "Notification preferences updated."
+    PRODUCT_ADDED_TO_CART = "Product added to cart."
+    PRODUCT_REMOVED_FROM_CART = "Product removed from cart."
+    PRODUCT_ADDED_TO_FAVORITES = "Product added to favorites."
+    PRODUCT_REMOVED_FROM_FAVORITES = "Product removed from favorites."
+    OUT_OF_STOCK = "Item is out of stock."
+    PRODUCT_APPROVED = "Product approved."
+    PRODUCT_REJECTED = "Product rejected."
+    STOCK_UPDATED = "Stock updated."
+    REVIEW_DELETED = "Review deleted."
+    REVIEW_FLAGGED = "Review flagged for review."
+    ORDER_REFUNDED = "Order refunded."
+    SELLER_SUSPENDED = "Seller suspended."
+    SELLER_UNSUSPENDED = "Seller unsuspended."
+    WAREHOUSE_CREATED = "Warehouse created."
+    WAREHOUSE_UPDATED = "Warehouse updated."
+    WAREHOUSE_DELETED = "Warehouse deleted."
+    SHIPPING_APPROVAL_SENT = "Shipping approval requested from buyer."
+    SHIPPING_APPROVED = "Shipping cost approved."
+    SHIPPING_REJECTED = "Shipping cost rejected by buyer."
+    ITEM_RECEIVED_CONFIRMATION = "Item receipt confirmed."
+    ORDER_CANCELLED = "Order cancelled."
+    ITEM_REFUNDED = "Item refunded."
+    PAYMENT_PROVIDER_UPDATED = "Payment provider updated."
+    CONNECT_ACCOUNT_CREATED = "Connect account created."
+    CONNECT_ACCOUNT_VERIFIED = "Connect account verified."
+    CONNECT_ACCOUNT_NOT_VERIFIED = "Connect account not verified."
+    CONNECT_ACCOUNT_LOGIN_LINK_CREATED = "Login link created."
+    SUBSCRIPTION_CREATED = "Subscription created."
+    SUBSCRIPTION_CANCELLED = "Subscription cancelled."
+    SUBSCRIPTION_REACTIVATED = "Subscription reactivated."
+    EMAIL_CONSENT_UPDATED = "Email consent updated."
+    NOTIFICATIONS_UPDATED = "Notification preferences updated."
+    ADDRESS_ADDED = "Address added."
+    ADDRESS_UPDATED = "Address updated."
+    ADDRESS_DELETED = "Address deleted."
+    ADDRESS_DEFAULT_SET = "Default address set."
+    QUESTION_SUBMITTED = "Question submitted."
+    ANSWER_SUBMITTED = "Answer submitted."
+    STOCK_NOTIFICATION_SUBSCRIBED = "You will be notified when this item is back in stock."
+    STOCK_NOTIFICATION_UNSUBSCRIBED = "You will no longer receive stock notifications for this item."
+    REVIEW_HELPFUL_VOTED = "Thanks for your feedback!"
+    REVIEW_HELPFUL_VOTE_REMOVED = "Vote removed."
+    COUPON_APPLIED = "Coupon applied."
+    COUPON_REMOVED = "Coupon removed."
+    COUPON_CREATED = "Coupon created."
+
+class ConfirmationValues:
+    """Confirmation strings for sensitive operations."""
+    DELETE_MY_ACCOUNT = "DELETE_MY_ACCOUNT"
 
 class ProductConstraints:
     """Constraints for product-related data."""
@@ -259,7 +378,6 @@ class Fields:
     AVG_RATING = "avgRating"
     TOTAL_REVIEWS = "totalReviews"
     TOTAL_SALES = "totalSales"
-    BANK_ACCOUNT_LAST4 = "bankAccountLast4"
     ACCEPTS_RETURNS = "acceptsReturns"
     ITEM_RATING = "rating" # F-315: Product quality rating
     ITEM_RATING_COUNT = "ratingCount" # F-315: Number of product reviews
@@ -534,6 +652,7 @@ class Fields:
     DELIVERED_AT = "deliveredAt"
     REFUND_REASON = "refundReason"
     REFUND_AMOUNT_CENTS = "refundAmountCents"
+    ORDER_REFUND_CENTS = "refundAmountCents"  # Alias matching Dart ApiKeys.orderRefundCents
     REFUND_ID = "refundId"
     CONFIRMED_BY_BUYER = "confirmedByBuyer"
     # === STRIPE METADATA KEYS (used in transfer/alert metadata) ===
@@ -655,7 +774,7 @@ class Fields:
     ERROR_CODE = "errorCode"
     TARGET_USER_ID = "targetUserId"
     OLD_ROLES = "oldRoles"
-    NEW_ROLES = "newRoles"
+    NEW_ROLES = "new_roles"
     PRODUCTS_DEACTIVATED = "productsDeactivated"
     ORDERS_CANCELLED = "ordersCancelled"
 
@@ -1028,7 +1147,7 @@ class SecurityAlertTypes:
     PAYMENT_PROVIDER_DISABLED = "payment_provider_disabled"
     REFUND_REVERSAL_FAILED = "refund_reversal_failed"
     PAYOUT_FAILED = "payout_failed"
-    REFUND_FAILED = "refund_failed"
+    REFUND_FAILED = "refund.failed"
     SELLER_ACCOUNT_CHANGED = "seller_account_changed"
     PAYOUT_RECORD_INCOMPLETE = "payout_record_incomplete"
     MFA_LOW_BACKUP_CODES = "mfa_low_backup_codes"
@@ -1479,6 +1598,9 @@ class BusinessRules:
     MAX_PRODUCT_IMAGES = 5  # Maximum images per product listing (cross-stack with Dart)
     MAX_REVIEW_IMAGES = 3  # Maximum images per review
 
+    # Chat limits
+    CHAT_MAX_MESSAGES_PER_THREAD = 500  # Hard cap per thread to prevent unbounded storage
+
     # Seller health thresholds
     SELLER_DISPUTE_RATE_THRESHOLD = 0.05  # 5% dispute rate triggers seller health alert
     SELLER_REFUND_RATE_THRESHOLD = 0.10   # 10% refund rate threshold
@@ -1882,81 +2004,3 @@ class OrderEventTypes:
     STATUS_CHANGED = "status_changed"
     PAYMENT_AUTHORIZED = "payment_authorized"
     PAYMENT_CAPTURED = "payment_captured"
-    PAYMENT_FAILED = "payment_failed"
-    REFUND_ISSUED = "refund_issued"
-    ITEM_SHIPPED = "item_shipped"
-    ITEM_DELIVERED = "item_delivered"
-    CANCELLATION_CONFIRMED = "cancellation_confirmed"
-    NOTE_ADDED = "note_added"
-    AUTO_CONFIRMED = "auto_confirmed"
-    ORDER_CONFIRMED_BUYER = "order_confirmed_buyer"
-    ORDER_CONFIRMED_SELLER = "order_confirmed_seller"
-    DISPUTE_CREATED = "dispute_created"
-    DISPUTE_RESOLVED = "dispute_resolved"
-    ALL: frozenset[str] = frozenset({
-        "status_changed", "payment_authorized", "payment_captured", "payment_failed",
-        "refund_issued", "item_shipped", "item_delivered", "cancellation_confirmed", "note_added",
-        "auto_confirmed", "order_confirmed_buyer", "order_confirmed_seller", "dispute_created", "dispute_resolved",
-    })
-
-# =============================================================================
-# NOTIFICATION TYPES - Parity with Dart NotificationTypes
-# =============================================================================
-
-
-class NotificationTypes:
-    """Standardized notification types to avoid magic strings."""
-
-    ORDER_STATUS = "order_status"
-    ORDER_UPDATE = "order_update"
-    NEW_MESSAGE = "new_message"
-    PROMO = "promo"
-    SYSTEM = "system"
-    ACCOUNT = "account"
-    # Added for return request tracking
-    RETURN_REQUEST = "return_request"
-    RETURN_STATUS = "return_status"
-    BACK_IN_STOCK = "back_in_stock"
-    REFUND_ISSUED = "refund_issued"
-    MESSAGE_REPORT = "message_report" # F-121: Flagged chat message
-
-    ALL: frozenset[str] = frozenset({
-        ORDER_STATUS,
-        ORDER_UPDATE,
-        NEW_MESSAGE,
-        PROMO,
-        SYSTEM,
-        ACCOUNT,
-        RETURN_REQUEST,
-        RETURN_STATUS,
-        BACK_IN_STOCK,
-        REFUND_ISSUED,
-        MESSAGE_REPORT,
-    })
-
-
-class TransactionSentinel:
-    """Internal sentinel values for transactional function results."""
-
-    ALREADY_REFUNDED = "already_refunded"
-    REFUNDED = "refunded"
-
-
-class CancellationReasonValues:
-    """Standardized reasons for order cancellation."""
-
-    BUYER_REQUESTED = "requested_by_customer"
-    SELLER_CANCELLED = "seller_cancelled"
-    SHIPPING_REJECTED = "Buyer rejected shipping cost"
-    PAYMENT_FAILED = "payment_failed"
-    EXPIRED = "authorization_expired"
-
-
-class RefundReasonValues:
-    """Standardized reasons for item/order refunds."""
-
-    RETURN_APPROVED = "Return approved"
-    OUT_OF_STOCK = "item_out_of_stock"
-    BUYER_REQUESTED = "requested_by_customer"
-    DAMAGED = "item_damaged"
-    INCORRECT_ITEM = "incorrect_item"

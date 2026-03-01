@@ -9,6 +9,8 @@ const _sentinel = Object();
 
 class AddProductState {
   final bool isLoading;
+  // PROD-C4: true only during the R2 video upload step inside addProduct()
+  final bool isUploadingVideo;
   final bool isLocalDeliveryOnly;
   final String selectedProvince;
   final double? latitude;
@@ -66,6 +68,7 @@ class AddProductState {
 
   AddProductState({
     this.isLoading = false,
+    this.isUploadingVideo = false,
     this.isLocalDeliveryOnly = false,
     this.selectedProvince = ProvinceCodeValues.ontario,
     this.latitude,
@@ -122,6 +125,7 @@ class AddProductState {
   /// Without it, `copyWith()` preserves the current errorMessage.
   AddProductState copyWith({
     bool? isLoading,
+    bool? isUploadingVideo,
     bool? isLocalDeliveryOnly,
     String? selectedProvince,
     Object? latitude = _sentinel,
@@ -175,6 +179,7 @@ class AddProductState {
   }) {
     return AddProductState(
       isLoading: isLoading ?? this.isLoading,
+      isUploadingVideo: isUploadingVideo ?? this.isUploadingVideo,
       isLocalDeliveryOnly: isLocalDeliveryOnly ?? this.isLocalDeliveryOnly,
       selectedProvince: selectedProvince ?? this.selectedProvince,
       latitude: latitude == _sentinel ? this.latitude : latitude as double?,

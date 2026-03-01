@@ -829,10 +829,12 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
   Future<void> _checkVerification() async {
     setState(() => _isChecking = true);
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      // LEG-H2: use firebaseAuthProvider instead of FirebaseAuth.instance directly
+      final auth = ref.read(firebaseAuthProvider);
+      final user = auth.currentUser;
       if (user != null) {
         await user.reload();
-        final freshUser = FirebaseAuth.instance.currentUser;
+        final freshUser = auth.currentUser;
         if (freshUser != null && freshUser.emailVerified) {
           // Email is now verified! Create the Firestore document
           await ref.read(authRepositoryProvider).ensureUserDocumentExists();

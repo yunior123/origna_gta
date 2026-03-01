@@ -246,6 +246,7 @@ class NotificationService {
       case NotificationTypes.orderUpdate:
       case NotificationTypes.returnStatus:
       case NotificationTypes.returnRequest:
+      case NotificationTypes.refundIssued:
         // Navigate to order detail if orderId is present, otherwise to order list
         final orderId = data['orderId'] as String?;
         if (orderId != null && orderId.isNotEmpty) {

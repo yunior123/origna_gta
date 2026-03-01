@@ -4,7 +4,7 @@ import 'package:origna_gta/features/qa/qa_repository.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/qa_model.dart';
 
-final qaControllerProvider = StateNotifierProvider<QAController, AsyncValue<void>>((ref) {
+final qaControllerProvider = StateNotifierProvider.autoDispose<QAController, AsyncValue<void>>((ref) {
   return QAController(ref.watch(qaRepositoryProvider), ref);
 });
 

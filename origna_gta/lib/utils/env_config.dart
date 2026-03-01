@@ -95,12 +95,27 @@ class EnvConfig {
     return false;
   }
 
-  /// R2 Storage paths based on environment
-  String get r2ProductsFolder => isEmulator ? 'emulator/products' : (isDev ? 'dev/products' : (isStaging ? 'staging/products' : 'products'));
-  String get r2UsersFolder => isEmulator ? 'emulator/users' : (isDev ? 'dev/users' : (isStaging ? 'staging/users' : 'users'));
-  
+  /// R2 Storage paths based on environment — BOOT-M4: switch over enum
+  String get r2ProductsFolder => switch (environment) {
+    AppEnvironment.emulator => 'emulator/products',
+    AppEnvironment.dev => 'dev/products',
+    AppEnvironment.staging => 'staging/products',
+    AppEnvironment.production => 'products',
+  };
+  String get r2UsersFolder => switch (environment) {
+    AppEnvironment.emulator => 'emulator/users',
+    AppEnvironment.dev => 'dev/users',
+    AppEnvironment.staging => 'staging/users',
+    AppEnvironment.production => 'users',
+  };
+
   /// Algolia index name based on environment
-  String get algoliaIndexName => isEmulator ? 'products_emulator' : (isDev ? 'products_dev' : (isStaging ? 'products_staging' : 'products'));
+  String get algoliaIndexName => switch (environment) {
+    AppEnvironment.emulator => 'products_emulator',
+    AppEnvironment.dev => 'products_dev',
+    AppEnvironment.staging => 'products_staging',
+    AppEnvironment.production => 'products',
+  };
 
   /// Get environment display name
   String get displayName {

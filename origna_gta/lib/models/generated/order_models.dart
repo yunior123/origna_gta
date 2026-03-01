@@ -67,7 +67,7 @@ OrderItem _parseOrderItem(dynamic raw) {
     digitalType: map[Fields.digitalType] != null ? _safeString(map[Fields.digitalType]) : null,
     digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
     taxCode: map[Fields.taxCode] != null ? _safeString(map[Fields.taxCode]) : null,
-    buyerNote: map[Fields.buyerNote] != null ? _safeString(map[Fields.buyerNote]) : null,
+    buyerNote: map[Fields.buyerNote] != null ? _safeString(map[Fields.buyerNote]) : null, // ADDED
     fulfillmentWarehouseId: map[Fields.fulfillmentWarehouseId] != null ? _safeString(map[Fields.fulfillmentWarehouseId]) : null,
   );
 }
@@ -374,7 +374,7 @@ abstract class Order with _$Order {
       expiresAt: _parseDateTime(data[Fields.expiresAt]),
       autoConfirmed: _safeBool(data[Fields.autoConfirmed]),
       autoCaptured: _safeBool(data[Fields.autoCaptured]),
-      refundAmountCents: _safeInt(data[Fields.orderRefundCents]),
+      refundAmountCents: _safeInt(data[Fields.refundAmountCents]),
       refundedAt: _parseDateTime(data[Fields.refundedAt]),
       stockRestored: _safeBool(data[Fields.stockRestored]),
       cancelledBy: data[Fields.cancelledBy] != null ? _safeString(data[Fields.cancelledBy]) : null,
@@ -500,11 +500,9 @@ abstract class OrderItem with _$OrderItem {
     Map<String, String>? digitalBuilds,
     // Tax field (new)
     String? taxCode,
-    String? buyerNote,
+    String? buyerNote, // ADDED
     String? fulfillmentWarehouseId, // TASK 02: warehouse from which this item was fulfilled
-  }) = _OrderItem;
-
-  factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
+  }) = _OrderItem;  factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
 
   const OrderItem._();
 

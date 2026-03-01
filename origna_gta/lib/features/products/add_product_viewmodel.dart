@@ -71,6 +71,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     models.InventoryConfig? inventory,
     // Subcategory (N-11)
     String? subcategory,
+    // PROD-C2: true when the seller has warehouses registered — enforces warehouse selection
+    bool sellerHasWarehouses = false,
   }) async {
     // Bug #27: Prevent double-submit
     if (state.isLoading) return;
@@ -120,6 +122,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
     if (categoryId <= 0) {
       state = state.copyWith(errorMessage: 'product.select_category'.tr());
+      return;
+    }
+    // PROD-C2: If seller has warehouses, they must select at least one — manual address bypass not allowed.
+    if (!state.isDigital && sellerHasWarehouses && state.selectedWarehouseIds.isEmpty) {
+      state = state.copyWith(errorMessage: 'product.warehouse_selection_required'.tr());
       return;
     }
     // Bug #4: Skip address validation for digital products or when warehouses are selected
@@ -337,7 +344,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         categoryId: categoryId,
         createdAt: DateTime.now(),
         rating: 0.0,
-        lifecycleStatus: ProductLifecycleStatusValues.draft,
+        // PROD-C3: lifecycleStatus omitted — defaults to 'draft' in model; backend sets 'under_review' on creation.
         weightKg: state.isDigital ? null : weight,
         lengthCm: state.isDigital ? null : length,
         widthCm: state.isDigital ? null : width,
@@ -381,10 +388,16 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         videoUrl: null, // Will be set after upload
       );
 
+      // PROD-C4: Show dedicated uploading state so submit button reflects video upload progress.
       String? uploadedVideoUrl;
       if (state.videoFile != null) {
-        uploadedVideoUrl = await productRepository.uploadProductVideo(state.videoFile!, uid);
-        product = product.copyWith(videoUrl: uploadedVideoUrl);
+        state = state.copyWith(isUploadingVideo: true);
+        try {
+          uploadedVideoUrl = await productRepository.uploadProductVideo(state.videoFile!, uid);
+          product = product.copyWith(videoUrl: uploadedVideoUrl);
+        } finally {
+          state = state.copyWith(isUploadingVideo: false);
+        }
       }
 
       await productRepository.createProductAtomic(

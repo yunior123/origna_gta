@@ -77,7 +77,12 @@ void main() {
           FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
           await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
         } catch (e) {
-          debugPrint('❌ Failed to connect to emulators: $e');
+          // BOOT-C1: Never silently fall back to dev Firebase when emulators are
+          // unavailable — this would cause data contamination in dev.
+          throw Exception(
+            'EMULATOR mode is enabled but emulators are unavailable: $e\n'
+            'Start emulators with `firebase emulators:start` before running the app.',
+          );
         }
       }
 

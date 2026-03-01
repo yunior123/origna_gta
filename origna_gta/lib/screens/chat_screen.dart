@@ -174,7 +174,7 @@ class _MessagesList extends ConsumerWidget {
     ref.listen(chatMessagesProvider(chatId), (prev, next) {
       if (next.hasValue) {
         final prevCount = prev?.value?.length ?? 0;
-        final nextCount = next.value!.length;
+        final nextCount = next.value?.length ?? 0;
         // Only scroll + markRead when new messages arrive (not on our own sends)
         if (nextCount > prevCount) {
           WidgetsBinding.instance.addPostFrameCallback((_) => onNewMessages());

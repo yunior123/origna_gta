@@ -64,6 +64,7 @@ abstract class User with _$User {
     // MFA status (secrets live in user_security — backend only)
     @Default(false) bool mfaEnabled,
     DateTime? mfaEnrolledAt,
+    DateTime? lastMfaVerify,
     // === CONSENT & COMPLIANCE (CASL + PIPEDA + Quebec Law 25) ===
     @Default(true) bool emailConsent,
     @Default(false) bool marketingOptIn,

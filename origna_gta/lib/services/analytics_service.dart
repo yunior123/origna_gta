@@ -6,7 +6,8 @@ import 'package:origna_gta/utils/env_config.dart';
 class AnalyticsService {
   static final _analytics = FirebaseAnalytics.instance;
 
-  static bool get _isEnabled => !envConfig.isEmulator && !envConfig.isDev;
+  // BOOT-M3: also disable in staging to avoid polluting production data
+  static bool get _isEnabled => !envConfig.isEmulator && !envConfig.isDev && !envConfig.isStaging;
 
   static Future<void> logPurchase({
     required String orderId,

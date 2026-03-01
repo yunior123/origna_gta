@@ -10,13 +10,16 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 /// SECURITY: Phase 3 - Session timeout implementation
 /// Tracks user interactions and signs out after 15 minutes of inactivity.
 class SessionTimeoutService {
-  static const Duration _inactivityTimeout = Duration(minutes: 15);
+  // BOOT-L1: sourced from BusinessRules constant instead of hardcoded
+  static final Duration _inactivityTimeout = Duration(minutes: BusinessRules.sessionTimeoutMinutes);
 
   /// Singleton instance
   static final SessionTimeoutService _instance = SessionTimeoutService._internal();
   Timer? _timeoutTimer;
   DateTime _lastActivityTime = DateTime.now();
   GlobalKey<NavigatorState>? _navigatorKey;
+  // BOOT-H2: Track which user started the timer to prevent signing out a different user
+  String? _watchedUserId;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   factory SessionTimeoutService() => _instance;
@@ -45,6 +48,7 @@ class SessionTimeoutService {
     _timeoutTimer?.cancel(); // Prevent timer leak on repeated calls
     if (_auth.currentUser == null) return;
     _navigatorKey = navigatorKey;
+    _watchedUserId = _auth.currentUser?.uid; // BOOT-H2: bind timer to this user
     _resetTimer();
   }
 
@@ -53,12 +57,15 @@ class SessionTimeoutService {
     _timeoutTimer?.cancel();
     _timeoutTimer = null;
     _navigatorKey = null;
+    _watchedUserId = null; // BOOT-H2: clear binding
   }
 
   /// Handle timeout event - sign out user
   Future<void> _handleTimeout() async {
     final user = _auth.currentUser;
     if (user == null) return;
+    // BOOT-H2: only sign out the exact user whose session started this timer
+    if (_watchedUserId != null && user.uid != _watchedUserId) return;
 
     try {
       await _auth.signOut();

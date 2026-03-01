@@ -43,6 +43,7 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
       .toList(),
   videoUrl: json['videoUrl'] as String?,
   sellerId: json['sellerId'] as String,
+  madeInCountry: json['madeInCountry'] as String?,
   sellerAddress: json['sellerAddress'] == null
       ? null
       : Address.fromJson(json['sellerAddress'] as Map<String, dynamic>),
@@ -54,9 +55,11 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   lifecycleStatus:
       json['lifecycleStatus'] as String? ?? ProductLifecycleStatusValues.draft,
   weightKg: (json['weightKg'] as num?)?.toDouble(),
+  weightUnit: json['weightUnit'] as String?,
   lengthCm: (json['lengthCm'] as num?)?.toDouble(),
   widthCm: (json['widthCm'] as num?)?.toDouble(),
   heightCm: (json['heightCm'] as num?)?.toDouble(),
+  dimensionUnit: json['dimensionUnit'] as String?,
   isLocalDeliveryOnly: json['isLocalDeliveryOnly'] as bool? ?? false,
   isPerishable: json['isPerishable'] as bool? ?? false,
   estimatedShipDays: (json['estimatedShipDays'] as num?)?.toInt() ?? 3,
@@ -108,12 +111,12 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   hasVariants: json['hasVariants'] as bool? ?? false,
   variants:
       (json['variants'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
+          ?.map((e) => ProductVariant.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
   variantOptions:
       (json['variantOptions'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
+          ?.map((e) => VariantOption.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
   subcategory: json['subcategory'] as String?,
@@ -138,6 +141,7 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'imageUrls': instance.imageUrls,
   'videoUrl': instance.videoUrl,
   'sellerId': instance.sellerId,
+  'madeInCountry': instance.madeInCountry,
   'sellerAddress': instance.sellerAddress,
   'categoryId': instance.categoryId,
   'stockQuantity': instance.stockQuantity,
@@ -146,9 +150,11 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'createdAt': instance.createdAt.toIso8601String(),
   'lifecycleStatus': instance.lifecycleStatus,
   'weightKg': instance.weightKg,
+  'weightUnit': instance.weightUnit,
   'lengthCm': instance.lengthCm,
   'widthCm': instance.widthCm,
   'heightCm': instance.heightCm,
+  'dimensionUnit': instance.dimensionUnit,
   'isLocalDeliveryOnly': instance.isLocalDeliveryOnly,
   'isPerishable': instance.isPerishable,
   'estimatedShipDays': instance.estimatedShipDays,
@@ -257,12 +263,12 @@ _ProductCreate _$ProductCreateFromJson(
   hasVariants: json['hasVariants'] as bool? ?? false,
   variants:
       (json['variants'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
+          ?.map((e) => ProductVariant.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
   variantOptions:
       (json['variantOptions'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
+          ?.map((e) => VariantOption.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
   subcategory: json['subcategory'] as String?,
@@ -316,6 +322,37 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'variants': instance.variants,
       'variantOptions': instance.variantOptions,
       'subcategory': instance.subcategory,
+    };
+
+_VariantOption _$VariantOptionFromJson(Map<String, dynamic> json) =>
+    _VariantOption(
+      name: json['name'] as String,
+      values: (json['values'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
+    );
+
+Map<String, dynamic> _$VariantOptionToJson(_VariantOption instance) =>
+    <String, dynamic>{'name': instance.name, 'values': instance.values};
+
+_ProductVariant _$ProductVariantFromJson(Map<String, dynamic> json) =>
+    _ProductVariant(
+      variantId: json['variantId'] as String? ?? '',
+      optionValues: Map<String, String>.from(json['optionValues'] as Map),
+      priceCents: (json['priceCents'] as num?)?.toInt(),
+      stockQuantity: (json['stockQuantity'] as num).toInt(),
+      sku: json['sku'] as String?,
+      isActive: json['isActive'] as bool? ?? true,
+    );
+
+Map<String, dynamic> _$ProductVariantToJson(_ProductVariant instance) =>
+    <String, dynamic>{
+      'variantId': instance.variantId,
+      'optionValues': instance.optionValues,
+      'priceCents': instance.priceCents,
+      'stockQuantity': instance.stockQuantity,
+      'sku': instance.sku,
+      'isActive': instance.isActive,
     };
 
 _ProductQuestion _$ProductQuestionFromJson(Map<String, dynamic> json) =>

@@ -51,14 +51,24 @@ def update_remote_config(project_id):
     # Get values from .env
     algolia_app_id = os.environ.get("ALGOLIA_APP_ID", "")
     algolia_search_key = os.environ.get("ALGOLIA_SEARCH_API_KEY", "")
+    algolia_admin_key = os.environ.get("ALGOLIA_ADMIN_API_KEY", "")
     geoapify_key = os.environ.get("GEOAPIFY_API_KEY", "")
-    
+
     # Placeholders for missing values
-    image_base_url = "https://pub-MISSING-R2-URL.r2.dev" 
-    sentry_dns = "" 
+    image_base_url = "https://pub-MISSING-R2-URL.r2.dev"
+    sentry_dns = ""
 
     if not algolia_app_id or not algolia_search_key:
         print("⚠️ Warning: Algolia keys missing in .env")
+
+    # SRCH-H3: Guard against accidentally pushing admin API key to Remote Config.
+    # The admin key grants full write access to the Algolia index — it must never
+    # reach client devices. Abort if the search key matches the admin key.
+    if algolia_admin_key and algolia_search_key == algolia_admin_key:
+        print("❌ ABORT: ALGOLIA_SEARCH_API_KEY equals ALGOLIA_ADMIN_API_KEY — "
+              "you are about to push the admin key to Remote Config. "
+              "Set ALGOLIA_SEARCH_API_KEY to the public search-only key.")
+        return
 
     # Prepare new parameters
     new_params = {

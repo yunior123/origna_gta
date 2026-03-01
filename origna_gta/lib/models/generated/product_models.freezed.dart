@@ -306,10 +306,10 @@ as int,
 mixin _$Product {
 
  String get productId; String get name; String? get nameF; double get price; int? get priceCents;/// Original/crossed-out price for discount display (null = no sale, must be > price)
- double? get compareAtPrice; String get description; String? get descriptionF; List<String> get imageUrls; String? get videoUrl; String get sellerId;// sellerAddress is optional — products with warehouses use warehouseIds instead
+ double? get compareAtPrice; String get description; String? get descriptionF; List<String> get imageUrls; String? get videoUrl; String get sellerId; String? get madeInCountry;// sellerAddress is optional — products with warehouses use warehouseIds instead
  Address? get sellerAddress; int get categoryId; int get stockQuantity; double get rating; int get ratingCount; DateTime get createdAt;// Single lifecycle state replacing isActive + status + approvalStatus
  String get lifecycleStatus;// Optional shipping metadata
- double? get weightKg; double? get lengthCm; double? get widthCm; double? get heightCm;// Delivery options
+ double? get weightKg; String? get weightUnit; double? get lengthCm; double? get widthCm; double? get heightCm; String? get dimensionUnit;// Delivery options
  bool get isLocalDeliveryOnly; bool get isPerishable; int get estimatedShipDays; List<SellerDeliveryOption> get deliveryOptions; int get minimumOrderQuantity; bool get freeShipping;// Digital product flag
  bool get isDigital; String? get digitalType; String? get slug; Map<String, String>? get digitalBuilds;// bookSourceUrl intentionally NOT included — buyer-protected: written by seller, never returned to client
  int? get deviceLimit;// Tax and metadata
@@ -327,9 +327,9 @@ mixin _$Product {
  String? get shipFromCountry; List<String>? get shipFromCountries;// === TRENDING & ENGAGEMENT ===
  int get trendingScore; int get viewCount; int get purchaseCount; bool get isTrending; DateTime? get trendingAt;// === N-09: Product Variants ===
 /// Whether this product has variants (size, color, etc.)
- bool get hasVariants;/// List of variant objects: {variantId, optionValues, price?, stockQuantity, sku?, isActive}
- List<Map<String, dynamic>> get variants;/// Variant option definitions: [{name: 'Size', values: ['S','M','L']}, ...]
- List<Map<String, dynamic>> get variantOptions;// === N-11: Subcategories ===
+ bool get hasVariants;/// List of variant objects
+ List<ProductVariant> get variants;/// Variant option definitions
+ List<VariantOption> get variantOptions;// === N-11: Subcategories ===
 /// Optional subcategory within the main category
  String? get subcategory;/// Product condition: new, like_new, good, fair, for_parts
  String? get condition;/// Per-warehouse stock allocation map: {warehouseId: stockQty}
@@ -348,16 +348,16 @@ $ProductCopyWith<Product> get copyWith => _$ProductCopyWithImpl<Product>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Product&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.name, name) || other.name == name)&&(identical(other.nameF, nameF) || other.nameF == nameF)&&(identical(other.price, price) || other.price == price)&&(identical(other.priceCents, priceCents) || other.priceCents == priceCents)&&(identical(other.compareAtPrice, compareAtPrice) || other.compareAtPrice == compareAtPrice)&&(identical(other.description, description) || other.description == description)&&(identical(other.descriptionF, descriptionF) || other.descriptionF == descriptionF)&&const DeepCollectionEquality().equals(other.imageUrls, imageUrls)&&(identical(other.videoUrl, videoUrl) || other.videoUrl == videoUrl)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.stockQuantity, stockQuantity) || other.stockQuantity == stockQuantity)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lifecycleStatus, lifecycleStatus) || other.lifecycleStatus == lifecycleStatus)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other.deliveryOptions, deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.digitalType, digitalType) || other.digitalType == digitalType)&&(identical(other.slug, slug) || other.slug == slug)&&const DeepCollectionEquality().equals(other.digitalBuilds, digitalBuilds)&&(identical(other.deviceLimit, deviceLimit) || other.deviceLimit == deviceLimit)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode)&&const DeepCollectionEquality().equals(other.keywords, keywords)&&(identical(other.approvalRejectionReason, approvalRejectionReason) || other.approvalRejectionReason == approvalRejectionReason)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.supplierSku, supplierSku) || other.supplierSku == supplierSku)&&(identical(other.supplierUrl, supplierUrl) || other.supplierUrl == supplierUrl)&&(identical(other.supplier, supplier) || other.supplier == supplier)&&(identical(other.inventory, inventory) || other.inventory == inventory)&&(identical(other.sellerSku, sellerSku) || other.sellerSku == sellerSku)&&const DeepCollectionEquality().equals(other.warehouseIds, warehouseIds)&&(identical(other.shipFromCity, shipFromCity) || other.shipFromCity == shipFromCity)&&(identical(other.shipFromProvince, shipFromProvince) || other.shipFromProvince == shipFromProvince)&&(identical(other.shipFromCountry, shipFromCountry) || other.shipFromCountry == shipFromCountry)&&const DeepCollectionEquality().equals(other.shipFromCountries, shipFromCountries)&&(identical(other.trendingScore, trendingScore) || other.trendingScore == trendingScore)&&(identical(other.viewCount, viewCount) || other.viewCount == viewCount)&&(identical(other.purchaseCount, purchaseCount) || other.purchaseCount == purchaseCount)&&(identical(other.isTrending, isTrending) || other.isTrending == isTrending)&&(identical(other.trendingAt, trendingAt) || other.trendingAt == trendingAt)&&(identical(other.hasVariants, hasVariants) || other.hasVariants == hasVariants)&&const DeepCollectionEquality().equals(other.variants, variants)&&const DeepCollectionEquality().equals(other.variantOptions, variantOptions)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.condition, condition) || other.condition == condition)&&const DeepCollectionEquality().equals(other.warehouseStockMap, warehouseStockMap)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Product&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.name, name) || other.name == name)&&(identical(other.nameF, nameF) || other.nameF == nameF)&&(identical(other.price, price) || other.price == price)&&(identical(other.priceCents, priceCents) || other.priceCents == priceCents)&&(identical(other.compareAtPrice, compareAtPrice) || other.compareAtPrice == compareAtPrice)&&(identical(other.description, description) || other.description == description)&&(identical(other.descriptionF, descriptionF) || other.descriptionF == descriptionF)&&const DeepCollectionEquality().equals(other.imageUrls, imageUrls)&&(identical(other.videoUrl, videoUrl) || other.videoUrl == videoUrl)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.madeInCountry, madeInCountry) || other.madeInCountry == madeInCountry)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.stockQuantity, stockQuantity) || other.stockQuantity == stockQuantity)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lifecycleStatus, lifecycleStatus) || other.lifecycleStatus == lifecycleStatus)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.weightUnit, weightUnit) || other.weightUnit == weightUnit)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.dimensionUnit, dimensionUnit) || other.dimensionUnit == dimensionUnit)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other.deliveryOptions, deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.digitalType, digitalType) || other.digitalType == digitalType)&&(identical(other.slug, slug) || other.slug == slug)&&const DeepCollectionEquality().equals(other.digitalBuilds, digitalBuilds)&&(identical(other.deviceLimit, deviceLimit) || other.deviceLimit == deviceLimit)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode)&&const DeepCollectionEquality().equals(other.keywords, keywords)&&(identical(other.approvalRejectionReason, approvalRejectionReason) || other.approvalRejectionReason == approvalRejectionReason)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.supplierSku, supplierSku) || other.supplierSku == supplierSku)&&(identical(other.supplierUrl, supplierUrl) || other.supplierUrl == supplierUrl)&&(identical(other.supplier, supplier) || other.supplier == supplier)&&(identical(other.inventory, inventory) || other.inventory == inventory)&&(identical(other.sellerSku, sellerSku) || other.sellerSku == sellerSku)&&const DeepCollectionEquality().equals(other.warehouseIds, warehouseIds)&&(identical(other.shipFromCity, shipFromCity) || other.shipFromCity == shipFromCity)&&(identical(other.shipFromProvince, shipFromProvince) || other.shipFromProvince == shipFromProvince)&&(identical(other.shipFromCountry, shipFromCountry) || other.shipFromCountry == shipFromCountry)&&const DeepCollectionEquality().equals(other.shipFromCountries, shipFromCountries)&&(identical(other.trendingScore, trendingScore) || other.trendingScore == trendingScore)&&(identical(other.viewCount, viewCount) || other.viewCount == viewCount)&&(identical(other.purchaseCount, purchaseCount) || other.purchaseCount == purchaseCount)&&(identical(other.isTrending, isTrending) || other.isTrending == isTrending)&&(identical(other.trendingAt, trendingAt) || other.trendingAt == trendingAt)&&(identical(other.hasVariants, hasVariants) || other.hasVariants == hasVariants)&&const DeepCollectionEquality().equals(other.variants, variants)&&const DeepCollectionEquality().equals(other.variantOptions, variantOptions)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.condition, condition) || other.condition == condition)&&const DeepCollectionEquality().equals(other.warehouseStockMap, warehouseStockMap)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,productId,name,nameF,price,priceCents,compareAtPrice,description,descriptionF,const DeepCollectionEquality().hash(imageUrls),videoUrl,sellerId,sellerAddress,categoryId,stockQuantity,rating,ratingCount,createdAt,lifecycleStatus,weightKg,lengthCm,widthCm,heightCm,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,digitalType,slug,const DeepCollectionEquality().hash(digitalBuilds),deviceLimit,taxCode,const DeepCollectionEquality().hash(keywords),approvalRejectionReason,cost,supplierSku,supplierUrl,supplier,inventory,sellerSku,const DeepCollectionEquality().hash(warehouseIds),shipFromCity,shipFromProvince,shipFromCountry,const DeepCollectionEquality().hash(shipFromCountries),trendingScore,viewCount,purchaseCount,isTrending,trendingAt,hasVariants,const DeepCollectionEquality().hash(variants),const DeepCollectionEquality().hash(variantOptions),subcategory,condition,const DeepCollectionEquality().hash(warehouseStockMap),updatedAt]);
+int get hashCode => Object.hashAll([runtimeType,productId,name,nameF,price,priceCents,compareAtPrice,description,descriptionF,const DeepCollectionEquality().hash(imageUrls),videoUrl,sellerId,madeInCountry,sellerAddress,categoryId,stockQuantity,rating,ratingCount,createdAt,lifecycleStatus,weightKg,weightUnit,lengthCm,widthCm,heightCm,dimensionUnit,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,digitalType,slug,const DeepCollectionEquality().hash(digitalBuilds),deviceLimit,taxCode,const DeepCollectionEquality().hash(keywords),approvalRejectionReason,cost,supplierSku,supplierUrl,supplier,inventory,sellerSku,const DeepCollectionEquality().hash(warehouseIds),shipFromCity,shipFromProvince,shipFromCountry,const DeepCollectionEquality().hash(shipFromCountries),trendingScore,viewCount,purchaseCount,isTrending,trendingAt,hasVariants,const DeepCollectionEquality().hash(variants),const DeepCollectionEquality().hash(variantOptions),subcategory,condition,const DeepCollectionEquality().hash(warehouseStockMap),updatedAt]);
 
 @override
 String toString() {
-  return 'Product(productId: $productId, name: $name, nameF: $nameF, price: $price, priceCents: $priceCents, compareAtPrice: $compareAtPrice, description: $description, descriptionF: $descriptionF, imageUrls: $imageUrls, videoUrl: $videoUrl, sellerId: $sellerId, sellerAddress: $sellerAddress, categoryId: $categoryId, stockQuantity: $stockQuantity, rating: $rating, ratingCount: $ratingCount, createdAt: $createdAt, lifecycleStatus: $lifecycleStatus, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, digitalType: $digitalType, slug: $slug, digitalBuilds: $digitalBuilds, deviceLimit: $deviceLimit, taxCode: $taxCode, keywords: $keywords, approvalRejectionReason: $approvalRejectionReason, cost: $cost, supplierSku: $supplierSku, supplierUrl: $supplierUrl, supplier: $supplier, inventory: $inventory, sellerSku: $sellerSku, warehouseIds: $warehouseIds, shipFromCity: $shipFromCity, shipFromProvince: $shipFromProvince, shipFromCountry: $shipFromCountry, shipFromCountries: $shipFromCountries, trendingScore: $trendingScore, viewCount: $viewCount, purchaseCount: $purchaseCount, isTrending: $isTrending, trendingAt: $trendingAt, hasVariants: $hasVariants, variants: $variants, variantOptions: $variantOptions, subcategory: $subcategory, condition: $condition, warehouseStockMap: $warehouseStockMap, updatedAt: $updatedAt)';
+  return 'Product(productId: $productId, name: $name, nameF: $nameF, price: $price, priceCents: $priceCents, compareAtPrice: $compareAtPrice, description: $description, descriptionF: $descriptionF, imageUrls: $imageUrls, videoUrl: $videoUrl, sellerId: $sellerId, madeInCountry: $madeInCountry, sellerAddress: $sellerAddress, categoryId: $categoryId, stockQuantity: $stockQuantity, rating: $rating, ratingCount: $ratingCount, createdAt: $createdAt, lifecycleStatus: $lifecycleStatus, weightKg: $weightKg, weightUnit: $weightUnit, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, dimensionUnit: $dimensionUnit, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, digitalType: $digitalType, slug: $slug, digitalBuilds: $digitalBuilds, deviceLimit: $deviceLimit, taxCode: $taxCode, keywords: $keywords, approvalRejectionReason: $approvalRejectionReason, cost: $cost, supplierSku: $supplierSku, supplierUrl: $supplierUrl, supplier: $supplier, inventory: $inventory, sellerSku: $sellerSku, warehouseIds: $warehouseIds, shipFromCity: $shipFromCity, shipFromProvince: $shipFromProvince, shipFromCountry: $shipFromCountry, shipFromCountries: $shipFromCountries, trendingScore: $trendingScore, viewCount: $viewCount, purchaseCount: $purchaseCount, isTrending: $isTrending, trendingAt: $trendingAt, hasVariants: $hasVariants, variants: $variants, variantOptions: $variantOptions, subcategory: $subcategory, condition: $condition, warehouseStockMap: $warehouseStockMap, updatedAt: $updatedAt)';
 }
 
 
@@ -368,7 +368,7 @@ abstract mixin class $ProductCopyWith<$Res>  {
   factory $ProductCopyWith(Product value, $Res Function(Product) _then) = _$ProductCopyWithImpl;
 @useResult
 $Res call({
- String productId, String name, String? nameF, double price, int? priceCents, double? compareAtPrice, String description, String? descriptionF, List<String> imageUrls, String? videoUrl, String sellerId, Address? sellerAddress, int categoryId, int stockQuantity, double rating, int ratingCount, DateTime createdAt, String lifecycleStatus, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? digitalType, String? slug, Map<String, String>? digitalBuilds, int? deviceLimit, String? taxCode, List<String> keywords, String? approvalRejectionReason, double? cost, String? supplierSku, String? supplierUrl, SupplierInfo? supplier, InventoryConfig? inventory, String? sellerSku, List<String>? warehouseIds, String? shipFromCity, String? shipFromProvince, String? shipFromCountry, List<String>? shipFromCountries, int trendingScore, int viewCount, int purchaseCount, bool isTrending, DateTime? trendingAt, bool hasVariants, List<Map<String, dynamic>> variants, List<Map<String, dynamic>> variantOptions, String? subcategory, String? condition, Map<String, int>? warehouseStockMap, DateTime? updatedAt
+ String productId, String name, String? nameF, double price, int? priceCents, double? compareAtPrice, String description, String? descriptionF, List<String> imageUrls, String? videoUrl, String sellerId, String? madeInCountry, Address? sellerAddress, int categoryId, int stockQuantity, double rating, int ratingCount, DateTime createdAt, String lifecycleStatus, double? weightKg, String? weightUnit, double? lengthCm, double? widthCm, double? heightCm, String? dimensionUnit, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? digitalType, String? slug, Map<String, String>? digitalBuilds, int? deviceLimit, String? taxCode, List<String> keywords, String? approvalRejectionReason, double? cost, String? supplierSku, String? supplierUrl, SupplierInfo? supplier, InventoryConfig? inventory, String? sellerSku, List<String>? warehouseIds, String? shipFromCity, String? shipFromProvince, String? shipFromCountry, List<String>? shipFromCountries, int trendingScore, int viewCount, int purchaseCount, bool isTrending, DateTime? trendingAt, bool hasVariants, List<ProductVariant> variants, List<VariantOption> variantOptions, String? subcategory, String? condition, Map<String, int>? warehouseStockMap, DateTime? updatedAt
 });
 
 
@@ -385,7 +385,7 @@ class _$ProductCopyWithImpl<$Res>
 
 /// Create a copy of Product
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? productId = null,Object? name = null,Object? nameF = freezed,Object? price = null,Object? priceCents = freezed,Object? compareAtPrice = freezed,Object? description = null,Object? descriptionF = freezed,Object? imageUrls = null,Object? videoUrl = freezed,Object? sellerId = null,Object? sellerAddress = freezed,Object? categoryId = null,Object? stockQuantity = null,Object? rating = null,Object? ratingCount = null,Object? createdAt = null,Object? lifecycleStatus = null,Object? weightKg = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? digitalType = freezed,Object? slug = freezed,Object? digitalBuilds = freezed,Object? deviceLimit = freezed,Object? taxCode = freezed,Object? keywords = null,Object? approvalRejectionReason = freezed,Object? cost = freezed,Object? supplierSku = freezed,Object? supplierUrl = freezed,Object? supplier = freezed,Object? inventory = freezed,Object? sellerSku = freezed,Object? warehouseIds = freezed,Object? shipFromCity = freezed,Object? shipFromProvince = freezed,Object? shipFromCountry = freezed,Object? shipFromCountries = freezed,Object? trendingScore = null,Object? viewCount = null,Object? purchaseCount = null,Object? isTrending = null,Object? trendingAt = freezed,Object? hasVariants = null,Object? variants = null,Object? variantOptions = null,Object? subcategory = freezed,Object? condition = freezed,Object? warehouseStockMap = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? productId = null,Object? name = null,Object? nameF = freezed,Object? price = null,Object? priceCents = freezed,Object? compareAtPrice = freezed,Object? description = null,Object? descriptionF = freezed,Object? imageUrls = null,Object? videoUrl = freezed,Object? sellerId = null,Object? madeInCountry = freezed,Object? sellerAddress = freezed,Object? categoryId = null,Object? stockQuantity = null,Object? rating = null,Object? ratingCount = null,Object? createdAt = null,Object? lifecycleStatus = null,Object? weightKg = freezed,Object? weightUnit = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? dimensionUnit = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? digitalType = freezed,Object? slug = freezed,Object? digitalBuilds = freezed,Object? deviceLimit = freezed,Object? taxCode = freezed,Object? keywords = null,Object? approvalRejectionReason = freezed,Object? cost = freezed,Object? supplierSku = freezed,Object? supplierUrl = freezed,Object? supplier = freezed,Object? inventory = freezed,Object? sellerSku = freezed,Object? warehouseIds = freezed,Object? shipFromCity = freezed,Object? shipFromProvince = freezed,Object? shipFromCountry = freezed,Object? shipFromCountries = freezed,Object? trendingScore = null,Object? viewCount = null,Object? purchaseCount = null,Object? isTrending = null,Object? trendingAt = freezed,Object? hasVariants = null,Object? variants = null,Object? variantOptions = null,Object? subcategory = freezed,Object? condition = freezed,Object? warehouseStockMap = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -398,7 +398,8 @@ as String,descriptionF: freezed == descriptionF ? _self.descriptionF : descripti
 as String?,imageUrls: null == imageUrls ? _self.imageUrls : imageUrls // ignore: cast_nullable_to_non_nullable
 as List<String>,videoUrl: freezed == videoUrl ? _self.videoUrl : videoUrl // ignore: cast_nullable_to_non_nullable
 as String?,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
-as String,sellerAddress: freezed == sellerAddress ? _self.sellerAddress : sellerAddress // ignore: cast_nullable_to_non_nullable
+as String,madeInCountry: freezed == madeInCountry ? _self.madeInCountry : madeInCountry // ignore: cast_nullable_to_non_nullable
+as String?,sellerAddress: freezed == sellerAddress ? _self.sellerAddress : sellerAddress // ignore: cast_nullable_to_non_nullable
 as Address?,categoryId: null == categoryId ? _self.categoryId : categoryId // ignore: cast_nullable_to_non_nullable
 as int,stockQuantity: null == stockQuantity ? _self.stockQuantity : stockQuantity // ignore: cast_nullable_to_non_nullable
 as int,rating: null == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
@@ -406,10 +407,12 @@ as double,ratingCount: null == ratingCount ? _self.ratingCount : ratingCount // 
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,lifecycleStatus: null == lifecycleStatus ? _self.lifecycleStatus : lifecycleStatus // ignore: cast_nullable_to_non_nullable
 as String,weightKg: freezed == weightKg ? _self.weightKg : weightKg // ignore: cast_nullable_to_non_nullable
-as double?,lengthCm: freezed == lengthCm ? _self.lengthCm : lengthCm // ignore: cast_nullable_to_non_nullable
+as double?,weightUnit: freezed == weightUnit ? _self.weightUnit : weightUnit // ignore: cast_nullable_to_non_nullable
+as String?,lengthCm: freezed == lengthCm ? _self.lengthCm : lengthCm // ignore: cast_nullable_to_non_nullable
 as double?,widthCm: freezed == widthCm ? _self.widthCm : widthCm // ignore: cast_nullable_to_non_nullable
 as double?,heightCm: freezed == heightCm ? _self.heightCm : heightCm // ignore: cast_nullable_to_non_nullable
-as double?,isLocalDeliveryOnly: null == isLocalDeliveryOnly ? _self.isLocalDeliveryOnly : isLocalDeliveryOnly // ignore: cast_nullable_to_non_nullable
+as double?,dimensionUnit: freezed == dimensionUnit ? _self.dimensionUnit : dimensionUnit // ignore: cast_nullable_to_non_nullable
+as String?,isLocalDeliveryOnly: null == isLocalDeliveryOnly ? _self.isLocalDeliveryOnly : isLocalDeliveryOnly // ignore: cast_nullable_to_non_nullable
 as bool,isPerishable: null == isPerishable ? _self.isPerishable : isPerishable // ignore: cast_nullable_to_non_nullable
 as bool,estimatedShipDays: null == estimatedShipDays ? _self.estimatedShipDays : estimatedShipDays // ignore: cast_nullable_to_non_nullable
 as int,deliveryOptions: null == deliveryOptions ? _self.deliveryOptions : deliveryOptions // ignore: cast_nullable_to_non_nullable
@@ -441,8 +444,8 @@ as int,isTrending: null == isTrending ? _self.isTrending : isTrending // ignore:
 as bool,trendingAt: freezed == trendingAt ? _self.trendingAt : trendingAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,hasVariants: null == hasVariants ? _self.hasVariants : hasVariants // ignore: cast_nullable_to_non_nullable
 as bool,variants: null == variants ? _self.variants : variants // ignore: cast_nullable_to_non_nullable
-as List<Map<String, dynamic>>,variantOptions: null == variantOptions ? _self.variantOptions : variantOptions // ignore: cast_nullable_to_non_nullable
-as List<Map<String, dynamic>>,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
+as List<ProductVariant>,variantOptions: null == variantOptions ? _self.variantOptions : variantOptions // ignore: cast_nullable_to_non_nullable
+as List<VariantOption>,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
 as String?,condition: freezed == condition ? _self.condition : condition // ignore: cast_nullable_to_non_nullable
 as String?,warehouseStockMap: freezed == warehouseStockMap ? _self.warehouseStockMap : warehouseStockMap // ignore: cast_nullable_to_non_nullable
 as Map<String, int>?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
@@ -567,10 +570,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String productId,  String name,  String? nameF,  double price,  int? priceCents,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  int ratingCount,  DateTime createdAt,  String lifecycleStatus,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  String? approvalRejectionReason,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  int trendingScore,  int viewCount,  int purchaseCount,  bool isTrending,  DateTime? trendingAt,  bool hasVariants,  List<Map<String, dynamic>> variants,  List<Map<String, dynamic>> variantOptions,  String? subcategory,  String? condition,  Map<String, int>? warehouseStockMap,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String productId,  String name,  String? nameF,  double price,  int? priceCents,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  String? madeInCountry,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  int ratingCount,  DateTime createdAt,  String lifecycleStatus,  double? weightKg,  String? weightUnit,  double? lengthCm,  double? widthCm,  double? heightCm,  String? dimensionUnit,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  String? approvalRejectionReason,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  int trendingScore,  int viewCount,  int purchaseCount,  bool isTrending,  DateTime? trendingAt,  bool hasVariants,  List<ProductVariant> variants,  List<VariantOption> variantOptions,  String? subcategory,  String? condition,  Map<String, int>? warehouseStockMap,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Product() when $default != null:
-return $default(_that.productId,_that.name,_that.nameF,_that.price,_that.priceCents,_that.compareAtPrice,_that.description,_that.descriptionF,_that.imageUrls,_that.videoUrl,_that.sellerId,_that.sellerAddress,_that.categoryId,_that.stockQuantity,_that.rating,_that.ratingCount,_that.createdAt,_that.lifecycleStatus,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.digitalType,_that.slug,_that.digitalBuilds,_that.deviceLimit,_that.taxCode,_that.keywords,_that.approvalRejectionReason,_that.cost,_that.supplierSku,_that.supplierUrl,_that.supplier,_that.inventory,_that.sellerSku,_that.warehouseIds,_that.shipFromCity,_that.shipFromProvince,_that.shipFromCountry,_that.shipFromCountries,_that.trendingScore,_that.viewCount,_that.purchaseCount,_that.isTrending,_that.trendingAt,_that.hasVariants,_that.variants,_that.variantOptions,_that.subcategory,_that.condition,_that.warehouseStockMap,_that.updatedAt);case _:
+return $default(_that.productId,_that.name,_that.nameF,_that.price,_that.priceCents,_that.compareAtPrice,_that.description,_that.descriptionF,_that.imageUrls,_that.videoUrl,_that.sellerId,_that.madeInCountry,_that.sellerAddress,_that.categoryId,_that.stockQuantity,_that.rating,_that.ratingCount,_that.createdAt,_that.lifecycleStatus,_that.weightKg,_that.weightUnit,_that.lengthCm,_that.widthCm,_that.heightCm,_that.dimensionUnit,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.digitalType,_that.slug,_that.digitalBuilds,_that.deviceLimit,_that.taxCode,_that.keywords,_that.approvalRejectionReason,_that.cost,_that.supplierSku,_that.supplierUrl,_that.supplier,_that.inventory,_that.sellerSku,_that.warehouseIds,_that.shipFromCity,_that.shipFromProvince,_that.shipFromCountry,_that.shipFromCountries,_that.trendingScore,_that.viewCount,_that.purchaseCount,_that.isTrending,_that.trendingAt,_that.hasVariants,_that.variants,_that.variantOptions,_that.subcategory,_that.condition,_that.warehouseStockMap,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -588,10 +591,10 @@ return $default(_that.productId,_that.name,_that.nameF,_that.price,_that.priceCe
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String productId,  String name,  String? nameF,  double price,  int? priceCents,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  int ratingCount,  DateTime createdAt,  String lifecycleStatus,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  String? approvalRejectionReason,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  int trendingScore,  int viewCount,  int purchaseCount,  bool isTrending,  DateTime? trendingAt,  bool hasVariants,  List<Map<String, dynamic>> variants,  List<Map<String, dynamic>> variantOptions,  String? subcategory,  String? condition,  Map<String, int>? warehouseStockMap,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String productId,  String name,  String? nameF,  double price,  int? priceCents,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  String? madeInCountry,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  int ratingCount,  DateTime createdAt,  String lifecycleStatus,  double? weightKg,  String? weightUnit,  double? lengthCm,  double? widthCm,  double? heightCm,  String? dimensionUnit,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  String? approvalRejectionReason,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  int trendingScore,  int viewCount,  int purchaseCount,  bool isTrending,  DateTime? trendingAt,  bool hasVariants,  List<ProductVariant> variants,  List<VariantOption> variantOptions,  String? subcategory,  String? condition,  Map<String, int>? warehouseStockMap,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Product():
-return $default(_that.productId,_that.name,_that.nameF,_that.price,_that.priceCents,_that.compareAtPrice,_that.description,_that.descriptionF,_that.imageUrls,_that.videoUrl,_that.sellerId,_that.sellerAddress,_that.categoryId,_that.stockQuantity,_that.rating,_that.ratingCount,_that.createdAt,_that.lifecycleStatus,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.digitalType,_that.slug,_that.digitalBuilds,_that.deviceLimit,_that.taxCode,_that.keywords,_that.approvalRejectionReason,_that.cost,_that.supplierSku,_that.supplierUrl,_that.supplier,_that.inventory,_that.sellerSku,_that.warehouseIds,_that.shipFromCity,_that.shipFromProvince,_that.shipFromCountry,_that.shipFromCountries,_that.trendingScore,_that.viewCount,_that.purchaseCount,_that.isTrending,_that.trendingAt,_that.hasVariants,_that.variants,_that.variantOptions,_that.subcategory,_that.condition,_that.warehouseStockMap,_that.updatedAt);case _:
+return $default(_that.productId,_that.name,_that.nameF,_that.price,_that.priceCents,_that.compareAtPrice,_that.description,_that.descriptionF,_that.imageUrls,_that.videoUrl,_that.sellerId,_that.madeInCountry,_that.sellerAddress,_that.categoryId,_that.stockQuantity,_that.rating,_that.ratingCount,_that.createdAt,_that.lifecycleStatus,_that.weightKg,_that.weightUnit,_that.lengthCm,_that.widthCm,_that.heightCm,_that.dimensionUnit,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.digitalType,_that.slug,_that.digitalBuilds,_that.deviceLimit,_that.taxCode,_that.keywords,_that.approvalRejectionReason,_that.cost,_that.supplierSku,_that.supplierUrl,_that.supplier,_that.inventory,_that.sellerSku,_that.warehouseIds,_that.shipFromCity,_that.shipFromProvince,_that.shipFromCountry,_that.shipFromCountries,_that.trendingScore,_that.viewCount,_that.purchaseCount,_that.isTrending,_that.trendingAt,_that.hasVariants,_that.variants,_that.variantOptions,_that.subcategory,_that.condition,_that.warehouseStockMap,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -608,10 +611,10 @@ return $default(_that.productId,_that.name,_that.nameF,_that.price,_that.priceCe
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String productId,  String name,  String? nameF,  double price,  int? priceCents,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  int ratingCount,  DateTime createdAt,  String lifecycleStatus,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  String? approvalRejectionReason,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  int trendingScore,  int viewCount,  int purchaseCount,  bool isTrending,  DateTime? trendingAt,  bool hasVariants,  List<Map<String, dynamic>> variants,  List<Map<String, dynamic>> variantOptions,  String? subcategory,  String? condition,  Map<String, int>? warehouseStockMap,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String productId,  String name,  String? nameF,  double price,  int? priceCents,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  String? madeInCountry,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  int ratingCount,  DateTime createdAt,  String lifecycleStatus,  double? weightKg,  String? weightUnit,  double? lengthCm,  double? widthCm,  double? heightCm,  String? dimensionUnit,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  String? approvalRejectionReason,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  int trendingScore,  int viewCount,  int purchaseCount,  bool isTrending,  DateTime? trendingAt,  bool hasVariants,  List<ProductVariant> variants,  List<VariantOption> variantOptions,  String? subcategory,  String? condition,  Map<String, int>? warehouseStockMap,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Product() when $default != null:
-return $default(_that.productId,_that.name,_that.nameF,_that.price,_that.priceCents,_that.compareAtPrice,_that.description,_that.descriptionF,_that.imageUrls,_that.videoUrl,_that.sellerId,_that.sellerAddress,_that.categoryId,_that.stockQuantity,_that.rating,_that.ratingCount,_that.createdAt,_that.lifecycleStatus,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.digitalType,_that.slug,_that.digitalBuilds,_that.deviceLimit,_that.taxCode,_that.keywords,_that.approvalRejectionReason,_that.cost,_that.supplierSku,_that.supplierUrl,_that.supplier,_that.inventory,_that.sellerSku,_that.warehouseIds,_that.shipFromCity,_that.shipFromProvince,_that.shipFromCountry,_that.shipFromCountries,_that.trendingScore,_that.viewCount,_that.purchaseCount,_that.isTrending,_that.trendingAt,_that.hasVariants,_that.variants,_that.variantOptions,_that.subcategory,_that.condition,_that.warehouseStockMap,_that.updatedAt);case _:
+return $default(_that.productId,_that.name,_that.nameF,_that.price,_that.priceCents,_that.compareAtPrice,_that.description,_that.descriptionF,_that.imageUrls,_that.videoUrl,_that.sellerId,_that.madeInCountry,_that.sellerAddress,_that.categoryId,_that.stockQuantity,_that.rating,_that.ratingCount,_that.createdAt,_that.lifecycleStatus,_that.weightKg,_that.weightUnit,_that.lengthCm,_that.widthCm,_that.heightCm,_that.dimensionUnit,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.digitalType,_that.slug,_that.digitalBuilds,_that.deviceLimit,_that.taxCode,_that.keywords,_that.approvalRejectionReason,_that.cost,_that.supplierSku,_that.supplierUrl,_that.supplier,_that.inventory,_that.sellerSku,_that.warehouseIds,_that.shipFromCity,_that.shipFromProvince,_that.shipFromCountry,_that.shipFromCountries,_that.trendingScore,_that.viewCount,_that.purchaseCount,_that.isTrending,_that.trendingAt,_that.hasVariants,_that.variants,_that.variantOptions,_that.subcategory,_that.condition,_that.warehouseStockMap,_that.updatedAt);case _:
   return null;
 
 }
@@ -623,7 +626,7 @@ return $default(_that.productId,_that.name,_that.nameF,_that.price,_that.priceCe
 @JsonSerializable()
 
 class _Product implements Product {
-  const _Product({required this.productId, required this.name, this.nameF, required this.price, this.priceCents, this.compareAtPrice, required this.description, this.descriptionF, required final  List<String> imageUrls, this.videoUrl, required this.sellerId, this.sellerAddress, required this.categoryId, required this.stockQuantity, this.rating = 0.0, this.ratingCount = 0, required this.createdAt, this.lifecycleStatus = ProductLifecycleStatusValues.draft, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.digitalType, this.slug, final  Map<String, String>? digitalBuilds, this.deviceLimit, this.taxCode, final  List<String> keywords = const [], this.approvalRejectionReason, this.cost, this.supplierSku, this.supplierUrl, this.supplier, this.inventory, this.sellerSku, final  List<String>? warehouseIds, this.shipFromCity, this.shipFromProvince, this.shipFromCountry, final  List<String>? shipFromCountries, this.trendingScore = 0, this.viewCount = 0, this.purchaseCount = 0, this.isTrending = false, this.trendingAt, this.hasVariants = false, final  List<Map<String, dynamic>> variants = const [], final  List<Map<String, dynamic>> variantOptions = const [], this.subcategory, this.condition, final  Map<String, int>? warehouseStockMap, this.updatedAt}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,_keywords = keywords,_warehouseIds = warehouseIds,_shipFromCountries = shipFromCountries,_variants = variants,_variantOptions = variantOptions,_warehouseStockMap = warehouseStockMap;
+  const _Product({required this.productId, required this.name, this.nameF, required this.price, this.priceCents, this.compareAtPrice, required this.description, this.descriptionF, required final  List<String> imageUrls, this.videoUrl, required this.sellerId, this.madeInCountry, this.sellerAddress, required this.categoryId, required this.stockQuantity, this.rating = 0.0, this.ratingCount = 0, required this.createdAt, this.lifecycleStatus = ProductLifecycleStatusValues.draft, this.weightKg, this.weightUnit, this.lengthCm, this.widthCm, this.heightCm, this.dimensionUnit, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.digitalType, this.slug, final  Map<String, String>? digitalBuilds, this.deviceLimit, this.taxCode, final  List<String> keywords = const [], this.approvalRejectionReason, this.cost, this.supplierSku, this.supplierUrl, this.supplier, this.inventory, this.sellerSku, final  List<String>? warehouseIds, this.shipFromCity, this.shipFromProvince, this.shipFromCountry, final  List<String>? shipFromCountries, this.trendingScore = 0, this.viewCount = 0, this.purchaseCount = 0, this.isTrending = false, this.trendingAt, this.hasVariants = false, final  List<ProductVariant> variants = const [], final  List<VariantOption> variantOptions = const [], this.subcategory, this.condition, final  Map<String, int>? warehouseStockMap, this.updatedAt}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,_keywords = keywords,_warehouseIds = warehouseIds,_shipFromCountries = shipFromCountries,_variants = variants,_variantOptions = variantOptions,_warehouseStockMap = warehouseStockMap;
   factory _Product.fromJson(Map<String, dynamic> json) => _$ProductFromJson(json);
 
 @override final  String productId;
@@ -644,6 +647,7 @@ class _Product implements Product {
 
 @override final  String? videoUrl;
 @override final  String sellerId;
+@override final  String? madeInCountry;
 // sellerAddress is optional — products with warehouses use warehouseIds instead
 @override final  Address? sellerAddress;
 @override final  int categoryId;
@@ -655,9 +659,11 @@ class _Product implements Product {
 @override@JsonKey() final  String lifecycleStatus;
 // Optional shipping metadata
 @override final  double? weightKg;
+@override final  String? weightUnit;
 @override final  double? lengthCm;
 @override final  double? widthCm;
 @override final  double? heightCm;
+@override final  String? dimensionUnit;
 // Delivery options
 @override@JsonKey() final  bool isLocalDeliveryOnly;
 @override@JsonKey() final  bool isPerishable;
@@ -744,19 +750,19 @@ class _Product implements Product {
 // === N-09: Product Variants ===
 /// Whether this product has variants (size, color, etc.)
 @override@JsonKey() final  bool hasVariants;
-/// List of variant objects: {variantId, optionValues, price?, stockQuantity, sku?, isActive}
- final  List<Map<String, dynamic>> _variants;
-/// List of variant objects: {variantId, optionValues, price?, stockQuantity, sku?, isActive}
-@override@JsonKey() List<Map<String, dynamic>> get variants {
+/// List of variant objects
+ final  List<ProductVariant> _variants;
+/// List of variant objects
+@override@JsonKey() List<ProductVariant> get variants {
   if (_variants is EqualUnmodifiableListView) return _variants;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_variants);
 }
 
-/// Variant option definitions: [{name: 'Size', values: ['S','M','L']}, ...]
- final  List<Map<String, dynamic>> _variantOptions;
-/// Variant option definitions: [{name: 'Size', values: ['S','M','L']}, ...]
-@override@JsonKey() List<Map<String, dynamic>> get variantOptions {
+/// Variant option definitions
+ final  List<VariantOption> _variantOptions;
+/// Variant option definitions
+@override@JsonKey() List<VariantOption> get variantOptions {
   if (_variantOptions is EqualUnmodifiableListView) return _variantOptions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_variantOptions);
@@ -796,16 +802,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Product&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.name, name) || other.name == name)&&(identical(other.nameF, nameF) || other.nameF == nameF)&&(identical(other.price, price) || other.price == price)&&(identical(other.priceCents, priceCents) || other.priceCents == priceCents)&&(identical(other.compareAtPrice, compareAtPrice) || other.compareAtPrice == compareAtPrice)&&(identical(other.description, description) || other.description == description)&&(identical(other.descriptionF, descriptionF) || other.descriptionF == descriptionF)&&const DeepCollectionEquality().equals(other._imageUrls, _imageUrls)&&(identical(other.videoUrl, videoUrl) || other.videoUrl == videoUrl)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.stockQuantity, stockQuantity) || other.stockQuantity == stockQuantity)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lifecycleStatus, lifecycleStatus) || other.lifecycleStatus == lifecycleStatus)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other._deliveryOptions, _deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.digitalType, digitalType) || other.digitalType == digitalType)&&(identical(other.slug, slug) || other.slug == slug)&&const DeepCollectionEquality().equals(other._digitalBuilds, _digitalBuilds)&&(identical(other.deviceLimit, deviceLimit) || other.deviceLimit == deviceLimit)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode)&&const DeepCollectionEquality().equals(other._keywords, _keywords)&&(identical(other.approvalRejectionReason, approvalRejectionReason) || other.approvalRejectionReason == approvalRejectionReason)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.supplierSku, supplierSku) || other.supplierSku == supplierSku)&&(identical(other.supplierUrl, supplierUrl) || other.supplierUrl == supplierUrl)&&(identical(other.supplier, supplier) || other.supplier == supplier)&&(identical(other.inventory, inventory) || other.inventory == inventory)&&(identical(other.sellerSku, sellerSku) || other.sellerSku == sellerSku)&&const DeepCollectionEquality().equals(other._warehouseIds, _warehouseIds)&&(identical(other.shipFromCity, shipFromCity) || other.shipFromCity == shipFromCity)&&(identical(other.shipFromProvince, shipFromProvince) || other.shipFromProvince == shipFromProvince)&&(identical(other.shipFromCountry, shipFromCountry) || other.shipFromCountry == shipFromCountry)&&const DeepCollectionEquality().equals(other._shipFromCountries, _shipFromCountries)&&(identical(other.trendingScore, trendingScore) || other.trendingScore == trendingScore)&&(identical(other.viewCount, viewCount) || other.viewCount == viewCount)&&(identical(other.purchaseCount, purchaseCount) || other.purchaseCount == purchaseCount)&&(identical(other.isTrending, isTrending) || other.isTrending == isTrending)&&(identical(other.trendingAt, trendingAt) || other.trendingAt == trendingAt)&&(identical(other.hasVariants, hasVariants) || other.hasVariants == hasVariants)&&const DeepCollectionEquality().equals(other._variants, _variants)&&const DeepCollectionEquality().equals(other._variantOptions, _variantOptions)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.condition, condition) || other.condition == condition)&&const DeepCollectionEquality().equals(other._warehouseStockMap, _warehouseStockMap)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Product&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.name, name) || other.name == name)&&(identical(other.nameF, nameF) || other.nameF == nameF)&&(identical(other.price, price) || other.price == price)&&(identical(other.priceCents, priceCents) || other.priceCents == priceCents)&&(identical(other.compareAtPrice, compareAtPrice) || other.compareAtPrice == compareAtPrice)&&(identical(other.description, description) || other.description == description)&&(identical(other.descriptionF, descriptionF) || other.descriptionF == descriptionF)&&const DeepCollectionEquality().equals(other._imageUrls, _imageUrls)&&(identical(other.videoUrl, videoUrl) || other.videoUrl == videoUrl)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.madeInCountry, madeInCountry) || other.madeInCountry == madeInCountry)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.stockQuantity, stockQuantity) || other.stockQuantity == stockQuantity)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lifecycleStatus, lifecycleStatus) || other.lifecycleStatus == lifecycleStatus)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.weightUnit, weightUnit) || other.weightUnit == weightUnit)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.dimensionUnit, dimensionUnit) || other.dimensionUnit == dimensionUnit)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other._deliveryOptions, _deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.digitalType, digitalType) || other.digitalType == digitalType)&&(identical(other.slug, slug) || other.slug == slug)&&const DeepCollectionEquality().equals(other._digitalBuilds, _digitalBuilds)&&(identical(other.deviceLimit, deviceLimit) || other.deviceLimit == deviceLimit)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode)&&const DeepCollectionEquality().equals(other._keywords, _keywords)&&(identical(other.approvalRejectionReason, approvalRejectionReason) || other.approvalRejectionReason == approvalRejectionReason)&&(identical(other.cost, cost) || other.cost == cost)&&(identical(other.supplierSku, supplierSku) || other.supplierSku == supplierSku)&&(identical(other.supplierUrl, supplierUrl) || other.supplierUrl == supplierUrl)&&(identical(other.supplier, supplier) || other.supplier == supplier)&&(identical(other.inventory, inventory) || other.inventory == inventory)&&(identical(other.sellerSku, sellerSku) || other.sellerSku == sellerSku)&&const DeepCollectionEquality().equals(other._warehouseIds, _warehouseIds)&&(identical(other.shipFromCity, shipFromCity) || other.shipFromCity == shipFromCity)&&(identical(other.shipFromProvince, shipFromProvince) || other.shipFromProvince == shipFromProvince)&&(identical(other.shipFromCountry, shipFromCountry) || other.shipFromCountry == shipFromCountry)&&const DeepCollectionEquality().equals(other._shipFromCountries, _shipFromCountries)&&(identical(other.trendingScore, trendingScore) || other.trendingScore == trendingScore)&&(identical(other.viewCount, viewCount) || other.viewCount == viewCount)&&(identical(other.purchaseCount, purchaseCount) || other.purchaseCount == purchaseCount)&&(identical(other.isTrending, isTrending) || other.isTrending == isTrending)&&(identical(other.trendingAt, trendingAt) || other.trendingAt == trendingAt)&&(identical(other.hasVariants, hasVariants) || other.hasVariants == hasVariants)&&const DeepCollectionEquality().equals(other._variants, _variants)&&const DeepCollectionEquality().equals(other._variantOptions, _variantOptions)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.condition, condition) || other.condition == condition)&&const DeepCollectionEquality().equals(other._warehouseStockMap, _warehouseStockMap)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,productId,name,nameF,price,priceCents,compareAtPrice,description,descriptionF,const DeepCollectionEquality().hash(_imageUrls),videoUrl,sellerId,sellerAddress,categoryId,stockQuantity,rating,ratingCount,createdAt,lifecycleStatus,weightKg,lengthCm,widthCm,heightCm,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(_deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,digitalType,slug,const DeepCollectionEquality().hash(_digitalBuilds),deviceLimit,taxCode,const DeepCollectionEquality().hash(_keywords),approvalRejectionReason,cost,supplierSku,supplierUrl,supplier,inventory,sellerSku,const DeepCollectionEquality().hash(_warehouseIds),shipFromCity,shipFromProvince,shipFromCountry,const DeepCollectionEquality().hash(_shipFromCountries),trendingScore,viewCount,purchaseCount,isTrending,trendingAt,hasVariants,const DeepCollectionEquality().hash(_variants),const DeepCollectionEquality().hash(_variantOptions),subcategory,condition,const DeepCollectionEquality().hash(_warehouseStockMap),updatedAt]);
+int get hashCode => Object.hashAll([runtimeType,productId,name,nameF,price,priceCents,compareAtPrice,description,descriptionF,const DeepCollectionEquality().hash(_imageUrls),videoUrl,sellerId,madeInCountry,sellerAddress,categoryId,stockQuantity,rating,ratingCount,createdAt,lifecycleStatus,weightKg,weightUnit,lengthCm,widthCm,heightCm,dimensionUnit,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(_deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,digitalType,slug,const DeepCollectionEquality().hash(_digitalBuilds),deviceLimit,taxCode,const DeepCollectionEquality().hash(_keywords),approvalRejectionReason,cost,supplierSku,supplierUrl,supplier,inventory,sellerSku,const DeepCollectionEquality().hash(_warehouseIds),shipFromCity,shipFromProvince,shipFromCountry,const DeepCollectionEquality().hash(_shipFromCountries),trendingScore,viewCount,purchaseCount,isTrending,trendingAt,hasVariants,const DeepCollectionEquality().hash(_variants),const DeepCollectionEquality().hash(_variantOptions),subcategory,condition,const DeepCollectionEquality().hash(_warehouseStockMap),updatedAt]);
 
 @override
 String toString() {
-  return 'Product(productId: $productId, name: $name, nameF: $nameF, price: $price, priceCents: $priceCents, compareAtPrice: $compareAtPrice, description: $description, descriptionF: $descriptionF, imageUrls: $imageUrls, videoUrl: $videoUrl, sellerId: $sellerId, sellerAddress: $sellerAddress, categoryId: $categoryId, stockQuantity: $stockQuantity, rating: $rating, ratingCount: $ratingCount, createdAt: $createdAt, lifecycleStatus: $lifecycleStatus, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, digitalType: $digitalType, slug: $slug, digitalBuilds: $digitalBuilds, deviceLimit: $deviceLimit, taxCode: $taxCode, keywords: $keywords, approvalRejectionReason: $approvalRejectionReason, cost: $cost, supplierSku: $supplierSku, supplierUrl: $supplierUrl, supplier: $supplier, inventory: $inventory, sellerSku: $sellerSku, warehouseIds: $warehouseIds, shipFromCity: $shipFromCity, shipFromProvince: $shipFromProvince, shipFromCountry: $shipFromCountry, shipFromCountries: $shipFromCountries, trendingScore: $trendingScore, viewCount: $viewCount, purchaseCount: $purchaseCount, isTrending: $isTrending, trendingAt: $trendingAt, hasVariants: $hasVariants, variants: $variants, variantOptions: $variantOptions, subcategory: $subcategory, condition: $condition, warehouseStockMap: $warehouseStockMap, updatedAt: $updatedAt)';
+  return 'Product(productId: $productId, name: $name, nameF: $nameF, price: $price, priceCents: $priceCents, compareAtPrice: $compareAtPrice, description: $description, descriptionF: $descriptionF, imageUrls: $imageUrls, videoUrl: $videoUrl, sellerId: $sellerId, madeInCountry: $madeInCountry, sellerAddress: $sellerAddress, categoryId: $categoryId, stockQuantity: $stockQuantity, rating: $rating, ratingCount: $ratingCount, createdAt: $createdAt, lifecycleStatus: $lifecycleStatus, weightKg: $weightKg, weightUnit: $weightUnit, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, dimensionUnit: $dimensionUnit, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, digitalType: $digitalType, slug: $slug, digitalBuilds: $digitalBuilds, deviceLimit: $deviceLimit, taxCode: $taxCode, keywords: $keywords, approvalRejectionReason: $approvalRejectionReason, cost: $cost, supplierSku: $supplierSku, supplierUrl: $supplierUrl, supplier: $supplier, inventory: $inventory, sellerSku: $sellerSku, warehouseIds: $warehouseIds, shipFromCity: $shipFromCity, shipFromProvince: $shipFromProvince, shipFromCountry: $shipFromCountry, shipFromCountries: $shipFromCountries, trendingScore: $trendingScore, viewCount: $viewCount, purchaseCount: $purchaseCount, isTrending: $isTrending, trendingAt: $trendingAt, hasVariants: $hasVariants, variants: $variants, variantOptions: $variantOptions, subcategory: $subcategory, condition: $condition, warehouseStockMap: $warehouseStockMap, updatedAt: $updatedAt)';
 }
 
 
@@ -816,7 +822,7 @@ abstract mixin class _$ProductCopyWith<$Res> implements $ProductCopyWith<$Res> {
   factory _$ProductCopyWith(_Product value, $Res Function(_Product) _then) = __$ProductCopyWithImpl;
 @override @useResult
 $Res call({
- String productId, String name, String? nameF, double price, int? priceCents, double? compareAtPrice, String description, String? descriptionF, List<String> imageUrls, String? videoUrl, String sellerId, Address? sellerAddress, int categoryId, int stockQuantity, double rating, int ratingCount, DateTime createdAt, String lifecycleStatus, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? digitalType, String? slug, Map<String, String>? digitalBuilds, int? deviceLimit, String? taxCode, List<String> keywords, String? approvalRejectionReason, double? cost, String? supplierSku, String? supplierUrl, SupplierInfo? supplier, InventoryConfig? inventory, String? sellerSku, List<String>? warehouseIds, String? shipFromCity, String? shipFromProvince, String? shipFromCountry, List<String>? shipFromCountries, int trendingScore, int viewCount, int purchaseCount, bool isTrending, DateTime? trendingAt, bool hasVariants, List<Map<String, dynamic>> variants, List<Map<String, dynamic>> variantOptions, String? subcategory, String? condition, Map<String, int>? warehouseStockMap, DateTime? updatedAt
+ String productId, String name, String? nameF, double price, int? priceCents, double? compareAtPrice, String description, String? descriptionF, List<String> imageUrls, String? videoUrl, String sellerId, String? madeInCountry, Address? sellerAddress, int categoryId, int stockQuantity, double rating, int ratingCount, DateTime createdAt, String lifecycleStatus, double? weightKg, String? weightUnit, double? lengthCm, double? widthCm, double? heightCm, String? dimensionUnit, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? digitalType, String? slug, Map<String, String>? digitalBuilds, int? deviceLimit, String? taxCode, List<String> keywords, String? approvalRejectionReason, double? cost, String? supplierSku, String? supplierUrl, SupplierInfo? supplier, InventoryConfig? inventory, String? sellerSku, List<String>? warehouseIds, String? shipFromCity, String? shipFromProvince, String? shipFromCountry, List<String>? shipFromCountries, int trendingScore, int viewCount, int purchaseCount, bool isTrending, DateTime? trendingAt, bool hasVariants, List<ProductVariant> variants, List<VariantOption> variantOptions, String? subcategory, String? condition, Map<String, int>? warehouseStockMap, DateTime? updatedAt
 });
 
 
@@ -833,7 +839,7 @@ class __$ProductCopyWithImpl<$Res>
 
 /// Create a copy of Product
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? productId = null,Object? name = null,Object? nameF = freezed,Object? price = null,Object? priceCents = freezed,Object? compareAtPrice = freezed,Object? description = null,Object? descriptionF = freezed,Object? imageUrls = null,Object? videoUrl = freezed,Object? sellerId = null,Object? sellerAddress = freezed,Object? categoryId = null,Object? stockQuantity = null,Object? rating = null,Object? ratingCount = null,Object? createdAt = null,Object? lifecycleStatus = null,Object? weightKg = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? digitalType = freezed,Object? slug = freezed,Object? digitalBuilds = freezed,Object? deviceLimit = freezed,Object? taxCode = freezed,Object? keywords = null,Object? approvalRejectionReason = freezed,Object? cost = freezed,Object? supplierSku = freezed,Object? supplierUrl = freezed,Object? supplier = freezed,Object? inventory = freezed,Object? sellerSku = freezed,Object? warehouseIds = freezed,Object? shipFromCity = freezed,Object? shipFromProvince = freezed,Object? shipFromCountry = freezed,Object? shipFromCountries = freezed,Object? trendingScore = null,Object? viewCount = null,Object? purchaseCount = null,Object? isTrending = null,Object? trendingAt = freezed,Object? hasVariants = null,Object? variants = null,Object? variantOptions = null,Object? subcategory = freezed,Object? condition = freezed,Object? warehouseStockMap = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? productId = null,Object? name = null,Object? nameF = freezed,Object? price = null,Object? priceCents = freezed,Object? compareAtPrice = freezed,Object? description = null,Object? descriptionF = freezed,Object? imageUrls = null,Object? videoUrl = freezed,Object? sellerId = null,Object? madeInCountry = freezed,Object? sellerAddress = freezed,Object? categoryId = null,Object? stockQuantity = null,Object? rating = null,Object? ratingCount = null,Object? createdAt = null,Object? lifecycleStatus = null,Object? weightKg = freezed,Object? weightUnit = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? dimensionUnit = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? digitalType = freezed,Object? slug = freezed,Object? digitalBuilds = freezed,Object? deviceLimit = freezed,Object? taxCode = freezed,Object? keywords = null,Object? approvalRejectionReason = freezed,Object? cost = freezed,Object? supplierSku = freezed,Object? supplierUrl = freezed,Object? supplier = freezed,Object? inventory = freezed,Object? sellerSku = freezed,Object? warehouseIds = freezed,Object? shipFromCity = freezed,Object? shipFromProvince = freezed,Object? shipFromCountry = freezed,Object? shipFromCountries = freezed,Object? trendingScore = null,Object? viewCount = null,Object? purchaseCount = null,Object? isTrending = null,Object? trendingAt = freezed,Object? hasVariants = null,Object? variants = null,Object? variantOptions = null,Object? subcategory = freezed,Object? condition = freezed,Object? warehouseStockMap = freezed,Object? updatedAt = freezed,}) {
   return _then(_Product(
 productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -846,7 +852,8 @@ as String,descriptionF: freezed == descriptionF ? _self.descriptionF : descripti
 as String?,imageUrls: null == imageUrls ? _self._imageUrls : imageUrls // ignore: cast_nullable_to_non_nullable
 as List<String>,videoUrl: freezed == videoUrl ? _self.videoUrl : videoUrl // ignore: cast_nullable_to_non_nullable
 as String?,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
-as String,sellerAddress: freezed == sellerAddress ? _self.sellerAddress : sellerAddress // ignore: cast_nullable_to_non_nullable
+as String,madeInCountry: freezed == madeInCountry ? _self.madeInCountry : madeInCountry // ignore: cast_nullable_to_non_nullable
+as String?,sellerAddress: freezed == sellerAddress ? _self.sellerAddress : sellerAddress // ignore: cast_nullable_to_non_nullable
 as Address?,categoryId: null == categoryId ? _self.categoryId : categoryId // ignore: cast_nullable_to_non_nullable
 as int,stockQuantity: null == stockQuantity ? _self.stockQuantity : stockQuantity // ignore: cast_nullable_to_non_nullable
 as int,rating: null == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
@@ -854,10 +861,12 @@ as double,ratingCount: null == ratingCount ? _self.ratingCount : ratingCount // 
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,lifecycleStatus: null == lifecycleStatus ? _self.lifecycleStatus : lifecycleStatus // ignore: cast_nullable_to_non_nullable
 as String,weightKg: freezed == weightKg ? _self.weightKg : weightKg // ignore: cast_nullable_to_non_nullable
-as double?,lengthCm: freezed == lengthCm ? _self.lengthCm : lengthCm // ignore: cast_nullable_to_non_nullable
+as double?,weightUnit: freezed == weightUnit ? _self.weightUnit : weightUnit // ignore: cast_nullable_to_non_nullable
+as String?,lengthCm: freezed == lengthCm ? _self.lengthCm : lengthCm // ignore: cast_nullable_to_non_nullable
 as double?,widthCm: freezed == widthCm ? _self.widthCm : widthCm // ignore: cast_nullable_to_non_nullable
 as double?,heightCm: freezed == heightCm ? _self.heightCm : heightCm // ignore: cast_nullable_to_non_nullable
-as double?,isLocalDeliveryOnly: null == isLocalDeliveryOnly ? _self.isLocalDeliveryOnly : isLocalDeliveryOnly // ignore: cast_nullable_to_non_nullable
+as double?,dimensionUnit: freezed == dimensionUnit ? _self.dimensionUnit : dimensionUnit // ignore: cast_nullable_to_non_nullable
+as String?,isLocalDeliveryOnly: null == isLocalDeliveryOnly ? _self.isLocalDeliveryOnly : isLocalDeliveryOnly // ignore: cast_nullable_to_non_nullable
 as bool,isPerishable: null == isPerishable ? _self.isPerishable : isPerishable // ignore: cast_nullable_to_non_nullable
 as bool,estimatedShipDays: null == estimatedShipDays ? _self.estimatedShipDays : estimatedShipDays // ignore: cast_nullable_to_non_nullable
 as int,deliveryOptions: null == deliveryOptions ? _self._deliveryOptions : deliveryOptions // ignore: cast_nullable_to_non_nullable
@@ -889,8 +898,8 @@ as int,isTrending: null == isTrending ? _self.isTrending : isTrending // ignore:
 as bool,trendingAt: freezed == trendingAt ? _self.trendingAt : trendingAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,hasVariants: null == hasVariants ? _self.hasVariants : hasVariants // ignore: cast_nullable_to_non_nullable
 as bool,variants: null == variants ? _self._variants : variants // ignore: cast_nullable_to_non_nullable
-as List<Map<String, dynamic>>,variantOptions: null == variantOptions ? _self._variantOptions : variantOptions // ignore: cast_nullable_to_non_nullable
-as List<Map<String, dynamic>>,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
+as List<ProductVariant>,variantOptions: null == variantOptions ? _self._variantOptions : variantOptions // ignore: cast_nullable_to_non_nullable
+as List<VariantOption>,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
 as String?,condition: freezed == condition ? _self.condition : condition // ignore: cast_nullable_to_non_nullable
 as String?,warehouseStockMap: freezed == warehouseStockMap ? _self._warehouseStockMap : warehouseStockMap // ignore: cast_nullable_to_non_nullable
 as Map<String, int>?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
@@ -949,7 +958,7 @@ mixin _$ProductCreate {
  double? get cost; String? get supplierSku; String? get supplierUrl;// Structured objects
  SupplierInfo? get supplier; InventoryConfig? get inventory;// Multi-warehouse support
  String? get sellerSku; List<String>? get warehouseIds; String? get shipFromCity; String? get shipFromProvince; String? get shipFromCountry; List<String>? get shipFromCountries;// === N-09: Product Variants ===
- bool get hasVariants; List<Map<String, dynamic>> get variants; List<Map<String, dynamic>> get variantOptions;// === N-11: Subcategories ===
+ bool get hasVariants; List<ProductVariant> get variants; List<VariantOption> get variantOptions;// === N-11: Subcategories ===
  String? get subcategory;
 /// Create a copy of ProductCreate
 /// with the given fields replaced by the non-null parameter values.
@@ -983,7 +992,7 @@ abstract mixin class $ProductCreateCopyWith<$Res>  {
   factory $ProductCreateCopyWith(ProductCreate value, $Res Function(ProductCreate) _then) = _$ProductCreateCopyWithImpl;
 @useResult
 $Res call({
- String name, String? nameF, double price, double? compareAtPrice, String description, String? descriptionF, List<String> imageUrls, String? videoUrl, String sellerId, Address? sellerAddress, int categoryId, int stockQuantity, double rating, String lifecycleStatus, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? digitalType, String? slug, Map<String, String>? digitalBuilds, int? deviceLimit, String? taxCode, List<String> keywords, double? cost, String? supplierSku, String? supplierUrl, SupplierInfo? supplier, InventoryConfig? inventory, String? sellerSku, List<String>? warehouseIds, String? shipFromCity, String? shipFromProvince, String? shipFromCountry, List<String>? shipFromCountries, bool hasVariants, List<Map<String, dynamic>> variants, List<Map<String, dynamic>> variantOptions, String? subcategory
+ String name, String? nameF, double price, double? compareAtPrice, String description, String? descriptionF, List<String> imageUrls, String? videoUrl, String sellerId, Address? sellerAddress, int categoryId, int stockQuantity, double rating, String lifecycleStatus, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? digitalType, String? slug, Map<String, String>? digitalBuilds, int? deviceLimit, String? taxCode, List<String> keywords, double? cost, String? supplierSku, String? supplierUrl, SupplierInfo? supplier, InventoryConfig? inventory, String? sellerSku, List<String>? warehouseIds, String? shipFromCity, String? shipFromProvince, String? shipFromCountry, List<String>? shipFromCountries, bool hasVariants, List<ProductVariant> variants, List<VariantOption> variantOptions, String? subcategory
 });
 
 
@@ -1046,8 +1055,8 @@ as String?,shipFromCountry: freezed == shipFromCountry ? _self.shipFromCountry :
 as String?,shipFromCountries: freezed == shipFromCountries ? _self.shipFromCountries : shipFromCountries // ignore: cast_nullable_to_non_nullable
 as List<String>?,hasVariants: null == hasVariants ? _self.hasVariants : hasVariants // ignore: cast_nullable_to_non_nullable
 as bool,variants: null == variants ? _self.variants : variants // ignore: cast_nullable_to_non_nullable
-as List<Map<String, dynamic>>,variantOptions: null == variantOptions ? _self.variantOptions : variantOptions // ignore: cast_nullable_to_non_nullable
-as List<Map<String, dynamic>>,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
+as List<ProductVariant>,variantOptions: null == variantOptions ? _self.variantOptions : variantOptions // ignore: cast_nullable_to_non_nullable
+as List<VariantOption>,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -1169,7 +1178,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String? nameF,  double price,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  String lifecycleStatus,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  bool hasVariants,  List<Map<String, dynamic>> variants,  List<Map<String, dynamic>> variantOptions,  String? subcategory)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String? nameF,  double price,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  String lifecycleStatus,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  bool hasVariants,  List<ProductVariant> variants,  List<VariantOption> variantOptions,  String? subcategory)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProductCreate() when $default != null:
 return $default(_that.name,_that.nameF,_that.price,_that.compareAtPrice,_that.description,_that.descriptionF,_that.imageUrls,_that.videoUrl,_that.sellerId,_that.sellerAddress,_that.categoryId,_that.stockQuantity,_that.rating,_that.lifecycleStatus,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.digitalType,_that.slug,_that.digitalBuilds,_that.deviceLimit,_that.taxCode,_that.keywords,_that.cost,_that.supplierSku,_that.supplierUrl,_that.supplier,_that.inventory,_that.sellerSku,_that.warehouseIds,_that.shipFromCity,_that.shipFromProvince,_that.shipFromCountry,_that.shipFromCountries,_that.hasVariants,_that.variants,_that.variantOptions,_that.subcategory);case _:
@@ -1190,7 +1199,7 @@ return $default(_that.name,_that.nameF,_that.price,_that.compareAtPrice,_that.de
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String? nameF,  double price,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  String lifecycleStatus,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  bool hasVariants,  List<Map<String, dynamic>> variants,  List<Map<String, dynamic>> variantOptions,  String? subcategory)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String? nameF,  double price,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  String lifecycleStatus,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  bool hasVariants,  List<ProductVariant> variants,  List<VariantOption> variantOptions,  String? subcategory)  $default,) {final _that = this;
 switch (_that) {
 case _ProductCreate():
 return $default(_that.name,_that.nameF,_that.price,_that.compareAtPrice,_that.description,_that.descriptionF,_that.imageUrls,_that.videoUrl,_that.sellerId,_that.sellerAddress,_that.categoryId,_that.stockQuantity,_that.rating,_that.lifecycleStatus,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.digitalType,_that.slug,_that.digitalBuilds,_that.deviceLimit,_that.taxCode,_that.keywords,_that.cost,_that.supplierSku,_that.supplierUrl,_that.supplier,_that.inventory,_that.sellerSku,_that.warehouseIds,_that.shipFromCity,_that.shipFromProvince,_that.shipFromCountry,_that.shipFromCountries,_that.hasVariants,_that.variants,_that.variantOptions,_that.subcategory);case _:
@@ -1210,7 +1219,7 @@ return $default(_that.name,_that.nameF,_that.price,_that.compareAtPrice,_that.de
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String? nameF,  double price,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  String lifecycleStatus,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  bool hasVariants,  List<Map<String, dynamic>> variants,  List<Map<String, dynamic>> variantOptions,  String? subcategory)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String? nameF,  double price,  double? compareAtPrice,  String description,  String? descriptionF,  List<String> imageUrls,  String? videoUrl,  String sellerId,  Address? sellerAddress,  int categoryId,  int stockQuantity,  double rating,  String lifecycleStatus,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? digitalType,  String? slug,  Map<String, String>? digitalBuilds,  int? deviceLimit,  String? taxCode,  List<String> keywords,  double? cost,  String? supplierSku,  String? supplierUrl,  SupplierInfo? supplier,  InventoryConfig? inventory,  String? sellerSku,  List<String>? warehouseIds,  String? shipFromCity,  String? shipFromProvince,  String? shipFromCountry,  List<String>? shipFromCountries,  bool hasVariants,  List<ProductVariant> variants,  List<VariantOption> variantOptions,  String? subcategory)?  $default,) {final _that = this;
 switch (_that) {
 case _ProductCreate() when $default != null:
 return $default(_that.name,_that.nameF,_that.price,_that.compareAtPrice,_that.description,_that.descriptionF,_that.imageUrls,_that.videoUrl,_that.sellerId,_that.sellerAddress,_that.categoryId,_that.stockQuantity,_that.rating,_that.lifecycleStatus,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.digitalType,_that.slug,_that.digitalBuilds,_that.deviceLimit,_that.taxCode,_that.keywords,_that.cost,_that.supplierSku,_that.supplierUrl,_that.supplier,_that.inventory,_that.sellerSku,_that.warehouseIds,_that.shipFromCity,_that.shipFromProvince,_that.shipFromCountry,_that.shipFromCountries,_that.hasVariants,_that.variants,_that.variantOptions,_that.subcategory);case _:
@@ -1225,7 +1234,7 @@ return $default(_that.name,_that.nameF,_that.price,_that.compareAtPrice,_that.de
 @JsonSerializable()
 
 class _ProductCreate implements ProductCreate {
-  const _ProductCreate({required this.name, this.nameF, required this.price, this.compareAtPrice, required this.description, this.descriptionF, required final  List<String> imageUrls, this.videoUrl, required this.sellerId, this.sellerAddress, required this.categoryId, required this.stockQuantity, this.rating = 0.0, this.lifecycleStatus = ProductLifecycleStatusValues.draft, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.digitalType, this.slug, final  Map<String, String>? digitalBuilds, this.deviceLimit, this.taxCode, final  List<String> keywords = const [], this.cost, this.supplierSku, this.supplierUrl, this.supplier, this.inventory, this.sellerSku, final  List<String>? warehouseIds, this.shipFromCity, this.shipFromProvince, this.shipFromCountry, final  List<String>? shipFromCountries, this.hasVariants = false, final  List<Map<String, dynamic>> variants = const [], final  List<Map<String, dynamic>> variantOptions = const [], this.subcategory}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,_keywords = keywords,_warehouseIds = warehouseIds,_shipFromCountries = shipFromCountries,_variants = variants,_variantOptions = variantOptions;
+  const _ProductCreate({required this.name, this.nameF, required this.price, this.compareAtPrice, required this.description, this.descriptionF, required final  List<String> imageUrls, this.videoUrl, required this.sellerId, this.sellerAddress, required this.categoryId, required this.stockQuantity, this.rating = 0.0, this.lifecycleStatus = ProductLifecycleStatusValues.draft, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.digitalType, this.slug, final  Map<String, String>? digitalBuilds, this.deviceLimit, this.taxCode, final  List<String> keywords = const [], this.cost, this.supplierSku, this.supplierUrl, this.supplier, this.inventory, this.sellerSku, final  List<String>? warehouseIds, this.shipFromCity, this.shipFromProvince, this.shipFromCountry, final  List<String>? shipFromCountries, this.hasVariants = false, final  List<ProductVariant> variants = const [], final  List<VariantOption> variantOptions = const [], this.subcategory}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,_keywords = keywords,_warehouseIds = warehouseIds,_shipFromCountries = shipFromCountries,_variants = variants,_variantOptions = variantOptions;
   factory _ProductCreate.fromJson(Map<String, dynamic> json) => _$ProductCreateFromJson(json);
 
 @override final  String name;
@@ -1321,15 +1330,15 @@ class _ProductCreate implements ProductCreate {
 
 // === N-09: Product Variants ===
 @override@JsonKey() final  bool hasVariants;
- final  List<Map<String, dynamic>> _variants;
-@override@JsonKey() List<Map<String, dynamic>> get variants {
+ final  List<ProductVariant> _variants;
+@override@JsonKey() List<ProductVariant> get variants {
   if (_variants is EqualUnmodifiableListView) return _variants;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_variants);
 }
 
- final  List<Map<String, dynamic>> _variantOptions;
-@override@JsonKey() List<Map<String, dynamic>> get variantOptions {
+ final  List<VariantOption> _variantOptions;
+@override@JsonKey() List<VariantOption> get variantOptions {
   if (_variantOptions is EqualUnmodifiableListView) return _variantOptions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_variantOptions);
@@ -1371,7 +1380,7 @@ abstract mixin class _$ProductCreateCopyWith<$Res> implements $ProductCreateCopy
   factory _$ProductCreateCopyWith(_ProductCreate value, $Res Function(_ProductCreate) _then) = __$ProductCreateCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String? nameF, double price, double? compareAtPrice, String description, String? descriptionF, List<String> imageUrls, String? videoUrl, String sellerId, Address? sellerAddress, int categoryId, int stockQuantity, double rating, String lifecycleStatus, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? digitalType, String? slug, Map<String, String>? digitalBuilds, int? deviceLimit, String? taxCode, List<String> keywords, double? cost, String? supplierSku, String? supplierUrl, SupplierInfo? supplier, InventoryConfig? inventory, String? sellerSku, List<String>? warehouseIds, String? shipFromCity, String? shipFromProvince, String? shipFromCountry, List<String>? shipFromCountries, bool hasVariants, List<Map<String, dynamic>> variants, List<Map<String, dynamic>> variantOptions, String? subcategory
+ String name, String? nameF, double price, double? compareAtPrice, String description, String? descriptionF, List<String> imageUrls, String? videoUrl, String sellerId, Address? sellerAddress, int categoryId, int stockQuantity, double rating, String lifecycleStatus, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? digitalType, String? slug, Map<String, String>? digitalBuilds, int? deviceLimit, String? taxCode, List<String> keywords, double? cost, String? supplierSku, String? supplierUrl, SupplierInfo? supplier, InventoryConfig? inventory, String? sellerSku, List<String>? warehouseIds, String? shipFromCity, String? shipFromProvince, String? shipFromCountry, List<String>? shipFromCountries, bool hasVariants, List<ProductVariant> variants, List<VariantOption> variantOptions, String? subcategory
 });
 
 
@@ -1434,8 +1443,8 @@ as String?,shipFromCountry: freezed == shipFromCountry ? _self.shipFromCountry :
 as String?,shipFromCountries: freezed == shipFromCountries ? _self._shipFromCountries : shipFromCountries // ignore: cast_nullable_to_non_nullable
 as List<String>?,hasVariants: null == hasVariants ? _self.hasVariants : hasVariants // ignore: cast_nullable_to_non_nullable
 as bool,variants: null == variants ? _self._variants : variants // ignore: cast_nullable_to_non_nullable
-as List<Map<String, dynamic>>,variantOptions: null == variantOptions ? _self._variantOptions : variantOptions // ignore: cast_nullable_to_non_nullable
-as List<Map<String, dynamic>>,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
+as List<ProductVariant>,variantOptions: null == variantOptions ? _self._variantOptions : variantOptions // ignore: cast_nullable_to_non_nullable
+as List<VariantOption>,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -1477,6 +1486,562 @@ $InventoryConfigCopyWith<$Res>? get inventory {
     return _then(_self.copyWith(inventory: value));
   });
 }
+}
+
+
+/// @nodoc
+mixin _$VariantOption {
+
+ String get name; List<String> get values;
+/// Create a copy of VariantOption
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$VariantOptionCopyWith<VariantOption> get copyWith => _$VariantOptionCopyWithImpl<VariantOption>(this as VariantOption, _$identity);
+
+  /// Serializes this VariantOption to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VariantOption&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.values, values));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,name,const DeepCollectionEquality().hash(values));
+
+@override
+String toString() {
+  return 'VariantOption(name: $name, values: $values)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $VariantOptionCopyWith<$Res>  {
+  factory $VariantOptionCopyWith(VariantOption value, $Res Function(VariantOption) _then) = _$VariantOptionCopyWithImpl;
+@useResult
+$Res call({
+ String name, List<String> values
+});
+
+
+
+
+}
+/// @nodoc
+class _$VariantOptionCopyWithImpl<$Res>
+    implements $VariantOptionCopyWith<$Res> {
+  _$VariantOptionCopyWithImpl(this._self, this._then);
+
+  final VariantOption _self;
+  final $Res Function(VariantOption) _then;
+
+/// Create a copy of VariantOption
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? values = null,}) {
+  return _then(_self.copyWith(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,values: null == values ? _self.values : values // ignore: cast_nullable_to_non_nullable
+as List<String>,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [VariantOption].
+extension VariantOptionPatterns on VariantOption {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _VariantOption value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _VariantOption() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _VariantOption value)  $default,){
+final _that = this;
+switch (_that) {
+case _VariantOption():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _VariantOption value)?  $default,){
+final _that = this;
+switch (_that) {
+case _VariantOption() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  List<String> values)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _VariantOption() when $default != null:
+return $default(_that.name,_that.values);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  List<String> values)  $default,) {final _that = this;
+switch (_that) {
+case _VariantOption():
+return $default(_that.name,_that.values);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  List<String> values)?  $default,) {final _that = this;
+switch (_that) {
+case _VariantOption() when $default != null:
+return $default(_that.name,_that.values);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _VariantOption implements VariantOption {
+  const _VariantOption({required this.name, required final  List<String> values}): _values = values;
+  factory _VariantOption.fromJson(Map<String, dynamic> json) => _$VariantOptionFromJson(json);
+
+@override final  String name;
+ final  List<String> _values;
+@override List<String> get values {
+  if (_values is EqualUnmodifiableListView) return _values;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_values);
+}
+
+
+/// Create a copy of VariantOption
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$VariantOptionCopyWith<_VariantOption> get copyWith => __$VariantOptionCopyWithImpl<_VariantOption>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$VariantOptionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _VariantOption&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._values, _values));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,name,const DeepCollectionEquality().hash(_values));
+
+@override
+String toString() {
+  return 'VariantOption(name: $name, values: $values)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$VariantOptionCopyWith<$Res> implements $VariantOptionCopyWith<$Res> {
+  factory _$VariantOptionCopyWith(_VariantOption value, $Res Function(_VariantOption) _then) = __$VariantOptionCopyWithImpl;
+@override @useResult
+$Res call({
+ String name, List<String> values
+});
+
+
+
+
+}
+/// @nodoc
+class __$VariantOptionCopyWithImpl<$Res>
+    implements _$VariantOptionCopyWith<$Res> {
+  __$VariantOptionCopyWithImpl(this._self, this._then);
+
+  final _VariantOption _self;
+  final $Res Function(_VariantOption) _then;
+
+/// Create a copy of VariantOption
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? values = null,}) {
+  return _then(_VariantOption(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,values: null == values ? _self._values : values // ignore: cast_nullable_to_non_nullable
+as List<String>,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$ProductVariant {
+
+ String get variantId; Map<String, String> get optionValues; int? get priceCents; int get stockQuantity; String? get sku; bool get isActive;
+/// Create a copy of ProductVariant
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ProductVariantCopyWith<ProductVariant> get copyWith => _$ProductVariantCopyWithImpl<ProductVariant>(this as ProductVariant, _$identity);
+
+  /// Serializes this ProductVariant to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductVariant&&(identical(other.variantId, variantId) || other.variantId == variantId)&&const DeepCollectionEquality().equals(other.optionValues, optionValues)&&(identical(other.priceCents, priceCents) || other.priceCents == priceCents)&&(identical(other.stockQuantity, stockQuantity) || other.stockQuantity == stockQuantity)&&(identical(other.sku, sku) || other.sku == sku)&&(identical(other.isActive, isActive) || other.isActive == isActive));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,variantId,const DeepCollectionEquality().hash(optionValues),priceCents,stockQuantity,sku,isActive);
+
+@override
+String toString() {
+  return 'ProductVariant(variantId: $variantId, optionValues: $optionValues, priceCents: $priceCents, stockQuantity: $stockQuantity, sku: $sku, isActive: $isActive)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ProductVariantCopyWith<$Res>  {
+  factory $ProductVariantCopyWith(ProductVariant value, $Res Function(ProductVariant) _then) = _$ProductVariantCopyWithImpl;
+@useResult
+$Res call({
+ String variantId, Map<String, String> optionValues, int? priceCents, int stockQuantity, String? sku, bool isActive
+});
+
+
+
+
+}
+/// @nodoc
+class _$ProductVariantCopyWithImpl<$Res>
+    implements $ProductVariantCopyWith<$Res> {
+  _$ProductVariantCopyWithImpl(this._self, this._then);
+
+  final ProductVariant _self;
+  final $Res Function(ProductVariant) _then;
+
+/// Create a copy of ProductVariant
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? variantId = null,Object? optionValues = null,Object? priceCents = freezed,Object? stockQuantity = null,Object? sku = freezed,Object? isActive = null,}) {
+  return _then(_self.copyWith(
+variantId: null == variantId ? _self.variantId : variantId // ignore: cast_nullable_to_non_nullable
+as String,optionValues: null == optionValues ? _self.optionValues : optionValues // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,priceCents: freezed == priceCents ? _self.priceCents : priceCents // ignore: cast_nullable_to_non_nullable
+as int?,stockQuantity: null == stockQuantity ? _self.stockQuantity : stockQuantity // ignore: cast_nullable_to_non_nullable
+as int,sku: freezed == sku ? _self.sku : sku // ignore: cast_nullable_to_non_nullable
+as String?,isActive: null == isActive ? _self.isActive : isActive // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ProductVariant].
+extension ProductVariantPatterns on ProductVariant {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ProductVariant value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ProductVariant() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ProductVariant value)  $default,){
+final _that = this;
+switch (_that) {
+case _ProductVariant():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ProductVariant value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ProductVariant() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String variantId,  Map<String, String> optionValues,  int? priceCents,  int stockQuantity,  String? sku,  bool isActive)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ProductVariant() when $default != null:
+return $default(_that.variantId,_that.optionValues,_that.priceCents,_that.stockQuantity,_that.sku,_that.isActive);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String variantId,  Map<String, String> optionValues,  int? priceCents,  int stockQuantity,  String? sku,  bool isActive)  $default,) {final _that = this;
+switch (_that) {
+case _ProductVariant():
+return $default(_that.variantId,_that.optionValues,_that.priceCents,_that.stockQuantity,_that.sku,_that.isActive);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String variantId,  Map<String, String> optionValues,  int? priceCents,  int stockQuantity,  String? sku,  bool isActive)?  $default,) {final _that = this;
+switch (_that) {
+case _ProductVariant() when $default != null:
+return $default(_that.variantId,_that.optionValues,_that.priceCents,_that.stockQuantity,_that.sku,_that.isActive);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _ProductVariant implements ProductVariant {
+  const _ProductVariant({this.variantId = '', required final  Map<String, String> optionValues, this.priceCents, required this.stockQuantity, this.sku, this.isActive = true}): _optionValues = optionValues;
+  factory _ProductVariant.fromJson(Map<String, dynamic> json) => _$ProductVariantFromJson(json);
+
+@override@JsonKey() final  String variantId;
+ final  Map<String, String> _optionValues;
+@override Map<String, String> get optionValues {
+  if (_optionValues is EqualUnmodifiableMapView) return _optionValues;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_optionValues);
+}
+
+@override final  int? priceCents;
+@override final  int stockQuantity;
+@override final  String? sku;
+@override@JsonKey() final  bool isActive;
+
+/// Create a copy of ProductVariant
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ProductVariantCopyWith<_ProductVariant> get copyWith => __$ProductVariantCopyWithImpl<_ProductVariant>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ProductVariantToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProductVariant&&(identical(other.variantId, variantId) || other.variantId == variantId)&&const DeepCollectionEquality().equals(other._optionValues, _optionValues)&&(identical(other.priceCents, priceCents) || other.priceCents == priceCents)&&(identical(other.stockQuantity, stockQuantity) || other.stockQuantity == stockQuantity)&&(identical(other.sku, sku) || other.sku == sku)&&(identical(other.isActive, isActive) || other.isActive == isActive));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,variantId,const DeepCollectionEquality().hash(_optionValues),priceCents,stockQuantity,sku,isActive);
+
+@override
+String toString() {
+  return 'ProductVariant(variantId: $variantId, optionValues: $optionValues, priceCents: $priceCents, stockQuantity: $stockQuantity, sku: $sku, isActive: $isActive)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ProductVariantCopyWith<$Res> implements $ProductVariantCopyWith<$Res> {
+  factory _$ProductVariantCopyWith(_ProductVariant value, $Res Function(_ProductVariant) _then) = __$ProductVariantCopyWithImpl;
+@override @useResult
+$Res call({
+ String variantId, Map<String, String> optionValues, int? priceCents, int stockQuantity, String? sku, bool isActive
+});
+
+
+
+
+}
+/// @nodoc
+class __$ProductVariantCopyWithImpl<$Res>
+    implements _$ProductVariantCopyWith<$Res> {
+  __$ProductVariantCopyWithImpl(this._self, this._then);
+
+  final _ProductVariant _self;
+  final $Res Function(_ProductVariant) _then;
+
+/// Create a copy of ProductVariant
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? variantId = null,Object? optionValues = null,Object? priceCents = freezed,Object? stockQuantity = null,Object? sku = freezed,Object? isActive = null,}) {
+  return _then(_ProductVariant(
+variantId: null == variantId ? _self.variantId : variantId // ignore: cast_nullable_to_non_nullable
+as String,optionValues: null == optionValues ? _self._optionValues : optionValues // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,priceCents: freezed == priceCents ? _self.priceCents : priceCents // ignore: cast_nullable_to_non_nullable
+as int?,stockQuantity: null == stockQuantity ? _self.stockQuantity : stockQuantity // ignore: cast_nullable_to_non_nullable
+as int,sku: freezed == sku ? _self.sku : sku // ignore: cast_nullable_to_non_nullable
+as String?,isActive: null == isActive ? _self.isActive : isActive // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
 }
 
 

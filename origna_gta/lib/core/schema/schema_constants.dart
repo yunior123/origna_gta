@@ -155,6 +155,10 @@ abstract final class BusinessRules {
   static const trendingFavoriteWeight = 1; // Weight for favorite events
   static const freeShippingThresholdCents = 7500; // $75 CAD — subtotals at or above qualify for free standard shipping
   static const localDeliveryRadiusKm = 50.0; // 50km radius for local delivery Eligibility (BUG-L1)
+  // BOOT-L1: session timeout extracted to constant
+  static const sessionTimeoutMinutes = 15;
+  // FAV-M2: seller product list page size — cursor pagination planned for >200 sellers
+  static const sellerProductsPageSize = 200;
   // Sellers can be from any country — no country restriction on seller addresses
 
   // F-103: Coupon & Margin safety

@@ -25,7 +25,7 @@ class AppRoutes {
   static const String orderSuccess = '/order-success';
   static const String shippingApproval = '/shipping-approval';
   static const String sellerRegistration = '/seller/register';
-  static const String sellerSetup = '/seller/setup';
+  // BOOT-L2: sellerSetup route removed — screen not implemented
   static const String sellerOrders = '/seller/orders';
   static const String sellerProducts = '/seller/products';
   static const String sellerWarehouses = '/seller/warehouses';

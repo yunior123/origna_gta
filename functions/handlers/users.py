@@ -446,43 +446,50 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     address_dict.pop('address_id', None)  # doc ID is read from doc.id — never stored as a field
 
     db = get_db()
-    address_ref = (
-        db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).document(address_id)
-    )
-    doc = address_ref.get()
+    from firebase_admin import firestore as _fs
 
-    if not doc.exists:
-        raise https_fn.HttpsError("not-found", "Address not found")
+    addresses_ref = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES)
+    address_ref = addresses_ref.document(address_id)
 
-    # If this one is set to default and wasn't before, we must unset others
-    if address_dict.get(Fields.IS_DEFAULT) and not doc.to_dict().get(Fields.IS_DEFAULT):
-        existing_addresses = list(db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get())
-        batch = db.batch()
-        for existing_doc in existing_addresses:
-            if existing_doc.id != address_id and existing_doc.to_dict().get(Fields.IS_DEFAULT):
-                batch.update(existing_doc.reference, {Fields.IS_DEFAULT: False})
-        batch.update(address_ref, address_dict)
-        batch.commit()
-    elif not address_dict.get(Fields.IS_DEFAULT) and doc.to_dict().get(Fields.IS_DEFAULT):
-        existing_addresses = list(db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get())
-        # Prevent unsetting default if it's the only one
-        if len(existing_addresses) > 1:
-            # We enforce that AT LEAST one must be default
-            # Auto-promote the first non-matching address
-            batch = db.batch()
-            promoted = False
-            for existing_doc in existing_addresses:
-                if existing_doc.id != address_id and not promoted:
-                    batch.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
-                    promoted = True
-            batch.update(address_ref, address_dict)
-            batch.commit()
+    @_fs.transactional
+    def _update_address_txn(transaction):
+        doc = address_ref.get(transaction=transaction)
+        if not doc.exists:
+            raise https_fn.HttpsError("not-found", "Address not found")
+
+        was_default = doc.to_dict().get(Fields.IS_DEFAULT, False)
+        new_is_default = address_dict.get(Fields.IS_DEFAULT, False)
+
+        # Promoting this address to default: clear any existing default
+        if new_is_default and not was_default:
+            existing = list(addresses_ref.get(transaction=transaction))
+            for existing_doc in existing:
+                if existing_doc.id != address_id and existing_doc.to_dict().get(Fields.IS_DEFAULT):
+                    transaction.update(existing_doc.reference, {Fields.IS_DEFAULT: False})
+            transaction.update(address_ref, address_dict)
+
+        # Demoting current default: auto-promote another address
+        elif not new_is_default and was_default:
+            existing = list(addresses_ref.get(transaction=transaction))
+            if len(existing) > 1:
+                promoted = False
+                for existing_doc in existing:
+                    if existing_doc.id != address_id and not promoted:
+                        transaction.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
+                        promoted = True
+                transaction.update(address_ref, address_dict)
+            else:
+                # Cannot demote the only address — force it to stay default
+                forced = dict(address_dict)
+                forced[Fields.IS_DEFAULT] = True
+                transaction.update(address_ref, forced)
+
+        # No default change: plain update
         else:
-            # Cannot unset default if it's the only one
-            address_dict[Fields.IS_DEFAULT] = True
-            address_ref.update(address_dict)
-    else:
-        address_ref.update(address_dict)
+            transaction.update(address_ref, address_dict)
+
+    transaction = db.transaction()
+    _update_address_txn(transaction)
 
     return create_success_response({"updated": True})
 
@@ -507,6 +514,11 @@ def delete_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if not doc.exists:
         raise https_fn.HttpsError("not-found", "Address not found")
+
+    # Ownership check: verify the address belongs to the calling user
+    address_owner_id = address_ref.parent.parent.id if address_ref.parent and address_ref.parent.parent else None
+    if address_owner_id != user_id:
+        raise https_fn.HttpsError("permission-denied", "You do not have permission to delete this address")
 
     was_default = doc.to_dict().get(Fields.IS_DEFAULT)
     user_ref = db.collection(Collections.USERS).document(user_id)

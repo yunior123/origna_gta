@@ -791,6 +791,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     _shippingDiscount3Controller.addListener(_validateDiscountTiers);
     _shippingDiscount5Controller.addListener(_validateDiscountTiers);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // PROD-C1: reset text controllers when re-entering the screen after a previous success.
+      final currentState = ref.read(addProductViewModelProvider);
+      if (currentState.isSuccess) {
+        _resetControllers();
+      }
       ref.read(addProductViewModelProvider.notifier).resetIfSuccess();
     });
   }
@@ -1686,22 +1691,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       button: true,
       label: 'btn-publish-product',
       child: GestureDetector(
-        onTapDown: state.isLoading ? null : (_) => HapticFeedback.mediumImpact(),
+        // PROD-C4: also disable during video upload
+        onTapDown: (state.isLoading || state.isUploadingVideo) ? null : (_) => HapticFeedback.mediumImpact(),
         child: AnimatedContainer(
           duration: DesignTokens.durationFast,
           height: 56,
           decoration: BoxDecoration(
-            gradient: state.isLoading ? null : DesignTokens.primaryGradient,
-            color: state.isLoading ? DesignTokens.outline : null,
+            gradient: (state.isLoading || state.isUploadingVideo) ? null : DesignTokens.primaryGradient,
+            color: (state.isLoading || state.isUploadingVideo) ? DesignTokens.outline : null,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: state.isLoading ? [] : [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
+            boxShadow: (state.isLoading || state.isUploadingVideo) ? [] : [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
               key: const Key('addproduct_submit_button'),
               borderRadius: BorderRadius.circular(16),
-              onTap: state.isLoading
+              onTap: (state.isLoading || state.isUploadingVideo)
                   ? null
                   : () {
                       if (!state.hasAttemptedSubmit) {
@@ -1776,11 +1782,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                           supplierUrl: _supplierUrlController.text.trim().isEmpty ? null : _supplierUrlController.text.trim(),
                           supplier: supplierInfo,
                           inventory: inventoryConfig,
+                          // PROD-C2: inform viewmodel whether seller has warehouses registered
+                          sellerHasWarehouses: ref.read(sellerWarehousesStreamProvider).valueOrNull?.isNotEmpty == true,
                         );
                       }
                     },
               child: Center(
-                child: state.isLoading
+                // PROD-C4: show spinner for both full loading and video upload phase
+                child: (state.isLoading || state.isUploadingVideo)
                     ? const ModernLoadingIndicator(size: 24, strokeWidth: 2.5, color: DesignTokens.textOnPrimary, centered: false)
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -2242,6 +2251,43 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         );
       },
     );
+  }
+
+  /// PROD-C1: Clears all text controllers so the form is blank when re-entering after a successful submit.
+  void _resetControllers() {
+    _nameController.clear();
+    _descriptionController.clear();
+    _priceController.clear();
+    _compareAtPriceController.clear();
+    _categoryController.clear();
+    _streetController.clear();
+    _apartmentController.clear();
+    _cityController.clear();
+    _postalCodeController.clear();
+    _stockController.text = '1';
+    _minOrderController.text = '1';
+    _weightController.clear();
+    _lengthController.clear();
+    _widthController.clear();
+    _heightController.clear();
+    _taxCodeController.clear();
+    _costController.clear();
+    _supplierSkuController.clear();
+    _sellerSkuController.clear();
+    _supplierUrlController.clear();
+    _supplierShippingDaysController.text = '7-15';
+    _supplierNotesController.clear();
+    _customSupplierNameController.clear();
+    _lowStockThresholdController.text = '5';
+    _standardDaysController.text = '5';
+    _standardPriceController.text = '0.00';
+    _expressDaysController.text = '2';
+    _expressPriceController.text = '9.99';
+    _sameDayPriceController.text = '14.99';
+    _shippingDiscount3Controller.clear();
+    _shippingDiscount5Controller.clear();
+    _additionalItemCostController.text = '0.00';
+    _maxItemsPerShipmentController.text = '0';
   }
 
   void _onSuccess() {

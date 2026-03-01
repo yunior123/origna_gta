@@ -2290,7 +2290,11 @@
           "default": false,
           "description": "Whether subscription cancels at end of current period"
         },
-        "createdAt": {
+        "cancelScheduledAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When cancellation was requested to take effect at period end"
+        },        "createdAt": {
           "type": "timestamp",
           "required": true
         },

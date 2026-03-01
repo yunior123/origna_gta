@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/features/seller/seller_products_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -48,6 +49,8 @@ class SellerProductsScreen extends ConsumerWidget {
         appBar: AppBarFactory.custom(
           title: tr('seller.my_products'),
           actions: [
+            // FE-M3: Q&A badge — same as seller_orders_screen
+            _UnansweredQaBadge(sellerId: user.uid),
             IconButton(
               icon: const Icon(Icons.add_box_outlined),
               tooltip: tr('seller.add_product'),
@@ -402,6 +405,51 @@ class _StatusBadge extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
+}
+
+// FE-M3: Q&A badge for seller products AppBar — matches seller_orders_screen pattern
+class _UnansweredQaBadge extends ConsumerWidget {
+  final String sellerId;
+  const _UnansweredQaBadge({required this.sellerId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(sellerUnansweredQaProvider(sellerId)).valueOrNull ?? 0;
+    return Tooltip(
+      message: count > 0
+          ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()])
+          : 'seller.no_pending_questions'.tr(),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.forum_outlined),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerOrders),
+          ),
+          if (count > 0)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: DesignTokens.error,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: Center(
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
