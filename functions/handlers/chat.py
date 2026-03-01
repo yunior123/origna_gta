@@ -198,13 +198,14 @@ def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
     if chat_data.get(Fields.BUYER_ID) != uid and chat_data.get(Fields.SELLER_ID) != uid:
         raise https_fn.HttpsError("permission-denied", "Access denied.")
 
-    # Batch-mark unread messages sent by the OTHER party
+    # Batch-mark unread messages sent by the OTHER party (limit to 500 per call)
     messages = (
         db.collection(Collections.CHATS)
         .document(chat_id)
         .collection(Collections.CHAT_MESSAGES)
         .where(Fields.IS_READ, "==", False)
         .where(Fields.SENDER_ID, "!=", uid)
+        .limit(500)
         .stream()
     )
 
