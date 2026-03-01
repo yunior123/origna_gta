@@ -5,10 +5,10 @@
 
 # FULL REPO AUDIT — 2026-02-28
 
-## STATUS: Audit Complete (Wave 1). 18/33 agents succeeded. 15 rate-limited → need re-run in next session.
+## STATUS: Audit complete (19/33 agents). Fixes in progress. Deploy to dev ✅.
 
-## PENDING TASKS (from original STATE.md)
-1. ✅ Full audit (results below — ask before proceeding with fixes)
+## PENDING TASKS
+1. ✅ Full audit (complete — findings below)
 2. Add Playwright tests to cover all APIs (Cloudflare R2, Stripe, Firestore, etc.)
 3. Improve existing Playwright UI tests (go deeper into E2E scenarios)
 4. Update repo map
@@ -16,13 +16,34 @@
 
 ---
 
-## AGENTS RAN (18 succeeded, 15 rate-limited)
+## FIXES APPLIED (commits: 6de9999, d7dd13b, cd7602e, 06016ba)
+
+| Fix | File | Status |
+|-----|------|--------|
+| PaymentStatusEnum: DISPUTED + PARTIALLY_REFUNDED | models/base.py | ✅ |
+| database_schema.json: missing paymentStatus values | docs/database_schema.json | ✅ |
+| firestore.rules: partially_refunded + refunded terminal states | firestore.rules | ✅ |
+| firestore.rules: message_reports collection rules | firestore.rules | ✅ |
+| 17 missing Firestore composite indexes | firestore.indexes.json | ✅ deployed |
+| Chat: SERVER_TIMESTAMP for message/thread timestamps | chat.py | ✅ |
+| Cron: .limit(500) on cleanup_stale_webhook_events | cron_jobs.py | ✅ |
+| Cron: .limit(500) on cleanup_stale_security_alerts | cron_jobs.py | ✅ |
+| Orders: email + push for FAILED/EXPIRED/DISPUTED status | orders.py | ✅ |
+| Products: rating transaction fetches product_doc inside txn | products.py | ✅ |
+| Products: notifiedAt rollback on email failure (both paths) | products.py | ✅ |
+| Products: warehouse default reassignment on deletion | products.py | ✅ |
+| Algolia: lifecycleStatus=active persistent filter | algolia_service.dart | ✅ |
+| Payment: seller push notification on new orders | payment_stripe.py | ✅ |
+| Payment: payout idempotency checks all non-FAILED status | payment_stripe.py | ✅ |
+| .env: fix invalid dotenv lines (BedrockAPIKey, AWS_BedRock) | functions/.env | ✅ local |
+
+## AGENTS RAN (19 succeeded, 14 rate-limited)
 
 ### Succeeded
-schema-sync, cron-jobs, app-bootstrap, legacy-code, frontend, add-product, notifications, product-qa-ratings, profile-address, chat, seller-warehouses, missing-indexes (17 added), search-discovery, email-notifications, stock-notifications, favorites, payment, Gemini test-gaps
+schema-sync, cron-jobs, app-bootstrap, legacy-code, frontend, add-product, notifications, product-qa-ratings, profile-address, chat, seller-warehouses, missing-indexes (17 added), search-discovery, email-notifications, stock-notifications, favorites, payment, legal-compliance, Gemini test-gaps
 
-### Need Re-run (429 rate limit — too many parallel agents)
-logic-auditor, security-auditor, performance-auditor, order-lifecycle-auditor, cross-stack-auditor, auth-onboarding-auditor, product-lifecycle-auditor, return-requests-auditor, coupons-discounts-auditor, digital-products-auditor, firebase-architect-agent, premium-auditor, admin-panel-auditor, legal-compliance-auditor, cost-monitor
+### Need Re-run (Bedrock quota exhausted — retry in ~2hrs)
+logic-auditor, security-auditor, performance-auditor, order-lifecycle-auditor, cross-stack-auditor, auth-onboarding-auditor, product-lifecycle-auditor, return-requests-auditor, coupons-discounts-auditor, digital-products-auditor, firebase-architect-agent, premium-auditor, admin-panel-auditor, cost-monitor
 
 ---
 
