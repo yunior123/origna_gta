@@ -381,6 +381,14 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
                     logger.error(f"Admin-triggered capture failed for {order_id}: {e}")
                     raise https_fn.HttpsError("internal", "Could not capture payment before marking delivered.") from e
 
+        # Cascade DELIVERED to all items so item-level checks (e.g. return requests) pass
+        items = order_data.get(Fields.ITEMS, [])
+        now_utc = datetime.now(UTC)
+        for item in items:
+            item[Fields.STATUS] = DeliveryStatusValues.DELIVERED
+            item[Fields.DELIVERED_AT] = now_utc
+        update_data[Fields.ITEMS] = items
+
     order_ref.update(update_data)
 
     # Record order event
@@ -497,7 +505,9 @@ def _update_item_status_logic(user_id: str, data: dict, is_admin: bool = None) -
             )
 
         updated_items = list(items)
-        server_ts = get_server_timestamp()
+        # Use real datetime for timestamps inside the items array — Firestore
+        # SERVER_TIMESTAMP sentinel cannot be nested inside arrays/maps.
+        now_utc = datetime.now(UTC)
         for idx, item in seller_items:
             updated_item = dict(item)
             updated_item[Fields.STATUS] = new_status
@@ -507,9 +517,9 @@ def _update_item_status_logic(user_id: str, data: dict, is_admin: bool = None) -
                 updated_item[Fields.CARRIER] = carrier
 
             if new_status == DeliveryStatusValues.SHIPPED:
-                updated_item[Fields.SHIPPED_AT] = server_ts
+                updated_item[Fields.SHIPPED_AT] = now_utc
             elif new_status == DeliveryStatusValues.DELIVERED:
-                updated_item[Fields.DELIVERED_AT] = server_ts
+                updated_item[Fields.DELIVERED_AT] = now_utc
 
             updated_items[idx] = updated_item
         order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: get_server_timestamp()})
@@ -561,17 +571,19 @@ def _update_item_status_logic(user_id: str, data: dict, is_admin: bool = None) -
             raise https_fn.HttpsError("not-found", "Item not found")
 
         fresh_items[fresh_item_index][Fields.STATUS] = new_status
-        server_ts = get_server_timestamp()
+        # Use real datetime for timestamps inside the items array — Firestore
+        # SERVER_TIMESTAMP sentinel cannot be nested inside arrays/maps.
+        now_utc = datetime.now(UTC)
 
         if new_status == DeliveryStatusValues.SHIPPED:
             is_pickup = fresh_data.get(Fields.DELIVERY_SPEED) == DeliveryTypeValues.PICKUP
             if not tracking_number and not is_pickup:
                 raise https_fn.HttpsError("invalid-argument", "Tracking number required")
-            fresh_items[fresh_item_index][Fields.SHIPPED_AT] = server_ts
+            fresh_items[fresh_item_index][Fields.SHIPPED_AT] = now_utc
             fresh_items[fresh_item_index][Fields.TRACKING_NUMBER] = tracking_number
             fresh_items[fresh_item_index][Fields.CARRIER] = carrier or ("Pickup" if is_pickup else "")
         elif new_status == DeliveryStatusValues.DELIVERED:
-            fresh_items[fresh_item_index][Fields.DELIVERED_AT] = server_ts
+            fresh_items[fresh_item_index][Fields.DELIVERED_AT] = now_utc
 
         all_delivered = all(it.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED for it in fresh_items)
         all_shipped = all(it.get(Fields.STATUS) in [DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED] for it in fresh_items)

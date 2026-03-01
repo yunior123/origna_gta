@@ -29,6 +29,7 @@ test.describe('Order Lifecycle', () => {
   });
 
   test('Order created after payment has confirmed status', async ({ page }) => {
+    // qty=1 — unique per test to avoid 60s order dedup
     const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     expect(result.orderId).toBeTruthy();
 
@@ -39,7 +40,8 @@ test.describe('Order Lifecycle', () => {
   });
 
   test('Seller can transition confirmed → processing', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
+    // qty=2 — unique per test to avoid 60s order dedup
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 2);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
@@ -54,7 +56,8 @@ test.describe('Order Lifecycle', () => {
   });
 
   test('Seller can transition processing → shipped with tracking', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
+    // qty=3 — unique per test to avoid 60s order dedup
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 3);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
@@ -77,7 +80,8 @@ test.describe('Order Lifecycle', () => {
   });
 
   test('Invalid transition confirmed → delivered is rejected', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
+    // qty=4 — unique per test to avoid 60s order dedup
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 4);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
@@ -91,7 +95,8 @@ test.describe('Order Lifecycle', () => {
   });
 
   test('Buyer cannot update order status (only seller/admin can)', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
+    // qty=5 — unique per test to avoid 60s order dedup
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 5);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 

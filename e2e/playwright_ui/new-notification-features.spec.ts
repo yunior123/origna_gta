@@ -44,7 +44,9 @@ test.describe('New Notification Features E2E', () => {
 
     // Inject a minimal order so the chat backend order-existence check passes.
     // get_or_create_chat requires: buyer has ordered the product at least once.
-    fakeOrderId = `e2e_notif_order_${buyerUid.slice(0, 8)}`;
+    // Use unique ID per run to avoid Firestore update-rule whitelist rejection
+    // (orders: allow delete: if false — stale docs can't be cleaned via REST).
+    fakeOrderId = `e2e_notif_order_${Date.now()}`;
     await writeDoc(
       `orders/${fakeOrderId}`,
       toFirestoreFields({

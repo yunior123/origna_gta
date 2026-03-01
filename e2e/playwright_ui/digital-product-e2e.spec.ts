@@ -103,21 +103,21 @@ test.describe('A. Digital Product Catalogue', () => {
 test.describe('B. Digital-Only Checkout', () => {
   test.setTimeout(180_000);
 
-  test('B.1 Digital-only cart does not require Canadian shipping address', async () => {
-    // The backend bypasses address validation when all items are digital.
-    // Send payload with no shippingAddress fields — should succeed or return a checkout URL.
+  test('B.1 Digital-only cart skips shipping cost and tax', async () => {
+    // Backend always requires a valid Canadian address for consistency,
+    // but digital-only orders get zero shipping and zero tax.
     const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
     const { data } = await buildCheckoutPayload(auth.localId, DIGITAL_SW_ID, 1, auth.idToken);
 
-    // Replace shipping address with empty object to confirm digital bypass
-    const digitalOnlyPayload = {
-      ...data,
-      shippingAddress: {},
-    };
-
-    const result = await callOk('create_checkout_session', digitalOnlyPayload, auth.idToken);
+    const result = await callOk('create_checkout_session', data, auth.idToken);
     expect(result.orderId, 'checkout session must return orderId').toBeTruthy();
     expect(result.checkoutUrl, 'checkout session must return checkoutUrl').toBeTruthy();
+
+    // Verify digital-only orders have zero shipping and zero tax
+    const doc = await readDoc(`orders/${result.orderId}`, auth.idToken);
+    const order = parseDoc(doc);
+    expect(order.shippingCostCents).toBe(0);
+    expect(order.taxAmountCents).toBe(0);
   });
 
   test('B.2 Buy digital software product → license key created on order item', async ({ page }) => {
@@ -538,28 +538,19 @@ test.describe('F. Seller UX — Digital Product Creation', () => {
     expect(order.shippingCostCents, 'Digital-only order: zero shipping').toBe(0);
   });
 
-  test('F.3 FXCleaner software product is buyable worldwide (no Canada-only restriction)', async () => {
-    // Digital products bypass the Canada-only shipping restriction.
-    // A buyer with a non-Canadian address should still be able to purchase.
+  test('F.3 FXCleaner digital purchase gets zero shipping and zero tax', async () => {
+    // Digital products still require a valid Canadian address (early validation),
+    // but the order gets zero shipping and zero tax.
     const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
     const { data } = await buildCheckoutPayload(auth.localId, DIGITAL_SW_ID, 1, auth.idToken);
 
-    // Override with a US address — should succeed for digital-only cart
-    const internationalPayload = {
-      ...data,
-      shippingAddress: {
-        street: '1 Infinite Loop',
-        city: 'Cupertino',
-        state: 'CA',
-        postalCode: '95014',
-        country: 'USA',
-        phoneNumber: '+14085551234',
-      },
-    };
+    const result = await callOk('create_checkout_session', data, auth.idToken);
+    expect(result.orderId, 'Digital checkout must succeed').toBeTruthy();
 
-    // For all-digital carts, address validation is bypassed — this should succeed
-    const result = await callOk('create_checkout_session', internationalPayload, auth.idToken);
-    expect(result.orderId, 'Digital checkout must succeed with non-CA address').toBeTruthy();
+    const doc = await readDoc(`orders/${result.orderId}`, auth.idToken);
+    const order = parseDoc(doc);
+    expect(order.shippingCostCents, 'Digital order: zero shipping').toBe(0);
+    expect(order.taxAmountCents, 'Digital order: zero tax').toBe(0);
   });
 });
 
@@ -881,7 +872,7 @@ test.describe('I. Digital Business Rules', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const buyerAuth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
 
-    const orderId = 'e2e-test-i1-digital-return';
+    const orderId = `e2e-test-i1-digital-return-${Date.now()}`;
     const digitalItem = {
       productId: DIGITAL_SW_ID,
       name: 'FXCleaner',
@@ -974,13 +965,13 @@ test.describe('I. Digital Business Rules', () => {
     await deleteDoc(`licenses/${licenseKey}`, adminAuth.idToken);
   });
 
-  test('I.3 Digital-only order has no shipping requirement and zero shippingCostCents', async () => {
-    // Belt-and-suspenders: confirm the Firestore order created for a digital-only checkout
-    // has shippingCostCents=0 and no shippingAddress requirement.
+  test('I.3 Digital-only order has zero shippingCostCents', async () => {
+    // Confirm the Firestore order created for a digital-only checkout
+    // has shippingCostCents=0 (address is still required by backend validation).
     const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const { data } = await buildCheckoutPayload(auth.localId, DIGITAL_BOOK_ID, 1, auth.idToken);
-    const session = await callOk('create_checkout_session', { ...data, shippingAddress: {} }, auth.idToken);
+    const session = await callOk('create_checkout_session', data, auth.idToken);
     expect(session.orderId).toBeTruthy();
 
     const order = parseDoc(await readDoc(`orders/${session.orderId}`, auth.idToken));

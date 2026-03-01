@@ -907,11 +907,20 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
           fields.stockQuantity = 200;
         }
 
-        // FIX: Ensure Product C has international address if it was created as Canadian before
-        if (id === 'e2e_product_intl_seller' && fields.sellerAddress?.country !== 'China') {
-          const intlAddress = { street: 'Nanjing Rd', city: 'Shanghai', state: 'SH', postalCode: '200001', country: 'China' };
-          await writeDoc(`products/${id}`, toFirestoreFields({ sellerAddress: intlAddress }), adminAuth.idToken, true);
-          fields.sellerAddress = intlAddress;
+        // FIX: Ensure Product C has international address + isInternational flag
+        if (id === 'e2e_product_intl_seller') {
+          const patches: Record<string, unknown> = {};
+          if (fields.sellerAddress?.country !== 'China') {
+            patches.sellerAddress = { street: 'Nanjing Rd', city: 'Shanghai', state: 'SH', postalCode: '200001', country: 'China' };
+            fields.sellerAddress = patches.sellerAddress as typeof fields.sellerAddress;
+          }
+          if (!fields.isInternational) {
+            patches.isInternational = true;
+            fields.isInternational = true;
+          }
+          if (Object.keys(patches).length > 0) {
+            await writeDoc(`products/${id}`, toFirestoreFields(patches), adminAuth.idToken, true);
+          }
         }
 
         if ((fields.stockQuantity ?? 0) > 0) {
@@ -1033,7 +1042,8 @@ export async function createDummyProduct(
       state: 'ON',
       postalCode: 'M5J 1V6',
       country: 'Canada'
-    }
+    },
+    isInternational: customAddress ? customAddress.country !== 'Canada' : false,
   };
 
   const ok = await writeDoc(`products/${id}`, toFirestoreFields(productData), adminAuth.idToken, true);

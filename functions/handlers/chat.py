@@ -18,6 +18,7 @@ from firebase_functions import https_fn
 from google.cloud import firestore
 
 from schema_constants import (
+    ApiKeys,
     BusinessRules,
     Collections,
     Fields,
@@ -168,7 +169,9 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
         chat_ref.create(new_chat)
         return {"chatId": chat_id, "isNew": True}
     except Exception as e:
-        if "ALREADY_EXISTS" in str(e):
+        # Cloud Run Firestore SDK returns "409 Document already exists" (not gRPC "ALREADY_EXISTS")
+        err_str = str(e).lower()
+        if "already_exists" in err_str or "already exists" in err_str:
             return {"chatId": chat_id, "isNew": False}
         raise
 

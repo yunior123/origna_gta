@@ -377,8 +377,8 @@ test.describe('6. Non-Canadian Address Rejected', () => {
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     expect(error.code).toBe('invalid-argument');
-    // Backend: "Shipping to {country} is not currently supported"
-    expect(error.message.toLowerCase()).toContain('supported');
+    // Backend: "Shipping is only available within Canada"
+    expect(error.message.toLowerCase()).toContain('canada');
   });
 
   test('Checkout with invalid Canadian postal code format is rejected', async () => {
