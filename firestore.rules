@@ -655,6 +655,16 @@ service cloud.firestore {
     }
 
     // ================================================================
+    // MESSAGE_REPORTS COLLECTION (F-121)
+    // Reports are written via report_message CF only (Admin SDK).
+    // Admins can read to triage; no client writes ever.
+    // ================================================================
+    match /message_reports/{reportId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // ================================================================
     // BOOK_ACCESS_TOKENS COLLECTION
     // Single-use redirect tokens — backend creates, no client read.
     // ================================================================
