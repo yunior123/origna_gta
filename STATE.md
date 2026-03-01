@@ -355,3 +355,35 @@ Suggested fix order:
    - Add Canada-only buyer filtering
 
 6. **Re-run 15 rate-limited auditors** in next session (smaller batches of 6-8 max)
+
+---
+
+# PERFORMANCE AUDIT REPORT — 2026-02-28 (VERIFIED)
+
+## REAL PERFORMANCE ISSUES (agent findings cross-checked against code)
+
+### [HIGH] N+1 FCM token reads in notification functions (from Gemini audit)
+- `_fire_back_in_stock_notifications`, `_fire_price_drop_notifications`, `_notify_premium_users_new_product`
+- Each fetches FCM tokens one-by-one per user instead of batch collectionGroup query
+- Fix: Use `collectionGroup(FCM_TOKENS)` with whereIn for batch fetch → send MulticastMessage
+- **Files:** functions/handlers/products.py (lines ~3710-3820), functions/handlers/cron_jobs.py
+
+### [HIGH] check_expired_authorizations sequential Stripe calls (cron_jobs.py:672)
+- 100 orders × 500ms Stripe API = ~50 seconds per cron run
+- Acceptable for launch (within 540s timeout), optimize post-launch with asyncio.gather
+
+### [MEDIUM] Module-level boto3 import (products.py:68)
+- Contributes to cold start time
+- Fix: Move import inside function body
+
+## FALSE POSITIVES (code already optimized)
+✓ favoritesProvider: onDispose(link.close) + userId null check handles logout correctly
+✓ filteredProductsProvider: uses `limit = 20` default + pageSize param to repository
+✓ buyerOrdersProvider: uses `.limit(BusinessRules.ordersPageSize)` (line 99 in order_repository.dart)
+✓ checkout inventory reads: .limit(50) per unique product (not per item); most products have 1-5 warehouses
+✓ Algolia search debouncing: already 500ms (home_viewmodel.dart:132)
+✓ duplicate rating check: already has .limit(1) (products.py:797)
+✓ cart fetches full product data intentionally (needed for checkout validation)
+4. Set up Firestore usage alerts at $100/day
+
+6. **Re-run 15 rate-limited auditors** in next session (smaller batches of 6-8 max)
