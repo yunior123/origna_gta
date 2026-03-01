@@ -243,6 +243,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                             icon: Icons.attach_money_rounded,
                                             keyboardType: TextInputType.number,
                                             prefixText: '\$ ',
+                                            suffixText: 'CAD',
                                             validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                                           ),
                                         ),
@@ -333,7 +334,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       label: 'product.sku_optional'.tr(),
                                       icon: Icons.qr_code_rounded,
                                       hint: 'product.sku_hint'.tr(),
-                                      onChanged: (v) => viewModel.setSellerSku(v),
+                                      errorText: state.skuError,
+                                      onChanged: (v) {
+                                        if (state.skuError != null) viewModel.clearSkuError();
+                                        viewModel.setSellerSku(v);
+                                      },
                                     ),
                                     _buildTappableInfoHint('product.sku_what_is'.tr(), 'product.sku'.tr(), 'product.sku_info_body'.tr()),
                                     if (!state.isDigital) ...[const SizedBox(height: 16), _buildConditionSelector(state, viewModel)],
@@ -1235,12 +1240,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     IconData? icon,
     String? hint,
     String? prefixText,
+    String? suffixText,
     int maxLines = 1,
     TextInputType? keyboardType,
     TextCapitalization textCapitalization = TextCapitalization.none,
     String? Function(String?)? validator,
     void Function(String)? onChanged,
     bool readOnly = false,
+    String? errorText,
   }) {
     return TextFormField(
       key: key,
@@ -1256,7 +1263,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         labelText: label,
         hintText: hint,
         prefixText: prefixText,
+        suffixText: suffixText,
         prefixIcon: icon != null ? Icon(icon, size: 20) : null,
+        errorText: errorText,
         filled: true,
         fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
         border: OutlineInputBorder(

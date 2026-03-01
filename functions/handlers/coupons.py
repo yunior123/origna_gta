@@ -14,9 +14,11 @@ from firebase_functions import https_fn
 
 from schema_constants import (
     ApiKeys,
+    BusinessRules,
     Collections,
     CouponDiscountTypeValues,
     Fields,
+    RateLimitActions,
     UserRoleValues,
 )
 from services.rate_limiter import RateLimiter
@@ -49,9 +51,9 @@ def _compute_discount(coupon_data: dict, cart_subtotal_cents: int) -> int:
     """
     discount_type = coupon_data.get(Fields.DISCOUNT_TYPE)
     discount_value = coupon_data.get(Fields.DISCOUNT_VALUE, 0)
-    
+
     # F-103: Minimum amount that must remain after discount
-    min_remaining = BusinessRules.MIN_CHECKOUT_TOTAL_CENTS 
+    min_remaining = BusinessRules.MIN_CHECKOUT_TOTAL_CENTS
     max_percent = BusinessRules.MAX_COUPON_DISCOUNT_RATIO
 
     if cart_subtotal_cents <= min_remaining:
@@ -62,7 +64,7 @@ def _compute_discount(coupon_data: dict, cart_subtotal_cents: int) -> int:
         effective_value = min(float(discount_value), max_percent * 100)
         discount_value_millipercent = int(round(effective_value * 1000))
         discount = cart_subtotal_cents * discount_value_millipercent // 100000
-        
+
         # Final safety check: ensure at least $1 remains
         if cart_subtotal_cents - discount < min_remaining:
             return cart_subtotal_cents - min_remaining
@@ -71,7 +73,7 @@ def _compute_discount(coupon_data: dict, cart_subtotal_cents: int) -> int:
     elif discount_type == CouponDiscountTypeValues.FIXED_CENTS:
         # F-103: Fixed discount cannot reduce total below $1
         return min(int(discount_value), cart_subtotal_cents - min_remaining)
-    
+
     return 0
 
 
@@ -104,7 +106,7 @@ def apply_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=user_id,
-        action="apply_coupon",
+        action=RateLimitActions.APPLY_COUPON,
         max_requests=20,
         window_minutes=60,
         fail_closed=False,
@@ -342,13 +344,13 @@ def admin_create_coupon(req: https_fn.CallableRequest) -> dict[str, Any]:
     elif discount_type == CouponDiscountTypeValues.FIXED_CENTS:
         if discount_value < 100:
             raise https_fn.HttpsError("invalid-argument", "Fixed discount must be at least 100 cents ($1.00)")
-        
+
         # F-103: Fixed discounts require a minimum order to ensure margin
         min_order_cents = data.get(Fields.MIN_ORDER_CENTS)
         required_min = int(discount_value) + (BusinessRules.MIN_CHECKOUT_TOTAL_CENTS * 5) # Require at least $5 margin for admin fixed coupons
         if min_order_cents is None or int(min_order_cents) < required_min:
             raise https_fn.HttpsError(
-                "invalid-argument", 
+                "invalid-argument",
                 f"Fixed discount of ${discount_value/100:.2f} requires a minOrderCents of at least ${required_min/100:.2f}"
             )
 

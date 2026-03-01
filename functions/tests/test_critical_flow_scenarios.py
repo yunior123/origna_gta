@@ -214,7 +214,7 @@ class TestCheckoutValidation:
         user_doc = make_mock_doc({"suspended": True})
         mock_db.return_value.collection.return_value.document.return_value.get.return_value = user_doc
 
-        req = make_mock_request(data={"items": [{"productId": "p1"}], "subtotal": 10})
+        req = make_mock_request(data={"items": [{"productId": "p1"}], "subtotalCents": 1000})
 
         with pytest.raises(HttpsError) as exc_info:
             create_checkout_session(req)
@@ -226,7 +226,7 @@ class TestCheckoutValidation:
 
         from handlers.payment_stripe import create_checkout_session
 
-        req = make_mock_request(data={"items": [], "subtotal": 0})
+        req = make_mock_request(data={"items": [], "subtotalCents": 0})
 
         # Mock user not suspended
         with (
@@ -255,7 +255,7 @@ class TestCheckoutValidation:
             user_doc = make_mock_doc({"suspended": False})
             mock_db.return_value.collection.return_value.document.return_value.get.return_value = user_doc
 
-            req = make_mock_request(data={"items": [{"productId": "p1"}], "subtotal": 10})
+            req = make_mock_request(data={"items": [{"productId": "p1"}], "subtotalCents": 1000})
 
             with pytest.raises(HttpsError) as exc_info:
                 create_checkout_session(req)
@@ -275,7 +275,7 @@ class TestCheckoutValidation:
             user_doc = make_mock_doc({"suspended": False})
             mock_db.return_value.collection.return_value.document.return_value.get.return_value = user_doc
 
-            req = make_mock_request(data={"items": [{"productId": "p1"}], "subtotal": 10, "shippingAddress": {}})
+            req = make_mock_request(data={"items": [{"productId": "p1"}], "subtotalCents": 1000, "shippingAddress": {}})
 
             with pytest.raises(HttpsError) as exc_info:
                 create_checkout_session(req)
@@ -298,7 +298,7 @@ class TestCheckoutValidation:
             req = make_mock_request(
                 data={
                     "items": [{"productId": "p1"}],
-                    "subtotal": -100,
+                    "subtotalCents": -10000,
                     "shippingAddress": {
                         "street": "123 Test",
                         "city": "Toronto",
@@ -330,7 +330,7 @@ class TestCheckoutValidation:
             req = make_mock_request(
                 data={
                     "items": [{"productId": "p1"}],
-                    "subtotal": 200000,
+                    "subtotalCents": 20000000,
                     "shippingAddress": {
                         "street": "123 Test",
                         "city": "Toronto",
@@ -363,7 +363,7 @@ class TestCheckoutValidation:
             req = make_mock_request(
                 data={
                     "items": [{"productId": "p1", "quantity": 0}],
-                    "subtotal": 10,
+                    "subtotalCents": 1000,
                     "shippingAddress": {
                         "street": "123 Test",
                         "city": "Toronto",
@@ -395,7 +395,7 @@ class TestCheckoutValidation:
             req = make_mock_request(
                 data={
                     "items": [{"productId": "p1", "quantity": 150}],
-                    "subtotal": 10,
+                    "subtotalCents": 1000,
                     "shippingAddress": {
                         "street": "123 Test",
                         "city": "Toronto",

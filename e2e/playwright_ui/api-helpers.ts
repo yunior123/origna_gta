@@ -45,6 +45,13 @@ export const TEST_ACCOUNTS = {
   BUYER_PASS: 'REDACTED_TEST_PASSWORD',
   BUYER2_EMAIL: 'yuniorrodriguezo4601@yahoo.com',  // Seller account; also has buyer role — used for adversarial tests
   BUYER2_PASS: 'REDACTED_TEST_PASSWORD',
+  // Aliases for compatibility with emulator-based spec files
+  SELLER1_EMAIL: 'yuniorrodriguezo4601@yahoo.com',
+  SELLER2_EMAIL: 'yr62813@gmail.com',             // Admin also has seller role — acts as second seller in dev
+  BUYER1_EMAIL: 'yuniorrodriguezo460@gmail.com',
+  BUYER3_EMAIL: 'yuniorrodriguezo460@gmail.com',   // Same as buyer1 in dev
+  SUSPENDED_EMAIL: 'yuniorrodriguezo460@gmail.com', // No real suspended user in dev — tests check error codes
+  NON_ONBOARDED_SELLER: 'yuniorrodriguezo460@gmail.com', // Buyer has no seller role — acts as non-onboarded
 };
 
 export const TEST_UIDS = {
@@ -1108,4 +1115,57 @@ export async function setProductTrending(productId: string, isTrending: boolean,
   };
 
   return writeDoc(`products/${productId}`, toFirestoreFields(updates), token, true);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// TEST PRODUCTS — stable IDs for dev E2E
+// ════════════════════════════════════════════════════════════════════
+
+export const TEST_PRODUCTS = {
+  HIGH_STOCK: 'e2e_product_admin_seller',
+  DIGITAL: 'e2e_product_test_seller',
+  SELLER2: 'e2e_product_intl_seller',
+};
+
+// ════════════════════════════════════════════════════════════════════
+// COLLECTION LISTING — List/query Firestore collections
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * List all documents in a Firestore collection.
+ * Alias for listCollection for compatibility.
+ */
+export async function listDocs(collectionPath: string, token?: string): Promise<any[]> {
+  return listCollection(collectionPath, token);
+}
+
+/**
+ * List documents in a Firestore subcollection.
+ */
+export async function listSubcollection(
+  parentCollection: string,
+  parentId: string,
+  subcollection: string,
+  token?: string
+): Promise<any[]> {
+  return listCollection(`${parentCollection}/${parentId}/${subcollection}`, token);
+}
+
+/**
+ * Run a structured query against Firestore REST API.
+ */
+export async function queryFirestore(structuredQuery: any, token?: string): Promise<any[]> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const url = `${FIRESTORE_URL}/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ structuredQuery }),
+  });
+  if (!res.ok) return [];
+  const results = await res.json();
+  return (results || [])
+    .filter((r: any) => r.document)
+    .map((r: any) => parseDoc(r.document));
 }

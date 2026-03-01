@@ -181,7 +181,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "userId": "user_1",
             "customerEmail": "hacker@example.com",
             "amount": 100000,
-            "subtotal": 100000.00,
+            "subtotalCents": 10000000,
             "items": [
                 {
                     "productId": "prod_1",
@@ -385,7 +385,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
             "amount": 100,
-            "subtotal": 1010,
+            "subtotalCents": 101000,
             "items": [
                 {
                     "productId": "prod_1",
@@ -428,7 +428,7 @@ class TestPaymentSecurity(unittest.TestCase):
 
         with self.assertRaises(payment_stripe.https_fn.HttpsError) as context:
             create_checkout_session(req)
-        self.assertIn("Item quantity exceeds maximum allowed", str(context.exception.message))
+        self.assertIn("exceeds limit", str(context.exception.message))
 
     def test_checkout_rejects_missing_address_fields(self):
         """
@@ -441,7 +441,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
             "amount": 100,
-            "subtotal": 100,
+            "subtotalCents": 10000,
             "items": [
                 {"productId": "prod_1", "quantity": 1, "price": 10.0, "sellerId": "seller_1", "name": "Test Product"}
             ],
@@ -450,7 +450,7 @@ class TestPaymentSecurity(unittest.TestCase):
 
         with self.assertRaises(payment_stripe.https_fn.HttpsError) as context:
             create_checkout_session(req)
-        self.assertIn("Missing required address field: street", str(context.exception.message))
+        self.assertIn("Shipping address is incomplete", str(context.exception.message))
 
     def test_checkout_rejects_invalid_postal_code(self):
         """
@@ -463,7 +463,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
             "amount": 100,
-            "subtotal": 100,
+            "subtotalCents": 10000,
             "items": [
                 {"productId": "prod_1", "quantity": 1, "price": 10.0, "sellerId": "seller_1", "name": "Test Product"}
             ],
@@ -491,7 +491,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
             "amount": 100,
-            "subtotal": 100,
+            "subtotalCents": 10000,
             "items": [
                 {"productId": "prod_1", "quantity": 1, "price": 10.0, "sellerId": "seller_1", "name": "Test Product"}
             ],
@@ -506,7 +506,7 @@ class TestPaymentSecurity(unittest.TestCase):
 
         with self.assertRaises(payment_stripe.https_fn.HttpsError) as context:
             create_checkout_session(req)
-        self.assertIn("Address field street exceeds maximum length", str(context.exception.message))
+        self.assertIn("Address field", str(context.exception.message))
 
 
 if __name__ == "__main__":

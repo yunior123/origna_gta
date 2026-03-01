@@ -124,7 +124,7 @@ class TestTaxAudit(unittest.TestCase):
             "userId": "user_1",
             "customerEmail": "parent@example.com",
             "amount": 100,
-            "subtotal": 100.00,  # Must match price * quantity: 100.00 * 1 = 100.00
+            "subtotalCents": 10000,  # Must match price * quantity: 100.00 * 1 = $100.00 → 10000 cents
             "items": [
                 {
                     "productId": "prod_kids_shirt",
@@ -238,7 +238,7 @@ class TestTaxAudit(unittest.TestCase):
             "userId": "user_1",
             "customerEmail": "shopper@example.com",
             "amount": 1,
-            "subtotal": 1.00,  # Must match price * quantity: 1.00 * 1 = 1.00
+            "subtotalCents": 100,  # Must match price * quantity: 1.00 * 1 = $1.00 → 100 cents
             "items": [
                 {
                     "productId": "prod_apple",

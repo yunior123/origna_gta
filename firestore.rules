@@ -225,7 +225,7 @@ service cloud.firestore {
       match /fcm_tokens/{tokenId} {
         allow read: if isOwner(userId);
         allow create, update: if isOwner(userId) &&
-          request.resource.data.keys().hasOnly(['token', 'platform', 'fcmTokenUpdatedAt']) &&
+          request.resource.data.keys().hasOnly(['token', 'platform', 'fcmTokenUpdatedAt', 'userId']) &&
           request.resource.data.token is string;
         allow delete: if isOwner(userId);
       }

@@ -453,9 +453,10 @@ def _run_auto_capture() -> None:
                     if seller_doc and seller_doc.exists:
                         seller_data = seller_doc.to_dict()
 
-                        # Fallback to current profile if snapshot missing
+                        # Fallback to current seller_profiles if snapshot missing
                         if not stripe_account_id:
-                            stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
+                            sp_fallback = sp_docs_batch.get(seller_id)
+                            stripe_account_id = (sp_fallback.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID) if sp_fallback and sp_fallback.exists else None
                             if stripe_account_id:
                                 logger.warning(f"⚠️ Using current Stripe account for seller {seller_id} (snapshot missing)")
 
@@ -481,8 +482,9 @@ def _run_auto_capture() -> None:
                                 # not a PaymentIntent ID (pi_xxx). Retrieve the charge from the PI.
                                 charge_id = None
                                 try:
+                                    from utils.helpers import get_charge_id_from_pi
                                     pi = stripe.PaymentIntent.retrieve(payment_intent_id)
-                                    charge_id = pi.latest_charge
+                                    charge_id = get_charge_id_from_pi(pi)
                                 except stripe.error.StripeError as pi_err:
                                     logger.error(f"Failed to retrieve charge for PI {payment_intent_id}: {str(pi_err)}")
 
@@ -672,7 +674,7 @@ def _run_expired_authorizations() -> None:
 
     # Find stale PENDING orders that were never paid (session expired/abandoned)
     # OR were AUTHORIZED but never captured (manual capture expiry)
-    orders = (
+    orders = list(
         get_db()
         .collection(Collections.ORDERS)
         .where(
@@ -690,9 +692,13 @@ def _run_expired_authorizations() -> None:
         .stream()
     )
 
-    expired_count = 0
+    if not orders:
+        logger.info("No stale orders found to expire")
+        return
 
-    for order_doc in orders:
+    from concurrent.futures import ThreadPoolExecutor
+
+    def process_one_order(order_doc):
         try:
             order_data = order_doc.to_dict()
             order_id = order_doc.id
@@ -734,7 +740,7 @@ def _run_expired_authorizations() -> None:
                 expire_result, stock_already_restored, fresh_items, prev_payment_status = try_expire_order(get_db().transaction())
                 if expire_result != "locked":
                     logger.info(f"Order {order_id} cannot be expired: {expire_result}")
-                    continue
+                    return False
             except (
                 google_exceptions.GoogleAPICallError,
                 google_exceptions.RetryError,
@@ -743,7 +749,7 @@ def _run_expired_authorizations() -> None:
                 RuntimeError,
             ) as e:
                 logger.warning(f"⚠️ Failed to lock order {order_id} for expiry: {str(e)}")
-                continue
+                return False
 
             # C-10 FIX 1: Cancel Stripe authorization AFTER successful Firestore lock
             if prev_payment_status == PaymentStatusValues.AUTHORIZED:
@@ -761,12 +767,12 @@ def _run_expired_authorizations() -> None:
                 logger.info(f"Stock already restored for expired order {order_id}")
             else:
                 # CRITICAL FIX: Only mark STOCK_RESTORED=True if the batch actually succeeds.
-                # A crash or Firestore error here previously left stock permanently decremented
-                # because STOCK_RESTORED=True was written unconditionally after the try/except,
-                # hiding the failure and preventing any retry mechanism from detecting it.
                 stock_batch = get_db().batch()
                 for item in fresh_items:
-                    product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+                    product_id = item.get(Fields.PRODUCT_ID)
+                    if not product_id:
+                        continue
+                    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
                     qty = item[Fields.QUANTITY]
                     stock_patch = {Fields.STOCK_QUANTITY: get_firestore().Increment(qty)}
                     fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID, "")
@@ -783,18 +789,10 @@ def _run_expired_authorizations() -> None:
                     stock_batch.commit()
                     stock_restored_ok = True
                 except Exception as e:
-                    logger.error(
-                        f"Failed to restore stock batch for order {order_id}: {str(e)} — "
-                        f"STOCK_RESTORED will NOT be set; order will remain in EXPIRED state "
-                        f"with stock un-restored. Manual intervention required."
-                    )
+                    logger.error(f"Failed to restore stock batch for order {order_id}: {str(e)}")
                     sentry_sdk.capture_exception(e)
                     stock_restored_ok = False
 
-            # Update order with remaining fields NOT set in the transaction.
-            # NOTE: ORDER_STATUS and PAYMENT_STATUS are already set in the transaction.
-            # Only set STOCK_RESTORED, EXPIRES_AT here to avoid duplicating writes.
-            # FIX: STOCK_RESTORED is only set True when stock was actually restored.
             update_fields: dict = {
                 Fields.EXPIRES_AT: get_server_timestamp(),
                 Fields.UPDATED_AT: get_server_timestamp(),
@@ -803,11 +801,7 @@ def _run_expired_authorizations() -> None:
                 update_fields[Fields.STOCK_RESTORED] = True
             order_doc.reference.update(update_fields)
 
-            expired_count += 1
-            logger.info(f"Expired order {order_id} (stock_restored={stock_restored_ok})")
-
             # EMAIL-C2 FIX: Send authorization expired email — only for AUTHORIZED orders
-            # (i.e. buyer had an active hold that was voided), not for abandoned sessions.
             if prev_payment_status == PaymentStatusValues.AUTHORIZED:
                 try:
                     from services.email_service import send_authorization_expired_email
@@ -816,9 +810,17 @@ def _run_expired_authorizations() -> None:
                 except Exception as email_err:
                     logger.warning(f"Failed to send authorization expired email for order {order_id}: {email_err}")
 
+            return True
         except Exception as e:
-            logger.error(f"Error processing item in batch: {e}")
+            logger.error(f"Error processing order {order_doc.id} in expiry cron: {e}")
             sentry_sdk.capture_exception(e)
+            return False
+
+    # Process orders in parallel (max 10 threads to avoid exhausting resources/DB connections)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        results = list(executor.map(process_one_order, orders))
+
+    expired_count = sum(1 for r in results if r)
     logger.info(f"Stale order cleanup completed: {expired_count} orders expired")
 
 
@@ -2002,8 +2004,13 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
                 old_trending_ids.add(prod_snap.id)
             view_count = data.get(Fields.VIEW_COUNT, 0) or 0
             purchase_count = data.get(Fields.PURCHASE_COUNT, 0) or 0
-            # Favorite count is not stored on product doc yet; use 0 until we track it
-            score = view_count + purchase_count * TRENDING_PURCHASE_WEIGHT
+            # SRCH-M2: favoriteCount now tracked via toggle_favorite Cloud Function
+            favorite_count = data.get("favoriteCount", 0) or 0
+            score = (
+                view_count 
+                + (purchase_count * TRENDING_PURCHASE_WEIGHT)
+                + (favorite_count * TRENDING_FAVORITE_WEIGHT)
+            )
             if score > 0:
                 images = data.get(Fields.IMAGE_URLS) or []
                 image_url = images[0] if images else None

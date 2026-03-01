@@ -5,19 +5,14 @@ from typing import Any
 
 from pydantic import ValidationError
 
-# Import Pydantic models
+# Import Pydantic models for type hinting and internal validation
 from models.base import Address
 from models.order import OrderItem
 from schema_constants import ApiKeys, Fields, OrderStatusValues, ValidationLimits
 
 logger = logging.getLogger(__name__)
 
-
-def create_success_response(data: dict[str, Any], status_code: int = 200) -> dict[str, Any]:
-    """Create standardized success response dict for on_call functions"""
-    return {ApiKeys.SUCCESS: True, **data}
-
-
+# RFC 5322 compliant email regex
 RFC_5322_EMAIL = re.compile(
     r"^(?:[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*)@"
     r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
@@ -42,28 +37,29 @@ MAX_ITEM_QUANTITY = ValidationLimits.MAX_ITEM_QUANTITY
 
 def sanitized_text(value: str) -> str:
     """
-    Sanitize text to prevent XSS attacks.
+    XSS Prevention: Sanitize user-provided text for safe display in the UI.
     Uses html.escape() (allowlist approach) per OWASP best practices.
-    All HTML entities are escaped — no denylist bypasses possible.
-
-    IMPORTANT: Idempotent — unescape first to prevent double-encoding
-    and infinite Firestore trigger loops (on_product_created/updated).
+    
+    IMPORTANT: Idempotent — unescape first to prevent double-encoding.
+    
+    Args:
+        value: The raw input string from the client.
+        
+    Returns:
+        A clean, HTML-escaped version of the input string.
     """
     if value is None:
         return ""
-
+    
     text = str(value)
-
+    
     # Unescape first to prevent double-encoding on re-trigger.
     # html.escape(html.unescape(x)) is idempotent for any x.
     text = html.unescape(text)
 
     # html.escape handles: & < > " '
-    # This is the OWASP-recommended approach — encode everything,
-    # no regex denylist that can be bypassed with encoding tricks.
-    text = html.escape(text, quote=True)
-
-    return text
+    # This is the OWASP-recommended approach — encode everything.
+    return html.escape(text, quote=True)
 
 
 def sanitize_path(path: str) -> str:
@@ -244,17 +240,98 @@ def validate_order_data(data: dict[str, Any]) -> tuple[bool, str | None]:
     return True, None
 
 
-# ============================================================================
-# ORDER STATE MACHINE VALIDATION - CRITICAL BUSINESS LOGIC
-# ============================================================================
+def create_success_response(data: dict[str, Any], status_code: int = 200) -> dict[str, Any]:
+    """
+    Standardizes successful Cloud Function responses.
+    
+    Ensures all successful responses contain the 'success': true flag,
+    which is expected by the Flutter 'ApiKeys.SUCCESS' contract.
+    
+    Args:
+        data: The payload to return to the client.
+        status_code: Optional HTTP status code (defaults to 200).
+        
+    Returns:
+        A dictionary containing the success flag and the provided data.
+    """
+    return {ApiKeys.SUCCESS: True, **data}
+
+
+def get_charge_id_from_pi(pi: Any) -> str | None:
+    """
+    Robustly extract Charge ID (ch_xxx) from a Stripe PaymentIntent object.
+    
+    Stripe API behavior varies: 'latest_charge' can be a simple string ID 
+    or an expanded 'Charge' object depending on the request's expansion params.
+    This helper handles both cases to prevent runtime AttributeErrors.
+    
+    Args:
+        pi: A stripe.PaymentIntent object (from retrieve, capture, or confirm).
+        
+    Returns:
+        The Charge ID string (e.g., 'ch_123') or None if not present.
+    """
+    if not pi:
+        return None
+    
+    latest = getattr(pi, "latest_charge", None)
+    if not latest:
+        return None
+        
+    if isinstance(latest, str):
+        return latest
+    
+    return getattr(latest, "id", None)
+
+
+def compare_addresses(addr1: dict | None, addr2: dict | None) -> bool:
+    """
+    Performs a deep, case-insensitive comparison of two address dictionaries.
+    
+    Used for order idempotency checks (PAY-H1) and preventing redundant 
+    address book entries. Ignores formatting differences like whitespace
+    and missing vs. None fields.
+    
+    Args:
+        addr1: First address dictionary.
+        addr2: Second address dictionary.
+        
+    Returns:
+        True if the core physical address fields match.
+    """
+    if addr1 is addr2:
+        return True
+    if addr1 is None or addr2 is None:
+        return False
+        
+    # Standard field set from the Address Pydantic model
+    fields = [
+        Fields.STREET, Fields.CITY, Fields.STATE, Fields.POSTAL_CODE, 
+        Fields.COUNTRY, Fields.APARTMENT, Fields.PHONE_NUMBER
+    ]
+    
+    for f in fields:
+        v1 = str(addr1.get(f) or "").strip().lower()
+        v2 = str(addr2.get(f) or "").strip().lower()
+        if v1 != v2:
+            return False
+            
+    return True
 
 
 def is_valid_order_status_transition(current_status: str, new_status: str) -> bool:
     """
-    CRITICAL BUSINESS LOGIC: Validate order status transitions
-
-    Uses centralized VALID_TRANSITIONS from OrderStatusValues (schema_constants.py).
-    This is the single source of truth — firestore.rules must be kept in sync manually.
+    Enforces the Order State Machine (OSM) business rules.
+    
+    This is the server-side source of truth for all order transitions.
+    It protects the ledger from invalid states (e.g., Shipped -> Cancelled).
+    
+    Args:
+        current_status: The existing status in Firestore.
+        new_status: The requested status update.
+        
+    Returns:
+        True if the transition is permitted by BusinessRules.
     """
     allowed_next_states = OrderStatusValues.VALID_TRANSITIONS.get(current_status, [])
     is_valid = new_status in allowed_next_states
@@ -265,3 +342,78 @@ def is_valid_order_status_transition(current_status: str, new_status: str) -> bo
         logger.info(f"✅ Valid state transition: {current_status} → {new_status}")
 
     return is_valid
+
+
+def geocode_address(address: dict) -> tuple[bool, str, dict]:
+    """
+    Verifies and geocodes a physical address using the Geoapify API.
+    
+    Resolves a human-readable address into GPS coordinates (lat/lon).
+    Used by sellers for shipping origins and buyers for delivery targets.
+    
+    Args:
+        address: Dictionary containing street, city, state, etc.
+        
+    Returns:
+        A tuple of (success_bool, error_message, updated_address_with_coords).
+    """
+    from config import get_geoapify_api_key
+    import requests
+    from schema_constants import AppConfig
+
+    geo_key = get_geoapify_api_key()
+    if not geo_key:
+        return False, "Address verification service not configured", address
+
+    # Construct a canonical query string for Geoapify
+    parts = [
+        address.get(Fields.STREET, ""),
+        address.get(Fields.CITY, ""),
+        address.get(Fields.POSTAL_CODE, ""),
+        address.get(Fields.COUNTRY, ""),
+    ]
+    query = ", ".join(p for p in parts if p).strip()
+    if not query:
+        return False, "Address is empty", address
+
+    try:
+        url = "https://api.geoapify.com/v1/geocode/search"
+        response = requests.get(
+            url, 
+            params={"text": query, "apiKey": geo_key, "limit": 1},
+            timeout=AppConfig.GEOAPIFY_TIMEOUT_SECONDS
+        )
+        
+        # Handle specific API error conditions with user-friendly messages
+        if response.status_code == 401:
+            return False, "Address service authentication failed", address
+        if response.status_code == 429:
+            return False, "Address service rate limit exceeded", address
+        if response.status_code != 200:
+            return False, f"Address service error (HTTP {response.status_code})", address
+
+        data = response.json()
+        features = data.get("features", [])
+        if not features:
+            return False, f"No coordinates found for the provided address: '{query}'", address
+
+        props = features[0].get("properties", {})
+        rank = props.get("rank", {})
+        confidence = rank.get("confidence", 0)
+        
+        coords = features[0].get("geometry", {}).get("coordinates", [])
+        if len(coords) >= 2:
+            updated_addr = dict(address)
+            updated_addr[Fields.LONGITUDE] = coords[0]
+            updated_addr[Fields.LATITUDE] = coords[1]
+            # Record confidence score for future quality auditing
+            updated_addr["geocodingConfidence"] = confidence
+            return True, "", updated_addr
+            
+        return False, "Geocoding returned invalid results", address
+
+    except requests.exceptions.Timeout:
+        return False, "Address verification timed out — please try again", address
+    except Exception as e:
+        logger.error(f"Geocoding error for '{query}': {e}")
+        return False, f"Address verification unexpected error: {type(e).__name__}", address

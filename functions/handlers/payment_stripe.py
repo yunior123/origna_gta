@@ -41,9 +41,10 @@ from schema_constants import (
     DigitalTypeValues,
     ErrorCodeValues,
     Fields,
+    HeaderKeys,
     LicenseStatusValues,
-    OrderEventTypes,
     NotificationTypes,
+    OrderEventTypes,
     OrderStatusValues,
     PaymentProviderValues,
     PaymentStatusValues,
@@ -51,11 +52,11 @@ from schema_constants import (
     PlaceholderAddressValues,
     PlatformDebtStatusValues,
     ProductLifecycleStatusValues,
+    RateLimitActions,
     SecurityAlertTypes,
     SeverityLevels,
     StripeConstants,
     StripeEventTypes,
-    HeaderKeys,
     UserRoleValues,
     ValidationLimits,
     WebhookStatusValues,
@@ -101,15 +102,8 @@ stripe.max_network_retries = BusinessRules.STRIPE_MAX_NETWORK_RETRIES
 # For v2, timeout is set per-request via stripe.api_requestor.APIRequestor
 _rate_limiter = None
 
-# Cache webhook secret to avoid Secret Manager reads on every webhook invocation
-_WEBHOOK_SECRET_CACHE: str | None = None
-
-
 def _get_webhook_secret() -> str:
-    global _WEBHOOK_SECRET_CACHE
-    if not _WEBHOOK_SECRET_CACHE:
-        _WEBHOOK_SECRET_CACHE = get_stripe_webhook_secret()
-    return _WEBHOOK_SECRET_CACHE
+    return get_stripe_webhook_secret()
 
 
 # CORS is configured in DEFAULT_OPTIONS via function_options.py
@@ -281,7 +275,7 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Rate limit: 10/min (called before checkout)
     allowed, message = get_rate_limiter().check_rate_limit(
-        identifier=req.auth.uid, action="verify_cart_prices", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action=RateLimitActions.VERIFY_CART, max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", message)
@@ -410,7 +404,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
 
             line_items.append(
                 {
-                    StripeConstants.TAX_CALC_AMOUNT: int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY],
+                    StripeConstants.TAX_CALC_AMOUNT: round(item[Fields.PRICE] * 100) * item[Fields.QUANTITY],
                     StripeConstants.TAX_CALC_REFERENCE: item[Fields.PRODUCT_ID],
                     StripeConstants.TAX_CALC_TAX_CODE: tax_code,
                 }
@@ -638,372 +632,214 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Rate limiting: 5 requests per minute per user
     allowed, message = get_rate_limiter().check_rate_limit(
-        identifier=user_id, action="create_checkout", max_requests=5, window_minutes=1, fail_closed=True
+        identifier=user_id, action=RateLimitActions.CREATE_CHECKOUT, max_requests=5, window_minutes=1, fail_closed=True
     )
 
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", message)
 
-    # Validate required fields
+    # === EARLY VALIDATION (BEFORE DB HITS) ===
     items = data.get(Fields.ITEMS, [])
     shipping_address = data.get(Fields.SHIPPING_ADDRESS, {})
-    
-    # F-317: Prioritize integer cents from client to avoid float precision drift
+
+    if not items or not isinstance(items, list):
+        raise https_fn.HttpsError("invalid-argument", "No items in cart or invalid items format")
+
+    for item in items:
+        if not isinstance(item, dict):
+            raise https_fn.HttpsError("invalid-argument", "Invalid item format")
+        if not item.get(Fields.PRODUCT_ID):
+            raise https_fn.HttpsError("invalid-argument", "Each item must have a productId")
+        
+        qty = item.get(Fields.QUANTITY, 1)
+        if not isinstance(qty, int) or qty <= 0:
+            raise https_fn.HttpsError("invalid-argument", f"Invalid quantity for product {item.get(Fields.PRODUCT_ID)}")
+        if qty > ValidationLimits.MAX_ITEM_QUANTITY:
+            raise https_fn.HttpsError("invalid-argument", f"Quantity for {item.get(Fields.PRODUCT_ID)} exceeds limit (100)")
+
+    # F-317: Client MUST send integer cents — no float conversion
     client_subtotal_cents_raw = data.get(ApiKeys.SUBTOTAL_CENTS)
-    if client_subtotal_cents_raw is not None and isinstance(client_subtotal_cents_raw, int):
-        client_subtotal_cents = client_subtotal_cents_raw
-        client_subtotal = client_subtotal_cents / 100.0
-    else:
-        # Legacy fallback
-        client_subtotal = data.get(ApiKeys.SUBTOTAL, 0)
-        client_subtotal_cents = round(client_subtotal * 100)
+    if not isinstance(client_subtotal_cents_raw, int):
+        raise https_fn.HttpsError("invalid-argument", "subtotalCents must be an integer")
+    client_subtotal_cents = client_subtotal_cents_raw
+
+    if client_subtotal_cents < 0:
+        raise https_fn.HttpsError("invalid-argument", "Subtotal cannot be negative")
+    if client_subtotal_cents > ValidationLimits.MAX_CHECKOUT_SUBTOTAL_CENTS:
+        raise https_fn.HttpsError("invalid-argument", "Subtotal exceeds maximum allowed ($100,000)")
+
+    # Shipping address validation (required for non-digital items, but checked early for consistency)
+    if not shipping_address or not isinstance(shipping_address, dict):
+        raise https_fn.HttpsError("invalid-argument", "Shipping address is required")
+
+    # Required address fields for physical delivery
+    required_address_fields = [Fields.STREET, Fields.CITY, Fields.STATE, Fields.POSTAL_CODE, Fields.COUNTRY]
+    if not all(shipping_address.get(f) for f in required_address_fields):
+        raise https_fn.HttpsError("invalid-argument", "Shipping address is incomplete")
+
+    # Country restriction: Canadian buyers only
+    country = (shipping_address.get(Fields.COUNTRY) or "").strip().upper()
+    if country not in ("CA", "CANADA"):
+        raise https_fn.HttpsError("invalid-argument", "Shipping is only available within Canada")
+
+    # Postal code format validation
+    postal_code = shipping_address.get(Fields.POSTAL_CODE, "")
+    try:
+        from utils.helpers import validate_postal_code
+        validate_postal_code(postal_code)
+    except (ValueError, Exception):
+        raise https_fn.HttpsError("invalid-argument", "Invalid Canadian postal code format")
+
+    # Province validation
+    province_code = (shipping_address.get(Fields.STATE) or "").strip().upper()
+    if province_code not in BusinessRules.VALID_PROVINCES:
+        raise https_fn.HttpsError(
+            "invalid-argument",
+            f"Invalid province '{province_code}'. Must be one of: {', '.join(sorted(BusinessRules.VALID_PROVINCES))}",
+        )
+
+    # Address field length limits (anti-injection)
+    for addr_field in [Fields.STREET, Fields.CITY, Fields.STATE, Fields.POSTAL_CODE]:
+        val = shipping_address.get(addr_field, "")
+        if isinstance(val, str) and len(val) > 200:
+            raise https_fn.HttpsError("invalid-argument", f"Address field '{addr_field}' is too long")
 
     client_idempotency_key = data.get(ApiKeys.IDEMPOTENCY_KEY)
 
-    if not items or len(items) == 0:
-        raise https_fn.HttpsError("invalid-argument", "No items in cart")
-
-    # Detect all-digital cart early — bypasses physical shipping/address rules.
-    # NOTE: isDigital is re-verified server-side per item during product validation below.
-    all_digital = all(item.get(Fields.IS_DIGITAL, False) for item in items)
-
-    if not all_digital:
-        if not shipping_address:
-            raise https_fn.HttpsError("invalid-argument", "Shipping address required")
-
-        # NORMALIZE: Prefer canonical schema field `state` (province code),
-        # but also accept `province` from older clients.
-        if Fields.STATE not in shipping_address and "province" in shipping_address:
-            shipping_address[Fields.STATE] = shipping_address["province"]
-
-        # Validate shipping address fields
-        required_address_fields = [Fields.STREET, Fields.CITY, Fields.POSTAL_CODE, Fields.STATE, Fields.COUNTRY]
-        for field in required_address_fields:
-            if field not in shipping_address or not shipping_address[field]:
-                raise https_fn.HttpsError("invalid-argument", f"Missing required address field: {field}")
-
-        # Validate address field lengths (prevent injection attacks)
-        address_length_limits = {
-            Fields.STREET: 100,
-            Fields.CITY: 50,
-            Fields.POSTAL_CODE: 20,
-            Fields.STATE: 50,
-            Fields.COUNTRY: 50,
-        }
-        for field, max_length in address_length_limits.items():
-            if len(str(shipping_address.get(field, ""))) > max_length:
-                raise https_fn.HttpsError("invalid-argument", f"Address field {field} exceeds maximum length")
-
-        # Validate postal code format
-        from utils.helpers import validate_postal_code
-
-        postal_code = shipping_address.get(Fields.POSTAL_CODE, "")
-        country = shipping_address.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_NAME)
-
-        if country.lower() != "canada":
-            raise https_fn.HttpsError("invalid-argument", f"Shipping to {country} is not currently supported")
-
-        try:
-            validate_postal_code(postal_code)
-        except ValueError as err:
-            raise https_fn.HttpsError(
-                "invalid-argument", f"Invalid Canadian postal code format: {postal_code}"
-            ) from err
-
-        # Validate province code against known Canadian provinces
-        province_code = shipping_address.get(Fields.STATE, "").upper()
-        if province_code not in BusinessRules.VALID_PROVINCES:
-            raise https_fn.HttpsError(
-                "invalid-argument",
-                f"Invalid Canadian province code: '{province_code}'. "
-                f"Must be one of: {', '.join(sorted(BusinessRules.VALID_PROVINCES))}",
-            )
-    else:
-        # All-digital: no physical address needed (worldwide sales).
-        # Normalize province from optional address if provided (for tax display only).
-        if Fields.STATE not in shipping_address and "province" in shipping_address:
-            shipping_address[Fields.STATE] = shipping_address["province"]
-
-    # Validate subtotal is positive number
-    if not isinstance(client_subtotal, (int, float)) or client_subtotal <= 0:
-        raise https_fn.HttpsError("invalid-argument", "Invalid subtotal: must be positive number")
-
-    # Validate subtotal is reasonable
-    if client_subtotal > BusinessRules.MAX_ORDER_AMOUNT_CAD:
-        raise https_fn.HttpsError(
-            "invalid-argument", f"Subtotal exceeds maximum allowed (${BusinessRules.MAX_ORDER_AMOUNT_CAD:,} CAD)"
-        )
-
-    # Validate and calculate actual prices/shipping server-side
+    # --- SERVER-SIDE PRODUCT VALIDATION ---
+    # F-01:Authoritative price check. Never trust client-supplied prices.
+    # F-02:Atomic stock check (implemented in transaction below).
     validated_items = []
-    actual_subtotal = 0
+    actual_subtotal_cents = 0
     sellers = set()
-    seller_cache = {}  # Cache seller docs to avoid N+1 reads
-    seller_profiles_cache = {}  # Cache seller_profiles docs to avoid N+1 reads
-    warehouse_cache: dict[str, dict] = {}  # key: "sellerId:warehouseId" → warehouse data
-
-    # FIX H-2: Pre-load unique product docs using a single batched read to prevent N+1 queries
-    _product_ids = list(set(_item.get(Fields.PRODUCT_ID) for _item in items if _item.get(Fields.PRODUCT_ID)))
-    _product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in _product_ids]
-    _product_snapshots = get_db().get_all(_product_refs) if _product_refs else []
-    _product_docs_batch = {doc.id: doc for doc in _product_snapshots}
-
+    
+    # Batch fetch all products for efficiency (Max 30 items per cart)
+    product_ids = [item.get(Fields.PRODUCT_ID) for item in items if item.get(Fields.PRODUCT_ID)]
+    if not product_ids:
+        raise https_fn.HttpsError("invalid-argument", "No valid product IDs in cart")
+    
+    db = get_db()
+    product_docs = {
+        d.id: d.to_dict() 
+        for d in db.get_all([db.collection(Collections.PRODUCTS).document(pid) for pid in product_ids]) 
+        if d.exists
+    }
+    
+    # Batch fetch all seller documents
+    seller_ids = list({p.get(Fields.SELLER_ID) for p in product_docs.values() if p.get(Fields.SELLER_ID)})
+    seller_docs = {
+        d.id: d.to_dict() 
+        for d in db.get_all([db.collection(Collections.USERS).document(sid) for sid in seller_ids]) 
+        if d.exists
+    }
+    
     for item in items:
-        # Check quantity limits
-        item_quantity = item.get(Fields.QUANTITY, 0)
-        if not isinstance(item_quantity, int) or item_quantity <= 0:
-            raise https_fn.HttpsError("invalid-argument", f"Item quantity must be a positive integer: {item_quantity}")
-        if item_quantity > 100:
+        pid = item.get(Fields.PRODUCT_ID)
+        p_data = product_docs.get(pid)
+        if not p_data:
+            raise https_fn.HttpsError("not-found", f"Product {pid} not found")
+        
+        # Security: Check if product is active
+        if p_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
+            raise https_fn.HttpsError(
+                "failed-precondition", 
+                f"Product {p_data.get(Fields.NAME, pid)} is not currently available for purchase"
+            )
+
+        # Security: check if seller is active
+        sid = p_data.get(Fields.SELLER_ID)
+
+        # Self-purchase prevention
+        if sid == user_id:
             raise https_fn.HttpsError(
                 "invalid-argument",
-                f"Item quantity exceeds maximum allowed ({ValidationLimits.MAX_ITEM_QUANTITY}): {item_quantity}",
+                f"You cannot purchase your own product ({p_data.get(Fields.NAME, pid)})"
             )
 
-        # Fetch product from Firestore for server-side validation
-        product_doc = _product_docs_batch.get(item[Fields.PRODUCT_ID])
+        # AUDIT FIX: Validate client sellerId matches server-side sellerId
+        # Prevents client from trying to redirect payments by sending wrong sellerId
+        client_sid = item.get(Fields.SELLER_ID)
+        if client_sid and client_sid != sid:
+             raise https_fn.HttpsError(
+                 "invalid-argument",
+                 f"Seller ID mismatch for product {pid}"
+             )
 
-        if product_doc is None or not product_doc.exists:
-            raise https_fn.HttpsError("not-found", f"Product {item[Fields.PRODUCT_ID]} not found")
-
-        product_data = product_doc.to_dict()
-
-        # SECURITY: Reject inactive/deactivated products
-        if product_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
+        s_data = seller_docs.get(sid) or {}
+        if s_data.get(Fields.SUSPENDED, False):
             raise https_fn.HttpsError(
-                "failed-precondition", f"Product {item[Fields.PRODUCT_ID]} is not active and cannot be purchased"
+                "failed-precondition",
+                f"Seller for {p_data.get(Fields.NAME)} is currently inactive"
             )
 
-        # SECURITY: Validate seller ID matches product owner
-        # Prevents attack where buyer sends item.sellerId != product.sellerId
-        # to redirect payments to wrong seller
-        db_seller_id = product_data.get(Fields.SELLER_ID)
-        client_seller_id = item.get(Fields.SELLER_ID)
-
-        if db_seller_id != client_seller_id:
-            raise https_fn.HttpsError(
-                "invalid-argument",
-                f"Seller ID mismatch for product {item[Fields.PRODUCT_ID]}: expected {db_seller_id}, got {client_seller_id}",
-            )
-
-        # Server-side price validation (prevent client tampering)
-        db_price = product_data[Fields.PRICE]
-        client_price = item[Fields.PRICE]
-
-        # Cents-based comparison avoids float precision issues (e.g., 19.99*100 = 1998.999...)
-        if abs(round(db_price * 100) - round(client_price * 100)) > 1:
-            raise https_fn.HttpsError(
-                "invalid-argument",
-                f"Price changed for {product_data.get(Fields.NAME, item[Fields.PRODUCT_ID])}: "
-                f"was ${client_price:.2f}, now ${db_price:.2f}. Please refresh your cart.",
-                details={
-                    ApiKeys.CODE: ErrorCodeValues.PRICE_CHANGED,
-                    Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
-                    ApiKeys.PRODUCT_NAME: product_data.get(Fields.NAME, ""),
-                    ApiKeys.OLD_PRICE: client_price,
-                    ApiKeys.NEW_PRICE: db_price,
-                },
-            )
-
-        # Check stock availability (skip if seller allows backorders)
-        stock_quantity = product_data.get(Fields.STOCK_QUANTITY, 0)
-        allow_backorder = product_data.get(Fields.INVENTORY, {}).get(Fields.ALLOW_BACKORDER, False)
-        if stock_quantity < item[Fields.QUANTITY] and not allow_backorder:
-            raise https_fn.HttpsError(
-                "resource-exhausted",
-                f"Insufficient stock for product {item[Fields.PRODUCT_ID]} ({item[Fields.NAME]}): {stock_quantity} available, {item[Fields.QUANTITY]} requested",
-            )
-
-        # Check seller status (using cache to avoid N+1 reads)
-        seller_id = item[Fields.SELLER_ID]
-        sellers.add(seller_id)
-
-        # Prevent sellers from buying their own products
-        if seller_id == user_id:
-            raise https_fn.HttpsError(
-                "invalid-argument", f"You cannot purchase your own product: {product_data[Fields.NAME]}"
-            )
-
-        # Fetch seller profile (cached to avoid N+1)
-        if seller_id not in seller_cache:
-            seller_ref = get_db().collection(Collections.USERS).document(seller_id)
-            seller_doc = seller_ref.get()
-            seller_cache[seller_id] = seller_doc.to_dict() if seller_doc.exists else {}
-        seller_data = seller_cache[seller_id]
-
-        if seller_id not in seller_profiles_cache:
-            sp_ref = get_db().collection(Collections.SELLER_PROFILES).document(seller_id)
-            sp_doc = sp_ref.get()
-            seller_profiles_cache[seller_id] = sp_doc.to_dict() if sp_doc.exists else {}
-        sp_data = seller_profiles_cache[seller_id]
-
-        # Validate seller is active using cached data (avoids extra Firestore read)
-        if not seller_data:
-            raise https_fn.HttpsError("not-found", f"Seller {seller_id} not found")
-        if seller_data.get(Fields.SUSPENDED, False):
-            raise https_fn.HttpsError("permission-denied", f"Seller {seller_id} is suspended and cannot process orders")
+        # Seller onboarding check — ensure seller can receive payments
+        sp_ref = db.collection(Collections.SELLER_PROFILES).document(sid)
+        sp_snap = sp_ref.get()
+        sp_data = sp_snap.to_dict() if sp_snap.exists else {}
         if not sp_data.get(Fields.ONBOARDING_COMPLETED, False):
-            raise https_fn.HttpsError("failed-precondition", f"Seller {seller_id} has not completed onboarding")
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                f"Seller for {p_data.get(Fields.NAME, pid)} has not completed onboarding"
+            )
         if not sp_data.get(Fields.CHARGES_ENABLED, False):
-            raise https_fn.HttpsError("failed-precondition", f"Seller {seller_id} is not approved to receive payments")
-        seller_profile = seller_data.get(Fields.SELLER_PROFILE, {})
-        if not isinstance(seller_profile, dict):
-            seller_profile = {}
-
-        image_urls = product_data.get(Fields.IMAGE_URLS, [])
-        if not isinstance(image_urls, list):
-            image_urls = [str(image_urls)]
-
-        # Address waterfall: warehouse → sellerAddress → businessAddress → user address → placeholder
-        raw_seller_address = None
-
-        # Step 1: Warehouse address (if product uses warehouses)
-        p_warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
-        p_warehouse_stock = product_data.get(Fields.WAREHOUSE_STOCK) or {}
-        if p_warehouse_ids and p_warehouse_stock:
-            # Pick primary warehouse (most stock)
-            primary_wh_id = max(p_warehouse_stock, key=lambda k: p_warehouse_stock.get(k, 0), default=None)
-            if primary_wh_id:
-                cache_key = f"{seller_id}:{primary_wh_id}"
-                if cache_key not in warehouse_cache:
-                    try:
-                        wh_doc = (
-                            get_db()
-                            .collection(Collections.USERS)
-                            .document(seller_id)
-                            .collection(Collections.WAREHOUSES)
-                            .document(primary_wh_id)
-                            .get()
-                        )
-                        warehouse_cache[cache_key] = wh_doc.to_dict() if wh_doc.exists else {}
-                    except Exception:
-                        warehouse_cache[cache_key] = {}
-                wh_data = warehouse_cache[cache_key]
-                wh_addr = wh_data.get("address") or {} if wh_data else {}
-                if wh_addr.get(Fields.CITY):
-                    raw_seller_address = wh_addr
-
-        # Step 2: Product's sellerAddress
-        if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
-            candidate = product_data.get(Fields.SELLER_ADDRESS, {})
-            if isinstance(candidate, dict) and candidate.get(Fields.STREET):
-                raw_seller_address = candidate
-
-        # Step 3: Seller profile businessAddress
-        if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
-            candidate = seller_profile.get(Fields.BUSINESS_ADDRESS, {})
-            if isinstance(candidate, dict) and candidate.get(Fields.STREET):
-                raw_seller_address = candidate
-
-        # Step 4: Seller user address
-        if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
-            candidate = seller_data.get(Fields.ADDRESS, {})
-            if isinstance(candidate, dict) and candidate.get(Fields.STREET):
-                raw_seller_address = candidate
-
-        # Step 5: Placeholder (last resort)
-        if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
-            raw_seller_address = {
-                Fields.STREET: PlaceholderAddressValues.UNKNOWN_TEXT,
-                Fields.CITY: PlaceholderAddressValues.UNKNOWN_TEXT,
-                Fields.STATE: PlaceholderAddressValues.DEFAULT_STATE,
-                Fields.POSTAL_CODE: PlaceholderAddressValues.DEFAULT_POSTAL_CODE,
-                Fields.COUNTRY: PlaceholderAddressValues.DEFAULT_COUNTRY,
-            }
-
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                f"Seller for {p_data.get(Fields.NAME, pid)} is not approved to receive payments"
+            )
+        
+        # Authoritative price lookup
+        price_cents = round(p_data.get(Fields.PRICE, 0) * 100)
+        qty = int(item.get(Fields.QUANTITY, 1))
+        actual_subtotal_cents += price_cents * qty
+        sellers.add(sid)
+        
+        # Explicit field construction — NEVER use **item (client data injection risk)
         validated_item = {
-            Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
-            Fields.NAME: product_data[Fields.NAME],
-            Fields.DESCRIPTION: product_data.get(Fields.DESCRIPTION, ""),
-            Fields.PRICE: db_price,
-            Fields.QUANTITY: item[Fields.QUANTITY],
-            Fields.SELLER_ID: seller_id,
-            Fields.IMAGE_URLS: image_urls if image_urls else [""],
-            Fields.IS_DIGITAL: product_data.get(Fields.IS_DIGITAL, False),
-            Fields.CATEGORY_ID: product_data.get(Fields.CATEGORY_ID, 0),
-            Fields.TAX_CODE: get_tax_code_for_category(product_data.get(Fields.CATEGORY_ID, 0)),
-            Fields.STATUS: DeliveryStatusValues.PENDING,  # Per-item status: pending | shipped | delivered | refunded
-            Fields.TRACKING_NUMBER: None,
-            Fields.CARRIER: None,
+            Fields.PRODUCT_ID: pid,
+            Fields.QUANTITY: qty,
+            Fields.PRICE: p_data.get(Fields.PRICE),
+            Fields.NAME: p_data.get(Fields.NAME),
+            Fields.IMAGE_URLS: p_data.get(Fields.IMAGE_URLS, []),
+            Fields.SELLER_ID: sid,
+            Fields.IS_DIGITAL: p_data.get(Fields.IS_DIGITAL, False),
+            Fields.IS_SMALL_SUPPLIER: s_data.get(Fields.IS_SMALL_SUPPLIER, False),
+            Fields.TAX_CODE: p_data.get(Fields.TAX_CODE, ""),
+            Fields.FREE_SHIPPING: p_data.get(Fields.FREE_SHIPPING, False),
+            Fields.WEIGHT_KG: p_data.get(Fields.WEIGHT_KG, 0),
+            Fields.IS_PERISHABLE: p_data.get(Fields.IS_PERISHABLE, False),
+            Fields.IS_LOCAL_DELIVERY_ONLY: p_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False),
+            Fields.STATUS: DeliveryStatusValues.PENDING,
+            Fields.CART_ITEM_ID: item.get(Fields.CART_ITEM_ID) or str(uuid.uuid4()),
+            Fields.TRACKING_NUMBER: "",
+            Fields.CARRIER: "",
             Fields.SHIPPED_AT: None,
             Fields.DELIVERED_AT: None,
             Fields.CONFIRMED_BY_BUYER: False,
-            Fields.FREE_SHIPPING: product_data.get(Fields.FREE_SHIPPING, False),
-            Fields.IS_LOCAL_DELIVERY_ONLY: product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False),
-            Fields.IS_PERISHABLE: product_data.get(Fields.IS_PERISHABLE, False),
-            Fields.DELIVERY_OPTIONS: product_data.get(Fields.DELIVERY_OPTIONS, []),
-            Fields.SELLER_ADDRESS: raw_seller_address,
-            # Weight & dimensions for accurate shipping calculation (volumetric surcharge)
-            Fields.WEIGHT_KG: product_data.get(Fields.WEIGHT_KG),
-            Fields.LENGTH_CM: product_data.get(Fields.LENGTH_CM),
-            Fields.WIDTH_CM: product_data.get(Fields.WIDTH_CM),
-            Fields.HEIGHT_CM: product_data.get(Fields.HEIGHT_CM),
-            # International Shipping (T-4)
-            Fields.IS_INTERNATIONAL: product_data.get(Fields.IS_INTERNATIONAL, False),
-            Fields.SHIP_FROM_COUNTRY: product_data.get(Fields.SHIP_FROM_COUNTRY, PlaceholderAddressValues.DEFAULT_COUNTRY),
-            Fields.SUPPLIER_TYPE: product_data.get(Fields.SUPPLIER_TYPE),
-            # Supplier info for international shipping estimation (e.g., AliExpress/DHGate)
-            Fields.SUPPLIER: product_data.get(Fields.SUPPLIER),
-            Fields.BUYER_NOTE: item.get(Fields.BUYER_NOTE),
-            Fields.IS_SMALL_SUPPLIER: sp_data.get(Fields.IS_SMALL_SUPPLIER, False), # F-129
-            # Generate stable per-item ID for confirm_item_receipt; client may provide one (cart doc ID)
-            Fields.CART_ITEM_ID: item.get(Fields.CART_ITEM_ID) or str(uuid.uuid4()),
         }
+        # Include variant info only from client (server doesn't store variant selection)
+        if item.get(Fields.VARIANT_ID):
+            validated_item[Fields.VARIANT_ID] = item[Fields.VARIANT_ID]
+            validated_item[Fields.VARIANT_TITLE] = item.get(Fields.VARIANT_TITLE, "")
+            validated_item[Fields.VARIANT_OPTIONS] = item.get(Fields.VARIANT_OPTIONS, {})
+            validated_item[Fields.VARIANT_SKU] = item.get(Fields.VARIANT_SKU, "")
         validated_items.append(validated_item)
-        actual_subtotal += db_price * item[Fields.QUANTITY]
 
-    # Verify subtotal (exact cent comparison — prices already validated per-item)
-    actual_subtotal_cents = round(actual_subtotal * 100)
-    if actual_subtotal_cents != client_subtotal_cents:
+    # Tolerance check: max 1 cent per item for rounding variances
+    max_drift_cents = len(items)
+    if abs(actual_subtotal_cents - client_subtotal_cents) > max_drift_cents:
         raise https_fn.HttpsError(
-            "invalid-argument", f"Subtotal mismatch: expected ${actual_subtotal:.2f}, got ${client_subtotal:.2f}"
+            "invalid-argument", 
+            f"Cart total mismatch or Price changed. Expected ${actual_subtotal_cents/100:.2f}"
         )
 
-    # --- Coupon / promo code (N-07) ---
-    # Re-validate and compute discount server-side against verified actual_subtotal_cents.
-    # Client-supplied cartSubtotalCents is used only for UX preview in apply_coupon.
-    coupon_code: str | None = None
-    coupon_seller_id: str | None = None  # seller_id for scoped coupon (None = platform-wide)
+    # Initialize discount variables early to avoid NameError in shipping calculation
     discount_amount_cents = 0
-    coupon_code_raw = data.get(Fields.COUPON_CODE)
-    if coupon_code_raw and isinstance(coupon_code_raw, str):
-        from handlers.coupons import _compute_discount, _validate_coupon_code  # noqa: E402
+    discounted_subtotal_cents = actual_subtotal_cents
+    coupon_code = None
+    coupon_seller_id = None
 
-        code = coupon_code_raw.strip().upper()
-        if _validate_coupon_code(code):
-            coupon_snap = get_db().collection(Collections.COUPONS).document(code).get()
-            if coupon_snap.exists:
-                coupon_data = coupon_snap.to_dict() or {}
-                _coupon_valid = (
-                    coupon_data.get("isActive", False)
-                    and _coupon_not_expired(coupon_data)
-                    and _coupon_within_limits(coupon_data, user_id)
-                    and _coupon_seller_allowed(coupon_data, sellers)
-                    and _coupon_min_order_met(coupon_data, actual_subtotal_cents)
-                )
-                if _coupon_valid:
-                    coupon_code = code
-                    # AUDIT FIX (HIGH-C2): For seller-scoped coupons, compute
-                    # discount only on that seller's items — not the full cart.
-                    # Platform-wide coupons (sellerId=None) still use the full subtotal.
-                    scoped_seller = coupon_data.get(Fields.SELLER_ID)
-                    coupon_seller_id = scoped_seller  # store for payout scoping
-                    if scoped_seller is not None:
-                        scoped_subtotal_cents = sum(
-                            round(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
-                            for item in validated_items
-                            if item.get(Fields.SELLER_ID) == scoped_seller
-                        )
-                        discount_amount_cents = _compute_discount(coupon_data, scoped_subtotal_cents)
-                    else:
-                        discount_amount_cents = _compute_discount(coupon_data, actual_subtotal_cents)
-                else:
-                    logger.warning(f"Coupon {code} re-validation failed at payment time for user {user_id}")
-            else:
-                logger.warning(f"Coupon {code} not found at payment time for user {user_id}")
-
-    # Discounted subtotal is the taxable base (CRA: tax applies to amount actually paid)
-    discounted_subtotal_cents = max(0, actual_subtotal_cents - discount_amount_cents)
-
+    # Detect all-digital cart early — bypasses physical shipping/address rules.
+    # NOTE: isDigital is re-verified server-side per item during product validation below.
     # Recompute all_digital from server-verified validated_items — never trust client payload
     all_digital = all(item.get(Fields.IS_DIGITAL, False) for item in validated_items)
 
@@ -1019,12 +855,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         is_reverse_charge = False
     else:
         # Calculate shipping (server-side) - returns dollars
-        # Bug #9: Read delivery speed from client request (express/same_day cost more)
         delivery_speed = data.get(Fields.DELIVERY_SPEED, DeliveryTypeValues.STANDARD)
         if delivery_speed not in DeliveryTypeValues.ALL:
-            delivery_speed = DeliveryTypeValues.STANDARD  # Sanitize to prevent injection
+            delivery_speed = DeliveryTypeValues.STANDARD
 
-        # Get delivery instructions from client (optional)
         delivery_instructions = data.get(Fields.DELIVERY_INSTRUCTIONS, "")
         if delivery_instructions and len(delivery_instructions) > BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH:
             delivery_instructions = delivery_instructions[: BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH]
@@ -1035,473 +869,118 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             shipping_cost_cents = round(shipping_cost_dollars * 100)
 
             # CRITICAL-C12: Backend Free Shipping Threshold Enforcement
-            # Subtotals >= $75 qualify for free standard shipping.
-            # Premium users ALWAYS get free shipping regardless of threshold.
             if discounted_subtotal_cents >= BusinessRules.FREE_SHIPPING_THRESHOLD_CENTS:
-                logger.info(f"FREE_SHIPPING: waived for user {user_id} (subtotal: {discounted_subtotal_cents})")
                 shipping_cost_cents = 0
             elif _check_premium_from_sub(user_id):
-                logger.info(f"FREE_SHIPPING: waived for PREMIUM user {user_id}")
                 shipping_cost_cents = 0
         except ValueError as e:
-            # UX FIX: Return specific validation error (e.g., Same Day distance limit)
-            logger.warning(f"Shipping validation error: {str(e)}")
             raise https_fn.HttpsError("invalid-argument", str(e)) from e
         except Exception as e:
             logger.error(f"Shipping calculation error: {str(e)}")
             raise https_fn.HttpsError("internal", "Shipping calculation failed. Please try again.") from e
 
-        # Calculate taxes per-item (server-side) - all in cents to avoid rounding errors
+        # Calculate taxes per-item
         state_code = shipping_address.get(Fields.STATE, BusinessRules.DEFAULT_PROVINCE)
 
     if not all_digital:
         if STRIPE_TAX_ENABLED:
-            # Use Stripe Tax API for automatic tax calculation
-            # Stripe will validate GST number and apply B2B exemption if valid
             tax_result = calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents, gst_number)
             if tax_result[0] is not None:
                 tax_amount_cents, taxes_breakdown, item_taxes, is_reverse_charge = tax_result
-
-                # Log if Stripe applied reverse charge (B2B exemption)
-                if is_reverse_charge:
-                    logger.info(
-                        f"✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****"
-                    )
             else:
-                # SECURITY FIX: Fall back to manual calculation on Stripe Tax API error
-                # IMPORTANT: Do NOT apply B2B exemption (GST-based) in fallback mode
-                # because we cannot validate the GST number without Stripe
-                logger.warning(f"⚠️ Stripe Tax API failed, falling back to manual calculation for user {user_id}")
-
-                # F-78: If user has a GST number, log a compliance alert — manual calc
-                # doesn't apply B2B exemption, creating retroactive tax liability risk.
-                if gst_number:
-                    with contextlib.suppress(Exception):
-                        get_db().collection(Collections.SECURITY_ALERTS).add({
-                            Fields.TYPE: SecurityAlertTypes.STRIPE_TAX_FALLBACK_GST,
-                            Fields.SEVERITY: SeverityLevels.HIGH,
-                            Fields.USER_ID: user_id,
-                            Fields.GST_NUMBER: gst_number,
-                            Fields.TIMESTAMP: get_server_timestamp(),
-                            Fields.RESOLVED: False,
-                        })
-
-                # CRA: tax applies to amount actually paid (post-discount subtotal)
+                # Fallback to manual calculation
                 discount_ratio = discounted_subtotal_cents / actual_subtotal_cents if actual_subtotal_cents > 0 else 1.0
                 tax_amount_cents = 0
                 item_taxes = []
                 for item in validated_items:
                     item_subtotal_cents = round(int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY] * discount_ratio)
                     item_tax_rate = get_item_tax_rate(item, state_code)
-                    # F-129: Small Suppliers (<$30k revenue) are exempt from GST/HST
-                    if item.get(Fields.IS_SMALL_SUPPLIER, False):
-                        item_tax_rate = 0.0
+                    if item.get(Fields.IS_SMALL_SUPPLIER, False): item_tax_rate = 0.0
                     item_tax_cents = round(item_subtotal_cents * item_tax_rate)
                     tax_amount_cents += item_tax_cents
-                    item_taxes.append(
-                        {
-                            Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
-                            Fields.TAX_CENTS: item_tax_cents,
-                            Fields.TAX_RATE: item_tax_rate,
-                        }
-                    )
+                    item_taxes.append({Fields.PRODUCT_ID: item[Fields.PRODUCT_ID], Fields.TAX_CENTS: item_tax_cents, Fields.TAX_RATE: item_tax_rate})
 
-                # CRA COMPLIANCE: GST/HST applies to shipping charges in Canada
                 if shipping_cost_cents > 0:
                     shipping_tax_rate = get_tax_rate(state_code)
-                    shipping_tax_cents = round(shipping_cost_cents * shipping_tax_rate)
-                    tax_amount_cents += shipping_tax_cents
+                    tax_amount_cents += round(shipping_cost_cents * shipping_tax_rate)
 
-                # Build tax breakdown dict (matches Flutter provinceTaxRates)
-                # Tax base: post-discount subtotal + shipping (CRA requirement)
-                # PAY-C2 FIX: Use integer-cents arithmetic to eliminate float rounding errors.
-                # Compute per-component tax in cents then convert to dollars for display.
                 taxable_total_cents = discounted_subtotal_cents + shipping_cost_cents
-                province_rates = _PROVINCE_TAX_BREAKDOWN.get(
-                    state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05})
-                )
-                taxes_breakdown = {
-                    name: round(taxable_total_cents * rate) / 100
-                    for name, rate in province_rates.items()
-                }
-
-                # SECURITY: Force is_reverse_charge to False in fallback mode
+                province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05}))
+                taxes_breakdown = {name: round(taxable_total_cents * rate) / 100 for name, rate in province_rates.items()}
                 is_reverse_charge = False
         else:
             # Calculate per-item tax (manual calculation)
-            # CRA: tax applies to amount actually paid (post-discount subtotal)
             discount_ratio = discounted_subtotal_cents / actual_subtotal_cents if actual_subtotal_cents > 0 else 1.0
             tax_amount_cents = 0
-            item_taxes = []  # Store for breakdown
-
+            item_taxes = []
             for item in validated_items:
                 item_subtotal_cents = round(int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY] * discount_ratio)
                 item_tax_rate = get_item_tax_rate(item, state_code)
-
-                # F-129: Small Suppliers are exempt from GST/HST
-                if item.get(Fields.IS_SMALL_SUPPLIER, False):
-                    item_tax_rate = 0.0
-
+                if item.get(Fields.IS_SMALL_SUPPLIER, False): item_tax_rate = 0.0
                 item_tax_cents = round(item_subtotal_cents * item_tax_rate)
                 tax_amount_cents += item_tax_cents
-                item_taxes.append(
-                    {
-                        Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
-                        Fields.TAX_CENTS: item_tax_cents,
-                        Fields.TAX_RATE: item_tax_rate,
-                    }
-                )
+                item_taxes.append({Fields.PRODUCT_ID: item[Fields.PRODUCT_ID], Fields.TAX_CENTS: item_tax_cents, Fields.TAX_RATE: item_tax_rate})
 
-            # CRA COMPLIANCE: GST/HST applies to shipping charges in Canada
             if shipping_cost_cents > 0:
                 shipping_tax_rate = get_tax_rate(state_code)
-                shipping_tax_cents = round(shipping_cost_cents * shipping_tax_rate)
-                tax_amount_cents += shipping_tax_cents
+                tax_amount_cents += round(shipping_cost_cents * shipping_tax_rate)
 
-            # Build tax breakdown dict (matches Flutter provinceTaxRates)
-            # Tax base: post-discount subtotal + shipping (CRA requirement)
-            # PAY-C2 FIX: Use integer-cents arithmetic to eliminate float rounding errors.
-            # Compute per-component tax in cents then convert to dollars for display.
             taxable_total_cents = discounted_subtotal_cents + shipping_cost_cents
-            province_rates = _PROVINCE_TAX_BREAKDOWN.get(
-                state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05})
-            )
-            taxes_breakdown = {
-                name: round(taxable_total_cents * rate) / 100
-                for name, rate in province_rates.items()
-            }
-
-            # No Stripe Tax API available — B2B exemption not possible
+            province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05}))
+            taxes_breakdown = {name: round(taxable_total_cents * rate) / 100 for name, rate in province_rates.items()}
             is_reverse_charge = False
 
-    # Total in cents (discount reduces the subtotal component)
+    # Total in cents
     total_amount_cents = discounted_subtotal_cents + shipping_cost_cents + tax_amount_cents
 
-    # IDEMPOTENCY: Check for duplicate order BEFORE reserving stock to avoid
-    # reserving stock for a request that will be returned as a duplicate.
-    # Use limit(10) so that when an explicit client_idempotency_key is provided,
-    # we can find the matching order even if newer pending orders exist (e.g. from
-    # concurrent requests by the same user).
+    # IDEMPOTENCY: Check for duplicate order
     recent_orders = (
-        get_db()
-        .collection(Collections.ORDERS)
+        get_db().collection(Collections.ORDERS)
         .where(Fields.USER_ID, "==", user_id)
         .where(Fields.ORDER_STATUS, "==", OrderStatusValues.PENDING)
         .where(Fields.PAYMENT_STATUS, "==", PaymentStatusValues.AWAITING_PAYMENT)
         .order_by(Fields.CREATED_AT, direction="DESCENDING")
-        .limit(10)
-        .get()
+        .limit(10).get()
     )
 
     for recent_doc in recent_orders:
         recent_data = recent_doc.to_dict()
-        # If an explicit idempotency key was provided, only match orders with the same key.
-        # This prevents a concurrent pending order from stealing the dedup slot.
         if client_idempotency_key and recent_data.get(ApiKeys.IDEMPOTENCY_KEY) != client_idempotency_key:
             continue
-        # If same user created same-value order in last 60 seconds, return existing
         recent_created = recent_data.get(Fields.CREATED_AT)
         if recent_created and hasattr(recent_created, "timestamp"):
-            # Ensure timezone-aware comparison (emulator may return naive datetimes)
             if hasattr(recent_created, "tzinfo") and recent_created.tzinfo is None:
                 recent_created = recent_created.replace(tzinfo=UTC)
             age_seconds = (datetime.now(UTC) - recent_created).total_seconds()
-            if (
-                age_seconds < BusinessRules.ORDER_DEDUP_WINDOW_SECONDS
+            from utils.helpers import compare_addresses
+            if (age_seconds < BusinessRules.ORDER_DEDUP_WINDOW_SECONDS
                 and recent_data.get(Fields.SUBTOTAL_CENTS) == actual_subtotal_cents
-            ):
+                and compare_addresses(recent_data.get(Fields.SHIPPING_ADDRESS), shipping_address)):
                 existing_session_id = recent_data.get(Fields.STRIPE_SESSION_ID)
                 if existing_session_id:
-                    # Retrieve session URL so frontend can redirect
                     try:
                         existing_session = stripe.checkout.Session.retrieve(existing_session_id)
                         checkout_url = existing_session.url
-                    except Exception:
-                        checkout_url = None
-
+                    except Exception: checkout_url = None
                     if checkout_url:
-                        return {
-                            ApiKeys.SUCCESS: True,
-                            ApiKeys.SESSION_ID: existing_session_id,
-                            Fields.ORDER_ID: recent_doc.id,
-                            ApiKeys.CHECKOUT_URL: checkout_url,
-                            ApiKeys.DUPLICATE: True,
-                        }
-                    # Session expired/no URL — fall through to create new one
+                        return {ApiKeys.SUCCESS: True, ApiKeys.SESSION_ID: existing_session_id, Fields.ORDER_ID: recent_doc.id, ApiKeys.CHECKOUT_URL: checkout_url, ApiKeys.DUPLICATE: True}
 
-    # Reserve stock atomically using Firestore transactions
-    # IMPORTANT: All reads MUST happen before any writes to avoid
-    # "Attempted read after write in a transaction" errors
-    fulfillment_warehouse_ids: list[str | None] = [None] * len(validated_items)  # TASK 02: track per-item
-
-    # Pre-query inventoryLevels candidates per product (outside transaction for efficiency)
-    inventory_candidates: dict[str, list[tuple[str, int]]] = {}
+    # Pre-query inventory candidates for the transaction
+    inventory_candidates = {}
     for item in validated_items:
         p_id = item[Fields.PRODUCT_ID]
         if p_id not in inventory_candidates:
             try:
-                inv_docs = (
-                    get_db()
-                    .collection(Collections.PRODUCTS)
-                    .document(p_id)
-                    .collection(Collections.INVENTORY_LEVELS)
-                    .order_by(Fields.AVAILABLE_QUANTITY, direction="DESCENDING")
-                    .limit(50)
-                    .get()
-                )
-                inventory_candidates[p_id] = [
-                    (d.id, (d.to_dict() or {}).get(Fields.AVAILABLE_QUANTITY, 0))
-                    for d in inv_docs
-                    if d.exists
-                ]
-            except Exception:
-                inventory_candidates[p_id] = []  # Fallback to warehouseStock map inside tx
+                inv_docs = get_db().collection(Collections.PRODUCTS).document(p_id).collection(Collections.INVENTORY_LEVELS).order_by(Fields.AVAILABLE_QUANTITY, direction="DESCENDING").limit(50).get()
+                inventory_candidates[p_id] = [(d.id, (d.to_dict() or {}).get(Fields.AVAILABLE_QUANTITY, 0)) for d in inv_docs if d.exists]
+            except Exception: inventory_candidates[p_id] = []
 
-    @get_transactional()
-    def reserve_stock_transaction(transaction):
-        # Phase 1: Read ALL product snapshots + inventoryLevel docs first
-        product_refs = []
-        product_snapshots = []
-        inv_refs_per_product: dict[str, list] = {}
-        inv_snaps_per_product: dict[str, list] = {}
-
-        for item in validated_items:
-            p_id = item[Fields.PRODUCT_ID]
-            product_ref = get_db().collection(Collections.PRODUCTS).document(p_id)
-            product_snapshot = product_ref.get(transaction=transaction)
-            product_refs.append(product_ref)
-            product_snapshots.append(product_snapshot)
-
-            # Read inventoryLevel docs inside transaction for consistency
-            if p_id not in inv_refs_per_product:
-                candidates = inventory_candidates.get(p_id, [])
-                refs = []
-                snaps = []
-                for wh_id, _ in candidates:
-                    inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(wh_id)
-                    inv_snap = inv_ref.get(transaction=transaction)
-                    refs.append(inv_ref)
-                    snaps.append(inv_snap)
-                inv_refs_per_product[p_id] = refs
-                inv_snaps_per_product[p_id] = snaps
-
-        # Phase 2: Validate ALL stock levels and compute warehouse decrements
-        updates = []
-        inv_level_writes: list[list[tuple]] = []  # per-item: [(inv_ref, new_qty), ...]
-        for i, item in enumerate(validated_items):
-            snapshot = product_snapshots[i]
-            if not snapshot.exists:
-                raise https_fn.HttpsError("not-found", f"Product {item[Fields.PRODUCT_ID]} not found")
-
-            product_data = snapshot.to_dict()
-            current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
-            allow_backorder = product_data.get(Fields.INVENTORY, {}).get(Fields.ALLOW_BACKORDER, False)
-
-            # N-09: Variant stock checking
-            variant_id = item.get(Fields.VARIANT_ID)
-            if product_data.get(Fields.HAS_VARIANTS, False):
-                if not variant_id:
-                    raise https_fn.HttpsError(
-                        "invalid-argument",
-                        f"Product {product_data[Fields.NAME]} has variants — you must select a variant before adding to cart",
-                    )
-                variants = product_data.get(Fields.VARIANTS, [])
-                variant = next((v for v in variants if v.get(Fields.VARIANT_ID) == variant_id), None)
-                if variant is None:
-                    raise https_fn.HttpsError("not-found", f"Variant {variant_id} not found")
-                if not variant.get("isActive", True):
-                    raise https_fn.HttpsError("failed-precondition", "Selected variant is no longer available")
-                variant_stock = variant.get(Fields.STOCK_QUANTITY, 0)
-                if variant_stock < item[Fields.QUANTITY] and not allow_backorder:
-                    raise https_fn.HttpsError(
-                        "resource-exhausted",
-                        f"Stock changed: {product_data[Fields.NAME]} variant now has {variant_stock} available",
-                    )
-                item[Fields.VARIANT_ID] = variant_id
-                if Fields.VARIANT_OPTIONS in variant:
-                    item[Fields.VARIANT_OPTIONS] = variant[Fields.OPTION_VALUES]
-            elif current_stock < item[Fields.QUANTITY] and not allow_backorder:
-                raise https_fn.HttpsError(
-                    "resource-exhausted",
-                    f"Stock changed: {product_data[Fields.NAME]} now has {current_stock} available",
-                )
-
-            if item.get(Fields.IS_DIGITAL, False):
-                # Digital products have unlimited stock — skip decrement
-                updates.append((product_refs[i], current_stock, {}))
-                inv_level_writes.append([])
-                continue
-
-            qty = item[Fields.QUANTITY]
-            new_total_stock = current_stock - qty
-            p_id = item[Fields.PRODUCT_ID]
-
-            # Drain warehouse stock — use inventoryLevels if available, fallback to warehouseStock map
-            warehouse_patches: dict = {}
-            item_inv_writes: list[tuple] = []
-
-            inv_snaps = inv_snaps_per_product.get(p_id, [])
-            inv_refs = inv_refs_per_product.get(p_id, [])
-
-            if inv_snaps:
-                # Use inventoryLevels subcollection (authoritative)
-                sorted_wh = [
-                    (inv_refs[j], inv_refs[j].id, (inv_snaps[j].to_dict() or {}).get(Fields.AVAILABLE_QUANTITY, 0))
-                    for j in range(len(inv_snaps))
-                    if inv_snaps[j].exists
-                ]
-                sorted_wh.sort(key=lambda kv: kv[2], reverse=True)
-                remaining = qty
-                for inv_ref, wh_id, wh_avail in sorted_wh:
-                    if remaining <= 0:
-                        break
-                    drain = min(wh_avail, remaining)
-                    new_avail = wh_avail - drain
-                    warehouse_patches[f"{Fields.WAREHOUSE_STOCK}.{wh_id}"] = new_avail
-                    item_inv_writes.append((inv_ref, new_avail))
-                    if fulfillment_warehouse_ids[i] is None:
-                        fulfillment_warehouse_ids[i] = wh_id
-                    remaining -= drain
-                if remaining > 0 and sorted_wh:
-                    if not allow_backorder:
-                        raise https_fn.HttpsError(
-                            "resource-exhausted",
-                            f"Insufficient warehouse stock for {product_data.get(Fields.NAME, item[Fields.PRODUCT_ID])}",
-                        )
-                    # Backorder allowed: last warehouse goes negative
-                    last_ref, last_wh_id, _ = sorted_wh[-1]
-                    key = f"{Fields.WAREHOUSE_STOCK}.{last_wh_id}"
-                    new_val = warehouse_patches.get(key, 0) - remaining
-                    warehouse_patches[key] = new_val
-                    # Update the last inv_write entry
-                    item_inv_writes = [(r, q) for r, q in item_inv_writes if r.id != last_wh_id]
-                    item_inv_writes.append((last_ref, new_val))
-            else:
-                # Fallback: warehouseStock map on product doc
-                warehouse_stock: dict = product_data.get(Fields.WAREHOUSE_STOCK) or {}
-                if warehouse_stock:
-                    sorted_warehouses = sorted(warehouse_stock.items(), key=lambda kv: kv[1], reverse=True)
-                    remaining = qty
-                    for wh_id, wh_stock in sorted_warehouses:
-                        if remaining <= 0:
-                            break
-                        drain = min(wh_stock, remaining)
-                        warehouse_patches[f"{Fields.WAREHOUSE_STOCK}.{wh_id}"] = wh_stock - drain
-                        if fulfillment_warehouse_ids[i] is None:
-                            fulfillment_warehouse_ids[i] = wh_id
-                        remaining -= drain
-                    if remaining > 0 and sorted_warehouses:
-                        last_wh_id = sorted_warehouses[-1][0]
-                        key = f"{Fields.WAREHOUSE_STOCK}.{last_wh_id}"
-                        warehouse_patches[key] = warehouse_patches.get(key, sorted_warehouses[-1][1]) - remaining
-
-            updates.append((product_refs[i], new_total_stock, warehouse_patches))
-            inv_level_writes.append(item_inv_writes)
-
-        # Phase 3: Write ALL updates after all reads are done
-        for i, (ref, new_stock, warehouse_patches) in enumerate(updates):
-            item = validated_items[i]
-            variant_id = item.get(Fields.VARIANT_ID)
-            patch = {Fields.STOCK_QUANTITY: new_stock}
-            patch.update(warehouse_patches)
-
-            # N-09: For variant products, also decrement the variant's stockQuantity in the array
-            if variant_id:
-                product_snapshot = product_snapshots[i]
-                variants = list(product_snapshot.to_dict().get(Fields.VARIANTS, []))
-                variant_idx = next((idx for idx, v in enumerate(variants) if v.get(Fields.VARIANT_ID) == variant_id), None)
-                if variant_idx is not None:
-                    variants[variant_idx][Fields.STOCK_QUANTITY] -= item[Fields.QUANTITY]
-                    patch[Fields.VARIANTS] = variants
-
-            transaction.update(ref, patch)
-
-            # Write inventoryLevels subcollection docs
-            for inv_ref, new_avail in inv_level_writes[i]:
-                transaction.set(
-                    inv_ref,
-                    {
-                        Fields.AVAILABLE_QUANTITY: new_avail,
-                        Fields.LAST_SYNCED_AT: get_server_timestamp(),
-                    },
-                    merge=True,
-                )
-
-    try:
-        reserve_stock_transaction(get_db().transaction())
-    except https_fn.HttpsError:
-        raise  # Re-raise HttpsErrors (already safe messages)
-    except Exception as e:
-        logger.error(f"Stock reservation error: {str(e)}")
-        raise https_fn.HttpsError("internal", "Could not reserve stock. Please try again.") from e
-
-    # AUDIT FIX (CRITICAL-C3): Pre-reserve the coupon in a Firestore transaction
-    # BEFORE creating the Stripe session.  Without this, two concurrent requests
-    # can both pass the limit check, both get the discounted Stripe session, and
-    # both pay the discounted price — exceeding maxUsesTotal by N-1.
-    # On Stripe error the coupon reservation is rolled back via _rollback_checkout.
-    coupon_prereserved = False
-    if coupon_code:
-        from utils.db import get_firestore as _get_fs  # noqa: E402
-        _db = get_db()
-        _fs = _get_fs()
-        _coupon_ref = _db.collection(Collections.COUPONS).document(coupon_code)
-        _use_ref = _coupon_ref.collection(Collections.COUPON_USES).document(user_id)
-
-        @_fs.transactional
-        def _prereserve_coupon_txn(_txn):
-            _snap = _coupon_ref.get(transaction=_txn)
-            if not _snap.exists:
-                raise https_fn.HttpsError("not-found", "Coupon invalid or unavailable")
-            _data = _snap.to_dict() or {}
-            _used = int(_data.get(Fields.USED_COUNT, 0))
-            _max_total = _data.get(Fields.MAX_USES_TOTAL)
-            if _max_total is not None and _used >= int(_max_total):
-                raise https_fn.HttpsError("resource-exhausted", "Coupon invalid or unavailable")
-            _use_snap = _use_ref.get(transaction=_txn)
-            _max_per_user = int(_data.get(Fields.MAX_USES_PER_USER, 1))
-            _u_count = int(_use_snap.to_dict().get("useCount", 0)) if _use_snap.exists else 0
-            if _u_count >= _max_per_user:
-                raise https_fn.HttpsError("resource-exhausted", "Coupon invalid or unavailable")
-            # Atomically increment — will be rolled back if Stripe session creation fails
-            _txn.update(_coupon_ref, {Fields.USED_COUNT: _used + 1})
-            if _use_snap.exists:
-                _txn.update(_use_ref, {"useCount": _u_count + 1, "lastUsedAt": _fs.SERVER_TIMESTAMP})
-            else:
-                _txn.set(_use_ref, {"useCount": 1, "usedAt": _fs.SERVER_TIMESTAMP, "lastUsedAt": _fs.SERVER_TIMESTAMP})
-
-        try:
-            _prereserve_coupon_txn(_db.transaction())
-            coupon_prereserved = True
-            logger.info(f"Coupon {coupon_code} pre-reserved for user {user_id}")
-        except https_fn.HttpsError:
-            raise  # Limit exceeded or coupon gone — block checkout
-        except Exception as _e:
-            # Transient DB error — fail safe: block the checkout rather than
-            # risk issuing a discount we cannot account for.
-            logger.error(f"Coupon pre-reserve failed for {coupon_code}: {_e}")
-            raise https_fn.HttpsError("internal", "Could not apply coupon. Please try again.") from _e
-
-    # TASK 02: stamp fulfillmentWarehouseId onto each item before order creation
-    for i, wh_id in enumerate(fulfillment_warehouse_ids):
-        if wh_id is not None:
-            validated_items[i][Fields.FULFILLMENT_WAREHOUSE_ID] = wh_id
-
-    # Create order in Firestore — all amounts in cents
+    # Final order data construction
     order_ref = get_db().collection(Collections.ORDERS).document()
     order_id = order_ref.id
-
-    # Fetch buyer email for order record (avoids extra DB read in webhook)
-    buyer_email = None
-    if user_snapshot.exists:
-        buyer_email = user_snapshot.to_dict().get(Fields.EMAIL)
-
+    buyer_email = user_snapshot.to_dict().get(Fields.EMAIL) if user_snapshot.exists else None
     from handlers.payment_providers import PaymentProvider
-
-    # Determine if B2B exemption was applied (Stripe validated GST and applied reverse charge)
-    # is_reverse_charge is now always defined in all tax calculation branches
-    is_tax_exempt = is_reverse_charge
-
+    
     order_data = {
         Fields.ORDER_ID: order_id,
         Fields.USER_ID: user_id,
@@ -1524,52 +1003,123 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CREATED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
         Fields.CAPTURE_ATTEMPTS: 0,
-        # expiresAt is set in process_checkout_session_completed when Stripe authorizes,
-        # since the 7-day capture window starts at authorization (not order creation).
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
         Fields.DELIVERY_SPEED: delivery_speed,
-        # PAY-C1 FIX: Platform fee on pre-discount (original) subtotal.
-        # Using actual_subtotal_cents (pre-discount) ensures sellers are not penalised for
-        # coupons they did not issue, and the platform earns on the catalogue value.
-        # PLATFORM_FEE_RATIO = 2.5% (config.py). Premium buyers pay 0% as a subscription benefit.
-        # P-03 FIX: Read from subscriptions/{uid} instead of cached isPremium to prevent race condition
-        Fields.PLATFORM_FEE_TOTAL_CENTS: 0  # already in cents
-        if _check_premium_from_sub(user_id)
-        else round(actual_subtotal_cents * PLATFORM_FEE_RATIO),  # already in cents
+        Fields.PLATFORM_FEE_TOTAL_CENTS: 0 if _check_premium_from_sub(user_id) else round(actual_subtotal_cents * PLATFORM_FEE_RATIO),
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
         Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
-        Fields.TAX_EXEMPT: is_tax_exempt,
+        Fields.TAX_EXEMPT: is_reverse_charge,
         Fields.ITEM_TAXES: item_taxes,
-        Fields.PREFERRED_LANGUAGE: user_data.get(Fields.PREFERRED_LANGUAGE, "en"),
+        Fields.PREFERRED_LANGUAGE: user_data.get(Fields.PREFERRED_LANGUAGE, 'en'),
         Fields.PLATFORM_FEE_RATIO: PLATFORM_FEE_RATIO,
-        # Store client-provided idempotency key so the dedup check can match it
-        # even when concurrent requests create newer pending orders for the same user.
-        **(
-            {ApiKeys.IDEMPOTENCY_KEY: client_idempotency_key}
-            if client_idempotency_key
-            else {}
-        ),
-        # AUDIT FIX (CRITICAL-C3): Flag that coupon was pre-reserved at checkout;
-        # the webhook must NOT call redeem_coupon() again to avoid double-counting.
-        **({"couponPrereserved": True} if coupon_prereserved else {}),
+        **({ApiKeys.IDEMPOTENCY_KEY: client_idempotency_key} if client_idempotency_key else {}),
+        **({Fields.COUPON_PRERESERVED: True} if coupon_code else {}),
     }
 
-    # SECURITY FIX (CRITICAL-014): Snapshot seller Stripe account IDs at checkout.
-    # Prevents seller from swapping their Stripe account between checkout and capture.
-    seller_account_snapshot = {}
-    for sid in sellers:
-        # Read STRIPE_ACCOUNT_ID from seller_profiles (authoritative location)
-        acct_id = seller_profiles_cache.get(sid, {}).get(Fields.STRIPE_ACCOUNT_ID)
-        if not acct_id and sid in seller_cache:
-            acct_id = seller_cache[sid].get(Fields.STRIPE_ACCOUNT_ID)
-        if acct_id:
-            seller_account_snapshot[sid] = acct_id
-    if seller_account_snapshot:
-        order_data[Fields.SELLER_STRIPE_ACCOUNTS] = seller_account_snapshot
+    @get_transactional()
+    def checkout_atomic_transaction(transaction):
+        # 1. READ PHASE
+        product_refs_tx = []
+        product_snapshots_tx = []
+        inv_refs_per_product_tx = {}
+        inv_snaps_per_product_tx = {}
+        for item in validated_items:
+            p_id = item[Fields.PRODUCT_ID]
+            p_ref = get_db().collection(Collections.PRODUCTS).document(p_id)
+            product_refs_tx.append(p_ref)
+            product_snapshots_tx.append(p_ref.get(transaction=transaction))
+            if p_id not in inv_refs_per_product_tx:
+                candidates = inventory_candidates.get(p_id, [])
+                inv_refs_per_product_tx[p_id] = [p_ref.collection(Collections.INVENTORY_LEVELS).document(wh_id) for wh_id, _ in candidates]
+                inv_snaps_per_product_tx[p_id] = [ref.get(transaction=transaction) for ref in inv_refs_per_product_tx[p_id]]
 
-    order_ref.set(order_data)
+        coupon_ref = None
+        coupon_use_ref = None
+        coupon_snap = None
+        coupon_use_snap = None
+        if coupon_code:
+            coupon_ref = get_db().collection(Collections.COUPONS).document(coupon_code)
+            coupon_use_ref = coupon_ref.collection(Collections.COUPON_USES).document(user_id)
+            coupon_snap = coupon_ref.get(transaction=transaction)
+            coupon_use_snap = coupon_use_ref.get(transaction=transaction)
+
+        seller_profile_snaps = {sid: get_db().collection(Collections.SELLER_PROFILES).document(sid).get(transaction=transaction) for sid in sellers}
+
+        # 2. VALIDATION PHASE
+        updates_tx = []
+        inv_level_writes_tx = []
+        for i, item in enumerate(validated_items):
+            snapshot = product_snapshots_tx[i]
+            if not snapshot.exists: raise https_fn.HttpsError('not-found', f'Product {item[Fields.PRODUCT_ID]} not found')
+            p_data_tx = snapshot.to_dict() or {}
+            current_stock = p_data_tx.get(Fields.STOCK_QUANTITY, 0)
+            allow_backorder = p_data_tx.get(Fields.INVENTORY, {}).get(Fields.ALLOW_BACKORDER, False)
+            if p_data_tx.get(Fields.HAS_VARIANTS, False) and not item.get(Fields.VARIANT_ID):
+                raise https_fn.HttpsError('invalid-argument', f'Product {p_data_tx[Fields.NAME]} has variants — selection required')
+
+            item_wh_id = None
+            if not item.get(Fields.IS_DIGITAL, False):
+                snaps = inv_snaps_per_product_tx[item[Fields.PRODUCT_ID]]
+                for idx, snap in enumerate(snaps):
+                    if snap.exists and snap.to_dict().get(Fields.AVAILABLE_QUANTITY, 0) >= item[Fields.QUANTITY]:
+                        item_wh_id = inventory_candidates[item[Fields.PRODUCT_ID]][idx][0]
+                        break
+            
+            if not item_wh_id and not item.get(Fields.IS_DIGITAL, False) and not allow_backorder and current_stock < item[Fields.QUANTITY]:
+                 raise https_fn.HttpsError('resource-exhausted', f'Insufficient stock for {p_data_tx[Fields.NAME]}')
+
+            wh_patches = {}
+            wh_inv_writes = []
+            if item_wh_id:
+                wh_patches[f'{Fields.WAREHOUSE_STOCK}.{item_wh_id}'] = get_firestore().Increment(-item[Fields.QUANTITY])
+                idx = next(idx for idx, (wid, _) in enumerate(inventory_candidates[item[Fields.PRODUCT_ID]]) if wid == item_wh_id)
+                new_avail = inv_snaps_per_product_tx[item[Fields.PRODUCT_ID]][idx].to_dict().get(Fields.AVAILABLE_QUANTITY, 0) - item[Fields.QUANTITY]
+                wh_inv_writes.append((inv_refs_per_product_tx[item[Fields.PRODUCT_ID]][idx], new_avail))
+            
+            updates_tx.append((product_refs_tx[i], current_stock - item[Fields.QUANTITY], wh_patches, item_wh_id))
+            inv_level_writes_tx.append(wh_inv_writes)
+
+        if coupon_snap:
+            if not coupon_snap.exists: raise https_fn.HttpsError('not-found', 'Coupon invalid')
+            c_data = coupon_snap.to_dict() or {}
+            if c_data.get(Fields.USED_COUNT, 0) >= c_data.get(Fields.MAX_USES_TOTAL, 999999): raise https_fn.HttpsError('resource-exhausted', 'Coupon fully used')
+            u_count = coupon_use_snap.to_dict().get('useCount', 0) if coupon_use_snap.exists else 0
+            if u_count >= c_data.get(Fields.MAX_USES_PER_USER, 1): raise https_fn.HttpsError('resource-exhausted', 'Coupon limit per user reached')
+
+        seller_account_snapshot = {sid: snap.to_dict().get(Fields.STRIPE_ACCOUNT_ID) for sid, snap in seller_profile_snaps.items() if snap.exists and snap.to_dict().get(Fields.STRIPE_ACCOUNT_ID)}
+        if seller_account_snapshot: order_data[Fields.SELLER_STRIPE_ACCOUNTS] = seller_account_snapshot
+
+        # 3. WRITE PHASE
+        for i, (ref, n_stock, wh_patches, item_wh_id) in enumerate(updates_tx):
+            patch = {Fields.STOCK_QUANTITY: n_stock}
+            patch.update(wh_patches)
+            variant_id = validated_items[i].get(Fields.VARIANT_ID)
+            if variant_id:
+                v_list = list(product_snapshots_tx[i].to_dict().get(Fields.VARIANTS, []))
+                v_idx = next((idx for idx, v in enumerate(v_list) if v.get(Fields.VARIANT_ID) == variant_id), None)
+                if v_idx is not None:
+                    v_list[v_idx][Fields.STOCK_QUANTITY] -= validated_items[i][Fields.QUANTITY]
+                    patch[Fields.VARIANTS] = v_list
+            transaction.update(ref, patch)
+            for inv_ref, n_avail in inv_level_writes_tx[i]: transaction.set(inv_ref, {Fields.AVAILABLE_QUANTITY: n_avail, Fields.LAST_SYNCED_AT: get_server_timestamp()}, merge=True)
+            if item_wh_id: order_data[Fields.ITEMS][i][Fields.FULFILLMENT_WAREHOUSE_ID] = item_wh_id
+
+        if coupon_ref:
+            transaction.update(coupon_ref, {Fields.USED_COUNT: get_firestore().Increment(1)})
+            if coupon_use_snap.exists: transaction.update(coupon_use_ref, {'useCount': get_firestore().Increment(1), 'lastUsedAt': get_server_timestamp()})
+            else: transaction.set(coupon_use_ref, {'useCount': 1, 'usedAt': get_server_timestamp(), 'lastUsedAt': get_server_timestamp()})
+
+        transaction.set(order_ref, order_data)
+        return True
+
+    try:
+        checkout_atomic_transaction(get_db().transaction())
+    except https_fn.HttpsError: raise
+    except Exception as e:
+        logger.error(f'Checkout atomic transaction error: {str(e)}')
+        raise https_fn.HttpsError('internal', 'Could not complete checkout. Please try again.')
 
     # Create Stripe Checkout Session
     try:
@@ -1772,7 +1322,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     if not IS_EMULATOR:
         allowed, message = get_rate_limiter().check_rate_limit(
             identifier=f"ip_{client_ip}",
-            action="stripe_webhook",
+            action=RateLimitActions.STRIPE_WEBHOOK,
             max_requests=BusinessRules.WEBHOOK_RATE_LIMIT_PER_MINUTE,
             window_minutes=1,
             fail_closed=True,  # Block on error for security
@@ -2485,8 +2035,9 @@ def process_checkout_session_completed(session: dict) -> str | None:
     if pi_id:
         try:
             ensure_stripe_key()
+            from utils.helpers import get_charge_id_from_pi
             pi = stripe.PaymentIntent.retrieve(pi_id)
-            charge_id = pi.latest_charge if isinstance(pi.latest_charge, str) else (pi.latest_charge.id if pi.latest_charge else None)
+            charge_id = get_charge_id_from_pi(pi)
         except Exception as pi_err:
             logger.error(f"⚠️ Failed to retrieve PaymentIntent {pi_id} for charge_id: {pi_err}")
 
@@ -2551,7 +2102,7 @@ def process_async_payment_succeeded(session: dict) -> str | None:
 
     # C-3: Set ORDER_STATUS to CONFIRMED when async payment succeeds
     order_ref.update({
-        Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED, 
+        Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
         Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
         Fields.UPDATED_AT: get_server_timestamp()
     })
@@ -2574,8 +2125,9 @@ def process_async_payment_succeeded(session: dict) -> str | None:
     if pi_id:
         try:
             ensure_stripe_key()
+            from utils.helpers import get_charge_id_from_pi
             pi = stripe.PaymentIntent.retrieve(pi_id)
-            charge_id = pi.latest_charge if isinstance(pi.latest_charge, str) else (pi.latest_charge.id if pi.latest_charge else None)
+            charge_id = get_charge_id_from_pi(pi)
         except Exception as pi_err:
             logger.error(f"⚠️ Failed to retrieve PaymentIntent {pi_id} for charge_id: {pi_err}")
 
@@ -3902,7 +3454,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # AUDIT FIX: Rate limit account creation
     allowed, message = get_rate_limiter().check_rate_limit(
-        identifier=user_id, action="create_connect_account", max_requests=3, window_minutes=60, fail_closed=True
+        identifier=user_id, action=RateLimitActions.CREATE_CONNECT_ACCOUNT, max_requests=3, window_minutes=60, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", message)
@@ -4026,7 +3578,7 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit: 5/min — each call creates a Stripe AccountLink (API cost)
     _limiter = get_rate_limiter()
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="create_account_link", max_requests=5, window_minutes=1, fail_closed=True
+        identifier=user_id, action=RateLimitActions.CREATE_ACCOUNT_LINK, max_requests=5, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -4083,7 +3635,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit: 10/min — each call hits Stripe API + Firestore write
     _limiter = get_rate_limiter()
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="get_connect_account_status", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.GET_CONNECT_STATUS, max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -4254,8 +3806,9 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                 charge_id = None
                 if pi_id:
                     try:
+                        from utils.helpers import get_charge_id_from_pi
                         pi_obj = stripe.PaymentIntent.retrieve(pi_id)
-                        charge_id = pi_obj.latest_charge if isinstance(pi_obj.latest_charge, str) else (pi_obj.latest_charge.id if pi_obj.latest_charge else None)
+                        charge_id = get_charge_id_from_pi(pi_obj)
                     except Exception as pi_err:
                         logger.error(f"\u26a0\ufe0f Failed to retrieve PaymentIntent for charge_id: {pi_err}")
 
@@ -4283,8 +3836,12 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
                     # Attempt Stripe Transfer (may fail in emulator with fake accounts)
                     if charge_id:
-                        sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
-                        acct_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
+                        # Prefer checkout-time snapshot to prevent account-swap attacks
+                        seller_stripe_accounts = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
+                        acct_id = seller_stripe_accounts.get(seller_id)
+                        if not acct_id:
+                            sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
+                            acct_id = (sp_doc.to_dict() or {}).get(Fields.STRIPE_ACCOUNT_ID)
                         if acct_id:
                             try:
                                 transfer = stripe.Transfer.create(
@@ -4456,7 +4013,8 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # CRITICAL FIX: Resolve Charge ID from captured PaymentIntent.
         # Stripe Transfer.create requires a Charge ID (ch_xxx), NOT a PaymentIntent ID (pi_xxx).
-        charge_id = payment_intent.latest_charge if isinstance(payment_intent.latest_charge, str) else (payment_intent.latest_charge.id if payment_intent.latest_charge else None)
+        from utils.helpers import get_charge_id_from_pi
+        charge_id = get_charge_id_from_pi(payment_intent)
         if not charge_id:
             raise https_fn.HttpsError(
                 "internal", f"No charge found after capturing PI {payment_intent_id}. Cannot create transfers."

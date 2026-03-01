@@ -46,6 +46,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
     final isAdmin = widget.userModel?.roles.contains(UserRoles.admin) ?? false;
     final isOwner = widget.userModel?.uid == widget.product.sellerId;
     final canManageProduct = isAdmin || isOwner;
+    final isOutOfStock = widget.product.stockQuantity <= 0;
 
     // Use reactive favorites provider (only rebuild when this bool changes)
     final isFavorite = ref.watch(
@@ -127,34 +128,64 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                         () => _currentImageIndex = index,
                                       ),
                                       itemBuilder: (context, index) {
-                                        return CachedNetworkImage(
-                                          imageUrl:
-                                              isValidImageUrl(imageUrls[index])
-                                              ? imageUrls[index]
-                                              : '',
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) =>
-                                              Shimmer.fromColors(
-                                                baseColor:
-                                                    DesignTokens.outlineVariant,
-                                                highlightColor:
-                                                    DesignTokens.surface,
-                                                child: Container(
-                                                  color: Colors.white,
+                                        return ColorFiltered(
+                                          colorFilter: isOutOfStock
+                                              ? const ColorFilter.mode(Colors.grey, BlendMode.saturation)
+                                              : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+                                          child: CachedNetworkImage(
+                                            imageUrl:
+                                                isValidImageUrl(imageUrls[index])
+                                                ? imageUrls[index]
+                                                : '',
+                                            fit: BoxFit.cover,
+                                            placeholder: (context, url) =>
+                                                Shimmer.fromColors(
+                                                  baseColor:
+                                                      DesignTokens.outlineVariant,
+                                                  highlightColor:
+                                                      DesignTokens.surface,
+                                                  child: Container(
+                                                    color: Colors.white,
+                                                  ),
                                                 ),
-                                              ),
-                                          errorWidget: (context, url, error) =>
-                                              Container(
-                                                color:
-                                                    DesignTokens.outlineVariant,
-                                                child: Icon(
-                                                  Icons.image_not_supported,
-                                                  size: isCompact ? 30 : 50,
+                                            errorWidget: (context, url, error) =>
+                                                Container(
+                                                  color:
+                                                      DesignTokens.outlineVariant,
+                                                  child: Icon(
+                                                    Icons.image_not_supported,
+                                                    size: isCompact ? 30 : 50,
+                                                  ),
                                                 ),
-                                              ),
+                                          ),
                                         );
                                       },
                                     ),
+                                    if (isOutOfStock)
+                                      Positioned.fill(
+                                        child: Container(
+                                          color: Colors.black.withValues(alpha: 0.3),
+                                          child: Center(
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withValues(alpha: 0.7),
+                                                borderRadius: BorderRadius.circular(20),
+                                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                              ),
+                                              child: Text(
+                                                'product.out_of_stock_label'.tr(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: 1.2,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     if (imageUrls.length > 1)
                                       Positioned(
                                         bottom: 4,
@@ -362,8 +393,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                             ),
                           ),
                           const SizedBox(width: 4),
-                          // Hide add to cart button if user owns this product
-                          if (!isOwner)
+                          // Hide add to cart button if user owns this product or it's out of stock
+                          if (!isOwner && !isOutOfStock)
                             Semantics(
                               button: true,
                               label: 'btn-add-to-cart-${widget.productId}',

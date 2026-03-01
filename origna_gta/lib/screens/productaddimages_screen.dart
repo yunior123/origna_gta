@@ -58,67 +58,93 @@ class _ProductAddImagesState extends State<ProductAddImages> {
         const SizedBox(height: 12),
         SizedBox(
           height: 110,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
+          child: Row(
             children: [
-              // Existing images
-              ..._imageModels.asMap().entries.map((entry) {
-                final index = entry.key;
-                final m = entry.value;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: _ImageTile(
-                    imageModel: m,
-                    index: index,
-                    isPrimary: index == 0,
-                    onRemove: () {
-                      setState(() => _imageModels.removeAt(index));
+              // Reorderable list of images
+              if (_imageModels.isNotEmpty)
+                Expanded(
+                  child: ReorderableListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: _imageModels.length,
+                    onReorder: (oldIndex, newIndex) {
+                      setState(() {
+                        if (newIndex > oldIndex) newIndex -= 1;
+                        final item = _imageModels.removeAt(oldIndex);
+                        _imageModels.insert(newIndex, item);
+                      });
                       widget.onImagesChanged?.call(List.unmodifiable(_imageModels));
                     },
-                  ),
-                );
-              }),
-              // Add button
-              if (_imageModels.length < BusinessRules.maxProductImages)
-                Semantics(
-                  button: true,
-                  label: 'btn-add-photo',
-                  child: GestureDetector(
-                  onTap: _pickImage,
-                  child: AnimatedContainer(
-                    duration: DesignTokens.durationFast,
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      color: DesignTokens.surfaceVariant,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: DesignTokens.primary.withValues(alpha: 0.3),
-                        width: 1.5,
-                        strokeAlign: BorderSide.strokeAlignInside,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            gradient: DesignTokens.primaryGradient,
-                            borderRadius: BorderRadius.circular(12),
+                    proxyDecorator: (child, index, animation) {
+                      return Material(
+                        color: Colors.transparent,
+                        child: child,
+                      );
+                    },
+                    itemBuilder: (context, index) {
+                      final m = _imageModels[index];
+                      return ReorderableDelayedDragStartListener(
+                        key: ValueKey(m.url + index.toString()),
+                        index: index,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: _ImageTile(
+                            imageModel: m,
+                            index: index,
+                            isPrimary: index == 0,
+                            onRemove: () {
+                              setState(() => _imageModels.removeAt(index));
+                              widget.onImagesChanged?.call(List.unmodifiable(_imageModels));
+                            },
                           ),
-                          child: const Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 22),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'product.add_photo'.tr(),
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.primary),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
+              // Add button (fixed at the end)
+              if (_imageModels.length < BusinessRules.maxProductImages)
+                Padding(
+                  padding: EdgeInsets.only(left: _imageModels.isEmpty ? 0 : 4),
+                  child: Semantics(
+                    button: true,
+                    label: 'btn-add-photo',
+                    child: GestureDetector(
+                      onTap: _pickImage,
+                      child: AnimatedContainer(
+                        duration: DesignTokens.durationFast,
+                        width: 110,
+                        height: 110,
+                        decoration: BoxDecoration(
+                          color: DesignTokens.surfaceVariant,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: DesignTokens.primary.withValues(alpha: 0.3),
+                            width: 1.5,
+                            strokeAlign: BorderSide.strokeAlignInside,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: DesignTokens.primaryGradient,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 22),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'product.add_photo'.tr(),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.primary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
             ],
           ),

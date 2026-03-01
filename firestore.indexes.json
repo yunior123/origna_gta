@@ -1323,6 +1323,32 @@
       "comment": "AUDIT 2026-02-28: Webhook transfer.paid — stripeAccountId + status (payment_stripe.py:3732-3734)"
     },
     {
+      "collectionGroup": "fcm_tokens",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "PERFORMANCE: Batch push notification fetch (push_service.py send_push_notifications_batch)"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "FAV-M3: Composite index for seller products query (sellerId ASC, createdAt DESC)"
+    },
+    {
       "collectionGroup": "security_alerts",
       "queryScope": "COLLECTION",
       "fields": [
@@ -1370,6 +1396,104 @@
         }
       ],
       "comment": "AUDIT 2026-02-28: Cleanup old resolved alerts — resolved + timestamp (cron_jobs.py:1184-1186)"
+    },
+    {
+      "collectionGroup": "security_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "resolved",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-03-01: compute_seller_metrics dedup — type == SELLER_METRICS_BREACH + sellerId + resolved == False (cron_jobs.py:1928-1932)"
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "isRead",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "senderId",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-03-01: mark_messages_read — isRead == False + senderId != uid (inequality requires composite; chat.py:207-209)"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isDigital",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-03-01: update_warehouse — sellerId + isDigital == False for non-digital product sync (products.py:3282)"
+    },
+    {
+      "collectionGroup": "product_ratings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isFlagged",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-03-01: admin watchReviews flaggedOnly — isFlagged == true + orderBy createdAt DESC (admin_repository.dart:185)"
+    },
+    {
+      "collectionGroup": "product_ratings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "hasPhotos",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-03-01: admin watchReviews hasPhotosOnly — hasPhotos == true + orderBy createdAt DESC (admin_repository.dart:186)"
+    },
+    {
+      "collectionGroup": "product_ratings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isFlagged",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "hasPhotos",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-03-01: admin watchReviews flaggedOnly + hasPhotosOnly combined — isFlagged + hasPhotos + orderBy createdAt DESC (admin_repository.dart:185-186)"
     }
   ],
   "fieldOverrides": []

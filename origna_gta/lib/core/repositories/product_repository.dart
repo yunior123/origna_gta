@@ -280,24 +280,37 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
-  /// Toggles the favorite status of a product for the given user.
-  ///
-  /// Uses a Firestore transaction to prevent duplicate subcollection writes from rapid taps.
-  /// [userId] The authenticated user UID. [productId] The product to toggle.
-  Future<void> toggleFavorite(String userId, String productId) async {
-    final favRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).doc(productId);
-
-    // RACE CONDITION FIX: Use transaction to prevent duplicate writes from rapid taps
-    await _firestore.runTransaction((transaction) async {
-      final doc = await transaction.get(favRef);
-      if (doc.exists) {
-        transaction.delete(favRef);
-      } else {
-        transaction.set(favRef, {Fields.productId: productId, Fields.dateFavorited: FieldValue.serverTimestamp()});
+  /// Atomic rating submission including image data (QA-H1).
+  Future<void> submitRatingAtomic(String orderId, String productId, int rating, {List<Uint8List>? reviewImages, String? reviewText}) async {
+    final List<Map<String, dynamic>> imagesPayload = [];
+    if (reviewImages != null) {
+      for (final bytes in reviewImages) {
+        imagesPayload.add({
+          'contentType': 'image/jpeg',
+          'data': base64Encode(bytes),
+        });
       }
-    });
+    }
+
+    final payload = {
+      Fields.orderId: orderId,
+      Fields.productId: productId,
+      Fields.rating: rating,
+      Fields.review: reviewText ?? '',
+      ApiKeys.images: imagesPayload,
+    };
+
+    await _functions.httpsCallable(CloudFunctionEndpoints.submitProductRatingAtomic).call(payload);
   }
 
+  @override
+  /// Toggles a product in the user's favorites list via Cloud Function.
+  /// This ensures that favoriteCount on the product document is updated atomically.
+  Future<void> toggleFavorite(String userId, String productId) async {
+    await _functions.httpsCallable(CloudFunctionEndpoints.toggleFavorite).call({
+      Fields.productId: productId,
+    });
+  }
   @override
   Future<void> updateProduct(String productId, Map<String, dynamic> data) async {
     // F-90: Use Cloud Function for updates to ensure server-side validation.
@@ -492,6 +505,7 @@ abstract class ProductRepository {
   Future<Map<String, String>?> getUploadUrlInfo(String fileName);
   Future<Map<String, String>?> getUploadVideoUrlInfo(String fileName, String contentType);
   Future<void> submitRating(String orderId, String productId, int rating, {List<String>? reviewImageUrls, String? reviewText});
+  Future<void> submitRatingAtomic(String orderId, String productId, int rating, {List<Uint8List>? reviewImages, String? reviewText});
   Future<void> toggleFavorite(String userId, String productId);
   Future<void> updateProduct(String productId, Map<String, dynamic> data);
   Future<List<String>> uploadImages(List<Uint8List> images, String productId);

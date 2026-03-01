@@ -94,6 +94,7 @@ abstract final class ApiKeys {
   static const emulatorMode = 'emulatorMode';
   static const captured = 'captured';
   static const message = 'message';
+  static const revokedLicenseCount = 'revokedLicenseCount';
   static const paymentIntentId = 'paymentIntentId';
   static const accountId = 'accountId';
   static const existing = 'existing';
@@ -130,6 +131,12 @@ abstract final class ApiKeys {
   static const expectedCostCents = 'expectedCostCents';
   static const licenseKey = 'licenseKey';
   static const platform = 'platform';
+
+  // === GDPR / PIPEDA DATA EXPORT KEYS ===
+  static const profile = 'profile';
+  static const orders = 'orders';
+  static const favorites = 'favorites';
+  static const exportedAt = 'exportedAt';
 }
 
 /// Business rule constants
@@ -146,6 +153,7 @@ abstract final class BusinessRules {
   static const maxShippingCostCad = 500; // $500 CAD absolute maximum shipping cost
   static const sellerDisputeRateThreshold = 0.05; // 5% dispute rate triggers health alert
   static const sellerRefundRateThreshold = 0.10; // 10% refund rate threshold
+  static const maxMessagesPerThread = 500; // Hard cap per thread to prevent unbounded storage
   static const maxProductImages = 5; // Maximum number of images per product listing
   static const maxVideoBytes = 100 * 1024 * 1024; // 100 MB max video size
   static const maxVideoDurationSeconds = 60; // 60s max video duration
@@ -246,7 +254,7 @@ abstract final class CloudFunctionEndpoints {
   // === AUTH ENDPOINTS ===
   static const deleteAccount = 'delete_account';
   static const createUserProfile = 'create_user_profile';
-  static const exportUserData = 'export_user_data';
+  static const exportUserData = 'export_my_data';
 
   // === ADMIN ENDPOINTS ===
   static const updateUserRoles = 'update_user_roles';
@@ -271,6 +279,8 @@ abstract final class CloudFunctionEndpoints {
   static const createProductAtomic = 'create_product_atomic';
   static const updateProduct = 'update_product';
   static const submitProductRating = 'submit_product_rating';
+  static const submitProductRatingAtomic = 'submit_product_rating_atomic';
+  static const toggleFavorite = 'toggle_favorite';
   // Review helpfulness (N-04)
   static const voteReviewHelpful = 'vote_review_helpful';
   // Back-in-stock (TASK 07)
@@ -848,10 +858,14 @@ abstract final class Fields {
 
   // === CHAT FIELDS ===
   static const chatId = 'chatId';
+  static const reportId = 'reportId';
+  static const reporterId = 'reporterId';
+  static const messageId = 'messageId';
   static const buyerId = 'buyerId';
   static const productTitle = 'productTitle';
   static const productImageUrl = 'productImageUrl';
-  static const lastMessage = 'lastMessage';
+  static const lastMessage = 'lastMessage'; // truncated for preview
+  static const lastMessageText = 'lastMessageText'; // full text
   static const lastMessageAt = 'lastMessageAt';
   static const senderId = 'senderId';
   static const senderDisplayName = 'senderDisplayName'; // denormalized at send time
@@ -862,6 +876,7 @@ abstract final class Fields {
   static const firstBuyerMessageAt = 'firstBuyerMessageAt';
   static const firstSellerReplyAt = 'firstSellerReplyAt';
   static const firstReplyHours = 'firstReplyHours';
+  static const messageCount = 'messageCount';
 
   // === DELIVERY FIELDS ===
   static const deliveryInstructions = 'deliveryInstructions';
@@ -1107,6 +1122,7 @@ abstract final class Fields {
 
   // === N-07: Coupon/promo code system ===
   static const couponCode = 'couponCode';
+  static const couponPrereserved = 'couponPrereserved';
   static const couponSellerId = 'couponSellerId'; // seller_id of scoped coupon (null = platform-wide)
   static const discountAmountCents = 'discountAmountCents';
   static const minOrderCents = 'minOrderCents';
@@ -1784,4 +1800,56 @@ abstract final class WebhookStatusValues {
   static const failed = 'failed';
 
   static const all = {processing, completed, failed};
+}
+
+/// Action identifiers for rate limiting to prevent magic strings.
+abstract final class RateLimitActions {
+  static const verifyCart = 'verify_cart_prices';
+  static const createCheckout = 'create_checkout';
+  static const stripeWebhook = 'stripe_webhook';
+  static const unsubscribe = 'unsubscribe_email';
+  static const exportData = 'export_data';
+  static const mfaEnroll = 'mfa_enroll';
+  static const mfaVerify = 'mfa_verify';
+  static const mfaDisable = 'mfa_disable';
+  static const mfaBackupVerify = 'mfa_backup_verify';
+  static const createConnectAccount = 'create_connect_account';
+  static const createAccountLink = 'create_account_link';
+  static const getConnectStatus = 'get_connect_account_status';
+  static const capturePayment = 'capture_payment';
+  static const updateUserRoles = 'update_user_roles';
+  static const suspendSeller = 'suspend_seller';
+  static const unsuspendSeller = 'unsuspend_seller';
+  static const adminUpdateStock = 'admin_update_stock';
+  static const deleteAccount = 'delete_account';
+  static const updateOrderStatus = 'update_order_status';
+  static const updateItemStatus = 'update_item_status';
+  static const cancelOrder = 'cancel_order';
+  static const refundOrderItem = 'refund_order_item';
+  static const approveShippingCost = 'approve_shipping_cost';
+  static const updateShippingCost = 'update_shipping_cost';
+  static const createReturnRequest = 'create_return_request';
+  static const approveReturnRequest = 'approve_return_request';
+  static const rejectReturnRequest = 'reject_return_request';
+  static const uploadImages = 'upload_images';
+  static const uploadVideo = 'upload_video';
+  static const deleteProduct = 'delete_product';
+  static const submitRating = 'submit_rating';
+  static const createProduct = 'create_product';
+  static const configureAlgolia = 'configure_algolia';
+  static const getProducts = 'get_products';
+  static const getSellerProducts = 'get_seller_products';
+  static const getProductRatings = 'get_product_ratings';
+  static const askProductQuestion = 'ask_product_question';
+  static const answerProductQuestion = 'answer_product_question';
+  static const answerReview = 'answer_review';
+  static const createUserProfile = 'create_user_profile';
+  static const updateTaxExemption = 'update_tax_exemption';
+  static const applyCoupon = 'apply_coupon';
+  static const activateLicense = 'activate_license';
+  static const verifyLicense = 'verify_license';
+  static const verifyLicenseIp = 'verify_license_ip';
+  static const getPaymentProviders = 'get_payment_providers';
+  static const updatePaymentProvider = 'update_payment_provider';
+  static const getProviderStatus = 'get_provider_status';
 }

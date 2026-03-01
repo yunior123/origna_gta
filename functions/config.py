@@ -28,10 +28,15 @@ USAGE:
 """
 
 import json
+import logging
 import os
+import time
 from enum import Enum
+from typing import Any
 
 from firebase_functions import params
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # ENVIRONMENT DETECTION
@@ -242,8 +247,10 @@ _USE_LOCAL = IS_EMULATOR or FORCE_LOCAL_SECRETS
 
 APP_SECRETS_PARAM = params.SecretParam("APP_SECRETS")
 
-# Parsed once per cold start
-_app_secrets: dict[str, str] | None = None
+# Parsed once per cold start, but with a TTL to allow rotation
+_app_secrets: dict[str, Any] | None = None
+_app_secrets_last_fetch: float = 0
+SECRETS_TTL_SECONDS = 600  # 10 minutes
 
 
 def _load_secret(key: str, required: bool = True) -> str:
@@ -254,12 +261,30 @@ def _load_secret(key: str, required: bool = True) -> str:
     return value or ""
 
 
-def _secrets() -> dict[str, str]:
-    """Return parsed APP_SECRETS dict, cached per cold start."""
-    global _app_secrets
-    if _app_secrets is None:
-        raw = APP_SECRETS_PARAM.value
-        _app_secrets = json.loads(raw) if isinstance(raw, (str, bytes, bytearray)) and raw else {}
+def _secrets() -> dict[str, Any]:
+    """Return parsed APP_SECRETS dict, cached with a 10-minute TTL."""
+    global _app_secrets, _app_secrets_last_fetch
+    now = time.time()
+
+    # If using local mode, we don't need TTL as .env is usually static
+    if _USE_LOCAL:
+        return {}
+
+    if _app_secrets is None or (now - _app_secrets_last_fetch) > SECRETS_TTL_SECONDS:
+        try:
+            # Firebase SecretParam.value is cached by the runtime, but we re-read
+            # the parameter which might be updated if the version is alias-linked.
+            # NOTE: For true runtime rotation, we should use Secret Manager SDK,
+            # but updating the cache periodically is a good middle ground.
+            raw = APP_SECRETS_PARAM.value
+            _app_secrets = json.loads(raw) if isinstance(raw, (str, bytes, bytearray)) and raw else {}
+            _app_secrets_last_fetch = now
+            logger.info("Fetched APP_SECRETS from Secret Manager (TTL expired or first fetch)")
+        except Exception as e:
+            logger.error(f"Failed to fetch or parse APP_SECRETS: {e}")
+            if _app_secrets is None:
+                _app_secrets = {}
+
     return _app_secrets
 
 

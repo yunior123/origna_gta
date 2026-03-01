@@ -499,11 +499,11 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
                 supplier_type = item.get(Fields.SUPPLIER_TYPE, "other")
                 # Map checkout speeds to international speeds
                 intl_speed = DeliveryTypeValues.EXPRESS if speed in [DeliveryTypeValues.EXPRESS, DeliveryTypeValues.INTERNATIONAL_EXPRESS] else DeliveryTypeValues.STANDARD
-                
+
                 weight = float(item.get(Fields.WEIGHT_KG, ShippingTiers.DEFAULT_WEIGHT_KG))
                 estimate = get_international_shipping_estimate(supplier_type, speed=intl_speed, weight_kg=weight)
                 seller_intl_total += estimate["cost"] * int(item.get(Fields.QUANTITY, 1))
-            
+
             total_shipping += seller_intl_total
             continue
 

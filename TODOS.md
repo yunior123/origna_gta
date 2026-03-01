@@ -183,3 +183,9 @@ recatchpa google
 ell cd e2e && npx playwright test playwright_ui/add-product-e2e.spec.ts -g "T13" --config playwright.config.dev.ts [current … │
 │                                                                                                                                    │
 │    ✅ Flutter initialized in 679ms                
+
+
+
+ export CLAUDE_CODE_USE_BEDROCK=1
+
+ unset CLAUDE_CODE_USE_BEDROCK

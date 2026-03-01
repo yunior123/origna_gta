@@ -47,8 +47,10 @@ def setup_unified_mock_db():
 
         mock_db = MagicMock()
 
-        def make_doc_ref(doc_id):
+        def make_doc_ref(doc_id=None):
             """Create a mock document reference"""
+            if doc_id is None:
+                doc_id = "auto_generated_id"
             mock_doc_ref = MagicMock()
             mock_doc_ref.id = doc_id
             if doc_id in docs:
@@ -246,7 +248,7 @@ class TestCreateCheckoutSession:
         mock_request.auth = Mock(uid="test_user_123")
         mock_request.data = {
             "items": [{"productId": "invalid_prod", "quantity": 1}],
-            "subtotal": 50.00,
+            "subtotalCents": 5000,
             "shippingAddress": {
                 "street": "123 Main St",
                 "city": "Toronto",
@@ -285,8 +287,10 @@ class TestCreateCheckoutSession:
             "seller_123": create_mock_seller_doc(),
         }
 
-        def make_doc_ref(doc_id):
+        def make_doc_ref(doc_id=None):
             """Create a mock document reference"""
+            if doc_id is None:
+                doc_id = "auto_generated_id"
             mock_doc_ref = MagicMock()
             mock_doc_ref.id = doc_id
             if doc_id in all_docs:
@@ -315,7 +319,7 @@ class TestCreateCheckoutSession:
                 }
             ],  # Requesting 10
             "shippingAddress": valid_checkout_data["shippingAddress"],
-            "subtotal": 500.00,
+            "subtotalCents": 50000,
         }
 
         with pytest.raises(https_fn.HttpsError) as exc:
@@ -354,7 +358,9 @@ class TestCreateCheckoutSession:
             "seller_123": create_mock_seller_doc(),
         }
 
-        def make_doc_ref(doc_id):
+        def make_doc_ref(doc_id=None):
+            if doc_id is None:
+                doc_id = "auto_generated_id"
             mock_doc_ref = MagicMock()
             mock_doc_ref.id = doc_id
             if doc_id in all_docs:
@@ -382,7 +388,7 @@ class TestCreateCheckoutSession:
                 }
             ],
             "shippingAddress": valid_checkout_data["shippingAddress"],
-            "subtotal": 100.00,
+            "subtotalCents": 10000,
         }
 
         # Should NOT raise resource-exhausted (may raise other errors from downstream mocking, but not stock error)
@@ -424,7 +430,9 @@ class TestCreateCheckoutSession:
             "seller_123": create_mock_seller_doc(),
         }
 
-        def make_doc_ref(doc_id):
+        def make_doc_ref(doc_id=None):
+            if doc_id is None:
+                doc_id = "auto_generated_id"
             mock_doc_ref = MagicMock()
             mock_doc_ref.id = doc_id
             if doc_id in all_docs:
@@ -453,7 +461,7 @@ class TestCreateCheckoutSession:
                 }
             ],
             "shippingAddress": valid_checkout_data["shippingAddress"],
-            "subtotal": 50.00,
+            "subtotalCents": 5000,
         }
 
         with pytest.raises(https_fn.HttpsError) as exc:
@@ -501,8 +509,10 @@ class TestCreateCheckoutSession:
             "seller_123": create_mock_seller_doc(),
         }
 
-        def make_doc_ref(doc_id):
+        def make_doc_ref(doc_id=None):
             """Create a mock document reference"""
+            if doc_id is None:
+                doc_id = "auto_generated_id"
             mock_doc_ref = MagicMock()
             mock_doc_ref.id = doc_id
             if doc_id in all_docs:
@@ -533,7 +543,7 @@ class TestCreateCheckoutSession:
                 }
             ],
             "shippingAddress": valid_checkout_data["shippingAddress"],
-            "subtotal": 0.01,  # Tampered subtotal
+            "subtotalCents": 1,  # Tampered subtotal
         }
 
         # Should raise error due to price mismatch
@@ -559,7 +569,9 @@ class TestStripeWebhook:
         # Create unified doc storage
         all_docs = {"evt_123": MagicMock(exists=False)}
 
-        def make_doc_ref(doc_id):
+        def make_doc_ref(doc_id=None):
+            if doc_id is None:
+                doc_id = "auto_generated_id"
             mock_doc_ref = MagicMock()
             mock_doc_ref.id = doc_id
             if doc_id in all_docs:

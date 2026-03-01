@@ -33,9 +33,7 @@ class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
 
   /// Submits a product rating with an optional review text and images.
   ///
-  /// Uploads [reviewImages] to R2 storage first if provided. Returns `true` on
-  /// success. Logs orphaned image URLs if the rating write fails after a
-  /// successful image upload.
+  /// Uses atomic backend submission (QA-H1) where images and document are created together.
   ///
   /// Throws nothing — all errors are captured into [ProductRatingState.errorMessage].
   Future<bool> submitRating(String orderId, String productId, int rating, {List<Uint8List>? reviewImages, String? reviewText}) async {
@@ -47,20 +45,17 @@ class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
     // Prevent double-submit if widget is rebuilt during submission (autoDispose)
     _keepAliveLink = _ref.keepAlive();
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
-    List<String>? reviewImageUrls;
     try {
-      if (reviewImages != null && reviewImages.isNotEmpty) {
-        final userId = _ref.read(userIdProvider) ?? 'unknown';
-        reviewImageUrls = await _ref.read(productRepositoryProvider).uploadReviewImages(reviewImages, userId);
-      }
-      await _ref.read(productRepositoryProvider).submitRating(orderId, productId, rating, reviewImageUrls: reviewImageUrls, reviewText: reviewText ?? state.reviewText);
+      await _ref.read(productRepositoryProvider).submitRatingAtomic(
+        orderId, 
+        productId, 
+        rating, 
+        reviewImages: reviewImages, 
+        reviewText: reviewText ?? state.reviewText
+      );
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
-    } catch (e, st) {
-      // If rating submission failed after images were uploaded, log orphaned URLs for cleanup.
-      if (reviewImageUrls != null && reviewImageUrls.isNotEmpty) {
-        AppError.log(Exception('Orphaned review images after rating failure: $reviewImageUrls'), stackTrace: st, context: 'product_rating_orphaned_images');
-      }
+    } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to submit rating'));
       return false;
     } finally {

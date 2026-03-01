@@ -43,6 +43,7 @@ from schema_constants import (
     OrderStatusValues,
     ProductConstraints,
     ProductLifecycleStatusValues,
+    RateLimitActions,
     SupplierTypeValues,
     UserRoleValues,
     WarehouseTypeValues,
@@ -166,7 +167,7 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     # AUDIT FIX: Rate limit image uploads
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="upload_images", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.UPLOAD_IMAGES, max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -279,7 +280,7 @@ def upload_product_video(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limiting
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="upload_video", max_requests=3, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.UPLOAD_VIDEO, max_requests=3, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -531,7 +532,7 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit: 10/min — prevent mass-deletion abuse
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="delete_product", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.DELETE_PRODUCT, max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -644,6 +645,143 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
+def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Atomically submits a product rating with images.
+    Solves QA-H1: Images are uploaded and document is created in one backend operation.
+    If Firestore write fails, uploaded images are rolled back (deleted).
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+
+    product_id = data.get(Fields.PRODUCT_ID)
+    order_id = data.get(Fields.ORDER_ID)
+    rating = data.get(Fields.RATING)
+    review_raw = data.get(Fields.REVIEW, "")
+    images_raw = data.get(ApiKeys.IMAGES, [])
+
+    if not product_id or not order_id or rating is None:
+        raise https_fn.HttpsError("invalid-argument", "productId, orderId, and rating required")
+
+    # 1. Validation (fast checks before R2)
+    if not isinstance(rating, (int, float)) or rating < 1 or rating > 5:
+        raise https_fn.HttpsError("invalid-argument", "Rating must be between 1 and 5")
+
+    # Premium check for photo reviews
+    if images_raw:
+        from utils.premium_check import is_premium_authoritative
+        if not is_premium_authoritative(user_id, db=get_db()):
+            raise https_fn.HttpsError("permission-denied", "Photo reviews are a premium feature.")
+        if len(images_raw) > BusinessRules.MAX_REVIEW_IMAGES:
+            raise https_fn.HttpsError("invalid-argument", f"Max {BusinessRules.MAX_REVIEW_IMAGES} images.")
+
+    # 2. Verify Purchase (before uploading images to save bandwidth/costs)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+    if not order_doc.exists:
+        raise https_fn.HttpsError("not-found", "Order not found")
+    
+    order_data = order_doc.to_dict() or {}
+    if order_data.get(Fields.USER_ID) != user_id:
+        raise https_fn.HttpsError("permission-denied", "Order ownership mismatch")
+    
+    if order_data.get(Fields.ORDER_STATUS) not in {OrderStatusValues.DELIVERED, OrderStatusValues.DISPUTED}:
+        raise https_fn.HttpsError("failed-precondition", "Order not in ratable state")
+
+    # 3. Image Upload (R2)
+    review_image_urls = []
+    uploaded_keys = []
+    if images_raw:
+        s3_client = _get_cached_s3_client()
+        bucket_name = R2Config.BUCKET_NAME
+        
+        ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+        MIME_TO_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+
+        try:
+            for i, img_item in enumerate(images_raw):
+                content_type = img_item.get("contentType", "image/jpeg")
+                if content_type not in ALLOWED_MIME_TYPES: continue
+                
+                img_bytes = _base64.b64decode(img_item.get("data", ""))
+                if not img_bytes: continue
+                
+                ext = MIME_TO_EXT[content_type]
+                key = R2Config.get_image_path("reviews", f"{uuid.uuid4()}.{ext}")
+                s3_client.put_object(
+                    Bucket=bucket_name, Key=key, Body=img_bytes,
+                    ContentType=content_type, ContentDisposition="inline"
+                )
+                uploaded_keys.append(key)
+                review_image_urls.append(f"{CDN_BASE_URL}/{key}")
+        except Exception as e:
+            # Cleanup
+            for k in uploaded_keys:
+                with contextlib.suppress(Exception): s3_client.delete_object(Bucket=bucket_name, Key=k)
+            raise https_fn.HttpsError("internal", f"Image upload failed: {e}")
+
+    # 4. Atomically write rating and update product avg
+    from utils.helpers import sanitized_text
+    review = sanitized_text(review_raw)[:1000] if review_raw else ""
+
+    rating_doc = {
+        Fields.PRODUCT_ID: product_id,
+        Fields.USER_ID: user_id,
+        Fields.ORDER_ID: order_id,
+        Fields.RATING: rating,
+        Fields.REVIEW: review,
+        Fields.CREATED_AT: get_server_timestamp(),
+        Fields.HELPFUL_COUNT: 0,
+        Fields.VERIFIED_PURCHASE: True,
+        Fields.REVIEW_IMAGE_URLS: review_image_urls
+    }
+
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    new_rating_ref = get_db().collection(Collections.PRODUCT_RATINGS).document()
+    _txn_error = {}
+
+    @get_firestore().transactional
+    def update_rating_txn(transaction):
+        # Duplicate checks
+        existing_order = list(get_db().collection(Collections.PRODUCT_RATINGS).where(Fields.ORDER_ID, "==", order_id).limit(1).stream(transaction=transaction))
+        if existing_order:
+            _txn_error["err"] = https_fn.HttpsError("already-exists", "Already rated")
+            return None, None
+        
+        p_snap = product_ref.get(transaction=transaction)
+        if not p_snap.exists:
+            _txn_error["err"] = https_fn.HttpsError("not-found", "Product gone")
+            return None, None
+        
+        p_data = p_snap.to_dict() or {}
+        curr_rating = p_data.get(Fields.RATING, 0.0)
+        curr_count = p_data.get(Fields.RATING_COUNT, 0)
+        
+        new_count = curr_count + 1
+        new_avg = ((curr_rating * curr_count) + rating) / new_count
+        
+        transaction.create(new_rating_ref, rating_doc)
+        transaction.update(product_ref, {Fields.RATING: new_avg, Fields.RATING_COUNT: new_count})
+        return new_avg, new_count
+
+    try:
+        new_avg, new_count = update_rating_txn(get_db().transaction())
+        if "err" in _txn_error: raise _txn_error["err"]
+        return create_success_response({"newRating": new_avg, "ratingCount": new_count})
+    except Exception as e:
+        # ROLLBACK R2 IMAGES if Firestore fails
+        s3_client = _get_cached_s3_client()
+        for k in uploaded_keys:
+            with contextlib.suppress(Exception): s3_client.delete_object(Bucket=R2Config.BUCKET_NAME, Key=k)
+        if isinstance(e, https_fn.HttpsError): raise
+        logger.error(f"submit_product_rating_atomic failed: {e}")
+        raise https_fn.HttpsError("internal", str(e))
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Submits a product rating after order delivery.
@@ -669,7 +807,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     # AUDIT FIX: Rate limit rating submissions
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="submit_rating", max_requests=5, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action=RateLimitActions.SUBMIT_RATING, max_requests=5, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -784,7 +922,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
             .collection(Collections.PRODUCT_RATINGS)
             .where(Fields.ORDER_ID, "==", order_id)
             .limit(1)
-            .stream()
+            .stream(transaction=transaction)
         )
         if existing_order:
             _txn_error["err"] = https_fn.HttpsError("already-exists", "This order has already been rated")
@@ -797,7 +935,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
             .where(Fields.USER_ID, "==", user_id)
             .where(Fields.PRODUCT_ID, "==", product_id)
             .limit(1)
-            .stream()
+            .stream(transaction=transaction)
         )
         if existing_user_product:
             _txn_error["err"] = https_fn.HttpsError("already-exists", "You have already rated this product")
@@ -981,46 +1119,13 @@ def _geocode_warehouse_address(address: dict) -> dict:
     """Forward-geocode a warehouse address via Geoapify, injecting lat/lon into the dict.
     Fail-open: logs warning, returns original address on failure.
     """
-    geo_key = get_geoapify_api_key()
-    if not geo_key:
-        logger.warning("Geoapify key not configured — skipping warehouse geocoding")
+    from utils.helpers import geocode_address
+    success, error_msg, geocoded_address = geocode_address(address)
+    if not success:
+        logger.warning(f"Warehouse geocode failed: {error_msg}")
         return address
-
-    parts = [
-        address.get(Fields.STREET, ""),
-        address.get(Fields.CITY, ""),
-        address.get(Fields.POSTAL_CODE, ""),
-        address.get(Fields.COUNTRY, ""),
-    ]
-    query = ", ".join(p for p in parts if p).strip()
-    if not query:
-        return address
-
-    try:
-        url = f"https://api.geoapify.com/v1/geocode/search?text={query}&apiKey={geo_key}&limit=1"
-        response = requests.get(url, timeout=AppConfig.GEOAPIFY_TIMEOUT_SECONDS)
-        if response.status_code != 200:
-            logger.warning(f"Warehouse geocode HTTP {response.status_code} for: {query}")
-            return address
-
-        data = response.json()
-        features = data.get("features", [])
-        if not features:
-            logger.warning(f"Warehouse geocode no results for: {query}")
-            return address
-
-        coords = features[0].get("geometry", {}).get("coordinates", [])
-        if len(coords) >= 2:
-            address[Fields.LONGITUDE] = coords[0]
-            address[Fields.LATITUDE] = coords[1]
-            logger.info(f"Warehouse geocoded: {query} → ({coords[1]}, {coords[0]})")
-        return address
-    except requests.Timeout:
-        logger.warning(f"Warehouse geocode timeout for: {query}")
-        return address
-    except Exception as e:
-        logger.warning(f"Warehouse geocode error: {type(e).__name__}: {e}")
-        return address
+    
+    return geocoded_address
 
 
 def _validate_warehouse_address(address: dict) -> None:
@@ -1183,7 +1288,7 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="create_product", max_requests=5, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.CREATE_PRODUCT, max_requests=5, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1285,6 +1390,22 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if not product_data[Fields.IS_INTERNATIONAL] and not product_data.get(Fields.SHIP_FROM_COUNTRY):
         product_data[Fields.SHIP_FROM_COUNTRY] = COUNTRY_CANADA
+
+    # ADDR-H2: Server-side geocoding for sellerAddress (if no warehouses used)
+    # Ensures coordinates are verified and Accurate. Surfaces Geoapify errors.
+    warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
+    is_digital = product_data.get(Fields.IS_DIGITAL, False)
+    seller_address = product_data.get(Fields.SELLER_ADDRESS)
+    
+    if not is_digital and not warehouse_ids and seller_address:
+        from utils.helpers import geocode_address
+        success, error_msg, geocoded_address = geocode_address(seller_address)
+        if not success:
+            logger.warning(f"create_product_atomic: sellerAddress geocoding failed: {error_msg}")
+            raise https_fn.HttpsError("invalid-argument", f"Seller address error: {error_msg}")
+        
+        product_data[Fields.SELLER_ADDRESS] = geocoded_address
+        logger.info(f"create_product_atomic: sellerAddress verified for user {user_id}")
 
     # Normalize apartment: empty string → null (Firestore rules requirement)
     seller_address = product_data.get(Fields.SELLER_ADDRESS)
@@ -1566,25 +1687,23 @@ def on_product_created(event: firestore_fn.Event) -> None:
         logger.info(f"SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating")
         _deactivate_with_email(f"Invalid categoryId: {category_id}")
         return
+    # Collect all automated fixes/patches to apply in a single write (F-322: No Redundant Writes)
+    internal_patches = {}
+
     sanitized_name = sanitized_text(name)
     sanitized_desc = sanitized_text(description)
     if sanitized_name != name:
-        xss_patches[Fields.NAME] = sanitized_name
+        internal_patches[Fields.NAME] = sanitized_name
         logger.info(f"SECURITY: Sanitized XSS in product {product_id} name")
     if sanitized_desc != description:
-        xss_patches[Fields.DESCRIPTION] = sanitized_desc
+        internal_patches[Fields.DESCRIPTION] = sanitized_desc
         logger.info(f"SECURITY: Sanitized XSS in product {product_id} description")
-    if xss_patches:
-        get_db().collection(Collections.PRODUCTS).document(product_id).update(xss_patches)
-        product_data.update(xss_patches)
 
     # ── DATA CONSISTENCY VALIDATION ──────────────────────────────────
-    patches = {}
-
     # Derive priceCents from price (server-side, authoritative)
     price_val = product_data.get(Fields.PRICE)
     if isinstance(price_val, (int, float)) and price_val > 0:
-        patches[Fields.PRICE_CENTS] = round(price_val * 100)
+        internal_patches[Fields.PRICE_CENTS] = round(price_val * 100)
 
     # Slug generation: assign on creation if missing (unique, URL-safe sharing URL)
     if not product_data.get(Fields.SLUG):
@@ -1599,13 +1718,13 @@ def on_product_created(event: firestore_fn.Event) -> None:
         if not slug_candidate:
             # Fallback: use doc ID suffix (guaranteed unique)
             slug_candidate = f"product-{product_id[-8:]}"
-        patches[Fields.SLUG] = slug_candidate
+        internal_patches[Fields.SLUG] = slug_candidate
         logger.info(f"Slug assigned to product {product_id}: {slug_candidate}")
 
     # Bug #1: Digital products MUST have freeShipping=true
     is_digital = product_data.get(Fields.IS_DIGITAL, False)
     if is_digital and not product_data.get(Fields.FREE_SHIPPING, False):
-        patches[Fields.FREE_SHIPPING] = True
+        internal_patches[Fields.FREE_SHIPPING] = True
         logger.info(f"FIX: Product {product_id} is digital but freeShipping=false → patching to true")
 
     # Bug #2: Local-only products should have a pickup delivery option
@@ -1620,7 +1739,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             Fields.ESTIMATED_DAYS: 0,
             Fields.COST_CENTS: 0,
         }
-        patches[Fields.DELIVERY_OPTIONS] = [pickup_option] + delivery_options
+        internal_patches[Fields.DELIVERY_OPTIONS] = [pickup_option] + delivery_options
         logger.info(f"FIX: Product {product_id} is local-only but missing pickup option → patching")
 
     # Bug #4: Physical products with no delivery options (and not local-only) → add standard
@@ -1631,7 +1750,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             Fields.ESTIMATED_DAYS: 5,
             Fields.COST_CENTS: 0,
         }
-        patches[Fields.DELIVERY_OPTIONS] = [standard_option]
+        internal_patches[Fields.DELIVERY_OPTIONS] = [standard_option]
         logger.info(f"FIX: Product {product_id} has no delivery options → adding standard")
 
     # Derive shipFrom* fields from warehouse addresses or seller address
@@ -1643,19 +1762,19 @@ def on_product_created(event: firestore_fn.Event) -> None:
         try:
             ship_from = _derive_ship_from_fields(seller_id, product_data)
             if ship_from:
-                patches.update(ship_from)
+                internal_patches.update(ship_from)
         except Exception as e:
             logger.error(f"Failed to derive shipFrom fields for {product_id}: {e}")
 
-    # Apply patches if any
-    if patches:
+    # Apply all internal patches in ONE write
+    if internal_patches:
         try:
-            get_db().collection(Collections.PRODUCTS).document(product_id).update(patches)
-            logger.info(f"Applied {len(patches)} fix(es) to product {product_id}")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(internal_patches)
+            logger.info(f"Applied {len(internal_patches)} internal fixes to product {product_id}")
             # Update local copy for indexing
-            product_data.update(patches)
+            product_data.update(internal_patches)
         except Exception as e:
-            logger.error(f"WARNING: Failed to apply patches to product {product_id}: {str(e)}")
+            logger.error(f"WARNING: Failed to apply internal patches to product {product_id}: {str(e)}")
 
     # FOOD SAFETY: Perishable products should have local delivery or same-day option
     is_perishable = product_data.get(Fields.IS_PERISHABLE, False)
@@ -1910,29 +2029,21 @@ def _notify_premium_users_new_product(product_data: dict, product_id: str) -> No
         if not docs:
             break
 
-        tokens = []
-        for user in docs:
-            token_docs = user.reference.collection(Collections.FCM_TOKENS).stream()
-            for td in token_docs:
-                t = (td.to_dict() or {}).get("token")
-                if t:
-                    tokens.append(t)
+        user_ids = [user.id for user in docs]
 
-        if tokens:
-            msg = messaging.MulticastMessage(
-                tokens=tokens,
-                notification=messaging.Notification(**notification_kwargs),
-                data={"type": "new_product", "productId": product_id, "screen": f"/product/{product_id}"},
-            )
-            response = messaging.send_each_for_multicast(msg)
-            total_success += response.success_count
-            total_failure += response.failure_count
-
+        from services.push_service import send_push_notifications_batch
+        success_count = send_push_notifications_batch(
+            user_ids=user_ids,
+            title="🛍️ New Product on Origna",
+            body=f"{product_name} just went live!",
+            image_url=image_url,
+            data={"type": "new_product", "productId": product_id, "screen": f"/product/{product_id}"}
+        )
+        total_success += success_count
         last_doc = docs[-1]
-        if len(docs) < 500:
-            break  # Last page
 
-    logger.info(f"New product FCM sent: {total_success} ok, {total_failure} failed")
+    if total_success > 0:
+        logger.info(f"New product FCM sent: {total_success} tokens successfully notified for product {product_id}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2432,19 +2543,18 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 )
                 return
 
+    # Collect all automated fixes/patches to apply in a single write
+    internal_patches = {}
+
     # Sanitize text fields to prevent stored XSS
-    xss_patches = {}
     name = product_data.get(Fields.NAME, "")
     description = product_data.get(Fields.DESCRIPTION, "")
     sanitized_name = sanitized_text(name)
     sanitized_desc = sanitized_text(description)
     if sanitized_name != name:
-        xss_patches[Fields.NAME] = sanitized_name
+        internal_patches[Fields.NAME] = sanitized_name
     if sanitized_desc != description:
-        xss_patches[Fields.DESCRIPTION] = sanitized_desc
-    if xss_patches:
-        get_db().collection(Collections.PRODUCTS).document(product_id).update(xss_patches)
-        product_data.update(xss_patches)
+        internal_patches[Fields.DESCRIPTION] = sanitized_desc
 
     # Re-derive shipFrom* fields when warehouseIds changed or shipFromCountry missing (backfill)
     update_wh_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
@@ -2460,10 +2570,16 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         try:
             ship_from = _derive_ship_from_fields(update_seller_id, product_data)
             if ship_from:
-                get_db().collection(Collections.PRODUCTS).document(product_id).update(ship_from)
-                product_data.update(ship_from)
+                internal_patches.update(ship_from)
         except Exception as e:
             logger.error(f"Failed to derive shipFrom fields on update for {product_id}: {e}")
+
+    # Apply all internal patches in ONE write
+    if internal_patches:
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(internal_patches)
+        # Update local dict so subsequent logic (notifications, indexing) sees the final data
+        product_data.update(internal_patches)
+        logger.info(f"Applied {len(internal_patches)} internal patches to product {product_id} in a single write")
 
     # N-06: Track price history on full-validation path
     try:
@@ -2575,7 +2691,7 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="configure_algolia", max_requests=3, window_minutes=60
+        identifier=user_id, action=RateLimitActions.CONFIGURE_ALGOLIA, max_requests=3, window_minutes=60
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -2619,7 +2735,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if req.auth:
         allowed, msg = _limiter.check_rate_limit(
-            identifier=req.auth.uid, action="get_products", max_requests=30, window_minutes=1, fail_closed=False
+            identifier=req.auth.uid, action=RateLimitActions.GET_PRODUCTS, max_requests=30, window_minutes=1, fail_closed=False
         )
         if not allowed:
             raise https_fn.HttpsError("resource-exhausted", msg)
@@ -2629,7 +2745,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
         if client_ip:
             allowed, msg = _limiter.check_rate_limit(
                 identifier=f"ip:{client_ip}",
-                action="get_products",
+                action=RateLimitActions.GET_PRODUCTS,
                 max_requests=15,
                 window_minutes=1,
                 fail_closed=False,
@@ -2754,7 +2870,7 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, An
 
         _limiter = RateLimiter(get_db())
         allowed, msg = _limiter.check_rate_limit(
-            identifier=req.auth.uid, action="get_seller_products", max_requests=30, window_minutes=1, fail_closed=False
+            identifier=req.auth.uid, action=RateLimitActions.GET_SELLER_PRODUCTS, max_requests=30, window_minutes=1, fail_closed=False
         )
         if not allowed:
             raise https_fn.HttpsError("resource-exhausted", msg)
@@ -2861,7 +2977,7 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="get_product_ratings", max_requests=30, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action=RateLimitActions.GET_PRODUCT_RATINGS, max_requests=30, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -2960,6 +3076,65 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
 # =============================================================================
 # WAREHOUSE CRUD — Seller shipping location management
 # =============================================================================
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_update_warehouse_commission(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Update the commission rate (in Basis Points) for a specific warehouse.
+    WH-M1: Provides an audit trail for commission changes. Admin only.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Authentication required")
+
+    # Verify admin role
+    user_doc = get_db().collection(Collections.USERS).document(req.auth.uid).get()
+    if not user_doc.exists or user_doc.to_dict().get(Fields.ROLE) != UserRoleValues.ADMIN:
+        raise https_fn.HttpsError("permission-denied", "Admin privileges required")
+
+    data = req.data or {}
+    seller_id = data.get(Fields.SELLER_ID)
+    warehouse_id = data.get("warehouseId")
+    new_rate_bps = data.get("commissionRateBps")
+    reason = data.get("reason", "Manual adjustment")
+
+    if not all([seller_id, warehouse_id, new_rate_bps is not None]):
+        raise https_fn.HttpsError("invalid-argument", "sellerId, warehouseId, and commissionRateBps required")
+
+    if not isinstance(new_rate_bps, int) or new_rate_bps < 0 or new_rate_bps > 10000:
+        raise https_fn.HttpsError("invalid-argument", "commissionRateBps must be an integer between 0 and 10000 (100%)")
+
+    wh_ref = get_db().collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES).document(warehouse_id)
+    wh_snap = wh_ref.get()
+    if not wh_snap.exists:
+        raise https_fn.HttpsError("not-found", "Warehouse not found")
+
+    old_rate = wh_snap.to_dict().get("commissionRateBps")
+
+    # Transactional update with audit log
+    @get_firestore().transactional
+    def update_commission_txn(transaction):
+        # Update warehouse doc
+        transaction.update(wh_ref, {
+            "commissionRateBps": new_rate_bps,
+            "updatedAt": get_server_timestamp(),
+            "updatedBy": req.auth.uid
+        })
+        
+        # Add to audit log subcollection
+        audit_ref = wh_ref.collection("commission_audit_log").document()
+        transaction.set(audit_ref, {
+            "oldRateBps": old_rate,
+            "newRateBps": new_rate_bps,
+            "reason": reason,
+            "changedBy": req.auth.uid,
+            "timestamp": get_server_timestamp()
+        })
+
+    update_commission_txn(get_db().transaction())
+    logger.info(f"Admin {req.auth.uid} updated commission for warehouse {warehouse_id} (seller {seller_id}) to {new_rate_bps} bps")
+    
+    return create_success_response({"success": True, "oldRateBps": old_rate, "newRateBps": new_rate_bps})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -3468,6 +3643,7 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                 batch_docs = list(q.stream())
                 if not batch_docs:
                     break
+                uids_to_push: list[str] = []
                 for sub_doc in batch_docs:
                     sub_data = sub_doc.to_dict() or {}
                     email = sub_data.get(Fields.EMAIL)
@@ -3503,20 +3679,12 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                             html_content=html_body,
                             event_type="back_in_stock_alert"
                         )
-                        # FIX-4 (HIGH): Also send FCM push so mobile users see a notification
-                        # tray entry, not just email.
+                        # COLLECT UIDs for batch push
                         if sub_data_uid:
-                            from services.push_service import send_push_notification as _push
-                            _push(
-                                sub_data_uid,
-                                "Back in Stock! 🎉",
-                                f"{product_name} (the variant you wanted) is back in stock.",
-                                data={"type": "back_in_stock", "productId": product_id, "variantKey": variant_key},
-                            )
+                            uids_to_push.append(sub_data_uid)
+
                         # FIX STOCK-C1 (CRITICAL): Delete the subscription doc after successful
-                        # notification delivery. The notifiedAt stamp above already guards against
-                        # duplicate delivery on CF retry; deleting prevents unbounded collection
-                        # growth (100K+ zombie docs/year for popular products).
+                        # notification delivery.
                         sub_doc.reference.delete()
                     except Exception as e:
                         logger.error(f"Failed to send back-in-stock notification for sub {sub_doc.id}: {e}")
@@ -3525,6 +3693,16 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                             sub_doc.reference.update({Fields.NOTIFIED_AT: None})
                         except Exception as rollback_err:
                             logger.error(f"Failed to rollback notifiedAt for sub {sub_doc.id}: {rollback_err}")
+
+                # PERFORMANCE: Send push notifications in batch for this page of 200 subscribers
+                if uids_to_push:
+                    from services.push_service import send_push_notifications_batch as _push_batch
+                    _push_batch(
+                        uids_to_push,
+                        "Back in Stock! 🎉",
+                        f"{product_name} (the variant you wanted) is back in stock.",
+                        data={"type": "back_in_stock", "productId": product_id, "variantKey": variant_key},
+                    )
                 last_doc = batch_docs[-1]
         return
 
@@ -3544,6 +3722,7 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
         batch_docs = list(q.stream())
         if not batch_docs:
             break
+        uids_to_push: list[str] = []
         for sub_doc in batch_docs:
             sub_data = sub_doc.to_dict() or {}
             email = sub_data.get(Fields.EMAIL)
@@ -3577,19 +3756,12 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                     html_content=html_body,
                     event_type="back_in_stock_alert"
                 )
-                # FIX-4 (HIGH): FCM push so mobile users get a tray notification.
+                # COLLECT UIDs for batch push below
                 if sub_data_uid:
-                    from services.push_service import send_push_notification as _push
-                    _push(
-                        sub_data_uid,
-                        "Back in Stock! 🎉",
-                        f"{product_name} is back in stock.",
-                        data={"type": "back_in_stock", "productId": product_id},
-                    )
+                    uids_to_push.append(sub_data_uid)
+
                 # FIX STOCK-C1 (CRITICAL): Delete the subscription doc after successful
-                # notification delivery. The notifiedAt stamp above already guards against
-                # duplicate delivery on CF retry; deleting prevents unbounded collection
-                # growth (100K+ zombie docs/year for popular products).
+                # notification delivery.
                 sub_doc.reference.delete()
             except Exception as e:
                 logger.error(f"Failed to send back-in-stock notification for sub {sub_doc.id}: {e}")
@@ -3598,6 +3770,16 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                     sub_doc.reference.update({Fields.NOTIFIED_AT: None})
                 except Exception as rollback_err:
                     logger.error(f"Failed to rollback notifiedAt for sub {sub_doc.id}: {rollback_err}")
+
+        # PERFORMANCE: Send push notifications in batch for this page of 200 subscribers
+        if uids_to_push:
+            from services.push_service import send_push_notifications_batch as _push_batch
+            _push_batch(
+                uids_to_push,
+                "Back in Stock! 🎉",
+                f"{product_name} is back in stock.",
+                data={"type": "back_in_stock", "productId": product_id},
+            )
         last_doc = batch_docs[-1]
 
 
@@ -3738,6 +3920,67 @@ def unsubscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, A
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
+def toggle_favorite(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Atomically toggles a product in the user's favorites list.
+    Increments/decrements favoriteCount on the product document.
+    SRCH-M2: Provides the data needed for accurate trending scores.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Authentication required")
+
+    user_id = req.auth.uid
+    product_id = req.data.get(Fields.PRODUCT_ID)
+
+    if not product_id:
+        raise https_fn.HttpsError("invalid-argument", "productId required")
+
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    fav_ref = get_db().collection(Collections.USERS).document(user_id).collection(Collections.FAVORITES).document(product_id)
+
+    @get_firestore().transactional
+    def toggle_fav_txn(transaction):
+        fav_snap = fav_ref.get(transaction=transaction)
+        p_snap = product_ref.get(transaction=transaction)
+        
+        if not p_snap.exists:
+            raise https_fn.HttpsError("not-found", "Product not found")
+
+        is_favorited = fav_snap.exists
+        
+        if is_favorited:
+            # Unfavorite
+            transaction.delete(fav_ref)
+            transaction.update(product_ref, {
+                "favoriteCount": get_firestore().Increment(-1),
+                Fields.UPDATED_AT: get_server_timestamp()
+            })
+            return False
+        else:
+            # Favorite
+            transaction.set(fav_ref, {
+                Fields.PRODUCT_ID: product_id,
+                Fields.DATE_FAVORITED: get_server_timestamp()
+            })
+            transaction.update(product_ref, {
+                "favoriteCount": get_firestore().Increment(1),
+                Fields.UPDATED_AT: get_server_timestamp()
+            })
+            return True
+
+    try:
+        favorited = toggle_fav_txn(get_db().transaction())
+        return create_success_response({
+            "favorited": favorited,
+            "message": "Product added to favorites" if favorited else "Product removed from favorites"
+        })
+    except Exception as e:
+        if isinstance(e, https_fn.HttpsError): raise
+        logger.error(f"toggle_favorite failed: {e}")
+        raise https_fn.HttpsError("internal", str(e))
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     TASK 09: Buyer submits a question about a product.
@@ -3765,7 +4008,7 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     _limiter = RateLimiter(db)
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid,
-        action="ask_product_question",
+        action=RateLimitActions.ASK_PRODUCT_QUESTION,
         max_requests=5,
         window_minutes=60,
         fail_closed=False,
@@ -3869,7 +4112,7 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     _ans_limiter = RateLimiter(get_db())
     _allowed, _msg = _ans_limiter.check_rate_limit(
         identifier=req.auth.uid,
-        action="answer_product_question",
+        action=RateLimitActions.ANSWER_PRODUCT_QUESTION,
         max_requests=30,
         window_minutes=60,
         fail_closed=False,
@@ -4005,6 +4248,134 @@ def get_product_questions(req: https_fn.CallableRequest) -> dict[str, Any]:
     return create_success_response({"questions": questions, "total": len(questions)})
 
 
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_delete_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Moderation: Admin deletes a product question.
+    QA-M1: Provides an audit trail for moderation actions.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    # Verify admin role
+    is_admin = (req.auth.token or {}).get("admin") is True
+    if not is_admin:
+        # Fallback check if token is stale
+        user_doc = get_db().collection(Collections.USERS).document(req.auth.uid).get()
+        if not user_doc.exists or user_doc.to_dict().get(Fields.ROLE) != UserRoleValues.ADMIN:
+            raise https_fn.HttpsError("permission-denied", "Admin privileges required")
+
+    data = req.data or {}
+    question_id = data.get(Fields.QUESTION_ID)
+    reason = data.get("reason", "Inappropriate content")
+
+    if not question_id:
+        raise https_fn.HttpsError("invalid-argument", "questionId required")
+
+    question_ref = get_db().collection(Collections.PRODUCT_QUESTIONS).document(question_id)
+    question_snap = question_ref.get()
+    if not question_snap.exists:
+        raise https_fn.HttpsError("not-found", "Question not found")
+
+    question_data = question_snap.to_dict() or {}
+
+    # Atomic delete + audit log
+    @get_firestore().transactional
+    def delete_question_txn(transaction):
+        # 1. Audit log
+        audit_ref = get_db().collection("admin_audit_log").document()
+        transaction.set(audit_ref, {
+            "action": "delete_product_question",
+            "targetId": question_id,
+            "targetData": question_data,
+            "reason": reason,
+            "adminId": req.auth.uid,
+            "timestamp": get_server_timestamp()
+        })
+        # 2. Delete
+        transaction.delete(question_ref)
+
+    delete_question_txn(get_db().transaction())
+    logger.info(f"Admin {req.auth.uid} deleted product question {question_id}. Reason: {reason}")
+    
+    return create_success_response({"success": True})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_delete_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Moderation: Admin deletes a product rating/review.
+    Recalculates product average rating atomically.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    is_admin = (req.auth.token or {}).get("admin") is True
+    if not is_admin:
+        user_doc = get_db().collection(Collections.USERS).document(req.auth.uid).get()
+        if not user_doc.exists or user_doc.to_dict().get(Fields.ROLE) != UserRoleValues.ADMIN:
+            raise https_fn.HttpsError("permission-denied", "Admin privileges required")
+
+    data = req.data or {}
+    rating_id = data.get("ratingId")
+    reason = data.get("reason", "Inappropriate content")
+
+    if not rating_id:
+        raise https_fn.HttpsError("invalid-argument", "ratingId required")
+
+    rating_ref = get_db().collection(Collections.PRODUCT_RATINGS).document(rating_id)
+    rating_snap = rating_ref.get()
+    if not rating_snap.exists:
+        raise https_fn.HttpsError("not-found", "Rating not found")
+
+    rating_data = rating_snap.to_dict() or {}
+    product_id = rating_data.get(Fields.PRODUCT_ID)
+    stars = rating_data.get(Fields.RATING, 0)
+
+    if not product_id:
+        raise https_fn.HttpsError("internal", "Incomplete rating data (missing productId)")
+
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+
+    @get_firestore().transactional
+    def delete_rating_txn(transaction):
+        p_snap = product_ref.get(transaction=transaction)
+        if not p_snap.exists:
+            # Still delete the rating even if product is gone
+            pass
+        else:
+            p_data = p_snap.to_dict() or {}
+            curr_rating = p_data.get(Fields.RATING, 0.0)
+            curr_count = p_data.get(Fields.RATING_COUNT, 0)
+            
+            if curr_count > 1:
+                new_count = curr_count - 1
+                new_avg = ((curr_rating * curr_count) - stars) / new_count
+            else:
+                new_count = 0
+                new_avg = 0.0
+            
+            transaction.update(product_ref, {Fields.RATING: new_avg, Fields.RATING_COUNT: new_count})
+
+        # Audit log
+        audit_ref = get_db().collection("admin_audit_log").document()
+        transaction.set(audit_ref, {
+            "action": "delete_product_rating",
+            "targetId": rating_id,
+            "targetData": rating_data,
+            "reason": reason,
+            "adminId": req.auth.uid,
+            "timestamp": get_server_timestamp()
+        })
+        # Delete the rating
+        transaction.delete(rating_ref)
+
+    delete_rating_txn(get_db().transaction())
+    logger.info(f"Admin {req.auth.uid} deleted product rating {rating_id}. Reason: {reason}")
+    
+    return create_success_response({"success": True})
+
+
 # =============================================================================
 # N-03: SELLER REPLY TO REVIEWS
 # =============================================================================
@@ -4032,7 +4403,7 @@ def answer_review(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="answer_review", max_requests=10, window_minutes=60, fail_closed=True
+        identifier=req.auth.uid, action=RateLimitActions.ANSWER_REVIEW, max_requests=10, window_minutes=60, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -4568,23 +4939,18 @@ def _fire_price_drop_notifications(product_id: str, before_price: float, after_p
     favs_ref = get_db().collection_group(Collections.FAVORITES)
     fav_query = favs_ref.where(Fields.PRODUCT_ID, "==", product_id).stream()
 
-    from services.push_service import send_push_notification
-
-    # Batch or aggregate notifications if many users
-    count = 0
+    # PERFORMANCE: Collect UIDs to send push in batch
+    uids_to_push = []
     for fav_doc in fav_query:
         # parent.parent is users/{uid}
-        user_id = fav_doc.reference.parent.parent.id
-        try:
-            send_push_notification(
-                user_id,
-                "Price Drop Alert! 📉",
-                f"Great news! '{product_name}' just dropped from ${before_price:.2f} to ${after_price:.2f}.",
-                data={"type": "price_drop", "productId": product_id}
-            )
-            count += 1
-        except Exception as e:
-            logger.warning(f"Failed to send price drop push to {user_id}: {e}")
+        uids_to_push.append(fav_doc.reference.parent.parent.id)
 
-    if count > 0:
-        logger.info(f"Sent price drop notifications to {count} users for {product_id}")
+    if uids_to_push:
+        from services.push_service import send_push_notifications_batch
+        total_sent = send_push_notifications_batch(
+            uids_to_push,
+            "Price Drop Alert! 📉",
+            f"Great news! '{product_name}' just dropped from ${before_price:.2f} to ${after_price:.2f}.",
+            data={"type": "price_drop", "productId": product_id}
+        )
+        logger.info(f"Sent price drop notifications to {total_sent} users for {product_id}")

@@ -90,6 +90,13 @@ export const TEST_ACCOUNTS = {
   BUYER3_EMAIL: 'buyer3@test.origna.ca',
   SUSPENDED_EMAIL: 'suspended@test.origna.ca',
   NON_ONBOARDED_SELLER: 'seller9@test.origna.ca',
+  // Convenience aliases used by many spec files
+  SELLER_EMAIL: 'seller1@test.origna.ca',
+  BUYER_EMAIL: 'buyer1@test.origna.ca',
+  // Password aliases (all test accounts use the same password)
+  BUYER_PASS: 'REDACTED_TEST_PASSWORD',
+  BUYER2_PASS: 'REDACTED_TEST_PASSWORD',
+  SELLER_PASS: 'REDACTED_TEST_PASSWORD',
 };
 
 // Products with good stock for parallel tests
@@ -1095,4 +1102,193 @@ export async function queryFirestore(structuredQuery: any): Promise<any[]> {
       id: r.document.name?.split('/').pop(),
       ...parseDoc(r.document),
     }));
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MISSING UTILITIES — Referenced by multiple spec files
+// Added to fix import errors in:
+//   warehouse-multi-location, stock-notif, order-cancellation-refund,
+//   shipping-approval, multi-seller-orders, order-lifecycle,
+//   edge-cases-security, shipping-calculation, rate-limiting
+// ════════════════════════════════════════════════════════════════════
+
+/** Hardcoded UIDs for stable test accounts (from mega-seed.ts) */
+export const TEST_UIDS = {
+  ADMIN: 'admin_uid_placeholder',
+  SELLER: 'seller1_uid_placeholder',
+  SELLER2: 'seller2_uid_placeholder',
+  BUYER: 'buyer1_uid_placeholder',
+  BUYER2: 'buyer2_uid_placeholder',
+};
+
+// Resolve UIDs lazily on first call (sign in to get localId)
+let _uidsResolved = false;
+async function resolveTestUids(): Promise<void> {
+  if (_uidsResolved) return;
+  try {
+    const [admin, seller, seller2, buyer, buyer2] = await Promise.all([
+      signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS),
+      signIn(TEST_ACCOUNTS.SELLER1_EMAIL, DEFAULT_PASS),
+      signIn(TEST_ACCOUNTS.SELLER2_EMAIL, DEFAULT_PASS),
+      signIn(TEST_ACCOUNTS.BUYER1_EMAIL, DEFAULT_PASS),
+      signIn(TEST_ACCOUNTS.BUYER2_EMAIL, DEFAULT_PASS),
+    ]);
+    TEST_UIDS.ADMIN = admin.localId;
+    TEST_UIDS.SELLER = seller.localId;
+    TEST_UIDS.SELLER2 = seller2.localId;
+    TEST_UIDS.BUYER = buyer.localId;
+    TEST_UIDS.BUYER2 = buyer2.localId;
+    _uidsResolved = true;
+  } catch (e) {
+    console.warn('resolveTestUids failed:', e);
+  }
+}
+
+/**
+ * Read a Firestore document and return parsed result (with optional auth token).
+ * Unlike readDoc which returns raw Firestore format, this returns parsed JS object.
+ * @param path - Full document path (e.g. "products/product_001")
+ * @param token - Optional auth token for documents with security rules
+ */
+export async function getDoc(path: string, token?: string): Promise<any> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    headers['Authorization'] = 'Bearer owner';
+  }
+  const res = await fetch(`${FIRESTORE_BASE}/${path}`, { headers });
+  if (!res.ok) return null;
+  const doc = await res.json();
+  return parseDoc(doc);
+}
+
+/**
+ * Sign in as the seller who owns a given product (by seller UID).
+ * Resolves the seller's email from their Firestore user doc, then signs in.
+ */
+export async function getSellerAuth(sellerId: string): Promise<AuthData> {
+  await resolveTestUids();
+
+  // Map known seller UIDs to their emails
+  if (sellerId === TEST_UIDS.SELLER) return signIn(TEST_ACCOUNTS.SELLER1_EMAIL, DEFAULT_PASS);
+  if (sellerId === TEST_UIDS.SELLER2) return signIn(TEST_ACCOUNTS.SELLER2_EMAIL, DEFAULT_PASS);
+  if (sellerId === TEST_UIDS.ADMIN) return signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+
+  // Fallback: read user doc to find email
+  const userDoc = await getDoc(`users/${sellerId}`);
+  if (userDoc?.email) return signIn(userDoc.email, DEFAULT_PASS);
+
+  throw new Error(`getSellerAuth: cannot resolve seller email for UID ${sellerId}`);
+}
+
+/**
+ * Create a dummy product in Firestore for testing.
+ * @param sellerId - Seller UID
+ * @param prefix - Prefix for product name (e.g. 'A', 'B')
+ * @param productId - Document ID for the product
+ */
+export async function createDummyProduct(
+  sellerId: string,
+  prefix: string,
+  productId: string,
+): Promise<void> {
+  await writeDoc(`products/${productId}`, {
+    sellerId,
+    name: `E2E ${prefix} Product ${productId}`,
+    description: 'Auto-created for E2E testing',
+    price: 19.99,
+    stockQuantity: 200,
+    categoryId: '1',
+    imageUrls: ['https://picsum.photos/400'],
+    keywords: ['e2e', 'test'],
+    isActive: true,
+    lifecycleStatus: 'active',
+    dateCreated: new Date().toISOString(),
+    shippingConfig: {
+      standardDelivery: true,
+      expressDelivery: false,
+      weightKg: 0.5,
+    },
+    shipFromCity: 'Toronto',
+    shipFromProvince: 'ON',
+  });
+}
+
+/** Cache for discovered products */
+let _productCache: any[] | null = null;
+
+/**
+ * Discover available products from Firestore (cached).
+ * Returns an array of parsed product objects with their IDs.
+ */
+export async function discoverProducts(token?: string): Promise<any[]> {
+  if (_productCache) return _productCache;
+
+  const results = await queryFirestore({
+    from: [{ collectionId: 'products' }],
+    where: {
+      fieldFilter: {
+        field: { fieldPath: 'isActive' },
+        op: 'EQUAL',
+        value: { booleanValue: true },
+      },
+    },
+    limit: 30,
+  });
+
+  _productCache = results;
+  return results;
+}
+
+/** Invalidate the product discovery cache */
+export function invalidateProductCache(): void {
+  _productCache = null;
+}
+
+/**
+ * Get a test product suitable for checkout/testing.
+ * Returns a product with stock > 0 that the given buyer can purchase.
+ * @param token - Auth token
+ * @param buyerUid - Buyer UID (to avoid self-purchase)
+ */
+export async function getTestProduct(token: string, buyerUid: string): Promise<any> {
+  const products = await discoverProducts(token);
+
+  // Find a product NOT owned by the buyer with stock > 0
+  const suitable = products.find(
+    (p: any) => p.sellerId !== buyerUid && (p.stockQuantity ?? 0) > 0
+  );
+
+  if (suitable) return suitable;
+
+  // Fallback to HIGH_STOCK product
+  const fallback = await getDoc(`products/${TEST_PRODUCTS.HIGH_STOCK}`);
+  if (fallback) return { ...fallback, id: TEST_PRODUCTS.HIGH_STOCK };
+
+  throw new Error('getTestProduct: no suitable product found');
+}
+
+/**
+ * Ensure two products from different sellers exist and are available.
+ * Returns [productA, productB] from different sellers.
+ */
+export async function ensureTwoSellerProducts(token: string): Promise<[any, any]> {
+  const products = await discoverProducts(token);
+
+  // Group by sellerId and pick one from each
+  const bySeller = new Map<string, any>();
+  for (const p of products) {
+    if (p.sellerId && (p.stockQuantity ?? 0) > 0) {
+      bySeller.set(p.sellerId, p);
+    }
+    if (bySeller.size >= 2) break;
+  }
+
+  const sellers = Array.from(bySeller.values());
+  if (sellers.length < 2) {
+    throw new Error('ensureTwoSellerProducts: need products from at least 2 different sellers');
+  }
+
+  return [sellers[0], sellers[1]];
 }

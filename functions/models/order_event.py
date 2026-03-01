@@ -18,9 +18,10 @@ class OrderEvent(BaseModel):
     def write(db_or_batch, order_id: str, event_type: str, actor: str, actor_type: str,
               from_status: str | None = None, to_status: str | None = None, metadata: dict | None = None) -> None:
         from firebase_admin import firestore as fs
+        from schema_constants import Collections
 
         db = db_or_batch if hasattr(db_or_batch, 'collection') else fs.client()
-        event_ref = db.collection("orders").document(order_id).collection("events").document()
+        event_ref = db.collection(Collections.ORDERS).document(order_id).collection(Collections.ORDER_EVENTS).document()
         event = OrderEvent(
             eventType=event_type, fromStatus=from_status, toStatus=to_status,
             actor=actor, actorType=actor_type, metadata=metadata or {},

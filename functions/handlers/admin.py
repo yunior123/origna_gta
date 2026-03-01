@@ -31,6 +31,7 @@ from schema_constants import (
     PaymentStatusValues,
     PayoutStatusValues,
     ProductLifecycleStatusValues,
+    RateLimitActions,
     SecurityAlertTypes,
     SeverityLevels,
     UserRoleValues,
@@ -103,7 +104,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action="update_user_roles", max_requests=10, window_minutes=5, fail_closed=True
+        identifier=admin_id, action=RateLimitActions.UPDATE_USER_ROLES, max_requests=10, window_minutes=5, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -256,7 +257,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     # AUDIT FIX: Rate limit seller suspension
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action="suspend_seller", max_requests=10, window_minutes=1, fail_closed=True
+        identifier=admin_id, action=RateLimitActions.SUSPEND_SELLER, max_requests=10, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -544,7 +545,7 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action="unsuspend_seller", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=admin_id, action=RateLimitActions.UNSUSPEND_SELLER, max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -712,7 +713,7 @@ def admin_update_product_stock(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action="admin_update_stock", max_requests=30, window_minutes=1, fail_closed=False
+        identifier=admin_id, action=RateLimitActions.ADMIN_UPDATE_STOCK, max_requests=30, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -808,7 +809,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="mfa_enroll", max_requests=3, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.MFA_ENROLL, max_requests=3, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1019,7 +1020,7 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit MFA disable attempts (same protection as admin_mfa_verify)
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="mfa_disable", max_requests=3, window_minutes=15, fail_closed=True
+        identifier=user_id, action=RateLimitActions.MFA_DISABLE, max_requests=3, window_minutes=15, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1112,7 +1113,7 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
     # AUDIT FIX: Rate limit backup code verification attempts
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="mfa_backup_verify", max_requests=3, window_minutes=60, fail_closed=True
+        identifier=user_id, action=RateLimitActions.MFA_BACKUP_VERIFY, max_requests=3, window_minutes=60, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1213,7 +1214,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="delete_account", max_requests=1, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.DELETE_ACCOUNT, max_requests=1, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1599,7 +1600,7 @@ def export_my_data(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="export_data", max_requests=3, window_minutes=60, fail_closed=False
+        identifier=user_id, action=RateLimitActions.EXPORT_DATA, max_requests=3, window_minutes=60, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1665,10 +1666,10 @@ def export_my_data(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     return create_success_response(
         {
-            "profile": user_export,
-            "orders": orders,
-            "favorites": favorites,
-            "exportedAt": datetime.now(UTC).isoformat(),
+            ApiKeys.PROFILE: user_export,
+            ApiKeys.ORDERS: orders,
+            ApiKeys.FAVORITES: favorites,
+            ApiKeys.EXPORTED_AT: datetime.now(UTC).isoformat(),
         }
     )
 
@@ -1691,7 +1692,7 @@ def unsubscribe_email(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="unsubscribe_email", max_requests=5, window_minutes=10, fail_closed=False
+        identifier=user_id, action=RateLimitActions.UNSUBSCRIBE, max_requests=5, window_minutes=10, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -2040,6 +2041,17 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         _restore_stock(get_db().transaction())
 
+    # DIGITAL-C1: Revoke licenses if this order contained digital products
+    revoked_count = 0
+    try:
+        from handlers.digital import _revoke_digital_licenses_for_order
+        revoked_count = _revoke_digital_licenses_for_order(order_id)
+        if revoked_count > 0:
+            logger.info(f"Revoked {revoked_count} digital licenses for refunded order {order_id}")
+    except Exception as e:
+        logger.error(f"Failed to revoke digital licenses for order {order_id}: {e}")
+        # We don't abort the refund here, but we log the failure.
+
     order_ref.update(
         {
             Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
@@ -2048,6 +2060,7 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.REFUND_REASON: reason,
             Fields.CANCELLED_BY: admin_id,
             Fields.UPDATED_AT: get_server_timestamp(),
+            Fields.REVOKED_LICENSE_COUNT: revoked_count,
         }
     )
 

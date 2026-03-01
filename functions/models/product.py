@@ -326,6 +326,7 @@ class Product(BaseModel):
     descriptionF: str | None = Field(default=None, max_length=5000, description="French product description")
     imageUrls: list[str] = Field(..., min_length=1, max_length=5, description="Product image URLs (1-5 images)")
     videoUrl: str | None = Field(default=None, description="Product video URL")
+    videoDurationSeconds: int | None = Field(default=None, ge=1, le=60, description="Product video duration in seconds (PROD-L2)")
     sellerId: str = Field(..., min_length=1, description="Seller user ID")
     madeInCountry: str | None = Field(default=None, max_length=100, description="F-277: Country of manufacture (for USMCA/Duty info)")
     sellerAddress: Address | None = Field(default=None, description="Seller's address for shipping calculations")
@@ -591,6 +592,7 @@ class ProductCreate(BaseModel):
     descriptionF: str | None = Field(default=None, max_length=5000)
     imageUrls: list[str] = Field(..., min_length=1, max_length=5)
     videoUrl: str | None = Field(default=None)
+    videoDurationSeconds: int | None = Field(default=None, ge=1, le=60)
     sellerId: str = Field(..., min_length=1)
     madeInCountry: str | None = Field(default=None, max_length=100)
     sellerAddress: Address | None = Field(
@@ -777,6 +779,7 @@ class ProductUpdate(BaseModel):
     descriptionF: str | None = Field(default=None, max_length=5000)
     imageUrls: list[str] | None = Field(default=None, max_length=5)
     videoUrl: str | None = Field(default=None)
+    videoDurationSeconds: int | None = Field(default=None, ge=1, le=60)
     sellerAddress: Address | None = Field(default=None)
     madeInCountry: str | None = Field(default=None, max_length=100)
     categoryId: int | None = Field(default=None, ge=CategoryIds.MIN, le=CategoryIds.MAX)

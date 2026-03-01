@@ -59,8 +59,8 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           taxCode: _product.taxCode,
           // Variant/condition fields — parity with AddProductState
           hasVariants: _product.hasVariants,
-          variantOptions: _product.variantOptions.map((v) => VariantOption.fromMap(v)).toList(),
-          variants: _product.variants.map((v) => ProductVariantEntry.fromMap(v)).toList(),
+          variantOptions: _product.variantOptions.map((v) => VariantOption.fromMap(v.toJson())).toList(),
+          variants: _product.variants.map((v) => ProductVariantEntry.fromMap(v.toJson())).toList(),
           condition: _product.condition,
           // Warehouse fields
           selectedWarehouseIds: _product.warehouseIds ?? const [],

@@ -14,6 +14,7 @@ from schema_constants import (
     DigitalTypeValues,
     Fields,
     LicenseStatusValues,
+    RateLimitActions,
 )
 from services.rate_limiter import RateLimiter
 from utils.db import get_db
@@ -295,7 +296,7 @@ def activate_license(req: https_fn.Request) -> https_fn.Response:
         limiter = RateLimiter(get_db())
         allowed, msg = limiter.check_rate_limit(
             identifier=rate_id,
-            action="activate_license",
+            action=RateLimitActions.ACTIVATE_LICENSE,
             max_requests=10,
             window_minutes=10,
             fail_closed=True,
@@ -586,7 +587,7 @@ def verify_license(req: https_fn.Request) -> https_fn.Response:
         limiter = RateLimiter(get_db())
         allowed, msg = limiter.check_rate_limit(
             identifier=f"device:{device_id[:64]}",
-            action="verify_license",
+            action=RateLimitActions.VERIFY_LICENSE,
             max_requests=60,
             window_minutes=60,
             fail_closed=False,
@@ -602,7 +603,7 @@ def verify_license(req: https_fn.Request) -> https_fn.Response:
         ip_key = f"ip:{req.remote_addr}"
         ip_allowed, _ = limiter.check_rate_limit(
             identifier=ip_key,
-            action="verify_license_ip",
+            action=RateLimitActions.VERIFY_LICENSE_IP,
             max_requests=200,
             window_minutes=60,
             fail_closed=False,

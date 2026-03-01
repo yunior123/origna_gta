@@ -16,12 +16,12 @@ Operate using a strict **Research → Strategy → Execution → Verification** 
 ## 📝 PLANNING RULES
 - **XML Structure:** For complex tasks, create a plan using XML-like tags (`<task>`, `<action>`, `<verify>`) to ensure precision.
 - **Atomic Commits:** Every distinct task or fix MUST be proposed as an atomic git commit. One task = one commit.
-- **No Deferral:** Forbidden to defer or skip tasks unless explicitly approved by Yunior.
+- **No Deferral:** Forbidden to defer or skip tasks unless explicitly approved by Yunior. No loose ends.
 
 ## 📏 ENGINEERING RULES
 1. **CHAIN OF VERIFICATION:** First answer the question. Second, list at least 3 ways your answer could be wrong. Third, verify your concern and update your answer. 
 2. **NO LEGACY:** Using the word "legacy" is forbidden. No backward compatibility handling—we fix forward. DB is empty, launch is in 10-25 days.
-3. **PRODUCTION:** 1.Production website is `www.orignagta.ca` (NOT .com).2. Premium users can have access to chat, phot reviews, only premium users, it would cost too much to have those features for everyone, we are supposed to distinguish premium from non-premium.3. audit reports may contain false positives, so be carefull, the source of truth is ClAUDE.md 4. chat should have limitations to avoid long conversations and abbuse of the system.5. improve pre push hooks all the time to prevent bugs.6.test against emulators are forbidden given that the mac only has 8gb of ram, so test against dev firebase.7. everytime u run tests, u put the info in the STATE.md file.8. if u find an issue and cannot solve it at the end then u can added to state.md as a blocker or as a task to be solved later, any findings should be documented in the STATE.md file.
+3. **PRODUCTION:** 1.Production website is `www.orignagta.ca` (NOT .com).2. Premium users can have access to chat, phot reviews, only premium users, it would cost too much to have those features for everyone, we are supposed to distinguish premium from non-premium.3. audit reports may contain false positives, so be carefull, the source of truth is ClAUDE.md 4. chat should have limitations to avoid long conversations and abbuse of the system.5. improve pre push hooks all the time to prevent bugs.6.test against emulators are forbidden given that the mac only has 8gb of ram, so test against dev firebase.7. everytime u run tests, u put the info in the STATE.md file.8. if u find an issue and cannot solve it at the end then u can added to state.md as a blocker or as a task to be solved later, any findings should be documented in the STATE.md file.9. no magic strings in the code.10. enforce clean project structure, files inside folders as needed, etc 11. when auditing be honest, dont try to please me.12. tests must cover all flows and the whole repo, as a solo developer I rely only on ai and automated tests to test, ai is the qa team. 13. no post launch tasks, all tasks are for now
 4. **COMPLIANCE:** All code must comply with Canadian (including Quebec Bill 96/Law 25) and international laws.
 5. **AUTOMATION:** Do all work using tools (Stripe CLI, gcloud, firebase, etc.). Avoid asking Yunior for manual setup.
 6. **DEPLOYMENT:** Every deploy (indexes, rules, functions) MUST target dev, staging, and prod.
@@ -64,6 +64,3 @@ Operate using a strict **Research → Strategy → Execution → Verification** 
 | staging | `orignagta-staging` | `playwright.config.staging.ts` |
 | prod | `orignagta` | ❌ never |
 
- export CLAUDE_CODE_USE_BEDROCK=1
-
- unset CLAUDE_CODE_USE_BEDROCK

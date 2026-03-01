@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../utils/design_tokens.dart';
@@ -23,6 +24,9 @@ class ModernProductCard extends StatefulWidget {
   /// When true, show a Trending badge on the image corner
   final bool isTrending;
 
+  /// SRCH-M1: When true, show "Out of Stock" overlay and disable CTA
+  final bool isOutOfStock;
+
   const ModernProductCard({
     super.key,
     required this.productName,
@@ -39,6 +43,7 @@ class ModernProductCard extends StatefulWidget {
     this.shipFromCountries,
     this.compareAtPrice,
     this.isTrending = false,
+    this.isOutOfStock = false,
   });
 
   @override
@@ -118,17 +123,48 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                             ),
                           ),
                           child: widget.imageUrl.isNotEmpty
-                              ? Image.network(
-                                  widget.imageUrl,
-                                  fit: BoxFit.cover,
-                                  semanticLabel: '${widget.productName} product image',
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const Icon(Icons.image_not_supported_outlined, color: DesignTokens.textSecondary, size: 48),
+                              ? ColorFiltered(
+                                  colorFilter: widget.isOutOfStock
+                                      ? const ColorFilter.mode(Colors.grey, BlendMode.saturation)
+                                      : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+                                  child: Image.network(
+                                    widget.imageUrl,
+                                    fit: BoxFit.cover,
+                                    semanticLabel: '${widget.productName} product image',
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        const Icon(Icons.image_not_supported_outlined, color: DesignTokens.textSecondary, size: 48),
+                                  ),
                                 )
                               : const Icon(Icons.image_not_supported_outlined, color: DesignTokens.textSecondary, size: 48),
                         ),
+                        // SRCH-M1: Out of Stock overlay
+                        if (widget.isOutOfStock)
+                          Positioned.fill(
+                            child: Container(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                  ),
+                                  child: Text(
+                                    'product.out_of_stock_label'.tr(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         // N-10: isTrending badge
-                        if (widget.isTrending)
+                        if (widget.isTrending && !widget.isOutOfStock)
                           Positioned(
                             top: 8,
                             left: 8,
@@ -139,9 +175,9 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                 borderRadius: BorderRadius.circular(4),
                                 boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 6, offset: Offset(0, 2))],
                               ),
-                              child: const Text(
-                                'Trending',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                              child: Text(
+                                'product.trending'.tr(),
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                               ),
                             ),
                           ),
@@ -222,7 +258,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                       ),
                                   ],
                                 ),
-                                if (widget.onAddToCart != null)
+                                if (widget.onAddToCart != null && !widget.isOutOfStock)
                                   Semantics(
                                     button: true,
                                     label: 'Add ${widget.productName} to cart',

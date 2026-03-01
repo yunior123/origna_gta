@@ -382,8 +382,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         warehouseIds: useWarehouses ? state.selectedWarehouseIds : null,
         warehouseStockMap: useWarehouses ? state.warehouseStockMap : null,
         hasVariants: state.hasVariants,
-        variants: state.hasVariants ? state.variants.map((v) => v.toMap()).toList() : const [],
-        variantOptions: state.hasVariants ? state.variantOptions.map((o) => o.toMap()).toList() : const [],
+        variants: state.hasVariants ? state.variants.map((v) => models.ProductVariant.fromJson(v.toMap())).toList() : const [],
+        variantOptions: state.hasVariants ? state.variantOptions.map((o) => models.VariantOption.fromJson(o.toMap())).toList() : const [],
         condition: state.isDigital ? null : state.condition,
         videoUrl: null, // Will be set after upload
       );
@@ -412,7 +412,14 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'AddProductViewModel.addProduct');
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'product.add_product_failed'.tr()));
+      final msg = AppError.getMessage(e, 'product.add_product_failed'.tr());
+      
+      // PROD-H2: Detect SKU already exists error from backend
+      if (msg.toLowerCase().contains('sku') && (msg.toLowerCase().contains('exists') || msg.toLowerCase().contains('déjà'))) {
+        state = state.copyWith(isLoading: false, skuError: 'product.sku_already_exists'.tr(), errorMessage: null);
+      } else {
+        state = state.copyWith(isLoading: false, errorMessage: msg);
+      }
     }
   }
 
@@ -432,7 +439,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   void clearCoordinates() => state = state.copyWith(latitude: null, longitude: null, addressVerified: false);
 
   /// Clear error message to allow re-triggering SnackBar on next error
-  void clearError() => state = state.copyWith(errorMessage: null);
+  void clearError() => state = state.copyWith(errorMessage: null, skuError: null);
+
+  /// PROD-H2: Clear SKU-specific error
+  void clearSkuError() => state = state.copyWith(skuError: null);
 
   /// Handles street input changes — triggers Geoapify address autocomplete.
   ///

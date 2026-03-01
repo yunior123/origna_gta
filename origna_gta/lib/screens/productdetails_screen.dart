@@ -936,8 +936,6 @@ class _QASection extends ConsumerStatefulWidget {
 }
 
 class _QASectionState extends ConsumerState<_QASection> {
-  static const String _subscriptionPrice = r'CAD $7.86/month';
-
   bool _showAll = false;
 
   @override
@@ -1110,8 +1108,7 @@ class _QASectionState extends ConsumerState<_QASection> {
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: PremiumPaywallWidget(
-          featureName: 'Ask Questions',
-          description: 'Post questions on any product Q&A board. Upgrade to Premium to unlock Q&A, seller chat, and more — only $_subscriptionPrice.',
+          featureName: 'subscription.ask_questions'.tr(),
         ),
       ),
     );

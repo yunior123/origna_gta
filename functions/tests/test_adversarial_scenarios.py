@@ -53,7 +53,9 @@ class TestPriceManipulationScenarios:
             "email": "buyer@example.com",
         }
 
-        def make_doc_ref(doc_id):
+        def make_doc_ref(doc_id=None):
+            if doc_id is None:
+                doc_id = "auto_gen_id"
             mock_ref = Mock()
             mock_ref.id = doc_id
             if doc_id == "prod_123":
@@ -69,7 +71,7 @@ class TestPriceManipulationScenarios:
                 mock_ref.get.return_value = not_found
             return mock_ref
 
-        mock_collection = Mock()
+        mock_collection = MagicMock()
         mock_collection.document.side_effect = make_doc_ref
         mock_db.collection.return_value = mock_collection
 
@@ -95,13 +97,13 @@ class TestPriceManipulationScenarios:
                 "latitude": 43.7,
                 "longitude": -79.4,
             },
-            "subtotal": 10.0,
+            "subtotalCents": 1000,
         }
 
         with pytest.raises(Exception) as exc_info:
             create_checkout_session(req)
 
-        assert "PRICE_CHANGED" in str(exc_info.value) or "Price changed" in str(exc_info.value)
+        assert "Cart total mismatch" in str(exc_info.value) or "Price changed" in str(exc_info.value)
 
     def test_seller_id_mismatch_blocked(self, mock_firestore_client, mock_rate_limiter):
         """Scenario 2: Buyer sends wrong sellerId to redirect payment."""
@@ -127,7 +129,9 @@ class TestPriceManipulationScenarios:
             "suspended": False,
         }
 
-        def make_doc_ref(doc_id):
+        def make_doc_ref(doc_id=None):
+            if doc_id is None:
+                doc_id = "auto_gen_id"
             mock_ref = Mock()
             mock_ref.id = doc_id
             if doc_id == "prod_123":
@@ -141,7 +145,7 @@ class TestPriceManipulationScenarios:
                 mock_ref.get.return_value = not_found
             return mock_ref
 
-        mock_collection = Mock()
+        mock_collection = MagicMock()
         mock_collection.document.side_effect = make_doc_ref
         mock_db.collection.return_value = mock_collection
 
@@ -166,7 +170,7 @@ class TestPriceManipulationScenarios:
                 "latitude": 43.7,
                 "longitude": -79.4,
             },
-            "subtotal": 10.0,
+            "subtotalCents": 1000,
         }
 
         with pytest.raises(Exception) as exc_info:
@@ -318,7 +322,9 @@ class TestAuthSecurityScenarios:
             "roles": ["buyer"],
         }
 
-        def make_doc_ref(doc_id):
+        def make_doc_ref(doc_id=None):
+            if doc_id is None:
+                doc_id = "auto_gen_id"
             mock_ref = Mock()
             if doc_id == "admin_123":
                 mock_ref.get.return_value = mock_admin
@@ -330,7 +336,7 @@ class TestAuthSecurityScenarios:
                 mock_ref.get.return_value = not_found
             return mock_ref
 
-        mock_collection = Mock()
+        mock_collection = MagicMock()
         mock_collection.document.side_effect = make_doc_ref
         mock_db.collection.return_value = mock_collection
 

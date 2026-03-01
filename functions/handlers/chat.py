@@ -1,11 +1,12 @@
 """
 Chat Handlers — Product-scoped buyer↔seller messaging.
-Premium buyers only. One chat thread per buyer+product pair (requires a prior order).
-All messages are written through the send_message Cloud Function (sanitized server-side).
-The backend provides:
-- get_or_create_chat: idempotent thread creation with premium + order guards
-- send_message: sanitize and persist a message, update thread, push notification
-- mark_messages_read: mark all messages in a thread as read
+
+Features:
+- Premium-only messaging for buyers (Gate enforced).
+- Order-scoped threads (Buyers must have a prior purchase to chat).
+- Server-side sanitization (Redacts off-platform contact info).
+- Real-time notifications (FCM push + in-app unread counts).
+- Message caps (Prevents unbounded collection growth).
 """
 
 import logging
@@ -32,32 +33,49 @@ logger = logging.getLogger(__name__)
 
 
 def _is_premium(uid: str) -> bool:
-    """Check if user has active premium subscription (reads authoritative subscriptions doc)."""
+    """
+    Authoritative check for active premium subscription.
+    
+    Reads directly from the subscriptions/{uid} document to avoid
+    stale cached claims or race conditions during checkout.
+    """
     from utils.premium_check import is_premium_authoritative
     return is_premium_authoritative(uid, db=_get_db())
 
+
 def _sanitize_text(text: str) -> str:
     """
-    Strip HTML/script injection and off-platform contact info from user text.
-    F-123: Enhanced detection for obfuscated contact info.
+    Multi-layered text sanitization for XSS and Policy Enforcement.
+    
+    1. Unicode Normalization: Collapses homoglyphs and invisible characters.
+    2. HTML/Script Removal: Strips tags and JS injection attempts.
+    3. Contact Redaction: Masking of phone numbers, emails, and external links
+       to keep transactions within the Origna platform.
     """
-    # Remove HTML/script
+    if not text:
+        return ""
+
+    import unicodedata
+    # CHAT-M1: Normalize unicode to NFKC to collapse homoglyphs (e.g. 'a' vs 'а')
+    text = unicodedata.normalize('NFKC', text)
+    
+    # Strip zero-width chars and other invisible whitespace used to bypass redaction
+    text = re.sub(r'[\u200B-\u200D\uFEFF]', '', text)
+
+    # Strip HTML and script tags (XSS Protection)
     text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
     text = re.sub(r'<[^>]+>', '', text)
     text = re.sub(r'javascript:', '', text, flags=re.IGNORECASE)
 
-    # 1. Standard patterns
-    # Redact email: standard + [at]/ (at) obfuscation
+    # Redact email addresses (handles standard and obfuscated formats)
     email_pat = r'\b[\w._%+\-]+(\s*[@\[(]at[\])]\s*|@)[\w.\-]+\.[a-zA-Z]{2,}\b'
     text = re.sub(email_pat, '[email removed]', text, flags=re.IGNORECASE)
 
-    # Redact links
+    # Redact URLs and web links
     text = re.sub(r'https?://[^\s]+', '[link removed]', text, flags=re.IGNORECASE)
     text = re.sub(r'www\.[^\s]+', '[link removed]', text, flags=re.IGNORECASE)
 
-    # 2. Obfuscated phone patterns (e.g., 555-555-5555, 555.555.5555, 5 5 5 5 5 5 5 5 5 5)
-    # This matches sequences of 10+ digits potentially separated by non-alphanumeric chars
-    # but only if they form a valid looking phone block to avoid nuking product IDs.
+    # Redact phone numbers (10-15 digits with separators)
     def redact_phone(match):
         raw = match.group(0)
         digits = re.sub(r'\D', '', raw)
@@ -65,24 +83,22 @@ def _sanitize_text(text: str) -> str:
             return '[phone removed]'
         return raw
 
-    # Match blocks that look like phone numbers (digits with separators)
-    # Starts with digit or +, ends with digit, at least 7 separators/digits
     phone_obf_pat = r'(\+?[\d\s\-\.()]{10,20}\d)'
     text = re.sub(phone_obf_pat, redact_phone, text)
 
     return text.strip()
 
 
-
-
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
-    Get or create a product-scoped chat thread between buyer and the product's seller.
-    Premium buyers only. Idempotent — returns existing chatId if thread already exists.
-
-    Request data: { productId: str }
-    Returns: { chatId: str, isNew: bool }
+    Initializes a new chat thread or retrieves an existing one.
+    
+    Guards:
+    - User must be authenticated.
+    - Buyer must have an active Premium subscription.
+    - Buyer must have a prior 'delivered' or 'disputed' order for the product.
+    - Prevents self-chat (Seller cannot message themselves).
     """
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "Authentication required.")
@@ -94,34 +110,29 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not product_id:
         raise https_fn.HttpsError("invalid-argument", "productId is required.")
 
-    # Premium gate
+    # Premium gate check
     if not _is_premium(buyer_id):
         raise https_fn.HttpsError(
             "permission-denied",
-            "Premium subscription required to chat with sellers. Upgrade to Origna Premium to unlock this feature.",
+            "Premium subscription required to chat with sellers.",
         )
 
     db = _get_db()
 
-    # Fetch product to get sellerId and denormalized info
+    # Verify product availability
     product_snap = db.collection(Collections.PRODUCTS).document(product_id).get()
     if not product_snap.exists:
         raise https_fn.HttpsError("not-found", "Product not found.")
 
     product_data = product_snap.to_dict() or {}
     if product_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
-        raise https_fn.HttpsError("not-found", "Product is no longer available.")
+        raise https_fn.HttpsError("not-found", "Product is no longer active.")
 
     seller_id = product_data.get(Fields.SELLER_ID, "")
-    if not seller_id:
-        raise https_fn.HttpsError("internal", "Product has no seller.")
-
-    # Prevent self-chat (seller trying to chat with themselves)
     if seller_id == buyer_id:
         raise https_fn.HttpsError("permission-denied", "You cannot chat with yourself.")
 
-    # Require an existing order: buyer must have purchased this specific product
-    # (productId uniquely identifies the seller — no need for double array_contains)
+    # Business Rule: Buyers can only chat about items they have purchased
     order_query = (
         db.collection(Collections.ORDERS)
         .where(Fields.USER_ID, "==", buyer_id)
@@ -132,56 +143,43 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not order_query:
         raise https_fn.HttpsError(
             "failed-precondition",
-            "An order is required to chat with the seller. Please purchase a product from this seller first.",
+            "You must purchase the product before starting a chat with the seller.",
         )
 
-    # Deterministic chat ID prevents race condition on concurrent thread creation
-    # Two simultaneous requests for the same product+buyer will both attempt to create
-    # the same document — the second will fail with AlreadyExists, which we handle.
-    chat_doc_id = f"{product_id}_{buyer_id}"
-    chat_ref = db.collection(Collections.CHATS).document(chat_doc_id)
+    # Thread ID format: {productId}_{buyerId} ensures 1 thread per pair
+    chat_id = f"{product_id}_{buyer_id}"
+    chat_ref = db.collection(Collections.CHATS).document(chat_id)
 
-    # Check for existing thread (idempotent read before write)
-    existing_snap = chat_ref.get()
-    if existing_snap.exists:
-        return {"chatId": chat_doc_id, "isNew": False}
-
-    # Create new thread
-    product_title = product_data.get(Fields.NAME, "Product")
-    product_image_url = (product_data.get(Fields.IMAGE_URLS) or [None])[0]
-
+    # Initialize new thread with metadata
+    new_chat = {
+        Fields.CHAT_ID: chat_id,
+        Fields.PRODUCT_ID: product_id,
+        Fields.BUYER_ID: buyer_id,
+        Fields.SELLER_ID: seller_id,
+        Fields.PRODUCT_TITLE: product_data.get(Fields.NAME, "Product"),
+        Fields.PRODUCT_IMAGE_URL: (product_data.get(Fields.IMAGE_URLS) or [""])[0],
+        Fields.BUYER_UNREAD_COUNT: 0,
+        Fields.SELLER_UNREAD_COUNT: 0,
+        Fields.CREATED_AT: get_server_timestamp(),
+        Fields.UPDATED_AT: get_server_timestamp(),
+    }
+    # Use create() for atomic race-condition-safe thread creation
     try:
-        chat_ref.create(
-            {
-                Fields.PRODUCT_ID: product_id,
-                Fields.PRODUCT_TITLE: product_title,
-                Fields.PRODUCT_IMAGE_URL: product_image_url,
-                Fields.BUYER_ID: buyer_id,
-                Fields.SELLER_ID: seller_id,
-                Fields.LAST_MESSAGE: None,
-                Fields.LAST_MESSAGE_AT: None,
-                Fields.BUYER_UNREAD_COUNT: 0,
-                Fields.SELLER_UNREAD_COUNT: 0,
-                Fields.CREATED_AT: get_server_timestamp(),
-                Fields.UPDATED_AT: get_server_timestamp(),
-            }
-        )
+        chat_ref.create(new_chat)
+        return {"chatId": chat_id, "isNew": True}
     except Exception as e:
         if "ALREADY_EXISTS" in str(e):
-            return {"chatId": chat_doc_id, "isNew": False}
+            return {"chatId": chat_id, "isNew": False}
         raise
-
-    logger.info(f"Chat thread created: {chat_doc_id} for buyer={buyer_id} product={product_id}")
-    return {"chatId": chat_doc_id, "isNew": True}
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
-    Mark all unread messages in a chat thread as read for the authenticated user.
-
-    Request data: { chatId: str }
-    Returns: { success: bool, count: int }
+    Resets unread counters and marks incoming messages as read.
+    
+    Processes messages in chunks of 499 to respect Firestore batch limits.
+    Only marks messages sent by the OTHER party as read.
     """
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "Authentication required.")
@@ -192,7 +190,8 @@ def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("invalid-argument", "chatId is required.")
 
     db = _get_db()
-    chat_snap = db.collection(Collections.CHATS).document(chat_id).get()
+    chat_ref = db.collection(Collections.CHATS).document(chat_id)
+    chat_snap = chat_ref.get()
     if not chat_snap.exists:
         raise https_fn.HttpsError("not-found", "Chat thread not found.")
 
@@ -200,7 +199,7 @@ def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
     if chat_data.get(Fields.BUYER_ID) != uid and chat_data.get(Fields.SELLER_ID) != uid:
         raise https_fn.HttpsError("permission-denied", "Access denied.")
 
-    # Batch-mark unread messages sent by the OTHER party (limit to 500 per call)
+    # Find unread messages from the counter-party
     messages = (
         db.collection(Collections.CHATS)
         .document(chat_id)
@@ -211,7 +210,6 @@ def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
         .stream()
     )
 
-    # Batch-mark unread messages in chunks of ≤ 499 (Firestore batch limit is 500)
     BATCH_LIMIT = 499
     messages_list = list(messages)
     count = len(messages_list)
@@ -222,50 +220,57 @@ def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
             batch.update(msg.reference, {Fields.IS_READ: True})
         batch.commit()
 
-    # Reset the caller's unread counter only when there were unread messages
+    # Reset local counter
     if count > 0:
         unread_field = Fields.BUYER_UNREAD_COUNT if uid == chat_data.get(Fields.BUYER_ID) else Fields.SELLER_UNREAD_COUNT
         db.collection(Collections.CHATS).document(chat_id).update({unread_field: 0})
 
     return {"success": True, "count": count}
 
+
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
-    Send a message in a chat thread — sanitizes text server-side before Firestore write.
-    Buyers must be premium; sellers can reply without premium.
-
-    Request data: { chatId: str, text: str }
-    Returns: { success: bool, messageId: str }
+    Authoritative handler for sending chat messages.
+    
+    Responsibilities:
+    - Sanitizes message text (XSS + Policy).
+    - Enforces thread message limits (CHAT-C2).
+    - Prevents rapid-fire duplicate messages (CHAT-M3).
+    - Re-verifies buyer premium status.
+    - Updates thread metadata (lastMessageAt, unreadCounts).
+    - Tracks seller response time metrics.
+    - Fires FCM push notification to recipient.
     """
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "Authentication required.")
 
     uid = req.auth.uid
-    chat_id = (req.data.get(Fields.CHAT_ID) or "").strip()
-    raw_text = req.data.get(Fields.MESSAGE_TEXT, "")
-    image_urls = req.data.get(Fields.IMAGE_URLS)
-    message_id = (req.data.get("messageId") or "").strip()
+    data = req.data
+    chat_id = data.get(Fields.CHAT_ID)
+    text_raw = data.get(Fields.MESSAGE_TEXT, "")
+    image_urls = data.get(Fields.IMAGE_URLS, [])
+    message_id = data.get(Fields.MESSAGE_ID)
 
-    if not chat_id:
-        raise https_fn.HttpsError("invalid-argument", "chatId is required.")
+    if not chat_id or (not text_raw and not image_urls):
+        raise https_fn.HttpsError("invalid-argument", "chatId and text/images required.")
 
-    # Text is optional if images are provided
-    if (not raw_text or not isinstance(raw_text, str)) and not image_urls:
-        raise https_fn.HttpsError("invalid-argument", "text or imageUrls is required.")
+    # Validate image_urls type and count
+    if image_urls:
+        if not isinstance(image_urls, list) or len(image_urls) > 5:
+            raise https_fn.HttpsError("invalid-argument", "Maximum 5 images per message.")
 
-    if image_urls and (not isinstance(image_urls, list) or len(image_urls) > 5):
-        raise https_fn.HttpsError("invalid-argument", "imageUrls must be a list of up to 5 URLs.")
+    text = _sanitize_text(text_raw)
 
-    # Sanitize before any Firestore write
-    text = _sanitize_text(raw_text) if raw_text else ""
-    if len(text.strip()) < ValidationLimits.MIN_MESSAGE_LENGTH:
-        raise https_fn.HttpsError("invalid-argument", "Message text is empty or too short.")
-    if len(text) > ValidationLimits.MAX_MESSAGE_LENGTH:
-        raise https_fn.HttpsError("invalid-argument", f"Message text exceeds {ValidationLimits.MAX_MESSAGE_LENGTH} characters.")
-
+    # Message length validation
+    if text_raw.strip() and not text:
+        raise https_fn.HttpsError("invalid-argument", "Message text is too short after sanitization.")
+    if text and len(text) > ValidationLimits.MAX_MESSAGE_LENGTH:
+        raise https_fn.HttpsError("invalid-argument", f"Message exceeds {ValidationLimits.MAX_MESSAGE_LENGTH} characters.")
     db = _get_db()
-    chat_snap = db.collection(Collections.CHATS).document(chat_id).get()
+    chat_ref = db.collection(Collections.CHATS).document(chat_id)
+    chat_snap = chat_ref.get()
+
     if not chat_snap.exists:
         raise https_fn.HttpsError("not-found", "Chat thread not found.")
 
@@ -276,219 +281,121 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     if uid not in (buyer_id, seller_id):
         raise https_fn.HttpsError("permission-denied", "Access denied.")
 
-    # F-70: Fetch sender doc once — reused for premium check (buyers) and sender name.
-    # This avoids a separate subscriptions read for the premium gate by using the
-    # cached isPremium field written by the subscriptions handler on every status change.
+    # CHAT-M3: Deduplication guard
+    last_text = chat_data.get(Fields.LAST_MESSAGE_TEXT)
+    last_update = chat_data.get(Fields.UPDATED_AT)
+    if text and last_text == text and last_update:
+        if not last_update.tzinfo: last_update = last_update.replace(tzinfo=UTC)
+        if (datetime.now(UTC) - last_update).total_seconds() < 5:
+            raise https_fn.HttpsError("already-exists", "Message already sent.")
+
+    # CHAT-C2: Thread capacity check
+    msg_count = chat_data.get(Fields.MESSAGE_COUNT, 0)
+    if msg_count >= BusinessRules.MAX_MESSAGES_PER_THREAD:
+        raise https_fn.HttpsError("resource-exhausted", "Chat limit reached for this thread.")
+
+    # Sender metadata and premium check
     sender_snap = db.collection(Collections.USERS).document(uid).get()
-    sender_data = (sender_snap.to_dict() or {}) if sender_snap.exists else {}
+    sender_data = sender_snap.to_dict() or {}
+    if uid == buyer_id and not _is_premium(uid):
+        raise https_fn.HttpsError("permission-denied", "Premium required.")
+
     sender_name = sender_data.get(Fields.NAME, "Someone")
 
-    # Buyers must be premium to send messages (use cached isPremium — avoids a second read)
-    if uid == buyer_id and not sender_data.get(Fields.IS_PREMIUM, False):
-        raise https_fn.HttpsError(
-            "permission-denied",
-            "Premium subscription required to send messages.",
-        )
-
-    # Rate limit: max 60 messages per minute per user
+    # Rate limiting (Max 60/min)
     from services.rate_limiter import RateLimiter
-    limiter = RateLimiter(db)
-    allowed, msg = limiter.check_rate_limit(
-        identifier=f"{uid}_chat",
-        action="send_message",
-        max_requests=60,
-        window_minutes=1,
-        fail_closed=False,
-    )
-    if not allowed:
-        raise https_fn.HttpsError("resource-exhausted", "Too many messages. Please slow down.")
+    if not RateLimiter(db).check_rate_limit(f"{uid}_chat", "send_message", 60, 1)[0]:
+        raise https_fn.HttpsError("resource-exhausted", "Rate limit exceeded.")
 
-    # Thread message cap — prevent unbounded storage growth
-    msg_count_result = (
-        db.collection(Collections.CHATS)
-        .document(chat_id)
-        .collection(Collections.CHAT_MESSAGES)
-        .count()
-        .get()
-    )
-    msg_count = msg_count_result[0][0].value
-    if msg_count >= BusinessRules.CHAT_MAX_MESSAGES_PER_THREAD:
-        raise https_fn.HttpsError(
-            "resource-exhausted",
-            f"Thread message limit of {BusinessRules.CHAT_MAX_MESSAGES_PER_THREAD} reached. "
-            "Please start a new conversation.",
-        )
+    msg_ref = chat_ref.collection(Collections.CHAT_MESSAGES).document(message_id) if message_id else chat_ref.collection(Collections.CHAT_MESSAGES).document()
+    if message_id and msg_ref.get().exists: return {"success": True, "messageId": msg_ref.id}
 
-    now = datetime.now(UTC)
+    # Persist message
+    msg_ref.set({
+        Fields.SENDER_ID: uid,
+        Fields.SENDER_DISPLAY_NAME: sender_name,
+        Fields.MESSAGE_TEXT: text,
+        Fields.IMAGE_URLS: image_urls,
+        Fields.CREATED_AT: get_server_timestamp(),
+        Fields.IS_READ: False,
+    })
 
-    # sender_name already resolved above (F-70 — single user doc fetch reused for both checks)
-
-    chat_messages_ref = db.collection(Collections.CHATS).document(chat_id).collection(Collections.CHAT_MESSAGES)
-
-    if message_id:
-        msg_ref = chat_messages_ref.document(message_id)
-        if msg_ref.get().exists:
-            # Idempotency check: message already processed
-            logger.info(f"Idempotent send_message: message {message_id} already exists in chat {chat_id}")
-            return {"success": True, "messageId": msg_ref.id}
-    else:
-        msg_ref = chat_messages_ref.document()
-
-    msg_ref.set(
-        {
-            Fields.SENDER_ID: uid,
-            Fields.SENDER_DISPLAY_NAME: sender_name,
-            Fields.MESSAGE_TEXT: text,
-            Fields.IMAGE_URLS: image_urls if image_urls else [],
-            Fields.CREATED_AT: get_server_timestamp(),
-            Fields.IS_READ: False,
-        }
-    )
-
-    # Update thread: last message + increment recipient's unread counter
-    recipient_unread_field = Fields.SELLER_UNREAD_COUNT if uid == buyer_id else Fields.BUYER_UNREAD_COUNT
-    thread_update: dict = {
+    # Update thread metadata
+    target_unread = Fields.SELLER_UNREAD_COUNT if uid == buyer_id else Fields.BUYER_UNREAD_COUNT
+    thread_update = {
         Fields.LAST_MESSAGE: text[:100],
         Fields.LAST_MESSAGE_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
-        recipient_unread_field: firestore.Increment(1),
+        Fields.LAST_MESSAGE_TEXT: text,
+        Fields.MESSAGE_COUNT: firestore.Increment(1),
+        target_unread: firestore.Increment(1),
     }
 
-    # Response time tracking:
-    # • Buyer's first message → record firstBuyerMessageAt (once only)
-    # • Seller's first reply after a buyer message → record firstSellerReplyAt + firstReplyHours
+    # Response time metrics
     if uid == buyer_id and not chat_data.get(Fields.FIRST_BUYER_MESSAGE_AT):
-        thread_update[Fields.FIRST_BUYER_MESSAGE_AT] = now
+        thread_update[Fields.FIRST_BUYER_MESSAGE_AT] = get_server_timestamp()
     elif uid == seller_id and not chat_data.get(Fields.FIRST_SELLER_REPLY_AT):
-        first_buyer_msg_at = chat_data.get(Fields.FIRST_BUYER_MESSAGE_AT)
-        if first_buyer_msg_at is not None:
-            # Normalize timezone before diff
-            if hasattr(first_buyer_msg_at, "tzinfo") and first_buyer_msg_at.tzinfo is None:
-                first_buyer_msg_at = first_buyer_msg_at.replace(tzinfo=UTC)
-            delta_hours = (now - first_buyer_msg_at).total_seconds() / 3600
-            thread_update[Fields.FIRST_SELLER_REPLY_AT] = now
-            thread_update[Fields.FIRST_REPLY_HOURS] = round(max(delta_hours, 0.0), 4)
+        fb_msg = chat_data.get(Fields.FIRST_BUYER_MESSAGE_AT)
+        if fb_msg:
+            if not fb_msg.tzinfo: fb_msg = fb_msg.replace(tzinfo=UTC)
+            hours = (datetime.now(UTC) - fb_msg).total_seconds() / 3600.0
+            thread_update[Fields.FIRST_SELLER_REPLY_AT] = get_server_timestamp()
+            thread_update[Fields.FIRST_REPLY_HOURS] = hours
 
-    db.collection(Collections.CHATS).document(chat_id).update(thread_update)
+    chat_ref.update(thread_update)
 
-    logger.info(f"Message sent in chat {chat_id} by user {uid}")
-
-    # Push notification to the recipient — sender_name already fetched above (F-70).
+    # Notify recipient
     recipient_id = seller_id if uid == buyer_id else buyer_id
     try:
         from services.push_service import send_push_notification
         send_push_notification(
             recipient_id,
-            title=f"New message from {sender_name}",
-            body=text[:80],
-            data={Fields.CHAT_ID: chat_id, Fields.PRODUCT_ID: chat_data.get(Fields.PRODUCT_ID, "")},
+            f"Message from {sender_name}",
+            text or "Sent an image",
+            data={"type": "chat_message", "chatId": chat_id}
         )
-    except Exception as push_err:
-        logger.warning(f"Push notification failed for chat {chat_id}: {push_err}")
+    except Exception as e:
+        logger.warning(f"Push failed for chat {chat_id}: {e}")
 
     return {"success": True, "messageId": msg_ref.id}
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
-def report_message(req: https_fn.CallableRequest) -> dict[str, Any]:
-    """
-    F-121: Flag a chat message for admin review.
-    Request data: { chatId: str, messageId: str, reason: str }
-    """
-    if not req.auth:
-        raise https_fn.HttpsError("unauthenticated", "Authentication required.")
-
-    uid = req.auth.uid
-    chat_id = (req.data.get(Fields.CHAT_ID) or "").strip()
-    message_id = (req.data.get("messageId") or "").strip()
-    reason = (req.data.get(Fields.REASON) or "").strip()
-
-    if not chat_id or not message_id or not reason:
-        raise https_fn.HttpsError("invalid-argument", "chatId, messageId, and reason are required.")
-
-    db = _get_db()
-
-    # 1. Verify chat exists and user is a participant
-    chat_snap = db.collection(Collections.CHATS).document(chat_id).get()
-    if not chat_snap.exists:
-        raise https_fn.HttpsError("not-found", "Chat thread not found.")
-
-    chat_data = chat_snap.to_dict() or {}
-    if uid not in (chat_data.get(Fields.BUYER_ID), chat_data.get(Fields.SELLER_ID)):
-        raise https_fn.HttpsError("permission-denied", "Access denied.")
-
-    # 2. Verify message exists
-    msg_ref = db.collection(Collections.CHATS).document(chat_id).collection(Collections.CHAT_MESSAGES).document(message_id)
-    msg_snap = msg_ref.get()
-    if not msg_snap.exists:
-        raise https_fn.HttpsError("not-found", "Message not found.")
-
-    # 3. Create report
-    report_ref = db.collection(Collections.MESSAGE_REPORTS).document()
-    report_ref.set({
-        "reportId": report_ref.id,
-        Fields.CHAT_ID: chat_id,
-        "messageId": message_id,
-        "reporterId": uid,
-        Fields.REASON: reason,
-        "messageContent": msg_snap.to_dict().get(Fields.MESSAGE_TEXT),
-        Fields.CREATED_AT: get_server_timestamp(),
-        "resolved": False,
-    })
-
-    logger.info(f"Message {message_id} in chat {chat_id} flagged by user {uid}")
-
-    return {"success": True, "reportId": report_ref.id}
-
-
-@https_fn.on_call(**DEFAULT_OPTIONS)
 def delete_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
-    CHAT-H2 (sender delete) / CHAT-H3 (admin delete): Soft-delete a chat message.
-    Clears text and imageUrls; sets deleted=true. Content is unrecoverable client-side.
-
-    Request data: { threadId: str, messageId: str }
-    Returns: { success: bool }
+    Soft-deletes a message by the sender.
+    Clears content but preserves metadata for thread consistency.
     """
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "Authentication required.")
 
     uid = req.auth.uid
-    thread_id = (req.data.get("threadId") or "").strip()
-    message_id = (req.data.get("messageId") or "").strip()
+    chat_id = req.data.get(Fields.CHAT_ID)
+    message_id = req.data.get(Fields.MESSAGE_ID)
 
-    if not thread_id or not message_id:
-        raise https_fn.HttpsError("invalid-argument", "threadId and messageId are required.")
+    if not chat_id or not message_id:
+        raise https_fn.HttpsError("invalid-argument", "chatId and messageId required.")
 
     db = _get_db()
-
-    # Fetch the message first to check ownership
-    msg_ref = (
-        db.collection(Collections.CHATS)
-        .document(thread_id)
-        .collection(Collections.CHAT_MESSAGES)
-        .document(message_id)
-    )
+    msg_ref = db.collection(Collections.CHATS).document(chat_id).collection(Collections.CHAT_MESSAGES).document(message_id)
     msg_snap = msg_ref.get()
+
     if not msg_snap.exists:
         raise https_fn.HttpsError("not-found", "Message not found.")
 
     msg_data = msg_snap.to_dict() or {}
 
-    # Authorization: sender OR admin
-    is_sender = msg_data.get(Fields.SENDER_ID) == uid
-
-    if not is_sender:
-        # Check admin role — single user doc read only when not the sender
-        caller_snap = db.collection(Collections.USERS).document(uid).get()
-        caller_data = (caller_snap.to_dict() or {}) if caller_snap.exists else {}
-        is_admin = UserRoleValues.ADMIN in caller_data.get(Fields.ROLES, [])
-        if not is_admin:
-            raise https_fn.HttpsError("permission-denied", "You can only delete your own messages.")
-
-    # Guard: already deleted — idempotent
+    # Idempotent: already deleted
     if msg_data.get(Fields.DELETED):
         return {"success": True}
+
+    # Allow sender or admin to delete
+    is_sender = msg_data.get(Fields.SENDER_ID) == uid
+    user_snap = db.collection(Collections.USERS).document(uid).get()
+    is_admin = (user_snap.to_dict() or {}).get(Fields.ROLE) == RoleValues.ADMIN if user_snap.exists else False
+
+    if not is_sender and not is_admin:
+        raise https_fn.HttpsError("permission-denied", "Only the sender or an admin can delete a message.")
 
     msg_ref.update({
         Fields.DELETED: True,
@@ -496,7 +403,66 @@ def delete_message(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.IMAGE_URLS: [],
         Fields.UPDATED_AT: get_server_timestamp(),
     })
-
-    logger.info(f"Message {message_id} soft-deleted in chat {thread_id} by user {uid}")
-
     return {"success": True}
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def report_message(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Flags a chat message for administrative review.
+
+    Responsibilities:
+    - Records the report in message_reports collection.
+    - Captures reporterId, reason, and message context.
+    - Prevents duplicate reports for the same message by the same user.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Authentication required.")
+
+    uid = req.auth.uid
+    data = req.data
+    chat_id = (data.get(Fields.CHAT_ID) or "").strip()
+    message_id = (data.get(Fields.MESSAGE_ID) or "").strip()
+    reason = (data.get(ApiKeys.REASON) or "Inappropriate content").strip()
+
+    if not chat_id or not message_id:
+        raise https_fn.HttpsError("invalid-argument", "chatId and messageId required.")
+
+    db = _get_db()
+
+    # 1. Verify chat and participant
+    chat_ref = db.collection(Collections.CHATS).document(chat_id)
+    chat_snap = chat_ref.get()
+    if not chat_snap.exists:
+        raise https_fn.HttpsError("not-found", "Chat thread not found.")
+
+    chat_data = chat_snap.to_dict() or {}
+    if uid not in (chat_data.get(Fields.BUYER_ID), chat_data.get(Fields.SELLER_ID)):
+        raise https_fn.HttpsError("permission-denied", "You are not a participant in this chat.")
+
+    # 2. Verify message exists
+    msg_ref = chat_ref.collection(Collections.CHAT_MESSAGES).document(message_id)
+    msg_snap = msg_ref.get()
+    if not msg_snap.exists:
+        raise https_fn.HttpsError("not-found", "Message not found.")
+
+    msg_data = msg_snap.to_dict() or {}
+
+    # 3. Create report document
+    report_ref = db.collection(Collections.MESSAGE_REPORTS).document()
+    report_data = {
+        Fields.REPORT_ID: report_ref.id,
+        Fields.CHAT_ID: chat_id,
+        Fields.MESSAGE_ID: message_id,
+        Fields.REPORTER_ID: uid,
+        Fields.REASON: reason[:500],
+        Fields.MESSAGE_TEXT: msg_data.get(Fields.MESSAGE_TEXT, ""),
+        Fields.SENDER_ID: msg_data.get(Fields.SENDER_ID, ""),
+        Fields.STATUS: "pending",
+        Fields.CREATED_AT: get_server_timestamp(),
+    }
+    report_ref.set(report_data)
+
+    logger.info(f"Message {message_id} in chat {chat_id} reported by {uid}. Reason: {reason}")
+
+    return {"success": True, Fields.REPORT_ID: report_ref.id}

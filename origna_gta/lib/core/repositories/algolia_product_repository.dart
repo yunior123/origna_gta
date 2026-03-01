@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cross_file/cross_file.dart';
@@ -136,7 +138,33 @@ class AlgoliaProductRepository implements ProductRepository {
     if (reviewImageUrls != null && reviewImageUrls.isNotEmpty) {
       payload[Fields.reviewImageUrls] = reviewImageUrls;
     }
+    if (reviewText != null && reviewText.isNotEmpty) {
+      payload[Fields.reviewText] = reviewText;
+    }
     await _functions.httpsCallable(CloudFunctionEndpoints.submitProductRating).call(payload);
+  }
+
+  @override
+  Future<void> submitRatingAtomic(String orderId, String productId, int rating, {List<Uint8List>? reviewImages, String? reviewText}) async {
+    final List<Map<String, dynamic>> imagesPayload = [];
+    if (reviewImages != null) {
+      for (final bytes in reviewImages) {
+        imagesPayload.add({
+          'contentType': 'image/jpeg',
+          'data': base64Encode(bytes),
+        });
+      }
+    }
+
+    final payload = {
+      Fields.orderId: orderId,
+      Fields.productId: productId,
+      Fields.rating: rating,
+      Fields.review: reviewText ?? '',
+      ApiKeys.images: imagesPayload,
+    };
+
+    await _functions.httpsCallable(CloudFunctionEndpoints.submitProductRatingAtomic).call(payload);
   }
 
   @override

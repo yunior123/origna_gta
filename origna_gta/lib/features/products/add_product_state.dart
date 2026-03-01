@@ -39,6 +39,7 @@ class AddProductState {
   final bool savedSameDayEnabled; // Saved state when free shipping toggled on
   final bool savedStandardEnabled; // Saved state when digital mode toggled on
   final String? errorMessage;
+  final String? skuError; // PROD-H2: Inline error for SKU collisions
   final bool isSuccess;
 
   // C-03: Business logic state moved from Screen to ViewModel/State
@@ -96,6 +97,7 @@ class AddProductState {
     this.savedSameDayEnabled = false,
     this.savedStandardEnabled = true,
     this.errorMessage,
+    this.skuError,
     this.isSuccess = false,
 
     // C-03 defaults
@@ -153,6 +155,7 @@ class AddProductState {
     bool? savedSameDayEnabled,
     bool? savedStandardEnabled,
     Object? errorMessage = _sentinel,
+    Object? skuError = _sentinel,
     bool? isSuccess,
 
     // C-03 fields
@@ -207,6 +210,7 @@ class AddProductState {
       savedSameDayEnabled: savedSameDayEnabled ?? this.savedSameDayEnabled,
       savedStandardEnabled: savedStandardEnabled ?? this.savedStandardEnabled,
       errorMessage: errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
+      skuError: skuError == _sentinel ? this.skuError : skuError as String?,
       isSuccess: isSuccess ?? this.isSuccess,
 
       // C-03

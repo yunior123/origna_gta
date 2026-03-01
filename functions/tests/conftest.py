@@ -33,9 +33,16 @@ class MockHttpsError(Exception):
 
 # Patch Firebase Functions decorators and utilities BEFORE any imports
 # This ensures that decorated functions don't require Firebase context
-def decorator_passthrough(**kwargs):
-    """Decorator that does nothing, just returns the function as-is"""
+def decorator_passthrough(*args, **kwargs):
+    """
+    Flexible decorator that handles both @decorator and @decorator() usages.
+    Supports Firestore's @transactional and Functions' @on_call style.
+    """
+    if len(args) == 1 and callable(args[0]) and not kwargs:
+        # Case: @decorator
+        return args[0]
 
+    # Case: @decorator(arg=val)
     def decorator(func):
         return func
 
@@ -65,6 +72,11 @@ sys.modules["firebase_functions"].https_fn.CallableRequest = Mock
 sys.modules["firebase_functions"].https_fn.HttpsError = MockHttpsError
 sys.modules["firebase_functions"].https_fn.Response = MockResponse
 sys.modules["firebase_functions.https_fn"] = sys.modules["firebase_functions"].https_fn
+
+# Patch Firestore transactional decorator to be a passthrough by default
+# This is used by handlers via get_transactional()
+import firebase_admin.firestore as fs
+fs.transactional = decorator_passthrough
 
 # Make scheduler_fn decorators pass through so cron functions remain callable in tests
 sys.modules["firebase_functions"].scheduler_fn = MagicMock()
@@ -150,6 +162,12 @@ def firestore_client(firebase_app):
     else:
         # Retourner un client mocké
         mock_client = MagicMock(spec=BaseClient)
+
+        def get_all_impl(refs, **kwargs):
+            return [ref.get() for ref in refs]
+
+        mock_client.get_all.side_effect = get_all_impl
+
         yield mock_client
 
 
@@ -565,7 +583,7 @@ def valid_checkout_data():
             "postalCode": "M5V3A8",
             "country": "Canada",
         },
-        "subtotal": 100.00,  # Valid subtotal (price * quantity = 50 * 2)
+        "subtotalCents": 10000,  # Valid subtotal in cents (price * quantity = 50 * 2 = $100.00)
     }
 
 
@@ -1085,22 +1103,43 @@ class FirestoreMockBuilder:
 
                 # Find collection and return the matching stored document
                 for collection_name, docs in builder.documents.items():
-                    # Normalize collection_name keys if they are not strings
-                    collection_name.value if hasattr(collection_name, "value") else collection_name
                     if doc_id in docs:
                         mock_doc = MagicMock()
                         mock_doc.exists = True
                         mock_doc.to_dict.return_value = docs[doc_id]
                         mock_doc.id = doc_id
+                        mock_doc.reference = doc_ref
                         return mock_doc
 
                 mock_doc = MagicMock()
                 mock_doc.exists = False
+                mock_doc.id = doc_id
+                mock_doc.reference = doc_ref
                 return mock_doc
 
+            def update_impl(doc_ref, data):
+                doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)
+                for col_name in builder.documents:
+                    if doc_id in builder.documents[col_name]:
+                        builder.documents[col_name][doc_id].update(data)
+                        return
+
+            def set_impl(doc_ref, data, merge=False):
+                doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)
+                path = doc_ref.path if hasattr(doc_ref, "path") else ""
+                col_name = path.split("/")[0] if "/" in path else "orders" # Default to orders for checkout
+                
+                if col_name not in builder.documents:
+                    builder.documents[col_name] = {}
+                
+                if merge and doc_id in builder.documents[col_name]:
+                    builder.documents[col_name][doc_id].update(data)
+                else:
+                    builder.documents[col_name][doc_id] = data
+
             mock_transaction.get = get_impl
-            mock_transaction.update = MagicMock()
-            mock_transaction.set = MagicMock()
+            mock_transaction.update = update_impl
+            mock_transaction.set = set_impl
             mock_transaction.delete = MagicMock()
 
             return mock_transaction

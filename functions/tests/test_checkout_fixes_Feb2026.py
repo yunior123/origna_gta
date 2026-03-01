@@ -67,7 +67,14 @@ class TestCheckoutFixesFeb2026:
 
         mock_db.collection.return_value.document.side_effect = make_doc_ref
 
+        mock_transaction = MagicMock()
+        def capture_txn_set(ref, data, **kwargs):
+            set_calls_data.append(data)
+        mock_transaction.set.side_effect = capture_txn_set
+        mock_db.transaction.return_value = mock_transaction
+
         def get_all_impl(refs):
+
             results = []
             for ref in refs:
                 doc = mock_doc_get()
@@ -86,7 +93,7 @@ class TestCheckoutFixesFeb2026:
         mock_req.auth.uid = "user_123"
         mock_req.data = {
             "items": [{"productId": "prod_123", "quantity": 1, "price": 80.00, "sellerId": "seller_123"}],
-            "subtotal": 80.00,
+            "subtotalCents": 8000,
             "shippingAddress": {
                 Fields.STREET: "123 Main St",
                 Fields.CITY: "Toronto",

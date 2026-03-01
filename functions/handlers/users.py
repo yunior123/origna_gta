@@ -19,7 +19,9 @@ from schema_constants import (
     ConsentMethodValues,
     Fields,
     LanguageValues,
+    OrderStatusValues,
     PolicyVersionValues,
+    RateLimitActions,
     UserRoleValues,
     ValidationLimits,
 )
@@ -65,7 +67,7 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=user_id,
-        action="create_user_profile",
+        action=RateLimitActions.CREATE_USER_PROFILE,
         max_requests=5,
         window_minutes=60,
         fail_closed=True,
@@ -81,11 +83,11 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Bypass only in emulator mode for testing.
     from os import environ
     is_emulator = environ.get("FUNCTIONS_EMULATOR") == "true" or environ.get("FIRESTORE_EMULATOR_HOST")
-    
+
     if not email_verified and not is_emulator:
         logger.warning("Attempted profile creation for unverified email: %s (uid=%s)", email, user_id)
         raise https_fn.HttpsError(
-            "failed-precondition", 
+            "failed-precondition",
             "Email verification required before profile creation. Please check your inbox."
         )
 
@@ -188,7 +190,7 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         _limiter = RateLimiter(get_db())
         allowed, msg = _limiter.check_rate_limit(
             identifier=f"{user_id}_tax_exemption",
-            action="update_tax_exemption",
+            action=RateLimitActions.UPDATE_TAX_EXEMPTION,
             max_requests=3,
             window_minutes=1440,  # 24 hours
             fail_closed=True,
@@ -380,7 +382,15 @@ def add_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     if address.country != COUNTRY_CANADA:
         raise https_fn.HttpsError("invalid-argument", "Shipping addresses must be in Canada")
 
-    address_dict = address.model_dump()
+    # ADDR-H2: Server-side geocoding ensures coordinates are verified and accurate
+    # Prevents "stuck" users by surfacing specific Geoapify errors.
+    from utils.helpers import geocode_address
+    success, error_msg, geocoded_address = geocode_address(address.model_dump())
+    if not success:
+        logger.warning(f"Address geocoding failed for UID {user_id}: {error_msg}")
+        raise https_fn.HttpsError("invalid-argument", error_msg)
+
+    address_dict = geocoded_address
 
     db = get_db()
     from firebase_admin import firestore as _fs
@@ -442,7 +452,14 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     if address.country != COUNTRY_CANADA:
         raise https_fn.HttpsError("invalid-argument", "Shipping addresses must be in Canada")
 
-    address_dict = address.model_dump()
+    # ADDR-H2: Server-side geocoding on update
+    from utils.helpers import geocode_address
+    success, error_msg, geocoded_address = geocode_address(address.model_dump())
+    if not success:
+        logger.warning(f"Address geocoding failed for update UID {user_id}: {error_msg}")
+        raise https_fn.HttpsError("invalid-argument", error_msg)
+
+    address_dict = geocoded_address
     address_dict.pop('address_id', None)  # doc ID is read from doc.id — never stored as a field
 
     db = get_db()
@@ -520,7 +537,41 @@ def delete_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     if address_owner_id != user_id:
         raise https_fn.HttpsError("permission-denied", "You do not have permission to delete this address")
 
-    was_default = doc.to_dict().get(Fields.IS_DEFAULT)
+    # ADDR-H1: Prevent deleting address if used by any active (non-final) physical orders
+    # Even though orders snapshot the address, deleting it from the book while
+    # an order is pending is confusing for UX and prevents re-selection.
+    active_order_statuses = [
+        OrderStatusValues.PENDING,
+        OrderStatusValues.CONFIRMED,
+        OrderStatusValues.PROCESSING,
+        OrderStatusValues.SHIPPED,
+        OrderStatusValues.IN_TRANSIT,
+    ]
+
+    # We compare the address snapshot in the order with the current address
+    # Since addresses don't have a unique ID that is shared across book and order
+    # (they are just maps in orders), we check if ANY active order for this user
+    # has a shippingAddress that matches this one.
+
+    active_orders = (
+        db.collection(Collections.ORDERS)
+        .where(Fields.USER_ID, "==", user_id)
+        .where(Fields.ORDER_STATUS, "in", active_order_statuses)
+        .stream()
+    )
+
+    from utils.helpers import compare_addresses
+    current_address = doc.to_dict()
+    for order_doc in active_orders:
+        order_data = order_doc.to_dict()
+        if compare_addresses(order_data.get(Fields.SHIPPING_ADDRESS), current_address):
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                "This address cannot be deleted because it is currently associated with an active order. "
+                "Please wait until your order is delivered or cancelled."
+            )
+
+    was_default = current_address.get(Fields.IS_DEFAULT)
     user_ref = db.collection(Collections.USERS).document(user_id)
 
     # Always use a batch so we atomically decrement addressCount

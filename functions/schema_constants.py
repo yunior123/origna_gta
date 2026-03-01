@@ -464,6 +464,7 @@ class Fields:
 
     # === VIDEO UPLOAD FIELDS ===
     VIDEO_URL = "videoUrl"
+    VIDEO_DURATION_SECONDS = "videoDurationSeconds"
 
     # === INTERNATIONAL SHIPPING (T-4) ===
     IS_INTERNATIONAL = "isInternational"
@@ -519,10 +520,14 @@ class Fields:
 
     # === CHAT FIELDS ===
     CHAT_ID = "chatId"
+    REPORT_ID = "reportId"
+    REPORTER_ID = "reporterId"
+    MESSAGE_ID = "messageId"
     BUYER_ID = "buyerId"
     PRODUCT_TITLE = "productTitle"
     PRODUCT_IMAGE_URL = "productImageUrl"
-    LAST_MESSAGE = "lastMessage"  # str — text of last message
+    LAST_MESSAGE = "lastMessage"  # str — truncated version of last message for preview
+    LAST_MESSAGE_TEXT = "lastMessageText"  # str — full text of last message
     LAST_MESSAGE_AT = "lastMessageAt"  # datetime
     SENDER_ID = "senderId"
     SENDER_DISPLAY_NAME = "senderDisplayName"  # str — denormalized at send time to avoid extra reads for push notifications
@@ -533,6 +538,7 @@ class Fields:
     FIRST_BUYER_MESSAGE_AT = "firstBuyerMessageAt"  # datetime — when buyer sent first message
     FIRST_SELLER_REPLY_AT = "firstSellerReplyAt"  # datetime — when seller sent first reply
     FIRST_REPLY_HOURS = "firstReplyHours"  # float — hours from first buyer msg to seller first reply
+    MESSAGE_COUNT = "messageCount"  # int — total messages in thread
     DELIVERY_INSTRUCTIONS = "deliveryInstructions"
     SHIPPING_DAYS = "shippingDays"
     HAS_TRACKING = "hasTracking"
@@ -760,6 +766,7 @@ class Fields:
     CHARGE_ID = "chargeId"
     ACCOUNT_ID = "accountId"
     REASON = "reason"
+    REVOKED_LICENSE_COUNT = "revokedLicenseCount"
     PAYMENT_INTENT_ID = "paymentIntentId"
     DESTINATION = "destination"
     FAILURE_MESSAGE = "failureMessage"
@@ -855,6 +862,7 @@ class Fields:
 
     # === N-07: Coupon/promo code system ===
     COUPON_CODE = "couponCode"
+    COUPON_PRERESERVED = "couponPrereserved"
     COUPON_SELLER_ID = "couponSellerId"  # seller_id of scoped coupon (None = platform-wide)
     DISCOUNT_AMOUNT_CENTS = "discountAmountCents"
     MIN_ORDER_CENTS = "minOrderCents"
@@ -1530,6 +1538,7 @@ class ValidationLimits:
     MAX_MESSAGE_LENGTH = 1000
     MIN_MESSAGE_LENGTH = 10
     MAX_ITEM_QUANTITY = 100
+    MAX_CHECKOUT_SUBTOTAL_CENTS = 10000000  # $100,000 CAD
     MAX_PHONE_DIGITS = 15
     MIN_PHONE_DIGITS = 10
 
@@ -1599,7 +1608,7 @@ class BusinessRules:
     MAX_REVIEW_IMAGES = 3  # Maximum images per review
 
     # Chat limits
-    CHAT_MAX_MESSAGES_PER_THREAD = 500  # Hard cap per thread to prevent unbounded storage
+    MAX_MESSAGES_PER_THREAD = 500  # Hard cap per thread to prevent unbounded storage
 
     # Seller health thresholds
     SELLER_DISPUTE_RATE_THRESHOLD = 0.05  # 5% dispute rate triggers seller health alert
@@ -1610,7 +1619,7 @@ class BusinessRules:
     TRENDING_TOP_N = 20              # Number of products to mark as trending
     TRENDING_WINDOW_HOURS = 24       # Rolling window for trending calculation
     TRENDING_PURCHASE_WEIGHT = 3     # Weight for purchase events
-    TRENDING_FAVORITE_WEIGHT = 1     # Weight for favorite events
+    TRENDING_FAVORITE_WEIGHT = 2     # Weight for favorite events
     FREE_SHIPPING_THRESHOLD_CENTS = 7500  # $75 CAD — subtotals at or above qualify for free standard shipping
 
     # Algolia monitoring
@@ -1893,6 +1902,12 @@ class ApiKeys:
     LICENSE_KEY = "licenseKey"
     PLATFORM = "platform"
 
+    # === GDPR / PIPEDA DATA EXPORT KEYS ===
+    PROFILE = "profile"
+    ORDERS = "orders"
+    FAVORITES = "favorites"
+    EXPORTED_AT = "exportedAt"
+
 
 class HeaderKeys:
     """HTTP header keys used across functions."""
@@ -2023,3 +2038,55 @@ class OrderEventTypes:
     CANCELLATION_CONFIRMED = "cancellation_confirmed"
     REFUND_INITIATED = "refund_initiated"
     ITEM_STATUS_CHANGED = "item_status_changed"
+
+class RateLimitActions:
+    """Action identifiers for rate limiting to prevent magic strings."""
+
+    VERIFY_CART = "verify_cart_prices"
+    CREATE_CHECKOUT = "create_checkout"
+    STRIPE_WEBHOOK = "stripe_webhook"
+    UNSUBSCRIBE = "unsubscribe_email"
+    EXPORT_DATA = "export_data"
+    MFA_ENROLL = "mfa_enroll"
+    MFA_VERIFY = "mfa_verify"
+    MFA_DISABLE = "mfa_disable"
+    MFA_BACKUP_VERIFY = "mfa_backup_verify"
+    CREATE_CONNECT_ACCOUNT = "create_connect_account"
+    CREATE_ACCOUNT_LINK = "create_account_link"
+    GET_CONNECT_STATUS = "get_connect_account_status"
+    CAPTURE_PAYMENT = "capture_payment"
+    UPDATE_USER_ROLES = "update_user_roles"
+    SUSPEND_SELLER = "suspend_seller"
+    UNSUSPEND_SELLER = "unsuspend_seller"
+    ADMIN_UPDATE_STOCK = "admin_update_stock"
+    DELETE_ACCOUNT = "delete_account"
+    UPDATE_ORDER_STATUS = "update_order_status"
+    UPDATE_ITEM_STATUS = "update_item_status"
+    CANCEL_ORDER = "cancel_order"
+    REFUND_ORDER_ITEM = "refund_order_item"
+    APPROVE_SHIPPING_COST = "approve_shipping_cost"
+    UPDATE_SHIPPING_COST = "update_shipping_cost"
+    CREATE_RETURN_REQUEST = "create_return_request"
+    APPROVE_RETURN_REQUEST = "approve_return_request"
+    REJECT_RETURN_REQUEST = "reject_return_request"
+    UPLOAD_IMAGES = "upload_images"
+    UPLOAD_VIDEO = "upload_video"
+    DELETE_PRODUCT = "delete_product"
+    SUBMIT_RATING = "submit_rating"
+    CREATE_PRODUCT = "create_product"
+    CONFIGURE_ALGOLIA = "configure_algolia"
+    GET_PRODUCTS = "get_products"
+    GET_SELLER_PRODUCTS = "get_seller_products"
+    GET_PRODUCT_RATINGS = "get_product_ratings"
+    ASK_PRODUCT_QUESTION = "ask_product_question"
+    ANSWER_PRODUCT_QUESTION = "answer_product_question"
+    ANSWER_REVIEW = "answer_review"
+    CREATE_USER_PROFILE = "create_user_profile"
+    UPDATE_TAX_EXEMPTION = "update_tax_exemption"
+    APPLY_COUPON = "apply_coupon"
+    ACTIVATE_LICENSE = "activate_license"
+    VERIFY_LICENSE = "verify_license"
+    VERIFY_LICENSE_IP = "verify_license_ip"
+    GET_PAYMENT_PROVIDERS = "get_payment_providers"
+    UPDATE_PAYMENT_PROVIDER = "update_payment_provider"
+    GET_PROVIDER_STATUS = "get_provider_status"

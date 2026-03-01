@@ -91,7 +91,7 @@ def test_stock_reservation_atomic_pattern(mock_stripe_create, mock_get_fs, mock_
             "postalCode": "H2X 1Y6",
             "country": "Canada",
         },
-        "subtotal": 10.0,
+        "subtotalCents": 1000,
     }
 
     # Stripe fails

@@ -31,6 +31,7 @@ from schema_constants import (
     OrderStatusValues,
     PaymentStatusValues,
     PayoutStatusValues,
+    RateLimitActions,
     ReturnStatusValues,
     ShippingApprovalStatusValues,
     UserRoleValues,
@@ -216,7 +217,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="update_order_status", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.UPDATE_ORDER_STATUS, max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -437,7 +438,7 @@ def _update_item_status_logic(user_id: str, data: dict, is_admin: bool = None) -
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action="update_item_status", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.UPDATE_ITEM_STATUS, max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -618,7 +619,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="cancel_order", max_requests=5, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action=RateLimitActions.CANCEL_ORDER, max_requests=5, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -852,7 +853,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="refund_order_item", max_requests=5, window_minutes=1, fail_closed=True
+        identifier=req.auth.uid, action=RateLimitActions.REFUND_ORDER_ITEM, max_requests=5, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1217,7 +1218,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="approve_shipping_cost", max_requests=10, window_minutes=1
+        identifier=req.auth.uid, action=RateLimitActions.APPROVE_SHIPPING_COST, max_requests=10, window_minutes=1
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1514,7 +1515,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="update_shipping_cost", max_requests=10, window_minutes=1, fail_closed=True
+        identifier=req.auth.uid, action=RateLimitActions.UPDATE_SHIPPING_COST, max_requests=10, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1726,7 +1727,7 @@ def create_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="create_return_request", max_requests=5, window_minutes=10, fail_closed=True
+        identifier=req.auth.uid, action=RateLimitActions.CREATE_RETURN_REQUEST, max_requests=5, window_minutes=10, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1960,7 +1961,7 @@ def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="approve_return_request", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action=RateLimitActions.APPROVE_RETURN_REQUEST, max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -2123,7 +2124,7 @@ def reject_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="reject_return_request", max_requests=10, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action=RateLimitActions.REJECT_RETURN_REQUEST, max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)

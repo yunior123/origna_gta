@@ -25,6 +25,7 @@ from schema_constants import (
     Documents,
     Fields,
     PaymentProviderValues,
+    RateLimitActions,
     SecurityAlertTypes,
     SeverityLevels,
     UserRoleValues,
@@ -255,7 +256,7 @@ def get_payment_providers(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit: 30/min for admin reads
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action="get_payment_providers", max_requests=30, window_minutes=1, fail_closed=True
+        identifier=admin_id, action=RateLimitActions.GET_PAYMENT_PROVIDERS, max_requests=30, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -306,7 +307,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
     _require_recent_mfa(admin_data)
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action="update_payment_provider", max_requests=5, window_minutes=1, fail_closed=True
+        identifier=admin_id, action=RateLimitActions.UPDATE_PAYMENT_PROVIDER, max_requests=5, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -450,7 +451,7 @@ def get_provider_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit: 30/min per user (anti-scraping)
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action="get_provider_status", max_requests=30, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action=RateLimitActions.GET_PROVIDER_STATUS, max_requests=30, window_minutes=1, fail_closed=False
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)

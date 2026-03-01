@@ -75,7 +75,7 @@ class TestCreateCheckoutSessionMagnus:
                     {"productId": "p1", "quantity": 1, "price": 50.0, "sellerId": "s1"},
                     {"productId": "p2", "quantity": 2, "price": 30.0, "sellerId": "s2"}
                 ],
-                "subtotal": 110.0,
+                "subtotalCents": 11000,
                 "shippingAddress": {
                     "street": "123 Main St", "city": "Toronto", "country": "Canada", "state": "ON", "postalCode": "M5V2A8"
                 }
@@ -93,7 +93,7 @@ class TestCreateCheckoutSessionMagnus:
         with patch("handlers.payment_stripe.get_db", return_value=mock_db):
             base_request.data = {
                 "items": [{"productId": "p1", "quantity": 1, "price": 40.0, "sellerId": "s1"}],
-                "subtotal": 40.0,
+                "subtotalCents": 4000,
                 "shippingAddress": {"street": "1 S", "city": "T", "country": "Canada", "state": "ON", "postalCode": "M5V2A8"}
             }
             with pytest.raises(https_fn.HttpsError) as exc:

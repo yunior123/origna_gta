@@ -152,7 +152,7 @@ class TestPaymentFlow(unittest.TestCase):
                 "postalCode": "M1A 1A1",
                 "country": "Canada",
             },
-            "subtotal": 50.00,
+            "subtotalCents": 5000,
             "total": 56.50,
             "taxes": {"HST": 6.50},
             "shippingCost": 0,

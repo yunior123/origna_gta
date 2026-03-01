@@ -217,6 +217,7 @@ class NotificationService {
         await firestore.collection(Collections.users).doc(userId).collection(Collections.fcmTokens).doc(tokenHash).set({
           'token': fcmToken,
           'platform': platform,
+          Fields.userId: userId,
           Fields.fcmTokenUpdatedAt: FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
         debugPrint('FCM Token saved to fcm_tokens subcollection for user: $userId ($platform)');
