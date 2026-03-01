@@ -43,6 +43,7 @@ from schema_constants import (
     Fields,
     LicenseStatusValues,
     OrderEventTypes,
+    NotificationTypes,
     OrderStatusValues,
     PaymentProviderValues,
     PaymentStatusValues,
@@ -2108,11 +2109,13 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
         net_amount_cents = adjusted_amount_cents - platform_fee_cents  # already in cents
 
         payout_ref = get_db().collection(Collections.PAYOUTS).document(f"{order_id}_{seller_id}")
-        # Skip if payout already COMPLETED — prevents webhook retry from resetting status
+        # Skip if payout already exists (any non-FAILED status) — prevents webhook retry from creating duplicates
         existing_payout = payout_ref.get()
-        if existing_payout.exists and (existing_payout.to_dict() or {}).get(Fields.STATUS) == PayoutStatusValues.COMPLETED:
-            logger.info(f"Payout {payout_ref.id} already COMPLETED — skipping")
-            continue
+        if existing_payout.exists:
+            existing_status = (existing_payout.to_dict() or {}).get(Fields.STATUS)
+            if existing_status != PayoutStatusValues.FAILED:
+                logger.info(f"Payout {payout_ref.id} already exists (status={existing_status}) — skipping")
+                continue
         payout_data = {
             Fields.ORDER_ID: order_id,
             Fields.SELLER_ID: seller_id,
