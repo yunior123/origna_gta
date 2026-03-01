@@ -417,7 +417,7 @@ export async function buildCheckoutPayload(
       imageUrls: product.imageUrls || ['https://picsum.photos/400'],
       isDigital: product.isDigital || false,
     }],
-    subtotal: +(product.price * quantity).toFixed(2),
+    subtotalCents: Math.round(product.price * quantity * 100),
     shippingAddress: {
       street: address.street || '100 King St W',
       apartment: address.apartment || '',
@@ -464,7 +464,7 @@ export async function buildMultiSellerPayload(
   return {
     userId: buyerUid,
     items: cartItems,
-    subtotal: +subtotal.toFixed(2),
+    subtotalCents: Math.round(subtotal * 100),
     shippingAddress: {
       street: address.street || '100 King St W',
       apartment: address.apartment || '',

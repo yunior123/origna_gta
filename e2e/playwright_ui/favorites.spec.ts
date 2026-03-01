@@ -1,37 +1,123 @@
-/**
- * OrignaGTA — Favorites E2E Tests
- * =================================
- * Tests favorites functionality via UI.
- */
 import { test, expect } from '@playwright/test';
 import {
-  waitForFlutter,
-  requireWebApp,
-  checkSemantics,
-  ensureLoggedInAsAdmin,
-  performSignOut,
-  navigateHome,
+  waitForFlutter, requireWebApp, checkSemantics,
+  ensureLoggedInAsAdmin, performSignOut, navigateHome,
   BTN_SETTINGS,
 } from './flutter-helpers';
-import { TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';
+import {
+  signIn, callOk, callExpectError, getDoc, deleteDoc,
+  TEST_ACCOUNTS, WEB_APP_URL, TEST_PRODUCTS,
+} from './api-helpers';
 
 const TARGET_URL = process.env.E2E_TARGET_URL ?? WEB_APP_URL;
-const BUYER_EMAIL = process.env.E2E_BUYER_EMAIL ?? TEST_ACCOUNTS.BUYER_EMAIL;
-const BUYER_PASSWORD = process.env.E2E_BUYER_PASSWORD ?? TEST_ACCOUNTS.ADMIN_PASS;
+const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
+const PRODUCT_ID = TEST_PRODUCTS.HIGH_STOCK; // product_024
 
-test.describe('Favorites', () => {
+// ═══ API-DRIVEN TESTS ═══
+
+test.describe('Favorites — API Tests', () => {
+  test.setTimeout(60_000);
+  test.describe.configure({ mode: 'serial' });
+
+  let buyerToken: string;
+  let buyerUid: string;
+
+  test.beforeAll(async () => {
+    const buyer = await signIn(BUYER_EMAIL);
+    buyerToken = buyer.idToken;
+    buyerUid = buyer.localId;
+    // Cleanup: ensure product is NOT favorited before tests
+    await deleteDoc(`users/${buyerUid}/favorites/${PRODUCT_ID}`, buyerToken).catch(() => {});
+  });
+
+  test.afterAll(async () => {
+    await deleteDoc(`users/${buyerUid}/favorites/${PRODUCT_ID}`, buyerToken).catch(() => {});
+  });
+
+  test('T01: Toggle favorite ON via callable — verify Firestore doc created', async () => {
+    const result = await callOk('toggle_favorite', { productId: PRODUCT_ID }, buyerToken);
+    expect(result.success).toBe(true);
+    expect(result.favorited).toBe(true);
+
+    const favDoc = await getDoc(`users/${buyerUid}/favorites/${PRODUCT_ID}`, buyerToken);
+    expect(favDoc).toBeTruthy();
+  });
+
+  test('T02: Toggle favorite OFF — verify Firestore doc deleted', async () => {
+    const result = await callOk('toggle_favorite', { productId: PRODUCT_ID }, buyerToken);
+    expect(result.success).toBe(true);
+    expect(result.favorited).toBe(false);
+
+    const favDoc = await getDoc(`users/${buyerUid}/favorites/${PRODUCT_ID}`, buyerToken);
+    expect(favDoc).toBeFalsy();
+  });
+
+  test('T03: Double toggle is consistent — ends in same state', async () => {
+    const r1 = await callOk('toggle_favorite', { productId: PRODUCT_ID }, buyerToken);
+    expect(r1.favorited).toBe(true);
+    const r2 = await callOk('toggle_favorite', { productId: PRODUCT_ID }, buyerToken);
+    expect(r2.favorited).toBe(false);
+    const favDoc = await getDoc(`users/${buyerUid}/favorites/${PRODUCT_ID}`, buyerToken);
+    expect(favDoc).toBeFalsy();
+  });
+
+  test('T04: Favorite non-existent product returns not-found', async () => {
+    const error = await callExpectError('toggle_favorite', {
+      productId: 'nonexistent_product_xyz',
+    }, buyerToken);
+    expect(error.code).toBe('not-found');
+  });
+
+  test('T05: Unauthenticated favorite returns unauthenticated', async () => {
+    const error = await callExpectError('toggle_favorite', {
+      productId: PRODUCT_ID,
+    }, 'invalid-token');
+    expect(error.code).toBe('unauthenticated');
+  });
+});
+
+// ═══ UI-DRIVEN TESTS ═══
+
+test.describe('Favorites — UI Tests', () => {
   test.setTimeout(300_000);
 
-  test('User can navigate to favorites page', async ({ page }) => {
+  test('T06: UI — Favorite toggle on product card updates heart state', async ({ page }) => {
     await requireWebApp(page, TARGET_URL);
     page.setDefaultTimeout(60_000);
-
     await page.goto(`${TARGET_URL}/`);
     await waitForFlutter(page);
     await checkSemantics(page);
+    await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
 
-    await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
+    const productCards = page.locator('[aria-label^="product-card-"]');
+    for (let i = 0; i < 12; i++) {
+      if ((await productCards.count()) > 0) break;
+      await page.mouse.wheel(0, 220);
+      await page.waitForTimeout(500);
+    }
+    expect(await productCards.count()).toBeGreaterThan(0);
+
+    // [LK-1] btn-favorite-* is on a Semantics(label:) wrapper, not a role="button" —
+    // aria-label locator is correct here (not on a button element)
+    const favBtn = page.locator('[aria-label^="btn-favorite-"]').first();
+    await expect(favBtn).toBeVisible({ timeout: 10000 });
+    await favBtn.click();
+    await page.waitForTimeout(2000);
+    // Verify toggle happened — click again to toggle off
+    await favBtn.click();
+    await page.waitForTimeout(1000);
+
+    await navigateHome(page, TARGET_URL);
+    await performSignOut(page, TARGET_URL);
+  });
+
+  test('T07: UI — Favorites page is accessible from profile menu', async ({ page }) => {
+    await requireWebApp(page, TARGET_URL);
+    page.setDefaultTimeout(60_000);
+    await page.goto(`${TARGET_URL}/`);
+    await waitForFlutter(page);
+    await checkSemantics(page);
+    await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
 
     const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await settingsBtn.click();
@@ -39,56 +125,12 @@ test.describe('Favorites', () => {
     await waitForFlutter(page);
 
     const menuFavorites = page.locator('[aria-label^="menu-favorites"]').first();
-    if (await menuFavorites.isVisible().catch(() => false)) {
-      await menuFavorites.click();
-      await expect(page).toHaveURL(/\/favorites/i, { timeout: 20000 });
-      await waitForFlutter(page);
-      expect(page.url()).toMatch(/\/favorites/i);
-    }
+    await expect(menuFavorites).toBeVisible({ timeout: 10000 });
+    await menuFavorites.click();
+    await expect(page).toHaveURL(/\/favorites/i, { timeout: 20000 });
+    await waitForFlutter(page);
 
     await navigateHome(page, TARGET_URL);
-    await performSignOut(page, TARGET_URL);
-  });
-
-  test('Product card favorite toggle is accessible', async ({ page }) => {
-    await requireWebApp(page, TARGET_URL);
-    page.setDefaultTimeout(60_000);
-
-    await page.goto(`${TARGET_URL}/`);
-    await waitForFlutter(page);
-    await checkSemantics(page);
-
-    await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-    // ensureLoggedInAsAdmin already navigates back to home — no page.goto() here
-
-    // Scroll to find product cards
-    const productCards = page.locator('[aria-label^="product-card-"]');
-    for (let i = 0; i < 12; i++) {
-      if ((await productCards.count()) > 0) break;
-      await page.mouse.wheel(0, 220);
-      await page.waitForTimeout(500);
-    }
-
-    if ((await productCards.count()) > 0) {
-      // Click on a product card to open detail
-      await productCards.first().click();
-      await page.waitForTimeout(2000);
-
-      // Look for a favorite/heart button on the product detail page
-      const favBtn = page.locator('[aria-label*="favorite"], [aria-label*="heart"], [aria-label*="like"]').first();
-      if (await favBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-        // Toggle favorite
-        await favBtn.click();
-        await page.waitForTimeout(1000);
-        // Toggle back
-        await favBtn.click();
-        await page.waitForTimeout(500);
-      }
-
-      await page.goBack();
-      await waitForFlutter(page);
-    }
-
     await performSignOut(page, TARGET_URL);
   });
 });

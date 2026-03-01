@@ -53,7 +53,7 @@ test.describe('Checkout Validation', () => {
     const error = await callExpectError('create_checkout_session', {
       userId: buyerAuth.localId,
       items: [],
-      subtotal: 0,
+      subtotalCents: 0,
       shippingAddress: {
         street: '1 Test St',
         city: 'Toronto',
@@ -90,14 +90,14 @@ test.describe('Checkout Validation', () => {
   test('Rejects price tampering (client sends lower price)', async () => {
     const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
     data.items[0].price = 0.01;
-    data.subtotal = 0.01;
+    data.subtotalCents = 1;
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     expect(error.code, 'Price tampering should be rejected').toBe('invalid-argument');
   });
 
   test('Rejects subtotal mismatch', async () => {
     const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
-    data.subtotal = data.subtotal + 999;
+    data.subtotalCents = data.subtotalCents + 99900;
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     expect(error.code, 'Subtotal mismatch should be rejected').toBe('invalid-argument');
   });
@@ -105,7 +105,7 @@ test.describe('Checkout Validation', () => {
   test('Rejects negative price', async () => {
     const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
     data.items[0].price = -50.00;
-    data.subtotal = -50.00;
+    data.subtotalCents = -5000;
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     expect(error.code, 'Negative price should be rejected').toBe('invalid-argument');
   });
@@ -113,7 +113,7 @@ test.describe('Checkout Validation', () => {
   test('Rejects quantity zero', async () => {
     const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 0, buyerAuth.idToken);
     data.items[0].quantity = 0;
-    data.subtotal = 0;
+    data.subtotalCents = 0;
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     expect(error.code, 'Zero quantity should be rejected').toBe('invalid-argument');
   });
@@ -121,7 +121,7 @@ test.describe('Checkout Validation', () => {
   test('Rejects quantity exceeding max cap (>100)', async () => {
     const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
     data.items[0].quantity = 150;
-    data.subtotal = data.items[0].price * 150;
+    data.subtotalCents = Math.round(data.items[0].price * 150 * 100);
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     expect(error.code, 'Over-limit quantity should be rejected').toBe('invalid-argument');
   });

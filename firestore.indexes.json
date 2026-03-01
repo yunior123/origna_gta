@@ -1323,17 +1323,6 @@
       "comment": "AUDIT 2026-02-28: Webhook transfer.paid — stripeAccountId + status (payment_stripe.py:3732-3734)"
     },
     {
-      "collectionGroup": "fcm_tokens",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        }
-      ],
-      "comment": "PERFORMANCE: Batch push notification fetch (push_service.py send_push_notifications_batch)"
-    },
-    {
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [

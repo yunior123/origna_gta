@@ -31,7 +31,7 @@ const getEnvironmentConfig = () => {
       return {
         auth: 'https://identitytoolkit.googleapis.com',
         firestore: 'https://firestore.googleapis.com',
-        functions: 'https://us-central1-orignagta-staging.cloudfunctions.net',
+        functions: 'https://northamerica-northeast1-orignagta-staging.cloudfunctions.net',
         webApp: 'https://orignagta-staging.web.app',
         projectId: 'orignagta-staging',
       };
@@ -39,7 +39,7 @@ const getEnvironmentConfig = () => {
       return {
         auth: 'https://identitytoolkit.googleapis.com',
         firestore: 'https://firestore.googleapis.com',
-        functions: 'https://us-central1-orignagta.cloudfunctions.net',
+        functions: 'https://northamerica-northeast1-orignagta.cloudfunctions.net',
         webApp: 'https://orignagta.web.app',
         projectId: 'orignagta',
       };
@@ -48,7 +48,7 @@ const getEnvironmentConfig = () => {
       return {
         auth: 'https://identitytoolkit.googleapis.com',
         firestore: 'https://firestore.googleapis.com',
-        functions: 'https://us-central1-orignagta-dev.cloudfunctions.net',
+        functions: 'https://northamerica-northeast1-orignagta-dev.cloudfunctions.net',
         webApp: 'https://orignagta-dev.web.app',
         projectId: 'orignagta-dev',
       };
@@ -353,7 +353,7 @@ export async function createTestUser(
  * Returns the raw response body (may contain .error or .result).
  */
 export async function callCallable(fn: string, data: any, token: string): Promise<any> {
-  const res = await fetch(`${FUNCTIONS_EMULATOR}/${PROJECT_ID}/us-central1/${fn}`, {
+  const res = await fetch(`${FUNCTIONS_EMULATOR}/${fn}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

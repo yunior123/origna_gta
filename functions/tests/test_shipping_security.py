@@ -116,6 +116,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "price": 10.0,
             "lifecycleStatus": "active",
             "stockQuantity": 10,
+            "sellerId": "seller_1",
         }
 
         def mock_collection(name):
@@ -180,8 +181,8 @@ class TestPaymentSecurity(unittest.TestCase):
         req.data = {
             "userId": "user_1",
             "customerEmail": "hacker@example.com",
-            "amount": 100000,
-            "subtotalCents": 10000000,
+            "amount": 100,
+            "subtotalCents": 100,
             "items": [
                 {
                     "productId": "prod_1",
@@ -440,8 +441,8 @@ class TestPaymentSecurity(unittest.TestCase):
         req.data = {
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
-            "amount": 100,
-            "subtotalCents": 10000,
+            "amount": 10,
+            "subtotalCents": 1000,
             "items": [
                 {"productId": "prod_1", "quantity": 1, "price": 10.0, "sellerId": "seller_1", "name": "Test Product"}
             ],
@@ -462,8 +463,8 @@ class TestPaymentSecurity(unittest.TestCase):
         req.data = {
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
-            "amount": 100,
-            "subtotalCents": 10000,
+            "amount": 10,
+            "subtotalCents": 1000,
             "items": [
                 {"productId": "prod_1", "quantity": 1, "price": 10.0, "sellerId": "seller_1", "name": "Test Product"}
             ],
@@ -490,13 +491,13 @@ class TestPaymentSecurity(unittest.TestCase):
         req.data = {
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
-            "amount": 100,
-            "subtotalCents": 10000,
+            "amount": 10,
+            "subtotalCents": 1000,
             "items": [
                 {"productId": "prod_1", "quantity": 1, "price": 10.0, "sellerId": "seller_1", "name": "Test Product"}
             ],
             "shippingAddress": {
-                "street": "X" * 200,
+                "street": "X" * 201,
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
                 "state": "ON",

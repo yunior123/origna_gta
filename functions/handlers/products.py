@@ -2102,7 +2102,6 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
                 _send_product_rejection_email(seller_email, product_data.get(Fields.NAME, ""), reason, lang=seller_lang)
             return create_success_response(
                 {"approved": False, "rejected": True, "reason": reason},
-                message=f"Product auto-rejected: {reason}",
             )
 
     # Approve — set lifecycleStatus=active atomically
@@ -2150,10 +2149,8 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to send new product FCM for {product_id}: {e}")
 
-    return create_success_response(
-        {} if not algolia_warning else {"algoliaWarning": algolia_warning},
-        message=algolia_warning if algolia_warning else "Product approved and now live",
-    )
+    result = {} if not algolia_warning else {"algoliaWarning": algolia_warning}
+    return create_success_response(result)
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -2229,7 +2226,7 @@ def admin_reject_product(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.APPROVAL_REJECTION_REASON: reason[:500],
             Fields.CREATED_AT: get_server_timestamp(),
         })
-    return create_success_response({}, message="Product rejected")
+    return create_success_response({})
 
 
 def _get_seller_email(seller_id: str | None) -> str | None:
@@ -3492,9 +3489,9 @@ def get_seller_warehouses(req: https_fn.CallableRequest) -> dict[str, Any]:
             d = doc.to_dict() or {}
             d["warehouseId"] = doc.id
             # Serialize timestamps
-            created_at = d.get("createdAt")
+            created_at = d.get(Fields.CREATED_AT)
             if hasattr(created_at, "isoformat"):
-                d["createdAt"] = created_at.isoformat()
+                d[Fields.CREATED_AT] = created_at.isoformat()
             warehouses.append(d)
 
         return create_success_response({"warehouses": warehouses})

@@ -131,7 +131,7 @@ test.describe('Order Notifications', () => {
         imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
         isDigital: false
       }],
-      subtotal: actualPrice,
+      subtotalCents: Math.round(actualPrice * 100),
       shippingAddress: {
         street: '100 Queen St W',
         city: 'Toronto',

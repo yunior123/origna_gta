@@ -808,6 +808,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.WEIGHT_KG: p_data.get(Fields.WEIGHT_KG, 0),
             Fields.IS_PERISHABLE: p_data.get(Fields.IS_PERISHABLE, False),
             Fields.IS_LOCAL_DELIVERY_ONLY: p_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False),
+            Fields.CATEGORY_ID: p_data.get(Fields.CATEGORY_ID, 0),
             Fields.STATUS: DeliveryStatusValues.PENDING,
             Fields.CART_ITEM_ID: item.get(Fields.CART_ITEM_ID) or str(uuid.uuid4()),
             Fields.TRACKING_NUMBER: "",

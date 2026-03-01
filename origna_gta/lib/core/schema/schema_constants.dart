@@ -72,6 +72,7 @@ abstract final class ApiKeys {
   static const subtotalCents = 'subtotalCents';
   static const itemIds = 'itemIds';
   static const idempotencyKey = 'idempotencyKey';
+  static const productId = 'productId';
 
   // === RESPONSE KEYS (returned from Cloud Functions) ===
   static const success = 'success';
@@ -407,6 +408,9 @@ abstract final class Collections {
   // Temporary pre-verification storage (cleared after user doc creation)
   static const pendingProfiles = 'pending_profiles'; // pending_profiles/{uid}
   static const messageReports = 'message_reports'; // F-121: Flagged messages for review
+
+  // Financial audit (backend-only)
+  static const platformDebt = 'platform_debt'; // A-05/F-139: debt records when seller reversal fails due to zero balance
 }
 
 /// Confirmation values for sensitive operations requiring explicit confirmation
@@ -672,6 +676,8 @@ abstract final class Fields {
   static const stockQuantity = 'stockQuantity';
   static const rating = 'rating';
   static const ratingCount = 'ratingCount';
+  static const sellerRating = 'sellerRating'; // F-315: Average seller rating
+  static const sellerRatingCount = 'sellerRatingCount'; // F-315: Number of seller ratings
   static const keywords = 'keywords';
   static const approvalRejectionReason = 'approvalRejectionReason';
   static const lifecycleStatus = 'lifecycleStatus';
@@ -707,6 +713,10 @@ abstract final class Fields {
   static const freeShipping = 'freeShipping';
   static const taxCode = 'taxCode';
   static const videoUrl = 'videoUrl';
+  static const videoDurationSeconds = 'videoDurationSeconds';
+  static const isInternational = 'isInternational';
+  static const supplierType = 'supplierType';
+  static const isRelatedParty = 'isRelatedParty'; // F-312: Gaming prevention
   static const supplier = 'supplier';
   static const inventory = 'inventory';
   // Inventory sub-fields (keys inside the `inventory` map)
@@ -1020,6 +1030,7 @@ abstract final class Fields {
   static const chargeId = 'chargeId';
   static const accountId = 'accountId';
   static const reason = 'reason';
+  static const revokedLicenseCount = 'revokedLicenseCount';
   static const destination = 'destination';
   static const failureMessage = 'failureMessage';
   static const adminId = 'adminId';
@@ -1032,7 +1043,7 @@ abstract final class Fields {
   static const errorCode = 'errorCode';
   static const targetUserId = 'targetUserId';
   static const oldRoles = 'oldRoles';
-  static const newRoles = 'newRoles';
+  static const newRoles = 'new_roles';
   static const productsDeactivated = 'productsDeactivated';
   static const ordersCancelled = 'ordersCancelled';
 
@@ -1226,6 +1237,8 @@ abstract final class OrderEventTypes {
   static const orderConfirmedSeller = 'order_confirmed_seller';
   static const disputeCreated = 'dispute_created';
   static const disputeResolved = 'dispute_resolved';
+  static const refundInitiated = 'refund_initiated';
+  static const itemStatusChanged = 'item_status_changed';
 }
 
 /// Special values for itemId parameter in updateItemStatus.
@@ -1480,7 +1493,7 @@ abstract final class SecurityAlertTypes {
   static const paymentProviderDisabled = 'payment_provider_disabled';
   static const refundReversalFailed = 'refund_reversal_failed';
   static const payoutFailed = 'payout_failed';
-  static const refundFailed = 'refund_failed';
+  static const refundFailed = 'refund.failed';
   static const sellerAccountChanged = 'seller_account_changed';
   static const payoutRecordIncomplete = 'payout_record_incomplete';
   static const mfaLowBackupCodes = 'mfa_low_backup_codes';

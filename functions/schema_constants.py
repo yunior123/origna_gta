@@ -378,6 +378,7 @@ class Fields:
     AVG_RATING = "avgRating"
     TOTAL_REVIEWS = "totalReviews"
     TOTAL_SALES = "totalSales"
+    BANK_ACCOUNT_LAST4 = "bankAccountLast4"
     ACCEPTS_RETURNS = "acceptsReturns"
     ITEM_RATING = "rating" # F-315: Product quality rating
     ITEM_RATING_COUNT = "ratingCount" # F-315: Number of product reviews
@@ -1868,6 +1869,7 @@ class ApiKeys:
     EMULATOR_MODE = "emulatorMode"
     CAPTURED = "captured"
     MESSAGE = "message"
+    REVOKED_LICENSE_COUNT = "revokedLicenseCount"
     PAYMENT_INTENT_ID = "paymentIntentId"
     ACCOUNT_ID = "accountId"
     EXISTING = "existing"
@@ -2038,6 +2040,16 @@ class OrderEventTypes:
     CANCELLATION_CONFIRMED = "cancellation_confirmed"
     REFUND_INITIATED = "refund_initiated"
     ITEM_STATUS_CHANGED = "item_status_changed"
+    PAYMENT_FAILED = "payment_failed"
+    REFUND_ISSUED = "refund_issued"
+    ITEM_SHIPPED = "item_shipped"
+    ITEM_DELIVERED = "item_delivered"
+    NOTE_ADDED = "note_added"
+    AUTO_CONFIRMED = "auto_confirmed"
+    ORDER_CONFIRMED_BUYER = "order_confirmed_buyer"
+    ORDER_CONFIRMED_SELLER = "order_confirmed_seller"
+    DISPUTE_CREATED = "dispute_created"
+    DISPUTE_RESOLVED = "dispute_resolved"
 
 class RateLimitActions:
     """Action identifiers for rate limiting to prevent magic strings."""

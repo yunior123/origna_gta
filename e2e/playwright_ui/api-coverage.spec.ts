@@ -1017,7 +1017,7 @@ test.describe('Q. Permission Boundaries', () => {
     const result = await callCallable('create_checkout_session', {
       userId: auth.localId,
       items: [{ productId: HIGH_STOCK_PRODUCT, name: 'Test', price: 10, quantity: 1, sellerId: 'x', imageUrls: ['img'] }],
-      subtotal: 10,
+      subtotalCents: 1000,
       shippingAddress: { street: '1 St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'CA', phoneNumber: '+14165550000' },
     }, auth.idToken);
     // Suspended users should be blocked

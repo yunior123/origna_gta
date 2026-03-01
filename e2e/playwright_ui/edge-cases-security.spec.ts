@@ -51,7 +51,7 @@ function rawCheckoutPayload(buyerUid: string, productId: string, quantity: numbe
       imageUrls: ['https://picsum.photos/400'],
       isDigital: false,
     }],
-    subtotal: +(10.00 * Math.max(quantity, 1)).toFixed(2),
+    subtotalCents: Math.round(10.00 * Math.max(quantity, 1) * 100),
     shippingAddress: {
       street: '100 King St W',
       apartment: '',
@@ -118,7 +118,7 @@ test.describe('2. Quantity Validation', () => {
 
     const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, excessQty, buyerAuth.idToken);
     data.items[0].quantity = excessQty;
-    data.subtotal = +(10.00 * excessQty).toFixed(2);
+    data.subtotalCents = Math.round(10.00 * excessQty * 100);
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     // Backend: "resource-exhausted" (stock) or "invalid-argument" (qty limit) — both correct
@@ -134,10 +134,10 @@ test.describe('2. Quantity Validation', () => {
     // Build a valid payload, then corrupt the quantity
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     data.items[0].quantity = 0;
-    data.subtotal = 0;
+    data.subtotalCents = 0;
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
-    // Backend validates: item_quantity <= 0 → invalid-argument; subtotal <= 0 → invalid-argument
+    // Backend validates: item_quantity <= 0 → invalid-argument; subtotalCents <= 0 → invalid-argument
     expect(error.code).toBe('invalid-argument');
   });
 
@@ -147,7 +147,7 @@ test.describe('2. Quantity Validation', () => {
 
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     data.items[0].quantity = 101;
-    data.subtotal = +(product.price * 101).toFixed(2);
+    data.subtotalCents = Math.round(product.price * 101 * 100);
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     expect(error.code).toBe('invalid-argument');
@@ -431,8 +431,8 @@ test.describe('7. Non-Existent Product at Checkout', () => {
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
 
-    // Tamper: set subtotal to 0 — backend re-computes from Firestore, but subtotal guard fires first
-    data.subtotal = 0;
+    // Tamper: set subtotalCents to 0 — backend re-computes from Firestore, but subtotalCents guard fires first
+    data.subtotalCents = 0;
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     expect(error.code).toBe('invalid-argument');

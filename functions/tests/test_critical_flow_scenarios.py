@@ -1340,8 +1340,12 @@ class TestCronJobs:
         """Scenario 89: Auto-capture skips when Stripe is disabled."""
         from handlers.cron_jobs import auto_capture_confirmed_receipts
 
+        mock_fs = MagicMock()
+        mock_fs.transactional = lambda fn: fn
+
         with (
             patch("handlers.cron_jobs.get_db"),
+            patch("handlers.cron_jobs.get_firestore", return_value=mock_fs),
             patch("handlers.payment_providers.is_provider_enabled", return_value=False),
         ):
             event = MagicMock()
@@ -1732,6 +1736,8 @@ class TestWarehouseManagement:
             elif name == "products":
                 # Returns products with the warehouse
                 pdoc = make_mock_doc({"name": "Test Product", "warehouseStock": {"wh_123": 10}})
+                pdoc.id = "prod_123"
+                coll.where.return_value.where.return_value.stream.return_value = iter([pdoc])
                 coll.where.return_value.where.return_value.limit.return_value.get.return_value = [pdoc]
 
                 # Mock the inventoryLevels subcollection check
