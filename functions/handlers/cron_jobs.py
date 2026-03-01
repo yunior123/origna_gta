@@ -703,14 +703,14 @@ def _run_expired_authorizations() -> None:
                 fresh_data = fresh_doc.to_dict()
                 current_status = fresh_data.get(Fields.ORDER_STATUS)
                 fresh_payment_status = fresh_data.get(Fields.PAYMENT_STATUS)
-                
+
                 # C-10: Prevent race condition with capture.
                 if fresh_payment_status in [PaymentStatusValues.CAPTURING, PaymentStatusValues.CAPTURED]:
                     return f"locked_by_capture:{fresh_payment_status}", False, [], None
-                    
+
                 if current_status not in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED]:
                     return f"invalid_status:{current_status}", False, [], None
-                    
+
                 stock_already_restored = fresh_data.get(Fields.STOCK_RESTORED, False)
                 new_payment_status = (
                     PaymentStatusValues.AUTHORIZATION_EXPIRED
@@ -985,7 +985,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
             except Exception as e:
                 import logging
                 logging.error(f'Error processing item in batch: {e}')
-                
+
         last_doc = docs[-1]
         query = get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500).start_after(last_doc)
     # Commit remaining
@@ -1018,13 +1018,13 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
     # Collect all image URLs currently referenced by products
     # select() fetches only imageUrls field — avoids reading full product docs
     referenced_keys = set()
-    
+
     query = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).limit(500)
     while True:
         docs = list(query.stream())
         if not docs:
             break
-            
+
         for product_doc in docs:
             try:
                 product_data = product_doc.to_dict()
@@ -1044,7 +1044,7 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
             except Exception as e:
                 import logging
                 logging.error(f'Error processing item in batch: {e}')
-                
+
         last_doc = docs[-1]
         query = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).limit(500).start_after(last_doc)
 
@@ -1139,7 +1139,7 @@ def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
     cutoff_time = datetime.now(UTC) - timedelta(days=BusinessRules.WEBHOOK_EVENT_RETENTION_DAYS)
 
     webhook_docs = (
-        get_db().collection(Collections.WEBHOOK_EVENTS).where(Fields.TIMESTAMP, "<=", cutoff_time).stream()
+        get_db().collection(Collections.WEBHOOK_EVENTS).where(Fields.TIMESTAMP, "<=", cutoff_time).limit(500).stream()
     )
 
     deleted_count = 0
@@ -1183,6 +1183,7 @@ def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
         .collection(Collections.SECURITY_ALERTS)
         .where(Fields.RESOLVED, "==", True)
         .where(Fields.TIMESTAMP, "<=", cutoff_time)
+        .limit(500)
         .stream()
     )
 
@@ -1801,7 +1802,7 @@ def _compute_seller_metrics_logic() -> None:
                     continue
                 stats = _get_seller_entry(sid)
                 stats["total_seller_items"] += 1
-                
+
                 item_status = item.get(Fields.STATUS)
                 if item_status == DeliveryStatusValues.REFUNDED:
                     stats["refunded_items"] += 1
@@ -1829,7 +1830,7 @@ def _compute_seller_metrics_logic() -> None:
         # We need FIRST_REPLY_HOURS for chats where FIRST_SELLER_REPLY_AT >= window_start
         chats_ref = db.collection(Collections.CHATS).where(Fields.FIRST_SELLER_REPLY_AT, ">=", window_start)
         chats_stream = chats_ref.stream()
-        
+
         # seller_chats[seller_id] = [hours1, hours2, ...]
         seller_chats = {}
         for chat_doc in chats_stream:
@@ -1860,7 +1861,7 @@ def _compute_seller_metrics_logic() -> None:
 
             total_orders = stats["total_orders"]
             total_items = stats["total_seller_items"]
-            
+
             dispute_rate = stats["disputed_orders"] / total_orders if total_orders > 0 else 0.0
             refund_rate = stats["refunded_items"] / total_items if total_items > 0 else 0.0
             cancel_rate = stats["cancelled_items"] / total_items if total_items > 0 else 0.0
@@ -1900,7 +1901,7 @@ def _compute_seller_metrics_logic() -> None:
                     .where(Fields.SELLER_ID, "==", seller_id)\
                     .where(Fields.RESOLVED, "==", False)\
                     .limit(1).get()
-                
+
                 if not existing:
                     db.collection(Collections.SECURITY_ALERTS).add({
                         Fields.TYPE: SecurityAlertTypes.SELLER_METRICS_BREACH,

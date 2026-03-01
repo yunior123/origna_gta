@@ -141,6 +141,8 @@ service cloud.firestore {
         'failed': ['pending'],                                      // Retry -> pending
         'expired': ['pending'],                                     // Retry -> pending
         'disputed': [],                                             // Terminal state
+        'partially_refunded': [],                                   // Terminal state (partial refund issued)
+        'refunded': [],                                             // Terminal state (full refund issued)
       };
       
       // Get valid next states for current status

@@ -23,6 +23,7 @@ from schema_constants import (
     ValidationLimits,
 )
 from utils.db import get_db as _get_db
+from utils.db import get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ def _sanitize_text(text: str) -> str:
     # Redact email: standard + [at]/ (at) obfuscation
     email_pat = r'\b[\w._%+\-]+(\s*[@\[(]at[\])]\s*|@)[\w.\-]+\.[a-zA-Z]{2,}\b'
     text = re.sub(email_pat, '[email removed]', text, flags=re.IGNORECASE)
-    
+
     # Redact links
     text = re.sub(r'https?://[^\s]+', '[link removed]', text, flags=re.IGNORECASE)
     text = re.sub(r'www\.[^\s]+', '[link removed]', text, flags=re.IGNORECASE)
@@ -146,7 +147,6 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Create new thread
     product_title = product_data.get(Fields.NAME, "Product")
     product_image_url = (product_data.get(Fields.IMAGE_URLS) or [None])[0]
-    now = datetime.now(UTC)
 
     try:
         chat_ref.create(
@@ -160,8 +160,8 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.LAST_MESSAGE_AT: None,
                 Fields.BUYER_UNREAD_COUNT: 0,
                 Fields.SELLER_UNREAD_COUNT: 0,
-                Fields.CREATED_AT: now,
-                Fields.UPDATED_AT: now,
+                Fields.CREATED_AT: get_server_timestamp(),
+                Fields.UPDATED_AT: get_server_timestamp(),
             }
         )
     except Exception as e:
@@ -246,7 +246,7 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if not chat_id:
         raise https_fn.HttpsError("invalid-argument", "chatId is required.")
-    
+
     # Text is optional if images are provided
     if (not raw_text or not isinstance(raw_text, str)) and not image_urls:
         raise https_fn.HttpsError("invalid-argument", "text or imageUrls is required.")
@@ -317,7 +317,7 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.SENDER_DISPLAY_NAME: sender_name,
             Fields.MESSAGE_TEXT: text,
             Fields.IMAGE_URLS: image_urls if image_urls else [],
-            Fields.CREATED_AT: now,
+            Fields.CREATED_AT: get_server_timestamp(),
             Fields.IS_READ: False,
         }
     )
@@ -326,8 +326,8 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     recipient_unread_field = Fields.SELLER_UNREAD_COUNT if uid == buyer_id else Fields.BUYER_UNREAD_COUNT
     thread_update: dict = {
         Fields.LAST_MESSAGE: text[:100],
-        Fields.LAST_MESSAGE_AT: now,
-        Fields.UPDATED_AT: now,
+        Fields.LAST_MESSAGE_AT: get_server_timestamp(),
+        Fields.UPDATED_AT: get_server_timestamp(),
         recipient_unread_field: firestore.Increment(1),
     }
 
@@ -384,12 +384,12 @@ def report_message(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("invalid-argument", "chatId, messageId, and reason are required.")
 
     db = _get_db()
-    
+
     # 1. Verify chat exists and user is a participant
     chat_snap = db.collection(Collections.CHATS).document(chat_id).get()
     if not chat_snap.exists:
         raise https_fn.HttpsError("not-found", "Chat thread not found.")
-    
+
     chat_data = chat_snap.to_dict() or {}
     if uid not in (chat_data.get(Fields.BUYER_ID), chat_data.get(Fields.SELLER_ID)):
         raise https_fn.HttpsError("permission-denied", "Access denied.")
@@ -414,5 +414,5 @@ def report_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     })
 
     logger.info(f"Message {message_id} in chat {chat_id} flagged by user {uid}")
-    
+
     return {"success": True, "reportId": report_ref.id}

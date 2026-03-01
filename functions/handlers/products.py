@@ -262,11 +262,11 @@ def upload_product_video(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_data = user_doc.to_dict()
     if user_data.get(Fields.SUSPENDED, False):
         raise https_fn.HttpsError("permission-denied", "Your account is suspended")
-    
+
     roles = user_data.get(Fields.ROLES, [])
     if UserRoleValues.SELLER not in roles and UserRoleValues.ADMIN not in roles:
         raise https_fn.HttpsError("permission-denied", "Seller role required")
-        
+
     if UserRoleValues.ADMIN not in roles:
         # SECURITY: Verify onboarding from seller_profiles
         sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(user_id).get()
@@ -294,7 +294,7 @@ def upload_product_video(req: https_fn.CallableRequest) -> dict[str, Any]:
     # SECURITY: Validate MIME types
     if content_type not in ProductConstraints.ALLOWED_VIDEO_MIME_TYPES:
         raise https_fn.HttpsError(
-            "invalid-argument", 
+            "invalid-argument",
             f"Invalid content type '{content_type}'. Allowed: {', '.join(sorted(ProductConstraints.ALLOWED_VIDEO_MIME_TYPES))}"
         )
 
@@ -306,7 +306,7 @@ def upload_product_video(req: https_fn.CallableRequest) -> dict[str, Any]:
     ext = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
     if ext not in ALLOWED_EXTENSIONS:
         raise https_fn.HttpsError(
-            "invalid-argument", 
+            "invalid-argument",
             f"Invalid file extension '.{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
 
@@ -756,11 +756,11 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     # If shipping address matches seller address EXACTLY, it's a high-risk gaming attempt (friends/family)
     shipping_addr = order_data.get(Fields.SHIPPING_ADDRESS, {})
     seller_addr = rated_item.get(Fields.SELLER_ADDRESS, {}) if rated_item else {}
-    
+
     # Comparison keys for "Related Party" detection (approximate for now)
     cmp_keys = ["street", "city", "state", "postalCode"]
     is_related = all(shipping_addr.get(k) == seller_addr.get(k) for k in cmp_keys if shipping_addr.get(k))
-    
+
     if is_related:
         rating_doc[Fields.IS_RELATED_PARTY] = True
         logger.warning(f"Related party review detected: buyer={user_id} seller={rated_item.get(Fields.SELLER_ID)} product={product_id}")
@@ -801,6 +801,11 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
             _txn_error["err"] = https_fn.HttpsError("already-exists", "You have already rated this product")
             return None, None
 
+        # Fetch product doc inside transaction for consistent read
+        product_doc = product_ref.get(transaction=transaction)
+        if not product_doc.exists:
+            _txn_error["err"] = https_fn.HttpsError("not-found", "Product not found")
+            return None, None
         product_data = product_doc.to_dict()
         current_rating = product_data.get(Fields.RATING, 0)
         rating_count = product_data.get(Fields.RATING_COUNT, 0)
@@ -822,16 +827,16 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
                 seller_data = seller_doc.to_dict() or {}
                 s_rating = seller_data.get(Fields.AVG_RATING, 0)
                 s_count = seller_data.get(Fields.TOTAL_REVIEWS, 0)
-                
+
                 new_s_count = s_count + 1
                 new_s_rating = ((s_rating * s_count) + seller_rating) / new_s_count
-                
+
                 transaction.update(seller_ref, {
                     Fields.AVG_RATING: new_s_rating,
                     Fields.TOTAL_REVIEWS: new_s_count,
                     Fields.UPDATED_AT: get_server_timestamp(),
                 })
-                
+
                 # Create separate seller rating entry for audit trail
                 seller_rating_ref = get_db().collection(Collections.SELLER_RATINGS).document()
                 transaction.create(seller_rating_ref, {
@@ -1316,19 +1321,19 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
             w_doc = warehouse_docs.get(wid)
             if w_doc is None or not w_doc.exists:
                 raise https_fn.HttpsError("not-found", f"Warehouse '{wid}' not found. Please update your warehouse selection.")
-            
+
             wh_data = w_doc.to_dict() or {}
             addr = wh_data.get("address", {})
             if not addr.get("city") or not addr.get("country"):
                 raise https_fn.HttpsError(
                     "invalid-argument", f"Warehouse '{wid}' has an incomplete address (city and country are required)."
                 )
-            
+
             # F-89: Geocoding Bypass Prevention
             if addr.get(Fields.LATITUDE) is None or addr.get(Fields.LONGITUDE) is None:
                 logger.warning(f"Warehouse {wid} (seller={user_id}) is missing geocoding data.")
                 raise https_fn.HttpsError(
-                    "failed-precondition", 
+                    "failed-precondition",
                     f"Warehouse '{wid}' is not geocoded. Please update its address to calculate shipping costs accurately."
                 )
 
@@ -2291,9 +2296,9 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             after_price = product_data.get(Fields.PRICE, 0)
             if after_price < before_price:
                 _fire_price_drop_notifications(
-                    product_id, 
-                    float(before_price), 
-                    float(after_price), 
+                    product_id,
+                    float(before_price),
+                    float(after_price),
                     product_data.get(Fields.NAME, "A product you favorited")
                 )
         except Exception as e:
@@ -3410,6 +3415,11 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                             )
                     except Exception as e:
                         logger.error(f"Failed to send back-in-stock notification for sub {sub_doc.id}: {e}")
+                        # Rollback notifiedAt so next run can retry this subscriber
+                        try:
+                            sub_doc.reference.update({Fields.NOTIFIED_AT: None})
+                        except Exception as rollback_err:
+                            logger.error(f"Failed to rollback notifiedAt for sub {sub_doc.id}: {rollback_err}")
                 last_doc = batch_docs[-1]
         return
 
@@ -3473,6 +3483,11 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
                     )
             except Exception as e:
                 logger.error(f"Failed to send back-in-stock notification for sub {sub_doc.id}: {e}")
+                # Rollback notifiedAt so next run can retry this subscriber
+                try:
+                    sub_doc.reference.update({Fields.NOTIFIED_AT: None})
+                except Exception as rollback_err:
+                    logger.error(f"Failed to rollback notifiedAt for sub {sub_doc.id}: {rollback_err}")
         last_doc = batch_docs[-1]
 
 
@@ -4385,7 +4400,7 @@ def update_product(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Strip server-managed fields
     PROTECTED_FIELDS = {
-        Fields.PRODUCT_ID, Fields.SELLER_ID, Fields.RATING, 
+        Fields.PRODUCT_ID, Fields.SELLER_ID, Fields.RATING,
         Fields.RATING_COUNT, Fields.CREATED_AT, Fields.UPDATED_AT
     }
     for field in PROTECTED_FIELDS:
@@ -4394,7 +4409,7 @@ def update_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     # F-90: Re-trigger UNDER_REVIEW if sensitive digital fields change
     SENSITIVE_FIELDS = {Fields.DIGITAL_BUILDS, Fields.BOOK_SOURCE_URL, Fields.IS_DIGITAL}
     has_sensitive_change = any(field in clean_update for field in SENSITIVE_FIELDS)
-    
+
     if has_sensitive_change:
         # Logic: if digital links are swapped after approval, product must be re-vetted
         current_status = existing_data.get(Fields.LIFECYCLE_STATUS)
@@ -4406,11 +4421,11 @@ def update_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     if Fields.VIDEO_URL in clean_update:
         new_video_url = clean_update.get(Fields.VIDEO_URL)
         old_video_url = existing_data.get(Fields.VIDEO_URL)
-        
+
         # Validate new origin if present
         if new_video_url and not str(new_video_url).startswith(CDN_BASE_URL):
             raise https_fn.HttpsError("invalid-argument", "Invalid video URL origin")
-            
+
         # Delete old video from R2 if changed or removed
         if old_video_url and old_video_url != new_video_url:
             old_key = old_video_url.replace(f"{CDN_BASE_URL}/", "")
@@ -4420,10 +4435,10 @@ def update_product(req: https_fn.CallableRequest) -> dict[str, Any]:
                 s3_client.delete_object(Bucket=R2Config.BUCKET_NAME, Key=old_key)
 
     clean_update[Fields.UPDATED_AT] = get_server_timestamp()
-    
+
     # Commit to Firestore
     product_ref.update(clean_update)
-    
+
     return create_success_response({"updated": True})
 
 
@@ -4444,7 +4459,7 @@ def _fire_price_drop_notifications(product_id: str, before_price: float, after_p
     fav_query = favs_ref.where(Fields.PRODUCT_ID, "==", product_id).stream()
 
     from services.push_service import send_push_notification
-    
+
     # Batch or aggregate notifications if many users
     count = 0
     for fav_doc in fav_query:

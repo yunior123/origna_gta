@@ -23,24 +23,23 @@ class AlgoliaService {
     _hitsSearcher?.dispose();
   }
 
-  /// Set search with optional category filter (facet)
+  /// Set search with optional category filter (facet).
+  /// Always enforces lifecycleStatus=active so inactive/archived products never appear.
   void search(String searchQuery, {int? categoryId, String? subcategory}) {
     if (_hitsSearcher == null) return;
     _hitsSearcher.applyState((state) {
       var newState = state.copyWith(query: searchQuery, page: 0);
-      // Apply category and subcategory as facet filters when provided
-      final filters = <FilterFacet>{};
+      // Always filter to active products only — guards against stale index entries
+      final filters = <FilterFacet>{
+        Filter.facet(Fields.lifecycleStatus, ProductLifecycleStatusValues.active),
+      };
       if (categoryId != null) {
         filters.add(Filter.facet(Fields.categoryId, categoryId));
       }
       if (subcategory != null && subcategory.isNotEmpty) {
         filters.add(Filter.facet(Fields.subcategory, subcategory));
       }
-      if (filters.isNotEmpty) {
-        newState = newState.copyWith(filterGroups: {FilterGroup.facet(filters: filters)});
-      } else {
-        newState = newState.copyWith(filterGroups: {});
-      }
+      newState = newState.copyWith(filterGroups: {FilterGroup.facet(filters: filters)});
       return newState;
     });
   }

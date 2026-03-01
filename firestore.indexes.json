@@ -1089,6 +1089,287 @@
         }
       ],
       "comment": "AUDIT 2026-02-26: notify_new_product_to_premium — isPremium == true AND notifyNewProducts == true (products.py lines 1722-1724, paginated)"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Idempotency check for checkout — userId + orderStatus + paymentStatus + createdAt DESC (payment_stripe.py:1177-1181)"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Admin suspend_seller — sellerIds + orderStatus IN + paymentStatus IN (admin.py:390-395, 443-448)"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: check_expired_authorizations cron — paymentStatus IN + orderStatus IN + createdAt range (cron_jobs.py:675-686)"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Admin delete_account — userId + orderStatus IN (admin.py:1225-1236)"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Seller active orders check — sellerIds + orderStatus IN (admin.py:1251, products.py:569, 3176)"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "paymentProvider",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Admin delete_payment_provider — paymentProvider + paymentStatus IN (payment_providers.py:357-359)"
+    },
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "currentPeriodEnd",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: renewal_reminder cron — currentPeriodEnd range + status IN (cron_jobs.py:2097-2100)"
+    },
+    {
+      "collectionGroup": "stock_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "variantKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "notifiedAt",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Stock notification dedup — productId + userId + variantKey + notifiedAt (products.py:3548, 3594; orders.py:2342)"
+    },
+    {
+      "collectionGroup": "product_ratings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Duplicate rating guard — userId + productId (products.py:795-798)"
+    },
+    {
+      "collectionGroup": "payouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orderId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Payout query orderId + status IN (payment_stripe.py:3007, 3594)"
+    },
+    {
+      "collectionGroup": "payouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Admin delete_account — sellerId + status (admin.py:1275-1278)"
+    },
+    {
+      "collectionGroup": "payouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stripeAccountId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Webhook transfer.paid — stripeAccountId + status (payment_stripe.py:3732-3734)"
+    },
+    {
+      "collectionGroup": "security_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "chargeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Duplicate dispute alert dedup — chargeId + type (payment_stripe.py:3476, 3551)"
+    },
+    {
+      "collectionGroup": "security_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "resolved",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Algolia sync alert dedup — type + resolved (cron_jobs.py:924-927)"
+    },
+    {
+      "collectionGroup": "security_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "resolved",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "AUDIT 2026-02-28: Cleanup old resolved alerts — resolved + timestamp (cron_jobs.py:1184-1186)"
     }
   ],
   "fieldOverrides": []

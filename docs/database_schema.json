@@ -1068,7 +1068,10 @@
             "authorization_expired",
             "capturing",
             "cancelling",
-            "expiring"
+            "expiring",
+            "disputed",
+            "partially_refunded",
+            "voided"
           ]
         },
         "shippingAddress": {

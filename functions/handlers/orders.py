@@ -508,7 +508,7 @@ def _update_item_status_logic(user_id: str, data: dict, is_admin: bool = None) -
                 updated_item[Fields.SHIPPED_AT] = server_ts
             elif new_status == DeliveryStatusValues.DELIVERED:
                 updated_item[Fields.DELIVERED_AT] = server_ts
-                
+
             updated_items[idx] = updated_item
         order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: get_server_timestamp()})
         return {"success": True, "itemStatus": new_status, "allItemsDelivered": False}
@@ -554,7 +554,7 @@ def _update_item_status_logic(user_id: str, data: dict, is_admin: bool = None) -
         fresh_data = fresh_doc.to_dict()
         fresh_items = fresh_data.get(Fields.ITEMS, [])
         fresh_item_index = next((i for i, it in enumerate(fresh_items) if it[Fields.PRODUCT_ID] == product_id), None)
-        
+
         if fresh_item_index is None:
             raise https_fn.HttpsError("not-found", "Item not found")
 
@@ -2534,6 +2534,87 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             )
             send_push_notification(
                 user_id, "Order Cancelled", f"Order #{oid_short} has been cancelled",
+                data={"type": NotificationTypes.ORDER_STATUS, "orderId": order_id, "status": new_status},
+            )
+
+        elif new_status == OrderStatusValues.FAILED:
+            from services.email_service import _email_wrapper as _ew  # noqa: E402
+            from services.email_service import _hero_header as _hh
+            subj_en = f"Payment Issue - Order #{oid_short}"
+            subj_fr = f"Problème de paiement - Commande #{oid_short}"
+            subj = subj_fr if lang == "fr" else subj_en
+            body_en = (f"<p>We were unable to process the payment for your order <strong>#{oid_short}</strong>. "
+                       "Your authorization has been released and no charge was made. "
+                       "Please try placing a new order.</p>")
+            body_fr = (f"<p>Nous n'avons pas pu traiter le paiement de votre commande <strong>#{oid_short}</strong>. "
+                       "Votre autorisation a été libérée et aucun montant n'a été débité. "
+                       "Veuillez essayer de passer une nouvelle commande.</p>")
+            body = body_fr if lang == "fr" else body_en
+            content = _hh("❌", subj_en if lang == "en" else subj_fr, f"Order #{oid_short}", "rgba(239, 68, 68, 0.2)")
+            content += f"<tr><td style='padding:28px 40px;font-size:14px;color:#333;line-height:1.6;'>{body}</td></tr>"
+            enqueue_email_task(
+                to_email=buyer_email,
+                subject=subj,
+                html_content=_ew("Payment Issue", content, include_gst=False, lang=lang, recipient_email=buyer_email),
+                event_type="order_failed",
+                order_id=order_id,
+            )
+            send_push_notification(
+                user_id, "Payment Failed", f"Payment for order #{oid_short} could not be processed",
+                data={"type": NotificationTypes.ORDER_STATUS, "orderId": order_id, "status": new_status},
+            )
+
+        elif new_status == OrderStatusValues.EXPIRED:
+            from services.email_service import _email_wrapper as _ew  # noqa: E402
+            from services.email_service import _hero_header as _hh
+            subj_en = f"Order #{oid_short} Expired - Origna"
+            subj_fr = f"Commande #{oid_short} expirée - Origna"
+            subj = subj_fr if lang == "fr" else subj_en
+            body_en = (f"<p>Your order <strong>#{oid_short}</strong> has expired because the payment authorization "
+                       "was not captured within 7 days. No charge was made to your account. "
+                       "You can place a new order at any time.</p>")
+            body_fr = (f"<p>Votre commande <strong>#{oid_short}</strong> a expiré car l'autorisation de paiement "
+                       "n'a pas été capturée dans les 7 jours. Aucun montant n'a été débité. "
+                       "Vous pouvez passer une nouvelle commande à tout moment.</p>")
+            body = body_fr if lang == "fr" else body_en
+            content = _hh("⏰", "Order Expired" if lang == "en" else "Commande expirée", f"Order #{oid_short}", "rgba(251, 191, 36, 0.2)")
+            content += f"<tr><td style='padding:28px 40px;font-size:14px;color:#333;line-height:1.6;'>{body}</td></tr>"
+            enqueue_email_task(
+                to_email=buyer_email,
+                subject=subj,
+                html_content=_ew("Order Expired", content, include_gst=False, lang=lang, recipient_email=buyer_email),
+                event_type="order_expired",
+                order_id=order_id,
+            )
+            send_push_notification(
+                user_id, "Order Expired", f"Order #{oid_short} has expired",
+                data={"type": NotificationTypes.ORDER_STATUS, "orderId": order_id, "status": new_status},
+            )
+
+        elif new_status == OrderStatusValues.DISPUTED:
+            from services.email_service import _email_wrapper as _ew  # noqa: E402
+            from services.email_service import _hero_header as _hh
+            subj_en = f"Dispute Opened - Order #{oid_short}"
+            subj_fr = f"Litige ouvert - Commande #{oid_short}"
+            subj = subj_fr if lang == "fr" else subj_en
+            body_en = (f"<p>A dispute has been opened for your order <strong>#{oid_short}</strong>. "
+                       "Our team is reviewing this and will contact you within 2 business days. "
+                       "Please do not open a second dispute for this order.</p>")
+            body_fr = (f"<p>Un litige a été ouvert pour votre commande <strong>#{oid_short}</strong>. "
+                       "Notre équipe examine ce cas et vous contactera dans les 2 jours ouvrables. "
+                       "Veuillez ne pas ouvrir un deuxième litige pour cette commande.</p>")
+            body = body_fr if lang == "fr" else body_en
+            content = _hh("⚠️", "Dispute Opened" if lang == "en" else "Litige ouvert", f"Order #{oid_short}", "rgba(239, 68, 68, 0.2)")
+            content += f"<tr><td style='padding:28px 40px;font-size:14px;color:#333;line-height:1.6;'>{body}</td></tr>"
+            enqueue_email_task(
+                to_email=buyer_email,
+                subject=subj,
+                html_content=_ew("Dispute Opened", content, include_gst=False, lang=lang, recipient_email=buyer_email),
+                event_type="order_disputed",
+                order_id=order_id,
+            )
+            send_push_notification(
+                user_id, "Dispute Opened", f"A dispute has been opened for order #{oid_short}",
                 data={"type": NotificationTypes.ORDER_STATUS, "orderId": order_id, "status": new_status},
             )
 
