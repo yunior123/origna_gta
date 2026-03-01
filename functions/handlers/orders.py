@@ -24,6 +24,7 @@ from schema_constants import (
     DeliveryStatusValues,
     DeliveryTypeValues,
     Fields,
+    LicenseStatusValues,
     NotificationTypes,
     OrderEventTypes,
     OrderItemIdValues,
@@ -1157,6 +1158,36 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
         actor=user_id, actor_type="seller" if is_item_seller else "admin",
         metadata={"productId": product_id, "refundAmountCents": refund_amount_cents, "refundId": refund.id},
     )
+
+    # Revoke digital license for this specific item if it's a digital product
+    if item_data.get(Fields.IS_DIGITAL, False):
+        try:
+            from datetime import UTC, datetime
+            db = get_db()
+            lic_docs = (
+                db.collection(Collections.LICENSES)
+                .where(Fields.ORDER_ID, "==", order_id)
+                .where(Fields.PRODUCT_ID, "==", product_id)
+                .stream()
+            )
+            now_utc = datetime.now(UTC)
+            batch = db.batch()
+            revoked = 0
+            for lic_doc in lic_docs:
+                lic = lic_doc.to_dict() or {}
+                if lic.get(Fields.STATUS) == LicenseStatusValues.ACTIVE:
+                    batch.update(lic_doc.reference, {
+                        Fields.STATUS: LicenseStatusValues.REVOKED,
+                        "revokedAt": now_utc,
+                        "revokedReason": "item_refunded",
+                        Fields.UPDATED_AT: now_utc,
+                    })
+                    revoked += 1
+            if revoked > 0:
+                batch.commit()
+                logger.info(f"Revoked {revoked} license(s) for product {product_id} in order {order_id} (item refund)")
+        except Exception as lic_err:
+            logger.error(f"Failed to revoke digital license for product {product_id} in order {order_id}: {lic_err}")
 
     return create_success_response(
         {
@@ -2342,8 +2373,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                         .where(Fields.PRODUCT_ID, "==", pid)
                         .where(Fields.USER_ID, "==", user_id)
                         .where(Fields.VARIANT_KEY, "==", variant_key)
-                        .limit(10)
-                        .stream()
+                        .stream()  # No limit — delete ALL matching subscriptions
                     )
                     for sub in subs:
                         batch.delete(sub.reference)
