@@ -63,3 +63,5 @@ Operate using a strict **Research → Strategy → Execution → Verification** 
 | dev | `orignagta-dev` | `playwright.config.dev.ts` |
 | staging | `orignagta-staging` | `playwright.config.staging.ts` |
 | prod | `orignagta` | ❌ never |
+
+ export CLAUDE_CODE_USE_BEDROCK=1
