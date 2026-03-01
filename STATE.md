@@ -5,7 +5,7 @@
 
 # FULL REPO AUDIT — 2026-02-28
 
-## STATUS: Audit complete (19/33 agents). Fixes in progress. Deploy to dev ✅.
+## STATUS: Audit complete (19/33 + Gemini fallback). All critical fixes applied. Deploy in progress.
 
 ## PENDING TASKS
 1. ✅ Full audit (complete — findings below)
@@ -36,14 +36,30 @@
 | Payment: seller push notification on new orders | payment_stripe.py | ✅ |
 | Payment: payout idempotency checks all non-FAILED status | payment_stripe.py | ✅ |
 | .env: fix invalid dotenv lines (BedrockAPIKey, AWS_BedRock) | functions/.env | ✅ local |
+| Digital item refund: revoke license for specific product | orders.py | ✅ |
+| stock_notifications cleanup: remove .limit(10) per item | orders.py | ✅ |
+| chat mark_messages_read: add .limit(500) to unbounded query | chat.py | ✅ |
 
 ## AGENTS RAN (19 succeeded, 14 rate-limited)
 
 ### Succeeded
 schema-sync, cron-jobs, app-bootstrap, legacy-code, frontend, add-product, notifications, product-qa-ratings, profile-address, chat, seller-warehouses, missing-indexes (17 added), search-discovery, email-notifications, stock-notifications, favorites, payment, legal-compliance, Gemini test-gaps
 
-### Need Re-run (Bedrock quota exhausted — retry in ~2hrs)
-logic-auditor, security-auditor, performance-auditor, order-lifecycle-auditor, cross-stack-auditor, auth-onboarding-auditor, product-lifecycle-auditor, return-requests-auditor, coupons-discounts-auditor, digital-products-auditor, firebase-architect-agent, premium-auditor, admin-panel-auditor, cost-monitor
+### Bedrock quota exhausted — used Gemini CLI as fallback (3 of 14 produced real findings)
+
+From Gemini audits:
+- **logic/security/cross-stack/order-lifecycle**: quota hit before analysis
+- **admin-panel**: admin can grant ADMIN role to others (HIGH, intentional feature with MFA guard)
+- **digital-products**: item-level refund didn't revoke license → FIXED
+- **performance**: N+1 FCM reads in _fire_back_in_stock_notifications + _fire_price_drop_notifications + _notify_premium_users_new_product (HIGH — complex, deferred)
+- **performance**: mark_messages_read unbounded query → FIXED
+- **return-requests**: digital admin manual refund path may not revoke license (MEDIUM)
+- **product-lifecycle**: Algolia sync not atomic with Firestore (architectural, deferred)
+- **premium**: reactivate_subscription was false positive — _sync_subscription called synchronously ✅
+- **auth**: Sellers lack MFA for payout actions (MEDIUM, deferred)
+
+### Still Needed (run individually with ~30s gap between):
+logic-auditor, security-auditor, cross-stack-auditor, order-lifecycle-auditor, product-lifecycle-auditor, return-requests-auditor, coupons-discounts-auditor, firebase-architect-agent, admin-panel-auditor
 
 ---
 
