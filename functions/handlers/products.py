@@ -3192,7 +3192,23 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
                         f"Cannot delete warehouse: order {odoc.id} has an in-flight item fulfilled from this warehouse.",
                     )
 
-        # Delete the warehouse doc first to prevent new references
+        # If deleting the default warehouse, atomically promote another before deleting
+        was_default = (wh_doc_snap.to_dict() or {}).get(Fields.IS_DEFAULT, False)
+        if was_default:
+            other_warehouses = (
+                get_db()
+                .collection(Collections.USERS)
+                .document(seller_id)
+                .collection(Collections.WAREHOUSES)
+                .where(Fields.IS_DEFAULT, "==", False)
+                .limit(1)
+                .stream()
+            )
+            for other_wh in other_warehouses:
+                other_wh.reference.update({Fields.IS_DEFAULT: True})
+                break  # promote exactly one
+
+        # Delete the warehouse doc
         wh_ref.delete()
 
         # Cleanup Loop: Remove warehouse from products and subcollections

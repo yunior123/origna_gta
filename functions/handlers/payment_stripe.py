@@ -2241,6 +2241,18 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
                         event_type=OrderEventTypes.ORDER_CONFIRMED_SELLER,
                         order_id=order_id,
                     )  # FIX F5-3: Non-blocking seller notification
+                # Push notification so mobile sellers see new orders immediately
+                item_count = sum(1 for item in order_data[Fields.ITEMS] if item.get(Fields.SELLER_ID) == seller_id)
+                try:
+                    from services.push_service import send_push_notification as _push_seller
+                    _push_seller(
+                        seller_id,
+                        title="New Order!",
+                        body=f"You have a new order — {item_count} item{'s' if item_count != 1 else ''} to fulfill",
+                        data={"type": NotificationTypes.ORDER_STATUS, "orderId": order_id, "status": OrderStatusValues.CONFIRMED},
+                    )
+                except Exception as push_err:
+                    logger.warning(f"Failed to send push to seller {seller_id}: {push_err}")
     except Exception as e:
         logger.error(f"Failed to send confirmation emails: {str(e)}")
 
