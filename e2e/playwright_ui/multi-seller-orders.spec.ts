@@ -85,27 +85,28 @@ test.describe('Multi-Seller Orders', () => {
   });
 
   test('Per-item status tracking works for multi-item order', async ({ page }) => {
-
+    // Use productB + productC (not productA + productB) to avoid the 60s order dedup
+    // window that returns the same checkout session as the previous test.
     const result = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
-      { productId: productA!.id, quantity: 1 },
       { productId: productB!.id, quantity: 1 },
+      { productId: productC!.id, quantity: 1 },
     ]);
 
     const auth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], auth.idToken, 90_000);
 
-    // Seller A marks their item as shipped (valid DeliveryStatusValues: pending/shipped/delivered/refunded)
-    const sellerAuth = await getSellerAuth(productA!.sellerId);
+    // Seller B marks their item as shipped
+    const sellerAuth = await getSellerAuth(productB!.sellerId);
     const updateResult = await callOk('update_item_status', {
       orderId: result.orderId,
-      productId: productA!.id,
+      productId: productB!.id,
       newStatus: 'shipped',
       trackingNumber: `TRACK-${Date.now()}`,
       carrier: 'Canada Post',
     }, sellerAuth.idToken);
 
     const order = await getOrder(result.orderId, sellerAuth.idToken);
-    const item = order.items.find((i: any) => i.productId === productA!.id);
+    const item = order.items.find((i: any) => i.productId === productB!.id);
     if (item?.status) {
       expect(item.status).toBe('shipped');
     }

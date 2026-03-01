@@ -16,7 +16,7 @@ import {
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 
 test.describe('Shipping Calculation', () => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000); // Dynamic product creation + 2 checkout sessions can take >60s under load
 
   let buyerAuth: Awaited<ReturnType<typeof signIn>>;
 

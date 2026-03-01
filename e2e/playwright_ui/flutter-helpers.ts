@@ -75,10 +75,13 @@ export async function waitForFlutter(page: Page, timeout = 180000): Promise<void
         await page.keyboard.press('Tab');
     }
 
+    // Use full timeout — dev builds on 8GB RAM can take 90-180s to initialize.
+    // The old Math.min(timeout, 90000) cap caused silent failures when Flutter
+    // took > 90s, making waitForFlutter return "success" on a stuck splash screen.
     await page
         .locator('flt-semantics')
         .first()
-        .waitFor({ state: 'attached', timeout: Math.min(timeout, 90000) })
+        .waitFor({ state: 'attached', timeout })
         .catch(() => { });
 
     console.log(`   ✅ Flutter initialized in ${Date.now() - startTime}ms`);

@@ -14,7 +14,7 @@ import {
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 
 test.describe('Rate Limiting', () => {
-  test.setTimeout(60_000); // each test max 60s — fail fast
+  test.setTimeout(120_000); // 10 parallel checkout requests + rate limit check can exceed 60s under dev load
 
   let productId: string;
   let buyerAuth: Awaited<ReturnType<typeof signIn>>;

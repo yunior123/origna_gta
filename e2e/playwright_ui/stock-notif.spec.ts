@@ -93,7 +93,7 @@ async function loginAndNavigate(page: Page, baseURL: string, productId: string) 
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('1. UI — Notify Me Button on OOS Product', () => {
-  test.setTimeout(90_000);
+  test.setTimeout(300_000); // Flutter Web on 8GB RAM takes 90-180s to initialize
 
   // No beforeAll/afterAll needed — e2e_product_oos is dedicated OOS product (stock always 0)
 
@@ -252,7 +252,7 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('2. UI — Stock Restored Removes Notify Me', () => {
-  test.setTimeout(90_000);
+  test.setTimeout(300_000); // Flutter Web on 8GB RAM takes 90-180s to initialize
 
   /**
    * This test uses a temporary product created in Firestore with stockQuantity=0,
