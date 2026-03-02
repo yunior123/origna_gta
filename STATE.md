@@ -75,6 +75,21 @@
 - Mega seed → `orignagta-dev`: 35 products (5 new), 16 orders, all seeded
 - Flutter web → `orignagta-dev`: rebuilt with `--dart-define=FORCE_SEMANTICS=true --dart-define=ENVIRONMENT=dev` + hosting deployed
 
+---
+
+## Known Limitations / Pre-v2 Tasks
+
+### Bug 7: Flawed shipping refund logic (proportional, not per-item)
+**Status:** Deferred — requires schema change before v2
+**Description:** When an item is partially refunded, the proportional shipping refund calculation in `refund_order_item` uses `order_shipping_cents / order_subtotal_cents * item_subtotal_cents`. This is inaccurate when items have different actual shipping costs (e.g., heavy vs. light items). Correct fix requires:
+1. Storing per-item shipping cost at checkout time (`items[].shippingCents`).
+2. Using that snapshot in the refund calculation instead of the proportional estimate.
+**Impact:** Buyers may receive slightly over- or under-refunded shipping amounts on partial refunds.
+**File:** `functions/handlers/orders.py` → `refund_order_item`
+**Fix before:** v2 launch
+
+---
+
 ### Key Fix Patterns Discovered
 - Flutter `Semantics(label:)` renders as **text content** in `flt-semantics` nodes, NOT `aria-label` — use `filter({ hasText: })` instead of `[aria-label=]` selectors
 - `toFirestoreFields()` needs `new Date()` objects (not ISO strings) to produce `timestampValue` for Firestore rules validation
