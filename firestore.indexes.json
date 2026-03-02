@@ -980,9 +980,13 @@
         {
           "fieldPath": "createdAt",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
         }
       ],
-      "comment": "AUDIT 2026-02-26: escalate_stale_return_requests cron — returnStatus == requested AND createdAt < cutoff (cron_jobs.py _run_return_escalation)"
+      "comment": "FIX 2026-03-02: escalate_stale_return_requests cron — returnStatus + createdAt + __name__ ASC (FLUTTER-V: missing __name__ tiebreaker)"
     },
     {
       "collectionGroup": "return_requests",
@@ -1382,9 +1386,13 @@
         {
           "fieldPath": "timestamp",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
         }
       ],
-      "comment": "AUDIT 2026-02-28: Cleanup old resolved alerts — resolved + timestamp (cron_jobs.py:1184-1186)"
+      "comment": "FIX 2026-03-02: cleanup_stale_security_alerts cron — resolved + timestamp + __name__ ASC (FLUTTER-S: missing __name__ tiebreaker)"
     },
     {
       "collectionGroup": "security_alerts",
@@ -1483,6 +1491,44 @@
         }
       ],
       "comment": "AUDIT 2026-03-01: admin watchReviews flaggedOnly + hasPhotosOnly combined — isFlagged + hasPhotos + orderBy createdAt DESC (admin_repository.dart:185-186)"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "lifecycleStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "FIX 2026-03-02: compute_trending_products cron — lifecycleStatus + updatedAt ASC + __name__ ASC (FLUTTER-X/10: 19 events)"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "FIX 2026-03-02: auto_archive_old_orders cron — orderStatus + updatedAt ASC + __name__ ASC (FLUTTER-Q/Z: 12 events)"
     }
   ],
   "fieldOverrides": []
