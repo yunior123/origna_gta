@@ -77,24 +77,35 @@ test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
             await menuOrders.click();
             await expect(page).toHaveURL(/\/orders/i, { timeout: 20000 });
             await page.goBack();
+            await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
             await waitForFlutter(page);
         }
 
         // T11: Favorites sub-page
+        // Wait for semantic tree to fully rebuild after goBack (FadeSlideIn at 100ms offset)
+        await page.waitForTimeout(2000);
         const menuFav = page.locator('[aria-label^="menu-favorites"]').first();
+        await menuFav.waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
         if (await menuFav.isVisible().catch(() => false)) {
+            await menuFav.scrollIntoViewIfNeeded().catch(() => {});
             await menuFav.click();
             await expect(page).toHaveURL(/\/favorites/i, { timeout: 20000 });
             await page.goBack();
+            await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
             await waitForFlutter(page);
         }
 
         // T12: Address sub-page
+        // Wait for semantic tree to fully rebuild after goBack from favorites
+        await page.waitForTimeout(2000);
         const menuAddr = page.locator('[aria-label^="menu-address"]').first();
+        await menuAddr.waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
         if (await menuAddr.isVisible().catch(() => false)) {
+            await menuAddr.scrollIntoViewIfNeeded().catch(() => {});
             await menuAddr.click();
             await expect(page).toHaveURL(/\/addresses/i, { timeout: 20000 });
             await page.goBack();
+            await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
             await waitForFlutter(page);
         }
 

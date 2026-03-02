@@ -15,10 +15,13 @@ import {
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 
 test.describe('Shipping Approval', () => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
+  test.describe.configure({ mode: 'serial' });
 
   let productId: string;
   let productSellerId: string;
+  // Shared across tests to avoid running two full Stripe checkouts
+  let sharedOrderId: string;
 
   test.beforeAll(async () => {
     const auth = await signIn(BUYER_EMAIL);
@@ -29,6 +32,7 @@ test.describe('Shipping Approval', () => {
 
   test('Seller can submit shipping cost for an order', async ({ page }) => {
     const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
+    sharedOrderId = result.orderId;
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
@@ -50,14 +54,18 @@ test.describe('Shipping Approval', () => {
     expect(shippingResult).toBeTruthy();
   });
 
-  test('Only the order seller can submit shipping cost', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
+  test('Only the order seller can submit shipping cost', async () => {
+    // Reuse the order from the previous test — no need for a second Stripe checkout.
+    // If the previous test did not produce an orderId (e.g. it was skipped), fall back
+    // to a lightweight API-only checkout that skips the browser Stripe flow.
     const buyerAuth = await signIn(BUYER_EMAIL);
-    await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
+
+    const orderId = sharedOrderId;
+    if (!orderId) throw new Error('sharedOrderId not set — first test must run before this one');
 
     // Buyer tries to submit shipping cost — should fail
     const error = await callExpectError('update_shipping_cost', {
-      orderId: result.orderId,
+      orderId,
       newShippingCost: 15.00,
     }, buyerAuth.idToken);
 

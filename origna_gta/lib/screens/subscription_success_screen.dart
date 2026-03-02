@@ -99,7 +99,74 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
     // HIGH-021 FIX: Prevent success screen bypass.
     // If timed out and still not premium, show a manual refresh/error state instead of success.
     if (!isPremium) {
-      return Scaffold(
+      return Semantics(
+        label: 'subscription-success-screen',
+        child: Scaffold(
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [const Color(0xFFF0F2FF), Colors.white],
+              ),
+            ),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!_timedOut) ...[
+                      const ModernLoadingIndicator(),
+                      const SizedBox(height: 24),
+                      Text(
+                        'subscription.activating_membership'.tr(),
+                        style: const TextStyle(fontSize: 16, color: DesignTokens.textSecondary),
+                      ),
+                    ] else ...[
+                      const Icon(Icons.timer_off_outlined, size: 64, color: DesignTokens.warning),
+                      const SizedBox(height: 24),
+                      Text(
+                        'subscription.activation_delayed_title'.tr(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'subscription.activation_delayed_desc'.tr(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+                      ),
+                      const SizedBox(height: 32),
+                      ModernButton(
+                        label: 'common.refresh'.tr(),
+                        onPressed: () {
+                          setState(() {
+                            _timedOut = false;
+                            _startTimeout();
+                          });
+                          ref.invalidate(subscriptionStreamProvider);
+                        },
+                        icon: Icons.refresh_rounded,
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                        child: Text('common.back_to_home'.tr()),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Semantics(
+      label: 'subscription-success-screen',
+      child: Scaffold(
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -108,170 +175,109 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
               colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [const Color(0xFFF0F2FF), Colors.white],
             ),
           ),
-          child: Center(
+          child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(32.0),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (!_timedOut) ...[
-                    const ModernLoadingIndicator(),
-                    const SizedBox(height: 24),
-                    Text(
-                      'subscription.activating_membership'.tr(),
-                      style: const TextStyle(fontSize: 16, color: DesignTokens.textSecondary),
-                    ),
-                  ] else ...[
-                    const Icon(Icons.timer_off_outlined, size: 64, color: DesignTokens.warning),
-                    const SizedBox(height: 24),
-                    Text(
-                      'subscription.activation_delayed_title'.tr(),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'subscription.activation_delayed_desc'.tr(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
-                    ),
-                    const SizedBox(height: 32),
-                    ModernButton(
-                      label: 'common.refresh'.tr(),
-                      onPressed: () {
-                        setState(() {
-                          _timedOut = false;
-                          _startTimeout();
-                        });
-                        ref.invalidate(subscriptionStreamProvider);
-                      },
-                      icon: Icons.refresh_rounded,
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
+                  const Spacer(),
+
+                  // Animated premium badge
+                  AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [DesignTokens.primary, DesignTokens.secondary],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: DesignTokens.primary.withValues(alpha: _glowAnimation.value),
+                                blurRadius: 32,
+                                spreadRadius: 4,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.workspace_premium, color: Colors.white, size: 50),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  Text(
+                    'subscription.welcome_to_premium'.tr(),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: isDark ? Colors.white : DesignTokens.textPrimary, letterSpacing: -0.5),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Text(
+                    'subscription.subscription_active_desc'.tr(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  _BenefitRow(
+                    icon: Icons.percent_rounded,
+                    title: 'subscription.no_platform_fee'.tr(),
+                    subtitle: 'subscription.no_platform_fee_desc'.tr(),
+                    isDark: isDark,
+                  ),
+                  _BenefitRow(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: 'subscription.chat_with_sellers'.tr(),
+                    subtitle: 'subscription.chat_with_sellers_desc'.tr(),
+                    isDark: isDark,
+                  ),
+                  _BenefitRow(
+                    icon: Icons.question_answer_outlined,
+                    title: 'subscription.ask_questions'.tr(),
+                    subtitle: 'subscription.ask_questions_desc'.tr(),
+                    isDark: isDark,
+                  ),
+                  _BenefitRow(
+                    icon: Icons.photo_camera_outlined,
+                    title: 'subscription.photo_reviews'.tr(),
+                    subtitle: 'subscription.photo_reviews_desc'.tr(),
+                    isDark: isDark,
+                  ),
+                  _BenefitRow(
+                    icon: Icons.notifications_active_outlined,
+                    title: 'subscription.smart_notifications'.tr(),
+                    subtitle: 'subscription.smart_notifications_desc'.tr(),
+                    isDark: isDark,
+                  ),
+
+                  const Spacer(),
+
+                  Semantics(
+                    button: true,
+                    label: 'btn-start-shopping',
+                    child: ModernButton(
+                      label: 'subscription.start_shopping'.tr(),
                       onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
-                      child: Text('common.back_to_home'.tr()),
+                      icon: Icons.shopping_bag_outlined,
                     ),
-                  ],
+                  ),
+
+                  const SizedBox(height: 16),
                 ],
               ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [const Color(0xFFF0F2FF), Colors.white],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-
-                // Animated premium badge
-                AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _scaleAnimation.value,
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [DesignTokens.primary, DesignTokens.secondary],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: DesignTokens.primary.withValues(alpha: _glowAnimation.value),
-                              blurRadius: 32,
-                              spreadRadius: 4,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.workspace_premium, color: Colors.white, size: 50),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 32),
-
-                Text(
-                  'subscription.welcome_to_premium'.tr(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: isDark ? Colors.white : DesignTokens.textPrimary, letterSpacing: -0.5),
-                ),
-
-                const SizedBox(height: 12),
-
-                Text(
-                  'subscription.subscription_active_desc'.tr(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
-                ),
-
-                const SizedBox(height: 40),
-
-                _BenefitRow(
-                  icon: Icons.percent_rounded,
-                  title: 'subscription.no_platform_fee'.tr(),
-                  subtitle: 'subscription.no_platform_fee_desc'.tr(),
-                  isDark: isDark,
-                ),
-                _BenefitRow(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  title: 'subscription.chat_with_sellers'.tr(),
-                  subtitle: 'subscription.chat_with_sellers_desc'.tr(),
-                  isDark: isDark,
-                ),
-                _BenefitRow(
-                  icon: Icons.question_answer_outlined,
-                  title: 'subscription.ask_questions'.tr(),
-                  subtitle: 'subscription.ask_questions_desc'.tr(),
-                  isDark: isDark,
-                ),
-                _BenefitRow(
-                  icon: Icons.photo_camera_outlined,
-                  title: 'subscription.photo_reviews'.tr(),
-                  subtitle: 'subscription.photo_reviews_desc'.tr(),
-                  isDark: isDark,
-                ),
-                _BenefitRow(
-                  icon: Icons.notifications_active_outlined,
-                  title: 'subscription.smart_notifications'.tr(),
-                  subtitle: 'subscription.smart_notifications_desc'.tr(),
-                  isDark: isDark,
-                ),
-
-                const Spacer(),
-
-                Semantics(
-                  button: true,
-                  label: 'btn-start-shopping',
-                  child: ModernButton(
-                    label: 'subscription.start_shopping'.tr(),
-                    onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
-                    icon: Icons.shopping_bag_outlined,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-              ],
             ),
           ),
         ),

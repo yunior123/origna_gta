@@ -642,7 +642,9 @@ export async function fillStripeCheckout(
   email: string,
   card = STRIPE_CARD
 ): Promise<void> {
-  await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => { });
+  await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => { });
+  // Give Stripe's JS time to boot and render its iframe-based fields
+  await page.waitForTimeout(3_000);
   await dismissStripeModals(page);
 
   // Fill email if visible — use the caller's email so Stripe doesn't create a new Link account
@@ -676,10 +678,10 @@ export async function fillStripeCheckout(
 
   // Select "Card" payment method if hidden behind accordion
   const cardField = page.locator('#cardNumber, input[name="cardNumber"]').first();
-  const cardVisible = await cardField.isVisible({ timeout: 3_000 }).catch(() => false);
+  const cardVisible = await cardField.isVisible({ timeout: 5_000 }).catch(() => false);
   if (!cardVisible) {
     const cardRadio = page.locator('#payment-method-accordion-item-title-card').first();
-    if (await cardRadio.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    if (await cardRadio.isVisible({ timeout: 5_000 }).catch(() => false)) {
       const cardLabel = page.locator('label[for="payment-method-accordion-item-title-card"], #payment-method-accordion-item-title-card').first();
       await cardLabel.click({ force: true }).catch(() => { });
       await page.waitForTimeout(3_000);
@@ -693,7 +695,7 @@ export async function fillStripeCheckout(
       ];
       for (const sel of fallbackSelectors) {
         const el = page.locator(sel).first();
-        if (await el.isVisible({ timeout: 1_500 }).catch(() => false)) {
+        if (await el.isVisible({ timeout: 2_000 }).catch(() => false)) {
           await el.click().catch(() => { });
           await page.waitForTimeout(2_000);
           break;
@@ -703,33 +705,68 @@ export async function fillStripeCheckout(
     await dismissStripeModals(page);
   }
 
-  // Wait for card number field
+  // Wait for card number field (direct page — Stripe Checkout v1/Elements)
   const cardReady = await cardField.isVisible({ timeout: 20_000 }).catch(() => false);
   if (!cardReady) {
-    // Fallback: iframe-based Stripe Elements
-    const allFrames = page.frames();
-    let foundInFrame = false;
-    for (let i = 0; i < allFrames.length; i++) {
-      const f = allFrames[i];
+    // Fallback 1: frameLocator approach (Stripe Checkout v2/newer hosted page)
+    // Stripe renders card fields inside iframes; try common iframe URL patterns first.
+    const stripeIframeSelectors = [
+      'iframe[src*="js.stripe.com"]',
+      'iframe[src*="checkout.stripe.com"]',
+      'iframe[name*="__privateStripeFrame"]',
+      'iframe[title*="Secure card"]',
+      'iframe[title*="card"]',
+    ];
+    let foundViaFrameLocator = false;
+    for (const iframeSel of stripeIframeSelectors) {
       try {
-        const cardInput = f.locator('input[name="cardnumber"], input[autocomplete="cc-number"], input[name="number"], input[data-elements-stable-field-name="cardNumber"]').first();
-        if (await cardInput.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        const fl = page.frameLocator(iframeSel).first();
+        const cardInput = fl.locator(
+          'input[name="cardnumber"], input[autocomplete="cc-number"], input[name="number"], ' +
+          'input[data-elements-stable-field-name="cardNumber"], input[placeholder*="1234"]'
+        ).first();
+        if (await cardInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
           await cardInput.fill(card.number);
-          for (let j = 0; j < allFrames.length; j++) {
-            if (j === i) continue;
-            const expInput = allFrames[j].locator('input[name="exp-date"], input[autocomplete="cc-exp"]').first();
-            if (await expInput.isVisible({ timeout: 1_000 }).catch(() => false)) await expInput.fill(card.exp);
-            const cvcInput = allFrames[j].locator('input[name="cvc"], input[autocomplete="cc-csc"]').first();
-            if (await cvcInput.isVisible({ timeout: 1_000 }).catch(() => false)) await cvcInput.fill(card.cvc);
-          }
-          foundInFrame = true;
+          // Expiry and CVC may be in the same frame or separate frames
+          const expInput = fl.locator('input[name="exp-date"], input[autocomplete="cc-exp"]').first();
+          if (await expInput.isVisible({ timeout: 3_000 }).catch(() => false)) await expInput.fill(card.exp);
+          const cvcInput = fl.locator('input[name="cvc"], input[autocomplete="cc-csc"]').first();
+          if (await cvcInput.isVisible({ timeout: 3_000 }).catch(() => false)) await cvcInput.fill(card.cvc);
+          foundViaFrameLocator = true;
           return await submitStripePayment(page, card);
         }
-      } catch { /* frame not accessible */ }
+      } catch { /* iframe not accessible or not present */ }
     }
-    if (!foundInFrame) {
-      await page.screenshot({ path: '/tmp/stripe-checkout-debug.png', fullPage: true }).catch(() => { });
-      throw new Error(`Stripe card field not found. URL: ${page.url()}`);
+
+    // Fallback 2: page.frames() loop — covers split-field Stripe Elements layout
+    if (!foundViaFrameLocator) {
+      const allFrames = page.frames();
+      let foundInFrame = false;
+      for (let i = 0; i < allFrames.length; i++) {
+        const f = allFrames[i];
+        try {
+          const cardInput = f.locator(
+            'input[name="cardnumber"], input[autocomplete="cc-number"], input[name="number"], ' +
+            'input[data-elements-stable-field-name="cardNumber"], input[placeholder*="1234"]'
+          ).first();
+          if (await cardInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
+            await cardInput.fill(card.number);
+            for (let j = 0; j < allFrames.length; j++) {
+              if (j === i) continue;
+              const expInput = allFrames[j].locator('input[name="exp-date"], input[autocomplete="cc-exp"]').first();
+              if (await expInput.isVisible({ timeout: 2_000 }).catch(() => false)) await expInput.fill(card.exp);
+              const cvcInput = allFrames[j].locator('input[name="cvc"], input[autocomplete="cc-csc"]').first();
+              if (await cvcInput.isVisible({ timeout: 2_000 }).catch(() => false)) await cvcInput.fill(card.cvc);
+            }
+            foundInFrame = true;
+            return await submitStripePayment(page, card);
+          }
+        } catch { /* frame not accessible */ }
+      }
+      if (!foundInFrame) {
+        await page.screenshot({ path: '/tmp/stripe-checkout-debug.png', fullPage: true }).catch(() => { });
+        throw new Error(`Stripe card field not found. URL: ${page.url()}`);
+      }
     }
   } else {
     await cardField.fill(card.number);
@@ -1135,7 +1172,57 @@ export const TEST_PRODUCTS = {
   HIGH_STOCK: 'e2e_product_admin_seller',
   DIGITAL: 'e2e_product_test_seller',
   SELLER2: 'e2e_product_intl_seller',
+  OOS: 'e2e_product_oos',
 };
+
+/**
+ * Ensure the dedicated OOS (out-of-stock) product exists in dev Firestore.
+ * stockQuantity is always forced to 0. Owner is ADMIN so seller-owns tests work correctly.
+ * This product must NEVER have its stock restored — it is permanently OOS for UI tests.
+ */
+export async function ensureOosProduct(): Promise<void> {
+  const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+  const id = TEST_PRODUCTS.OOS;
+  let exists = false;
+  try {
+    const fields = await getDoc(`products/${id}`, adminAuth.idToken);
+    exists = !!(fields && (fields.lifecycleStatus === 'active' || fields.status === 'active'));
+    if (exists && (fields.stockQuantity ?? 1) !== 0) {
+      // Force stock to 0 if someone accidentally restored it
+      await writeDoc(`products/${id}`, toFirestoreFields({ stockQuantity: 0 }), adminAuth.idToken, true);
+    }
+  } catch { /* not found — will create */ }
+
+  if (!exists) {
+    await writeDoc(`products/${id}`, toFirestoreFields({
+      productId: id,
+      sellerId: TEST_UIDS.ADMIN,
+      sellerSku: 'OOS-E2E-STABLE',
+      name: 'Out-of-Stock Test Product (E2E)',
+      description: 'Dedicated out-of-stock product for stock notification E2E tests. Stock must always be 0.',
+      price: 49.99,
+      priceCents: 4999,
+      lifecycleStatus: 'active',
+      stockQuantity: 0,
+      categoryId: 1,
+      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+      keywords: ['oos', 'test', 'e2e'],
+      hasVariants: false,
+      variants: [],
+      isDigital: false,
+      sellerAddress: {
+        street: '100 University Ave',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5J 1V6',
+        country: 'Canada',
+      },
+      isInternational: false,
+      rating: 0,
+      ratingCount: 0,
+    }), adminAuth.idToken, true);
+  }
+}
 
 // ════════════════════════════════════════════════════════════════════
 // COLLECTION LISTING — List/query Firestore collections

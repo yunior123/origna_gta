@@ -345,10 +345,10 @@ test.describe('Add Product — UI Tests', () => {
     await page.waitForTimeout(800);
     await page.keyboard.type('15', { delay: 30 });
 
-    // Verify inputs accepted values
-    expect(await nameInput.inputValue()).toMatch(/E2E UI Product/);
-    expect(await priceInput.inputValue()).toBe('24.99');
-    expect(await stockInput.inputValue()).toBe('15');
+    // Verify inputs accepted values — use toHaveValue() for retry logic (DOM sync delay)
+    await expect(nameInput).toHaveValue(/E2E UI Product/);
+    await expect(priceInput).toHaveValue(/24\.99/);
+    await expect(stockInput).toHaveValue(/15/);
 
     // Select category
     const categorySelector = page.getByRole('button', { name: /category|catégorie/i }).first();

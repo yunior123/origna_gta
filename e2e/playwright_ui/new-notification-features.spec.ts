@@ -35,12 +35,20 @@ test.describe('New Notification Features E2E', () => {
 
     // Grant premium to buyer so chat tests can proceed.
     // subscriptions/{uid} allow write: if isAdmin() — admin token is used.
-    await writeDoc(
+    const subWriteOk = await writeDoc(
       `subscriptions/${buyerUid}`,
-      toFirestoreFields({ status: 'active' }),
+      toFirestoreFields({ status: 'active', isPremium: true }),
       adminToken,
       false, // full overwrite
     );
+    if (!subWriteOk) {
+      throw new Error(`beforeAll: failed to write subscriptions/${buyerUid} — admin writeDoc returned false`);
+    }
+    // Verify the doc is readable and has the expected status before proceeding.
+    const subDoc = await readDoc(`subscriptions/${buyerUid}`, adminToken);
+    if (!subDoc) {
+      throw new Error(`beforeAll: subscriptions/${buyerUid} not found after write`);
+    }
 
     // Inject a minimal order so the chat backend order-existence check passes.
     // get_or_create_chat requires: buyer has ordered the product at least once.

@@ -39,6 +39,7 @@ class AppRoutes {
   static const String sellerReturn = '/seller/return';
   static const String sellerRefresh = '/seller/refresh';
   static const String productBySlug = '/p';
+  static const String productById = '/product';
   static const String subscription = '/subscription';
   static const String subscriptionSuccess = '/subscription/success';
   static const String subscriptionCancel = '/subscription/cancel';

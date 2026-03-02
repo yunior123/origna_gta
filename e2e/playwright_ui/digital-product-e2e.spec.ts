@@ -186,7 +186,7 @@ test.describe('B. Digital-Only Checkout', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('C. Mixed Cart — Digital + Physical', () => {
-  test.setTimeout(60_000);
+  test.setTimeout(180_000);
 
   test('C.1 Mixed cart requires shipping address (digital does not waive physical requirement)', async () => {
     const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);

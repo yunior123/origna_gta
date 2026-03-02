@@ -408,8 +408,8 @@ test.describe('E. Order Lifecycle Deep', () => {
     const orderId = result.orderId;
     expect(orderId).toBeTruthy();
 
-    // Verify order exists
-    const order = await getOrder(orderId);
+    // Verify order exists (must pass auth token — Firestore rules require auth read)
+    const order = await getOrder(orderId, buyerAuth.idToken);
     expect(order).toBeTruthy();
     expect(order?.orderStatus).toBeTruthy();
 
@@ -434,8 +434,8 @@ test.describe('E. Order Lifecycle Deep', () => {
       newStatus: 'delivered',
     }, adminAuth.idToken);
 
-    // Verify final state in Firestore
-    const finalOrder = await getOrder(orderId);
+    // Verify final state in Firestore (pass auth token)
+    const finalOrder = await getOrder(orderId, buyerAuth.idToken);
     if (finalOrder?.orderStatus === 'delivered') {
       expect(finalOrder.orderStatus).toBe('delivered');
     }

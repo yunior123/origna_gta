@@ -40,8 +40,12 @@ test.describe('PW IT Replica — Buyer Flow', () => {
         await waitForFlutter(page);
 
         // C090: Favorites
+        // Wait for semantic tree to fully rebuild (FadeSlideIn at 100ms offset)
+        await page.waitForTimeout(2000);
         const menuFavorites = page.locator('[aria-label^="menu-favorites"]').first();
+        await menuFavorites.waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
         if (await menuFavorites.isVisible().catch(() => false)) {
+            await menuFavorites.scrollIntoViewIfNeeded().catch(() => {});
             await menuFavorites.click();
             await expect(page).toHaveURL(/\/favorites/i, { timeout: 20000 });
             await page.goBack();
@@ -49,8 +53,12 @@ test.describe('PW IT Replica — Buyer Flow', () => {
         }
 
         // C091-C094: Address management
+        // Wait for semantic tree to fully rebuild after goBack from favorites
+        await page.waitForTimeout(2000);
         const menuAddress = page.locator('[aria-label^="menu-address"]').first();
+        await menuAddress.waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
         if (await menuAddress.isVisible().catch(() => false)) {
+            await menuAddress.scrollIntoViewIfNeeded().catch(() => {});
             await menuAddress.click();
             await expect(page).toHaveURL(/\/addresses/i, { timeout: 20000 });
             await waitForFlutter(page);

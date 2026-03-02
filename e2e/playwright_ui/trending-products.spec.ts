@@ -85,11 +85,15 @@ test.describe('Trending Products flows', () => {
         await expect(page).toHaveURL(/\/subscription/i, { timeout: 20000 });
         await waitForFlutter(page);
 
-        // 6. Verify premium UI shows the notification prefs (switch is visible → isPremium=true)
-        const trendingListTile = page.getByRole('switch', { name: /switch-notify-trending/i }).first();
-        await expect(trendingListTile).toBeVisible({ timeout: 15000 });
+        // 6. Verify premium UI shows the notification prefs (switch is visible → isPremium=true).
+        // Flutter Web: Semantics(label: 'switch-notify-trending') creates an flt-semantics node
+        // with aria-label. The inner Switch.adaptive creates a child flt-semantics with role="switch"
+        // and aria-checked. getByRole('switch', { name }) fails because the label and role are on
+        // separate DOM nodes. Use the inner [role="switch"] descendant of the labelled container.
+        const trendingSwitch = page.locator('[aria-label="switch-notify-trending"] [role="switch"]').first();
+        await expect(trendingSwitch).toBeVisible({ timeout: 15000 });
         // Verify it starts unchecked (notifyTrending: false from beforeEach)
-        await expect(trendingListTile).toHaveAttribute('aria-checked', 'false');
+        await expect(trendingSwitch).toHaveAttribute('aria-checked', 'false');
 
         // 7. Toggle via Cloud Function (buyer token) — verifies the full backend E2E path
         const cfResult = await callCallable('update_notification_preferences', { notifyTrending: true }, buyerAuth.idToken);

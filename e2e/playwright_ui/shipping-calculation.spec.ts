@@ -6,7 +6,7 @@
  */
 import { test, expect } from '@playwright/test';
 import {
-  signIn, callOk,
+  signIn, callOk, callCallable,
   buildCheckoutPayload,
   readDoc, parseDoc, writeDoc, deleteDoc, toFirestoreFields,
   getTestProduct, invalidateProductCache, discoverProducts,
@@ -156,6 +156,14 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('International seller has non-zero shipping cost', async () => {
+    // Premium buyers get free shipping — skip rather than fail if buyer is currently premium.
+    const subResult = await callCallable('get_subscription_status', {}, buyerAuth.idToken);
+    const subData = subResult.result ?? subResult;
+    if (subData.isPremium) {
+      console.log('Skipping: buyer is premium — shipping is always free for premium accounts');
+      return;
+    }
+
     const products = await discoverProducts();
     const intlProduct = products.find(p => p.id === 'e2e_product_intl_seller');
     if (!intlProduct) throw new Error('International test product missing');

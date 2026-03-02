@@ -88,6 +88,20 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
     }
   }
 
+  // Handle product by ID deep link (/product/{id}) — used by E2E tests
+  if (uri != null && uri.path.startsWith('${AppRoutes.productById}/')) {
+    final productId = uri.path.substring('${AppRoutes.productById}/'.length);
+    if (productId.isNotEmpty) {
+      return [
+        SlidePageRoute(page: const AuthWrapper()),
+        SlidePageRoute(
+          settings: RouteSettings(name: initialRoute),
+          page: ProductDetailScreen(productId: productId),
+        ),
+      ];
+    }
+  }
+
   // Handle payment success redirect from Stripe
   if (uri != null && (uri.path == AppRoutes.paymentSuccess || uri.path.endsWith(AppRoutes.paymentSuccess))) {
     final sessionId = uri.queryParameters['session_id'];
@@ -225,6 +239,17 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
       return SlidePageRoute(
         settings: settings,
         page: _ProductBySlugScreen(slug: slug),
+      );
+    }
+  }
+
+  // /product/{id} — product detail by ID (E2E deep link, notification taps)
+  if (uri.path.startsWith('${AppRoutes.productById}/')) {
+    final productId = uri.path.substring('${AppRoutes.productById}/'.length);
+    if (productId.isNotEmpty) {
+      return SlidePageRoute(
+        settings: settings,
+        page: ProductDetailScreen(productId: productId),
       );
     }
   }

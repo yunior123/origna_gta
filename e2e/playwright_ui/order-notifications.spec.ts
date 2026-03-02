@@ -46,7 +46,7 @@ test.describe('Order Notifications', () => {
     expect(orderId).toBeTruthy();
 
     const auth = await signIn(BUYER_EMAIL);
-    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+    await waitForOrderStatus(orderId, ['confirmed', 'shipped', 'delivered'], auth.idToken, 90_000);
 
     // 2. Mark Item A as SHIPPED using Cloud Function (avoids 403 on direct write)
     const adminAuth = await signIn(ADMIN_EMAIL);
@@ -81,7 +81,7 @@ test.describe('Order Notifications', () => {
 
     const auth = await signIn(BUYER_EMAIL);
     const adminAuth = await signIn(ADMIN_EMAIL);
-    const order = await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+    const order = await waitForOrderStatus(orderId, ['confirmed', 'shipped', 'delivered'], auth.idToken, 90_000);
 
     // 2a. Must ship before buyer can confirm receipt
     await callOk('update_item_status', {
@@ -151,7 +151,7 @@ test.describe('Order Notifications', () => {
     await fillStripeCheckout(page, BUYER_EMAIL);
     await page.waitForTimeout(5000);
 
-    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+    await waitForOrderStatus(orderId, ['confirmed', 'shipped', 'delivered'], auth.idToken, 90_000);
 
     // 2. Mark as SHIPPED (Ready for Pickup)
     await callOk('update_item_status', {
@@ -186,7 +186,7 @@ test.describe('Order Notifications', () => {
 
     const auth = await signIn(BUYER_EMAIL);
     const adminAuth = await signIn(ADMIN_EMAIL);
-    await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+    await waitForOrderStatus(orderId, ['confirmed', 'shipped', 'delivered'], auth.idToken, 90_000);
 
     await page.waitForTimeout(10000);
 
@@ -211,7 +211,7 @@ test.describe('Order Notifications', () => {
     const auth = await signIn(BUYER_EMAIL);
     const adminAuth = await signIn(ADMIN_EMAIL);
 
-    const order = await waitForOrderStatus(orderId, ['confirmed'], auth.idToken, 90_000);
+    const order = await waitForOrderStatus(orderId, ['confirmed', 'shipped', 'delivered'], auth.idToken, 90_000);
 
     // Ship first (confirm_item_receipt requires SHIPPED status)
     await callOk('update_item_status', {

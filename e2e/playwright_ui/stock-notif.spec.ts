@@ -44,6 +44,7 @@ import {
   TEST_UIDS,
   FUNCTIONS_URL,
   FIRESTORE_BASE,
+  ensureOosProduct,
 } from './api-helpers';
 import { waitForFlutter, ensureLoggedInAsAdmin } from './flutter-helpers';
 
@@ -75,14 +76,28 @@ const OOS_VARIANT_KEY = 'color:red';
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Navigate to a product detail page using the /product/:id deep link.
+ * IMPORTANT: Call ensureLoggedInAsAdmin BEFORE this function.
+ * After page.goto() Flutter re-initializes and reads Firebase Auth from IndexedDB.
+ * A 5s settle delay is required for Firebase Auth to restore before widgets render.
+ */
 async function navigateToProduct(page: Page, baseURL: string, productId: string) {
   await page.goto(`${baseURL}/product/${productId}`);
   await waitForFlutter(page);
+  // Wait for Firebase Auth to restore from IndexedDB before widgets check auth state
+  await page.waitForTimeout(5_000);
   await page.screenshot({
     path: `${SCREENSHOTS_DIR}/stock-notif-product-loaded-${productId}.png`,
   });
 }
 
+/**
+ * Login (in-app, auth stored in IndexedDB) THEN navigate to the product page.
+ * ensureLoggedInAsAdmin runs first (ends at home), then page.goto() to product.
+ * Flutter re-reads auth from IndexedDB on reload — the 5s settle in navigateToProduct handles
+ * the async Firebase Auth restore timing.
+ */
 async function loginAndNavigate(page: Page, baseURL: string, productId: string) {
   await ensureLoggedInAsAdmin(page, baseURL, TEST_ACCOUNTS.BUYER_EMAIL, 'REDACTED_TEST_PASSWORD');
   await navigateToProduct(page, baseURL, productId);
@@ -95,7 +110,10 @@ async function loginAndNavigate(page: Page, baseURL: string, productId: string) 
 test.describe('1. UI — Notify Me Button on OOS Product', () => {
   test.setTimeout(300_000); // Flutter Web on 8GB RAM takes 90-180s to initialize
 
-  // No beforeAll/afterAll needed — e2e_product_oos is dedicated OOS product (stock always 0)
+  test.beforeAll(async () => {
+    // Seed e2e_product_oos in dev Firestore (idempotent — safe to run every time)
+    await ensureOosProduct();
+  });
 
   test('1.1 OOS product shows notify section (not add-to-cart)', async ({ page, baseURL }) => {
     await loginAndNavigate(page, baseURL!, OOS_PRODUCT_ID);
@@ -231,7 +249,8 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
     await ensureLoggedInAsAdmin(page, baseURL!, TEST_ACCOUNTS.ADMIN_EMAIL, 'REDACTED_TEST_PASSWORD');
     await page.goto(`${baseURL}/product/${OOS_PRODUCT_ID}`);
     await waitForFlutter(page);
-    await page.waitForTimeout(3_000);
+    // Wait for Firebase Auth to restore from IndexedDB after page reload
+    await page.waitForTimeout(5_000);
 
     // If OOS_PRODUCT_ID is owned by a different seller, this test verifies
     // that Notify Me appears (not own product). Admin panel view — just screenshot.
@@ -303,10 +322,10 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
     await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 10 }), adminAuth.idToken, true);
 
-    // Re-navigate to force provider re-fetch
+    // Re-navigate to force provider re-fetch — auth re-reads from IndexedDB after reload
     await page.goto(`${baseURL}/product/${TEMP_PRODUCT_ID}`);
     await waitForFlutter(page);
-    await page.waitForTimeout(3_000);
+    await page.waitForTimeout(5_000);
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-2-1b-stock-restored.png` });
 
     // Add to cart should now appear
@@ -331,10 +350,11 @@ test.describe('3. API — subscribe_stock_notification / unsubscribe_stock_notif
   let buyerUid: string;
 
   test.beforeAll(async () => {
+    // Ensure OOS product exists in dev Firestore
+    await ensureOosProduct();
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
     buyerUid = auth.localId;
-    // e2e_product_oos is dedicated OOS product — no stock reset needed
     // Ensure clean subscription state before API suite
     await callOk('unsubscribe_stock_notification', { productId: OOS_PRODUCT_ID }, buyerToken)
       .catch(() => {});
@@ -487,12 +507,13 @@ test.describe('4. Security — Adversarial Scenarios', () => {
   let sellerToken: string;
 
   test.beforeAll(async () => {
+    // Ensure OOS product exists in dev Firestore
+    await ensureOosProduct();
     const buyerAuth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = buyerAuth.idToken;
     // Use SELLER (not ADMIN) as "sellerToken" — ADMIN owns OOS_PRODUCT_ID so cannot subscribe to it
     const sellerAuth = await signIn(TEST_ACCOUNTS.SELLER_EMAIL);
     sellerToken = sellerAuth.idToken;
-    // e2e_product_oos is dedicated OOS product — no stock reset needed
   });
 
   test('4.1 Buyer cannot unsubscribe another user\'s notification', async () => {

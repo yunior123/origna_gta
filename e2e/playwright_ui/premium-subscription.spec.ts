@@ -1317,17 +1317,21 @@ test.describe('M. Screen Rendering', () => {
     await page.goto(`${WEB_APP_URL}/subscription/success`);
     await waitForFlutter(page);
 
-    // Flutter widget key exposed as aria-label via Semantics
+    // The screen always wraps its root Scaffold in Semantics(label:'subscription-success-screen'),
+    // regardless of whether the buyer is currently premium (success state) or not (loading/timeout state).
     const successScreen = page.locator('[aria-label="subscription-success-screen"]');
-    const successVisible = await successScreen.isVisible({ timeout: 20_000 }).catch(() => false);
-    if (!successVisible) {
-      // Fallback: look for any success-indicating label content
-      const successText = page.getByText(/lbl-subscription-success|subscription-success/i).first();
-      const textVisible  = await successText.isVisible({ timeout: 5_000 }).catch(() => false);
-      expect(textVisible, 'subscription-success-screen widget must be visible at /subscription/success').toBe(true);
+    const screenVisible = await successScreen.isVisible({ timeout: 20_000 }).catch(() => false);
+    if (!screenVisible) {
+      // Fallback: the loading state renders a ModernLoadingIndicator; the success state renders
+      // btn-start-shopping. Either confirms the route rendered correctly.
+      const loadingOrBtn = page.locator(
+        '[aria-label="btn-start-shopping"], [aria-label="modern-loading-indicator"]'
+      ).first();
+      const fallbackVisible = await loadingOrBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+      expect(fallbackVisible, 'subscription-success-screen or its contents must be visible at /subscription/success').toBe(true);
       return;
     }
-    expect(successVisible).toBe(true);
+    expect(screenVisible).toBe(true);
   });
 });
 

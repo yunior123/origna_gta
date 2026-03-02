@@ -175,12 +175,15 @@ test.describe('Seller Product Management — UI Tests', () => {
       // Should navigate to a detail page
       expect(page.url()).not.toBe(homeUrl);
 
-      // Look for product detail content — at least one UI element must be visible
+      // Look for product detail content — at least one UI element must be visible.
+      // Covers: in-stock (add to cart), own product (seller view), or out-of-stock (notify me).
       const addToCartBtn = page.locator('[aria-label^="product_add_to_cart_button"]').first();
       const ownProductMsg = page.locator('[aria-label="product_own_product_message"]').first();
+      const notifyMeBtn = page.locator('[aria-label^="product_notify_me_button"],[aria-label^="product_notify_section"]').first();
       const hasCart = await addToCartBtn.isVisible({ timeout: 5000 }).catch(() => false);
       const hasOwnMsg = await ownProductMsg.isVisible({ timeout: 5000 }).catch(() => false);
-      expect(hasCart || hasOwnMsg).toBe(true);
+      const hasNotify = await notifyMeBtn.isVisible({ timeout: 5000 }).catch(() => false);
+      expect(hasCart || hasOwnMsg || hasNotify).toBe(true);
 
       await page.goBack();
       await waitForFlutter(page);
