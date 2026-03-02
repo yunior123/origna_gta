@@ -90,6 +90,21 @@
 
 ---
 
+### Sentry Issues — Session 2026-03-02
+
+| Issue | Description | Status |
+|-------|-------------|--------|
+| FLUTTER-X/10 | `compute_trending_products` missing index on `products` | Fixed — deployed to all envs (commit c859d90) |
+| FLUTTER-Q/Z | `auto_archive_old_orders` missing index on `orders` | Fixed — deployed to all envs (commit c859d90) |
+| FLUTTER-V | `return_requests` index missing `__name__` tiebreaker | Fixed — deployed to all envs (commit c859d90) |
+| FLUTTER-S | `security_alerts` index missing `__name__` tiebreaker | Fixed — deployed to all envs (commit c859d90) |
+| FLUTTER-Y | `EasyLocalization.ensureInitialized` throws on Safari private mode | Fixed — wrapped in try-catch (commit 52c3a94) |
+| FLUTTER-R | Null in Flutter grapheme cluster code during focus event on home page | **Known Flutter 3.38.9 framework bug** — 1 user, 6 events, production Chrome. Null occurs in `cvw()` grapheme segmentation triggered by TextField focus. No application-level fix possible without source maps. Monitor for frequency increase. If volume grows, upgrade Flutter. |
+| FLUTTER-K | ValueError: `strptime` fails on microsecond timestamps | Self-resolved — firebase-functions 0.4.3 has `_DatetimeWithIsoFallback` fix |
+| FLUTTER-P | Algolia event loop closed (79 events) | Not yet investigated |
+
+---
+
 ### Key Fix Patterns Discovered
 - Flutter `Semantics(label:)` renders as **text content** in `flt-semantics` nodes, NOT `aria-label` — use `filter({ hasText: })` instead of `[aria-label=]` selectors
 - `toFirestoreFields()` needs `new Date()` objects (not ISO strings) to produce `timestampValue` for Firestore rules validation
