@@ -2103,6 +2103,62 @@ def process_async_payment_succeeded(session: dict) -> str | None:
         )
         return f"Order {order_id} cancelled - amount mismatch"
 
+    # H-5 FIX: Re-validate products and sellers before confirming async payment.
+    # Products could be deactivated or sellers suspended between checkout and payment arrival.
+    db = get_db()
+    items_for_validation = order_data.get(Fields.ITEMS, [])
+    async_product_ids = list({item.get(Fields.PRODUCT_ID) for item in items_for_validation if item.get(Fields.PRODUCT_ID)})
+    async_seller_ids = list({item.get(Fields.SELLER_ID) for item in items_for_validation if item.get(Fields.SELLER_ID)})
+
+    # Batch fetch products and sellers (avoids N+1 queries)
+    async_product_docs = {
+        d.id: d.to_dict()
+        for d in db.get_all([db.collection(Collections.PRODUCTS).document(pid) for pid in async_product_ids])
+        if d.exists
+    }
+    async_seller_docs = {
+        d.id: d.to_dict()
+        for d in db.get_all([db.collection(Collections.USERS).document(sid) for sid in async_seller_ids])
+        if d.exists
+    }
+
+    async_bad_seller_ids: set[str] = set()
+    for item in items_for_validation:
+        pid = item.get(Fields.PRODUCT_ID)
+        sid = item.get(Fields.SELLER_ID)
+        p_data = async_product_docs.get(pid)
+        if not p_data:
+            logger.warning(f"⚠️ Async payment: product {pid} no longer exists for seller {sid}")
+            if sid:
+                async_bad_seller_ids.add(sid)
+            continue
+        if p_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
+            logger.warning(f"⚠️ Async payment: product {pid} deactivated (seller {sid})")
+            if sid:
+                async_bad_seller_ids.add(sid)
+        s_data = async_seller_docs.get(sid, {})
+        if s_data.get(Fields.SUSPENDED, False):
+            logger.warning(f"⚠️ Async payment: seller {sid} is suspended")
+            if sid:
+                async_bad_seller_ids.add(sid)
+
+    if async_bad_seller_ids:
+        good_items = [i for i in items_for_validation if i.get(Fields.SELLER_ID) not in async_bad_seller_ids]
+        if not good_items:
+            _restore_stock_and_cancel_order(
+                order_id, order_data, f"Async payment: all sellers invalid {async_bad_seller_ids}"
+            )
+            return f"Order {order_id} cancelled - all sellers invalid at async payment time"
+        logger.warning(
+            f"⚠️ Async payment: partial seller validation failure for order {order_id}, "
+            f"bad_sellers={async_bad_seller_ids}. Manual review required."
+        )
+        order_ref.update({
+            Fields.REQUIRES_MANUAL_REVIEW: True,
+            Fields.MANUAL_REVIEW_REASON: f"Async payment: sellers invalid at payment time: {sorted(async_bad_seller_ids)}",
+            Fields.UPDATED_AT: get_server_timestamp(),
+        })
+
     # C-3: Set ORDER_STATUS to CONFIRMED when async payment succeeds
     order_ref.update({
         Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,

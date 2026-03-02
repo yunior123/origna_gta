@@ -103,6 +103,23 @@ def release_cron_lock(job_name: str) -> None:
         logger.warning(f"⚠️ Failed to release cron lock for {job_name}: {type(e).__name__}")
 
 
+def _alert_cron_failure(job_name: str, exc: Exception) -> None:
+    """M-14: Write an alert record to CRON_FAILURES and capture to Sentry on unhandled cron exception."""
+    logger.error(f"CRON FAILURE [{job_name}]: {type(exc).__name__}: {exc}")
+    sentry_sdk.capture_exception(exc)
+    try:
+        get_db().collection(Collections.CRON_FAILURES).add(
+            {
+                Fields.JOB_NAME: job_name,
+                Fields.ERROR_TYPE: type(exc).__name__,
+                Fields.ERROR_MESSAGE: str(exc)[:2000],
+                Fields.CREATED_AT: datetime.now(UTC),
+            }
+        )
+    except Exception as write_err:
+        logger.warning(f"⚠️ Failed to write cron failure record for {job_name}: {type(write_err).__name__}")
+
+
 # H3: Use cron expression for precise scheduling instead of 'every 24 hours'
 @scheduler_fn.on_schedule(schedule="0 1 * * *", **CRON_OPTIONS)
 def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
@@ -129,6 +146,9 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
         # Initialize Stripe key locally
         stripe.api_key = get_stripe_secret_key()
         _run_auto_capture()
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("auto_capture_confirmed_receipts", exc)
     finally:
         release_cron_lock("auto_capture_confirmed_receipts")
 
@@ -438,6 +458,16 @@ def _run_auto_capture() -> None:
                 user_docs_batch = {doc.id: doc for doc in get_db().get_all(user_refs)} if user_refs else {}
                 sp_docs_batch = {doc.id: doc for doc in get_db().get_all(sp_refs)} if sp_refs else {}
 
+                # M-12 FIX: Retrieve the PaymentIntent once per order (outside seller loop)
+                # to avoid redundant Stripe API calls when an order has multiple sellers.
+                from utils.helpers import get_charge_id_from_pi as _get_charge_id_from_pi
+                _order_charge_id: str | None = None
+                try:
+                    _pi = stripe.PaymentIntent.retrieve(payment_intent_id)
+                    _order_charge_id = _get_charge_id_from_pi(_pi)
+                except stripe.error.StripeError as _pi_err:
+                    logger.error(f"Failed to retrieve charge for PI {payment_intent_id}: {str(_pi_err)}")
+
                 for seller_id, amount_cents in sellers_total_cents.items():
                     platform_fee_cents = round(amount_cents * stored_fee_rate)
                     net_amount_cents = amount_cents - platform_fee_cents
@@ -478,15 +508,9 @@ def _run_auto_capture() -> None:
 
                         if stripe_account_id and seller_charges_ok:
                             try:
-                                # CRITICAL FIX: Stripe Transfer requires a Charge ID (ch_xxx),
-                                # not a PaymentIntent ID (pi_xxx). Retrieve the charge from the PI.
-                                charge_id = None
-                                try:
-                                    from utils.helpers import get_charge_id_from_pi
-                                    pi = stripe.PaymentIntent.retrieve(payment_intent_id)
-                                    charge_id = get_charge_id_from_pi(pi)
-                                except stripe.error.StripeError as pi_err:
-                                    logger.error(f"Failed to retrieve charge for PI {payment_intent_id}: {str(pi_err)}")
+                                # M-12 FIX: Use pre-fetched charge_id (retrieved once above, outside this loop).
+                                # Stripe Transfer requires a Charge ID (ch_xxx), not a PaymentIntent ID (pi_xxx).
+                                charge_id = _order_charge_id
 
                                 if not charge_id:
                                     logger.warning(
@@ -661,6 +685,9 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
 
     try:
         _run_expired_authorizations()
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("check_expired_authorizations", exc)
     finally:
         release_cron_lock("check_expired_authorizations")
 
@@ -893,6 +920,9 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
             batch.commit()
 
         logger.info(f"Archive completed: {archived_count} orders archived")
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("auto_archive_old_orders", exc)
     finally:
         release_cron_lock("auto_archive_old_orders")
 
@@ -1323,6 +1353,9 @@ def retry_failed_algolia_syncs(event: scheduler_fn.ScheduledEvent) -> None:
                 logger.warning(f"Algolia retry failed for {product_id}: {type(e).__name__}")
 
         logger.info(f"Algolia DLQ retry completed: {retried} retried, {resolved} resolved")
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("retry_failed_algolia_syncs", exc)
     finally:
         release_cron_lock("retry_failed_algolia_syncs")  # FIX (H3): always release lock
 
@@ -1407,6 +1440,9 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
                 logger.warning(f"Deactivated product {product_id} — dead URLs: {dead}")
 
         logger.info(f"Digital URL revalidation done: {checked} checked, {deactivated} deactivated")
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("revalidate_digital_product_urls", exc)
     finally:
         release_cron_lock("revalidate_digital_product_urls")  # CRITICAL FIX (C2): always release lock
 
@@ -1553,6 +1589,9 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
                 logger.error(f"Failed to send low stock alert for {doc.id}: {e}")
 
         logger.info(f"check_low_stock_alerts done: {checked_count} checked, {alerted_count} alerted")
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("check_low_stock_alerts", exc)
     finally:
         release_cron_lock("check_low_stock_alerts")  # FIX (H3): always release lock
 
@@ -1721,6 +1760,9 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
                 logger.error(f"Failed to send abandoned cart email to user {user_id}: {e}")
 
         logger.info(f"send_abandoned_cart_emails done: {sent_count} sent, {skipped_count} skipped")
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("send_abandoned_cart_emails", exc)
     finally:
         release_cron_lock("send_abandoned_cart_emails")
 
@@ -1770,6 +1812,9 @@ def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
 
     try:
         _compute_seller_metrics_logic()
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("compute_seller_metrics", exc)
     finally:
         release_cron_lock("compute_seller_metrics")
 
@@ -1946,10 +1991,9 @@ def _compute_seller_metrics_logic() -> None:
 
         logger.info(f"compute_seller_metrics done: {processed_count} sellers processed, {alerted_count} alerts raised")
     except Exception as e:
+        # Re-raise so the outer wrapper (_compute_seller_metrics_logic caller) can alert via M-14
         logger.error(f"compute_seller_metrics failed: {e}")
-        sentry_sdk.capture_exception(e)
-    finally:
-        release_cron_lock("compute_seller_metrics")
+        raise
 
 # ============================================================================
 # TRENDING PRODUCTS CRON
@@ -2059,6 +2103,9 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
         # Notify premium users who opted in
         if top_products:
             _notify_trending_products(db, top_products[:5])  # notify about top 5
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("compute_trending_products", exc)
     finally:
         release_cron_lock("compute_trending_products")
 
@@ -2191,6 +2238,9 @@ def send_premium_renewal_reminders(event: scheduler_fn.ScheduledEvent) -> None:
 
             logger.info(f"send_premium_renewal_reminders: {days_ahead}d window — {sent_count} emails sent")
 
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("send_premium_renewal_reminders", exc)
     finally:
         release_cron_lock("send_premium_renewal_reminders")
 
@@ -2278,6 +2328,9 @@ def sync_expired_subscriptions(event: scheduler_fn.ScheduledEvent) -> None:
                 break
 
         logger.info(f"sync_expired_subscriptions: {synced_count} fixed, {error_count} errors")
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("sync_expired_subscriptions", exc)
     finally:
         release_cron_lock("sync_expired_subscriptions")
 
@@ -2295,6 +2348,9 @@ def escalate_stale_return_requests(event: scheduler_fn.ScheduledEvent) -> None:
 
     try:
         _run_return_escalation()
+    except Exception as exc:
+        # M-14: Alert on unhandled cron failure
+        _alert_cron_failure("escalate_stale_return_requests", exc)
     finally:
         release_cron_lock("escalate_stale_return_requests")
 

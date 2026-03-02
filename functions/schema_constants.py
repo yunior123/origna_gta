@@ -49,6 +49,7 @@ class Collections:
     REVIEW_VOTES = "review_votes"  # subcollection of product_ratings/{ratingId}
     ALGOLIA_SYNC_FAILURES = "algolia_sync_failures"
     CRON_LOCKS = "_cron_locks"
+    CRON_FAILURES = "_cron_failures"  # M-14: Alerting on unhandled cron exceptions
 
     # Return tracking
     RETURN_REQUESTS = "return_requests"
@@ -698,6 +699,8 @@ class Fields:
     SIGNATURE_VERIFIED = "signatureVerified"
     PROCESSING_STATUS = "processingStatus"
     ERROR_MESSAGE = "errorMessage"
+    JOB_NAME = "jobName"        # M-14: cron failure records
+    ERROR_TYPE = "errorType"    # M-14: cron failure records
     RECEIVED_AT = "receivedAt"
     PROCESSED = "processed"
     PROCESSED_AT = "processedAt"

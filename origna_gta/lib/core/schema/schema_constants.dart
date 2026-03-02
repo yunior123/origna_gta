@@ -367,6 +367,7 @@ abstract final class Collections {
   static const reviewVotes = 'review_votes'; // subcollection of product_ratings/{ratingId}
   static const algoliaSyncFailures = 'algolia_sync_failures';
   static const cronLocks = '_cron_locks';
+  static const cronFailures = '_cron_failures'; // M-14: Alerting on unhandled cron exceptions
 
   // Subcollections
   static const warehouses = 'warehouses'; // users/{sellerId}/warehouses
