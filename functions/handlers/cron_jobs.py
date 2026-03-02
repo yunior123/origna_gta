@@ -960,6 +960,11 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
             logger.info("No products in Firestore")
             return
 
+        # algolia_count=0 means stats unavailable (event loop or credentials issue) — skip alert
+        if algolia_count == 0:
+            logger.warning("⚠️  Algolia stats unavailable, skipping sync check")
+            return
+
         mismatch_percent = abs(firestore_count - algolia_count) / firestore_count
 
         if mismatch_percent > BusinessRules.ALGOLIA_SYNC_MISMATCH_THRESHOLD:  # > 5% mismatch

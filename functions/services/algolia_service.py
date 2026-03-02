@@ -350,7 +350,9 @@ def get_index_stats() -> int:
         logger.warning(f"⚠️  Algolia not configured - cannot get index stats: {e}")
         return 0
     except Exception as e:
-        logger.error(f"  ❌ Failed to get Algolia index stats: {str(e)}")
+        # "Event loop is closed" happens on container reuse — non-fatal, log as warning
+        # to avoid Sentry noise. The cron caller treats 0 as "unknown" and skips alerting.
+        logger.warning(f"⚠️  Failed to get Algolia index stats (non-fatal): {str(e)}")
         return 0
 
 
