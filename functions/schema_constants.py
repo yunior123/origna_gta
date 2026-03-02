@@ -613,6 +613,7 @@ class Fields:
     ACTUAL_SHIPPING_CENTS = "actualShippingCents"
     PENDING_TOTAL_CENTS = "pendingTotalCents"
     SHIPPING_APPROVAL = "shippingApproval"
+    SHIPPING_COST_DELTA_CENTS = "shippingCostDeltaCents"
     STOCK_RESTORED = "stockRestored"
     LAST_LOW_STOCK_ALERT_AT = "lastLowStockAlertAt"
     ARCHIVED = "archived"

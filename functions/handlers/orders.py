@@ -1441,12 +1441,20 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                         ) from e
             elif difference_cents + tax_difference_cents > 0 and _pi_modify_blocked:
                 # CAPTURED or AUTHORIZED: Stripe PI amount cannot be modified.
-                # Log the discrepancy for manual reconciliation.
+                # Flag for manual reconciliation in Firestore (not just a log).
+                total_diff = difference_cents + tax_difference_cents
                 logger.warning(
                     f"Shipping cost approved on {payment_status_at_approval} order {order_id}: "
-                    f"+{(difference_cents + tax_difference_cents) / 100:.2f} CAD difference flagged for reconciliation. "
+                    f"+{total_diff / 100:.2f} CAD difference flagged for reconciliation. "
                     f"Stripe PaymentIntent.modify() is not permitted for status={payment_status_at_approval}."
                 )
+                update_fields[Fields.REQUIRES_MANUAL_REVIEW] = True
+                update_fields[Fields.MANUAL_REVIEW_REASON] = (
+                    f"Shipping cost increased by {total_diff / 100:.2f} CAD after payment captured "
+                    f"(status={payment_status_at_approval}). Stripe amount cannot be updated retroactively. "
+                    f"Reconcile manually."
+                )
+                update_fields[Fields.SHIPPING_COST_DELTA_CENTS] = total_diff
 
             txn.update(order_ref, update_fields)
             return new_total_cents
