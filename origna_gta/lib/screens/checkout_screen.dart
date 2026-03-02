@@ -5,6 +5,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
@@ -729,6 +730,7 @@ class _OrderSummary extends ConsumerWidget {
     final shippingCost = ref.watch(checkoutStateProvider.select((state) => state.shippingCost));
     final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
     final shippingError = ref.watch(checkoutStateProvider.select((state) => state.shippingError));
+    final isPremium = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? false;
 
     return Column(
       key: const Key('checkout_summary_section'),
@@ -767,6 +769,7 @@ class _OrderSummary extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               _buildCouponDiscountRow(ref),
+              _buildPlatformFeeRow(ref, isPremium),
               ..._buildTaxBreakdown(state, subtotal + shippingCost),
               const SizedBox(height: 8),
               Row(
@@ -831,7 +834,8 @@ class _OrderSummary extends ConsumerWidget {
                     final discountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
                     final discount = discountCents / 100.0;
                     final effective = (subtotal - discount).clamp(0.0, double.infinity);
-                    final total = effective + (getTaxRate(state) * (effective + shippingCost)) + shippingCost;
+                    final platformFee = isPremium ? 0.0 : effective * (BusinessRules.platformFeePercent / 100.0);
+                    final total = effective + platformFee + (getTaxRate(state) * (effective + shippingCost)) + shippingCost;
                     return Text(
                       '\$${total.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: DesignTokens.primary),
@@ -896,6 +900,64 @@ class _OrderSummary extends ConsumerWidget {
             ],
           ),
           Text('-\$${(discountCents / 100.0).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: DesignTokens.success, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlatformFeeRow(WidgetRef ref, bool isPremium) {
+    final discountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
+    final discount = discountCents / 100.0;
+    final effective = (subtotal - discount).clamp(0.0, double.infinity);
+    final feeAmount = effective * (BusinessRules.platformFeePercent / 100.0);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isPremium ? Icons.star_rounded : Icons.info_outline_rounded,
+                size: 14,
+                color: isPremium ? DesignTokens.secondary : DesignTokens.textSecondary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'checkout.service_fee_label'.tr(namedArgs: {'rate': BusinessRules.platformFeePercent.toStringAsFixed(1)}),
+                style: TextStyle(fontSize: 14, color: isPremium ? DesignTokens.textSecondary : DesignTokens.textSecondary),
+              ),
+            ],
+          ),
+          if (isPremium)
+            Row(
+              children: [
+                Text(
+                  '\$${feeAmount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: DesignTokens.textDisabled,
+                    decoration: TextDecoration.lineThrough,
+                    decorationColor: DesignTokens.textDisabled,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [DesignTokens.gradientStart, DesignTokens.gradientEnd]),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'checkout.service_fee_free'.tr(),
+                    style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            )
+          else
+            Text('\$${feeAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -1427,8 +1489,16 @@ class _ItemImagePlaceholder extends StatelessWidget {
     return Container(
       width: 56,
       height: 56,
-      decoration: BoxDecoration(color: DesignTokens.outlineVariant, borderRadius: BorderRadius.circular(8)),
-      child: Icon(Icons.image_outlined, size: 24, color: DesignTokens.textDisabled),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(
+          colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.07)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.12), width: 1),
+      ),
+      child: Icon(Icons.camera_alt_outlined, size: 22, color: DesignTokens.primary.withValues(alpha: 0.5)),
     );
   }
 }

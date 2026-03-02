@@ -67,6 +67,10 @@ class AddProductState {
   final List<ProductVariantEntry> variants;
   final String? condition; // ProductConditionValues: new|like_new|good|fair|for_parts
 
+  // Bill 96: French translation fields (optional, recommended for Quebec market)
+  final String? nameF;
+  final String? descriptionF;
+
   AddProductState({
     this.isLoading = false,
     this.isUploadingVideo = false,
@@ -121,6 +125,8 @@ class AddProductState {
     this.variantOptions = const [],
     this.variants = const [],
     this.condition,
+    this.nameF,
+    this.descriptionF,
   });
 
   /// Use `clearError()` to explicitly set errorMessage to null.
@@ -179,6 +185,8 @@ class AddProductState {
     List<VariantOption>? variantOptions,
     List<ProductVariantEntry>? variants,
     Object? condition = _sentinel,
+    Object? nameF = _sentinel,
+    Object? descriptionF = _sentinel,
   }) {
     return AddProductState(
       isLoading: isLoading ?? this.isLoading,
@@ -234,6 +242,8 @@ class AddProductState {
       variantOptions: variantOptions ?? this.variantOptions,
       variants: variants ?? this.variants,
       condition: condition == _sentinel ? this.condition : condition as String?,
+      nameF: nameF == _sentinel ? this.nameF : nameF as String?,
+      descriptionF: descriptionF == _sentinel ? this.descriptionF : descriptionF as String?,
     );
   }
 }

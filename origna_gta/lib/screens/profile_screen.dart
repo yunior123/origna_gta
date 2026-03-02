@@ -225,6 +225,19 @@ class ProfileScreen extends ConsumerWidget {
                         delay: const Duration(milliseconds: 100),
                         child: Column(
                           children: [
+                            Builder(builder: (context) {
+                              final isPremiumForNotif = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userModel.isPremium;
+                              if (!isPremiumForNotif) return const SizedBox.shrink();
+                              return _buildMenuItem(
+                                context,
+                                key: const Key('profile_notifications_button'),
+                                icon: Icons.notifications_outlined,
+                                semanticLabel: 'menu-notifications',
+                                title: 'profile.notifications'.tr(),
+                                subtitle: 'profile.manage_notifications'.tr(),
+                                onTap: () => Navigator.pushNamed(context, AppRoutes.subscription),
+                              );
+                            }),
                             _buildMenuItem(
                               context,
                               key: const Key('profile_favorites_button'),
@@ -512,60 +525,185 @@ class ProfileScreen extends ConsumerWidget {
 
   Widget _buildProfileHeader(UserModel userModel, bool isDark) {
     final initials = userModel.name.isNotEmpty ? userModel.name[0].toUpperCase() : 'U';
+    final isSeller = userModel.roles.contains(UserRoles.seller) || userModel.roles.contains(UserRoles.admin);
+    final isAdmin = userModel.roles.contains(UserRoles.admin);
 
     return Builder(
       builder: (context) {
         final headerPadding = ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl);
         final avatarSize = ResponsiveBreakpoints.getValue<double>(
           context: context,
-          mobile: 60.0, // 320px - compact
-          mobilePlus: 70.0, // 480px - medium
-          tablet: 80.0, // 768px - comfortable
-          desktop: 90.0, // 1024px+ - spacious
+          mobile: 76.0,
+          mobilePlus: 86.0,
+          tablet: 96.0,
+          desktop: 106.0,
         );
         final fontSize = ResponsiveBreakpoints.getValue<double>(
           context: context,
-          mobile: 28.0, // 320px
-          mobilePlus: 32.0, // 480px
-          tablet: 36.0, // 768px
-          desktop: 40.0, // 1024px+
+          mobile: 32.0,
+          mobilePlus: 36.0,
+          tablet: 40.0,
+          desktop: 44.0,
         );
 
         return Container(
-          padding: EdgeInsets.all(headerPadding),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DesignTokens.primary.withValues(alpha: 0.95), DesignTokens.secondary.withValues(alpha: 0.95)],
+            gradient: const LinearGradient(
+              colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(DesignTokens.radius20),
-            boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+            boxShadow: [
+              BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.45), blurRadius: 28, offset: const Offset(0, 10)),
+              BoxShadow(color: DesignTokens.secondary.withValues(alpha: 0.2), blurRadius: 44, offset: const Offset(0, 18)),
+            ],
           ),
-          child: Column(
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              Container(
-                width: avatarSize,
-                height: avatarSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.2),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
-                ),
-                child: Center(
-                  child: Text(
-                    initials,
-                    style: TextStyle(fontSize: fontSize, color: Colors.white, fontWeight: FontWeight.w900),
+              // Decorative blob — top right (cyan)
+              Positioned(
+                top: -20,
+                right: -20,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [const Color(0xFF5CE1E6).withValues(alpha: 0.28), Colors.transparent],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                userModel.name,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
+              // Decorative blob — bottom left (coral)
+              Positioned(
+                bottom: -15,
+                left: -15,
+                child: Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [const Color(0xFFFF6B6B).withValues(alpha: 0.22), Colors.transparent],
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(height: 6),
-              Text(userModel.email, style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8))),
+              // Main content
+              Padding(
+                padding: EdgeInsets.all(headerPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Avatar with triple concentric glow rings
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Outermost pulse ring
+                        Container(
+                          width: avatarSize + 32,
+                          height: avatarSize + 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.06),
+                          ),
+                        ),
+                        // Middle ring
+                        Container(
+                          width: avatarSize + 16,
+                          height: avatarSize + 16,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.1),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1),
+                          ),
+                        ),
+                        // Inner avatar circle
+                        Container(
+                          width: avatarSize,
+                          height: avatarSize,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [Colors.white.withValues(alpha: 0.3), Colors.white.withValues(alpha: 0.14)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2.5),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 22, offset: const Offset(0, 8)),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              initials,
+                              style: TextStyle(
+                                fontSize: fontSize,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      userModel.name,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      userModel.email,
+                      style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.72), letterSpacing: 0.1),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (isAdmin || isSeller) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isAdmin ? Icons.admin_panel_settings_rounded : Icons.storefront_rounded,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isAdmin ? 'Admin' : 'Seller',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
         );

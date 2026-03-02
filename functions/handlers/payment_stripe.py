@@ -39,7 +39,6 @@ from schema_constants import (
     DeliveryStatusValues,
     DeliveryTypeValues,
     DigitalTypeValues,
-    ErrorCodeValues,
     Fields,
     HeaderKeys,
     LicenseStatusValues,
@@ -49,7 +48,6 @@ from schema_constants import (
     PaymentProviderValues,
     PaymentStatusValues,
     PayoutStatusValues,
-    PlaceholderAddressValues,
     PlatformDebtStatusValues,
     ProductLifecycleStatusValues,
     RateLimitActions,
@@ -650,7 +648,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("invalid-argument", "Invalid item format")
         if not item.get(Fields.PRODUCT_ID):
             raise https_fn.HttpsError("invalid-argument", "Each item must have a productId")
-        
+
         qty = item.get(Fields.QUANTITY, 1)
         if not isinstance(qty, int) or qty <= 0:
             raise https_fn.HttpsError("invalid-argument", f"Invalid quantity for product {item.get(Fields.PRODUCT_ID)}")
@@ -712,37 +710,37 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     validated_items = []
     actual_subtotal_cents = 0
     sellers = set()
-    
+
     # Batch fetch all products for efficiency (Max 30 items per cart)
     product_ids = [item.get(Fields.PRODUCT_ID) for item in items if item.get(Fields.PRODUCT_ID)]
     if not product_ids:
         raise https_fn.HttpsError("invalid-argument", "No valid product IDs in cart")
-    
+
     db = get_db()
     product_docs = {
-        d.id: d.to_dict() 
-        for d in db.get_all([db.collection(Collections.PRODUCTS).document(pid) for pid in product_ids]) 
+        d.id: d.to_dict()
+        for d in db.get_all([db.collection(Collections.PRODUCTS).document(pid) for pid in product_ids])
         if d.exists
     }
-    
+
     # Batch fetch all seller documents
     seller_ids = list({p.get(Fields.SELLER_ID) for p in product_docs.values() if p.get(Fields.SELLER_ID)})
     seller_docs = {
-        d.id: d.to_dict() 
-        for d in db.get_all([db.collection(Collections.USERS).document(sid) for sid in seller_ids]) 
+        d.id: d.to_dict()
+        for d in db.get_all([db.collection(Collections.USERS).document(sid) for sid in seller_ids])
         if d.exists
     }
-    
+
     for item in items:
         pid = item.get(Fields.PRODUCT_ID)
         p_data = product_docs.get(pid)
         if not p_data:
             raise https_fn.HttpsError("not-found", f"Product {pid} not found")
-        
+
         # Security: Check if product is active
         if p_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
             raise https_fn.HttpsError(
-                "failed-precondition", 
+                "failed-precondition",
                 f"Product {p_data.get(Fields.NAME, pid)} is not currently available for purchase"
             )
 
@@ -786,13 +784,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 "failed-precondition",
                 f"Seller for {p_data.get(Fields.NAME, pid)} is not approved to receive payments"
             )
-        
+
         # Authoritative price lookup
         price_cents = round(p_data.get(Fields.PRICE, 0) * 100)
         qty = int(item.get(Fields.QUANTITY, 1))
         actual_subtotal_cents += price_cents * qty
         sellers.add(sid)
-        
+
         # Explicit field construction — NEVER use **item (client data injection risk)
         validated_item = {
             Fields.PRODUCT_ID: pid,
@@ -833,7 +831,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     max_drift_cents = len(items)
     if abs(actual_subtotal_cents - client_subtotal_cents) > max_drift_cents:
         raise https_fn.HttpsError(
-            "invalid-argument", 
+            "invalid-argument",
             f"Cart total mismatch or Price changed. Expected ${actual_subtotal_cents/100:.2f}"
         )
 
@@ -985,7 +983,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     order_id = order_ref.id
     buyer_email = user_snapshot.to_dict().get(Fields.EMAIL) if user_snapshot.exists else None
     from handlers.payment_providers import PaymentProvider
-    
+
     order_data = {
         Fields.ORDER_ID: order_id,
         Fields.USER_ID: user_id,
@@ -1071,7 +1069,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                     if snap.exists and snap.to_dict().get(Fields.AVAILABLE_QUANTITY, 0) >= item[Fields.QUANTITY]:
                         item_wh_id = inventory_candidates[item[Fields.PRODUCT_ID]][idx][0]
                         break
-            
+
             if not item_wh_id and not item.get(Fields.IS_DIGITAL, False) and not allow_backorder and current_stock < item[Fields.QUANTITY]:
                  raise https_fn.HttpsError('resource-exhausted', f'Insufficient stock for {p_data_tx[Fields.NAME]}')
 
@@ -1082,7 +1080,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 idx = next(idx for idx, (wid, _) in enumerate(inventory_candidates[item[Fields.PRODUCT_ID]]) if wid == item_wh_id)
                 new_avail = inv_snaps_per_product_tx[item[Fields.PRODUCT_ID]][idx].to_dict().get(Fields.AVAILABLE_QUANTITY, 0) - item[Fields.QUANTITY]
                 wh_inv_writes.append((inv_refs_per_product_tx[item[Fields.PRODUCT_ID]][idx], new_avail))
-            
+
             updates_tx.append((product_refs_tx[i], current_stock - item[Fields.QUANTITY], wh_patches, item_wh_id))
             inv_level_writes_tx.append(wh_inv_writes)
 

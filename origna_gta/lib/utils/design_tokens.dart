@@ -1,4 +1,5 @@
-/// 2100 Design System - OrignaGTA
+/// 2100 Design System — OrignaGTA
+/// Multi-platform: Mobile · Tablet · Desktop · Web
 /// Futuristic, modern aesthetic with glassmorphism and fluid animations
 library;
 

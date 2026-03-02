@@ -19,11 +19,11 @@ class SellerIntegrationScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      appBar: CustomAppBar(title: 'seller_integration.title'.tr()),
       body: Container(
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: CustomScrollView(
           slivers: [
-            CustomAppBar(title: 'seller_integration.title'.tr()),
             SliverPadding(
               padding: const EdgeInsets.all(20),
               sliver: SliverList(

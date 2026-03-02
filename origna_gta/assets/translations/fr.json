@@ -239,7 +239,9 @@
     "required": "Requis",
     "publish": "Publier",
     "premium": "Premium",
-    "error_loading": "Une erreur s'est produite. Veuillez réessayer."
+    "error_loading": "Une erreur s'est produite. Veuillez réessayer.",
+    "refresh": "Actualiser",
+    "back_to_home": "Retour à l'accueil"
   },
   "auth": {
     "sign_in": "Se connecter",
@@ -350,7 +352,8 @@
     "shopping_cart": "Panier d'achat",
     "try_adjusting": "Essayez d'ajuster vos filtres ou termes de recherche",
     "settings": "Paramètres",
-    "category_all": "Tout"
+    "category_all": "Tout",
+    "browse_all_categories": "Toutes les catégories →"
   },
   "categories": {
     "electronics": "Électronique",
@@ -373,7 +376,11 @@
     "pet_supplies": "Animaux de compagnie",
     "groceries": "Épicerie",
     "art_collectibles": "Art et objets de collection",
-    "digital_products": "Produits numériques"
+    "digital_products": "Produits numériques",
+    "browse_title": "Toutes les catégories",
+    "browse_subtitle": "Explorez tout ce que nous proposons",
+    "no_products": "Aucun produit trouvé",
+    "no_products_hint": "Essayez une autre sous-catégorie"
   },
   "profile": {
     "my_profile": "Mon profil",
@@ -430,7 +437,9 @@
     "checking_button": "Vérification...",
     "resend_verification_button": "Renvoyer l'email de vérification",
     "sending_button": "Envoi...",
-    "sign_in_different": "Se connecter avec un autre compte"
+    "sign_in_different": "Se connecter avec un autre compte",
+    "notifications": "Préférences de notifications",
+    "manage_notifications": "Gérer vos préférences de notifications"
   },
   "favorites": {
     "my_favorites": "Mes favoris",
@@ -763,7 +772,13 @@
       "return_policy": "Politique de retour"
     },
     "est_business_days_hint": "p.ex. 5",
-    "select_all_options": "Veuillez sélectionner toutes les options ci-dessus"
+    "select_all_options": "Veuillez sélectionner toutes les options ci-dessus",
+    "name_french": "Nom du produit (Français)",
+    "name_french_hint": "Nom du produit en français",
+    "description_french": "Description (Français)",
+    "description_french_hint": "Description en français",
+    "french_section_title": "Traduction française",
+    "french_section_subtitle": "Obligatoire pour le marché québécois (Loi 96)"
   },
   "cart": {
     "your_cart": "Votre panier",
@@ -883,7 +898,9 @@
     "coupon_applied_generic": "Coupon appliqué",
     "calculating_delivery": "Calcul des options de livraison…",
     "coupon_invalid_code": "Code de coupon invalide ou expiré.",
-    "coupon_apply_failed": "Impossible d'appliquer le coupon. Veuillez réessayer."
+    "coupon_apply_failed": "Impossible d'appliquer le coupon. Veuillez réessayer.",
+    "service_fee_label": "Frais de service ({rate}%)",
+    "service_fee_free": "GRATUIT ✦"
   },
   "orders": {
     "my_orders": "Mes commandes",
@@ -928,6 +945,7 @@
     "approval_needed_banner": "Le coût de livraison a changé — votre approbation est requise",
     "authorized_banner": "Paiement autorisé — en attente d'expédition par le vendeur",
     "failed_confirm_receipt": "Échec de la confirmation de réception",
+    "track_package": "Suivre le colis",
     "license_key_copied": "Clé de licence copiée",
     "transit_step": "Transit",
     "orders_need_approval": "{count} commande(s) nécessite(nt) une approbation",
@@ -965,6 +983,8 @@
       "refunded_desc": "Remboursement intégral effectué",
       "partial_refund": "Remboursement partiel",
       "partial_refund_desc": "Remboursement partiel effectué",
+      "partially_refunded": "Partiellement remboursée",
+      "partially_refunded_desc": "Remboursement partiel effectué",
       "disputed": "Contestée",
       "disputed_desc": "Litige de paiement ouvert"
     },
@@ -972,6 +992,7 @@
     "subtotal": "Sous-total",
     "discount": "Réduction",
     "shipping": "Livraison",
+    "shipping_to": "Livraison à",
     "tax": "Taxe",
     "total": "Total"
   },
@@ -998,7 +1019,11 @@
     "carrier_prefix": "Transporteur :",
     "refunded_prefix": "Remboursé :",
     "mark_shipped": "Marquer comme expédié",
+    "edit_tracking": "Modifier les informations de suivi",
     "tracking_number": "Numéro de suivi",
+    "carrier_label": "Transporteur",
+    "carrier_other": "Autre transporteur",
+    "carrier_note_label": "Nom du transporteur (autre)",
     "confirm_shipping": "Confirmer l'expédition",
     "actual_cost": "Coût réel",
     "checking_status": "Vérification du statut...",
@@ -1186,7 +1211,8 @@
     "auth_error": "Erreur d'authentification : {error}",
     "error_title": "Erreur",
     "verification_error": "Erreur de vérification. Veuillez réessayer.",
-    "service_unavailable": "Le service est temporairement indisponible. Veuillez réessayer plus tard."
+    "service_unavailable": "Le service est temporairement indisponible. Veuillez réessayer plus tard.",
+    "something_went_wrong": "Une erreur s'est produite. Veuillez réessayer."
   },
   "qa": {
     "title": "Questions et réponses",

@@ -59,7 +59,7 @@ def _sanitize_text(text: str) -> str:
     import unicodedata
     # CHAT-M1: Normalize unicode to NFKC to collapse homoglyphs (e.g. 'a' vs 'а')
     text = unicodedata.normalize('NFKC', text)
-    
+
     # Strip zero-width chars and other invisible whitespace used to bypass redaction
     text = re.sub(r'[\u200B-\u200D\uFEFF]', '', text)
 
@@ -395,7 +395,7 @@ def delete_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Allow sender or admin to delete
     is_sender = msg_data.get(Fields.SENDER_ID) == uid
     user_snap = db.collection(Collections.USERS).document(uid).get()
-    is_admin = (user_snap.to_dict() or {}).get(Fields.ROLE) == RoleValues.ADMIN if user_snap.exists else False
+    is_admin = UserRoleValues.ADMIN in ((user_snap.to_dict() or {}).get(Fields.ROLES, [])) if user_snap.exists else False
 
     if not is_sender and not is_admin:
         raise https_fn.HttpsError("permission-denied", "Only the sender or an admin can delete a message.")

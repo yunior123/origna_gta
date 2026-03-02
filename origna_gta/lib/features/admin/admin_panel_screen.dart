@@ -132,7 +132,13 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
       key: const Key('admin_screen_title'),
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: const BoxDecoration(gradient: DesignTokens.primaryGradient),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
         ),
         title: Row(
           children: [

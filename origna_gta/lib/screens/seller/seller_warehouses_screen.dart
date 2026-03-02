@@ -47,11 +47,20 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
     final vmState = ref.watch(warehousesViewModelProvider);
 
     return Scaffold(
-      backgroundColor: DesignTokens.darkBackground,
       appBar: AppBar(
-        backgroundColor: DesignTokens.darkBackground,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: const Text('Shipping Locations').tr(),
-        foregroundColor: DesignTokens.textPrimary,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           if (vmState.isLoading)
             const Padding(
@@ -85,7 +94,7 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: DesignTokens.darkSurface,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -165,17 +174,40 @@ class _WarehousesList extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.warehouse_outlined, size: 64, color: DesignTokens.textSecondary),
-              const SizedBox(height: 16),
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [DesignTokens.gradientStart, DesignTokens.gradientEnd],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: DesignTokens.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.warehouse_outlined, size: 48, color: Colors.white),
+              ),
+              const SizedBox(height: 24),
               Text(
                 'No shipping locations yet',
-                style: TextStyle(color: DesignTokens.textSecondary, fontSize: 16),
+                style: TextStyle(
+                  color: DesignTokens.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ).tr(),
               const SizedBox(height: 8),
               Text(
                 'Add a warehouse or personal address to start listing products with multi-location shipping.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: DesignTokens.textTertiary, fontSize: 13),
+                style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, height: 1.5),
               ).tr(),
             ],
           ),
@@ -213,7 +245,6 @@ class _WarehousesList extends ConsumerWidget {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: DesignTokens.darkSurface,
         title: const Text('Delete location?').tr(),
         content: Text('Remove "$label"? Product references to this location will be cleaned up automatically.').tr(),
         actions: [
@@ -255,7 +286,7 @@ class _WarehouseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: DesignTokens.darkSurface,
+      color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: warehouse.isDefault
@@ -336,7 +367,7 @@ class _WarehouseCard extends StatelessWidget {
             // Actions
             PopupMenuButton<String>(
               tooltip: 'Warehouse options',
-              color: DesignTokens.darkSurface,
+              color: Colors.white,
               iconColor: DesignTokens.textSecondary,
               itemBuilder: (_) => [
                 if (!warehouse.isDefault)
@@ -692,10 +723,10 @@ class _TypeChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Color.fromRGBO(102, 126, 234, 0.15) : DesignTokens.darkSurface,
+          color: selected ? Color.fromRGBO(102, 126, 234, 0.15) : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? DesignTokens.primary : DesignTokens.darkOutline,
+            color: selected ? DesignTokens.primary : DesignTokens.outline,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -748,15 +779,15 @@ class _Field extends StatelessWidget {
         labelStyle: TextStyle(color: DesignTokens.textSecondary),
         hintStyle: TextStyle(color: DesignTokens.textTertiary),
         filled: true,
-        fillColor: DesignTokens.darkBackground,
+        fillColor: Colors.white,
         counterText: '',
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: DesignTokens.darkOutline),
+          borderSide: BorderSide(color: DesignTokens.outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: DesignTokens.darkOutline),
+          borderSide: BorderSide(color: DesignTokens.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

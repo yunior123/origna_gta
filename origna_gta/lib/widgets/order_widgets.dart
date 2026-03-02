@@ -59,6 +59,34 @@ StatusConfig getItemStatusConfig(String status) {
     );
   } else if (status == OrderStatusValues.disputed) {
     return StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'orders.status.disputed'.tr(), description: 'orders.status.disputed_desc'.tr());
+  } else if (status == OrderStatusValues.inTransit) {
+    return StatusConfig(
+      color: DesignTokens.info,
+      icon: Icons.local_shipping_rounded,
+      label: 'orders.status.in_transit'.tr(),
+      description: 'orders.status.in_transit_desc'.tr(),
+    );
+  } else if (status == OrderStatusValues.failed) {
+    return StatusConfig(
+      color: DesignTokens.error,
+      icon: Icons.error_rounded,
+      label: 'orders.status.failed'.tr(),
+      description: 'orders.status.failed_desc'.tr(),
+    );
+  } else if (status == OrderStatusValues.expired) {
+    return StatusConfig(
+      color: DesignTokens.textSecondary,
+      icon: Icons.timer_off_rounded,
+      label: 'orders.status.expired'.tr(),
+      description: 'orders.status.expired_desc'.tr(),
+    );
+  } else if (status == OrderStatusValues.partiallyRefunded) {
+    return StatusConfig(
+      color: DesignTokens.warning,
+      icon: Icons.money_off_rounded,
+      label: 'orders.status.partially_refunded'.tr(),
+      description: 'orders.status.partially_refunded_desc'.tr(),
+    );
   } else {
     return StatusConfig(
       color: DesignTokens.secondary,
@@ -750,30 +778,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                     ),
                     if (!item.isDigital && item.trackingNumber != null && item.trackingNumber!.isNotEmpty) ...[
                       const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [DesignTokens.statusShipped.withValues(alpha: 0.12), DesignTokens.statusShipped.withValues(alpha: 0.04)],
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: DesignTokens.statusShipped.withValues(alpha: 0.2)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.qr_code_2, size: 14, color: DesignTokens.statusShipped),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                item.trackingNumber!,
-                                style: const TextStyle(fontSize: 11, color: DesignTokens.statusShipped, fontWeight: FontWeight.w600),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      _buildTrackingWidget(item, isDark),
                     ],
                   ],
                 ),
@@ -972,6 +977,142 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     }
   }
 
+  Widget _buildTrackingWidget(OrderItem item, bool isDark) {
+    final carrier = item.carrier;
+    final trackingNum = item.trackingNumber!;
+    final trackingUrl = _carrierTrackingUrl(carrier, trackingNum);
+    final carrierLabel = _carrierLabel(carrier, item.carrierNote);
+    final carrierIcon = _carrierIcon(carrier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Carrier + tracking number row
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [DesignTokens.statusShipped.withValues(alpha: 0.12), DesignTokens.statusShipped.withValues(alpha: 0.04)],
+            ),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: DesignTokens.statusShipped.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(carrierIcon, size: 14, color: DesignTokens.statusShipped),
+                  const SizedBox(width: 6),
+                  Text(
+                    carrierLabel,
+                    style: const TextStyle(fontSize: 11, color: DesignTokens.statusShipped, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.qr_code_2, size: 12, color: DesignTokens.statusShipped),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: GestureDetector(
+                      onLongPress: () => Clipboard.setData(ClipboardData(text: trackingNum)),
+                      child: Text(
+                        trackingNum,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? Colors.white70 : DesignTokens.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'monospace',
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  if (carrier != CarrierValues.other) ...[
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () => Clipboard.setData(ClipboardData(text: trackingNum)),
+                      child: const Icon(Icons.copy_rounded, size: 12, color: DesignTokens.statusShipped),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+        // "Track Package" button — only for known carriers with URLs
+        if (trackingUrl != null) ...[
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: () async {
+              final uri = Uri.parse(trackingUrl);
+              if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [DesignTokens.gradientStart, DesignTokens.gradientEnd],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.open_in_new_rounded, size: 12, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    'orders.track_package'.tr(),
+                    style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String? _carrierTrackingUrl(String? carrier, String trackingNum) {
+    if (carrier == null || carrier == CarrierValues.other) return null;
+    final encoded = Uri.encodeComponent(trackingNum);
+    return switch (carrier) {
+      CarrierValues.canadaPost => 'https://www.canadapost-postescanada.ca/track-reperage/en#/details/$encoded',
+      CarrierValues.ups => 'https://www.ups.com/track?tracknum=$encoded',
+      CarrierValues.fedex => 'https://www.fedex.com/fedextrack/?trknbr=$encoded',
+      CarrierValues.purolator => 'https://www.purolator.com/en/shipping/tracker?Pin=$encoded',
+      CarrierValues.dhl => 'https://www.dhl.com/ca-en/home/tracking/tracking-express.html?submit=1&tracking-id=$encoded',
+      CarrierValues.usps => 'https://tools.usps.com/go/TrackConfirmAction?tLabels=$encoded',
+      _ => null,
+    };
+  }
+
+  String _carrierLabel(String? carrier, String? carrierNote) {
+    return switch (carrier) {
+      CarrierValues.canadaPost => 'Canada Post',
+      CarrierValues.ups => 'UPS',
+      CarrierValues.fedex => 'FedEx',
+      CarrierValues.purolator => 'Purolator',
+      CarrierValues.dhl => 'DHL',
+      CarrierValues.usps => 'USPS',
+      CarrierValues.other => carrierNote?.isNotEmpty == true ? carrierNote! : 'Other carrier',
+      _ => 'Tracking',
+    };
+  }
+
+  IconData _carrierIcon(String? carrier) {
+    return switch (carrier) {
+      CarrierValues.canadaPost => Icons.mail_outline_rounded,
+      CarrierValues.ups || CarrierValues.fedex || CarrierValues.purolator || CarrierValues.dhl || CarrierValues.usps => Icons.local_shipping_outlined,
+      _ => Icons.inventory_2_outlined,
+    };
+  }
+
   Widget _infoPill(String text, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -990,7 +1131,15 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     return Container(
       width: 80,
       height: 80,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: DesignTokens.surfaceVariant),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.07)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.12), width: 1),
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: url != null
@@ -998,9 +1147,9 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                 imageUrl: url,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => const Center(child: ModernLoadingIndicator(size: 20)),
-                errorWidget: (context, url, error) => const Icon(Icons.image_not_supported_outlined),
+                errorWidget: (context, url, error) => Icon(Icons.camera_alt_outlined, color: DesignTokens.primary.withValues(alpha: 0.5), size: 28),
               )
-            : const Icon(Icons.image_outlined),
+            : Icon(Icons.camera_alt_outlined, color: DesignTokens.primary.withValues(alpha: 0.5), size: 28),
       ),
     );
   }

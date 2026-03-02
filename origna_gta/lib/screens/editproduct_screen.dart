@@ -81,6 +81,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   bool _lowStockAlertEnabled = false;
   late final TextEditingController _lowStockThresholdController;
 
+  // Bill 96: French translation controllers
+  late final TextEditingController _nameFController;
+  late final TextEditingController _descriptionFController;
+
   // Digital product controllers
   late final TextEditingController _macosUrlController;
   late final TextEditingController _windowsUrlController;
@@ -152,6 +156,49 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     maxLines: 3,
                     decoration: InputDecoration(labelText: 'product.description'.tr(), prefixIcon: const Icon(Icons.description_outlined)),
                     validator: (value) => value?.isEmpty ?? true ? 'product.please_enter_description'.tr() : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionTitle('product.french_section_title'.tr()),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF3340).withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFEF3340).withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFEF3340)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'product.french_section_subtitle'.tr(),
+                            style: const TextStyle(fontSize: 12, color: Color(0xFFEF3340), fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('product_edit_name_f_field'),
+                    controller: _nameFController,
+                    decoration: InputDecoration(
+                      labelText: 'product.name_french'.tr(),
+                      hintText: 'product.name_french_hint'.tr(),
+                      prefixIcon: const Icon(Icons.sell_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('product_edit_description_f_field'),
+                    controller: _descriptionFController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: 'product.description_french'.tr(),
+                      hintText: 'product.description_french_hint'.tr(),
+                      prefixIcon: const Icon(Icons.notes_rounded),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -444,7 +491,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _nameFController.dispose();
     _descriptionController.dispose();
+    _descriptionFController.dispose();
     _priceController.dispose();
     _compareAtPriceController.dispose();
     _categoryController.dispose();
@@ -479,7 +528,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     super.initState();
     final p = widget.product;
     _nameController = TextEditingController(text: p.name);
+    _nameFController = TextEditingController(text: p.nameF ?? '');
     _descriptionController = TextEditingController(text: p.description);
+    _descriptionFController = TextEditingController(text: p.descriptionF ?? '');
     _priceController = TextEditingController(text: p.price.toString());
     _compareAtPriceController = TextEditingController(text: p.compareAtPrice?.toString() ?? '');
     _categoryController = TextEditingController(text: p.categoryId.toString());
@@ -898,6 +949,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     viewModel.updateProduct(
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
+      nameF: _nameFController.text.trim().isEmpty ? null : _nameFController.text.trim(),
+      descriptionF: _descriptionFController.text.trim().isEmpty ? null : _descriptionFController.text.trim(),
       price: double.tryParse(_priceController.text.trim()) ?? 0,
       stock: int.tryParse(_stockController.text.trim()) ?? 0,
       categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,

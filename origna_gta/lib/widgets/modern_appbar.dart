@@ -112,7 +112,17 @@ class _NavBarItem extends StatelessWidget {
           horizontal: isActive ? DesignTokens.spacing16 : DesignTokens.spacing12,
           vertical: DesignTokens.spacing12, // WCAG 2.5.8: 12+20+12=44dp ≈ 48dp
         ),
-        decoration: BoxDecoration(gradient: isActive ? DesignTokens.primaryGradient : null, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+        decoration: BoxDecoration(
+          gradient: isActive
+              ? const LinearGradient(
+                  colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          borderRadius: BorderRadius.circular(DesignTokens.radius12),
+          boxShadow: isActive ? [BoxShadow(color: DesignTokens.gradientStart.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

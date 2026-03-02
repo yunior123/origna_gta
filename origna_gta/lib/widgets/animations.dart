@@ -155,24 +155,31 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  width: 104,
+                  height: 104,
                   decoration: BoxDecoration(
-                    color: DesignTokens.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.1)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.18), width: 1.5),
+                    boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 4)],
                   ),
-                  child: Icon(widget.icon, size: 64, color: DesignTokens.textTertiary),
+                  child: Icon(widget.icon, size: 48, color: DesignTokens.primary.withValues(alpha: 0.75)),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   widget.title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary, letterSpacing: -0.3),
                   textAlign: TextAlign.center,
                 ),
                 if (widget.subtitle != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     widget.subtitle!,
-                    style: const TextStyle(fontSize: 14, color: DesignTokens.textTertiary),
+                    style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5),
                     textAlign: TextAlign.center,
                   ),
                 ],

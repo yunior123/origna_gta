@@ -349,10 +349,24 @@ class CartItemScreen extends StatelessWidget {
   Widget _buildImage(List<String> imageUrlsList, bool isDark) {
     if (imageUrlsList.isEmpty) {
       return Container(
-        color: isDark ? const Color(0xFF2A2A3E) : DesignTokens.surface,
-        child: Icon(
-          Icons.image_not_supported_outlined,
-          color: DesignTokens.textDisabled,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [DesignTokens.gradientStart.withValues(alpha: 0.9), DesignTokens.gradientMiddle.withValues(alpha: 0.9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+            ),
+            child: const Icon(Icons.camera_alt_outlined, size: 26, color: Colors.white),
+          ),
         ),
       );
     }
@@ -373,10 +387,24 @@ class CartItemScreen extends StatelessWidget {
           ),
         ),
         errorWidget: (context, url, error) => Container(
-          color: isDark ? const Color(0xFF2A2A3E) : DesignTokens.surface,
-          child: Icon(
-            Icons.image_not_supported_outlined,
-            color: DesignTokens.textDisabled,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [DesignTokens.gradientStart.withValues(alpha: 0.85), DesignTokens.gradientMiddle.withValues(alpha: 0.85)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Center(
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+              ),
+              child: const Icon(Icons.camera_alt_outlined, size: 24, color: Colors.white),
+            ),
           ),
         ),
       );

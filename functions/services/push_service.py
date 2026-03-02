@@ -4,6 +4,7 @@ Sends Firebase Cloud Messaging notifications to user devices.
 """
 
 import logging
+from typing import Any
 
 from schema_constants import Collections, Fields
 
@@ -152,27 +153,27 @@ def send_push_notifications_batch(user_ids: list[str], title: str, body: str, da
         # 2. Fetch user docs to check Fields.PUSH_ENABLED and daily limits (NOTIF-L1)
         users_ref = _get_db().collection(Collections.USERS)
         user_docs = _get_db().get_all([users_ref.document(uid) for uid in user_tokens])
-        
+
         from datetime import UTC, datetime
         today_str = datetime.now(UTC).strftime("%Y-%m-%d")
-        
+
         all_eligible_tokens_with_refs: list[tuple[str, Any, str]] = [] # (token, ref, uid)
         for user_doc in user_docs:
             if not user_doc.exists:
                 continue
             u_data = user_doc.to_dict() or {}
             uid = user_doc.id
-            
+
             # Respect opt-out preference
             if not u_data.get(Fields.PUSH_ENABLED, True):
                 continue
-                
+
             # NOTIF-L1: Daily per-user rate limit (cap at 20 pushes/day for mass alerts)
             push_stats = u_data.get("dailyPushStats", {})
             if push_stats.get("lastDate") == today_str and push_stats.get("count", 0) >= 20:
                 logger.warning(f"NOTIF-L1: Daily push limit reached for user {uid}")
                 continue
-            
+
             # Update the count (best-effort, not inside FCM loop for performance)
             new_count = (push_stats.get("count", 0) + 1) if push_stats.get("lastDate") == today_str else 1
             user_doc.reference.update({
@@ -199,7 +200,7 @@ def send_push_notifications_batch(user_ids: list[str], title: str, body: str, da
             )
             response = messaging.send_each_for_multicast(msg)
             total_sent += response.success_count
-            
+
             # NOTIF-L2: Cleanup stale tokens from batch results
             for idx, resp in enumerate(response.responses):
                 if not resp.success and resp.exception:

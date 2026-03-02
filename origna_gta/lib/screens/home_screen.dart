@@ -440,6 +440,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final homeNotifier = ref.read(homeViewModelProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Determine whether the management action row will be shown on product cards
+    // so the grid aspect ratio can accommodate the extra row height.
+    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final canManageProducts = (userProfile?.roles.contains(UserRoles.admin) ?? false) ||
+        (userProfile?.roles.contains(UserRoles.seller) ?? false);
+
     // Choix de la mascotte selon la parité du jour
     final day = DateTime.now().day;
     final showSparky = day % 2 == 0;
@@ -458,8 +464,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         child: Stack(
           children: [
-            // Main scrollable content
-            CustomScrollView(
+            // Main scrollable content — centered with max-width on desktop/web
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                ),
+            child: CustomScrollView(
               controller: _scrollController,
               physics: const ClampingScrollPhysics(),
               slivers: [
@@ -497,6 +509,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: _CategoryChips(homeNotifier: homeNotifier),
                 ),
 
+                // Browse All Categories button
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => Navigator.pushNamed(context, AppRoutes.categories),
+                        icon: const Icon(Icons.grid_view_rounded, size: 14),
+                        label: Text('home.browse_all_categories'.tr(), style: const TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: DesignTokens.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
                 // Subcategory Chips (shown when a category is selected)
                 SliverToBoxAdapter(
                   child: _SubcategoryChips(homeNotifier: homeNotifier),
@@ -508,7 +541,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 // Product Grid
                 _ProductGrid(
-                  cardAspectRatio: _getCardAspectRatio(context),
+                  cardAspectRatio: _getCardAspectRatio(context, canManageProduct: canManageProducts),
                   fallbackUserModel: widget.userModel,
                 ),
 
@@ -598,6 +631,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ],
             ),
+              ), // ConstrainedBox
+            ), // Align
 
             // --- MASCOTTE CANADIENNE ---
             Positioned(
@@ -640,23 +675,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       preferredSize: const Size.fromHeight(64),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              DesignTokens.primary.withValues(alpha: 0.95),
-              DesignTokens.secondary.withValues(alpha: 0.95),
-            ],
+          gradient: const LinearGradient(
+            colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: DesignTokens.primary.withValues(alpha: 0.3),
-              blurRadius: 16,
+              color: DesignTokens.gradientStart.withValues(alpha: 0.5),
+              blurRadius: 20,
               offset: const Offset(0, 8),
             ),
           ],
         ),
         child: SafeArea(
+          child: Align(
+            alignment: Alignment.center,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
@@ -728,6 +764,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ],
             ),
           ),
+            ), // ConstrainedBox
+          ), // Align
         ),
       ),
     );
@@ -796,8 +834,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// Get responsive aspect ratio for product cards
-  double _getCardAspectRatio(BuildContext context) {
+  /// Get responsive aspect ratio for product cards.
+  /// [canManageProduct] = true when the management action row is visible
+  /// (seller/admin), which adds ~32–48 dp and requires taller cards.
+  double _getCardAspectRatio(BuildContext context, {bool canManageProduct = false}) {
+    if (canManageProduct) {
+      return ResponsiveBreakpoints.getValue(
+        context: context,
+        mobile: 0.75,
+        mobilePlus: 0.80,
+        tablet: 0.85,
+        desktop: 0.90,
+      );
+    }
     return ResponsiveBreakpoints.getValue(
       context: context,
       // Higher ratio = shorter cards (more items visible)

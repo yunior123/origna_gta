@@ -132,10 +132,32 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                     fit: BoxFit.cover,
                                     semanticLabel: '${widget.productName} product image',
                                     errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(Icons.image_not_supported_outlined, color: DesignTokens.textSecondary, size: 48),
+                                        Center(
+                                        child: Container(
+                                          width: 52,
+                                          height: 52,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: DesignTokens.primary.withValues(alpha: 0.12),
+                                            border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1.5),
+                                          ),
+                                          child: const Icon(Icons.camera_alt_outlined, color: DesignTokens.primary, size: 26),
+                                        ),
+                                      ),
                                   ),
                                 )
-                              : const Icon(Icons.image_not_supported_outlined, color: DesignTokens.textSecondary, size: 48),
+                              : Center(
+                                        child: Container(
+                                          width: 52,
+                                          height: 52,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: DesignTokens.primary.withValues(alpha: 0.12),
+                                            border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1.5),
+                                          ),
+                                          child: const Icon(Icons.camera_alt_outlined, color: DesignTokens.primary, size: 26),
+                                        ),
+                                      ),
                         ),
                         // SRCH-M1: Out of Stock overlay
                         if (widget.isOutOfStock)

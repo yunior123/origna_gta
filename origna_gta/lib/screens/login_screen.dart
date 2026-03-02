@@ -79,9 +79,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                             child: Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                gradient: DesignTokens.primaryGradient,
+                                gradient: const LinearGradient(
+                                  colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
                                 borderRadius: BorderRadius.circular(DesignTokens.radius24),
-                                boxShadow: DesignTokens.shadowLg,
+                                boxShadow: [
+                                  ...DesignTokens.shadowLg,
+                                  BoxShadow(color: DesignTokens.gradientStart.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 8)),
+                                ],
                               ),
                               child: const Icon(Icons.shopping_bag_outlined, size: 56, color: Colors.white),
                             ),

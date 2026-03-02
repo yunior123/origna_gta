@@ -1679,9 +1679,6 @@ class TestChatMessaging:
 
         # Mock rate limiter Check
         with patch("services.rate_limiter.RateLimiter.check_rate_limit", return_value=(True, "OK")):
-            # Mock sender profile
-            sender_doc = make_mock_doc({"name": "Test Buyer"})
-
             # Setup the collection path for message checking
             mock_msgs_coll = MagicMock()
             mock_db.collection.return_value.document.return_value.collection.return_value = mock_msgs_coll

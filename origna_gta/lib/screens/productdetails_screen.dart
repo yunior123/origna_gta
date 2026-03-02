@@ -174,14 +174,54 @@ class ProductDetailScreen extends ConsumerWidget {
                                             child: Container(color: Colors.white),
                                           ),
                                           errorWidget: (context, url, error) =>
-                                              Container(color: DesignTokens.outlineVariant, child: const Icon(Icons.image_not_supported, size: 100)),
+                                              Container(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
+                                ),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 88,
+                                  height: 88,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 2),
+                                  ),
+                                  child: const Icon(Icons.camera_alt_outlined, size: 40, color: Colors.white),
+                                ),
+                              ),
+                            ),
                                         ),
                                       ),
                                     ),
                                   );
                                 },
                               )
-                            : Container(color: DesignTokens.outlineVariant, child: const Icon(Icons.image_not_supported, size: 100)),
+                            : Container(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
+                                ),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 88,
+                                  height: 88,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 2),
+                                  ),
+                                  child: const Icon(Icons.camera_alt_outlined, size: 40, color: Colors.white),
+                                ),
+                              ),
+                            ),
                         Positioned(
                           top: MediaQuery.of(context).padding.top + 8,
                           left: 12,

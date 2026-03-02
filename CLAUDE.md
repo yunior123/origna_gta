@@ -25,6 +25,7 @@ Operate using a strict **Research → Strategy → Execution → Verification** 
 4. **COMPLIANCE:** All code must comply with Canadian (including Quebec Bill 96/Law 25) and international laws.
 5. **AUTOMATION:** Do all work using tools (Stripe CLI, gcloud, firebase, etc.). Avoid asking Yunior for manual setup.
 6. **DEPLOYMENT:** Every deploy (indexes, rules, functions) MUST target dev, staging, and prod.
+6a. **RAM CONSTRAINT:** Mac has only 8GB RAM — Claude has crashed it 11+ times. Run tasks sequentially, never in parallel. No emulators. No simultaneous heavy processes. Close unused tools before heavy work.
 7. **PLAYWRIGHT:** 
     - Tests must be fast. If they take >1h, stop and analyze.
     - Save screenshots to desktop for UI/UX feedback.

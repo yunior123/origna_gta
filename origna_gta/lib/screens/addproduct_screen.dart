@@ -44,6 +44,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   final _heightController = TextEditingController();
   final _taxCodeController = TextEditingController();
 
+  // Bill 96: French translation controllers
+  final _nameFController = TextEditingController();
+  final _descriptionFController = TextEditingController();
+
   // Supplier Info Controllers
   final _costController = TextEditingController();
   final _supplierSkuController = TextEditingController();
@@ -344,6 +348,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     if (!state.isDigital) ...[const SizedBox(height: 16), _buildConditionSelector(state, viewModel)],
                                   ],
                                 ),
+                                const SizedBox(height: 16),
+
+                                _buildFrenchTranslationSection(),
                                 const SizedBox(height: 16),
 
                                 _buildVariantBuilderSection(state, viewModel),
@@ -752,7 +759,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   void dispose() {
     _fadeController.dispose();
     _nameController.dispose();
+    _nameFController.dispose();
     _descriptionController.dispose();
+    _descriptionFController.dispose();
     _priceController.dispose();
     _categoryController.dispose();
     _streetController.dispose();
@@ -998,6 +1007,92 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           }).toList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildFrenchTranslationSection() {
+    return AnimatedContainer(
+      key: const Key('addproduct_section_french'),
+      duration: DesignTokens.durationNormal,
+      decoration: BoxDecoration(
+        color: DesignTokens.textOnPrimary,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: DesignTokens.outlineVariant),
+        boxShadow: DesignTokens.shadowSm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [const Color(0xFF003087), const Color(0xFFEF3340)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.translate_rounded, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'product.french_section_title'.tr(),
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3),
+                      ),
+                      const SizedBox(height: 2),
+                      Text('product.french_section_subtitle'.tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF3340).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFEF3340).withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    'Loi 96',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFFEF3340)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 24, indent: 20, endIndent: 20),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildGlassTextField(
+                  key: const Key('product_name_f_field'),
+                  controller: _nameFController,
+                  label: 'product.name_french'.tr(),
+                  icon: Icons.sell_rounded,
+                  hint: 'product.name_french_hint'.tr(),
+                ),
+                const SizedBox(height: 16),
+                _buildGlassTextField(
+                  key: const Key('product_description_f_field'),
+                  controller: _descriptionFController,
+                  label: 'product.description_french'.tr(),
+                  icon: Icons.notes_rounded,
+                  hint: 'product.description_french_hint'.tr(),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1769,6 +1864,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                         viewModel.addProduct(
                           name: _nameController.text.trim(),
                           description: _descriptionController.text.trim(),
+                          nameF: _nameFController.text.trim().isEmpty ? null : _nameFController.text.trim(),
+                          descriptionF: _descriptionFController.text.trim().isEmpty ? null : _descriptionFController.text.trim(),
                           price: double.tryParse(_priceController.text.trim()) ?? 0,
                           compareAtPrice: _compareAtPriceController.text.trim().isEmpty ? null : double.tryParse(_compareAtPriceController.text.trim()),
                           stock: state.selectedWarehouseIds.isEmpty ? (int.tryParse(_stockController.text.trim()) ?? 0) : 0,
@@ -2265,7 +2362,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   /// PROD-C1: Clears all text controllers so the form is blank when re-entering after a successful submit.
   void _resetControllers() {
     _nameController.clear();
+    _nameFController.clear();
     _descriptionController.clear();
+    _descriptionFController.clear();
     _priceController.clear();
     _compareAtPriceController.clear();
     _categoryController.clear();

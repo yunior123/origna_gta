@@ -73,6 +73,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     String? subcategory,
     // PROD-C2: true when the seller has warehouses registered — enforces warehouse selection
     bool sellerHasWarehouses = false,
+    // Bill 96: French translation fields
+    String? nameF,
+    String? descriptionF,
   }) async {
     // Bug #27: Prevent double-submit
     if (state.isLoading) return;
@@ -323,6 +326,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         productId: '',
         sellerId: uid,
         name: name,
+        nameF: nameF?.trim().isEmpty == true ? null : nameF?.trim(),
         keywords: generateSearchKeywords(name),
         stockQuantity: effectiveStock,
         price: price,
@@ -341,6 +345,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
                 longitude: state.longitude,
               ),
         description: description,
+        descriptionF: descriptionF?.trim().isEmpty == true ? null : descriptionF?.trim(),
         categoryId: categoryId,
         createdAt: DateTime.now(),
         rating: 0.0,

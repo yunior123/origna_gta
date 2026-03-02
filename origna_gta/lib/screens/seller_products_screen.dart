@@ -376,8 +376,16 @@ class _SellerProductCard extends StatelessWidget {
     return Container(
       width: 56,
       height: 56,
-      decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(8)),
-      child: Icon(Icons.image_outlined, color: DesignTokens.textDisabled, size: 24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(
+          colors: [DesignTokens.primary.withValues(alpha: 0.12), DesignTokens.secondary.withValues(alpha: 0.08)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.15), width: 1),
+      ),
+      child: Icon(Icons.camera_alt_outlined, color: DesignTokens.primary.withValues(alpha: 0.6), size: 22),
     );
   }
 }

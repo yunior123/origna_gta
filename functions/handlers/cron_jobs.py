@@ -2007,7 +2007,7 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
             # SRCH-M2: favoriteCount now tracked via toggle_favorite Cloud Function
             favorite_count = data.get("favoriteCount", 0) or 0
             score = (
-                view_count 
+                view_count
                 + (purchase_count * TRENDING_PURCHASE_WEIGHT)
                 + (favorite_count * TRENDING_FAVORITE_WEIGHT)
             )

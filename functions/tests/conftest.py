@@ -1128,10 +1128,10 @@ class FirestoreMockBuilder:
                 doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)
                 path = doc_ref.path if hasattr(doc_ref, "path") else ""
                 col_name = path.split("/")[0] if "/" in path else "orders" # Default to orders for checkout
-                
+
                 if col_name not in builder.documents:
                     builder.documents[col_name] = {}
-                
+
                 if merge and doc_id in builder.documents[col_name]:
                     builder.documents[col_name][doc_id].update(data)
                 else:

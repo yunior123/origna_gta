@@ -13,12 +13,18 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
 
   SellerOrdersViewModel(this._ref) : super(SellerOrdersState());
 
-  Future<void> updateShippingAndCapture(String orderId, double actualShipping, String trackingNumber) async {
+  Future<void> updateShippingAndCapture(
+    String orderId,
+    double actualShipping,
+    String trackingNumber, {
+    String? carrier,
+    String? carrierNote,
+  }) async {
     if (state.isLoading) return;
     state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
-    
+
     final repository = _ref.read(orderRepositoryProvider);
-    
+
     try {
       // Step 1: Update shipping cost
       await repository.updateShippingCost(orderId, actualShipping, 'Actual carrier cost');
@@ -32,6 +38,8 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
             OrderItemIdValues.all,
             DeliveryStatusValues.shipped,
             trackingNumber: trackingNumber,
+            carrier: carrier,
+            carrierNote: carrierNote,
           );
         } catch (e) {
           // Non-critical tracking write failed — log for visibility
@@ -45,18 +53,27 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
     }
   }
 
-  Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber}) async {
+  Future<void> updateItemStatus(
+    String orderId,
+    String itemId,
+    String status, {
+    String? trackingNumber,
+    String? carrier,
+    String? carrierNote,
+  }) async {
     if (state.isLoading) return;
     state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
-    
+
     final repository = _ref.read(orderRepositoryProvider);
-    
+
     try {
       await repository.updateItemStatus(
         orderId,
         itemId,
         status,
         trackingNumber: trackingNumber,
+        carrier: carrier,
+        carrierNote: carrierNote,
       );
 
       state = state.copyWith(isLoading: false, isSuccess: true);

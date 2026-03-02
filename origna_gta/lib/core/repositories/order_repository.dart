@@ -54,13 +54,14 @@ class FirebaseOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber, String? carrier}) async {
+  Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber, String? carrier, String? carrierNote}) async {
     await _functions.httpsCallable(CloudFunctionEndpoints.updateItemStatus).call({
       Fields.orderId: orderId,
       Fields.productId: itemId,
       ApiKeys.newStatus: status,
       ...(trackingNumber != null ? {Fields.trackingNumber: trackingNumber} : {}),
       ...(carrier != null ? {Fields.carrier: carrier} : {}),
+      ...(carrierNote != null ? {Fields.carrierNote: carrierNote} : {}),
     });
   }
 
@@ -162,8 +163,8 @@ abstract class OrderRepository {
   /// Updates the shipping status of a specific item within an order.
   ///
   /// [itemId] is the product ID of the item to update.
-  /// [trackingNumber] and [carrier] are optional and only relevant for the `shipped` status.
-  Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber, String? carrier});
+  /// [trackingNumber], [carrier], and [carrierNote] are optional and only relevant for the `shipped` status.
+  Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber, String? carrier, String? carrierNote});
 
   /// Persists the last Stripe session and order IDs on the user document for
   /// post-payment recovery (e.g., polling the success screen).

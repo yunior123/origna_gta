@@ -684,11 +684,11 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
     order_doc = order_ref.get()
     if not order_doc.exists:
         raise https_fn.HttpsError("not-found", "Order not found")
-    
+
     order_data = order_doc.to_dict() or {}
     if order_data.get(Fields.USER_ID) != user_id:
         raise https_fn.HttpsError("permission-denied", "Order ownership mismatch")
-    
+
     if order_data.get(Fields.ORDER_STATUS) not in {OrderStatusValues.DELIVERED, OrderStatusValues.DISPUTED}:
         raise https_fn.HttpsError("failed-precondition", "Order not in ratable state")
 
@@ -698,7 +698,7 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
     if images_raw:
         s3_client = _get_cached_s3_client()
         bucket_name = R2Config.BUCKET_NAME
-        
+
         ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
         MIME_TO_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 
@@ -706,10 +706,10 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
             for i, img_item in enumerate(images_raw):
                 content_type = img_item.get("contentType", "image/jpeg")
                 if content_type not in ALLOWED_MIME_TYPES: continue
-                
+
                 img_bytes = _base64.b64decode(img_item.get("data", ""))
                 if not img_bytes: continue
-                
+
                 ext = MIME_TO_EXT[content_type]
                 key = R2Config.get_image_path("reviews", f"{uuid.uuid4()}.{ext}")
                 s3_client.put_object(
@@ -751,19 +751,19 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
         if existing_order:
             _txn_error["err"] = https_fn.HttpsError("already-exists", "Already rated")
             return None, None
-        
+
         p_snap = product_ref.get(transaction=transaction)
         if not p_snap.exists:
             _txn_error["err"] = https_fn.HttpsError("not-found", "Product gone")
             return None, None
-        
+
         p_data = p_snap.to_dict() or {}
         curr_rating = p_data.get(Fields.RATING, 0.0)
         curr_count = p_data.get(Fields.RATING_COUNT, 0)
-        
+
         new_count = curr_count + 1
         new_avg = ((curr_rating * curr_count) + rating) / new_count
-        
+
         transaction.create(new_rating_ref, rating_doc)
         transaction.update(product_ref, {Fields.RATING: new_avg, Fields.RATING_COUNT: new_count})
         return new_avg, new_count
@@ -1125,7 +1125,7 @@ def _geocode_warehouse_address(address: dict) -> dict:
     if not success:
         logger.warning(f"Warehouse geocode failed: {error_msg}")
         return address
-    
+
     return geocoded_address
 
 
@@ -1409,14 +1409,14 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
     warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
     is_digital = product_data.get(Fields.IS_DIGITAL, False)
     seller_address = product_data.get(Fields.SELLER_ADDRESS)
-    
+
     if not is_digital and not warehouse_ids and seller_address:
         from utils.helpers import geocode_address
         success, error_msg, geocoded_address = geocode_address(seller_address)
         if not success:
             logger.warning(f"create_product_atomic: sellerAddress geocoding failed: {error_msg}")
             raise https_fn.HttpsError("invalid-argument", f"Seller address error: {error_msg}")
-        
+
         product_data[Fields.SELLER_ADDRESS] = geocoded_address
         logger.info(f"create_product_atomic: sellerAddress verified for user {user_id}")
 
@@ -1686,7 +1686,6 @@ def on_product_created(event: firestore_fn.Event) -> None:
                 return
 
     # CRITICAL: Sanitize text fields to prevent stored XSS
-    xss_patches: dict = {}
     name = product_data.get(Fields.NAME, "")
     description = product_data.get(Fields.DESCRIPTION, "")
 
@@ -2006,12 +2005,6 @@ def _send_product_rejection_email(seller_email: str, product_name: str, reason: 
 
 def _notify_premium_users_new_product(product_data: dict, product_id: str) -> None:
     """Send FCM push to premium users with notifyNewProducts=True (paginated to handle >500)."""
-    try:
-        from firebase_admin import messaging
-    except ImportError:
-        logger.warning("firebase_admin.messaging not available")
-        return
-
     product_name = product_data.get(Fields.NAME, "New Product")
     images = product_data.get(Fields.IMAGE_URLS) or []
     image_url = images[0] if images else None
@@ -2024,7 +2017,6 @@ def _notify_premium_users_new_product(product_data: dict, product_id: str) -> No
         notification_kwargs["image"] = image_url
 
     total_success = 0
-    total_failure = 0
     last_doc = None
 
     while True:
@@ -3134,7 +3126,7 @@ def admin_update_warehouse_commission(req: https_fn.CallableRequest) -> dict[str
             "updatedAt": get_server_timestamp(),
             "updatedBy": req.auth.uid
         })
-        
+
         # Add to audit log subcollection
         audit_ref = wh_ref.collection("commission_audit_log").document()
         transaction.set(audit_ref, {
@@ -3147,7 +3139,7 @@ def admin_update_warehouse_commission(req: https_fn.CallableRequest) -> dict[str
 
     update_commission_txn(get_db().transaction())
     logger.info(f"Admin {req.auth.uid} updated commission for warehouse {warehouse_id} (seller {seller_id}) to {new_rate_bps} bps")
-    
+
     return create_success_response({"success": True, "oldRateBps": old_rate, "newRateBps": new_rate_bps})
 
 
@@ -3956,12 +3948,12 @@ def toggle_favorite(req: https_fn.CallableRequest) -> dict[str, Any]:
     def toggle_fav_txn(transaction):
         fav_snap = fav_ref.get(transaction=transaction)
         p_snap = product_ref.get(transaction=transaction)
-        
+
         if not p_snap.exists:
             raise https_fn.HttpsError("not-found", "Product not found")
 
         is_favorited = fav_snap.exists
-        
+
         if is_favorited:
             # Unfavorite
             transaction.delete(fav_ref)
@@ -4311,7 +4303,7 @@ def admin_delete_product_question(req: https_fn.CallableRequest) -> dict[str, An
 
     delete_question_txn(get_db().transaction())
     logger.info(f"Admin {req.auth.uid} deleted product question {question_id}. Reason: {reason}")
-    
+
     return create_success_response({"success": True})
 
 
@@ -4361,14 +4353,14 @@ def admin_delete_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]
             p_data = p_snap.to_dict() or {}
             curr_rating = p_data.get(Fields.RATING, 0.0)
             curr_count = p_data.get(Fields.RATING_COUNT, 0)
-            
+
             if curr_count > 1:
                 new_count = curr_count - 1
                 new_avg = ((curr_rating * curr_count) - stars) / new_count
             else:
                 new_count = 0
                 new_avg = 0.0
-            
+
             transaction.update(product_ref, {Fields.RATING: new_avg, Fields.RATING_COUNT: new_count})
 
         # Audit log
@@ -4386,7 +4378,7 @@ def admin_delete_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]
 
     delete_rating_txn(get_db().transaction())
     logger.info(f"Admin {req.auth.uid} deleted product rating {rating_id}. Reason: {reason}")
-    
+
     return create_success_response({"success": True})
 
 

@@ -953,13 +953,9 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not is_admin and item_data.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED:
         delivered_at = item_data.get(Fields.DELIVERED_AT) or order_data.get(Fields.DELIVERED_AT)
         if delivered_at:
-            if hasattr(delivered_at, "timestamp"):
-                # Firestore Timestamp object
-                delivered_dt = (
-                    delivered_at
-                    if hasattr(delivered_at, "tzinfo") and delivered_at.tzinfo
-                    else delivered_at.replace(tzinfo=UTC)
-                )
+            if hasattr(delivered_at, "timestamp") and not isinstance(delivered_at, datetime):
+                # Firestore Timestamp object — convert to timezone-aware datetime
+                delivered_dt = datetime.fromtimestamp(delivered_at.timestamp(), tz=UTC)
             elif isinstance(delivered_at, datetime):
                 delivered_dt = delivered_at if delivered_at.tzinfo else delivered_at.replace(tzinfo=UTC)
             else:
@@ -1175,7 +1171,6 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Revoke digital license for this specific item if it's a digital product
     if item_data.get(Fields.IS_DIGITAL, False):
         try:
-            from datetime import UTC, datetime
             db = get_db()
             lic_docs = (
                 db.collection(Collections.LICENSES)

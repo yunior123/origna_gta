@@ -1,5 +1,6 @@
 /// Responsive layout utilities for OrignaGta
-/// Provides breakpoints and helpers for responsive design across 320px to 1024px+
+/// Multi-platform: Mobile · Tablet · Desktop · Web · Large Display
+/// Breakpoints: 320px → 480px → 768px → 1024px → 1280px → 1440px
 library;
 
 import 'package:flutter/material.dart';
@@ -9,7 +10,11 @@ class ResponsiveBreakpoints {
   static const double mobile = 320; // 320px (small phones)
   static const double mobilePlus = 480; // 480px (medium phones)
   static const double tablet = 768; // 768px (tablets, large phones)
-  static const double desktop = 1024; // 1024px+ (desktops, large tablets)
+  static const double desktop = 1024; // 1024px (desktops, large tablets)
+  static const double desktopLg = 1280; // 1280px (large desktop monitors)
+  static const double desktopXl = 1440; // 1440px (wide/ultrawide displays)
+  static const double contentMaxWidth = 1200; // max content width on web/desktop
+  static const double sidebarWidth = 280; // sidebar for desktop layouts
 
   /// Get font scale factor for responsive text
   static double getFontScale(BuildContext context) {
@@ -18,7 +23,8 @@ class ResponsiveBreakpoints {
     if (width < mobilePlus) return 0.9; // 10% smaller on tiny phones
     if (width < tablet) return 1.0; // Normal on phones
     if (width < desktop) return 1.1; // 10% larger on tablets
-    return 1.2; // 20% larger on desktop
+    if (width < desktopLg) return 1.2; // 20% larger on desktop
+    return 1.25; // 25% larger on large/ultra-wide displays
   }
 
   /// Get grid column count based on screen size
@@ -28,8 +34,24 @@ class ResponsiveBreakpoints {
     if (width < 340) return 1; // Single column only on very small phones
     if (width < tablet) return 2; // 2 columns on most phones (iPhone SE -> Max)
     if (width < desktop) return 3; // 3 columns on tablets
-    return 4; // 4+ columns on desktop
+    if (width < desktopLg) return 4; // 4 columns on standard desktop
+    if (width < desktopXl) return 5; // 5 columns on large monitors
+    return 6; // 6 columns on ultra-wide displays
   }
+
+  /// Returns true when the screen is in desktop/web mode (≥1024px)
+  static bool isDesktop(BuildContext context) =>
+      MediaQuery.of(context).size.width >= desktop;
+
+  /// Returns true when the screen is tablet-sized (768–1023px)
+  static bool isTablet(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return w >= tablet && w < desktop;
+  }
+
+  /// Returns true when running on a mobile-sized screen (<768px)
+  static bool isMobile(BuildContext context) =>
+      MediaQuery.of(context).size.width < tablet;
 
   /// Get safe padding for edges (avoids notches, safe areas)
   static EdgeInsets getSafePadding(BuildContext context) {
@@ -64,13 +86,24 @@ class ResponsiveBreakpoints {
     return _getExtraLooseSpacing(size);
   }
 
-  /// Get responsive value based on screen width
-  static T getValue<T>({required BuildContext context, required T mobile, required T mobilePlus, required T tablet, required T desktop}) {
+  /// Get responsive value based on screen width.
+  /// [desktopLg] and [desktopXl] are optional — falls back to [desktop] if omitted.
+  static T getValue<T>({
+    required BuildContext context,
+    required T mobile,
+    required T mobilePlus,
+    required T tablet,
+    required T desktop,
+    T? desktopLg,
+    T? desktopXl,
+  }) {
     final width = MediaQuery.of(context).size.width;
 
     if (width < ResponsiveBreakpoints.mobilePlus) return mobile;
     if (width < ResponsiveBreakpoints.tablet) return mobilePlus;
     if (width < ResponsiveBreakpoints.desktop) return tablet;
+    if (desktopXl != null && width >= ResponsiveBreakpoints.desktopXl) return desktopXl;
+    if (desktopLg != null && width >= ResponsiveBreakpoints.desktopLg) return desktopLg;
     return desktop;
   }
 
@@ -180,7 +213,7 @@ class ResponsiveGridView extends StatelessWidget {
   }
 }
 
-/// Responsive layout builders
+/// Responsive layout builder — Mobile · Tablet · Desktop · Web
 ///
 /// Breakpoints (based on [ResponsiveBreakpoints]):
 /// - [mobilePlus] covers ALL phones (< 768px, including < 320px). There is no
@@ -188,11 +221,11 @@ class ResponsiveGridView extends StatelessWidget {
 ///   phones. This is intentional: screens narrower than 320px are negligible
 ///   in practice and the same layout adapts well enough.
 /// - [tablet] covers 768–1023px.
-/// - [desktop] covers 1024px+.
+/// - [desktop] covers 1024px+ (web, desktop browsers, large displays).
 class ResponsiveLayout extends StatelessWidget {
   final Widget mobilePlus; // all phones < 768px
-  final Widget tablet; // 768px+
-  final Widget desktop; // 1024px+
+  final Widget tablet; // 768–1023px
+  final Widget desktop; // 1024px+ (web, desktop, large displays)
 
   const ResponsiveLayout({super.key, required this.mobilePlus, required this.tablet, required this.desktop});
 

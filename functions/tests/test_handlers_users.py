@@ -162,21 +162,21 @@ class TestBuyerAddressHandlers:
 
         mock_user_doc_ref = Mock()
         mock_user_doc_ref.collection.return_value = mock_addresses_ref
-        
+
         # Mock orders collection for active order check (ADDR-H1)
         mock_orders_collection = Mock()
         mock_orders_collection.where.return_value = mock_orders_collection
         mock_orders_collection.stream.return_value = [] # No active orders
-        
+
         mock_db.collection.side_effect = lambda c: {
             "users": mock_users_collection,
             "orders": mock_orders_collection
         }.get(c, Mock())
-        
+
         mock_users_collection = Mock()
         mock_users_collection.document.return_value = mock_user_doc_ref
         # Redefine to match side_effect use above
-        mock_users_collection = mock_users_collection 
+        mock_users_collection = mock_users_collection
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")

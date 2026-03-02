@@ -240,7 +240,8 @@
     "publish": "Publish",
     "premium": "Premium",
     "back_to_home": "Back to Home",
-    "error_loading": "Something went wrong. Please try again."
+    "error_loading": "Something went wrong. Please try again.",
+    "sign_in": "Sign In"
   },
   "auth": {
     "sign_in": "Sign In",
@@ -351,7 +352,8 @@
     "shopping_cart": "Shopping cart",
     "try_adjusting": "Try adjusting your filters or search terms",
     "settings": "Settings",
-    "category_all": "All"
+    "category_all": "All",
+    "browse_all_categories": "Browse all categories →"
   },
   "categories": {
     "electronics": "Electronics",
@@ -374,7 +376,11 @@
     "pet_supplies": "Pet Supplies",
     "groceries": "Groceries",
     "art_collectibles": "Art & Collectibles",
-    "digital_products": "Digital Products"
+    "digital_products": "Digital Products",
+    "browse_title": "All Categories",
+    "browse_subtitle": "Explore everything we carry",
+    "no_products": "No products found",
+    "no_products_hint": "Try a different subcategory"
   },
   "profile": {
     "my_profile": "My Profile",
@@ -431,7 +437,9 @@
     "checking_button": "Checking...",
     "resend_verification_button": "Resend Verification Email",
     "sending_button": "Sending...",
-    "sign_in_different": "Sign in with a different account"
+    "sign_in_different": "Sign in with a different account",
+    "notifications": "Notification Preferences",
+    "manage_notifications": "Manage your notification preferences"
   },
   "favorites": {
     "my_favorites": "My Favorites",
@@ -764,7 +772,13 @@
       "return_policy": "Return Policy"
     },
     "est_business_days_hint": "e.g. 5",
-    "select_all_options": "Please select all options above"
+    "select_all_options": "Please select all options above",
+    "name_french": "Product Name (French)",
+    "name_french_hint": "Nom du produit en français",
+    "description_french": "Description (French)",
+    "description_french_hint": "Description en français",
+    "french_section_title": "French Translation",
+    "french_section_subtitle": "Required for Quebec market (Bill 96)"
   },
   "cart": {
     "your_cart": "Your Cart",
@@ -884,7 +898,9 @@
     "coupon_applied_generic": "Coupon Applied",
     "calculating_delivery": "Calculating delivery options…",
     "coupon_invalid_code": "Invalid or expired coupon code.",
-    "coupon_apply_failed": "Unable to apply coupon. Please try again."
+    "coupon_apply_failed": "Unable to apply coupon. Please try again.",
+    "service_fee_label": "Service fee ({rate}%)",
+    "service_fee_free": "FREE ✦"
   },
   "orders": {
     "my_orders": "My Orders",
@@ -929,6 +945,7 @@
     "approval_needed_banner": "Shipping cost changed — your approval is needed",
     "authorized_banner": "Payment authorized — awaiting seller shipment",
     "failed_confirm_receipt": "Failed to confirm receipt",
+    "track_package": "Track Package",
     "license_key_copied": "License key copied",
     "transit_step": "Transit",
     "orders_need_approval": "{count} order(s) need(s) approval",
@@ -966,6 +983,8 @@
       "refunded_desc": "Full refund issued",
       "partial_refund": "Partial Refund",
       "partial_refund_desc": "Partial refund issued",
+      "partially_refunded": "Partially Refunded",
+      "partially_refunded_desc": "Partial refund issued",
       "disputed": "Disputed",
       "disputed_desc": "Payment dispute opened"
     },
@@ -973,6 +992,7 @@
     "subtotal": "Subtotal",
     "discount": "Discount",
     "shipping": "Shipping",
+    "shipping_to": "Shipping to",
     "tax": "Tax",
     "total": "Total"
   },
@@ -999,7 +1019,11 @@
     "carrier_prefix": "Carrier:",
     "refunded_prefix": "Refunded:",
     "mark_shipped": "Mark as Shipped",
+    "edit_tracking": "Edit Tracking Info",
     "tracking_number": "Tracking Number",
+    "carrier_label": "Carrier",
+    "carrier_other": "Other carrier",
+    "carrier_note_label": "Carrier name (other)",
     "confirm_shipping": "Confirm Shipping",
     "actual_cost": "Actual Cost",
     "checking_status": "Checking status...",
@@ -1187,7 +1211,8 @@
     "auth_error": "Authentication error: {error}",
     "error_title": "Error",
     "verification_error": "Error checking verification. Please try again.",
-    "service_unavailable": "Service is temporarily unavailable. Please try again later."
+    "service_unavailable": "Service is temporarily unavailable. Please try again later.",
+    "something_went_wrong": "Something went wrong. Please try again."
   },
   "qa": {
     "title": "Questions & Answers",
@@ -1339,7 +1364,10 @@
     "status_active": "ACTIVE",
     "menu_manage_desc": "Manage subscription & notifications",
     "menu_upgrade_desc": "Upgrade for no fees & seller chat — CAD $7.86/mo",
-    "premium_label": "Premium Membership"
+    "premium_label": "Premium Membership",
+    "activating_membership": "Activating your membership...",
+    "activation_delayed_title": "Activation in Progress",
+    "activation_delayed_desc": "We haven't received Stripe confirmation yet. This can take a moment. Please refresh or check back shortly."
   },
   "chat": {
     "message_copied": "Message copied",

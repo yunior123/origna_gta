@@ -182,6 +182,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
 
     /// Original/crossed-out price for discount display (null = no sale, must be > price)
     double? compareAtPrice,
+    // Bill 96: French translation fields
+    String? nameF,
+    String? descriptionF,
   }) async {
     // Guard: prevent double-submit
     if (state.isLoading) return;
@@ -315,7 +318,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       final sanitizedDeliveryOptions = state.isDigital ? <models.SellerDeliveryOption>[] : deliveryOptions;
       final updatedProduct = _product.copyWith(
         name: name,
+        nameF: nameF?.trim().isEmpty == true ? null : nameF?.trim(),
         description: description,
+        descriptionF: descriptionF?.trim().isEmpty == true ? null : descriptionF?.trim(),
         price: price,
         stockQuantity: state.isSoldOut ? 0 : stock,
         categoryId: categoryId,

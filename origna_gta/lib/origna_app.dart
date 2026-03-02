@@ -16,6 +16,7 @@ import 'package:origna_gta/screens/addproduct_screen.dart' deferred as add_produ
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/screens/authwrapper_screen.dart';
 import 'package:origna_gta/screens/cart_screen.dart';
+import 'package:origna_gta/screens/categories_screen.dart';
 import 'package:origna_gta/screens/chat_screen.dart';
 import 'package:origna_gta/screens/checkout_screen.dart' deferred as checkout;
 import 'package:origna_gta/screens/common_screens.dart';
@@ -183,6 +184,15 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
         ),
       ),
     ];
+  }
+
+  // Handle any other registered route as a deep link so direct URL navigation works.
+  // Push AuthWrapper (home) as the base, then the target route on top.
+  if (uri != null && uri.path.isNotEmpty && uri.path != AppRoutes.home) {
+    final route = _onGenerateRoute(RouteSettings(name: uri.toString()));
+    if (route != null) {
+      return [SlidePageRoute(page: const AuthWrapper()), route];
+    }
   }
 
   // Default: show AuthWrapper (home)
@@ -544,6 +554,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
         child: ChatScreen(productId: resolvedArgs.productId, productTitle: resolvedArgs.productTitle),
       ),
     );
+  }
+
+  if (uri.path == AppRoutes.categories) {
+    return SlidePageRoute(settings: settings, page: const CategoriesScreen());
   }
 
   // Default fallback: redirect unknown routes to home

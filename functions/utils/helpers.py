@@ -50,9 +50,9 @@ def sanitized_text(value: str) -> str:
     """
     if value is None:
         return ""
-    
+
     text = str(value)
-    
+
     # Unescape first to prevent double-encoding on re-trigger.
     # html.escape(html.unescape(x)) is idempotent for any x.
     text = html.unescape(text)
@@ -273,14 +273,14 @@ def get_charge_id_from_pi(pi: Any) -> str | None:
     """
     if not pi:
         return None
-    
+
     latest = getattr(pi, "latest_charge", None)
     if not latest:
         return None
-        
+
     if isinstance(latest, str):
         return latest
-    
+
     return getattr(latest, "id", None)
 
 
@@ -303,19 +303,19 @@ def compare_addresses(addr1: dict | None, addr2: dict | None) -> bool:
         return True
     if addr1 is None or addr2 is None:
         return False
-        
+
     # Standard field set from the Address Pydantic model
     fields = [
-        Fields.STREET, Fields.CITY, Fields.STATE, Fields.POSTAL_CODE, 
+        Fields.STREET, Fields.CITY, Fields.STATE, Fields.POSTAL_CODE,
         Fields.COUNTRY, Fields.APARTMENT, Fields.PHONE_NUMBER
     ]
-    
+
     for f in fields:
         v1 = str(addr1.get(f) or "").strip().lower()
         v2 = str(addr2.get(f) or "").strip().lower()
         if v1 != v2:
             return False
-            
+
     return True
 
 
@@ -379,11 +379,11 @@ def geocode_address(address: dict) -> tuple[bool, str, dict]:
     try:
         url = "https://api.geoapify.com/v1/geocode/search"
         response = requests.get(
-            url, 
+            url,
             params={"text": query, "apiKey": geo_key, "limit": 1},
             timeout=AppConfig.GEOAPIFY_TIMEOUT_SECONDS
         )
-        
+
         # Handle specific API error conditions with user-friendly messages
         if response.status_code == 401:
             return False, "Address service authentication failed", address
@@ -400,7 +400,7 @@ def geocode_address(address: dict) -> tuple[bool, str, dict]:
         props = features[0].get("properties", {})
         rank = props.get("rank", {})
         confidence = rank.get("confidence", 0)
-        
+
         coords = features[0].get("geometry", {}).get("coordinates", [])
         if len(coords) >= 2:
             updated_addr = dict(address)
@@ -409,7 +409,7 @@ def geocode_address(address: dict) -> tuple[bool, str, dict]:
             # Record confidence score for future quality auditing
             updated_addr["geocodingConfidence"] = confidence
             return True, "", updated_addr
-            
+
         return False, "Geocoding returned invalid results", address
 
     except requests.exceptions.Timeout:

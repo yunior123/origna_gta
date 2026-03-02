@@ -150,11 +150,15 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                                 ),
                                             errorWidget: (context, url, error) =>
                                                 Container(
-                                                  color:
-                                                      DesignTokens.outlineVariant,
-                                                  child: Icon(
-                                                    Icons.image_not_supported,
-                                                    size: isCompact ? 30 : 50,
+                                                  decoration: const BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
+                                                      begin: Alignment.topLeft,
+                                                      end: Alignment.bottomRight,
+                                                    ),
+                                                  ),
+                                                  child: Center(
+                                                    child: Icon(Icons.camera_alt_outlined, size: isCompact ? 24 : 36, color: Colors.white.withValues(alpha: 0.8)),
                                                   ),
                                                 ),
                                           ),
@@ -216,10 +220,15 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                   ],
                                 )
                               : Container(
-                                  color: DesignTokens.outlineVariant,
-                                  child: Icon(
-                                    Icons.image_not_supported,
-                                    size: isCompact ? 30 : 50,
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Icon(Icons.camera_alt_outlined, size: isCompact ? 24 : 36, color: Colors.white.withValues(alpha: 0.8)),
                                   ),
                                 ),
                         ),
