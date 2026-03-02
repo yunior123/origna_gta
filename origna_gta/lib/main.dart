@@ -35,7 +35,14 @@ void main() {
 
       // Initialize easy_localization — required before runApp
       // Supports EN (default) + FR (Quebec Bill 96 / Loi 96 compliance)
-      await EasyLocalization.ensureInitialized();
+      // FLUTTER-Y: Safari may throw on localStorage access (private browsing).
+      // Fall through gracefully — EasyLocalization will use in-memory fallback.
+      try {
+        await EasyLocalization.ensureInitialized();
+      } catch (e, st) {
+        debugPrint('⚠️ EasyLocalization init failed (non-fatal): $e');
+        if (!kDebugMode) await Sentry.captureException(e, stackTrace: st);
+      }
 
       // Force semantic tree on web for accessibility + E2E Playwright testing.
       // Flutter Web renders to <canvas> — this generates a parallel <flt-semantics>
