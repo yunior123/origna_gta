@@ -139,6 +139,28 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
     return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: const AuthRequiredGate(child: PaymentCanceledScreen()))];
   }
 
+  // Handle subscription success redirect from Stripe
+  if (uri != null && uri.path == AppRoutes.subscriptionSuccess) {
+    return [
+      SlidePageRoute(page: const AuthWrapper()),
+      SlidePageRoute(
+        settings: RouteSettings(name: initialRoute),
+        page: const AuthRequiredGate(child: SubscriptionSuccessScreen()),
+      ),
+    ];
+  }
+
+  // Handle subscription cancel redirect from Stripe
+  if (uri != null && uri.path == AppRoutes.subscriptionCancel) {
+    return [
+      SlidePageRoute(page: const AuthWrapper()),
+      SlidePageRoute(
+        settings: RouteSettings(name: initialRoute),
+        page: const AuthRequiredGate(child: SubscriptionCancelScreen()),
+      ),
+    ];
+  }
+
   // Handle seller registration return from Stripe Connect
   if (uri != null && uri.path == AppRoutes.sellerReturn) {
     return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupCompleteScreen()))];
@@ -573,7 +595,9 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             // Fix Sentry issue: !identical(kind, PointerDeviceKind.trackpad)
             // Explicitly supports all pointer kinds for modern Flutter Web
             scrollbars: true,
-            physics: const BouncingScrollPhysics(),
+            // ClampingScrollPhysics prevents overscroll crashes on Flutter Web
+            // (BouncingScrollPhysics causes negative pixel values → layout crashes)
+            physics: const ClampingScrollPhysics(),
           ),
           onGenerateTitle: (ctx) => 'app.title'.tr(),
           debugShowCheckedModeBanner: !kReleaseMode && !envConfig.isProduction,

@@ -118,7 +118,7 @@ class FavoritesScreen extends ConsumerWidget {
                             final product = displayList[index];
                             final isUnavailable = product.lifecycleStatus != ProductLifecycleStatusValues.active;
                             return FadeSlideIn(
-                              delay: Duration(milliseconds: 50 * index),
+                              delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
                               child: Opacity(
                                 opacity: isUnavailable ? 0.45 : 1.0,
                                 child: ProductCard(productId: product.productId, product: product, userModel: userModel),
@@ -126,6 +126,8 @@ class FavoritesScreen extends ConsumerWidget {
                             );
                           },
                           childCount: displayList.length,
+                          addAutomaticKeepAlives: false,
+                          addRepaintBoundaries: true,
                         ),
                       ),
                     ),

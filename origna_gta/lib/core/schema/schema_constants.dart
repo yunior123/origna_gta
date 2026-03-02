@@ -1622,21 +1622,6 @@ abstract final class StripeEventTypes {
 /// Subcategory constants — maps category display name to subcategory list.
 /// Used by add/edit product screens to show subcategory dropdowns. (N-11)
 abstract final class SubcategoryConstants {
-  static const Map<String, List<String>> map = {
-    'Fashion': ["Men's Clothing", "Women's Clothing", "Kids' Clothing", 'Shoes', 'Accessories', 'Bags', 'Jewelry'],
-    'Electronics': ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'],
-    'Home & Garden': ['Furniture', 'Decor', 'Kitchen', 'Bedding', 'Lighting', 'Garden & Outdoor', 'Storage'],
-    'Beauty & Personal Care': ['Skincare', 'Haircare', 'Makeup', 'Fragrance', "Men's Grooming"],
-    'Sports & Outdoors': ['Fitness', 'Outdoor Recreation', 'Team Sports', 'Water Sports', 'Winter Sports'],
-    'Toys & Games': ['Puzzles & Board Games', 'Building Toys', 'Dolls & Playsets', 'Video Games', 'Outdoor Play'],
-    'Food & Grocery': ['Snacks', 'Beverages', 'Health Foods', 'Specialty Foods', 'Baking'],
-    'Books & Media': ['Books', 'Music', 'Movies & TV', 'Magazines'],
-    'Automotive': ['Car Accessories', 'Motorcycle', 'Tools & Equipment'],
-    'Health': ['Vitamins & Supplements', 'Medical Devices', 'Personal Care'],
-    'Art & Crafts': ['Drawing & Painting', 'Yarn & Fiber Arts', 'Paper Crafts', 'Photography'],
-    'Baby': ['Baby Clothing', 'Feeding', 'Nursery', 'Strollers', 'Toys'],
-  };
-
   /// Lookup subcategories by category ID (matches productCategories list in utils.dart).
   static const Map<int, List<String>> _byId = {
     1: ['Smartphones', 'Laptops', 'Tablets', 'Cameras', 'Audio', 'Gaming', 'Smart Home', 'Wearables'], // Electronics

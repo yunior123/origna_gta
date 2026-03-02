@@ -156,7 +156,7 @@ class CartScreen extends ConsumerWidget {
                         itemBuilder: (context, index) {
                           final cartItemDocId = productIds[index];
                           return FadeSlideIn(
-                            delay: Duration(milliseconds: 50 * index),
+                            delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
                             child: _CartItemWidget(
                               key: ValueKey(cartItemDocId),
                               cartItemDocId: cartItemDocId,

@@ -51,6 +51,8 @@ import {
   pollDocField,
   fillStripeCheckout,
   dismissStripeModals,
+  writeDoc,
+  toFirestoreFields,
   TEST_ACCOUNTS,
   TEST_UIDS,
   WEB_APP_URL,
@@ -302,6 +304,29 @@ async function handle3DS(page: Page, approve: boolean): Promise<void> {
 
 test.describe('A. Subscription Status API', () => {
   test.setTimeout(30_000);
+
+  // Reset buyer to a known non-premium state before these API tests.
+  // Parallel test suites (e.g. trending-products) may set isPremium=true on the
+  // buyer doc via beforeEach. If their afterAll partially completes while A3 runs,
+  // userDoc.isPremium and the subscription status become temporarily out-of-sync,
+  // causing A3 to fail. Resetting here guarantees a consistent baseline.
+  test.beforeAll(async () => {
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    await writeDoc(
+      `users/${TEST_UIDS.BUYER}`,
+      toFirestoreFields({ isPremium: false }),
+      adminAuth.idToken,
+      true,
+    );
+    await writeDoc(
+      `subscriptions/${TEST_UIDS.BUYER}`,
+      toFirestoreFields({ status: 'canceled' }),
+      adminAuth.idToken,
+      false,
+    );
+    // Brief pause for Firestore writes to propagate before tests read
+    await new Promise(resolve => setTimeout(resolve, 1_000));
+  });
 
   test('A1: get_subscription_status returns expected shape', async () => {
     const auth = await signIn(BUYER_EMAIL);
@@ -1317,17 +1342,19 @@ test.describe('M. Screen Rendering', () => {
     await page.goto(`${WEB_APP_URL}/subscription/success`);
     await waitForFlutter(page);
 
-    // The screen always wraps its root Scaffold in Semantics(label:'subscription-success-screen'),
-    // regardless of whether the buyer is currently premium (success state) or not (loading/timeout state).
-    const successScreen = page.locator('[aria-label="subscription-success-screen"]');
+    // The screen always wraps its root Scaffold in Semantics(label:'subscription-success-screen').
+    // Flutter concatenates child semantic labels into the parent's aria-label, so the actual
+    // attribute value is "subscription-success-screen <child labels...>" — use ^= (starts-with).
+    const successScreen = page.locator('[aria-label^="subscription-success-screen"]');
     const screenVisible = await successScreen.isVisible({ timeout: 20_000 }).catch(() => false);
     if (!screenVisible) {
-      // Fallback: the loading state renders a ModernLoadingIndicator; the success state renders
-      // btn-start-shopping. Either confirms the route rendered correctly.
-      const loadingOrBtn = page.locator(
-        '[aria-label="btn-start-shopping"], [aria-label="modern-loading-indicator"]'
+      // Fallback: loading state → modern-loading-indicator; success → btn-start-shopping;
+      // activation-delayed → btn-back-to-home or btn-refresh. Any confirms route rendered.
+      const fallbackEl = page.locator(
+        '[aria-label="btn-start-shopping"], [aria-label="modern-loading-indicator"], ' +
+        '[aria-label="btn-back-to-home"], [aria-label^="btn-refresh"]'
       ).first();
-      const fallbackVisible = await loadingOrBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+      const fallbackVisible = await fallbackEl.isVisible({ timeout: 5_000 }).catch(() => false);
       expect(fallbackVisible, 'subscription-success-screen or its contents must be visible at /subscription/success').toBe(true);
       return;
     }

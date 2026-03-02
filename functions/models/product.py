@@ -783,6 +783,7 @@ class ProductUpdate(BaseModel):
     sellerAddress: Address | None = Field(default=None)
     madeInCountry: str | None = Field(default=None, max_length=100)
     categoryId: int | None = Field(default=None, ge=CategoryIds.MIN, le=CategoryIds.MAX)
+    subcategory: str | None = Field(default=None, max_length=100)
     stockQuantity: int | None = Field(default=None, ge=0)
     lifecycleStatus: str | None = Field(default=None)
     weightKg: float | None = Field(default=None, gt=0, le=1000)

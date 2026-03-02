@@ -65,7 +65,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                 Expanded(
                   child: ReorderableListView.builder(
                     scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     itemCount: _imageModels.length,
                     onReorder: (oldIndex, newIndex) {
                       setState(() {

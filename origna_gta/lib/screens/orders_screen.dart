@@ -63,7 +63,7 @@ class OrdersScreen extends ConsumerWidget {
                       itemCount: orders.length,
                       itemBuilder: (context, index) {
                         return FadeSlideIn(
-                          delay: Duration(milliseconds: 50 * index),
+                          delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
                           child: BuyerOrderCard(order: orders[index]),
                         );
                       },

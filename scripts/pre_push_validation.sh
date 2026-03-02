@@ -9,6 +9,44 @@ echo "============================================"
 echo "  Pre-Push Validation Suite"
 echo "============================================"
 
+# 0. Validate Flutter builds for all 3 environments
+echo ""
+echo "--- [0/10] Multi-Env Build Validation ---"
+BUILD_DIR="$REPO_ROOT/origna_gta/build/web"
+cd "$REPO_ROOT/origna_gta"
+
+echo "  Building DEV..."
+flutter build web --debug --dart-define=ENVIRONMENT=dev --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Flutter DEV build failed."
+    exit 1
+fi
+echo "  ✅ DEV build OK"
+
+echo "  Building STAGING..."
+flutter build web --profile --dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Flutter STAGING build failed."
+    exit 1
+fi
+echo "  ✅ STAGING build OK"
+
+echo "  Building PROD..."
+flutter build web --release --dart-define=ENVIRONMENT=production > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Flutter PROD build failed."
+    exit 1
+fi
+# Guardrail: prod build must NOT contain FORCE_SEMANTICS
+if grep -q "FORCE_SEMANTICS" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
+    echo "❌ ERROR: FORCE_SEMANTICS found in PROD build — dev/staging artifacts leaked into release!"
+    exit 1
+fi
+echo "  ✅ PROD build OK (no dev/staging artifacts)"
+
+cd "$REPO_ROOT"
+echo "✅ All 3 environment builds validated."
+
 # 1. Check for credential leaks
 echo ""
 echo "--- [1/10] Credential Leak Check ---"

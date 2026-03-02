@@ -171,6 +171,12 @@ test.describe('Seller Product Management — UI Tests', () => {
       await productCards.first().click();
       await page.waitForTimeout(3000);
       await waitForFlutter(page);
+      // Product detail loads data from Firestore — allow extra time after Flutter is ready
+      await page.waitForTimeout(5000);
+      // Scroll down to bring product action buttons into Flutter's accessibility tree
+      // (Flutter only exposes off-screen Semantics nodes once they scroll into view)
+      await page.mouse.wheel(0, 600);
+      await page.waitForTimeout(1_000);
 
       // Should navigate to a detail page
       expect(page.url()).not.toBe(homeUrl);
@@ -180,7 +186,7 @@ test.describe('Seller Product Management — UI Tests', () => {
       const addToCartBtn = page.locator('[aria-label^="product_add_to_cart_button"]').first();
       const ownProductMsg = page.locator('[aria-label="product_own_product_message"]').first();
       const notifyMeBtn = page.locator('[aria-label^="product_notify_me_button"],[aria-label^="product_notify_section"]').first();
-      const hasCart = await addToCartBtn.isVisible({ timeout: 5000 }).catch(() => false);
+      const hasCart = await addToCartBtn.isVisible({ timeout: 15_000 }).catch(() => false);
       const hasOwnMsg = await ownProductMsg.isVisible({ timeout: 5000 }).catch(() => false);
       const hasNotify = await notifyMeBtn.isVisible({ timeout: 5000 }).catch(() => false);
       expect(hasCart || hasOwnMsg || hasNotify).toBe(true);

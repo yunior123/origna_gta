@@ -21,6 +21,11 @@ import {
 } from './flutter-helpers';
 
 test.describe('Trending Products flows', () => {
+    // Serial mode: prevents afterAll (cleanup) from running while the UI test is still in progress.
+    // Without this, test 2 (admin, fast) finishes first → afterAll writes status:'canceled' →
+    // subscriptionStreamProvider gets corrupted while test 1 (UI, slow) is still running.
+    test.describe.configure({ mode: 'serial' });
+
     let userEmail = TEST_ACCOUNTS.BUYER_EMAIL;
     let userPass = DEFAULT_PASS;
     let userId = TEST_UIDS.BUYER;
@@ -79,9 +84,24 @@ test.describe('Trending Products flows', () => {
         await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
         await waitForFlutter(page);
 
-        // 5. Go to Premium Subscription using the semantics label
+        // 5. Go to Premium Subscription using the semantics label.
+        // First visit: allows Firestore to fetch server data and update IndexedDB cache.
+        // subscriptionStreamProvider (autoDispose) creates a fresh stream on each mount.
+        // On first mount the IndexedDB cache may be stale/empty → non-premium. We let Firestore
+        // sync for 8s, then navigate away, then come back. Second mount uses the cached
+        // 'active' value as the FIRST emission → isPremium=true immediately.
         const premiumBtn = page.getByRole('button', { name: /menu-premium/i }).first();
         await premiumBtn.click();
+        await expect(page).toHaveURL(/\/subscription/i, { timeout: 20000 });
+        await waitForFlutter(page);
+        // Let Firestore establish connection and cache the server value in IndexedDB
+        await page.waitForTimeout(8_000);
+        // Navigate back to profile (disposes subscriptionStreamProvider, IndexedDB now has 'active')
+        await page.goBack();
+        await waitForFlutter(page, 30000);
+        // Navigate to subscription again — this time the FIRST emission from IndexedDB = 'active'
+        const premiumBtn2 = page.getByRole('button', { name: /menu-premium/i }).first();
+        await premiumBtn2.click();
         await expect(page).toHaveURL(/\/subscription/i, { timeout: 20000 });
         await waitForFlutter(page);
 
@@ -90,8 +110,19 @@ test.describe('Trending Products flows', () => {
         // with aria-label. The inner Switch.adaptive creates a child flt-semantics with role="switch"
         // and aria-checked. getByRole('switch', { name }) fails because the label and role are on
         // separate DOM nodes. Use the inner [role="switch"] descendant of the labelled container.
-        const trendingSwitch = page.locator('[aria-label="switch-notify-trending"] [role="switch"]').first();
-        await expect(trendingSwitch).toBeVisible({ timeout: 15000 });
+        //
+        // The switch is below the fold — scroll progressively until it appears in Flutter's
+        // accessibility tree (Flutter only adds off-screen Semantics nodes when scrolled into view).
+        // Flutter merges the Semantics label and Switch role onto the SAME DOM element.
+        // Selector: [role="switch"][aria-label^="switch-notify-trending"] (same element, not descendant)
+        const trendingSwitch = page.locator('[role="switch"][aria-label^="switch-notify-trending"]').first();
+        let switchFound = false;
+        for (let i = 0; i < 25 && !switchFound; i++) {
+            await page.mouse.wheel(0, 200);
+            await page.waitForTimeout(1_200);
+            switchFound = await trendingSwitch.isVisible({ timeout: 300 }).catch(() => false);
+        }
+        await expect(trendingSwitch).toBeVisible({ timeout: 5_000 });
         // Verify it starts unchecked (notifyTrending: false from beforeEach)
         await expect(trendingSwitch).toHaveAttribute('aria-checked', 'false');
 

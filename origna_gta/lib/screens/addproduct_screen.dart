@@ -194,7 +194,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     opacity: _fadeAnimation,
                     child: Center(
                       child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
+                        physics: const ClampingScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                         child: ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: maxWidth),

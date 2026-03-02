@@ -262,66 +262,69 @@ class _CategoryChips extends ConsumerWidget {
               ? selectedCategoryId == null
               : selectedCategoryId == category?.categoryId;
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: AnimatedContainer(
-              duration: DesignTokens.durationNormal,
-              curve: Curves.easeOutCubic,
-              decoration: BoxDecoration(
-                gradient: isSelected
-                    ? LinearGradient(
-                        colors: [
-                          DesignTokens.primary.withValues(alpha: 0.9),
-                          DesignTokens.secondary.withValues(alpha: 0.9),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: !isSelected ? DesignTokens.surface : null,
-                borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                border: Border.all(
-                  color: isSelected
-                      ? DesignTokens.primary
-                      : DesignTokens.textSecondary.withValues(alpha: 0.3),
-                  width: 1.5,
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: DesignTokens.primary.withValues(alpha: 0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    homeNotifier.onCategorySelected(
-                      isAll ? null : category!.categoryId,
-                    );
-                  },
+          return Semantics(
+            label: isAll ? 'category-chip-all' : 'category-chip-${category!.categoryId}',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: AnimatedContainer(
+                duration: DesignTokens.durationNormal,
+                curve: Curves.easeOutCubic,
+                decoration: BoxDecoration(
+                  gradient: isSelected
+                      ? LinearGradient(
+                          colors: [
+                            DesignTokens.primary.withValues(alpha: 0.9),
+                            DesignTokens.secondary.withValues(alpha: 0.9),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: !isSelected ? DesignTokens.surface : null,
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                  splashColor: Colors.white.withValues(alpha: 0.2),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Center(
-                      child: Text(
-                        isAll ? 'home.category_all'.tr() : category!.name.tr(),
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : DesignTokens.textPrimary,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                          fontSize: 13,
+                  border: Border.all(
+                    color: isSelected
+                        ? DesignTokens.primary
+                        : DesignTokens.textSecondary.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: DesignTokens.primary.withValues(alpha: 0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      homeNotifier.onCategorySelected(
+                        isAll ? null : category!.categoryId,
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                    splashColor: Colors.white.withValues(alpha: 0.2),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Center(
+                        child: Text(
+                          isAll ? 'home.category_all'.tr() : category!.name.tr(),
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : DesignTokens.textPrimary,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
@@ -373,43 +376,46 @@ class _SubcategoryChips extends ConsumerWidget {
                 ? selectedSubcategory == null
                 : selectedSubcategory == subcategory;
 
-            return Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: AnimatedContainer(
-                duration: DesignTokens.durationFast,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? DesignTokens.secondary.withValues(alpha: 0.15)
-                      : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                  border: Border.all(
+            return Semantics(
+              label: isAll ? 'subcategory-chip-all' : 'subcategory-chip-$subcategory',
+              child: Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: AnimatedContainer(
+                  duration: DesignTokens.durationFast,
+                  decoration: BoxDecoration(
                     color: isSelected
-                        ? DesignTokens.secondary
-                        : DesignTokens.outline.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
+                        ? DesignTokens.secondary.withValues(alpha: 0.15)
+                        : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                    onTap: () => homeNotifier.onSubcategorySelected(
-                      isAll ? null : subcategory,
+                    border: Border.all(
+                      color: isSelected
+                          ? DesignTokens.secondary
+                          : DesignTokens.outline.withValues(alpha: 0.2),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                      onTap: () => homeNotifier.onSubcategorySelected(
+                        isAll ? null : subcategory,
                       ),
-                      child: Text(
-                        isAll ? 'home.category_all'.tr() : subcategory!,
-                        style: TextStyle(
-                          color: isSelected
-                              ? DesignTokens.secondary
-                              : DesignTokens.textSecondary,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          fontSize: 12,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          isAll ? 'home.category_all'.tr() : subcategory!,
+                          style: TextStyle(
+                            color: isSelected
+                                ? DesignTokens.secondary
+                                : DesignTokens.textSecondary,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),
@@ -427,6 +433,7 @@ class _SubcategoryChips extends ConsumerWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isPaginating = false;
 
   @override
   Widget build(BuildContext context) {
@@ -454,6 +461,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Main scrollable content
             CustomScrollView(
               controller: _scrollController,
+              physics: const ClampingScrollPhysics(),
               slivers: [
                 // App Purpose Tagline
                 SliverToBoxAdapter(
@@ -801,13 +809,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 300) {
-      // Only paginate when products already exist — initial load is handled by the ViewModel constructor
-      final products = ref.read(homeViewModelProvider).products;
-      if (products.isNotEmpty) {
-        ref.read(homeViewModelProvider.notifier).loadProducts();
+    // Guard: controller must be attached and not already paginating
+    if (_isPaginating) return;
+    if (!_scrollController.hasClients) return;
+
+    try {
+      final position = _scrollController.position;
+      if (position.pixels >= position.maxScrollExtent - 300) {
+        final state = ref.read(homeViewModelProvider);
+        if (state.products.isNotEmpty && !state.isLoadingMore && state.hasMore) {
+          _isPaginating = true;
+          ref.read(homeViewModelProvider.notifier).loadProducts().whenComplete(() {
+            _isPaginating = false;
+          });
+        }
       }
+    } catch (_) {
+      // Scroll position can throw during rapid layout changes — ignore
     }
   }
 }
@@ -953,15 +971,20 @@ class _ProductGrid extends ConsumerWidget {
           mainAxisSpacing: spacing,
           childAspectRatio: cardAspectRatio,
         ),
-        delegate: SliverChildBuilderDelegate((context, index) {
-          final product = products[index];
-          return ProductCard(
-            key: Key('product_card_${product.name}'),
-            productId: product.productId,
-            product: product,
-            userModel: userProfile ?? fallbackUserModel,
-          );
-        }, childCount: products.length),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final product = products[index];
+            return ProductCard(
+              key: Key('product_card_${product.name}'),
+              productId: product.productId,
+              product: product,
+              userModel: userProfile ?? fallbackUserModel,
+            );
+          },
+          childCount: products.length,
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: true,
+        ),
       ),
     );
   }

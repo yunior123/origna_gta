@@ -32,11 +32,11 @@ else
     exit 1
 fi
 
-# 3. Build Flutter
-echo -e "\n${YELLOW}[3/5] Building Flutter app...${NC}"
+# 3. Build Flutter (with explicit ENVIRONMENT=production)
+echo -e "\n${YELLOW}[3/5] Building Flutter app for PRODUCTION...${NC}"
 cd "$REPO_ROOT/origna_gta"
-if flutter build web --release; then
-    echo -e "${GREEN}✓ Flutter build successful${NC}"
+if flutter build web --release --dart-define=ENVIRONMENT=production; then
+    echo -e "${GREEN}✓ Flutter PRODUCTION build successful${NC}"
 else
     echo -e "${RED}✗ Flutter build failed${NC}"
     exit 1

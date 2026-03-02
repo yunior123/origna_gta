@@ -138,7 +138,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
       color: isDark ? DesignTokens.darkSurface : DesignTokens.surface,
       child: CustomScrollView(
         controller: _scrollController,
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         slivers: [
           _buildHeroHeader(context, isDark),
           SliverToBoxAdapter(child: _buildQuickNav(isDark)),
@@ -149,7 +149,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                 (context, index) {
                   final section = _sections[index];
                   return FadeSlideIn(
-                    delay: Duration(milliseconds: 60 * index),
+                    delay: Duration(milliseconds: 60 * index.clamp(0, 8)),
                     child: _buildSectionCard(section, isDark),
                   );
                 },

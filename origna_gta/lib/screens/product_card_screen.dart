@@ -309,7 +309,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Flexible(
+                      SizedBox(
+                        height: titleFontSize * 1.25 * 2 + 2,
                         child: Text(
                           name,
                           style: TextStyle(

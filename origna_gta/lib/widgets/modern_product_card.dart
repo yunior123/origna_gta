@@ -190,11 +190,14 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              widget.productName,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
+                            SizedBox(
+                              height: 14 * 1.4 * 2 + 2,
+                              child: Text(
+                                widget.productName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
+                              ),
                             ),
                             const SizedBox(height: DesignTokens.spacing4),
                             Text(

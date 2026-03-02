@@ -44,6 +44,7 @@ from schema_constants import (
     ProductConstraints,
     ProductLifecycleStatusValues,
     RateLimitActions,
+    Subcategories,
     SupplierTypeValues,
     UserRoleValues,
     WarehouseTypeValues,
@@ -1390,6 +1391,18 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if not product_data[Fields.IS_INTERNATIONAL] and not product_data.get(Fields.SHIP_FROM_COUNTRY):
         product_data[Fields.SHIP_FROM_COUNTRY] = COUNTRY_CANADA
+
+    # N-11: Subcategory validation — must belong to the product's category
+    subcategory = product_data.get(Fields.SUBCATEGORY)
+    category_id = product_data.get(Fields.CATEGORY_ID)
+    if subcategory and category_id is not None:
+        cat_id_int = int(category_id)
+        allowed = Subcategories.MAP.get(cat_id_int, [])
+        if subcategory not in allowed:
+            raise https_fn.HttpsError(
+                "invalid-argument",
+                f"Subcategory '{subcategory}' is not valid for category {cat_id_int}",
+            )
 
     # ADDR-H2: Server-side geocoding for sellerAddress (if no warehouses used)
     # Ensures coordinates are verified and Accurate. Surfaces Geoapify errors.
@@ -2756,6 +2769,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
     limit = min(data.get("limit", DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE)
     start_after_id = data.get("startAfter")
     category = data.get("category")
+    subcategory = data.get(Fields.SUBCATEGORY)
     seller_id = data.get(Fields.SELLER_ID)
     order_by = data.get("orderBy", Fields.CREATED_AT)
     order_direction = data.get("orderDirection", "desc")
@@ -2793,6 +2807,9 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         if category:
             query = query.where(Fields.CATEGORY_ID, "==", category)
+
+        if subcategory:
+            query = query.where(Fields.SUBCATEGORY, "==", subcategory)
 
         if seller_id:
             query = query.where(Fields.SELLER_ID, "==", seller_id)
@@ -4883,6 +4900,19 @@ def update_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     }
     for field in PROTECTED_FIELDS:
         clean_update.pop(field, None)
+
+    # N-11: Subcategory validation — must belong to the product's category
+    subcategory = clean_update.get(Fields.SUBCATEGORY)
+    if subcategory:
+        cat_id = clean_update.get(Fields.CATEGORY_ID) or existing_data.get(Fields.CATEGORY_ID)
+        if cat_id is not None:
+            cat_id_int = int(cat_id)
+            allowed = Subcategories.MAP.get(cat_id_int, [])
+            if subcategory not in allowed:
+                raise https_fn.HttpsError(
+                    "invalid-argument",
+                    f"Subcategory '{subcategory}' is not valid for category {cat_id_int}",
+                )
 
     # F-90: Re-trigger UNDER_REVIEW if sensitive digital fields change
     SENSITIVE_FIELDS = {Fields.DIGITAL_BUILDS, Fields.BOOK_SOURCE_URL, Fields.IS_DIGITAL}

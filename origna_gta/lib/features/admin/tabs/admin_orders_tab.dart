@@ -455,7 +455,7 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
                     itemBuilder: (context, index) {
                       final data = orders[index];
                       return FadeSlideIn(
-                        delay: Duration(milliseconds: 30 * index),
+                        delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
                         child: _AdminOrderCard(order: data),
                       );
                     },

@@ -217,7 +217,7 @@ class _TermsBodyState extends State<_TermsBody> {
       color: isDark ? DesignTokens.darkSurface : DesignTokens.surface,
       child: CustomScrollView(
         controller: _scrollController,
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         slivers: [
           // Gradient Hero Header
           _buildHeroHeader(context),
@@ -231,7 +231,7 @@ class _TermsBodyState extends State<_TermsBody> {
                 (context, index) {
                   final section = _sections[index];
                   return FadeSlideIn(
-                    delay: Duration(milliseconds: 60 * index),
+                    delay: Duration(milliseconds: 60 * index.clamp(0, 8)),
                     child: _buildSectionCard(section, isDark),
                   );
                 },

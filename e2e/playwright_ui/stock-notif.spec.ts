@@ -46,7 +46,7 @@ import {
   FIRESTORE_BASE,
   ensureOosProduct,
 } from './api-helpers';
-import { waitForFlutter, ensureLoggedInAsAdmin } from './flutter-helpers';
+import { waitForFlutter, ensureLoggedInAsAdmin, clearServiceWorkers } from './flutter-helpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -79,14 +79,50 @@ const OOS_VARIANT_KEY = 'color:red';
 /**
  * Navigate to a product detail page using the /product/:id deep link.
  * IMPORTANT: Call ensureLoggedInAsAdmin BEFORE this function.
- * After page.goto() Flutter re-initializes and reads Firebase Auth from IndexedDB.
- * A 5s settle delay is required for Firebase Auth to restore before widgets render.
+ *
+ * After ensureLoggedInAsAdmin, a Flutter service worker may have cached old assets
+ * (before CDN propagation of the latest deploy). Clearing SW before each goto forces
+ * fresh asset fetches from the network so the latest routing code is always used.
+ * Retries up to 3 times if we land on the home screen instead of the product page.
  */
 async function navigateToProduct(page: Page, baseURL: string, productId: string) {
-  await page.goto(`${baseURL}/product/${productId}`);
-  await waitForFlutter(page);
-  // Wait for Firebase Auth to restore from IndexedDB before widgets check auth state
-  await page.waitForTimeout(5_000);
+  // Flutter Semantics containers merge child labels into the parent aria-label, so
+  // exact-match [aria-label="x"] fails. Use starts-with [aria-label^="x"].
+  // product_notify_me_button is a leaf node (no child merging) and also works.
+  const PRODUCT_SELECTORS = [
+    '[aria-label^="product_notify_section"]',
+    '[aria-label^="product_notify_me_button"]',
+    '[aria-label^="product_add_to_cart_button"]',
+    '[aria-label^="product_own_product_message"]',
+  ];
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    // Clear SW cache before each goto: prevents stale routing code being served
+    await clearServiceWorkers(page);
+
+    await page.goto(`${baseURL}/product/${productId}`, { waitUntil: 'load' });
+    await waitForFlutter(page);
+    // Wait for Firebase Auth to restore from IndexedDB before widgets check auth state
+    await page.waitForTimeout(5_000);
+
+    // Scroll down: Flutter only adds off-screen Semantics nodes to the DOM once they enter
+    // the viewport. Product buttons (notify section, add-to-cart) are below the fold.
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(1_000);
+
+    // Detect whether routing succeeded (product page) or failed (home screen)
+    let onProductPage = false;
+    for (const sel of PRODUCT_SELECTORS) {
+      if (await page.locator(sel).isVisible({ timeout: 2_000 }).catch(() => false)) {
+        onProductPage = true;
+        break;
+      }
+    }
+
+    if (onProductPage || attempt === 3) break;
+    console.log(`   ⚠️ navigateToProduct attempt ${attempt} landed on wrong page — retrying...`);
+  }
+
   await page.screenshot({
     path: `${SCREENSHOTS_DIR}/stock-notif-product-loaded-${productId}.png`,
   });
@@ -120,12 +156,12 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
 
     // Notify section must be present
     await expect(
-      page.locator('[aria-label="product_notify_section"]'),
+      page.locator('[aria-label^="product_notify_section"]'),
     ).toBeVisible({ timeout: 15_000 });
 
     // Add-to-cart must NOT be present
     await expect(
-      page.locator('[aria-label="product_add_to_cart_button"]'),
+      page.locator('[aria-label^="product_add_to_cart_button"]'),
     ).not.toBeVisible();
 
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-1-1-oos-section.png` });
@@ -213,6 +249,11 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
     // Navigate without logging in
     await page.goto(`${baseURL}/product/${OOS_PRODUCT_ID}`);
     await waitForFlutter(page);
+    await page.waitForTimeout(3_000);
+
+    // Scroll down so Flutter adds the notify button's Semantics node to the accessibility tree
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(1_000);
 
     const notifyBtn = page.locator('[aria-label="product_notify_me_button"]');
     await expect(notifyBtn).toBeVisible({ timeout: 15_000 });
@@ -233,11 +274,11 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
     await loginAndNavigate(page, baseURL!, IN_STOCK_PRODUCT_ID);
 
     await expect(
-      page.locator('[aria-label="product_add_to_cart_button"]'),
+      page.locator('[aria-label^="product_add_to_cart_button"]'),
     ).toBeVisible({ timeout: 15_000 });
 
     await expect(
-      page.locator('[aria-label="product_notify_section"]'),
+      page.locator('[aria-label^="product_notify_section"]'),
     ).not.toBeVisible();
 
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-1-6-in-stock-add-to-cart.png` });
@@ -247,20 +288,26 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
     // Admin user is also a seller — navigate to one of their own OOS products
     // Use the admin account + any product owned by admin
     await ensureLoggedInAsAdmin(page, baseURL!, TEST_ACCOUNTS.ADMIN_EMAIL, 'REDACTED_TEST_PASSWORD');
-    await page.goto(`${baseURL}/product/${OOS_PRODUCT_ID}`);
+    // Clear SW before goto: prevents stale routing code served from cache
+    await clearServiceWorkers(page);
+    await page.goto(`${baseURL}/product/${OOS_PRODUCT_ID}`, { waitUntil: 'load' });
     await waitForFlutter(page);
     // Wait for Firebase Auth to restore from IndexedDB after page reload
     await page.waitForTimeout(5_000);
+
+    // Scroll down to bring product action buttons into Flutter's accessibility tree
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(1_000);
 
     // If OOS_PRODUCT_ID is owned by a different seller, this test verifies
     // that Notify Me appears (not own product). Admin panel view — just screenshot.
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-1-7-own-or-notify.png` });
 
     // The own product message and notify section are mutually exclusive
-    const ownMsg = page.locator('[aria-label="product_own_product_message"]');
-    const notifySection = page.locator('[aria-label="product_notify_section"]');
-    const isOwn = await ownMsg.isVisible();
-    const hasNotify = await notifySection.isVisible();
+    const ownMsg = page.locator('[aria-label^="product_own_product_message"]');
+    const notifySection = page.locator('[aria-label^="product_notify_section"]');
+    const isOwn = await ownMsg.isVisible({ timeout: 5_000 }).catch(() => false);
+    const hasNotify = await notifySection.isVisible({ timeout: 5_000 }).catch(() => false);
     expect(isOwn || hasNotify, 'Must show either own product message or notify section for OOS').toBe(true);
     expect(isOwn && hasNotify, 'Cannot show both own product and notify section').toBe(false);
   });
@@ -281,8 +328,10 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
   const TEMP_PRODUCT_ID = 'test_notif_stock_restore';
 
   test.beforeAll(async () => {
-    const auth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-    // Seed a temporary OOS product that mimics an active product
+    const auth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    // Seed a temporary OOS product that mimics an active product.
+    // sellerId must match ADMIN (token owner) so Firestore rules allow the write.
+    // isActive:true is required for Flutter's product detail screen to show the product.
     await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({
       productId: TEMP_PRODUCT_ID,
       name: 'Test Stock Restore Product',
@@ -291,10 +340,11 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
       price: 19.99,
       stockQuantity: 0,
       lifecycleStatus: 'active',
+      isActive: true,
       isDigital: false,
-      sellerId: TEST_UIDS.SELLER,
+      sellerId: TEST_UIDS.ADMIN,
       categoryId: 1,
-      imageUrls: [],
+      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
       hasVariants: false,
       variants: [],
       variantOptions: [],
@@ -302,6 +352,8 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
       ratingCount: 0,
       createdAt: new Date().toISOString(),
     }), auth.idToken, true);
+    // Give Firestore a moment to propagate the write
+    await new Promise(resolve => setTimeout(resolve, 1_000));
   });
 
   test.afterAll(async () => {
@@ -314,7 +366,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
 
     // Must show Notify Me
     await expect(
-      page.locator('[aria-label="product_notify_section"]'),
+      page.locator('[aria-label^="product_notify_section"]'),
     ).toBeVisible({ timeout: 15_000 });
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-2-1a-oos-before.png` });
 
@@ -322,19 +374,23 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
     await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 10 }), adminAuth.idToken, true);
 
-    // Re-navigate to force provider re-fetch — auth re-reads from IndexedDB after reload
-    await page.goto(`${baseURL}/product/${TEMP_PRODUCT_ID}`);
+    // Re-navigate to force provider re-fetch — clear SW first to avoid stale routing
+    await clearServiceWorkers(page);
+    await page.goto(`${baseURL}/product/${TEMP_PRODUCT_ID}`, { waitUntil: 'networkidle' });
     await waitForFlutter(page);
     await page.waitForTimeout(5_000);
+    // Scroll to bring the add-to-cart button into Flutter's accessibility tree
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(1_000);
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-2-1b-stock-restored.png` });
 
     // Add to cart should now appear
     await expect(
-      page.locator('[aria-label="product_add_to_cart_button"]'),
+      page.locator('[aria-label^="product_add_to_cart_button"]'),
     ).toBeVisible({ timeout: 15_000 });
 
     await expect(
-      page.locator('[aria-label="product_notify_section"]'),
+      page.locator('[aria-label^="product_notify_section"]'),
     ).not.toBeVisible();
   });
 });

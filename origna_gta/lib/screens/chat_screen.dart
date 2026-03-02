@@ -51,12 +51,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
+    if (!mounted || !_scrollController.hasClients) return;
+    try {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
       );
+    } catch (_) {
+      // Position may not be ready during layout — safe to ignore
     }
   }
 

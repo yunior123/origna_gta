@@ -5,6 +5,14 @@
     "dev": "orignagta-dev",
     "staging": "orignagta-staging"
   },
-  "targets": {},
+  "targets": {
+    "orignagta": {
+      "hosting": {
+        "orignagta": [
+          "orignagta"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

@@ -31,7 +31,7 @@ export { BTN_SETTINGS, BTN_SIGN_IN, BTN_CART, BTN_ADD_PRODUCT };
 
 // ─── SERVICE WORKER CLEANUP ────────────────────────────────────────
 
-async function clearServiceWorkers(page: Page): Promise<void> {
+export async function clearServiceWorkers(page: Page): Promise<void> {
     try {
         await page.evaluate(async () => {
             const regs = await navigator.serviceWorker?.getRegistrations() ?? [];

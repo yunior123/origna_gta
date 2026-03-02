@@ -198,7 +198,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                     itemBuilder: (context, index) {
                       final data = users[index];
                       return FadeSlideIn(
-                        delay: Duration(milliseconds: 30 * index),
+                        delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
                         child: _UserCard(user: data),
                       );
                     },
