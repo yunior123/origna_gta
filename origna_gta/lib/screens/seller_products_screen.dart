@@ -64,7 +64,7 @@ class SellerProductsScreen extends ConsumerWidget {
           error: (e, _) => AnimatedEmptyState(icon: Icons.error_outline_rounded, title: tr('seller.something_wrong'), subtitle: e.toString()),
           data: (products) {
             if (products.isEmpty) {
-              return AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: tr('seller.no_products_yet'), subtitle: tr('seller.add_first_product'));
+              return AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: tr('seller.no_products_yet'), subtitle: tr('seller.add_first_product'), showMascot: true);
             }
 
             return Column(
@@ -351,7 +351,7 @@ class _SellerProductCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Stock: ${product.stockQuantity}',
+                    tr('seller.stock_count', namedArgs: {'count': product.stockQuantity.toString()}),
                     style: TextStyle(
                       fontSize: 12,
                       color: product.stockQuantity <= 0
@@ -361,11 +361,18 @@ class _SellerProductCard extends StatelessWidget {
                           : DesignTokens.textSecondary,
                     ),
                   ),
+                  if (product.lifecycleStatus == ProductLifecycleStatusValues.rejected &&
+                      product.approvalRejectionReason != null &&
+                      product.approvalRejectionReason!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _RejectionBanner(reason: product.approvalRejectionReason!, onFixAndResubmit: onEdit),
+                  ],
                 ],
               ),
             ),
-            // Edit arrow
-            if (!isSelectionMode) Icon(Icons.chevron_right_rounded, color: DesignTokens.textDisabled, size: 20),
+            // Edit arrow — hide when rejection banner is shown (button replaces it)
+            if (!isSelectionMode && product.lifecycleStatus != ProductLifecycleStatusValues.rejected)
+              Icon(Icons.chevron_right_rounded, color: DesignTokens.textDisabled, size: 20),
           ],
         ),
       ),
@@ -386,6 +393,57 @@ class _SellerProductCard extends StatelessWidget {
         border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.15), width: 1),
       ),
       child: Icon(Icons.camera_alt_outlined, color: DesignTokens.primary.withValues(alpha: 0.6), size: 22),
+    );
+  }
+}
+
+class _RejectionBanner extends StatelessWidget {
+  final String reason;
+  final VoidCallback onFixAndResubmit;
+  const _RejectionBanner({required this.reason, required this.onFixAndResubmit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: DesignTokens.error.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.25), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded, size: 13, color: DesignTokens.error),
+              const SizedBox(width: 4),
+              Text(
+                tr('seller.rejection_reason_label'),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: DesignTokens.error),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(reason, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary), maxLines: 3, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: onFixAndResubmit,
+              icon: Icon(Icons.edit_outlined, size: 14, color: DesignTokens.primary),
+              label: Text(tr('seller.fix_and_resubmit'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DesignTokens.primary)),
+              style: TextButton.styleFrom(
+                backgroundColor: DesignTokens.primary.withValues(alpha: 0.08),
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                minimumSize: Size.zero,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

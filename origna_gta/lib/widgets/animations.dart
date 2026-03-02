@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 
 /// Fade and slide in animation wrapper
 class FadeSlideIn extends StatefulWidget {
@@ -98,12 +99,14 @@ class StaggeredList extends StatelessWidget {
   }
 }
 
-/// Animated empty state widget
+/// Animated empty state widget.
+/// Set [showMascot] to true to show the animated shopping mascot above the icon.
 class AnimatedEmptyState extends StatefulWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
   final Widget? action;
+  final bool showMascot;
 
   const AnimatedEmptyState({
     super.key,
@@ -111,6 +114,7 @@ class AnimatedEmptyState extends StatefulWidget {
     required this.title,
     this.subtitle,
     this.action,
+    this.showMascot = false,
   });
 
   @override
@@ -121,6 +125,7 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  MascotController? _mascotController;
 
   @override
   void initState() {
@@ -134,11 +139,17 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
     );
     _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
+
+    if (widget.showMascot) {
+      _mascotController = MascotController();
+      _mascotController!.setExcitement(0.3);
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _mascotController?.dispose();
     super.dispose();
   }
 
@@ -154,6 +165,10 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                if (widget.showMascot && _mascotController != null) ...[
+                  ShopMascot(controller: _mascotController!, size: 80, showSpeechBubble: false),
+                  const SizedBox(height: 12),
+                ],
                 Container(
                   width: 104,
                   height: 104,

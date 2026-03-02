@@ -10,6 +10,7 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
@@ -134,17 +135,37 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
 }
 
 /// Reusable confirming payment view to avoid duplication
-class _ConfirmingPaymentView extends StatelessWidget {
+class _ConfirmingPaymentView extends StatefulWidget {
   final String message;
   final bool isDark;
 
   const _ConfirmingPaymentView({required this.message, required this.isDark});
 
   @override
+  State<_ConfirmingPaymentView> createState() => _ConfirmingPaymentViewState();
+}
+
+class _ConfirmingPaymentViewState extends State<_ConfirmingPaymentView> {
+  late final MascotController _mascotController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mascotController = MascotController();
+    _mascotController.setExcitement(0.5);
+  }
+
+  @override
+  void dispose() {
+    _mascotController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        gradient: DesignTokens.backgroundGradient(isDark: widget.isDark),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -154,9 +175,13 @@ class _ConfirmingPaymentView extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Mascot waiting animation
+                ShopMascot(controller: _mascotController, size: 88, showSpeechBubble: false),
+                const SizedBox(height: 16),
+                // Spinner ring
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
@@ -167,15 +192,15 @@ class _ConfirmingPaymentView extends StatelessWidget {
                     child: ShaderMask(
                       shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
                       child: const SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: Colors.white, centered: false),
+                        width: 28,
+                        height: 28,
+                        child: ModernLoadingIndicator(size: 28, strokeWidth: 2.5, color: Colors.white, centered: false),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text(message, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary)),
+                Text(widget.message, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: widget.isDark ? Colors.white : DesignTokens.textPrimary)),
                 const SizedBox(height: 8),
                 Text('payment.may_take_moments'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
               ],

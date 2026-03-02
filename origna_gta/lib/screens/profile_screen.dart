@@ -147,7 +147,10 @@ class ProfileScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       // Profile Header
-                      FadeSlideIn(child: _buildProfileHeader(userModel, isDark)),
+                      FadeSlideIn(child: _buildProfileHeader(
+                        userModel, isDark,
+                        isPremium: ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userModel.isPremium,
+                      )),
                       SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl)),
 
                       // Main Navigation Menu
@@ -523,7 +526,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProfileHeader(UserModel userModel, bool isDark) {
+  Widget _buildProfileHeader(UserModel userModel, bool isDark, {required bool isPremium}) {
     final initials = userModel.name.isNotEmpty ? userModel.name[0].toUpperCase() : 'U';
     final isSeller = userModel.roles.contains(UserRoles.seller) || userModel.roles.contains(UserRoles.admin);
     final isAdmin = userModel.roles.contains(UserRoles.admin);
@@ -602,14 +605,17 @@ class ProfileScreen extends ConsumerWidget {
                     // Avatar with triple concentric glow rings
                     Stack(
                       alignment: Alignment.center,
+                      clipBehavior: Clip.none,
                       children: [
-                        // Outermost pulse ring
+                        // Outermost pulse ring — golden for premium
                         Container(
                           width: avatarSize + 32,
                           height: avatarSize + 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.06),
+                            color: isPremium
+                                ? const Color(0xFFFFD700).withValues(alpha: 0.1)
+                                : Colors.white.withValues(alpha: 0.06),
                           ),
                         ),
                         // Middle ring
@@ -619,7 +625,10 @@ class ProfileScreen extends ConsumerWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.white.withValues(alpha: 0.1),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1),
+                            border: Border.all(
+                              color: isPremium ? const Color(0xFFFFD700).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.18),
+                              width: isPremium ? 1.5 : 1,
+                            ),
                           ),
                         ),
                         // Inner avatar circle
@@ -636,6 +645,8 @@ class ProfileScreen extends ConsumerWidget {
                             border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2.5),
                             boxShadow: [
                               BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 22, offset: const Offset(0, 8)),
+                              if (isPremium)
+                                BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.35), blurRadius: 24, spreadRadius: 2),
                             ],
                           ),
                           child: Center(
@@ -650,6 +661,29 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
+                        // Premium crown badge — bottom-right of avatar
+                        if (isPremium)
+                          Positioned(
+                            right: (avatarSize + 32) / 2 - avatarSize / 2 - 2,
+                            bottom: (avatarSize + 32) / 2 - avatarSize / 2 - 2,
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.6), blurRadius: 8, spreadRadius: 1)],
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.workspace_premium, size: 14, color: Colors.white),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 18),

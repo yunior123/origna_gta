@@ -92,13 +92,19 @@ test.describe('A. Full Buyer Journey', () => {
     const priceText = page.getByText(/\$\d+/);
     await expect(priceText.first()).toBeVisible({ timeout: 10_000 });
 
-    // Verify Add to Cart button exists
-    const addToCartBtn = page.getByRole('button', { name: /add to cart|ajouter au panier/i }).first();
+    // Verify product action buttons exist.
+    // In-stock products now show "Buy Now" (product_buy_now_button) above "Add to Cart".
+    // Scroll down to bring action buttons into the Flutter accessibility tree if needed.
+    await page.mouse.move(640, 400);
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(500);
+    const buyNowBtn = page.locator('[aria-label^="product_buy_now_button"]').first();
+    const addToCartBtn = page.locator('[aria-label^="product_add_to_cart_button"]').first();
+    const hasBuyNow = await buyNowBtn.isVisible({ timeout: 5_000 }).catch(() => false);
     const hasAddToCart = await addToCartBtn.isVisible({ timeout: 5_000 }).catch(() => false);
-    if (!hasAddToCart) {
-      // May need to scroll down on details page
-      await page.mouse.move(640, 400);
-      await page.mouse.wheel(0, 3000);
+    if (!hasBuyNow && !hasAddToCart) {
+      // Scroll further down if still not visible
+      await page.mouse.wheel(0, 2400);
       await page.waitForTimeout(500);
     }
   });

@@ -1127,7 +1127,10 @@
     "out_of_stock": "Rupture de stock",
     "active": "Actif",
     "draft": "Brouillon",
-    "archived": "Archivé"
+    "archived": "Archivé",
+    "stock_count": "Stock : {count}",
+    "rejection_reason_label": "Motif du rejet :",
+    "fix_and_resubmit": "Corriger et soumettre à nouveau"
   },
   "address": {
     "street": "Adresse",

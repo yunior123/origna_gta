@@ -125,6 +125,7 @@ class CartScreen extends ConsumerWidget {
                     icon: Icons.shopping_cart_outlined,
                     title: 'cart.empty_cart'.tr(),
                     subtitle: 'cart.empty_cart_desc'.tr(),
+                    showMascot: true,
                     action: SizedBox(
                       width: 240,
                       child: ModernButton(

@@ -46,6 +46,7 @@ class OrdersScreen extends ConsumerWidget {
                 icon: Icons.shopping_bag_outlined,
                 title: 'orders.no_orders'.tr(),
                 subtitle: 'orders.no_orders_desc'.tr(),
+                showMascot: true,
               );
             }
 

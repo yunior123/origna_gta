@@ -60,11 +60,22 @@ test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
             await waitForFlutter(page);
         }
 
-        // A08: Home scroll interaction
+        // A08: Home scroll interaction + pull-to-refresh coverage
+        // The home screen wraps its list in a RefreshIndicator (added in recent UI update).
+        // Scrolling down then back up simulates the overscroll that can trigger refresh.
+        // The test verifies the page remains stable (no crash, semantic content intact).
         await page.mouse.wheel(0, 300);
         await page.waitForTimeout(800);
         await page.mouse.wheel(0, -300);
         await page.waitForTimeout(800);
+        // Overscroll upward from top — exercises the RefreshIndicator trigger threshold.
+        // In Flutter Web, this does NOT reliably fire the onRefresh callback
+        // (pointer events differ from touch), but the widget must not crash.
+        await page.mouse.wheel(0, -200);
+        await page.waitForTimeout(600);
+        // Verify semantic tree is intact after overscroll
+        const afterRefreshSemCount = await page.locator('flt-semantics').count();
+        expect(afterRefreshSemCount, 'Semantic tree must survive pull-to-refresh overscroll').toBeGreaterThan(0);
 
         // C009: Profile navigation via settings button
         await settingsBtn.click();

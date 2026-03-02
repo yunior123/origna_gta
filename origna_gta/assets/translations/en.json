@@ -1127,7 +1127,10 @@
     "out_of_stock": "Out of Stock",
     "active": "Active",
     "draft": "Draft",
-    "archived": "Archived"
+    "archived": "Archived",
+    "stock_count": "Stock: {count}",
+    "rejection_reason_label": "Rejection reason:",
+    "fix_and_resubmit": "Fix & Resubmit for Review"
   },
   "address": {
     "street": "Street Address",

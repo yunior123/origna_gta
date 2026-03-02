@@ -1,10 +1,13 @@
 // OrderSuccessScreen
+import 'dart:math' as math;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/services/analytics_service.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
@@ -25,9 +28,19 @@ class OrderSuccessScreen extends StatefulWidget {
 }
 
 class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
+  late final MascotController _mascotController;
+
   @override
   void initState() {
     super.initState();
+    _mascotController = MascotController();
+    // Trigger celebration after first frame so animation controllers are ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _mascotController.setExcitement(1.0);
+        _mascotController.jump();
+      }
+    });
     Sentry.addBreadcrumb(Breadcrumb(
       message: 'order_success',
       data: {'orderId': widget.orderId},
@@ -41,7 +54,14 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
   }
 
   @override
+  void dispose() {
+    _mascotController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -51,7 +71,11 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: Center(
+          child: Stack(
+            children: [
+              // Confetti celebration particles
+              const Positioned.fill(child: _ConfettiAnimation()),
+              Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 500),
               child: Padding(
@@ -59,7 +83,13 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // Celebrating mascot
                     FadeSlideIn(
+                      child: ShopMascot(controller: _mascotController, size: 90, showSpeechBubble: false),
+                    ),
+                    const SizedBox(height: 12),
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 50),
                       child: Container(
                         padding: const EdgeInsets.all(28),
                         decoration: BoxDecoration(
@@ -231,9 +261,121 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                 ),
               ),
             ),
-          ),
+          ), // Center
+        ], // Stack children
+      ), // Stack
+        ), // SafeArea
+      ),
+    );
+  }
+}
+
+// ── Confetti celebration ────────────────────────────────────────────────────
+
+class _ConfettiAnimation extends StatefulWidget {
+  const _ConfettiAnimation();
+
+  @override
+  State<_ConfettiAnimation> createState() => _ConfettiAnimationState();
+}
+
+class _ConfettiAnimationState extends State<_ConfettiAnimation> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late List<_Particle> _particles;
+
+  @override
+  void initState() {
+    super.initState();
+    final rng = math.Random(42);
+    _particles = List.generate(35, (i) => _Particle.random(rng));
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) => CustomPaint(
+          painter: _ConfettiPainter(_particles, _controller.value),
+          child: const SizedBox.expand(),
         ),
       ),
     );
   }
+}
+
+class _Particle {
+  final double xFrac;
+  final double yOffset;
+  final double speedFactor;
+  final Color color;
+  final double size;
+  final double rotation;
+
+  const _Particle({
+    required this.xFrac,
+    required this.yOffset,
+    required this.speedFactor,
+    required this.color,
+    required this.size,
+    required this.rotation,
+  });
+
+  factory _Particle.random(math.Random rng) {
+    const colors = [
+      Color(0xFFFFD700), Color(0xFFFF6B6B), Color(0xFF5CE1E6),
+      Color(0xFF7B61FF), Color(0xFF4CAF50), Color(0xFFFF9800),
+      Color(0xFFE91E63), Color(0xFF00BCD4),
+    ];
+    return _Particle(
+      xFrac: rng.nextDouble(),
+      yOffset: rng.nextDouble(),
+      speedFactor: 0.4 + rng.nextDouble() * 0.6,
+      color: colors[rng.nextInt(colors.length)],
+      size: 5.0 + rng.nextDouble() * 7.0,
+      rotation: rng.nextDouble() * math.pi * 2,
+    );
+  }
+}
+
+class _ConfettiPainter extends CustomPainter {
+  final List<_Particle> particles;
+  final double t;
+
+  const _ConfettiPainter(this.particles, this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final p in particles) {
+      final y = ((t * p.speedFactor + p.yOffset) % 1.0) * (size.height + 20) - 10;
+      final x = p.xFrac * size.width;
+      final paint = Paint()..color = p.color.withValues(alpha: 0.82);
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(p.rotation + t * p.speedFactor * math.pi * 6);
+      // Alternating rectangles and diamonds for variety
+      if (p.size > 9) {
+        final path = Path()
+          ..moveTo(0, -p.size * 0.5)
+          ..lineTo(p.size * 0.4, 0)
+          ..lineTo(0, p.size * 0.5)
+          ..lineTo(-p.size * 0.4, 0)
+          ..close();
+        canvas.drawPath(path, paint);
+      } else {
+        canvas.drawRect(Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size * 0.55), paint);
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ConfettiPainter old) => t != old.t;
 }

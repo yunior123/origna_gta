@@ -5,6 +5,7 @@ import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -162,6 +163,14 @@ class SubscriptionScreen extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(24, 36, 24, 36),
                   child: Column(
                     children: [
+                      // Mascot + Glow ring row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Mascot cheering on the left
+                          _PremiumMascot(isPremium: isPremium),
+                          const SizedBox(width: 16),
                       // Glow ring + icon
                       Container(
                         width: 100,
@@ -180,6 +189,8 @@ class SubscriptionScreen extends ConsumerWidget {
                         ),
                         child: const Icon(Icons.workspace_premium, color: Colors.white, size: 50),
                       ),
+                        ], // Row children
+                      ), // Row
                       const SizedBox(height: 20),
                       // "✨ PREMIUM" chip badge
                       Container(
@@ -537,5 +548,41 @@ class SubscriptionScreen extends ConsumerWidget {
   String _formatDate(DateTime? date) {
     if (date == null) return '—';
     return DateFormat('MMM d, yyyy').format(date);
+  }
+}
+
+// Mascot that celebrates premium — lives in the subscription hero
+class _PremiumMascot extends StatefulWidget {
+  final bool isPremium;
+  const _PremiumMascot({required this.isPremium});
+
+  @override
+  State<_PremiumMascot> createState() => _PremiumMascotState();
+}
+
+class _PremiumMascotState extends State<_PremiumMascot> {
+  late final MascotController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = MascotController();
+    _controller.setExcitement(widget.isPremium ? 1.0 : 0.6);
+    if (widget.isPremium) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _controller.jump();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ShopMascot(controller: _controller, size: 72, showSpeechBubble: false);
   }
 }

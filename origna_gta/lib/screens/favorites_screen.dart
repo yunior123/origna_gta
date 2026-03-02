@@ -68,6 +68,7 @@ class FavoritesScreen extends ConsumerWidget {
                 icon: Icons.bookmark_border_rounded,
                 title: 'favorites.empty_favorites'.tr(),
                 subtitle: 'favorites.empty_favorites_desc'.tr(),
+                showMascot: true,
               );
             }
 
