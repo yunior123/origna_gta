@@ -46,6 +46,12 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(paidOrderBySessionProvider(widget.sessionId), (previous, next) {
+      if (next.valueOrNull != null) {
+        _timeoutTimer?.cancel();
+      }
+    });
+
     final orderAsync = ref.watch(paidOrderBySessionProvider(widget.sessionId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -60,7 +66,6 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
               ? _buildTimeoutFallback(isDark)
               : _ConfirmingPaymentView(message: 'payment.processing'.tr(), isDark: isDark);
         }
-        _timeoutTimer?.cancel();
         return OrderSuccessScreen(
           orderId: order.orderId,
           valueCad: order.pendingTotal,

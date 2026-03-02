@@ -54,7 +54,7 @@ class SubscriptionScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBenefitCard(IconData icon, Color iconColor, String title, String subtitle, {String? semanticsLabel}) {
+  Widget _buildBenefitCard(IconData icon, Color iconColor, String title, String subtitle, {String? semanticsLabel, bool isDark = false}) {
     return Semantics(
       label: semanticsLabel,
       container: true,
@@ -62,7 +62,7 @@ class SubscriptionScreen extends ConsumerWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? DesignTokens.surfaceVariant : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4))],
         ),
@@ -206,7 +206,7 @@ class SubscriptionScreen extends ConsumerWidget {
                             const Text('✨', style: TextStyle(fontSize: 13)),
                             const SizedBox(width: 6),
                             Text(
-                              isPremium ? 'PREMIUM MEMBER' : 'UNLOCK PREMIUM',
+                              isPremium ? 'subscription.badge_premium_member'.tr() : 'subscription.badge_unlock_premium'.tr(),
                               style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.2),
                             ),
                           ],
@@ -251,26 +251,31 @@ class SubscriptionScreen extends ConsumerWidget {
                   benefitIcons[0].$1, benefitIcons[0].$2,
                   'subscription.no_platform_fee'.tr(), 'subscription.no_platform_fee_desc'.tr(),
                   semanticsLabel: 'benefit-no-platform-fee',
+                  isDark: isDark,
                 ),
                 _buildBenefitCard(
                   benefitIcons[1].$1, benefitIcons[1].$2,
                   'subscription.chat_with_sellers'.tr(), 'subscription.chat_with_sellers_desc'.tr(),
                   semanticsLabel: 'benefit-chat-with-sellers',
+                  isDark: isDark,
                 ),
                 _buildBenefitCard(
                   benefitIcons[2].$1, benefitIcons[2].$2,
                   'subscription.ask_questions'.tr(), 'subscription.ask_questions_desc'.tr(),
                   semanticsLabel: 'benefit-ask-questions',
+                  isDark: isDark,
                 ),
                 _buildBenefitCard(
                   benefitIcons[3].$1, benefitIcons[3].$2,
                   'subscription.smart_notifications'.tr(), 'subscription.smart_notifications_desc'.tr(),
                   semanticsLabel: 'benefit-smart-notifications',
+                  isDark: isDark,
                 ),
                 _buildBenefitCard(
                   benefitIcons[4].$1, benefitIcons[4].$2,
                   'subscription.photo_reviews'.tr(), 'subscription.photo_reviews_desc'.tr(),
                   semanticsLabel: 'benefit-photo-reviews',
+                  isDark: isDark,
                 ),
                 const SizedBox(height: 24),
 

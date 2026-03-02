@@ -137,7 +137,12 @@
       "user_is_admin": "User is now an admin",
       "user_suspended": "User suspended",
       "user_unsuspended": "User unsuspended",
-      "action_failed": "Action failed"
+      "action_failed": "Action failed",
+      "confirm_suspend_title": "Suspend User?",
+      "confirm_suspend_body": "Are you sure you want to suspend {name}? They will lose access immediately.",
+      "confirm_remove_seller_title": "Remove Seller Role?",
+      "confirm_remove_seller_body": "Remove seller access for {name}? They will no longer be able to list products.",
+      "cannot_suspend_self": "You cannot suspend your own account"
     },
     "sellers": {
       "title": "Seller Management",
@@ -241,7 +246,9 @@
     "premium": "Premium",
     "back_to_home": "Back to Home",
     "error_loading": "Something went wrong. Please try again.",
-    "sign_in": "Sign In"
+    "sign_in": "Sign In",
+    "default": "Default",
+    "set_as_default": "Set as default"
   },
   "auth": {
     "sign_in": "Sign In",
@@ -251,6 +258,9 @@
     "password": "Password",
     "forgot_password": "Forgot Password?",
     "google_sign_in": "Sign in with Google",
+    "apple_sign_in": "Sign in with Apple",
+    "sign_up_with_google": "Sign up with Google",
+    "sign_up_with_apple": "Sign up with Apple",
     "create_account": "Create Account",
     "already_have_account": "Already have an account?",
     "no_account": "Don't have an account?",
@@ -315,6 +325,7 @@
       "generic_error": "An error occurred. Please try again.",
       "lockout_message": "Too many attempts. Try again in {minutes}m.",
       "google_signin_failed": "Google sign-in failed. Please try again.",
+      "apple_signin_failed": "Apple Sign In failed. Please try again.",
       "profile_setup_failed": "Sign-in succeeded but profile setup failed. Please try again.",
       "account_creation_failed": "Account creation failed. Please check your name format (2-60 characters, letters, spaces, hyphens, apostrophes, periods).",
       "email_verification_required": "Please verify your email first. A verification link has been sent to {email}.",
@@ -336,7 +347,8 @@
       "name_too_long": "Name must be less than 60 characters",
       "name_invalid_format": "Name can only contain letters, spaces, hyphens, apostrophes, and periods",
       "passwords_mismatch": "Passwords do not match"
-    }
+    },
+    "full_name_hint": "e.g. Jane Smith"
   },
   "home": {
     "tagline": "Your marketplace for buying and selling across the Greater Toronto Area and all of Canada.",
@@ -383,7 +395,8 @@
     "browse_title": "All Categories",
     "browse_subtitle": "Explore everything we carry",
     "no_products": "No products found",
-    "no_products_hint": "Try a different subcategory"
+    "no_products_hint": "Try a different subcategory",
+    "no_products_desc": "Check back later or browse other categories"
   },
   "profile": {
     "my_profile": "My Profile",
@@ -786,7 +799,8 @@
     "description_french": "Description (French)",
     "description_french_hint": "Description en français",
     "french_section_title": "French Translation",
-    "french_section_subtitle": "Required for Quebec market (Bill 96)"
+    "french_section_subtitle": "Required for Quebec market (Bill 96)",
+    "delete_error": "Error deleting product"
   },
   "cart": {
     "your_cart": "Your Cart",
@@ -833,7 +847,10 @@
     "save_for_later_error": "Could not save for later. Please try again.",
     "save_for_later": "Save for later",
     "digital_instant_delivery": "Digital product — instant delivery",
-    "load_error_subtitle": "Something went wrong loading your cart. Please try again."
+    "load_error_subtitle": "Something went wrong loading your cart. Please try again.",
+    "added_to_cart": "Added to cart",
+    "add_to_cart_failed": "Failed to add to cart",
+    "item_load_error": "Failed to load this item"
   },
   "checkout": {
     "checkout": "Checkout",
@@ -909,7 +926,8 @@
     "coupon_invalid_code": "Invalid or expired coupon code.",
     "coupon_apply_failed": "Unable to apply coupon. Please try again.",
     "service_fee_label": "Service fee ({rate}%)",
-    "service_fee_free": "FREE ✦"
+    "service_fee_free": "FREE ✦",
+    "tax_label": "Tax"
   },
   "orders": {
     "my_orders": "My Orders",
@@ -1130,7 +1148,28 @@
     "archived": "Archived",
     "stock_count": "Stock: {count}",
     "rejection_reason_label": "Rejection reason:",
-    "fix_and_resubmit": "Fix & Resubmit for Review"
+    "fix_and_resubmit": "Fix & Resubmit for Review",
+    "warehouses_title": "Shipping Locations",
+    "warehouse_saved": "Warehouse saved",
+    "add_location": "Add Location",
+    "no_warehouses_yet": "No shipping locations yet",
+    "warehouses_empty_desc": "Add a warehouse or personal address to ship from",
+    "edit_location": "Edit Location",
+    "add_shipping_location": "Add Shipping Location",
+    "location_type": "Location Type",
+    "type_warehouse": "Warehouse",
+    "type_personal": "Personal / Home",
+    "location_name": "Location Name",
+    "location_name_hint_warehouse": "e.g. Toronto Warehouse",
+    "location_name_hint_home": "e.g. Home Office",
+    "name_required": "Name is required",
+    "set_default_shipping": "Set as default shipping location",
+    "status": {
+      "pending": "Pending",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "refunded": "Refunded"
+    }
   },
   "address": {
     "street": "Street Address",
@@ -1160,7 +1199,11 @@
     "details": "Address Details",
     "valid_postal": "Enter a valid Canadian postal code (e.g., M5V 2T6)",
     "valid_phone": "Enter a valid phone number (10-15 digits)",
-    "delete_failed": "Cannot delete address: ID not found"
+    "delete_failed": "Cannot delete address: ID not found",
+    "street_required": "Street is required",
+    "city_required": "City is required",
+    "invalid_province": "Invalid province code",
+    "postal_format": "Format: A1A 1A1"
   },
   "legal": {
     "privacy_policy": "Privacy Policy",
@@ -1243,7 +1286,9 @@
     "question_submitted": "Your question has been submitted",
     "answer_submitted": "Answer submitted",
     "asked_on": "Asked {date}",
-    "answered": "Answered"
+    "answered": "Answered",
+    "pending_questions": "{count} unanswered question(s)",
+    "no_pending_questions": "No pending questions"
   },
   "email_verification": {
     "title": "Verify Your Email",
@@ -1380,7 +1425,9 @@
     "premium_label": "Premium Membership",
     "activating_membership": "Activating your membership...",
     "activation_delayed_title": "Activation in Progress",
-    "activation_delayed_desc": "We haven't received Stripe confirmation yet. This can take a moment. Please refresh or check back shortly."
+    "activation_delayed_desc": "We haven't received Stripe confirmation yet. This can take a moment. Please refresh or check back shortly.",
+    "badge_premium_member": "PREMIUM MEMBER",
+    "badge_unlock_premium": "UNLOCK PREMIUM"
   },
   "chat": {
     "message_copied": "Message copied",

@@ -8,6 +8,8 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 /// Full category browser: grid of all 21 categories → subcategory filter →
 /// product results. Reuses [homeViewModelProvider] for filtering.
@@ -49,41 +51,20 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> with Single
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Row(
-          children: [
-            const Icon(Icons.grid_view_rounded, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              _selectedCategoryId == null
-                  ? 'categories.browse_title'.tr()
-                  : productCategories[_selectedCategoryId! - 1].name.tr(),
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-            ),
-          ],
-        ),
+      appBar: AppBarFactory.custom(
+        title: _selectedCategoryId == null
+            ? 'categories.browse_title'.tr()
+            : productCategories[_selectedCategoryId! - 1].name.tr(),
         leading: _selectedCategoryId != null
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                 onPressed: () => setState(() {
                   _selectedCategoryId = null;
                   _selectedSubcategory = null;
                 }),
               )
             : IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                 onPressed: () => Navigator.of(context).pop(),
               ),
       ),
@@ -97,6 +78,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> with Single
         ),
       ),
     );
+  }
+
+  int _getCrossAxisCount(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 1200) return 6;
+    if (width >= 900) return 5;
+    if (width >= 600) return 4;
+    return 3;
   }
 
   Widget _buildCategoryGrid() {
@@ -120,8 +109,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> with Single
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: _getCrossAxisCount(context),
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
               childAspectRatio: 0.9,
@@ -321,30 +310,10 @@ class _CategoryProductListState extends ConsumerState<_CategoryProductList> {
     }
 
     if (products.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [DesignTokens.gradientStart, DesignTokens.gradientEnd],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
-              ),
-              child: const Icon(Icons.search_off_rounded, size: 36, color: Colors.white),
-            ),
-            const SizedBox(height: 16),
-            Text('categories.no_products'.tr(), style: TextStyle(fontWeight: FontWeight.w600, color: DesignTokens.textPrimary, fontSize: 16)),
-            const SizedBox(height: 6),
-            Text('categories.no_products_hint'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
-          ],
-        ),
+      return AnimatedEmptyState(
+        icon: Icons.category_outlined,
+        title: 'categories.no_products'.tr(),
+        subtitle: 'categories.no_products_desc'.tr(),
       );
     }
 

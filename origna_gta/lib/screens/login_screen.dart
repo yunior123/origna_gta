@@ -10,6 +10,7 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/modern_textfield.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../features/auth/login_viewmodel.dart';
 
@@ -123,7 +124,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                     ModernTextField(
                                       key: const Key('login_name_field'),
                                       label: 'auth.full_name'.tr(),
-                                      hint: 'John Doe',
+                                      hint: 'auth.full_name_hint'.tr(),
                                       controller: _nameController,
                                       prefixIcon: Icons.person_outline,
                                       validator: (value) {
@@ -233,31 +234,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                       ],
                                     ),
                                   ],
-                                  // FIX #8: Separate marketing opt-in (CASL / Loi 25)
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Semantics(
-                                        label: 'checkbox-marketing-opt-in',
-                                        child: Checkbox(
-                                          value: state.marketingOptIn,
-                                          onChanged: (v) => viewModel.setMarketingOptIn(v ?? false),
-                                          fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
-                                            if (states.contains(WidgetState.selected)) {
-                                              return DesignTokens.primary;
-                                            }
-                                            return null;
-                                          }),
+                                  // CASL / Loi 25: marketing opt-in only during registration
+                                  if (!state.isLogin) ...[
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Semantics(
+                                          label: 'checkbox-marketing-opt-in',
+                                          child: Checkbox(
+                                            value: state.marketingOptIn,
+                                            onChanged: (v) => viewModel.setMarketingOptIn(v ?? false),
+                                            fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                                              if (states.contains(WidgetState.selected)) {
+                                                return DesignTokens.primary;
+                                              }
+                                              return null;
+                                            }),
+                                          ),
                                         ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          'auth.marketing_opt_in'.tr(),
-                                          style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, height: 1.4),
+                                        Expanded(
+                                          child: Text(
+                                            'auth.marketing_opt_in'.tr(),
+                                            style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, height: 1.4),
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -309,41 +312,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Expanded(child: Divider(color: DesignTokens.outlineVariant, thickness: 0.8)),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing12),
-                                  child: Text(
-                                    'auth.or_continue_with'.tr(),
-                                    style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
-                                  ),
-                                ),
-                                Expanded(child: Divider(color: DesignTokens.outlineVariant, thickness: 0.8)),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            ModernButton(
-                              key: const Key('login_google_button'),
-                              label: 'Google',
-                              icon: Icons.g_mobiledata,
-                              isPrimary: false,
-                              isLoading: state.isLoading,
-                              onPressed: state.isLoading ? null : viewModel.handleGoogleSignIn,
-                            ),
-                            const SizedBox(height: 12),
-                            if (!kIsWeb && (Theme.of(context).platform == TargetPlatform.iOS || Theme.of(context).platform == TargetPlatform.macOS))
-                              ModernButton(
-                                key: const Key('login_apple_button'),
-                                label: 'Apple',
-                                icon: Icons.apple,
-                                isPrimary: false,
-                                isLoading: state.isLoading,
-                                onPressed: state.isLoading ? null : viewModel.handleAppleSignIn,
-                              ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 4),
                           ],
+                          // SSO divider — shown in both login and signup
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(child: Divider(color: DesignTokens.outlineVariant, thickness: 0.8)),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing12),
+                                child: Text(
+                                  'auth.or_continue_with'.tr(),
+                                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                              Expanded(child: Divider(color: DesignTokens.outlineVariant, thickness: 0.8)),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Google Sign-In — official branded button
+                          _GoogleSignInButton(
+                            key: const Key('login_google_button'),
+                            label: state.isLogin ? 'auth.google_sign_in'.tr() : 'auth.sign_up_with_google'.tr(),
+                            isLoading: state.isLoading,
+                            onPressed: state.isLoading ? null : viewModel.handleGoogleSignIn,
+                          ),
+                          // Apple Sign-In — native only, uses official SignInWithAppleButton
+                          if (!kIsWeb && (Theme.of(context).platform == TargetPlatform.iOS || Theme.of(context).platform == TargetPlatform.macOS)) ...[
+                            const SizedBox(height: 12),
+                            Semantics(
+                              label: 'login_apple_button',
+                              button: true,
+                              child: SignInWithAppleButton(
+                                key: const Key('login_apple_button'),
+                                text: state.isLogin ? 'auth.apple_sign_in'.tr() : 'auth.sign_up_with_apple'.tr(),
+                                style: SignInWithAppleButtonStyle.black,
+                                height: 52,
+                                borderRadius: const BorderRadius.all(Radius.circular(DesignTokens.radius16)),
+                                onPressed: state.isLoading ? () {} : viewModel.handleAppleSignIn,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 20),
 
                           // Toggle auth mode
                           Semantics(
@@ -486,4 +496,157 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
       },
     );
   }
+}
+
+/// Google Sign-In button following Google's branding guidelines.
+/// Uses a white background with the Google "G" logo mark and correct typography.
+class _GoogleSignInButton extends StatefulWidget {
+  final String label;
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  const _GoogleSignInButton({
+    super.key,
+    required this.label,
+    required this.isLoading,
+    this.onPressed,
+  });
+
+  @override
+  State<_GoogleSignInButton> createState() => _GoogleSignInButtonState();
+}
+
+class _GoogleSignInButtonState extends State<_GoogleSignInButton> with SingleTickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
+    _scale = Tween<double>(begin: 1.0, end: 0.96).animate(CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDisabled = widget.onPressed == null || widget.isLoading;
+    return Semantics(
+      button: true,
+      enabled: !isDisabled,
+      label: widget.label,
+      child: GestureDetector(
+        onTapDown: isDisabled ? null : (_) => _scaleController.forward(),
+        onTapUp: isDisabled ? null : (_) => _scaleController.reverse(),
+        onTapCancel: isDisabled ? null : () => _scaleController.reverse(),
+        child: ScaleTransition(
+          scale: _scale,
+          child: Container(
+            width: double.infinity,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(DesignTokens.radius16),
+              border: Border.all(color: const Color(0xFFDEDEDE), width: 1),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: isDisabled ? null : widget.onPressed,
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                child: Center(
+                  child: widget.isLoading
+                      ? const ModernLoadingIndicator(size: 20, color: Color(0xFF4285F4))
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Google G logo mark using official brand colors
+                            _GoogleGLogo(),
+                            const SizedBox(width: 10),
+                            Text(
+                              widget.label,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF3C4043),
+                                letterSpacing: 0.25,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Google "G" logo mark rendered with official brand colors.
+class _GoogleGLogo extends StatelessWidget {
+  const _GoogleGLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 20,
+      height: 20,
+      child: CustomPaint(painter: _GoogleGPainter()),
+    );
+  }
+}
+
+class _GoogleGPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width / 2;
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Draw the 4-color Google G
+    // Blue: top → right (~270° to ~30°)
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r), -1.57, 2.09, true, paint);
+
+    // Red: left-top (~150° to ~270°)
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r), 2.62, 1.83, true, paint);
+
+    // Yellow: bottom-left (~90° to ~150°)
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r), 1.57, 1.05, true, paint);
+
+    // Green: right-bottom (~30° to ~90°)
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r), 0.52, 1.05, true, paint);
+
+    // White center circle to create the "G" cutout
+    paint.color = Colors.white;
+    canvas.drawCircle(Offset(cx, cy), r * 0.58, paint);
+
+    // White horizontal bar for the "G" crossbar
+    final barPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(cx, cy - r * 0.18, r, r * 0.36), barPaint);
+
+    // Re-mask outer arc for the crossbar area (only right half shows blue in crossbar)
+    paint.color = Colors.white;
+    canvas.drawCircle(Offset(cx, cy), r * 0.58, paint);
+    // Redraw the crossbar portion in the cutout
+    barPaint.color = const Color(0xFF4285F4);
+    canvas.drawRect(Rect.fromLTWH(cx, cy - r * 0.18, r * 0.42, r * 0.36), barPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

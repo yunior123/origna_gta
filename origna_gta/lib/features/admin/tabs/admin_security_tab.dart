@@ -194,8 +194,14 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                         IconButton(
                           tooltip: 'admin.security.copy_secret'.tr(),
                           icon: const Icon(Icons.copy),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.security.secret_copied'.tr())));
+                          onPressed: () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            await Clipboard.setData(ClipboardData(text: _secret!));
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('admin.security.secret_copied'.tr())),
+                              );
+                            }
                           },
                         ),
                       ],

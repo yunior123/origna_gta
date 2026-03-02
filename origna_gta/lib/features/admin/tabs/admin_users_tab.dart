@@ -1,6 +1,7 @@
 // ignore_for_file: depend_on_referenced_packages
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -426,6 +427,18 @@ class _UserCard extends ConsumerWidget {
     final viewModel = ref.read(adminActionsViewModelProvider.notifier);
     bool success = false;
 
+    // Guard: prevent admin from suspending themselves
+    final currentUser = ref.read(currentUserProvider);
+    if (action == 'suspend' && user.uid == currentUser?.uid) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('admin.users.cannot_suspend_self'.tr()),
+          backgroundColor: DesignTokens.error,
+        ),
+      );
+      return;
+    }
+
     switch (action) {
       case 'make_seller':
         success = await viewModel.updateUserRoles(
@@ -434,6 +447,40 @@ class _UserCard extends ConsumerWidget {
         );
         break;
       case 'remove_seller':
+        final confirmedRemove = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.store_rounded, color: DesignTokens.warning),
+                const SizedBox(width: 10),
+                Text('admin.users.confirm_remove_seller_title'.tr()),
+              ],
+            ),
+            content: Text(
+              'admin.users.confirm_remove_seller_body'.tr(
+                namedArgs: {'name': user.name.isNotEmpty ? user.name : user.email},
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('common.cancel'.tr()),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: DesignTokens.warning,
+                ),
+                child: Text('admin.users.remove_seller'.tr()),
+              ),
+            ],
+          ),
+        );
+        if (confirmedRemove != true) return;
         success = await viewModel.updateUserRoles(
           user.uid,
           remove: [UserRoles.seller],
@@ -481,6 +528,40 @@ class _UserCard extends ConsumerWidget {
         );
         break;
       case 'suspend':
+        final confirmedSuspend = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.block_rounded, color: DesignTokens.error),
+                const SizedBox(width: 10),
+                Text('admin.users.confirm_suspend_title'.tr()),
+              ],
+            ),
+            content: Text(
+              'admin.users.confirm_suspend_body'.tr(
+                namedArgs: {'name': user.name.isNotEmpty ? user.name : user.email},
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('common.cancel'.tr()),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: DesignTokens.error,
+                ),
+                child: Text('admin.users.suspend_user'.tr()),
+              ),
+            ],
+          ),
+        );
+        if (confirmedSuspend != true) return;
         success = await viewModel.setUserSuspended(user.uid, true);
         break;
       case 'unsuspend':

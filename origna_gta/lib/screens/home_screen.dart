@@ -19,6 +19,7 @@ import 'package:origna_gta/widgets/mascot/moose_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -944,51 +945,11 @@ class _ProductGrid extends ConsumerWidget {
 
     if (products.isEmpty && !isLoading) {
       return SliverToBoxAdapter(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(64),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        DesignTokens.primary.withValues(alpha: 0.1),
-                        DesignTokens.secondary.withValues(alpha: 0.1),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.inventory_2_outlined,
-                    size: 80,
-                    color: DesignTokens.primary.withValues(alpha: 0.6),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'home.no_products_found'.tr(),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : DesignTokens.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'home.try_adjusting'.tr(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: DesignTokens.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        child: AnimatedEmptyState(
+          icon: Icons.inventory_2_outlined,
+          title: 'home.no_products_found'.tr(),
+          subtitle: 'home.try_adjusting'.tr(),
+          showMascot: true,
         ),
       );
     }

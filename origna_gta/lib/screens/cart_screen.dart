@@ -181,22 +181,27 @@ class CartScreen extends ConsumerWidget {
                       },
                     ),
                     Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                      child: RefreshIndicator(
+                        color: DesignTokens.primary,
+                        onRefresh: () async => ref.invalidate(cartItemsProvider),
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          itemCount: productIds.length,
+                          itemBuilder: (context, index) {
+                            final cartItemDocId = productIds[index];
+                            return FadeSlideIn(
+                              delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
+                              child: _CartItemWidget(
+                                key: ValueKey(cartItemDocId),
+                                cartItemDocId: cartItemDocId,
+                              ),
+                            );
+                          },
                         ),
-                        itemCount: productIds.length,
-                        itemBuilder: (context, index) {
-                          final cartItemDocId = productIds[index];
-                          return FadeSlideIn(
-                            delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
-                            child: _CartItemWidget(
-                              key: ValueKey(cartItemDocId),
-                              cartItemDocId: cartItemDocId,
-                            ),
-                          );
-                        },
                       ),
                     ),
                     FadeSlideIn(
@@ -276,7 +281,28 @@ class _CartItemWidget extends ConsumerWidget {
           ],
         ),
       ),
-      error: (error, stack) => const SizedBox.shrink(),
+      error: (error, stack) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: DesignTokens.error.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: DesignTokens.error.withValues(alpha: 0.2)),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Icon(Icons.error_outline_rounded, color: DesignTokens.error, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text('cart.item_load_error'.tr(), style: TextStyle(color: DesignTokens.error, fontSize: 13))),
+              TextButton(
+                onPressed: () => ref.invalidate(cartItemDetailProvider(cartItemDocId)),
+                child: Text('common.retry'.tr()),
+              ),
+            ],
+          ),
+        ),
+      ),
       data: (item) {
         if (item == null) return const SizedBox.shrink();
         return CartItemScreen(

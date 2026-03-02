@@ -5,7 +5,11 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/seller/warehouses_viewmodel.dart';
 import 'package:origna_gta/models/generated/base_models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
+import 'package:origna_gta/utils/utils.dart' show AppError;
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Seller warehouse management screen.
@@ -34,7 +38,7 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
         ref.read(warehousesViewModelProvider.notifier).clearStatus();
       } else if (next.isSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Warehouse saved').tr(), backgroundColor: DesignTokens.success),
+          SnackBar(content: Text('seller.warehouse_saved'.tr()), backgroundColor: DesignTokens.success),
         );
         ref.read(warehousesViewModelProvider.notifier).clearStatus();
       }
@@ -47,33 +51,22 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
     final vmState = ref.watch(warehousesViewModelProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        title: const Text('Shipping Locations').tr(),
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (vmState.isLoading)
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: ModernLoadingIndicator(size: 20),
-            ),
-        ],
+      appBar: AppBarFactory.simple(
+        title: 'seller.warehouses_title'.tr(),
       ),
       body: warehousesAsync.when(
         loading: () => const Center(child: ModernLoadingIndicator()),
         error: (e, _) => Center(
-          child: Text('Failed to load locations: $e',
-              style: TextStyle(color: DesignTokens.error)),
+          child: AnimatedEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'common.error_loading'.tr(),
+            subtitle: AppError.getMessage(e),
+            action: ModernButton(
+              label: 'common.retry'.tr(),
+              onPressed: () => ref.invalidate(sellerWarehousesStreamProvider),
+              icon: Icons.refresh,
+            ),
+          ),
         ),
         data: (warehouses) => _WarehousesList(
           warehouses: warehouses,
@@ -84,7 +77,7 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
         backgroundColor: DesignTokens.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_location_alt_outlined),
-        label: const Text('Add Location').tr(),
+        label: Text('seller.add_location'.tr()),
         onPressed: vmState.isLoading ? null : () => _showWarehouseForm(context),
       ),
     );
@@ -169,75 +162,43 @@ class _WarehousesList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (warehouses.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [DesignTokens.gradientStart, DesignTokens.gradientEnd],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: DesignTokens.primary.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.warehouse_outlined, size: 48, color: Colors.white),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'No shipping locations yet',
-                style: TextStyle(
-                  color: DesignTokens.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ).tr(),
-              const SizedBox(height: 8),
-              Text(
-                'Add a warehouse or personal address to start listing products with multi-location shipping.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, height: 1.5),
-              ).tr(),
-            ],
-          ),
+        child: AnimatedEmptyState(
+          icon: Icons.warehouse_outlined,
+          title: 'seller.no_warehouses_yet'.tr(),
+          subtitle: 'seller.warehouses_empty_desc'.tr(),
+          showMascot: true,
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: warehouses.length,
-      itemBuilder: (context, i) {
-        final wh = warehouses[i];
-        return _WarehouseCard(
-          warehouse: wh,
-          isActionLoading: isActionLoading,
-          onEdit: () => context
-              .findAncestorStateOfType<_SellerWarehousesScreenState>()
-              ?._showWarehouseForm(context, existing: wh),
-          onDelete: () async {
-            final confirmed = await _confirmDelete(context, wh.label);
-            if (confirmed == true) {
-              await ref.read(warehousesViewModelProvider.notifier).deleteWarehouse(wh.warehouseId);
-            }
-          },
-          onSetDefault: () => ref.read(warehousesViewModelProvider.notifier).updateWarehouse(
-            warehouseId: wh.warehouseId,
-            isDefault: true,
-          ),
-        );
-      },
+    return RefreshIndicator(
+      color: DesignTokens.primary,
+      onRefresh: () async => ref.invalidate(sellerWarehousesStreamProvider),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: warehouses.length,
+        itemBuilder: (context, i) {
+          final wh = warehouses[i];
+          return _WarehouseCard(
+            warehouse: wh,
+            isActionLoading: isActionLoading,
+            onEdit: () => context
+                .findAncestorStateOfType<_SellerWarehousesScreenState>()
+                ?._showWarehouseForm(context, existing: wh),
+            onDelete: () async {
+              final confirmed = await _confirmDelete(context, wh.label);
+              if (confirmed == true) {
+                await ref.read(warehousesViewModelProvider.notifier).deleteWarehouse(wh.warehouseId);
+              }
+            },
+            onSetDefault: () => ref.read(warehousesViewModelProvider.notifier).updateWarehouse(
+              warehouseId: wh.warehouseId,
+              isDefault: true,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -245,17 +206,17 @@ class _WarehousesList extends ConsumerWidget {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete location?').tr(),
-        content: Text('Remove "$label"? Product references to this location will be cleaned up automatically.').tr(),
+        title: Text('common.delete'.tr()),
+        content: Text('Remove "$label"? Product references to this location will be cleaned up automatically.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel').tr(),
+            child: Text('common.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
-            child: const Text('Delete').tr(),
+            child: Text('common.delete'.tr()),
           ),
         ],
       ),
@@ -337,13 +298,13 @@ class _WarehouseCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            'Default',
+                            'common.default'.tr(),
                             style: TextStyle(
                               color: DesignTokens.primary,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
-                          ).tr(),
+                          ),
                         ),
                     ],
                   ),
@@ -351,7 +312,7 @@ class _WarehouseCard extends StatelessWidget {
                   Text(
                     warehouse.typeLabel,
                     style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12),
-                  ).tr(),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     warehouse.cityProvince,
@@ -376,7 +337,7 @@ class _WarehouseCard extends StatelessWidget {
                     child: Row(children: [
                       const Icon(Icons.star_outline, size: 18),
                       const SizedBox(width: 8),
-                      const Text('Set as default').tr(),
+                      Text('common.set_as_default'.tr()),
                     ]),
                   ),
                 PopupMenuItem(
@@ -384,7 +345,7 @@ class _WarehouseCard extends StatelessWidget {
                   child: Row(children: [
                     const Icon(Icons.edit_outlined, size: 18),
                     const SizedBox(width: 8),
-                    const Text('Edit').tr(),
+                    Text('common.edit'.tr()),
                   ]),
                 ),
                 PopupMenuItem(
@@ -392,7 +353,7 @@ class _WarehouseCard extends StatelessWidget {
                   child: Row(children: [
                     Icon(Icons.delete_outline, size: 18, color: DesignTokens.error),
                     const SizedBox(width: 8),
-                    Text('Delete', style: TextStyle(color: DesignTokens.error)).tr(),
+                    Text('common.delete'.tr(), style: TextStyle(color: DesignTokens.error)),
                   ]),
                 ),
               ],
@@ -535,29 +496,29 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
               ),
               const SizedBox(height: 16),
               Text(
-                isEdit ? 'Edit Location' : 'Add Shipping Location',
+                isEdit ? 'seller.edit_location'.tr() : 'seller.add_shipping_location'.tr(),
                 style: TextStyle(
                   color: DesignTokens.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
-              ).tr(),
+              ),
               const SizedBox(height: 20),
 
               // Location type selector
-              Text('Location Type', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)).tr(),
+              Text('seller.location_type'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
               const SizedBox(height: 8),
               Row(
                 children: [
                   _TypeChip(
-                    label: 'Warehouse',
+                    label: 'seller.type_warehouse'.tr(),
                     icon: Icons.warehouse_outlined,
                     selected: _selectedType == WarehouseTypeValues.warehouse,
                     onTap: () => setState(() => _selectedType = WarehouseTypeValues.warehouse),
                   ),
                   const SizedBox(width: 8),
                   _TypeChip(
-                    label: 'Personal / Home',
+                    label: 'seller.type_personal'.tr(),
                     icon: Icons.home_outlined,
                     selected: _selectedType == WarehouseTypeValues.personal,
                     onTap: () => setState(() => _selectedType = WarehouseTypeValues.personal),
@@ -569,20 +530,20 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
               // Label
               _Field(
                 controller: _labelCtrl,
-                label: 'Location Name',
+                label: 'seller.location_name'.tr(),
                 hint: _selectedType == WarehouseTypeValues.warehouse
-                    ? 'e.g. Toronto Warehouse'
-                    : 'e.g. Home Office',
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                    ? 'seller.location_name_hint_warehouse'.tr()
+                    : 'seller.location_name_hint_home'.tr(),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'seller.name_required'.tr() : null,
               ),
               const SizedBox(height: 12),
 
               // Street
               _Field(
                 controller: _streetCtrl,
-                label: 'Street Address',
+                label: 'address.street'.tr(),
                 hint: '123 Main St',
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Street is required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'address.street_required'.tr() : null,
               ),
               const SizedBox(height: 12),
 
@@ -593,9 +554,9 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                     flex: 3,
                     child: _Field(
                       controller: _cityCtrl,
-                      label: 'City',
+                      label: 'address.city'.tr(),
                       hint: 'Toronto',
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'City required' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'address.city_required'.tr() : null,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -603,18 +564,18 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                     flex: 2,
                     child: _Field(
                       controller: _provinceCtrl,
-                      label: 'Province',
+                      label: 'address.province'.tr(),
                       hint: 'ON',
                       maxLength: 2,
                       // FIX H-02: Validate against the 13 canonical CA province/territory codes.
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (v == null || v.trim().isEmpty) return 'common.required'.tr();
                         const validProvinces = {
                           'AB', 'BC', 'MB', 'NB', 'NL', 'NS',
                           'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT',
                         };
                         if (!validProvinces.contains(v.trim().toUpperCase())) {
-                          return 'Invalid province code';
+                          return 'address.invalid_province'.tr();
                         }
                         return null;
                       },
@@ -630,15 +591,15 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                   Expanded(
                     child: _Field(
                       controller: _postalCtrl,
-                      label: 'Postal Code',
+                      label: 'address.postal_code'.tr(),
                       hint: 'M5V 3A8',
                       maxLength: 7,
                       // FIX H-03: Validate Canadian postal code format (e.g. M5V 3A8 or M5V3A8).
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (v == null || v.trim().isEmpty) return 'common.required'.tr();
                         final upper = v.trim().toUpperCase();
                         final caPostal = RegExp(r'^[A-Z]\d[A-Z][ -]?\d[A-Z]\d$');
-                        if (!caPostal.hasMatch(upper)) return 'Format: A1A 1A1';
+                        if (!caPostal.hasMatch(upper)) return 'address.postal_format'.tr();
                         return null;
                       },
                     ),
@@ -647,7 +608,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                   Expanded(
                     child: _Field(
                       controller: _countryCtrl,
-                      label: 'Country',
+                      label: 'address.country'.tr(),
                       hint: 'Canada',
                     ),
                   ),
@@ -666,9 +627,9 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Set as default shipping location',
+                      'seller.set_default_shipping'.tr(),
                       style: TextStyle(color: DesignTokens.textPrimary, fontSize: 14),
-                    ).tr(),
+                    ),
                   ),
                 ],
               ),
@@ -687,7 +648,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                   ),
                   child: _saving
                       ? const ModernLoadingIndicator(size: 20)
-                      : Text(isEdit ? 'Save Changes' : 'Add Location').tr(),
+                      : Text(isEdit ? 'common.save'.tr() : 'seller.add_location'.tr()),
                 ),
               ),
             ],
@@ -743,7 +704,7 @@ class _TypeChip extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
               ),
-            ).tr(),
+            ),
           ],
         ),
       ),
@@ -774,7 +735,7 @@ class _Field extends StatelessWidget {
       maxLength: maxLength,
       style: TextStyle(color: DesignTokens.textPrimary, fontSize: 14),
       decoration: InputDecoration(
-        labelText: label.tr(),
+        labelText: label,
         hintText: hint,
         labelStyle: TextStyle(color: DesignTokens.textSecondary),
         hintStyle: TextStyle(color: DesignTokens.textTertiary),

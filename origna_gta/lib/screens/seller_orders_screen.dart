@@ -12,6 +12,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart'
 import 'package:origna_gta/utils/constants.dart'
     hide PaymentStatus, ShippingApprovalStatus;
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -142,7 +143,13 @@ class SellerOrdersScreen extends ConsumerWidget {
           error: (error, _) => AnimatedEmptyState(
             icon: Icons.error_outline_rounded,
             title: 'seller.something_wrong'.tr(),
-            subtitle: 'seller.could_not_load'.tr(),
+            subtitle: AppError.getMessage(error),
+            action: ModernButton(
+              label: 'common.retry'.tr(),
+              icon: Icons.refresh,
+              onPressed: () => ref.invalidate(sellerOrdersProvider),
+              isPrimary: false,
+            ),
           ),
           data: (orders) {
             if (orders.isEmpty) {
@@ -156,16 +163,21 @@ class SellerOrdersScreen extends ConsumerWidget {
             return Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 700),
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(DesignTokens.spacing16),
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) {
-                    final order = orders[index];
-                    return FadeSlideIn(
-                      delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
-                      child: _SellerOrderCard(order: order, sellerId: user.uid),
-                    );
-                  },
+                child: RefreshIndicator(
+                  color: DesignTokens.primary,
+                  onRefresh: () async => ref.invalidate(sellerOrdersProvider),
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(DesignTokens.spacing16),
+                    itemCount: orders.length,
+                    itemBuilder: (context, index) {
+                      final order = orders[index];
+                      return FadeSlideIn(
+                        delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
+                        child: _SellerOrderCard(order: order, sellerId: user.uid),
+                      );
+                    },
+                  ),
                 ),
               ),
             );
@@ -770,10 +782,10 @@ class _SellerOrderCard extends ConsumerWidget {
   }
 
   String _getStatusDisplayText(String status) {
-    if (status == DeliveryStatusValues.pending) return 'Pending';
-    if (status == DeliveryStatusValues.shipped) return 'Shipped';
-    if (status == DeliveryStatusValues.delivered) return 'Delivered';
-    if (status == DeliveryStatusValues.refunded) return 'Refunded';
+    if (status == DeliveryStatusValues.pending) return 'seller.status.pending'.tr();
+    if (status == DeliveryStatusValues.shipped) return 'seller.status.shipped'.tr();
+    if (status == DeliveryStatusValues.delivered) return 'seller.status.delivered'.tr();
+    if (status == DeliveryStatusValues.refunded) return 'seller.status.refunded'.tr();
     return status;
   }
 

@@ -258,7 +258,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                             ],
                           ),
                           child: Text(
-                            'Trending',
+                            'product.trending'.tr(),
                             style: TextStyle(
                               fontSize: isCompact ? 9 : 11,
                               fontWeight: FontWeight.bold,
@@ -362,8 +362,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                               Text(
                                 widget.product.digitalType ==
                                         DigitalTypeValues.software
-                                    ? 'Software'
-                                    : 'Book',
+                                    ? 'product.digital_type_software'.tr()
+                                    : 'product.digital_type_book'.tr(),
                                 style: const TextStyle(
                                   fontSize: 10,
                                   color: DesignTokens.digital,
@@ -453,8 +453,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                         SnackBar(
                                           content: Text(
                                             success
-                                                ? 'Added to cart'
-                                                : 'Failed to add to cart',
+                                                ? 'cart.added_to_cart'.tr()
+                                                : 'cart.add_to_cart_failed'.tr(),
                                           ),
                                           backgroundColor: success
                                               ? DesignTokens.success
@@ -581,7 +581,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
     } else {
       final error =
           ref.read(productActionsViewModelProvider).errorMessage ??
-          'Error deleting product';
+          'product.delete_error'.tr();
       messenger.showSnackBar(
         SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
       );
@@ -674,8 +674,8 @@ class _QaBadgeButton extends ConsumerWidget {
 
     return Tooltip(
       message: count > 0
-          ? 'Q&A: $count unanswered question${count == 1 ? '' : 's'}'
-          : 'Q&A: No pending questions',
+          ? 'qa.pending_questions'.tr(namedArgs: {'count': '$count'})
+          : 'qa.no_pending_questions'.tr(),
       child: Stack(
         alignment: Alignment.topRight,
         clipBehavior: Clip.none,
@@ -689,8 +689,8 @@ class _QaBadgeButton extends ConsumerWidget {
               size: iconSize,
             ),
             tooltip: count > 0
-                ? 'Q&A: $count unanswered question${count == 1 ? '' : 's'}'
-                : 'Q&A: No pending questions',
+                ? 'qa.pending_questions'.tr(namedArgs: {'count': '$count'})
+                : 'qa.no_pending_questions'.tr(),
             onPressed: () => Navigator.pushNamed(
               context,
               AppRoutes.productDetails,

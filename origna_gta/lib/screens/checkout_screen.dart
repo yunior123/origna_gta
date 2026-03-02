@@ -396,7 +396,26 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           constraints: const BoxConstraints(maxWidth: 800),
           child: userProfileAsync.when(
             loading: () => const ModernLoadingIndicator.fullScreen(),
-            error: (error, stack) => Center(child: Text(AppError.getMessage(error))),
+            error: (error, stack) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline_rounded, size: 48, color: DesignTokens.error),
+                    const SizedBox(height: 16),
+                    Text(AppError.getMessage(error), textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    ModernButton(
+                      label: 'common.retry'.tr(),
+                      icon: Icons.refresh,
+                      isPrimary: false,
+                      onPressed: () => ref.invalidate(userProfileProvider),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             data: (userProfile) {
               if (userProfile == null) {
                 return Center(child: Text('checkout.please_login'.tr()));
@@ -1412,7 +1431,7 @@ class _OrderReviewSheet extends ConsumerWidget {
                     _buildCouponLine(state.couponCode, couponDiscount),
                   _buildPriceLine('checkout.estimated_shipping'.tr(), state.shippingCost),
                   _buildPriceLine(
-                    'checkout.tax_estimate_label'.tr(namedArgs: {'name': 'Tax', 'rate': (taxRate * 100).toStringAsFixed(2)}),
+                    'checkout.tax_estimate_label'.tr(namedArgs: {'name': 'checkout.tax_label'.tr(), 'rate': (taxRate * 100).toStringAsFixed(2)}),
                     tax,
                   ),
                   const Divider(height: 16),

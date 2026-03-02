@@ -9,8 +9,10 @@ import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/features/seller/seller_products_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 class SellerProductsScreen extends ConsumerWidget {
@@ -61,7 +63,17 @@ class SellerProductsScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         body: productsAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
-          error: (e, _) => AnimatedEmptyState(icon: Icons.error_outline_rounded, title: tr('seller.something_wrong'), subtitle: e.toString()),
+          error: (e, _) => AnimatedEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: tr('seller.something_wrong'),
+            subtitle: AppError.getMessage(e),
+            action: ModernButton(
+              label: 'common.retry'.tr(),
+              icon: Icons.refresh,
+              onPressed: () => ref.invalidate(sellerProductsProvider),
+              isPrimary: false,
+            ),
+          ),
           data: (products) {
             if (products.isEmpty) {
               return AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: tr('seller.no_products_yet'), subtitle: tr('seller.add_first_product'), showMascot: true);
@@ -86,27 +98,32 @@ class SellerProductsScreen extends ConsumerWidget {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 700),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(DesignTokens.spacing16),
-                        itemCount: products.length,
-                        itemBuilder: (context, index) {
-                          final product = products[index];
-                          final isSelected = bulkState.selectedIds.contains(product.productId);
-                          return FadeSlideIn(
-                            delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
-                            child: _SellerProductCard(
-                              product: product,
-                              isSelected: isSelected,
-                              isSelectionMode: bulkState.selectedIds.isNotEmpty,
-                              onToggle: () => bulkVm.toggleSelection(product.productId),
-                              onLongPress: () {
-                                HapticFeedback.mediumImpact();
-                                bulkVm.toggleSelection(product.productId);
-                              },
-                              onEdit: () => Navigator.pushNamed(context, AppRoutes.editProduct, arguments: EditProductArgs(product: product)),
-                            ),
-                          );
-                        },
+                      child: RefreshIndicator(
+                        color: DesignTokens.primary,
+                        onRefresh: () async => ref.invalidate(sellerProductsProvider),
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(DesignTokens.spacing16),
+                          itemCount: products.length,
+                          itemBuilder: (context, index) {
+                            final product = products[index];
+                            final isSelected = bulkState.selectedIds.contains(product.productId);
+                            return FadeSlideIn(
+                              delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
+                              child: _SellerProductCard(
+                                product: product,
+                                isSelected: isSelected,
+                                isSelectionMode: bulkState.selectedIds.isNotEmpty,
+                                onToggle: () => bulkVm.toggleSelection(product.productId),
+                                onLongPress: () {
+                                  HapticFeedback.mediumImpact();
+                                  bulkVm.toggleSelection(product.productId);
+                                },
+                                onEdit: () => Navigator.pushNamed(context, AppRoutes.editProduct, arguments: EditProductArgs(product: product)),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),

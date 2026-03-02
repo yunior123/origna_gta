@@ -9,6 +9,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 class FavoritesScreen extends ConsumerWidget {
@@ -60,7 +61,13 @@ class FavoritesScreen extends ConsumerWidget {
           error: (error, stack) => AnimatedEmptyState(
             icon: Icons.error_outline_rounded,
             title: 'favorites.unable_to_load'.tr(),
-            subtitle: '$error',
+            subtitle: AppError.getMessage(error),
+            action: ModernButton(
+              label: 'common.retry'.tr(),
+              icon: Icons.refresh,
+              isPrimary: false,
+              onPressed: () => ref.invalidate(favoritedProductsProvider),
+            ),
           ),
           data: (products) {
             if (products.isEmpty) {
@@ -79,8 +86,12 @@ class FavoritesScreen extends ConsumerWidget {
             return Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 900),
-                child: CustomScrollView(
-                  slivers: [
+                child: RefreshIndicator(
+                  color: DesignTokens.primary,
+                  onRefresh: () async => ref.invalidate(favoritedProductsProvider),
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
                     if (unavailable.isNotEmpty)
                       SliverToBoxAdapter(
                         child: Container(
@@ -133,6 +144,7 @@ class FavoritesScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
+                  ),
                 ),
               ),
             );

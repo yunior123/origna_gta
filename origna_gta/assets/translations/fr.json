@@ -137,7 +137,12 @@
       "user_is_admin": "L'utilisateur est maintenant admin",
       "user_suspended": "Utilisateur suspendu",
       "user_unsuspended": "Utilisateur réactivé",
-      "action_failed": "Action échouée"
+      "action_failed": "Action échouée",
+      "confirm_suspend_title": "Suspendre l'utilisateur?",
+      "confirm_suspend_body": "Êtes-vous sûr de vouloir suspendre {name}? L'accès sera retiré immédiatement.",
+      "confirm_remove_seller_title": "Retirer le rôle vendeur?",
+      "confirm_remove_seller_body": "Retirer l'accès vendeur de {name}? Il ne pourra plus publier de produits.",
+      "cannot_suspend_self": "Vous ne pouvez pas suspendre votre propre compte"
     },
     "sellers": {
       "title": "Gestion des vendeurs",
@@ -241,7 +246,9 @@
     "premium": "Premium",
     "error_loading": "Une erreur s'est produite. Veuillez réessayer.",
     "refresh": "Actualiser",
-    "back_to_home": "Retour à l'accueil"
+    "back_to_home": "Retour à l'accueil",
+    "default": "Défaut",
+    "set_as_default": "Définir par défaut"
   },
   "auth": {
     "sign_in": "Se connecter",
@@ -251,6 +258,9 @@
     "password": "Mot de passe",
     "forgot_password": "Mot de passe oublié?",
     "google_sign_in": "Se connecter avec Google",
+    "apple_sign_in": "Se connecter avec Apple",
+    "sign_up_with_google": "S'inscrire avec Google",
+    "sign_up_with_apple": "S'inscrire avec Apple",
     "create_account": "Créer un compte",
     "already_have_account": "Vous avez déjà un compte?",
     "no_account": "Vous n'avez pas de compte?",
@@ -315,6 +325,7 @@
       "generic_error": "Une erreur s'est produite. Veuillez réessayer.",
       "lockout_message": "Trop de tentatives. Réessayez dans {minutes}m.",
       "google_signin_failed": "La connexion Google a échoué. Veuillez réessayer.",
+      "apple_signin_failed": "La connexion Apple a échoué. Veuillez réessayer.",
       "profile_setup_failed": "La connexion a réussi mais la configuration du profil a échouée. Veuillez réessayer.",
       "account_creation_failed": "La création du compte a échoué. Veuillez vérifier votre format de nom (2-60 caractères, lettres, espaces, tirets, apostrophes, points).",
       "email_verification_required": "Veuillez d'abord vérifier votre e-mail. Un lien de vérification a été envoyé à {email}.",
@@ -336,7 +347,8 @@
       "name_too_long": "Le nom doit contenir moins de 60 caractères",
       "name_invalid_format": "Le nom ne peut contenir que des lettres, des espaces, des tirets, des apostrophes et des points",
       "passwords_mismatch": "Les mots de passe ne correspondent pas"
-    }
+    },
+    "full_name_hint": "ex. : Jean Dupont"
   },
   "home": {
     "tagline": "Votre marché pour acheter et vendre dans la région du Grand Toronto et partout au Canada.",
@@ -383,7 +395,8 @@
     "browse_title": "Toutes les catégories",
     "browse_subtitle": "Explorez tout ce que nous proposons",
     "no_products": "Aucun produit trouvé",
-    "no_products_hint": "Essayez une autre sous-catégorie"
+    "no_products_hint": "Essayez une autre sous-catégorie",
+    "no_products_desc": "Revenez plus tard ou parcourez d'autres catégories"
   },
   "profile": {
     "my_profile": "Mon profil",
@@ -786,7 +799,8 @@
     "description_french": "Description (Français)",
     "description_french_hint": "Description en français",
     "french_section_title": "Traduction française",
-    "french_section_subtitle": "Obligatoire pour le marché québécois (Loi 96)"
+    "french_section_subtitle": "Obligatoire pour le marché québécois (Loi 96)",
+    "delete_error": "Erreur lors de la suppression"
   },
   "cart": {
     "your_cart": "Votre panier",
@@ -833,7 +847,10 @@
     "save_for_later_error": "Impossible de sauvegarder pour plus tard. Veuillez réessayer.",
     "save_for_later": "Sauvegarder pour plus tard",
     "digital_instant_delivery": "Produit numérique — livraison instantanée",
-    "load_error_subtitle": "Une erreur est survenue lors du chargement du panier. Veuillez réessayer."
+    "load_error_subtitle": "Une erreur est survenue lors du chargement du panier. Veuillez réessayer.",
+    "added_to_cart": "Ajouté au panier",
+    "add_to_cart_failed": "Impossible d'ajouter au panier",
+    "item_load_error": "Impossible de charger cet article"
   },
   "checkout": {
     "checkout": "Payer",
@@ -909,7 +926,8 @@
     "coupon_invalid_code": "Code de coupon invalide ou expiré.",
     "coupon_apply_failed": "Impossible d'appliquer le coupon. Veuillez réessayer.",
     "service_fee_label": "Frais de service ({rate}%)",
-    "service_fee_free": "GRATUIT ✦"
+    "service_fee_free": "GRATUIT ✦",
+    "tax_label": "Taxe"
   },
   "orders": {
     "my_orders": "Mes commandes",
@@ -1130,7 +1148,28 @@
     "archived": "Archivé",
     "stock_count": "Stock : {count}",
     "rejection_reason_label": "Motif du rejet :",
-    "fix_and_resubmit": "Corriger et soumettre à nouveau"
+    "fix_and_resubmit": "Corriger et soumettre à nouveau",
+    "warehouses_title": "Emplacements d'expédition",
+    "warehouse_saved": "Entrepôt enregistré",
+    "add_location": "Ajouter un emplacement",
+    "no_warehouses_yet": "Aucun emplacement d'expédition",
+    "warehouses_empty_desc": "Ajoutez un entrepôt ou une adresse personnelle pour expédier",
+    "edit_location": "Modifier l'emplacement",
+    "add_shipping_location": "Ajouter un emplacement d'expédition",
+    "location_type": "Type d'emplacement",
+    "type_warehouse": "Entrepôt",
+    "type_personal": "Personnel / Domicile",
+    "location_name": "Nom de l'emplacement",
+    "location_name_hint_warehouse": "ex. Entrepôt Toronto",
+    "location_name_hint_home": "ex. Bureau à domicile",
+    "name_required": "Le nom est requis",
+    "set_default_shipping": "Définir comme emplacement d'expédition par défaut",
+    "status": {
+      "pending": "En attente",
+      "shipped": "Expédié",
+      "delivered": "Livré",
+      "refunded": "Remboursé"
+    }
   },
   "address": {
     "street": "Adresse",
@@ -1160,7 +1199,11 @@
     "details": "Détails de l'adresse",
     "valid_postal": "Entrez un code postal canadien valide (ex. : M5V 2T6)",
     "valid_phone": "Entrez un numéro de téléphone valide (10-15 chiffres)",
-    "delete_failed": "Impossible de supprimer l'adresse : identifiant introuvable"
+    "delete_failed": "Impossible de supprimer l'adresse : identifiant introuvable",
+    "street_required": "L'adresse est requise",
+    "city_required": "La ville est requise",
+    "invalid_province": "Code de province invalide",
+    "postal_format": "Format : A1A 1A1"
   },
   "legal": {
     "privacy_policy": "Politique de confidentialité",
@@ -1243,7 +1286,9 @@
     "question_submitted": "Votre question a été soumise",
     "answer_submitted": "Réponse soumise",
     "asked_on": "Posée le {date}",
-    "answered": "Répondu"
+    "answered": "Répondu",
+    "pending_questions": "{count} question(s) sans réponse",
+    "no_pending_questions": "Aucune question en attente"
   },
   "email_verification": {
     "title": "Vérifiez votre email",
@@ -1380,7 +1425,9 @@
     "status_active": "ACTIF",
     "menu_manage_desc": "Gérer l'abonnement et les notifications",
     "menu_upgrade_desc": "Passez au niveau supérieur sans frais & chat vendeur — CAD 7,86 $/mois",
-    "premium_label": "Abonnement Premium"
+    "premium_label": "Abonnement Premium",
+    "badge_premium_member": "MEMBRE PREMIUM",
+    "badge_unlock_premium": "DÉBLOQUER PREMIUM"
   },
   "chat": {
     "message_copied": "Message copié",
