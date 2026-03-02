@@ -1314,6 +1314,7 @@ abstract final class PaymentStatusValues {
   static const cancelling = 'cancelling';
   static const expiring = 'expiring';
   static const voided = 'voided';
+  static const cancelFailed = 'cancel_failed';
 
   static const all = {
     awaitingPayment,
@@ -1332,6 +1333,7 @@ abstract final class PaymentStatusValues {
     cancelling,
     expiring,
     voided,
+    cancelFailed,
   };
 }
 

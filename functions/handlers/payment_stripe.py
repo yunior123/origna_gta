@@ -2158,6 +2158,11 @@ def process_async_payment_succeeded(session: dict) -> str | None:
             Fields.MANUAL_REVIEW_REASON: f"Async payment: sellers invalid at payment time: {sorted(async_bad_seller_ids)}",
             Fields.UPDATED_AT: get_server_timestamp(),
         })
+        # BUG-1 FIX: Filter order_data items to exclude bad sellers BEFORE payouts.
+        # Without this, _execute_seller_payouts receives items from suspended/deactivated
+        # sellers and issues them payouts they must not receive.
+        order_data = dict(order_data)
+        order_data[Fields.ITEMS] = good_items
 
     # C-3: Set ORDER_STATUS to CONFIRMED when async payment succeeds
     order_ref.update({
@@ -3818,14 +3823,32 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             except Exception as confirm_err:
                 logger.warning(f"⚠️ Failed to persist confirmed_by_client: {type(confirm_err).__name__}")
 
-        # AUTO-CAPTURE MODE: Create seller payout records if none exist yet.
+        # AUTO-CAPTURE MODE: Create seller payout records for sellers who don't yet have one.
         # With automatic capture, payment is captured at checkout (not at delivery).
         # Seller payouts must still be recorded when buyer confirms receipt.
+        # BUG-2 FIX: Check per-seller instead of "any payout exists" to handle staggered
+        # multi-seller delivery. The old check (len == 0) caused later sellers to be skipped
+        # when an earlier seller's payout already existed.
         try:
-            existing_payouts = (
-                get_db().collection(Collections.PAYOUTS).where(Fields.ORDER_ID, "==", order_id).limit(1).get()
-            )
-            if len(existing_payouts) == 0:
+            seller_ids_in_order = list({
+                i.get(Fields.SELLER_ID)
+                for i in order_data.get(Fields.ITEMS, [])
+                if i.get(Fields.SELLER_ID)
+            })
+            sellers_with_payouts: set[str] = set()
+            for _sid in seller_ids_in_order:
+                _payout_docs = (
+                    get_db()
+                    .collection(Collections.PAYOUTS)
+                    .document(f"{order_id}_{_sid}")
+                    .get()
+                )
+                if _payout_docs.exists:
+                    _payout_status = (_payout_docs.to_dict() or {}).get(Fields.STATUS)
+                    if _payout_status != PayoutStatusValues.FAILED:
+                        sellers_with_payouts.add(_sid)
+            sellers_needing_payouts = [s for s in seller_ids_in_order if s not in sellers_with_payouts]
+            if sellers_needing_payouts:
                 items = order_data.get(Fields.ITEMS, [])
                 fee_rate = order_data.get(Fields.PLATFORM_FEE_RATIO, PLATFORM_FEE_RATIO)
                 _ac_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0)
@@ -3871,7 +3894,12 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                     except Exception as pi_err:
                         logger.error(f"\u26a0\ufe0f Failed to retrieve PaymentIntent for charge_id: {pi_err}")
 
+                # BUG-2 FIX: Only create payouts for sellers who don't already have a
+                # non-FAILED payout record (per-seller check set computed above).
                 for seller_id, amount_cents in sellers_total.items():
+                    if seller_id not in sellers_needing_payouts:
+                        logger.info(f"Auto-capture {order_id}: skipping payout for seller {seller_id} — already exists")
+                        continue
                     if _ac_global_ratio is not None:
                         adjusted_amount_cents = round(amount_cents * _ac_global_ratio)
                     elif seller_id == _ac_coupon_seller_id:

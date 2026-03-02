@@ -638,19 +638,17 @@ class TestOrderHandlers:
             ):
                 approve_shipping_cost(mock_request)
 
-        # Verify the transactional function was called (via mock_txn)
-        # The actual update is done inside the transaction, so verify Stripe was called
-        mock_stripe.PaymentIntent.modify.assert_called_once()
-        call_args = mock_stripe.PaymentIntent.modify.call_args
-        assert call_args[0][0] == "pi_test_789"
-        # New total = 5000 + 150 (shipping delta: 1150-1000) + 20 (tax on delta: 150 * 0.13 = 19.5 → 20)
-        assert call_args[1]["amount"] == 5170
+        # BUG-4 FIX: For AUTHORIZED (requires_capture) PIs, Stripe prohibits amount modification.
+        # The function should complete successfully without calling stripe.PaymentIntent.modify().
+        mock_stripe.PaymentIntent.modify.assert_not_called()
+        # Firestore update still happens via txn.update — shipping approval is recorded
+        mock_txn.update.assert_called()
 
     @patch("handlers.orders.get_server_timestamp")
     @patch("handlers.orders.stripe")
     @patch("handlers.orders.get_db")
-    def test_approve_shipping_stripe_failure_flags_review(self, mock_get_db, mock_stripe, mock_get_ts):
-        """H4: Stripe failure during shipping approval flags order for manual review"""
+    def test_approve_shipping_authorized_no_stripe_modify(self, mock_get_db, mock_stripe, mock_get_ts):
+        """BUG-4 FIX: Approved shipping on authorized PI never calls Stripe.modify (Stripe prohibits it for requires_capture status)"""
         from handlers.orders import approve_shipping_cost
 
         mock_get_ts.return_value = "2025-01-01T00:00:00Z"
@@ -686,11 +684,6 @@ class TestOrderHandlers:
 
         mock_db.collection.return_value.document.return_value = mock_order_ref
 
-        # Simulate Stripe failure
-        mock_stripe.PaymentIntent.modify.side_effect = mock_stripe.error.StripeError("card_declined")
-        mock_stripe.error.StripeError = type("StripeError", (Exception,), {})
-        mock_stripe.PaymentIntent.modify.side_effect = mock_stripe.error.StripeError("card_declined")
-
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")
         mock_request.data = {"orderId": "order_stripe_fail", "approved": True}
@@ -700,12 +693,14 @@ class TestOrderHandlers:
             with (
                 patch("firebase_admin.firestore.transactional", lambda fn: fn),
                 patch("services.shipping_service.get_tax_rate", return_value=0.13),
-                pytest.raises(https_fn.HttpsError) as exc,
             ):
+                # Should NOT raise — just logs warning and continues
                 approve_shipping_cost(mock_request)
 
-        assert exc.value.code == "internal"
-        assert "manual review" in str(exc.value.message).lower()
+        # BUG-4 FIX: Stripe.modify must never be called for AUTHORIZED (requires_capture) status
+        mock_stripe.PaymentIntent.modify.assert_not_called()
+        # Firestore txn.update still runs — shipping approval is committed
+        mock_txn.update.assert_called()
 
 
 class TestOrderEdgeCases:

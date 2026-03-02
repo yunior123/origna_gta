@@ -414,7 +414,10 @@ service cloud.firestore {
         resource.data.sellerId == request.auth.uid ||
         isAdmin()
       );
-      allow create: if isAuthenticated() && request.resource.data.buyerId == request.auth.uid;
+      // BUG-5 FIX: Block all client-side creates. All return requests must go through
+      // the create_return_request Cloud Function which enforces the 7-day window,
+      // delivery status checks, and all other business-rule validations.
+      allow create: if false;
       // Sellers can only update tracking/status via backend Cloud Functions (Admin SDK bypasses rules).
       // Direct client writes are blocked — use approve_return_request CF instead.
       allow update: if isAdmin();

@@ -1000,6 +1000,8 @@ class PaymentStatusValues:
     CANCELLING = "cancelling"
     EXPIRING = "expiring"
     VOIDED = "voided"
+    # Error states requiring manual reconciliation
+    CANCEL_FAILED = "cancel_failed"
 
     ALL: frozenset[str] = frozenset(
         {
@@ -1018,6 +1020,7 @@ class PaymentStatusValues:
             CAPTURING,
             CANCELLING,
             EXPIRING,
+            CANCEL_FAILED,
         }
     )
 

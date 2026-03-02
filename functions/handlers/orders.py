@@ -752,17 +752,28 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             refunded = True
             new_payment_status = PaymentStatusValues.REFUNDED
         except stripe.error.StripeError as e:
-            # CRITICAL: Refund failed — mark for manual review, do NOT silently continue
+            # BUG-6 FIX: Do NOT revert payment_status to original. If Stripe actually
+            # processed the refund but returned a network error, reverting would create
+            # split-brain: Stripe refunded, DB thinks CAPTURED. Set CANCEL_FAILED so
+            # the order is quarantined until manual reconciliation confirms Stripe state.
+            logger.critical(
+                f"🚨 cancel_order: Stripe refund call failed for order {order_id}. "
+                f"Stripe may or may not have processed the refund. Manual reconciliation required. "
+                f"Error: {type(e).__name__}: {e}"
+            )
             order_ref.update(
                 {
                     Fields.REQUIRES_MANUAL_REVIEW: True,
-                    Fields.MANUAL_REVIEW_REASON: f"Refund failed during cancellation ({type(e).__name__}). Check logs.",
-                    Fields.PAYMENT_STATUS: payment_status,  # Restore original payment status
+                    Fields.MANUAL_REVIEW_REASON: (
+                        f"Stripe refund API call failed during cancellation ({type(e).__name__}). "
+                        f"Stripe may have processed refund; DB status set to CANCEL_FAILED pending reconciliation."
+                    ),
+                    Fields.PAYMENT_STATUS: PaymentStatusValues.CANCEL_FAILED,
                     Fields.UPDATED_AT: get_server_timestamp(),
                 }
             )
             raise https_fn.HttpsError(
-                "internal", "Order cancellation failed: refund could not be processed. Flagged for manual review."
+                "internal", "Order cancellation failed: refund could not be confirmed. Flagged for manual review."
             ) from e
 
     elif payment_status == PaymentStatusValues.AUTHORIZED and payment_intent_id:
@@ -774,20 +785,28 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             new_payment_status = PaymentStatusValues.CANCELLED
         except stripe.error.StripeError as e:
-            # AUDIT FIX: PI cancel failed — buyer funds remain held!
-            # Flag for manual review and block cancellation to prevent orphaned authorization.
-            # Restore original payment_status to clear the CANCELLING lock so future retries work.
-            logger.error(f"PaymentIntent cancel failed: {str(e)}")
+            # BUG-6 FIX: Do NOT revert to original payment_status. If Stripe voided the PI
+            # but returned a network error, reverting would create split-brain: Stripe
+            # voided the hold, DB thinks AUTHORIZED. Set CANCEL_FAILED so the order is
+            # quarantined until manual reconciliation confirms whether funds were released.
+            logger.critical(
+                f"🚨 cancel_order: Stripe PaymentIntent.cancel() failed for order {order_id}. "
+                f"Stripe may or may not have released the authorization. Manual reconciliation required. "
+                f"Error: {type(e).__name__}: {e}"
+            )
             order_ref.update(
                 {
                     Fields.REQUIRES_MANUAL_REVIEW: True,
-                    Fields.MANUAL_REVIEW_REASON: f"PI cancel failed during cancellation: {type(e).__name__}. Buyer funds may still be held.",
-                    Fields.PAYMENT_STATUS: payment_status,  # Restore original — clears CANCELLING lock
+                    Fields.MANUAL_REVIEW_REASON: (
+                        f"Stripe PI cancel API call failed during cancellation ({type(e).__name__}). "
+                        f"Stripe may have voided the hold; DB status set to CANCEL_FAILED pending reconciliation."
+                    ),
+                    Fields.PAYMENT_STATUS: PaymentStatusValues.CANCEL_FAILED,
                     Fields.UPDATED_AT: get_server_timestamp(),
                 }
             )
             raise https_fn.HttpsError(
-                "internal", "Order cancellation failed: payment release unsuccessful. Flagged for manual review."
+                "internal", "Order cancellation failed: payment release could not be confirmed. Flagged for manual review."
             ) from e
     else:
         # No payment or payment in a non-refundable state — mark as cancelled
@@ -816,15 +835,26 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         cancel_batch.commit()
     except Exception as batch_err:
-        logger.error(f"cancel_order batch commit failed for {order_id}: {batch_err}")
+        # BUG-6 FIX: Do NOT revert to original payment_status. Stripe already processed
+        # (PI cancelled or refund issued) — reverting would create split-brain. Set
+        # CANCEL_FAILED so the order is quarantined for manual reconciliation.
+        logger.critical(
+            f"🚨 cancel_order batch commit failed for {order_id} AFTER Stripe success. "
+            f"Stripe state={new_payment_status}, Firestore update failed. Manual reconciliation required. "
+            f"Error: {batch_err}"
+        )
         try:
             order_ref.update({
-                Fields.PAYMENT_STATUS: payment_status,  # restore original
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CANCEL_FAILED,
                 Fields.REQUIRES_MANUAL_REVIEW: True,
+                Fields.MANUAL_REVIEW_REASON: (
+                    f"Firestore batch commit failed after Stripe {new_payment_status}. "
+                    f"Stripe processed; DB may be stale. Manual reconciliation required."
+                ),
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
         except Exception as restore_err:
-            logger.error(f"Failed to restore payment_status for {order_id}: {restore_err}")
+            logger.error(f"Failed to set CANCEL_FAILED for {order_id}: {restore_err}")
         raise https_fn.HttpsError("internal", "Order state update failed. Please contact support.") from batch_err
 
     # Record cancellation event
@@ -1063,7 +1093,15 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
         if found_item is None:
             raise https_fn.HttpsError("not-found", f"Product {product_id} not found in fresh order")
 
-        transaction.update(order_ref, {Fields.ITEMS: fresh_items, Fields.UPDATED_AT: get_server_timestamp()})
+        # BUG-3 FIX: Atomically increment CUMULATIVE_REFUNDED_CENTS so the
+        # charge.refunded webhook idempotency check (`previously_refunded >= amount_refunded`)
+        # sees the correct total and does NOT re-reverse all sellers proportionally,
+        # which would double-reverse the seller already reversed here.
+        transaction.update(order_ref, {
+            Fields.ITEMS: fresh_items,
+            Fields.CUMULATIVE_REFUNDED_CENTS: get_firestore().Increment(refund_amount_cents),
+            Fields.UPDATED_AT: get_server_timestamp(),
+        })
         # Digital products have unlimited stock — never decrement, never restore.
         # Physical products: restore immediately on refund here.
         # (Returns go through approve_return_request for stock restore instead.)
@@ -1365,12 +1403,19 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             # AUDIT FIX (H4): Call Stripe BEFORE Firestore commit
             # If Stripe fails, the transaction is not committed — consistent state preserved
             # AUTO-CAPTURE MODE: PaymentIntent is already captured — cannot modify its amount.
-            # Skip PI modification for captured payments; Firestore is the source of truth for totals.
-            # The shipping difference is absorbed by the platform and flagged for reconciliation.
+            # AUTHORIZED (requires_capture) MODE: Stripe prohibits modifying the amount of a PI
+            # that's in requires_capture status — this raises InvalidRequestError.
+            # In both cases skip the Stripe modify; Firestore is the source of truth for totals.
+            # BUG-4 FIX: Guard against both CAPTURED and AUTHORIZED statuses. Stripe blocks
+            # PaymentIntent.modify() for PIs in requires_capture (our AUTHORIZED state).
             payment_status_at_approval = fresh_data.get(Fields.PAYMENT_STATUS)
+            _pi_modify_blocked = payment_status_at_approval in (
+                PaymentStatusValues.CAPTURED,
+                PaymentStatusValues.AUTHORIZED,
+            )
             if (
                 difference_cents + tax_difference_cents > 0
-                and payment_status_at_approval != PaymentStatusValues.CAPTURED
+                and not _pi_modify_blocked
             ):
                 payment_intent_id = fresh_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
                 if payment_intent_id:
@@ -1394,15 +1439,13 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                             "internal",
                             "Shipping approved but payment update failed. Flagged for manual review.",
                         ) from e
-            elif (
-                difference_cents + tax_difference_cents > 0
-                and payment_status_at_approval == PaymentStatusValues.CAPTURED
-            ):
-                # Auto-capture mode: payment already captured for original amount.
-                # Log the discrepancy for manual reconciliation — seller absorbs the difference.
+            elif difference_cents + tax_difference_cents > 0 and _pi_modify_blocked:
+                # CAPTURED or AUTHORIZED: Stripe PI amount cannot be modified.
+                # Log the discrepancy for manual reconciliation.
                 logger.warning(
-                    f"Shipping cost approved on already-captured order {order_id}: "
-                    f"+{(difference_cents + tax_difference_cents) / 100:.2f} CAD difference flagged for reconciliation."
+                    f"Shipping cost approved on {payment_status_at_approval} order {order_id}: "
+                    f"+{(difference_cents + tax_difference_cents) / 100:.2f} CAD difference flagged for reconciliation. "
+                    f"Stripe PaymentIntent.modify() is not permitted for status={payment_status_at_approval}."
                 )
 
             txn.update(order_ref, update_fields)
@@ -1658,18 +1701,26 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             update_data[Fields.TAX_DIFF_CENTS] = tax_difference_cents
 
         # AUDIT FIX (H4): Update Stripe PaymentIntent BEFORE Firestore
+        # BUG-4 FIX: Guard against both CAPTURED and AUTHORIZED statuses.
+        # Stripe raises InvalidRequestError when modifying a PI in requires_capture
+        # (AUTHORIZED) status, just as it does for already-CAPTURED PIs.
         if difference_cents + tax_difference_cents != 0:
             payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
             payment_status = order_data.get(Fields.PAYMENT_STATUS)
-            if payment_intent_id and payment_status == PaymentStatusValues.CAPTURED:
-                # FIX-2: Captured PIs cannot be modified — log delta for reconciliation
+            _uss_pi_modify_blocked = payment_status in (
+                PaymentStatusValues.CAPTURED,
+                PaymentStatusValues.AUTHORIZED,
+            )
+            if payment_intent_id and _uss_pi_modify_blocked:
+                # CAPTURED or AUTHORIZED (requires_capture): PI amount cannot be modified.
                 logger.warning(
-                    f"Shipping delta {difference_cents} cents not applied to captured PI {order_id} — flagged for reconciliation"
+                    f"Shipping delta {difference_cents} cents not applied to {payment_status} PI {order_id} "
+                    f"— Stripe PaymentIntent.modify() is not permitted for this status. Flagged for reconciliation."
                 )
                 order_ref.update({
                     Fields.REQUIRES_MANUAL_REVIEW: True,
                     Fields.MANUAL_REVIEW_REASON: (
-                        f"Shipping delta {difference_cents} cents not synced to captured PI"
+                        f"Shipping delta {difference_cents} cents not synced to {payment_status} PI"
                     ),
                     Fields.UPDATED_AT: get_server_timestamp(),
                 })
