@@ -471,9 +471,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 constraints: const BoxConstraints(
                   maxWidth: ResponsiveBreakpoints.contentMaxWidth,
                 ),
-            child: CustomScrollView(
+            child: RefreshIndicator(
+              color: DesignTokens.primary,
+              onRefresh: () => ref.read(homeViewModelProvider.notifier).refresh(),
+              child: CustomScrollView(
               controller: _scrollController,
-              physics: const ClampingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
               slivers: [
                 // App Purpose Tagline
                 SliverToBoxAdapter(
@@ -578,7 +581,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   openPrivacyPolicy(context);
                                 },
                                 child: Text(
-                                  'Privacy Policy',
+                                  'home.privacy_policy'.tr(),
                                   style: TextStyle(
                                     color: DesignTokens.primary,
                                     fontSize: 13,
@@ -606,7 +609,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   openTermsOfService(context);
                                 },
                                 child: Text(
-                                  'Terms of Service',
+                                  'home.terms_of_service'.tr(),
                                   style: TextStyle(
                                     color: DesignTokens.primary,
                                     fontSize: 13,
@@ -618,7 +621,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '© 2026 Origna GTA. All rights reserved.',
+                          'home.copyright'.tr(namedArgs: {'year': DateTime.now().year.toString()}),
                           style: TextStyle(
                             color: DesignTokens.textSecondary,
                             fontSize: 11,
@@ -631,6 +634,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ],
             ),
+              ), // RefreshIndicator
               ), // ConstrainedBox
             ), // Align
 

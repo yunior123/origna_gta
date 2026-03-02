@@ -395,14 +395,32 @@ class _ProductCardState extends ConsumerState<ProductCard>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Flexible(
-                            child: Text(
-                              '\$${price.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: priceFontSize,
-                                color: DesignTokens.primary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (widget.product.compareAtPrice != null && widget.product.compareAtPrice! > price)
+                                  Text(
+                                    '\$${widget.product.compareAtPrice!.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: priceFontSize - 2,
+                                      color: DesignTokens.textSecondary,
+                                      decoration: TextDecoration.lineThrough,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                Text(
+                                  '\$${price.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: priceFontSize,
+                                    color: widget.product.compareAtPrice != null && widget.product.compareAtPrice! > price
+                                        ? DesignTokens.error
+                                        : DesignTokens.primary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 4),

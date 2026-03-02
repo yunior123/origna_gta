@@ -146,6 +146,39 @@ class CartScreen extends ConsumerWidget {
 
                 return Column(
                   children: [
+                    // Banner: warn about unavailable items (deleted/archived products)
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final unavailableAsync = ref.watch(unavailableCartItemsProvider);
+                        return unavailableAsync.maybeWhen(
+                          data: (ids) {
+                            if (ids.isEmpty) return const SizedBox.shrink();
+                            return Container(
+                              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: DesignTokens.warning.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.4)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, size: 18, color: DesignTokens.warning),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'cart.unavailable_items_warning'.tr(namedArgs: {'count': ids.length.toString()}),
+                                      style: TextStyle(fontSize: 13, color: DesignTokens.warning, fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          orElse: () => const SizedBox.shrink(),
+                        );
+                      },
+                    ),
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(

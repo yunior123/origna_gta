@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -116,7 +117,11 @@ class SubscriptionScreen extends ConsumerWidget {
       (Icons.photo_camera_outlined,   DesignTokens.tertiary),
     ];
 
-    return SingleChildScrollView(
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
+    child: SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -371,7 +376,9 @@ class SubscriptionScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ),
+      ), // ConstrainedBox
+    ); // Align
   }
 
   Widget _buildNotificationPrefs(WidgetRef ref, SubscriptionViewModel vm, bool notifyNew, bool notifyTrending, bool isDark) {

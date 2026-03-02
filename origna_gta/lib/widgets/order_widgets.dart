@@ -776,6 +776,42 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                         _infoPill('\$${item.price.toStringAsFixed(2)}', isDark),
                       ],
                     ),
+                    if (item.variantTitle != null && item.variantTitle!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (item.variantOptions != null)
+                            ...item.variantOptions!.entries.map(
+                              (e) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isDark ? DesignTokens.darkCard : DesignTokens.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.3)),
+                                ),
+                                child: Text(
+                                  '${e.key}: ${e.value}',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : DesignTokens.textSecondary),
+                                ),
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isDark ? DesignTokens.darkCard : DesignTokens.surfaceVariant,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                item.variantTitle!,
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : DesignTokens.textSecondary),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                     if (!item.isDigital && item.trackingNumber != null && item.trackingNumber!.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       _buildTrackingWidget(item, isDark),

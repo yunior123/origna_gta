@@ -56,7 +56,7 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
     description: productData[Fields.description] ?? '',
     price: (productData[Fields.price] ?? 0).toDouble(),
     imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
-    quantity: 0, // Placeholder — real quantity rendered by CartItemScreen's own Consumer
+    quantity: cartItem?.quantity ?? 1,
     createdAt: createdAt,
     sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
     sellerId: productData[Fields.sellerId] ?? '',

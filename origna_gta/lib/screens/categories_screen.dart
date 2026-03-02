@@ -6,6 +6,7 @@ import 'package:origna_gta/features/home/home_viewmodel.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 /// Full category browser: grid of all 21 categories → subcategory filter →
@@ -86,9 +87,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> with Single
                 onPressed: () => Navigator.of(context).pop(),
               ),
       ),
-      body: _selectedCategoryId == null
-          ? _buildCategoryGrid()
-          : _buildCategoryDetail(_selectedCategoryId!),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
+          child: _selectedCategoryId == null
+              ? _buildCategoryGrid()
+              : _buildCategoryDetail(_selectedCategoryId!),
+        ),
+      ),
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -54,6 +55,10 @@ class OrdersScreen extends ConsumerWidget {
               children: [
                 if (pendingApprovalsCount > 0) PendingApprovalsBanner(count: pendingApprovalsCount),
                 Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
                   child: RefreshIndicator(
                     color: DesignTokens.primary,
                     onRefresh: () async => ref.invalidate(buyerOrdersProvider),
@@ -69,6 +74,8 @@ class OrdersScreen extends ConsumerWidget {
                       },
                     ),
                   ),
+                    ), // ConstrainedBox
+                  ), // Align
                 ),
               ],
             );

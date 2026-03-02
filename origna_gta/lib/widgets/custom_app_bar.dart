@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -142,7 +143,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               else if (showBackButton)
                 _buildIconButton(
                   icon: Icons.arrow_back,
-                  tooltip: 'Back',
+                  tooltip: 'common.back'.tr(),
                   onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
                 ),
 
@@ -200,7 +201,7 @@ class _CartBadge extends ConsumerWidget {
       children: [
         CustomAppBar._buildIconButton(
           icon: Icons.shopping_cart_outlined,
-          tooltip: 'Cart',
+          tooltip: 'common.cart'.tr(),
           onPressed: () {
             final user = ref.read(currentUserProvider);
             if (!context.mounted) return;

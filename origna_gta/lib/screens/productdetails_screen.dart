@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
@@ -18,6 +19,7 @@ import 'package:origna_gta/models/qa_model.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -85,9 +87,9 @@ class ProductDetailScreen extends ConsumerWidget {
                   if (product.slug != null)
                     IconButton(
                       icon: const Icon(Icons.share_outlined),
-                      tooltip: 'Share',
+                      tooltip: 'product.share'.tr(),
                       onPressed: () => SharePlus.instance.share(
-                        ShareParams(text: 'Check out ${product.name} on Origna!\n${envConfig.baseUrl}/p/${product.slug}', subject: product.name),
+                        ShareParams(text: '${'product.share_text'.tr(namedArgs: {'productName': product.name})}\n${envConfig.baseUrl}/p/${product.slug}', subject: product.name),
                       ),
                     ),
                 ],
@@ -258,7 +260,7 @@ class ProductDetailScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 600),
+                    constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
@@ -317,17 +319,51 @@ class ProductDetailScreen extends ConsumerWidget {
                               boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
                             ),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(
-                                  '${'product.price'.tr()}:',
-                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if (product.compareAtPrice != null && product.compareAtPrice! > product.price) ...[
+                                        Text(
+                                          '${'product.price'.tr()}:',
+                                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w400),
+                                        ),
+                                        Text(
+                                          '\$${product.compareAtPrice!.toStringAsFixed(2)}',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            color: Colors.white70,
+                                            decoration: TextDecoration.lineThrough,
+                                            decorationColor: Colors.white70,
+                                          ),
+                                        ),
+                                      ] else
+                                        Text(
+                                          '${'product.price'.tr()}:',
+                                          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                        ),
+                                      Text(
+                                        '\$${product.price.toStringAsFixed(2)}',
+                                        key: const Key('product_detail_price'),
+                                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  '\$${product.price.toStringAsFixed(2)}',
-                                  key: const Key('product_detail_price'),
-                                  style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white),
-                                ),
+                                if (product.compareAtPrice != null && product.compareAtPrice! > product.price)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '-${((1 - product.price / product.compareAtPrice!) * 100).round()}%',
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -474,6 +510,36 @@ class _AddToCartButton extends ConsumerStatefulWidget {
 }
 
 class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
+  bool _isBuyingNow = false;
+
+  Future<void> _handleBuyNow(BuildContext context, int quantity) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) {
+      if (context.mounted) showLoginPrompt(context);
+      return;
+    }
+    if (context.mounted) {
+      final verified = await checkEmailVerifiedOrPrompt(context);
+      if (!verified) return;
+    }
+    if (!context.mounted) return;
+
+    setState(() => _isBuyingNow = true);
+    try {
+      final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity);
+      if (!success || !context.mounted) return;
+
+      final cartDetails = await ref.read(cartWithDetailsProvider.future);
+      if (!context.mounted) return;
+      if (cartDetails.isEmpty) return;
+
+      final subtotal = cartDetails.fold(0.0, (total, item) => total + (item.price * item.quantity));
+      Navigator.pushNamed(context, AppRoutes.checkout, arguments: CheckoutArgs(items: cartDetails, total: subtotal));
+    } finally {
+      if (mounted) setState(() => _isBuyingNow = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
@@ -528,43 +594,58 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
       );
     }
 
-    return ModernButton(
-      label: 'product.add_to_cart'.tr(),
-      semanticsLabel: 'product_add_to_cart_button',
-      onPressed: () async {
-        final user = ref.read(currentUserProvider);
-        if (user == null) {
-          if (context.mounted) showLoginPrompt(context);
-          return;
-        }
-        if (context.mounted) {
-          final verified = await checkEmailVerifiedOrPrompt(context);
-          if (!verified) return;
-        }
-        if (!context.mounted) return;
-        final messenger = ScaffoldMessenger.of(context);
-        final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity);
+    return Column(
+      children: [
+        ModernButton(
+          label: 'product.buy_now'.tr(),
+          semanticsLabel: 'product_buy_now_button',
+          onPressed: _isBuyingNow ? null : () => _handleBuyNow(context, quantity),
+          isLoading: _isBuyingNow,
+          key: const Key('product_buy_now_button'),
+          fullWidth: true,
+          icon: Icons.bolt_rounded,
+        ),
+        const SizedBox(height: 12),
+        ModernButton(
+          label: 'product.add_to_cart'.tr(),
+          semanticsLabel: 'product_add_to_cart_button',
+          isOutlined: true,
+          onPressed: () async {
+            final user = ref.read(currentUserProvider);
+            if (user == null) {
+              if (context.mounted) showLoginPrompt(context);
+              return;
+            }
+            if (context.mounted) {
+              final verified = await checkEmailVerifiedOrPrompt(context);
+              if (!verified) return;
+            }
+            if (!context.mounted) return;
+            final messenger = ScaffoldMessenger.of(context);
+            final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity);
 
-        if (success) {
-          HapticFeedback.mediumImpact();
-        } else {
-          HapticFeedback.vibrate();
-        }
+            if (success) {
+              HapticFeedback.mediumImpact();
+            } else {
+              HapticFeedback.vibrate();
+            }
 
-        if (context.mounted) {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(success ? 'cart.added_success'.tr() : 'cart.added_failure'.tr()),
-              backgroundColor: success ? DesignTokens.success : DesignTokens.error,
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-        }
-      },
-      key: const Key('product_add_to_cart_button'),
-      fullWidth: true,
-      icon: Icons.shopping_cart_checkout,
+            if (context.mounted) {
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(success ? 'cart.added_success'.tr() : 'cart.added_failure'.tr()),
+                  backgroundColor: success ? DesignTokens.success : DesignTokens.error,
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.all(16),
+                ),
+              );
+            }
+          },
+          key: const Key('product_add_to_cart_button'),
+          fullWidth: true,
+          icon: Icons.shopping_cart_checkout,
+        ),
+      ],
     );
   }
 
@@ -1568,7 +1649,7 @@ class _ReviewsSection extends ConsumerWidget {
             );
           },
           loading: () => const Center(child: ModernLoadingIndicator()),
-          error: (e, _) => Text('Could not load reviews.', style: TextStyle(color: DesignTokens.error, fontSize: 13)),
+          error: (e, _) => Text('product.reviews_load_error'.tr(), style: TextStyle(color: DesignTokens.error, fontSize: 13)),
         ),
       ],
     );
@@ -1642,7 +1723,7 @@ class _SimilarProductsSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Customers also bought',
+              'product.customers_also_bought'.tr(),
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
             ),
             const SizedBox(height: 12),
@@ -1792,6 +1873,20 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
               ),
             ),
         ],
+        if (_effectiveStock > 0 && _effectiveStock <= 10)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 16, color: DesignTokens.warning),
+                const SizedBox(width: 6),
+                Text(
+                  'product.low_stock'.tr(namedArgs: {'count': _effectiveStock.toString()}),
+                  style: TextStyle(fontSize: 13, color: DesignTokens.warning, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
         _QuantitySelector(viewModel: widget.viewModel),
         const SizedBox(height: 24),
         _AddToCartButton(

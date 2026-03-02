@@ -106,10 +106,10 @@ class SellerOrdersScreen extends ConsumerWidget {
           actions: [
             _UnansweredQaBadge(sellerId: user.uid),
             Tooltip(
-              message: 'Integration Guide',
+              message: 'seller_integration.title'.tr(),
               child: IconButton(
                 icon: const Icon(Icons.integration_instructions_outlined),
-                tooltip: 'Integration Guide',
+                tooltip: 'seller_integration.title'.tr(),
                 onPressed: () =>
                     Navigator.pushNamed(context, AppRoutes.sellerIntegration),
               ),
@@ -456,7 +456,7 @@ class _SellerOrderCard extends ConsumerWidget {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 320),
               child: ModernButton(
-                label: 'Confirm Shipping & Ship',
+                label: 'seller.confirm_shipping_ship'.tr(),
                 onPressed: isLoading
                     ? null
                     : () => _showUpdateShippingDialog(context, ref),

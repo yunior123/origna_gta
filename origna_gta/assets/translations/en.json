@@ -353,7 +353,10 @@
     "try_adjusting": "Try adjusting your filters or search terms",
     "settings": "Settings",
     "category_all": "All",
-    "browse_all_categories": "Browse all categories →"
+    "browse_all_categories": "Browse all categories →",
+    "privacy_policy": "Privacy Policy",
+    "terms_of_service": "Terms of Service",
+    "copyright": "© {year} Origna GTA. All rights reserved."
   },
   "categories": {
     "electronics": "Electronics",
@@ -463,9 +466,14 @@
     "admin": "Admin"
   },
   "product": {
+    "share": "Share",
+    "share_text": "Check out {productName} on Origna!",
+    "reviews_load_error": "Could not load reviews.",
     "add_to_cart": "Add to Cart",
     "buy_now": "Buy Now",
     "out_of_stock": "Out of Stock",
+    "low_stock": "Only {count} left!",
+    "customers_also_bought": "Customers also bought",
     "in_stock": "In Stock",
     "price": "Price",
     "quantity": "Quantity",
@@ -787,6 +795,7 @@
     "sign_in_subtitle": "Your cart items will be saved to your account.",
     "loading_cart": "Loading cart...",
     "unable_to_load": "Unable to load cart",
+    "unavailable_items_warning": "{count} item(s) in your cart are no longer available and will be excluded from checkout.",
     "subtotal": "Subtotal",
     "shipping_cost": "Shipping",
     "taxes": "Taxes",
@@ -1025,6 +1034,7 @@
     "carrier_other": "Other carrier",
     "carrier_note_label": "Carrier name (other)",
     "confirm_shipping": "Confirm Shipping",
+    "confirm_shipping_ship": "Confirm Shipping & Ship",
     "actual_cost": "Actual Cost",
     "checking_status": "Checking status...",
     "verifying_account": "Verifying your seller account...",
