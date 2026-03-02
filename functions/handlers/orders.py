@@ -23,6 +23,7 @@ from schema_constants import (
     DeliveryItemStatusTransitions,
     DeliveryStatusValues,
     DeliveryTypeValues,
+    ErrorCodes,
     Fields,
     LicenseStatusValues,
     NotificationTypes,
@@ -115,11 +116,14 @@ def confirm_item_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
     def _confirm_item_txn(transaction):
         order_doc = order_ref.get(transaction=transaction)
         if not order_doc.exists:
-            raise https_fn.HttpsError("not-found", "Order not found")
+            raise https_fn.HttpsError("not-found", f"Order not found [{ErrorCodes.ORD_NOT_FOUND}]")
 
         order_data = order_doc.to_dict()
         if order_data.get(Fields.USER_ID) != user_id:
-            raise https_fn.HttpsError("permission-denied", "Only the order owner can confirm receipt")
+            raise https_fn.HttpsError(
+                "permission-denied",
+                f"Only the order owner can confirm receipt [{ErrorCodes.PERM_UNAUTHORIZED}]",
+            )
 
         items = order_data.get(Fields.ITEMS, [])
         item_index = next((i for i, it in enumerate(items) if it.get(Fields.CART_ITEM_ID) == cart_item_id), None)
@@ -131,7 +135,10 @@ def confirm_item_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # B4: Self-purchase check — sellers cannot confirm receipt of their own items
         if item.get(Fields.SELLER_ID) == user_id:
-            raise https_fn.HttpsError("permission-denied", "Sellers cannot confirm receipt of their own items")
+            raise https_fn.HttpsError(
+                "permission-denied",
+                f"Sellers cannot confirm receipt of their own items [{ErrorCodes.PERM_SELF_PURCHASE}]",
+            )
 
         current_item_status = item.get(Fields.STATUS)
 
@@ -226,14 +233,17 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     order_doc = order_ref.get()
 
     if not order_doc.exists:
-        raise https_fn.HttpsError("not-found", "Order not found")
+        raise https_fn.HttpsError("not-found", f"Order not found [{ErrorCodes.ORD_NOT_FOUND}]")
 
     order_data = order_doc.to_dict()
     old_status = order_data.get(Fields.ORDER_STATUS, OrderStatusValues.PENDING)
 
     # Block updates on archived orders
     if order_data.get(Fields.ARCHIVED, False):
-        raise https_fn.HttpsError("failed-precondition", "Cannot update archived order")
+        raise https_fn.HttpsError(
+            "failed-precondition",
+            f"Cannot update archived order [{ErrorCodes.ORD_CANCEL_NOT_ALLOWED}]",
+        )
 
     # Check permissions
     user_ref = get_db().collection(Collections.USERS).document(user_id)
@@ -250,7 +260,10 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     is_seller = len(seller_items) > 0
 
     if not (is_admin or is_seller):
-        raise https_fn.HttpsError("permission-denied", "Only seller or admin can update order status")
+        raise https_fn.HttpsError(
+            "permission-denied",
+            f"Only seller or admin can update order status [{ErrorCodes.PERM_SELLER_REQUIRED}]",
+        )
 
     # MULTI-SELLER ISOLATION: Sellers can only update to SHIPPED if ALL their items
     # are ready. They cannot set DELIVERED (only buyer confirm or auto-capture can).

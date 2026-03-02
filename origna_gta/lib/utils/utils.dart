@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:origna_gta/core/errors/error_codes.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/services/conf_services.dart';
@@ -720,27 +721,68 @@ class AppError {
   /// For [FirebaseException], returns a safe generic message, as raw Firebase
   /// messages often contain internal structure details.
   /// For everything else, returns [fallback] to avoid leaking internals.
-  static String getMessage(dynamic error, [String? fallback]) {
+  ///
+  /// If [code] is provided it is appended to the message so users can quote it
+  /// when contacting support: e.g. "Card declined [ORIGNA-PAY-001]".
+  /// When [code] is omitted the method attempts to infer one automatically via
+  /// [_inferCode].
+  static String getMessage(dynamic error, [String? fallback, String? code]) {
     final defaultFallback = 'errors.generic_error'.tr();
     final actualFallback = fallback ?? defaultFallback;
+
+    String rawMsg;
 
     if (error is FirebaseFunctionsException) {
       final msg = error.message ?? '';
       // Filter out leaked backend errors
       if (msg.contains('FailedPrecondition') || msg.contains('The query requires an index')) {
-        return 'errors.service_unavailable'.tr();
+        rawMsg = 'errors.service_unavailable'.tr();
+      } else {
+        rawMsg = msg.isNotEmpty ? msg : actualFallback;
       }
-      return msg.isNotEmpty ? msg : actualFallback;
-    }
-
-    if (error is FirebaseException) {
+    } else if (error is FirebaseException) {
       // Don't expose raw Firebase exceptions to the user UI
-      return 'errors.service_unavailable'.tr();
+      rawMsg = 'errors.service_unavailable'.tr();
+    } else {
+      // NEVER expose raw e.toString() — it can contain stack traces,
+      // class names, and server internals.
+      rawMsg = actualFallback;
     }
 
-    // NEVER expose raw e.toString() — it can contain stack traces,
-    // class names, and server internals.
-    return actualFallback;
+    // If the backend already embedded a code (e.g. "Order not found [ORIGNA-ORD-001]")
+    // do not append a second one.
+    if (rawMsg.contains('[ORIGNA-')) {
+      return rawMsg;
+    }
+
+    final displayCode = code ?? _inferCode(error);
+    if (displayCode != null) {
+      return '$rawMsg [$displayCode]';
+    }
+    return rawMsg;
+  }
+
+  /// Infer an ORIGNA error code from a known Firebase / Stripe error code or
+  /// from the exception type.  Returns null when no mapping exists.
+  static String? _inferCode(dynamic error) {
+    if (error is FirebaseFunctionsException) {
+      return null; // Backend already appends codes; no client-side inference needed.
+    }
+    if (error is FirebaseAuthException) {
+      return switch (error.code) {
+        'email-already-in-use' => ErrorCodes.authEmailInUse,
+        'wrong-password' => ErrorCodes.authWrongPassword,
+        'user-not-found' => ErrorCodes.authUserNotFound,
+        'weak-password' => ErrorCodes.authWeakPassword,
+        'too-many-requests' => ErrorCodes.authTooManyRequests,
+        'session-cookie-expired' || 'user-token-expired' => ErrorCodes.authSessionExpired,
+        _ => ErrorCodes.sysUnknown,
+      };
+    }
+    if (error is FirebaseException) {
+      return ErrorCodes.sysServerError;
+    }
+    return null;
   }
 
   /// Log error with optional user message

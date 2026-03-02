@@ -2108,4 +2108,59 @@ class RateLimitActions:
     VERIFY_LICENSE_IP = "verify_license_ip"
     GET_PAYMENT_PROVIDERS = "get_payment_providers"
     UPDATE_PAYMENT_PROVIDER = "update_payment_provider"
+
+
+# =============================================================================
+# ERROR CODES — Standardized user-facing codes for support traceability
+# Format: ORIGNA-{DOMAIN}-{NUMBER}
+# Documented in docs/ARCHITECTURE.md § Error Code Reference
+# =============================================================================
+
+
+class ErrorCodes:
+    """Standardized error codes for user-facing messages and support tracking."""
+
+    # AUTH
+    AUTH_EMAIL_IN_USE = "ORIGNA-AUTH-001"
+    AUTH_WRONG_PASSWORD = "ORIGNA-AUTH-002"
+    AUTH_USER_NOT_FOUND = "ORIGNA-AUTH-003"
+    AUTH_WEAK_PASSWORD = "ORIGNA-AUTH-004"
+    AUTH_TOO_MANY_REQUESTS = "ORIGNA-AUTH-005"
+    AUTH_SESSION_EXPIRED = "ORIGNA-AUTH-008"
+
+    # PAY
+    PAY_CARD_DECLINED = "ORIGNA-PAY-001"
+    PAY_INSUFFICIENT_FUNDS = "ORIGNA-PAY-002"
+    PAY_AMOUNT_MISMATCH = "ORIGNA-PAY-005"
+    PAY_CHECKOUT_EXPIRED = "ORIGNA-PAY-006"
+    PAY_REFUND_FAILED = "ORIGNA-PAY-007"
+    PAY_SELLER_SUSPENDED = "ORIGNA-PAY-008"
+    PAY_PRODUCT_UNAVAILABLE = "ORIGNA-PAY-009"
+
+    # ORD
+    ORD_NOT_FOUND = "ORIGNA-ORD-001"
+    ORD_CANCEL_NOT_ALLOWED = "ORIGNA-ORD-002"
+    ORD_RETURN_WINDOW_EXPIRED = "ORIGNA-ORD-004"
+    ORD_RETURN_NOT_ALLOWED = "ORIGNA-ORD-005"
+
+    # SHIP
+    SHIP_COST_CALCULATION_FAILED = "ORIGNA-SHIP-001"
+    SHIP_ADDRESS_INVALID = "ORIGNA-SHIP-002"
+    SHIP_COST_TOO_HIGH = "ORIGNA-SHIP-005"
+
+    # SELL
+    SELL_ONBOARDING_INCOMPLETE = "ORIGNA-SELL-001"
+    SELL_PAYOUTS_DISABLED = "ORIGNA-SELL-002"
+    SELL_ACCOUNT_SUSPENDED = "ORIGNA-SELL-003"
+
+    # PERM
+    PERM_UNAUTHORIZED = "ORIGNA-PERM-001"
+    PERM_SELLER_REQUIRED = "ORIGNA-PERM-002"
+    PERM_ADMIN_REQUIRED = "ORIGNA-PERM-003"
+    PERM_SELF_PURCHASE = "ORIGNA-PERM-005"
+
+    # SYS
+    SYS_NETWORK_ERROR = "ORIGNA-SYS-001"
+    SYS_SERVER_ERROR = "ORIGNA-SYS-002"
+    SYS_UNKNOWN = "ORIGNA-SYS-999"
     GET_PROVIDER_STATUS = "get_provider_status"

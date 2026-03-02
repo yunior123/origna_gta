@@ -39,6 +39,7 @@ from schema_constants import (
     DeliveryStatusValues,
     DeliveryTypeValues,
     DigitalTypeValues,
+    ErrorCodes,
     Fields,
     HeaderKeys,
     LicenseStatusValues,
@@ -143,7 +144,10 @@ def _assert_seller_active(seller_id: str, require_approval: bool = True) -> dict
     seller_data = seller_doc.to_dict()
 
     if seller_data.get(Fields.SUSPENDED, False):
-        raise https_fn.HttpsError("permission-denied", "Seller is suspended and cannot process orders")
+        raise https_fn.HttpsError(
+            "permission-denied",
+            f"Seller is suspended and cannot process orders [{ErrorCodes.SELL_ACCOUNT_SUSPENDED}]",
+        )
 
     if require_approval:
         # Stripe Connect approval fields live in seller_profiles/{uid}
@@ -152,13 +156,22 @@ def _assert_seller_active(seller_id: str, require_approval: bool = True) -> dict
         sp_data = sp_doc.to_dict() if sp_doc.exists else {}
 
         if not sp_data.get(Fields.ONBOARDING_COMPLETED, False):
-            raise https_fn.HttpsError("failed-precondition", "Seller has not completed onboarding")
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                f"Seller has not completed onboarding [{ErrorCodes.SELL_ONBOARDING_INCOMPLETE}]",
+            )
 
         if not sp_data.get(Fields.CHARGES_ENABLED, False):
-            raise https_fn.HttpsError("failed-precondition", "Seller is not approved to receive payments")
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                f"Seller is not approved to receive payments [{ErrorCodes.SELL_ONBOARDING_INCOMPLETE}]",
+            )
 
         if not sp_data.get(Fields.PAYOUTS_ENABLED, False):
-            raise https_fn.HttpsError("failed-precondition", "Seller payouts are not yet enabled")
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                f"Seller payouts are not yet enabled [{ErrorCodes.SELL_PAYOUTS_DISABLED}]",
+            )
 
     return seller_data
 
@@ -622,7 +635,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_snapshot = user_ref.get()
     user_data = user_snapshot.to_dict() if user_snapshot.exists else {}
     if user_data.get(Fields.SUSPENDED, False):
-        raise https_fn.HttpsError("permission-denied", "Account suspended. Cannot proceed with checkout.")
+        raise https_fn.HttpsError(
+            "permission-denied",
+            f"Account suspended. Cannot proceed with checkout. [{ErrorCodes.SELL_ACCOUNT_SUSPENDED}]",
+        )
 
     # Get GST number for B2B validation (Stripe Tax will validate it)
     tax_exemption = user_data.get(Fields.TAX_EXEMPTION)
@@ -735,13 +751,14 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         pid = item.get(Fields.PRODUCT_ID)
         p_data = product_docs.get(pid)
         if not p_data:
-            raise https_fn.HttpsError("not-found", f"Product {pid} not found")
+            raise https_fn.HttpsError("not-found", f"Product {pid} not found [{ErrorCodes.ORD_NOT_FOUND}]")
 
         # Security: Check if product is active
         if p_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
             raise https_fn.HttpsError(
                 "failed-precondition",
                 f"Product {p_data.get(Fields.NAME, pid)} is not currently available for purchase"
+                f" [{ErrorCodes.PAY_PRODUCT_UNAVAILABLE}]",
             )
 
         # Security: check if seller is active
@@ -752,6 +769,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError(
                 "invalid-argument",
                 f"You cannot purchase your own product ({p_data.get(Fields.NAME, pid)})"
+                f" [{ErrorCodes.PERM_SELF_PURCHASE}]",
             )
 
         # AUDIT FIX: Validate client sellerId matches server-side sellerId
@@ -767,7 +785,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         if s_data.get(Fields.SUSPENDED, False):
             raise https_fn.HttpsError(
                 "failed-precondition",
-                f"Seller for {p_data.get(Fields.NAME)} is currently inactive"
+                f"Seller for {p_data.get(Fields.NAME)} is currently inactive [{ErrorCodes.PAY_SELLER_SUSPENDED}]",
             )
 
         # Seller onboarding check — ensure seller can receive payments
