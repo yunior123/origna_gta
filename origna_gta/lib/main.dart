@@ -95,16 +95,17 @@ void main() {
       }
 
       // App Check — attestation layer protecting Cloud Functions from abuse.
-      // Web: reCAPTCHA v3 with site key injected at build time (--dart-define=RECAPTCHA_SITE_KEY).
-      //   Dev/staging builds fall back to debug mode (token logged to console, allowlist in Console).
-      //   NEVER enforce App Check in dev — would block E2E Playwright tests.
+      // Web: reCAPTCHA Enterprise (SCORE type) with site key injected at build time.
+      //   Staging key: RECAPTCHA_SITE_KEY_STAGING (orignagta-staging project)
+      //   Prod key:    RECAPTCHA_SITE_KEY_PROD    (orignagta project)
+      //   Dev: uses Google test key (always passes) + UNENFORCED mode — never blocks E2E.
       // Mobile: DeviceCheck (iOS/macOS) + Play Integrity (Android).
       const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY', defaultValue: '');
       try {
         await FirebaseAppCheck.instance.activate(
           providerWeb: recaptchaSiteKey.isNotEmpty
-              ? ReCaptchaV3Provider(recaptchaSiteKey)
-              : ReCaptchaV3Provider('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'), // Google test key (always passes)
+              ? ReCaptchaEnterpriseProvider(recaptchaSiteKey)
+              : ReCaptchaV3Provider('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'), // Google test key (dev only)
           providerAndroid: const AndroidPlayIntegrityProvider(),
           providerApple: const AppleDeviceCheckProvider(),
         );

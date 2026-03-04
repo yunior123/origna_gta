@@ -52,12 +52,14 @@ get_env_config() {
     orignagta-staging)
       ENV_NAME="staging"
       BUILD_MODE="--profile"
-      DART_DEFINES="--dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true --dart-define=RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY_STAGING:-}"
+      # reCAPTCHA Enterprise key for staging (orignagta-staging project)
+      DART_DEFINES="--dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true --dart-define=RECAPTCHA_SITE_KEY=REDACTED_SECRET"
       ;;
     orignagta)
       ENV_NAME="prod"
       BUILD_MODE="--release"
-      DART_DEFINES="--dart-define=ENVIRONMENT=production --dart-define=RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY_PROD:-}"
+      # reCAPTCHA Enterprise key for prod (orignagta project, domain: www.orignagta.ca)
+      DART_DEFINES="--dart-define=ENVIRONMENT=production --dart-define=RECAPTCHA_SITE_KEY=6LeRUH8sAAAAAAy_kF_aBSzAP3cdneh-P_a14Og-"
       ;;
   esac
 }
