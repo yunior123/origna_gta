@@ -7,7 +7,7 @@ import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/rating_histogram.dart';
 
-import '_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 // ─── Perfect rating (all 5-star) ─────────────────────────────────────────────
 

@@ -215,9 +215,10 @@ abstract final class CarrierValues {
   static const purolator = 'purolator';
   static const dhl = 'dhl';
   static const usps = 'usps';
+  static const maritime = 'maritime';
   static const other = 'other';
 
-  static const all = {ups, fedex, canadaPost, purolator, dhl, usps, other};
+  static const all = {ups, fedex, canadaPost, purolator, dhl, usps, maritime, other};
 }
 
 abstract final class CartVerificationReasonValues {

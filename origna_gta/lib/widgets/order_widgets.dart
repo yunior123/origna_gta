@@ -1460,6 +1460,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     return switch (carrier) {
       CarrierValues.canadaPost => Icons.mail_outline_rounded,
       CarrierValues.ups || CarrierValues.fedex || CarrierValues.purolator || CarrierValues.dhl || CarrierValues.usps => Icons.local_shipping_outlined,
+      CarrierValues.maritime => Icons.directions_boat_outlined,
       _ => Icons.inventory_2_outlined,
     };
   }
@@ -1472,6 +1473,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       CarrierValues.purolator => 'Purolator',
       CarrierValues.dhl => 'DHL',
       CarrierValues.usps => 'USPS',
+      CarrierValues.maritime => 'Maritime (International)',
       CarrierValues.other => carrierNote?.isNotEmpty == true ? carrierNote! : 'Other carrier',
       _ => 'Tracking',
     };
@@ -1487,6 +1489,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       CarrierValues.purolator => 'https://www.purolator.com/en/shipping/tracker?Pin=$encoded',
       CarrierValues.dhl => 'https://www.dhl.com/ca-en/home/tracking/tracking-express.html?submit=1&tracking-id=$encoded',
       CarrierValues.usps => 'https://tools.usps.com/go/TrackConfirmAction?tLabels=$encoded',
+      CarrierValues.maritime => 'https://www.track-trace.com/container?container=$encoded',
       _ => null,
     };
   }

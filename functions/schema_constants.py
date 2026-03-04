@@ -1368,9 +1368,10 @@ class CarrierValues:
     PUROLATOR = "purolator"
     DHL = "dhl"
     USPS = "usps"
+    MARITIME = "maritime"
     OTHER = "other"
 
-    ALL: frozenset[str] = frozenset({UPS, FEDEX, CANADA_POST, PUROLATOR, DHL, USPS, OTHER})
+    ALL: frozenset[str] = frozenset({UPS, FEDEX, CANADA_POST, PUROLATOR, DHL, USPS, MARITIME, OTHER})
 
 
 class SupplierTypeValues:

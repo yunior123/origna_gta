@@ -6,7 +6,7 @@ import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-import '_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 @Preview(name: 'Default spinner', group: 'Loading')
 Widget previewLoadingDefault() => previewWrapper(

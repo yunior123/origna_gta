@@ -7,7 +7,7 @@ import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
-import '_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 // ─── Standard app bar (title + back button via custom leading) ────────────────
 // Note: showBackButton triggers easy_localization .tr() for the tooltip.

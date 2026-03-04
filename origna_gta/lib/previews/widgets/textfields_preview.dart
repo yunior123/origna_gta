@@ -6,7 +6,7 @@ import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_textfield.dart';
 
-import '_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 @Preview(name: 'Email field — dark', group: 'Text Fields')
 Widget previewEmailField() => previewWrapper(

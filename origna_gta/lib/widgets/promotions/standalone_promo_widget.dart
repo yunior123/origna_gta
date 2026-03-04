@@ -5,8 +5,9 @@ class StandalonePromoWidget extends StatelessWidget {
   final String subtitle;
   final String discountText;
   final bool isDark;
+  final VoidCallback? onTap;
 
-  const StandalonePromoWidget({super.key, required this.title, required this.subtitle, required this.discountText, required this.isDark});
+  const StandalonePromoWidget({super.key, required this.title, required this.subtitle, required this.discountText, required this.isDark, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +64,7 @@ class StandalonePromoWidget extends StatelessWidget {
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: onTap,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isDark ? Colors.white : const Color(0xFF1976D2),
                     foregroundColor: isDark ? Colors.black : Colors.white,

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 
-import '_preview_theme.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
 
 @Preview(name: 'Color Palette', group: 'Design Tokens')
 Widget previewColorPalette() => previewWrapper(

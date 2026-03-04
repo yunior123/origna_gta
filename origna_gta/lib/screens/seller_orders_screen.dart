@@ -886,6 +886,8 @@ class _SellerOrderCard extends ConsumerWidget {
         return 'DHL';
       case CarrierValues.usps:
         return 'USPS';
+      case CarrierValues.maritime:
+        return 'Maritime (International)';
       case CarrierValues.other:
         return 'seller.carrier_other'.tr();
       default:
