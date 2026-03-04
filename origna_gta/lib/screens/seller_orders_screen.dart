@@ -661,6 +661,7 @@ class _SellerOrderCard extends ConsumerWidget {
             children: [
               // Carrier dropdown
               DropdownButtonFormField<String>(
+                menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                 initialValue: selectedCarrier,
                 decoration: InputDecoration(
                   labelText: 'seller.carrier_label'.tr(),
@@ -794,6 +795,7 @@ class _SellerOrderCard extends ConsumerWidget {
               const SizedBox(height: 14),
               // Carrier dropdown
               DropdownButtonFormField<String>(
+                menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                 initialValue: selectedCarrier,
                 decoration: InputDecoration(
                   labelText: 'seller.carrier_label'.tr(),

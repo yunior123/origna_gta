@@ -33,7 +33,7 @@ class _CheckoutStepper extends StatelessWidget {
     ];
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      height: 52,
+      height: 64,
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkSurface : Colors.white,
         boxShadow: [
@@ -73,8 +73,8 @@ class _CheckoutStepper extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 22,
-                height: 22,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isCompleted
@@ -88,23 +88,23 @@ class _CheckoutStepper extends StatelessWidget {
                 ),
                 child: Center(
                   child: isCompleted
-                      ? const Icon(Icons.check_rounded, size: 12, color: Colors.white)
+                      ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
                       : Text(
                           '${stepIndex + 1}',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                             color: isCurrent ? Colors.white : DesignTokens.primary.withValues(alpha: 0.5),
                           ),
                         ),
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 steps[stepIndex],
                 style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
+                  fontSize: 11,
+                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
                   color: isCurrent ? DesignTokens.primary : DesignTokens.textSecondary,
                 ),
               ),
@@ -797,7 +797,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                       decoration: BoxDecoration(color: DesignTokens.success, borderRadius: BorderRadius.circular(4)),
                                       child: Text(
                                         'checkout.local'.tr(),
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                                       ),
                                     ),
                                   ],
@@ -1339,7 +1339,7 @@ class _PaymentProviderSection extends StatelessWidget {
                 border: Border.all(color: DesignTokens.outline),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary)),
+              child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary)),
             );
           }).toList(),
         ),

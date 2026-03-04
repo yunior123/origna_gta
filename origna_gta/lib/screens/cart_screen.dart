@@ -1110,7 +1110,7 @@ class _FreeShippingBar extends ConsumerWidget {
                 Text(
                   'cart.free_shipping_threshold'.tr(),
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: isDark
                         ? DesignTokens.textSecondary
                         : DesignTokens.textTertiary,

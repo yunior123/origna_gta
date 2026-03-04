@@ -244,6 +244,8 @@ class ProductDetailScreen extends ConsumerWidget {
                     child: Text(
                       product.name,
                       key: const Key('product_detail_name'),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
                     ),
                   ),

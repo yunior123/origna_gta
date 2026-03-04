@@ -608,7 +608,7 @@ class ProfileScreenLayout extends StatelessWidget {
                                 decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                                 child: Text(
                                   'subscription.status_active'.tr(),
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: DesignTokens.success),
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: DesignTokens.success),
                                 ),
                               ),
                             ],
@@ -1268,7 +1268,7 @@ class _ProfileCompletionBar extends StatelessWidget {
           children: [
             Text(
               'profile.completion'.tr(),
-              style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4),
+              style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.4),
             ),
             Text(
               '$pctInt%',

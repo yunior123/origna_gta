@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -189,6 +190,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           const SizedBox(height: DesignTokens.spacing16),
                           DropdownButtonFormField<String>(
                             key: ValueKey(state.selectedProvince),
+                            menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                             initialValue: state.selectedProvince,
                             decoration: InputDecoration(
                               labelText: 'address.province'.tr(),

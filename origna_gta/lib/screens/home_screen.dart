@@ -621,15 +621,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// (seller/admin), which adds ~32–48 dp and requires taller cards.
   double _getCardAspectRatio(BuildContext context, {bool canManageProduct = false}) {
     if (canManageProduct) {
-      return ResponsiveBreakpoints.getValue(context: context, mobile: 0.75, mobilePlus: 0.80, tablet: 0.85, desktop: 0.90);
+      return ResponsiveBreakpoints.getValue(
+        context: context,
+        mobile: ResponsiveBreakpoints.cardAspectMobileManage,
+        mobilePlus: ResponsiveBreakpoints.cardAspectMobilePlusManage,
+        tablet: ResponsiveBreakpoints.cardAspectTabletManage,
+        desktop: ResponsiveBreakpoints.cardAspectDesktopManage,
+      );
     }
     return ResponsiveBreakpoints.getValue(
       context: context,
-      // Higher ratio = shorter cards (more items visible)
-      mobile: 0.9,
-      mobilePlus: 0.95,
-      tablet: 1.0,
-      desktop: 1.05,
+      mobile: ResponsiveBreakpoints.cardAspectMobile,
+      mobilePlus: ResponsiveBreakpoints.cardAspectMobilePlus,
+      tablet: ResponsiveBreakpoints.cardAspectTablet,
+      desktop: ResponsiveBreakpoints.cardAspectDesktop,
     );
   }
 

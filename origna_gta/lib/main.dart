@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -91,6 +92,26 @@ void main() {
             'Start emulators with `firebase emulators:start` before running the app.',
           );
         }
+      }
+
+      // App Check — attestation layer protecting Cloud Functions from abuse.
+      // Web: reCAPTCHA v3 with site key injected at build time (--dart-define=RECAPTCHA_SITE_KEY).
+      //   Dev/staging builds fall back to debug mode (token logged to console, allowlist in Console).
+      //   NEVER enforce App Check in dev — would block E2E Playwright tests.
+      // Mobile: DeviceCheck (iOS/macOS) + Play Integrity (Android).
+      const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY', defaultValue: '');
+      try {
+        await FirebaseAppCheck.instance.activate(
+          providerWeb: recaptchaSiteKey.isNotEmpty
+              ? ReCaptchaV3Provider(recaptchaSiteKey)
+              : ReCaptchaV3Provider('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'), // Google test key (always passes)
+          providerAndroid: const AndroidPlayIntegrityProvider(),
+          providerApple: const AppleDeviceCheckProvider(),
+        );
+      } catch (e) {
+        // App Check failures must never crash the app — attestation is a soft guard.
+        // The server enforces tokens for staging/prod; dev is monitoring-only.
+        debugPrint('⚠️ App Check activation failed (non-fatal): $e');
       }
 
       // F-284: Phase 2 Parallel Initialization

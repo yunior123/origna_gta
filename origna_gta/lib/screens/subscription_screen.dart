@@ -431,7 +431,7 @@ class SubscriptionScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('subscription.new_products'.tr(), style: const TextStyle(fontSize: 14)),
-                        Text('subscription.new_products_desc'.tr(), style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                        Text('subscription.new_products_desc'.tr(), style: const TextStyle(fontSize: 12, height: 1.5, color: DesignTokens.textSecondary)),
                       ],
                     ),
                   ),

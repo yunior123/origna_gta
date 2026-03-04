@@ -132,7 +132,7 @@ class FavoritesScreen extends ConsumerWidget {
                               return FadeSlideIn(
                                 delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
                                 child: Opacity(
-                                  opacity: isUnavailable ? 0.45 : 1.0,
+                                  opacity: isUnavailable ? 0.60 : 1.0,
                                   child: ProductCard(productId: product.productId, product: product, userModel: userModel),
                                 ),
                               );

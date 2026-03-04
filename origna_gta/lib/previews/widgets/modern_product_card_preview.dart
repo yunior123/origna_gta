@@ -3,7 +3,9 @@ import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/previews/_preview_theme.dart';
 import 'package:origna_gta/widgets/modern_product_card.dart';
 
-Widget _card(Widget w) => SizedBox(width: 220, height: 460, child: w);
+/// [Align] escapes tight width constraints from [previewGrid]'s Column so the
+/// card stays at 220 px instead of stretching to the full panel width.
+Widget _card(Widget w) => Align(child: SizedBox(width: 220, height: 460, child: w));
 
 @Preview(name: 'Modern Product Card — States', group: 'ModernProductCard')
 Widget previewProductCardStates() => previewGrid(

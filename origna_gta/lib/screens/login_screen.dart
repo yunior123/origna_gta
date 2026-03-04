@@ -151,7 +151,7 @@ class LoginScreenLayout extends StatelessWidget {
                                 key: const Key('login_email_field'),
                                 semanticsLabel: 'login_email_field',
                                 label: 'auth.email_address'.tr(),
-                                hint: 'you@example.com',
+                                hint: 'auth.email_hint'.tr(),
                                 controller: emailController,
                                 keyboardType: TextInputType.emailAddress,
                                 prefixIcon: Icons.mail_outline,

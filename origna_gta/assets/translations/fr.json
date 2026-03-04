@@ -402,6 +402,7 @@
       "password_weak": "Le mot de passe doit contenir au moins 8 caractères avec un chiffre et un caractère spécial."
     },
     "full_name_hint": "ex. : Jean Dupont",
+    "email_hint": "vous@exemple.com",
     "account_suspended": "Votre compte a été suspendu. Veuillez contacter le support.",
     "contact_support": "Contacter le support",
     "profile_load_error": "Impossible de charger le profil. Veuillez réessayer."

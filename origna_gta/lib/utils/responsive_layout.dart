@@ -16,6 +16,26 @@ class ResponsiveBreakpoints {
   static const double contentMaxWidth = 1200; // max content width on web/desktop
   static const double sidebarWidth = 280; // sidebar for desktop layouts
 
+  // Product card aspect ratios (width ÷ height). Lower value = taller card.
+  // Trending products have an extra view-count row that needs ~14 dp more height,
+  // hence the conservative ratios on smaller breakpoints.
+  static const double cardAspectMobile = 0.82;
+  static const double cardAspectMobilePlus = 0.87;
+  static const double cardAspectTablet = 0.95;
+  static const double cardAspectDesktop = 1.0;
+
+  // Aspect ratios for seller/admin cards — management action row adds ~48 dp.
+  static const double cardAspectMobileManage = 0.75;
+  static const double cardAspectMobilePlusManage = 0.80;
+  static const double cardAspectTabletManage = 0.85;
+  static const double cardAspectDesktopManage = 0.90;
+
+  /// Maximum height for dropdown/popup menus — 40 % of the viewport height.
+  /// Using a viewport fraction avoids magic pixel values and adapts across
+  /// screen sizes (phones, tablets, desktops) automatically.
+  static double dropdownMaxHeight(BuildContext context) =>
+      MediaQuery.sizeOf(context).height * 0.40;
+
   /// Get font scale factor for responsive text
   static double getFontScale(BuildContext context) {
     final width = MediaQuery.of(context).size.width;

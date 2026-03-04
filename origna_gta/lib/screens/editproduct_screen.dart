@@ -6,6 +6,7 @@ import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/screens/productaddvideo_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -365,6 +366,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   ],
                   DropdownButtonFormField<String>(
                     key: const Key('product_edit_category_dropdown'),
+                    menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                     initialValue: _categoryController.text.isNotEmpty
                         ? _categoryController.text
                         : null,
@@ -540,6 +542,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
+                          menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                           initialValue: state.selectedProvince,
                           decoration: InputDecoration(
                             labelText: 'product.province'.tr(),

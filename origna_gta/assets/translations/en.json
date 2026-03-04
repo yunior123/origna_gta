@@ -402,6 +402,7 @@
       "password_weak": "Password must be at least 8 characters with a number and special character."
     },
     "full_name_hint": "e.g. Jane Smith",
+    "email_hint": "you@example.com",
     "account_suspended": "Your account has been suspended. Please contact support.",
     "contact_support": "Contact Support",
     "profile_load_error": "Failed to load profile. Please try again."

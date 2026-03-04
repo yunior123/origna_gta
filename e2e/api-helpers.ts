@@ -602,7 +602,7 @@ export async function buildCheckoutPayload(
       price: product.price,
       quantity,
       sellerId: product.sellerId,
-      imageUrls: product.imageUrls || ['https://picsum.photos/400'],
+      imageUrls: product.imageUrls || [`https://picsum.photos/seed/${product.id ?? 'default'}/400/400`],
     }],
     subtotal: +(product.price * quantity).toFixed(2),
     shippingAddress: {
@@ -639,7 +639,7 @@ export async function buildMultiSellerPayload(
       price: product.price,
       quantity,
       sellerId: product.sellerId,
-      imageUrls: product.imageUrls || ['https://picsum.photos/400'],
+      imageUrls: product.imageUrls || [`https://picsum.photos/seed/${product.id ?? 'default'}/400/400`],
     });
     subtotal += product.price * quantity;
   }

@@ -320,7 +320,7 @@ class _NotificationTile extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(_relativeTime(notification.createdAt), style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+                        Text(_relativeTime(notification.createdAt), style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
                       ],
                     ),
                     if (notification.body.isNotEmpty) ...[
@@ -382,7 +382,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(top: 16, bottom: 8),
       child: Text(
         label,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.5),
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.5),
       ),
     );
   }
