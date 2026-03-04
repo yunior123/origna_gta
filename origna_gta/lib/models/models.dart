@@ -992,6 +992,7 @@ class UserModel {
   final String? stripeSubscriptionId;
   final bool notifyNewProducts;
   final bool notifyTrending;
+  final bool mfaEnabled;
 
   UserModel({
     required this.uid,
@@ -1024,6 +1025,7 @@ class UserModel {
     this.stripeSubscriptionId,
     this.notifyNewProducts = false,
     this.notifyTrending = false,
+    this.mfaEnabled = false,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -1060,6 +1062,7 @@ class UserModel {
       stripeSubscriptionId: map[Fields.stripeSubscriptionId] as String?,
       notifyNewProducts: map[Fields.notifyNewProducts] ?? false,
       notifyTrending: map[Fields.notifyTrending] ?? false,
+      mfaEnabled: map[Fields.mfaEnabled] ?? false,
     );
   }
 
@@ -1105,6 +1108,7 @@ class UserModel {
     String? stripeSubscriptionId,
     bool? notifyNewProducts,
     bool? notifyTrending,
+    bool? mfaEnabled,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -1137,6 +1141,7 @@ class UserModel {
       stripeSubscriptionId: stripeSubscriptionId ?? this.stripeSubscriptionId,
       notifyNewProducts: notifyNewProducts ?? this.notifyNewProducts,
       notifyTrending: notifyTrending ?? this.notifyTrending,
+      mfaEnabled: mfaEnabled ?? this.mfaEnabled,
     );
   }
 
@@ -1167,6 +1172,7 @@ class UserModel {
       if (businessName != null) Fields.businessName: businessName,
       Fields.payoutHoldDays: payoutHoldDays,
       if (pendingRequirements.isNotEmpty) Fields.pendingRequirements: pendingRequirements,
+      Fields.mfaEnabled: mfaEnabled,
     };
   }
 

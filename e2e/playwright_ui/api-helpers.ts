@@ -90,10 +90,13 @@ function _loadDiskTokens(): void {
 
 function _saveDiskTokens(): void {
   try {
-    const { writeFileSync } = require('fs');
+    const { writeFileSync, renameSync } = require('fs');
     const obj: Record<string, any> = {};
     _authCache.forEach((v, k) => { obj[k] = v; });
-    writeFileSync(TOKEN_CACHE_FILE, JSON.stringify(obj));
+    // Atomic write: write to temp file then rename to prevent multi-worker corruption
+    const tmp = `${TOKEN_CACHE_FILE}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(obj));
+    renameSync(tmp, TOKEN_CACHE_FILE);
   } catch { /* ignore */ }
 }
 

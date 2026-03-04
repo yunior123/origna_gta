@@ -1,6 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -9,6 +12,7 @@ import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/features/seller/seller_products_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -50,6 +54,9 @@ class SellerProductsScreen extends ConsumerWidget {
         key: const Key('seller_products_screen'),
         appBar: AppBarFactory.custom(
           title: tr('seller.my_products'),
+          subtitle: productsAsync.valueOrNull?.isNotEmpty == true
+              ? tr('seller.products_count', namedArgs: {'count': (productsAsync.valueOrNull?.length ?? 0).toString()})
+              : null,
           actions: [
             // FE-M3: Q&A badge — same as seller_orders_screen
             _UnansweredQaBadge(sellerId: user.uid),
@@ -62,7 +69,7 @@ class SellerProductsScreen extends ConsumerWidget {
         ),
         backgroundColor: Colors.transparent,
         body: productsAsync.when(
-          loading: () => const Center(child: ModernLoadingIndicator()),
+          loading: () => _SellerProductsSkeleton(isDark: isDark),
           error: (e, _) => AnimatedEmptyState(
             icon: Icons.error_outline_rounded,
             title: tr('seller.something_wrong'),
@@ -97,7 +104,10 @@ class SellerProductsScreen extends ConsumerWidget {
                 Expanded(
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 700),
+                      // Cap to 840px on desktop — product list shouldn't stretch to 1200px
+                      constraints: BoxConstraints(
+                        maxWidth: ResponsiveBreakpoints.isDesktop(context) ? 840.0 : ResponsiveBreakpoints.contentMaxWidth.toDouble(),
+                      ),
                       child: RefreshIndicator(
                         color: DesignTokens.primary,
                         onRefresh: () async => ref.invalidate(sellerProductsProvider),
@@ -153,6 +163,36 @@ class SellerProductsScreen extends ConsumerWidget {
             child: Text(tr('seller.archive')),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shimmer skeleton for seller products list loading state.
+class _SellerProductsSkeleton extends StatelessWidget {
+  final bool isDark;
+  const _SellerProductsSkeleton({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant;
+    final highlightColor = isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(DesignTokens.spacing16),
+        itemCount: 5,
+        itemBuilder: (_, index) => Container(
+          margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
+          height: 100,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          ),
+        ),
       ),
     );
   }
@@ -336,7 +376,7 @@ class _SellerProductCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: product.imageUrls.isNotEmpty
-                  ? Image.network(product.imageUrls.first, width: 56, height: 56, fit: BoxFit.cover, errorBuilder: (_, _, _) => _placeholderImage())
+                  ? CachedNetworkImage(imageUrl: product.imageUrls.first, width: 56, height: 56, fit: BoxFit.cover, errorWidget: (context, url, error) => _placeholderImage(), placeholder: (context, url) => _placeholderImage())
                   : _placeholderImage(),
             ),
             const SizedBox(width: 12),
@@ -478,7 +518,7 @@ class _StatusBadge extends StatelessWidget {
       ProductLifecycleStatusValues.draft => (DesignTokens.info, tr('seller.draft')),
       ProductLifecycleStatusValues.underReview => (DesignTokens.info, tr('seller.under_review')),
       ProductLifecycleStatusValues.rejected => (DesignTokens.error, tr('seller.rejected')),
-      ProductLifecycleStatusValues.approved => (DesignTokens.success, 'Approved'),
+      ProductLifecycleStatusValues.approved => (DesignTokens.success, tr('seller.approved')),
       _ => (DesignTokens.textSecondary, status),
     };
 
@@ -510,6 +550,9 @@ class _UnansweredQaBadge extends ConsumerWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.forum_outlined),
+            tooltip: count > 0
+                ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()])
+                : 'seller.no_pending_questions'.tr(),
             onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerOrders),
           ),
           if (count > 0)
@@ -537,3 +580,23 @@ class _UnansweredQaBadge extends ConsumerWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'SellerProductsScreen — Dark', group: 'SellerProductsScreen')
+Widget previewSellerProductsScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const SellerProductsScreen(),
+      ),
+    );
+
+@Preview(name: 'SellerProductsScreen — Light', group: 'SellerProductsScreen')
+Widget previewSellerProductsScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const SellerProductsScreen(),
+      ),
+    );

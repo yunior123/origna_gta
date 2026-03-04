@@ -65,3 +65,14 @@ CRON_OPTIONS = {
     "region": _REGION,
     "secrets": _SECRETS,
 }
+
+# Cloud Task workers: HTTP-triggered by Cloud Tasks (no CORS needed), 60s timeout per task.
+# These are internal functions — not callable by clients.
+TASK_WORKER_OPTIONS = {
+    "timeout_sec": 60,
+    "region": _REGION,
+    "secrets": _SECRETS,
+}
+
+# Alias used in handlers/tasks.py
+V2_OPTIONS = TASK_WORKER_OPTIONS

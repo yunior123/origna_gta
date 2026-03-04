@@ -210,6 +210,9 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
 
     return AnimatedBuilder(
       animation: _controller,
+      // Pass widget.child as the const child so Flutter skips rebuilding it
+      // on every animation tick — only the ShaderMask gradient is recomputed.
+      child: widget.child,
       builder: (context, child) {
         return ShaderMask(
           shaderCallback: (bounds) {
@@ -229,7 +232,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
             ).createShader(bounds);
           },
           blendMode: BlendMode.srcATop,
-          child: widget.child,
+          child: child!,
         );
       },
     );
@@ -380,22 +383,34 @@ class _AnimatedCheckmarkState extends State<AnimatedCheckmark>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
+      // The outer Container dimensions and shape don't change — hoist it as
+      // the static child so only CustomPaint is rebuilt on each tick.
+      child: Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(
+          color: widget.color.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+      ),
       builder: (context, child) {
         return Transform.scale(
           scale: _scaleAnimation.value,
-          child: Container(
-            width: widget.size,
-            height: widget.size,
-            decoration: BoxDecoration(
-              color: widget.color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: CustomPaint(
-              painter: _CheckmarkPainter(
-                progress: _checkAnimation.value,
-                color: widget.color,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              ?child,
+              SizedBox(
+                width: widget.size,
+                height: widget.size,
+                child: CustomPaint(
+                  painter: _CheckmarkPainter(
+                    progress: _checkAnimation.value,
+                    color: widget.color,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         );
       },

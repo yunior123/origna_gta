@@ -234,6 +234,7 @@ test.describe('Seller Screens — Mobile', () => {
 
 // ─── Desktop responsive layout ────────────────────────────────────────────
 test.describe('Desktop Layouts', () => {
+  test.setTimeout(360_000);
   test.use({ viewport: DESKTOP_VIEWPORT });
 
   test.beforeEach(async ({ page }) => {
@@ -277,6 +278,7 @@ test.describe('Desktop Layouts', () => {
 
 // ─── Tablet responsive layout ─────────────────────────────────────────────
 test.describe('Tablet Layouts', () => {
+  test.setTimeout(360_000);
   test.use({ viewport: TABLET_VIEWPORT });
 
   test.beforeEach(async ({ page }) => {

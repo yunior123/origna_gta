@@ -11,6 +11,7 @@ import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -18,12 +19,15 @@ class ProductCard extends ConsumerStatefulWidget {
   final String productId;
   final Product product;
   final UserModel? userModel;
+  // 1–3 → show gold/silver/bronze rank badge; null → no badge
+  final int? trendingRank;
 
   const ProductCard({
     super.key,
     required this.productId,
     required this.product,
     required this.userModel,
+    this.trendingRank,
   });
 
   @override
@@ -59,8 +63,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
     );
 
     // Responsive sizing
-    final cardWidth = MediaQuery.of(context).size.width;
-    final isCompact = cardWidth < 400;
+    final isCompact = ResponsiveBreakpoints.isMobile(context);
     final padding = isCompact ? 8.0 : 12.0;
     final titleFontSize = isCompact ? 12.0 : 14.0;
     final priceFontSize = isCompact ? 14.0 : 16.0;
@@ -234,37 +237,24 @@ class _ProductCardState extends ConsumerState<ProductCard>
                         ),
                       ),
                     ),
-                    // N-10: Trending badge
-                    if (widget.product.isTrending)
+                    // N-10: Trending badge (HOT = score≥50, RISING = score<50)
+                    // Rank badge replaces trending badge for top-3; others show trending badge
+                    if (widget.trendingRank != null && widget.trendingRank! <= 3)
                       Positioned(
                         top: isCompact ? 4 : 8,
                         left: isCompact ? 4 : 8,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isCompact ? 5 : 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: DesignTokens.primary,
-                            borderRadius: BorderRadius.circular(4),
-                            boxShadow: [
-                              BoxShadow(
-                                color: DesignTokens.primary.withValues(
-                                  alpha: 0.4,
-                                ),
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            'product.trending'.tr(),
-                            style: TextStyle(
-                              fontSize: isCompact ? 9 : 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
+                        child: _RankBadge(
+                          rank: widget.trendingRank!,
+                          isCompact: isCompact,
+                        ),
+                      )
+                    else if (widget.product.isTrending)
+                      Positioned(
+                        top: isCompact ? 4 : 8,
+                        left: isCompact ? 4 : 8,
+                        child: _TrendingBadge(
+                          score: widget.product.trendingScore,
+                          isCompact: isCompact,
                         ),
                       ),
                     Positioned(
@@ -373,6 +363,30 @@ class _ProductCardState extends ConsumerState<ProductCard>
                             ],
                           ),
                         ),
+                      if (widget.product.isTrending && widget.product.viewCount > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.visibility_outlined,
+                                size: isCompact ? 9 : 11,
+                                color: DesignTokens.statusInTransit,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'product.social_proof_views'.tr(namedArgs: {'count': _formatViewCount(widget.product.viewCount)}),
+                                style: TextStyle(
+                                  fontSize: isCompact ? 9 : 10,
+                                  color: DesignTokens.statusInTransit,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -389,6 +403,17 @@ class _ProductCardState extends ConsumerState<ProductCard>
                               color: DesignTokens.textSecondary,
                             ),
                           ),
+                          if (widget.product.ratingCount > 0) ...[
+                            const SizedBox(width: 2),
+                            Text(
+                              '(${widget.product.ratingCount})',
+                              style: TextStyle(
+                                fontSize: isCompact ? 9 : 11,
+                                color: DesignTokens.textSecondary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ],
                       ),
                       Row(
@@ -420,6 +445,11 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                if (!widget.product.isDigital)
+                                  _DeliveryEstimate(
+                                    product: widget.product,
+                                    isCompact: isCompact,
+                                  ),
                               ],
                             ),
                           ),
@@ -732,3 +762,174 @@ class _QaBadgeButton extends ConsumerWidget {
     );
   }
 }
+
+/// Delivery estimate chip shown below the product price on every card.
+///
+/// Logic (priority order):
+///   1. Perishable → "Same-day delivery"
+///   2. Local-only  → "Local delivery"
+///   3. International origin (shipFromCountry not CA/null) OR estimatedShipDays > 7
+///                  → "{min}–{max} days"
+///   4. Standard Canadian → "Get it by {MMM d}"
+class _DeliveryEstimate extends StatelessWidget {
+  final Product product;
+  final bool isCompact;
+
+  const _DeliveryEstimate({required this.product, required this.isCompact});
+
+  @override
+  Widget build(BuildContext context) {
+    final double fontSize = isCompact ? 9.0 : 10.0;
+
+    if (product.isPerishable) {
+      return _chip(
+        'product.delivery_same_day'.tr(),
+        DesignTokens.success,
+        fontSize,
+      );
+    }
+
+    if (product.isLocalDeliveryOnly) {
+      return _chip(
+        'product.delivery_local'.tr(),
+        DesignTokens.info,
+        fontSize,
+      );
+    }
+
+    final isInternational = product.shipFromCountry != null &&
+        product.shipFromCountry!.isNotEmpty &&
+        product.shipFromCountry!.toUpperCase() != 'CA' &&
+        product.shipFromCountry!.toUpperCase() != 'CANADA';
+
+    if (isInternational || product.estimatedShipDays > 7) {
+      final int min = product.estimatedShipDays;
+      final int max = min + 10;
+      return _chip(
+        'product.delivery_intl_days'
+            .tr(namedArgs: {'min': '$min', 'max': '$max'}),
+        DesignTokens.textSecondary,
+        fontSize,
+      );
+    }
+
+    // Standard Canadian delivery estimate: estimatedShipDays + 2 transit days.
+    final deliveryDate =
+        DateTime.now().add(Duration(days: product.estimatedShipDays + 2));
+    final formatted = DateFormat('MMM d').format(deliveryDate);
+    return _chip(
+      'product.delivery_get_by'.tr(namedArgs: {'date': formatted}),
+      DesignTokens.success,
+      fontSize,
+    );
+  }
+
+  Widget _chip(String label, Color color, double fontSize) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: fontSize, color: color),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+      ),
+    );
+  }
+}
+
+String _formatViewCount(int count) {
+  if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
+  if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}k';
+  return '$count';
+}
+
+/// Gold/silver/bronze rank badge for the top-3 trending products.
+class _RankBadge extends StatelessWidget {
+  final int rank; // 1, 2, or 3
+  final bool isCompact;
+
+  const _RankBadge({required this.rank, required this.isCompact});
+
+  @override
+  Widget build(BuildContext context) {
+    final (colors, medal) = switch (rank) {
+      1 => ([const Color(0xFFFFD700), const Color(0xFFFFA000)], '🥇'),
+      2 => ([const Color(0xFFB0BEC5), const Color(0xFF78909C)], '🥈'),
+      _ => ([const Color(0xFFCD7F32), const Color(0xFF8B4513)], '🥉'),
+    };
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 5 : 7,
+        vertical: isCompact ? 2 : 3,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: colors),
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: colors[0].withValues(alpha: 0.5),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        '$medal #$rank',
+        style: TextStyle(
+          fontSize: isCompact ? 9 : 10,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+/// HOT badge (score ≥ 50) uses fire gradient; RISING badge uses teal gradient.
+class _TrendingBadge extends StatelessWidget {
+  final int score;
+  final bool isCompact;
+
+  const _TrendingBadge({required this.score, required this.isCompact});
+
+  @override
+  Widget build(BuildContext context) {
+    final isHot = score >= 50;
+    final label = isHot ? 'product.trending_hot'.tr() : 'product.trending_rising'.tr();
+    final colors = isHot
+        ? [DesignTokens.tertiary, const Color(0xFFFF3D00)]
+        : [DesignTokens.statusInTransit, DesignTokens.accent];
+    final glowColor = isHot ? DesignTokens.tertiary : DesignTokens.statusInTransit;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 5 : 7,
+        vertical: isCompact ? 2 : 3,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: colors),
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: glowColor.withValues(alpha: 0.45),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: isCompact ? 9 : 10,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+// @Preview skipped — requires live auth/navigation context
+// ProductCard requires a fully-populated Product (generated/freezed) model.

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
@@ -24,6 +25,9 @@ class ModernProductCard extends StatefulWidget {
   /// When true, show a Trending badge on the image corner
   final bool isTrending;
 
+  /// Trending score: ≥50 = HOT (fire), <50 = RISING (teal)
+  final int trendingScore;
+
   /// SRCH-M1: When true, show "Out of Stock" overlay and disable CTA
   final bool isOutOfStock;
 
@@ -43,6 +47,7 @@ class ModernProductCard extends StatefulWidget {
     this.shipFromCountries,
     this.compareAtPrice,
     this.isTrending = false,
+    this.trendingScore = 0,
     this.isOutOfStock = false,
   });
 
@@ -62,9 +67,9 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
     final countries = widget.shipFromCountries;
     if (countries != null && countries.length > 1) {
       if (countries.length <= 3) {
-        return 'Ships from: ${countries.join(' · ')}';
+        return 'product.ships_from_label'.tr(namedArgs: {'locations': countries.join(' · ')});
       }
-      return 'Ships from: ${countries.length} locations worldwide';
+      return 'product.ships_from_worldwide'.tr(namedArgs: {'count': countries.length.toString()});
     }
     // Single location — show full city, province, country
     // FAV-L2: also fall back to single country from list when no individual fields
@@ -79,7 +84,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
           countries.length == 1)
         countries[0],
     ];
-    return parts.isEmpty ? '' : 'Ships from: ${parts.join(', ')}';
+    return parts.isEmpty ? '' : 'product.ships_from_label'.tr(namedArgs: {'locations': parts.join(', ')});
   }
 
   @override
@@ -93,8 +98,17 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
         scale: _scaleAnimation,
         child: Semantics(
           label: widget.compareAtPrice != null
-              ? '${widget.productName}, on sale \$${widget.price.toStringAsFixed(2)} — was \$${widget.compareAtPrice!.toStringAsFixed(2)}, ${widget.rating.toStringAsFixed(1)} stars'
-              : '${widget.productName}, \$${widget.price.toStringAsFixed(2)}, ${widget.rating.toStringAsFixed(1)} stars',
+              ? 'product.a11y_on_sale'.tr(namedArgs: {
+                  'name': widget.productName,
+                  'price': '\$${widget.price.toStringAsFixed(2)}',
+                  'originalPrice': '\$${widget.compareAtPrice!.toStringAsFixed(2)}',
+                  'rating': widget.rating.toStringAsFixed(1),
+                })
+              : 'product.a11y_regular'.tr(namedArgs: {
+                  'name': widget.productName,
+                  'price': '\$${widget.price.toStringAsFixed(2)}',
+                  'rating': widget.rating.toStringAsFixed(1),
+                }),
           child: GestureDetector(
             onTap: widget.onTap,
             child: Container(
@@ -109,12 +123,13 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Image
-                    Stack(
-                      children: [
+                    // Image — 60% of card height, adapts to any grid size
+                    Expanded(
+                      flex: 3,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
                         Container(
-                          height: 160,
-                          width: double.infinity,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
@@ -127,11 +142,11 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                   colorFilter: widget.isOutOfStock
                                       ? const ColorFilter.mode(Colors.grey, BlendMode.saturation)
                                       : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
-                                  child: Image.network(
-                                    widget.imageUrl,
+                                  child: CachedNetworkImage(
+                                    imageUrl: widget.imageUrl,
                                     fit: BoxFit.cover,
-                                    semanticLabel: '${widget.productName} product image',
-                                    errorBuilder: (context, error, stackTrace) =>
+                                    placeholder: (context, url) => const SizedBox.shrink(),
+                                    errorWidget: (context, url, error) =>
                                         Center(
                                         child: Container(
                                           width: 52,
@@ -185,28 +200,22 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                               ),
                             ),
                           ),
-                        // N-10: isTrending badge
+                        // N-10: isTrending badge (HOT / RISING)
                         if (widget.isTrending && !widget.isOutOfStock)
                           Positioned(
                             top: 8,
                             left: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: DesignTokens.primary,
-                                borderRadius: BorderRadius.circular(4),
-                                boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 6, offset: Offset(0, 2))],
-                              ),
-                              child: Text(
-                                'product.trending'.tr(),
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                              ),
+                            child: _TrendingBadge(
+                              score: widget.trendingScore,
+                              isCompact: false,
                             ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
-                    // Content
+                    // Content — 40% of card height
                     Expanded(
+                      flex: 2,
                       child: Padding(
                         padding: const EdgeInsets.all(DesignTokens.spacing12),
                         child: Column(
@@ -257,7 +266,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                 ],
                               )
                             else
-                              Text('No reviews yet', style: TextStyle(fontSize: 11, color: DesignTokens.textTertiary)),
+                              Text('product.no_reviews_card'.tr(), style: TextStyle(fontSize: 11, color: DesignTokens.textTertiary)),
                             const SizedBox(height: DesignTokens.spacing8),
                             // Price and CTA
                             Row(
@@ -286,7 +295,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                 if (widget.onAddToCart != null && !widget.isOutOfStock)
                                   Semantics(
                                     button: true,
-                                    label: 'Add ${widget.productName} to cart',
+                                    label: 'common.add_to_cart_semantics'.tr(namedArgs: {'name': widget.productName}),
                                     child: GestureDetector(
                                       onTap: widget.onAddToCart,
                                       child: Container(
@@ -326,5 +335,50 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
     super.initState();
     _controller = AnimationController(duration: DesignTokens.durationNormal, vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(CurvedAnimation(parent: _controller, curve: DesignTokens.easeOutCubic));
+  }
+}
+
+/// HOT badge (score ≥ 50) uses fire gradient; RISING badge uses teal gradient.
+class _TrendingBadge extends StatelessWidget {
+  final int score;
+  final bool isCompact;
+
+  const _TrendingBadge({required this.score, required this.isCompact});
+
+  @override
+  Widget build(BuildContext context) {
+    final isHot = score >= 50;
+    final label = isHot ? 'product.trending_hot'.tr() : 'product.trending_rising'.tr();
+    final colors = isHot
+        ? [const Color(0xFFFF6B35), const Color(0xFFFF3D00)]
+        : [const Color(0xFF00BFA5), const Color(0xFF1DE9B6)];
+    final glowColor = isHot ? const Color(0xFFFF6B35) : const Color(0xFF00BFA5);
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 5 : 7,
+        vertical: isCompact ? 2 : 3,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: colors),
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: glowColor.withValues(alpha: 0.45),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: isCompact ? 9 : 10,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
   }
 }

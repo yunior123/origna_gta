@@ -43,6 +43,7 @@ const CART_DOC_PATH = `users/${BUYER_UID}/cart/${PRODUCT_ID}`;
 
 test.describe('Cart Manipulation', () => {
   test.setTimeout(300_000);
+  test.describe.configure({ mode: 'serial' });
 
   let buyerToken: string;
 
@@ -75,12 +76,15 @@ test.describe('Cart Manipulation', () => {
 
   // ── T02: Update cart quantity via Firestore REST ──────────────────
   test('T02: Update cart item quantity via Firestore write', async () => {
-    // Update just the quantity field (partial update)
+    // Full document update — Firestore rules require all required fields to be present
+    // (productId is string, createdAt is timestamp), so we send the full document.
     const updateFields = toFirestoreFields({
+      productId: PRODUCT_ID,
       quantity: 3,
+      createdAt: new Date(),
     });
 
-    const success = await writeDoc(CART_DOC_PATH, updateFields, buyerToken, true);
+    const success = await writeDoc(CART_DOC_PATH, updateFields, buyerToken, false);
     expect(success, 'writeDoc update should succeed').toBe(true);
 
     // Verify quantity was updated

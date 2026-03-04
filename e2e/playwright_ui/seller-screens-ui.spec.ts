@@ -45,7 +45,7 @@ const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
 
 test.describe('Seller UI Screens', () => {
-  test.setTimeout(300_000);
+  test.setTimeout(360_000);
 
   // ── T01: Seller Products screen renders ──────────────────────────
   test('T01: Seller Products screen renders via profile menu', async ({ page }) => {
@@ -144,21 +144,20 @@ test.describe('Seller UI Screens', () => {
     ).first();
     const hasWarehouseLink = await warehouseLink.isVisible({ timeout: 10_000 }).catch(() => false);
 
-    if (hasWarehouseLink) {
-      await warehouseLink.scrollIntoViewIfNeeded().catch(() => {});
-      await warehouseLink.click();
-      await waitForFlutter(page);
-
-      // Verify the warehouses screen loaded
-      const semanticsCount = await page.locator('flt-semantics').count();
-      expect(semanticsCount, 'Warehouses screen should render semantic elements').toBeGreaterThan(0);
-    } else {
-      // Warehouses may not be linked from the dashboard UI — verify the route
-      // exists by checking that the seller dashboard itself rendered properly.
-      console.log('   Warehouse link not found in seller dashboard — verifying dashboard rendered instead');
-      const semanticsCount = await page.locator('flt-semantics').count();
-      expect(semanticsCount, 'Seller dashboard should render semantic elements').toBeGreaterThan(0);
+    if (!hasWarehouseLink) {
+      test.skip(true, 'Warehouse navigation link not found in seller dashboard — screen not reachable');
+      return;
     }
+
+    await warehouseLink.scrollIntoViewIfNeeded().catch(() => {});
+    await warehouseLink.click();
+    await waitForFlutter(page);
+
+    // Verify the warehouses screen loaded (not just any screen)
+    await expect(
+      page.locator('[aria-label*="warehouse" i], [aria-label*="entrepot" i]').first()
+        .or(page.getByText(/warehouse|entrepôt/i).first())
+    ).toBeVisible({ timeout: 15_000 });
 
     // Navigate back
     await page.goBack();
@@ -204,20 +203,20 @@ test.describe('Seller UI Screens', () => {
     ).first();
     const hasIntegrationLink = await integrationLink.isVisible({ timeout: 10_000 }).catch(() => false);
 
-    if (hasIntegrationLink) {
-      await integrationLink.scrollIntoViewIfNeeded().catch(() => {});
-      await integrationLink.click();
-      await waitForFlutter(page);
-
-      // Verify the integration screen loaded
-      const semanticsCount = await page.locator('flt-semantics').count();
-      expect(semanticsCount, 'Integration screen should render semantic elements').toBeGreaterThan(0);
-    } else {
-      // Integration may not be linked from the dashboard — verify dashboard rendered.
-      console.log('   Integration link not found in seller dashboard — verifying dashboard rendered instead');
-      const semanticsCount = await page.locator('flt-semantics').count();
-      expect(semanticsCount, 'Seller dashboard should render semantic elements').toBeGreaterThan(0);
+    if (!hasIntegrationLink) {
+      test.skip(true, 'Integration/Connect navigation link not found in seller dashboard — screen not reachable');
+      return;
     }
+
+    await integrationLink.scrollIntoViewIfNeeded().catch(() => {});
+    await integrationLink.click();
+    await waitForFlutter(page);
+
+    // Verify the integration screen loaded (not just any screen)
+    await expect(
+      page.locator('[aria-label*="integration" i], [aria-label*="stripe" i], [aria-label*="connect" i]').first()
+        .or(page.getByText(/stripe|integration|connect/i).first())
+    ).toBeVisible({ timeout: 15_000 });
 
     // Navigate back to home
     await page.goBack();

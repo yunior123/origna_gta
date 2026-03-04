@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/widgets/legal_screen_body.dart';
@@ -17,3 +18,19 @@ class PrivacyPolicyScreen extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'PrivacyPolicyScreen — Dark', group: 'PrivacyPolicyScreen')
+Widget previewPrivacyPolicyScreenDark() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(),
+      home: const PrivacyPolicyScreen(),
+    );
+
+@Preview(name: 'PrivacyPolicyScreen — Light', group: 'PrivacyPolicyScreen')
+Widget previewPrivacyPolicyScreenLight() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(),
+      home: const PrivacyPolicyScreen(),
+    );

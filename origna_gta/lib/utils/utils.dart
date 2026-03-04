@@ -831,7 +831,7 @@ class AppError {
         backgroundColor: DesignTokens.error,
         duration: duration,
         action: SnackBarAction(
-          label: 'Dismiss',
+          label: 'common.dismiss'.tr(),
           textColor: Colors.white,
           onPressed: () {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();

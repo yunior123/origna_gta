@@ -147,8 +147,8 @@ void main() {
           options.enableFramesTracking = false;
           options.enableAutoSessionTracking = false;
         } else {
-          // mobile defaults (optional tuning):
-          options.tracesSampleRate = 1.0;
+          // Mobile: 100% only in production; 10% in dev/staging to avoid noise + quota burn
+          options.tracesSampleRate = envConfig.isProduction ? 1.0 : 0.1;
         }
       });
 

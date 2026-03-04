@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -352,10 +353,10 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [const Color(0xFFFFF3E0), const Color(0xFFFFE0B2).withValues(alpha: 0.5)]),
+                        gradient: LinearGradient(colors: [DesignTokens.warning.withValues(alpha: 0.15), DesignTokens.warning.withValues(alpha: 0.08)]),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.mark_email_unread_outlined, size: 56, color: Color(0xFFF57C00)),
+                      child: Icon(Icons.mark_email_unread_outlined, size: 56, color: DesignTokens.warning),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -538,3 +539,23 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
     }
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'EmailVerificationRequiredScreen — Dark', group: 'EmailVerificationRequiredScreen')
+Widget previewEmailVerificationRequiredScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const EmailVerificationRequiredScreen(),
+      ),
+    );
+
+@Preview(name: 'EmailVerificationRequiredScreen — Light', group: 'EmailVerificationRequiredScreen')
+Widget previewEmailVerificationRequiredScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const EmailVerificationRequiredScreen(),
+      ),
+    );

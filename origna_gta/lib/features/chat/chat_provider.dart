@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 
+import 'package:origna_gta/core/schema/schema_constants.dart';
+
 import 'chat_repository.dart';
 
 // ─── Repository ────────────────────────────────────────────────────────────
@@ -105,24 +107,20 @@ class ChatViewModel extends StateNotifier<ChatState> {
     }
   }
 
-  /// Backend enforces MIN_MESSAGE_LENGTH=10, MAX_MESSAGE_LENGTH=1000 (ValidationLimits).
-  /// Mirror those limits here so the UI rejects bad input without a network round-trip.
-  static const int _minMessageLength = 10;
-  static const int _maxMessageLength = 1000;
-
   Future<void> sendMessage(String text) async {
     final chatId = state.chatId;
     final trimmed = text.trim();
     if (chatId == null || trimmed.isEmpty) return;
     if (state.isLoading) return; // in-flight guard
 
-    // Mirror backend ValidationLimits to avoid unnecessary round-trips
-    if (trimmed.length < _minMessageLength) {
-      state = state.copyWith(errorMessage: 'Message is too short (minimum $_minMessageLength characters).');
+    // Mirror backend ValidationLimits (BusinessRules) to avoid unnecessary round-trips.
+    // These constants are the single source of truth — also used by the TextField maxLength.
+    if (trimmed.length < BusinessRules.minMessageLength) {
+      state = state.copyWith(errorMessage: 'Message is too short (minimum ${BusinessRules.minMessageLength} characters).');
       return;
     }
-    if (trimmed.length > _maxMessageLength) {
-      state = state.copyWith(errorMessage: 'Message exceeds the maximum length of $_maxMessageLength characters.');
+    if (trimmed.length > BusinessRules.maxMessageLength) {
+      state = state.copyWith(errorMessage: 'Message exceeds the maximum length of ${BusinessRules.maxMessageLength} characters.');
       return;
     }
 

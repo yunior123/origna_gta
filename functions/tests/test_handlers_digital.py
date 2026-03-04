@@ -324,7 +324,9 @@ def test_revoke_licenses_for_order_full_refund():
 
     mock_batch = MagicMock()
     mock_db.batch.return_value = mock_batch
-    mock_db.collection.return_value.where.return_value.stream.return_value = [license1, license2]
+    mock_query = mock_db.collection.return_value.where.return_value
+    mock_query.limit.return_value = mock_query
+    mock_query.stream.return_value = [license1, license2]
 
     with patch("handlers.digital.get_db", return_value=mock_db):
         count = _revoke_digital_licenses_for_order("order123")

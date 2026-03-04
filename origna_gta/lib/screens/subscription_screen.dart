@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,28 +29,32 @@ class SubscriptionScreen extends ConsumerWidget {
       }
     });
 
-    return Scaffold(
-      appBar: AppBarFactory.simple(title: 'subscription.premium_membership'.tr()),
-      body: subAsync.when(
-        loading: () => const Center(child: ModernLoadingIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
-                const SizedBox(height: 12),
-                Text(
-                  'common.error_loading'.tr(),
-                  style: TextStyle(color: DesignTokens.error, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+    return Container(
+      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBarFactory.simple(title: 'subscription.premium_membership'.tr()),
+        body: subAsync.when(
+          loading: () => const Center(child: ModernLoadingIndicator()),
+          error: (e, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
+                  const SizedBox(height: 12),
+                  Text(
+                    'common.error_loading'.tr(),
+                    style: TextStyle(color: DesignTokens.error, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
+          data: (subInfo) => _buildContent(context, ref, vmState, subInfo, isDark),
         ),
-        data: (subInfo) => _buildContent(context, ref, vmState, subInfo, isDark),
       ),
     );
   }
@@ -62,9 +67,10 @@ class SubscriptionScreen extends ConsumerWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: isDark ? DesignTokens.surfaceVariant : Colors.white,
+          color: isDark ? DesignTokens.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4))],
+          border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.08)) : null,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -88,9 +94,9 @@ class SubscriptionScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: DesignTokens.textPrimary)),
+                    Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary)),
                     const SizedBox(height: 3),
-                    Text(subtitle, style: const TextStyle(fontSize: 13, color: DesignTokens.textSecondary, height: 1.4)),
+                    Text(subtitle, style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary, height: 1.4)),
                   ],
                 ),
               ),
@@ -178,13 +184,13 @@ class SubscriptionScreen extends ConsumerWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: const LinearGradient(
-                            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                            colors: [DesignTokens.warning, DesignTokens.tertiary],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           boxShadow: [
-                            BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.5), blurRadius: 32, spreadRadius: 4),
-                            BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.2), blurRadius: 60, spreadRadius: 10),
+                            BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.5), blurRadius: 32, spreadRadius: 4),
+                            BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.2), blurRadius: 60, spreadRadius: 10),
                           ],
                         ),
                         child: const Icon(Icons.workspace_premium, color: Colors.white, size: 50),
@@ -354,12 +360,12 @@ class SubscriptionScreen extends ConsumerWidget {
                       height: 56,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFFFFB347), Color(0xFFFFD700), Color(0xFFFFA500)],
+                          colors: [DesignTokens.tertiary, DesignTokens.warning, DesignTokens.tertiary],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8))],
+                        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                        boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8))],
                       ),
                       child: vmState.isLoading
                           ? const Center(child: ModernLoadingIndicator(size: 24, color: Colors.white))
@@ -591,3 +597,23 @@ class _PremiumMascotState extends State<_PremiumMascot> {
     return ShopMascot(controller: _controller, size: 72, showSpeechBubble: false);
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'SubscriptionScreen — Dark', group: 'SubscriptionScreen')
+Widget previewSubscriptionScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const SubscriptionScreen(),
+      ),
+    );
+
+@Preview(name: 'SubscriptionScreen — Light', group: 'SubscriptionScreen')
+Widget previewSubscriptionScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const SubscriptionScreen(),
+      ),
+    );

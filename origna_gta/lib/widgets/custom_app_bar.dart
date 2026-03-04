@@ -12,12 +12,14 @@ class AppBarFactory {
   /// AppBar with custom leading widget
   static CustomAppBar custom({
     required String title,
+    String? subtitle,
     Widget? leading,
     List<Widget>? actions,
     bool showCartBadge = false,
   }) {
     return CustomAppBar(
       title: title,
+      subtitle: subtitle,
       leading: leading,
       actions: actions,
       showBackButton: false,
@@ -42,9 +44,10 @@ class AppBarFactory {
   /// Simple AppBar with just title and back button
   static CustomAppBar simple({
     required String title,
+    String? subtitle,
     VoidCallback? onBackPressed,
   }) {
-    return CustomAppBar(title: title, onBackPressed: onBackPressed);
+    return CustomAppBar(title: title, subtitle: subtitle, onBackPressed: onBackPressed);
   }
 
   /// AppBar with cart badge
@@ -90,6 +93,7 @@ class AppBarIconButton extends StatelessWidget {
 /// Provides consistent styling across the app.
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final String? subtitle;
   final List<Widget>? actions;
   final Widget? leading;
   final bool showBackButton;
@@ -100,6 +104,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CustomAppBar({
     super.key,
     required this.title,
+    this.subtitle,
     this.actions,
     this.leading,
     this.showBackButton = true,
@@ -147,20 +152,47 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
                 ),
 
-              // Title
+              // Title (+ optional subtitle)
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 18,
-                      letterSpacing: 0.5,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  child: subtitle != null
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontSize: 17,
+                                letterSpacing: 0.5,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              subtitle!,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: 12,
+                                letterSpacing: 0.2,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        )
+                      : Text(
+                          title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontSize: 18,
+                            letterSpacing: 0.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                 ),
               ),
 

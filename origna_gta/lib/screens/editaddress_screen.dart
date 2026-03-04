@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -111,7 +112,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           selected: isSelected,
                           onSelected: (selected) => viewModel.setLabel(label),
                           selectedColor: DesignTokens.primary,
-                          backgroundColor: isDark ? DesignTokens.textPrimary : Colors.white,
+                          backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
                           labelStyle: TextStyle(
                             color: isSelected ? Colors.white : (isDark ? Colors.white : DesignTokens.textPrimary),
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -151,7 +152,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                               key: const Key('address_suggestions'),
                               margin: const EdgeInsets.only(top: 8, bottom: 8),
                               decoration: BoxDecoration(
-                                color: isDark ? DesignTokens.textPrimary : Colors.white,
+                                color: isDark ? DesignTokens.darkSurface : Colors.white,
                                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
                                 boxShadow: DesignTokens.shadowMd,
                               ),
@@ -227,7 +228,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                 borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
                               ),
                               filled: true,
-                              fillColor: isDark ? DesignTokens.textPrimary : Colors.white,
+                              fillColor: isDark ? DesignTokens.darkSurface : Colors.white,
                             ),
                             items: ProvinceCodeValues.all.map((code) => DropdownMenuItem(value: code, child: Text('${ProvinceCodeValues.names[code]} ($code)'))).toList(),
                             onChanged: (v) => viewModel.setProvince(v!),
@@ -373,8 +374,27 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
           borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
         ),
         filled: true,
-        fillColor: isDark ? DesignTokens.textPrimary : Colors.white,
+        fillColor: isDark ? DesignTokens.darkSurface : Colors.white,
       ),
     );
   }
 }
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'AddEditAddressScreen — Dark', group: 'AddEditAddressScreen')
+Widget previewAddEditAddressScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const AddEditAddressScreen(),
+      ),
+    );
+
+@Preview(name: 'AddEditAddressScreen — Light', group: 'AddEditAddressScreen')
+Widget previewAddEditAddressScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const AddEditAddressScreen(),
+      ),
+    );

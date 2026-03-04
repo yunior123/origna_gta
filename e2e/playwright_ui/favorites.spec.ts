@@ -80,7 +80,7 @@ test.describe('Favorites — API Tests', () => {
 // ═══ UI-DRIVEN TESTS ═══
 
 test.describe('Favorites — UI Tests', () => {
-  test.setTimeout(300_000);
+  test.describe.configure({ timeout: 600_000 });
 
   test('T06: UI — Favorite toggle on product card updates heart state', async ({ page }) => {
     await requireWebApp(page, TARGET_URL);

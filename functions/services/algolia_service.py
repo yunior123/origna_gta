@@ -64,11 +64,21 @@ def format_product_for_algolia(product_id: str, product_data: dict | Product) ->
             return {}
 
     # Algolia requires objectID field
+    # Derive priceCents for Algolia numeric range filters (numericAttributesForFiltering).
+    # Backend derives this authoritatively; fall back to computing from price if absent.
+    price_val = data.get(Fields.PRICE, 0.0) or 0.0
+    price_cents_val = data.get(Fields.PRICE_CENTS)
+    if price_cents_val is None and price_val:
+        price_cents_val = round(price_val * 100)
+
     algolia_object = {
         "objectID": product_id,
         Fields.NAME: data.get(Fields.NAME, ""),
         Fields.DESCRIPTION: data.get(Fields.DESCRIPTION, ""),
-        Fields.PRICE: data.get(Fields.PRICE, 0.0),
+        Fields.PRICE: price_val,
+        # SRCH-NUM1: priceCents enables numericAttributesForFiltering on the Algolia index.
+        # Frontend uses `priceCents>=X` numeric filters — must be indexed as an integer.
+        Fields.PRICE_CENTS: price_cents_val or 0,
         Fields.CATEGORY_ID: data.get(Fields.CATEGORY_ID, 0),
         Fields.SELLER_ID: data.get(Fields.SELLER_ID, ""),
         Fields.IMAGE_URLS: data.get(Fields.IMAGE_URLS, []),
@@ -368,6 +378,7 @@ def batch_index_products(products: list) -> tuple:
     """
     success_count = 0
     failure_count = 0
+    skipped_count = 0
     algolia_objects = []
     id_map: list[str] = []  # parallel list of product_ids for per-item DLQ logging
 
@@ -376,10 +387,11 @@ def batch_index_products(products: list) -> tuple:
             algolia_objects.append(format_product_for_algolia(product_id, product_data))
             id_map.append(product_id)
         else:
-            failure_count += 1
+            # Inactive/draft products are intentionally excluded — not failures.
+            skipped_count += 1
 
     if not algolia_objects:
-        return (0, failure_count + len(products) - failure_count)
+        return (0, failure_count)
 
     try:
         with _get_algolia_client() as client:
@@ -424,9 +436,13 @@ def configure_algolia_index():
                         Fields.LIFECYCLE_STATUS,
                         Fields.FREE_SHIPPING,
                         Fields.IS_PERISHABLE,
+                        f"filterOnly({Fields.SHIP_FROM_PROVINCE})",  # SRCH-PROV: province-level buyer filtering
                         f"filterOnly({Fields.SHIP_FROM_COUNTRY})",
                         f"filterOnly({Fields.SHIP_FROM_COUNTRIES})",
                         "filterOnly(availableInCanada)",  # SRCH-H1: Canada buyer filtering
+                    ],
+                    "numericAttributesForFiltering": [
+                        Fields.PRICE_CENTS,  # SRCH-NUM1: enables priceCents>=X / priceCents<=X numeric filters
                     ],
                     "customRanking": [
                         f"desc({Fields.RATING})",  # Sort by rating first
@@ -438,6 +454,7 @@ def configure_algolia_index():
                         Fields.NAME,
                         Fields.DESCRIPTION,
                         Fields.PRICE,
+                        Fields.PRICE_CENTS,  # SRCH-NUM1: needed for numeric filter round-trip
                         Fields.CATEGORY_ID,
                         Fields.SUBCATEGORY,
                         Fields.SELLER_ID,

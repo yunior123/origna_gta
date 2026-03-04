@@ -1,7 +1,9 @@
+import 'package:flutter/widget_previews.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
@@ -59,13 +61,9 @@ class CartScreen extends ConsumerWidget {
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: ResponsiveBreakpoints.getValue(
-                context: context,
-                mobile: double.infinity,
-                mobilePlus: double.infinity,
-                tablet: 700,
-                desktop: 800,
-              ),
+              maxWidth: (ResponsiveBreakpoints.isTablet(context) || ResponsiveBreakpoints.isDesktop(context))
+                  ? ResponsiveBreakpoints.contentMaxWidth
+                  : double.infinity,
             ),
             child: productIdsAsync.when(
               loading: () => Center(
@@ -145,65 +143,89 @@ class CartScreen extends ConsumerWidget {
                   );
                 }
 
-                return Column(
-                  children: [
-                    // Banner: warn about unavailable items (deleted/archived products)
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final unavailableAsync = ref.watch(unavailableCartItemsProvider);
-                        return unavailableAsync.maybeWhen(
-                          data: (ids) {
-                            if (ids.isEmpty) return const SizedBox.shrink();
-                            return Container(
-                              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: DesignTokens.warning.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.4)),
+                final isWideLayout = ResponsiveBreakpoints.isTablet(context) || ResponsiveBreakpoints.isDesktop(context);
+                final summaryWidth = ResponsiveBreakpoints.isDesktop(context) ? 360.0 : 280.0;
+
+                final unavailableBanner = Consumer(
+                  builder: (context, ref, _) {
+                    final unavailableAsync = ref.watch(unavailableCartItemsProvider);
+                    return unavailableAsync.maybeWhen(
+                      data: (ids) {
+                        if (ids.isEmpty) return const SizedBox.shrink();
+                        return Container(
+                          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: DesignTokens.warning.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, size: 18, color: DesignTokens.warning),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'cart.unavailable_items_warning'.tr(namedArgs: {'count': ids.length.toString()}),
+                                  style: TextStyle(fontSize: 13, color: DesignTokens.warning, fontWeight: FontWeight.w500),
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.warning_amber_rounded, size: 18, color: DesignTokens.warning),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'cart.unavailable_items_warning'.tr(namedArgs: {'count': ids.length.toString()}),
-                                      style: TextStyle(fontSize: 13, color: DesignTokens.warning, fontWeight: FontWeight.w500),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          orElse: () => const SizedBox.shrink(),
+                            ],
+                          ),
+                        );
+                      },
+                      orElse: () => const SizedBox.shrink(),
+                    );
+                  },
+                );
+
+                final itemsList = Expanded(
+                  child: RefreshIndicator(
+                    color: DesignTokens.primary,
+                    onRefresh: () async => ref.invalidate(cartItemsProvider),
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      itemCount: productIds.length,
+                      itemBuilder: (context, index) {
+                        final cartItemDocId = productIds[index];
+                        return FadeSlideIn(
+                          delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
+                          child: _CartItemWidget(
+                            key: ValueKey(cartItemDocId),
+                            cartItemDocId: cartItemDocId,
+                          ),
                         );
                       },
                     ),
-                    Expanded(
-                      child: RefreshIndicator(
-                        color: DesignTokens.primary,
-                        onRefresh: () async => ref.invalidate(cartItemsProvider),
-                        child: ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          itemCount: productIds.length,
-                          itemBuilder: (context, index) {
-                            final cartItemDocId = productIds[index];
-                            return FadeSlideIn(
-                              delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
-                              child: _CartItemWidget(
-                                key: ValueKey(cartItemDocId),
-                                cartItemDocId: cartItemDocId,
-                              ),
-                            );
-                          },
+                  ),
+                );
+
+                if (isWideLayout) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [unavailableBanner, itemsList],
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: summaryWidth,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 12, 16, 16),
+                          child: const _CartSummary(isSidebar: true),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+
+                return Column(
+                  children: [
+                    unavailableBanner,
+                    itemsList,
                     FadeSlideIn(
                       delay: Duration(milliseconds: 50 * productIds.length),
                       beginOffset: const Offset(0, 0.2),
@@ -231,54 +253,57 @@ class _CartItemWidget extends ConsumerWidget {
     // Watch only this specific item's details via family provider
     final itemAsync = ref.watch(cartItemDetailProvider(cartItemDocId));
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return itemAsync.when(
-      loading: () => Container(
-        margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
-        padding: const EdgeInsets.all(DesignTokens.spacing12),
-        height: 104,
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? DesignTokens.darkCard
-              : Colors.white,
-          borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: DesignTokens.outlineVariant,
-                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+      loading: () => Shimmer.fromColors(
+        baseColor: isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant,
+        highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
+          padding: const EdgeInsets.all(DesignTokens.spacing12),
+          height: 104,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                ),
               ),
-            ),
-            const SizedBox(width: DesignTokens.spacing12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 120,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: DesignTokens.outlineVariant,
-                      borderRadius: BorderRadius.circular(4),
+              const SizedBox(width: DesignTokens.spacing12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 60,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: DesignTokens.outlineVariant,
-                      borderRadius: BorderRadius.circular(4),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 60,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       error: (error, stack) => Padding(
@@ -304,12 +329,39 @@ class _CartItemWidget extends ConsumerWidget {
         ),
       ),
       data: (item) {
-        if (item == null) return const SizedBox.shrink();
+        if (item == null) {
+          // Item document was deleted externally (e.g. product removed by seller).
+          // Show a dismissible error card rather than silently hiding the row.
+          // cartItemDocId format: "productId" or "productId_variantId" (unused, kept for reference)
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: DesignTokens.warning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.25)),
+              ),
+              padding: const EdgeInsets.all(DesignTokens.spacing12),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: DesignTokens.warning, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('cart.item_no_longer_available'.tr(), style: TextStyle(color: DesignTokens.warningText, fontSize: 13))),
+                  TextButton(
+                    onPressed: () => ref.read(cartControllerProvider).removeFromCart(cartItemDocId),
+                    child: Text('common.remove'.tr(), style: TextStyle(color: DesignTokens.warning, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         return CartItemScreen(
           productId: item.productId,
+          cartItemId: cartItemDocId,
           item: item.toMap(),
           onRemove: () =>
-              ref.read(cartControllerProvider).removeFromCart(item.productId),
+              ref.read(cartControllerProvider).removeFromCart(cartItemDocId),
         );
       },
     );
@@ -318,7 +370,8 @@ class _CartItemWidget extends ConsumerWidget {
 
 /// Cart summary - only watches what it needs for display
 class _CartSummary extends ConsumerWidget {
-  const _CartSummary();
+  final bool isSidebar;
+  const _CartSummary({this.isSidebar = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -329,6 +382,9 @@ class _CartSummary extends ConsumerWidget {
       ),
     );
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : DesignTokens.outline.withValues(alpha: 0.3);
 
     return isEmpty.when(
       loading: () => const SizedBox.shrink(),
@@ -343,30 +399,30 @@ class _CartSummary extends ConsumerWidget {
           ),
           decoration: BoxDecoration(
             color: isDark ? DesignTokens.darkCard : Colors.white,
-            border: Border(
-              top: BorderSide(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : DesignTokens.outline.withValues(alpha: 0.3),
-              ),
-            ),
+            border: isSidebar
+                ? Border.all(color: borderColor)
+                : Border(top: BorderSide(color: borderColor)),
             boxShadow: [
               BoxShadow(
                 color: DesignTokens.primary.withValues(
                   alpha: isDark ? 0.1 : 0.06,
                 ),
-                blurRadius: 20,
-                offset: const Offset(0, -8),
+                blurRadius: isSidebar ? 12 : 20,
+                offset: isSidebar ? const Offset(0, 4) : const Offset(0, -8),
               ),
             ],
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(DesignTokens.radius24),
-            ),
+            borderRadius: isSidebar
+                ? BorderRadius.circular(DesignTokens.radius16)
+                : const BorderRadius.vertical(
+                    top: Radius.circular(DesignTokens.radius24),
+                  ),
           ),
           child: Column(
             children: [
               const _CartTotalDisplay(),
-              const SizedBox(height: DesignTokens.spacing20),
+              const SizedBox(height: DesignTokens.spacing12),
+              const _FreeShippingBar(),
+              const SizedBox(height: DesignTokens.spacing12),
               const _CheckoutButton(),
             ],
           ),
@@ -405,20 +461,25 @@ class _CartTotalDisplay extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Subtotal row
+          // Subtotal row with item count
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(
-                child: Text(
-                  '${'cart.subtotal'.tr()}:',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : DesignTokens.textPrimary,
-                  ),
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final totalItems = ref.watch(cartItemCountProvider);
+                    return Text(
+                      '${'cart.subtotal_with_count'.tr(namedArgs: {'count': totalItems.toString()})}:',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : DesignTokens.textPrimary,
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -491,7 +552,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                 ),
               ),
               Text(
-                '${(BusinessRules.platformFeePercent * 100).toStringAsFixed(1)}%',
+                '${BusinessRules.platformFeePercent.toStringAsFixed(1)}%',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -501,7 +562,7 @@ class _CartTotalDisplay extends ConsumerWidget {
               const SizedBox(width: 4),
               Tooltip(
                 message:
-                    'cart.service_fee_tooltip'.tr(namedArgs: {'percent': (BusinessRules.platformFeePercent * 100).toStringAsFixed(1)}),
+                    'cart.service_fee_tooltip'.tr(namedArgs: {'percent': BusinessRules.platformFeePercent.toStringAsFixed(1)}),
                 child: Semantics(
                   button: true,
                   label: 'btn-info-service-fee',
@@ -509,7 +570,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                     onTap: () => _showInfoSheet(
                       context,
                       'cart.service_fees'.tr(),
-                    'cart.service_fee_info'.tr(namedArgs: {'percent': (BusinessRules.platformFeePercent * 100).toStringAsFixed(1)}),
+                    'cart.service_fee_info'.tr(namedArgs: {'percent': BusinessRules.platformFeePercent.toStringAsFixed(1)}),
                   ),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
@@ -623,6 +684,62 @@ class _CartTotalDisplay extends ConsumerWidget {
           const SizedBox(height: 12),
           const Divider(height: 1),
           const SizedBox(height: 12),
+
+          // Estimated Total row (subtotal + service fee [waived for premium] + estimated tax)
+          Consumer(
+            builder: (context, ref, _) {
+              final profileProvince = ref.watch(userProfileProvider).valueOrNull?.address?.state;
+              final province = (profileProvince == null || profileProvince.trim().isEmpty)
+                  ? ProvinceCodeValues.ontario
+                  : profileProvince.trim();
+              final subtotalAsync = ref.watch(
+                cartWithDetailsProvider.select(
+                  (async) => async.whenData(
+                    (items) => items.fold(0.0, (t, item) => t + (item.price * item.quantity)),
+                  ),
+                ),
+              );
+              return subtotalAsync.maybeWhen(
+                data: (subtotal) {
+                  // Platform fee is deducted from seller payout — NOT added to buyer charge.
+                  // Stripe PaymentIntent = subtotal + tax only. Display fee row for transparency,
+                  // but do NOT include it in the estimated total (matches checkout_screen logic).
+                  // Tax estimate: excludes shipping (unknown at cart stage) — label as estimated
+                  final tax = subtotal * getTaxRate(province);
+                  final estimatedTotal = subtotal + tax;
+                  return Column(
+                    children: [
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'checkout.estimated_total'.tr(),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : DesignTokens.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            NumberFormat.currency(locale: 'en_CA', symbol: 'CAD \$').format(estimatedTotal),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: DesignTokens.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  );
+                },
+                orElse: () => const SizedBox.shrink(),
+              );
+            },
+          ),
 
           // Delivery instructions row with pencil icon
           Semantics(
@@ -908,6 +1025,108 @@ class _CheckoutButton extends ConsumerWidget {
   }
 }
 
+/// Free shipping progress bar shown above the checkout button.
+/// Encourages higher order values by showing how close the buyer is to qualifying.
+class _FreeShippingBar extends ConsumerWidget {
+  const _FreeShippingBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final subtotalAsync = ref.watch(
+      cartWithDetailsProvider.select(
+        (async) => async.whenData(
+          (items) => items.fold(
+            0.0,
+            (total, item) => total + (item.price * item.quantity),
+          ),
+        ),
+      ),
+    );
+
+    return subtotalAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (subtotalDollars) {
+        final thresholdDollars =
+            BusinessRules.freeShippingThresholdCents / 100.0;
+        final qualified = subtotalDollars >= thresholdDollars;
+        final progress =
+            (subtotalDollars / thresholdDollars).clamp(0.0, 1.0);
+        final remaining = thresholdDollars - subtotalDollars;
+        final remainingFormatted = NumberFormat.currency(
+          locale: 'en_CA',
+          symbol: '\$',
+          decimalDigits: 2,
+        ).format(remaining);
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: qualified
+                ? DesignTokens.success.withValues(alpha: isDark ? 0.12 : 0.08)
+                : (isDark
+                    ? DesignTokens.primary.withValues(alpha: 0.10)
+                    : DesignTokens.surfaceSubtle),
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            border: Border.all(
+              color: qualified
+                  ? DesignTokens.success.withValues(alpha: 0.35)
+                  : DesignTokens.primary.withValues(alpha: 0.20),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Status line
+              Text(
+                qualified
+                    ? 'cart.free_shipping_qualified'.tr()
+                    : 'cart.free_shipping_progress'
+                        .tr(namedArgs: {'amount': remainingFormatted}),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: qualified
+                      ? DesignTokens.success
+                      : (isDark ? Colors.white : DesignTokens.textPrimary),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Progress bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  backgroundColor: isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : DesignTokens.outline.withValues(alpha: 0.4),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    qualified ? DesignTokens.success : DesignTokens.primary,
+                  ),
+                ),
+              ),
+              if (!qualified) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'cart.free_shipping_threshold'.tr(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark
+                        ? DesignTokens.textSecondary
+                        : DesignTokens.textTertiary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Extension to add copyWith method to CartItemDetailModel
 extension CartItemDetailModelExtension on CartItemDetailModel {
   CartItemDetailModel copyWith({
@@ -940,3 +1159,23 @@ extension CartItemDetailModelExtension on CartItemDetailModel {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'CartScreen — Dark', group: 'CartScreen')
+Widget previewCartScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const CartScreen(),
+      ),
+    );
+
+@Preview(name: 'CartScreen — Light', group: 'CartScreen')
+Widget previewCartScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const CartScreen(),
+      ),
+    );

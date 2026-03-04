@@ -179,6 +179,8 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'Cancelling';
       case PaymentStatus.expiring:
         return 'Expiring';
+      case PaymentStatus.cancelFailed:
+        return 'Cancel Failed';
     }
   }
 
@@ -216,6 +218,8 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'cancelling';
       case PaymentStatus.expiring:
         return 'expiring';
+      case PaymentStatus.cancelFailed:
+        return 'cancel_failed';
     }
   }
 

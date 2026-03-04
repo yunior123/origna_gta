@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ReturnRequest {
 
- String get returnId; String get orderId; String get orderItemId; String get buyerId; String get sellerId; String get productId; String get productName; int get quantity; String get returnStatus; String get returnReason; String? get returnAdminNote; String? get returnTrackingNumber; int? get returnRefundAmountCents; DateTime? get requestedAt; DateTime? get updatedAt; DateTime? get resolvedAt;
+ String get returnId; String get orderId; String get orderItemId; String get buyerId; String get sellerId; String get productId; String get productName; int get quantity; String get returnStatus; String get returnReason; String? get returnAdminNote; String? get returnTrackingNumber; int? get returnRefundAmountCents; DateTime? get requestedAt; DateTime? get updatedAt; DateTime? get resolvedAt; DateTime? get escalatedAt; String? get escalationReason;
 /// Create a copy of ReturnRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $ReturnRequestCopyWith<ReturnRequest> get copyWith => _$ReturnRequestCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReturnRequest&&(identical(other.returnId, returnId) || other.returnId == returnId)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.orderItemId, orderItemId) || other.orderItemId == orderItemId)&&(identical(other.buyerId, buyerId) || other.buyerId == buyerId)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.productName, productName) || other.productName == productName)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.returnStatus, returnStatus) || other.returnStatus == returnStatus)&&(identical(other.returnReason, returnReason) || other.returnReason == returnReason)&&(identical(other.returnAdminNote, returnAdminNote) || other.returnAdminNote == returnAdminNote)&&(identical(other.returnTrackingNumber, returnTrackingNumber) || other.returnTrackingNumber == returnTrackingNumber)&&(identical(other.returnRefundAmountCents, returnRefundAmountCents) || other.returnRefundAmountCents == returnRefundAmountCents)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.resolvedAt, resolvedAt) || other.resolvedAt == resolvedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReturnRequest&&(identical(other.returnId, returnId) || other.returnId == returnId)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.orderItemId, orderItemId) || other.orderItemId == orderItemId)&&(identical(other.buyerId, buyerId) || other.buyerId == buyerId)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.productName, productName) || other.productName == productName)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.returnStatus, returnStatus) || other.returnStatus == returnStatus)&&(identical(other.returnReason, returnReason) || other.returnReason == returnReason)&&(identical(other.returnAdminNote, returnAdminNote) || other.returnAdminNote == returnAdminNote)&&(identical(other.returnTrackingNumber, returnTrackingNumber) || other.returnTrackingNumber == returnTrackingNumber)&&(identical(other.returnRefundAmountCents, returnRefundAmountCents) || other.returnRefundAmountCents == returnRefundAmountCents)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.resolvedAt, resolvedAt) || other.resolvedAt == resolvedAt)&&(identical(other.escalatedAt, escalatedAt) || other.escalatedAt == escalatedAt)&&(identical(other.escalationReason, escalationReason) || other.escalationReason == escalationReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,returnId,orderId,orderItemId,buyerId,sellerId,productId,productName,quantity,returnStatus,returnReason,returnAdminNote,returnTrackingNumber,returnRefundAmountCents,requestedAt,updatedAt,resolvedAt);
+int get hashCode => Object.hash(runtimeType,returnId,orderId,orderItemId,buyerId,sellerId,productId,productName,quantity,returnStatus,returnReason,returnAdminNote,returnTrackingNumber,returnRefundAmountCents,requestedAt,updatedAt,resolvedAt,escalatedAt,escalationReason);
 
 @override
 String toString() {
-  return 'ReturnRequest(returnId: $returnId, orderId: $orderId, orderItemId: $orderItemId, buyerId: $buyerId, sellerId: $sellerId, productId: $productId, productName: $productName, quantity: $quantity, returnStatus: $returnStatus, returnReason: $returnReason, returnAdminNote: $returnAdminNote, returnTrackingNumber: $returnTrackingNumber, returnRefundAmountCents: $returnRefundAmountCents, requestedAt: $requestedAt, updatedAt: $updatedAt, resolvedAt: $resolvedAt)';
+  return 'ReturnRequest(returnId: $returnId, orderId: $orderId, orderItemId: $orderItemId, buyerId: $buyerId, sellerId: $sellerId, productId: $productId, productName: $productName, quantity: $quantity, returnStatus: $returnStatus, returnReason: $returnReason, returnAdminNote: $returnAdminNote, returnTrackingNumber: $returnTrackingNumber, returnRefundAmountCents: $returnRefundAmountCents, requestedAt: $requestedAt, updatedAt: $updatedAt, resolvedAt: $resolvedAt, escalatedAt: $escalatedAt, escalationReason: $escalationReason)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $ReturnRequestCopyWith<$Res>  {
   factory $ReturnRequestCopyWith(ReturnRequest value, $Res Function(ReturnRequest) _then) = _$ReturnRequestCopyWithImpl;
 @useResult
 $Res call({
- String returnId, String orderId, String orderItemId, String buyerId, String sellerId, String productId, String productName, int quantity, String returnStatus, String returnReason, String? returnAdminNote, String? returnTrackingNumber, int? returnRefundAmountCents, DateTime? requestedAt, DateTime? updatedAt, DateTime? resolvedAt
+ String returnId, String orderId, String orderItemId, String buyerId, String sellerId, String productId, String productName, int quantity, String returnStatus, String returnReason, String? returnAdminNote, String? returnTrackingNumber, int? returnRefundAmountCents, DateTime? requestedAt, DateTime? updatedAt, DateTime? resolvedAt, DateTime? escalatedAt, String? escalationReason
 });
 
 
@@ -65,7 +65,7 @@ class _$ReturnRequestCopyWithImpl<$Res>
 
 /// Create a copy of ReturnRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? returnId = null,Object? orderId = null,Object? orderItemId = null,Object? buyerId = null,Object? sellerId = null,Object? productId = null,Object? productName = null,Object? quantity = null,Object? returnStatus = null,Object? returnReason = null,Object? returnAdminNote = freezed,Object? returnTrackingNumber = freezed,Object? returnRefundAmountCents = freezed,Object? requestedAt = freezed,Object? updatedAt = freezed,Object? resolvedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? returnId = null,Object? orderId = null,Object? orderItemId = null,Object? buyerId = null,Object? sellerId = null,Object? productId = null,Object? productName = null,Object? quantity = null,Object? returnStatus = null,Object? returnReason = null,Object? returnAdminNote = freezed,Object? returnTrackingNumber = freezed,Object? returnRefundAmountCents = freezed,Object? requestedAt = freezed,Object? updatedAt = freezed,Object? resolvedAt = freezed,Object? escalatedAt = freezed,Object? escalationReason = freezed,}) {
   return _then(_self.copyWith(
 returnId: null == returnId ? _self.returnId : returnId // ignore: cast_nullable_to_non_nullable
 as String,orderId: null == orderId ? _self.orderId : orderId // ignore: cast_nullable_to_non_nullable
@@ -83,7 +83,9 @@ as String?,returnRefundAmountCents: freezed == returnRefundAmountCents ? _self.r
 as int?,requestedAt: freezed == requestedAt ? _self.requestedAt : requestedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,resolvedAt: freezed == resolvedAt ? _self.resolvedAt : resolvedAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,escalatedAt: freezed == escalatedAt ? _self.escalatedAt : escalatedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,escalationReason: freezed == escalationReason ? _self.escalationReason : escalationReason // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -168,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String returnId,  String orderId,  String orderItemId,  String buyerId,  String sellerId,  String productId,  String productName,  int quantity,  String returnStatus,  String returnReason,  String? returnAdminNote,  String? returnTrackingNumber,  int? returnRefundAmountCents,  DateTime? requestedAt,  DateTime? updatedAt,  DateTime? resolvedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String returnId,  String orderId,  String orderItemId,  String buyerId,  String sellerId,  String productId,  String productName,  int quantity,  String returnStatus,  String returnReason,  String? returnAdminNote,  String? returnTrackingNumber,  int? returnRefundAmountCents,  DateTime? requestedAt,  DateTime? updatedAt,  DateTime? resolvedAt,  DateTime? escalatedAt,  String? escalationReason)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ReturnRequest() when $default != null:
-return $default(_that.returnId,_that.orderId,_that.orderItemId,_that.buyerId,_that.sellerId,_that.productId,_that.productName,_that.quantity,_that.returnStatus,_that.returnReason,_that.returnAdminNote,_that.returnTrackingNumber,_that.returnRefundAmountCents,_that.requestedAt,_that.updatedAt,_that.resolvedAt);case _:
+return $default(_that.returnId,_that.orderId,_that.orderItemId,_that.buyerId,_that.sellerId,_that.productId,_that.productName,_that.quantity,_that.returnStatus,_that.returnReason,_that.returnAdminNote,_that.returnTrackingNumber,_that.returnRefundAmountCents,_that.requestedAt,_that.updatedAt,_that.resolvedAt,_that.escalatedAt,_that.escalationReason);case _:
   return orElse();
 
 }
@@ -189,10 +191,10 @@ return $default(_that.returnId,_that.orderId,_that.orderItemId,_that.buyerId,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String returnId,  String orderId,  String orderItemId,  String buyerId,  String sellerId,  String productId,  String productName,  int quantity,  String returnStatus,  String returnReason,  String? returnAdminNote,  String? returnTrackingNumber,  int? returnRefundAmountCents,  DateTime? requestedAt,  DateTime? updatedAt,  DateTime? resolvedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String returnId,  String orderId,  String orderItemId,  String buyerId,  String sellerId,  String productId,  String productName,  int quantity,  String returnStatus,  String returnReason,  String? returnAdminNote,  String? returnTrackingNumber,  int? returnRefundAmountCents,  DateTime? requestedAt,  DateTime? updatedAt,  DateTime? resolvedAt,  DateTime? escalatedAt,  String? escalationReason)  $default,) {final _that = this;
 switch (_that) {
 case _ReturnRequest():
-return $default(_that.returnId,_that.orderId,_that.orderItemId,_that.buyerId,_that.sellerId,_that.productId,_that.productName,_that.quantity,_that.returnStatus,_that.returnReason,_that.returnAdminNote,_that.returnTrackingNumber,_that.returnRefundAmountCents,_that.requestedAt,_that.updatedAt,_that.resolvedAt);case _:
+return $default(_that.returnId,_that.orderId,_that.orderItemId,_that.buyerId,_that.sellerId,_that.productId,_that.productName,_that.quantity,_that.returnStatus,_that.returnReason,_that.returnAdminNote,_that.returnTrackingNumber,_that.returnRefundAmountCents,_that.requestedAt,_that.updatedAt,_that.resolvedAt,_that.escalatedAt,_that.escalationReason);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -209,10 +211,10 @@ return $default(_that.returnId,_that.orderId,_that.orderItemId,_that.buyerId,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String returnId,  String orderId,  String orderItemId,  String buyerId,  String sellerId,  String productId,  String productName,  int quantity,  String returnStatus,  String returnReason,  String? returnAdminNote,  String? returnTrackingNumber,  int? returnRefundAmountCents,  DateTime? requestedAt,  DateTime? updatedAt,  DateTime? resolvedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String returnId,  String orderId,  String orderItemId,  String buyerId,  String sellerId,  String productId,  String productName,  int quantity,  String returnStatus,  String returnReason,  String? returnAdminNote,  String? returnTrackingNumber,  int? returnRefundAmountCents,  DateTime? requestedAt,  DateTime? updatedAt,  DateTime? resolvedAt,  DateTime? escalatedAt,  String? escalationReason)?  $default,) {final _that = this;
 switch (_that) {
 case _ReturnRequest() when $default != null:
-return $default(_that.returnId,_that.orderId,_that.orderItemId,_that.buyerId,_that.sellerId,_that.productId,_that.productName,_that.quantity,_that.returnStatus,_that.returnReason,_that.returnAdminNote,_that.returnTrackingNumber,_that.returnRefundAmountCents,_that.requestedAt,_that.updatedAt,_that.resolvedAt);case _:
+return $default(_that.returnId,_that.orderId,_that.orderItemId,_that.buyerId,_that.sellerId,_that.productId,_that.productName,_that.quantity,_that.returnStatus,_that.returnReason,_that.returnAdminNote,_that.returnTrackingNumber,_that.returnRefundAmountCents,_that.requestedAt,_that.updatedAt,_that.resolvedAt,_that.escalatedAt,_that.escalationReason);case _:
   return null;
 
 }
@@ -224,7 +226,7 @@ return $default(_that.returnId,_that.orderId,_that.orderItemId,_that.buyerId,_th
 @JsonSerializable()
 
 class _ReturnRequest implements ReturnRequest {
-  const _ReturnRequest({required this.returnId, required this.orderId, required this.orderItemId, required this.buyerId, required this.sellerId, required this.productId, required this.productName, this.quantity = 1, this.returnStatus = 'requested', required this.returnReason, this.returnAdminNote, this.returnTrackingNumber, this.returnRefundAmountCents, this.requestedAt, this.updatedAt, this.resolvedAt});
+  const _ReturnRequest({required this.returnId, required this.orderId, required this.orderItemId, required this.buyerId, required this.sellerId, required this.productId, required this.productName, this.quantity = 1, this.returnStatus = 'requested', required this.returnReason, this.returnAdminNote, this.returnTrackingNumber, this.returnRefundAmountCents, this.requestedAt, this.updatedAt, this.resolvedAt, this.escalatedAt, this.escalationReason});
   factory _ReturnRequest.fromJson(Map<String, dynamic> json) => _$ReturnRequestFromJson(json);
 
 @override final  String returnId;
@@ -243,6 +245,8 @@ class _ReturnRequest implements ReturnRequest {
 @override final  DateTime? requestedAt;
 @override final  DateTime? updatedAt;
 @override final  DateTime? resolvedAt;
+@override final  DateTime? escalatedAt;
+@override final  String? escalationReason;
 
 /// Create a copy of ReturnRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -257,16 +261,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReturnRequest&&(identical(other.returnId, returnId) || other.returnId == returnId)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.orderItemId, orderItemId) || other.orderItemId == orderItemId)&&(identical(other.buyerId, buyerId) || other.buyerId == buyerId)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.productName, productName) || other.productName == productName)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.returnStatus, returnStatus) || other.returnStatus == returnStatus)&&(identical(other.returnReason, returnReason) || other.returnReason == returnReason)&&(identical(other.returnAdminNote, returnAdminNote) || other.returnAdminNote == returnAdminNote)&&(identical(other.returnTrackingNumber, returnTrackingNumber) || other.returnTrackingNumber == returnTrackingNumber)&&(identical(other.returnRefundAmountCents, returnRefundAmountCents) || other.returnRefundAmountCents == returnRefundAmountCents)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.resolvedAt, resolvedAt) || other.resolvedAt == resolvedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReturnRequest&&(identical(other.returnId, returnId) || other.returnId == returnId)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.orderItemId, orderItemId) || other.orderItemId == orderItemId)&&(identical(other.buyerId, buyerId) || other.buyerId == buyerId)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.productName, productName) || other.productName == productName)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.returnStatus, returnStatus) || other.returnStatus == returnStatus)&&(identical(other.returnReason, returnReason) || other.returnReason == returnReason)&&(identical(other.returnAdminNote, returnAdminNote) || other.returnAdminNote == returnAdminNote)&&(identical(other.returnTrackingNumber, returnTrackingNumber) || other.returnTrackingNumber == returnTrackingNumber)&&(identical(other.returnRefundAmountCents, returnRefundAmountCents) || other.returnRefundAmountCents == returnRefundAmountCents)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.resolvedAt, resolvedAt) || other.resolvedAt == resolvedAt)&&(identical(other.escalatedAt, escalatedAt) || other.escalatedAt == escalatedAt)&&(identical(other.escalationReason, escalationReason) || other.escalationReason == escalationReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,returnId,orderId,orderItemId,buyerId,sellerId,productId,productName,quantity,returnStatus,returnReason,returnAdminNote,returnTrackingNumber,returnRefundAmountCents,requestedAt,updatedAt,resolvedAt);
+int get hashCode => Object.hash(runtimeType,returnId,orderId,orderItemId,buyerId,sellerId,productId,productName,quantity,returnStatus,returnReason,returnAdminNote,returnTrackingNumber,returnRefundAmountCents,requestedAt,updatedAt,resolvedAt,escalatedAt,escalationReason);
 
 @override
 String toString() {
-  return 'ReturnRequest(returnId: $returnId, orderId: $orderId, orderItemId: $orderItemId, buyerId: $buyerId, sellerId: $sellerId, productId: $productId, productName: $productName, quantity: $quantity, returnStatus: $returnStatus, returnReason: $returnReason, returnAdminNote: $returnAdminNote, returnTrackingNumber: $returnTrackingNumber, returnRefundAmountCents: $returnRefundAmountCents, requestedAt: $requestedAt, updatedAt: $updatedAt, resolvedAt: $resolvedAt)';
+  return 'ReturnRequest(returnId: $returnId, orderId: $orderId, orderItemId: $orderItemId, buyerId: $buyerId, sellerId: $sellerId, productId: $productId, productName: $productName, quantity: $quantity, returnStatus: $returnStatus, returnReason: $returnReason, returnAdminNote: $returnAdminNote, returnTrackingNumber: $returnTrackingNumber, returnRefundAmountCents: $returnRefundAmountCents, requestedAt: $requestedAt, updatedAt: $updatedAt, resolvedAt: $resolvedAt, escalatedAt: $escalatedAt, escalationReason: $escalationReason)';
 }
 
 
@@ -277,7 +281,7 @@ abstract mixin class _$ReturnRequestCopyWith<$Res> implements $ReturnRequestCopy
   factory _$ReturnRequestCopyWith(_ReturnRequest value, $Res Function(_ReturnRequest) _then) = __$ReturnRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String returnId, String orderId, String orderItemId, String buyerId, String sellerId, String productId, String productName, int quantity, String returnStatus, String returnReason, String? returnAdminNote, String? returnTrackingNumber, int? returnRefundAmountCents, DateTime? requestedAt, DateTime? updatedAt, DateTime? resolvedAt
+ String returnId, String orderId, String orderItemId, String buyerId, String sellerId, String productId, String productName, int quantity, String returnStatus, String returnReason, String? returnAdminNote, String? returnTrackingNumber, int? returnRefundAmountCents, DateTime? requestedAt, DateTime? updatedAt, DateTime? resolvedAt, DateTime? escalatedAt, String? escalationReason
 });
 
 
@@ -294,7 +298,7 @@ class __$ReturnRequestCopyWithImpl<$Res>
 
 /// Create a copy of ReturnRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? returnId = null,Object? orderId = null,Object? orderItemId = null,Object? buyerId = null,Object? sellerId = null,Object? productId = null,Object? productName = null,Object? quantity = null,Object? returnStatus = null,Object? returnReason = null,Object? returnAdminNote = freezed,Object? returnTrackingNumber = freezed,Object? returnRefundAmountCents = freezed,Object? requestedAt = freezed,Object? updatedAt = freezed,Object? resolvedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? returnId = null,Object? orderId = null,Object? orderItemId = null,Object? buyerId = null,Object? sellerId = null,Object? productId = null,Object? productName = null,Object? quantity = null,Object? returnStatus = null,Object? returnReason = null,Object? returnAdminNote = freezed,Object? returnTrackingNumber = freezed,Object? returnRefundAmountCents = freezed,Object? requestedAt = freezed,Object? updatedAt = freezed,Object? resolvedAt = freezed,Object? escalatedAt = freezed,Object? escalationReason = freezed,}) {
   return _then(_ReturnRequest(
 returnId: null == returnId ? _self.returnId : returnId // ignore: cast_nullable_to_non_nullable
 as String,orderId: null == orderId ? _self.orderId : orderId // ignore: cast_nullable_to_non_nullable
@@ -312,7 +316,9 @@ as String?,returnRefundAmountCents: freezed == returnRefundAmountCents ? _self.r
 as int?,requestedAt: freezed == requestedAt ? _self.requestedAt : requestedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,resolvedAt: freezed == resolvedAt ? _self.resolvedAt : resolvedAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,escalatedAt: freezed == escalatedAt ? _self.escalatedAt : escalatedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,escalationReason: freezed == escalationReason ? _self.escalationReason : escalationReason // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

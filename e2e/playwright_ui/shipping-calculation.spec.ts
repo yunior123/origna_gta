@@ -155,6 +155,152 @@ test.describe('Shipping Calculation', () => {
     expect(order.taxAmountCents, 'AB tax must be exactly 5% GST').toBeLessThanOrEqual(expected5pct + 1);
   });
 
+  test('Perishable item from local seller: checkout succeeds with same-day option', async () => {
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    const productId = `test_perishable_local_${Date.now()}`;
+
+    await writeDoc(`products/${productId}`, toFirestoreFields({
+      sellerId: TEST_UIDS.SELLER,
+      sellerSku: `PERISH-LOCAL-${Date.now()}`,
+      name: 'Fresh Local Produce',
+      description: 'Perishable local item for E2E testing.',
+      price: 12.00,
+      priceCents: 1200,
+      lifecycleStatus: 'active',
+      stockQuantity: 20,
+      categoryId: 1,
+      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+      keywords: [],
+      isDigital: false,
+      isLocalDeliveryOnly: true,
+      isPerishable: true,
+      freeShipping: false,
+      weightKg: 0.5,
+      shipFromCity: 'Toronto',
+      shipFromProvince: 'ON',
+      shipFromCountry: 'Canada',
+      sellerAddress: { street: '1 Queen St W', city: 'Toronto', state: 'ON', postalCode: 'M5H 2N2', country: 'Canada' },
+      // same-day option required for perishables — backend enforces this
+      deliveryOptions: [{ type: 'same_day', national: false, estimatedDays: 0 }],
+      estimatedShipDays: 0,
+      dateCreated: new Date().toISOString(),
+    }), adminAuth.idToken);
+
+    try {
+      const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+      // Buyer in Toronto (within 50km of seller) — same-day should be valid
+      data.shippingAddress.city = 'Toronto';
+      data.shippingAddress.state = 'ON';
+      data.shippingAddress.postalCode = 'M5V 3A8';
+      data.deliverySpeed = 'same_day';
+
+      const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
+      const order = parseDoc(await readDoc(`orders/${result.orderId}`, buyerAuth.idToken));
+
+      expect(order.subtotalCents).toBe(1200);
+      // Verify item has isPerishable snapshotted
+      expect(order.items).toBeDefined();
+      const item = order.items[0];
+      expect(item.isPerishable).toBe(true);
+      expect(item.isLocalDeliveryOnly).toBe(true);
+    } finally {
+      await deleteDoc(`products/${productId}`, adminAuth.idToken).catch(() => {});
+    }
+  });
+
+  test('Local-only item: checkout blocked for out-of-province buyer', async () => {
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    const productId = `test_local_only_block_${Date.now()}`;
+
+    await writeDoc(`products/${productId}`, toFirestoreFields({
+      sellerId: TEST_UIDS.SELLER,
+      sellerSku: `LOCAL-BLOCK-${Date.now()}`,
+      name: 'Local Only Product',
+      description: 'Local delivery only item — no cross-province.',
+      price: 8.00,
+      priceCents: 800,
+      lifecycleStatus: 'active',
+      stockQuantity: 10,
+      categoryId: 1,
+      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+      keywords: [],
+      isDigital: false,
+      isLocalDeliveryOnly: true,
+      isPerishable: false,
+      freeShipping: false,
+      weightKg: 0.3,
+      shipFromCity: 'Toronto',
+      shipFromProvince: 'ON',
+      shipFromCountry: 'Canada',
+      sellerAddress: { street: '1 King St W', city: 'Toronto', state: 'ON', postalCode: 'M5H 1A1', country: 'Canada' },
+      deliveryOptions: [{ type: 'local_delivery', national: false }],
+      dateCreated: new Date().toISOString(),
+    }), adminAuth.idToken);
+
+    try {
+      const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+      // Buyer in Quebec — different province, 500+ km away
+      data.shippingAddress.city = 'Montreal';
+      data.shippingAddress.state = 'QC';
+      data.shippingAddress.postalCode = 'H2X 1Y6';
+
+      const result = await callCallable('create_checkout_session', data, buyerAuth.idToken);
+      // Backend must reject this with an error (local-only + out-of-province)
+      expect(result.error).toBeTruthy();
+      const code = result.error?.code ?? result.error;
+      expect(['failed-precondition', 'invalid-argument', 'internal']).toContain(code);
+    } finally {
+      await deleteDoc(`products/${productId}`, adminAuth.idToken).catch(() => {});
+    }
+  });
+
+  test('Perishable product without local/same-day option is auto-deactivated by backend', async () => {
+    // This tests the CFIA-compliance enforcement in products.py
+    // A product marked perishable but with only standard shipping should NOT be purchasable
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    const productId = `test_perishable_invalid_${Date.now()}`;
+
+    await writeDoc(`products/${productId}`, toFirestoreFields({
+      sellerId: TEST_UIDS.SELLER,
+      sellerSku: `PERISH-INVALID-${Date.now()}`,
+      name: 'Bad Perishable Product',
+      description: 'Perishable item with only standard shipping — should be deactivated.',
+      price: 5.00,
+      priceCents: 500,
+      // Intentionally not setting lifecycleStatus — let the trigger set it
+      stockQuantity: 5,
+      categoryId: 1,
+      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+      keywords: [],
+      isDigital: false,
+      isLocalDeliveryOnly: false,
+      isPerishable: true,
+      freeShipping: false,
+      weightKg: 0.2,
+      shipFromCity: 'Toronto',
+      shipFromProvince: 'ON',
+      shipFromCountry: 'Canada',
+      sellerAddress: { street: '100 Front St', city: 'Toronto', state: 'ON', postalCode: 'M5J 1E3', country: 'Canada' },
+      // Standard shipping only — CFIA violation for perishables
+      deliveryOptions: [{ type: 'standard', national: true }],
+      dateCreated: new Date().toISOString(),
+    }), adminAuth.idToken);
+
+    try {
+      // Trigger on_product_created should deactivate this product
+      // Wait for the Cloud Function to process (up to 10s)
+      await new Promise(r => setTimeout(r, 10_000));
+      const doc = parseDoc(await readDoc(`products/${productId}`, adminAuth.idToken));
+
+      // Backend CFIA enforcement: isActive should be false OR product should not be purchasable
+      // The backend sets isActive=false when perishable has no local/same-day option
+      const isActive = doc.isActive ?? doc.lifecycleStatus === 'active';
+      expect(isActive, 'Perishable product without local/same-day must be deactivated').toBe(false);
+    } finally {
+      await deleteDoc(`products/${productId}`, adminAuth.idToken).catch(() => {});
+    }
+  });
+
   test('International seller has non-zero shipping cost', async () => {
     // Premium buyers get free shipping — skip rather than fail if buyer is currently premium.
     const subResult = await callCallable('get_subscription_status', {}, buyerAuth.idToken);

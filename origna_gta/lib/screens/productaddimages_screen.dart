@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -294,3 +295,19 @@ class _ImageTile extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'ProductAddImages — Dark', group: 'ProductAddImages')
+Widget previewProductAddImagesDark() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(),
+      home: const ProductAddImages(imageModels: []),
+    );
+
+@Preview(name: 'ProductAddImages — Light', group: 'ProductAddImages')
+Widget previewProductAddImagesLight() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(),
+      home: const ProductAddImages(imageModels: []),
+    );

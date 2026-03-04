@@ -2575,7 +2575,7 @@
       }
     },
     "return_requests": {
-      "description": "Tracks physical return requests with state machine: requested \u2192 approved \u2192 label_issued \u2192 received \u2192 refunded | rejected",
+      "description": "Tracks physical return requests with state machine: requested \u2192 approved \u2192 label_issued \u2192 received \u2192 refunded | rejected | escalated",
       "fields": {
         "returnId": {
           "type": "string",
@@ -2627,7 +2627,8 @@
             "label_issued",
             "received",
             "refunded",
-            "rejected"
+            "rejected",
+            "escalated"
           ]
         },
         "returnReason": {
@@ -2665,6 +2666,17 @@
           "type": "timestamp",
           "required": false,
           "description": "When return was resolved (refunded or rejected)"
+        },
+        "escalatedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When the return was escalated to admin"
+        },
+        "escalationReason": {
+          "type": "string",
+          "required": false,
+          "description": "Reason for escalation (buyer-provided or system-generated)",
+          "maxLength": 1000
         }
       }
     },

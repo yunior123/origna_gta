@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/env_config.dart';
 
+// Re-export SortOption so algolia_service importers don't need an extra import.
+export 'package:origna_gta/core/schema/schema_constants.dart' show SortOption;
+
 /// Algolia search service for products
 /// Uses EnvConfig to select the correct index (products vs products_emulator).
 /// Detects empty credentials and exposes [isAvailable] so callers can
@@ -23,12 +26,33 @@ class AlgoliaService {
     _hitsSearcher?.dispose();
   }
 
-  /// Set search with optional category filter (facet).
+  /// Set search with optional category filter (facet), sort option, and price range.
+  ///
+  /// GAP #1: [sortOption] switches the Algolia replica index for price sorts.
+  /// GAP #2: [minPriceCents] / [maxPriceCents] apply numeric filters on `priceCents`.
   /// Always enforces lifecycleStatus=active so inactive/archived products never appear.
-  void search(String searchQuery, {int? categoryId, String? subcategory}) {
+  void search(
+    String searchQuery, {
+    int? categoryId,
+    String? subcategory,
+    SortOption sortOption = SortOption.relevance,
+    int? minPriceCents,
+    int? maxPriceCents,
+  }) {
     if (_hitsSearcher == null) return;
     _hitsSearcher.applyState((state) {
       var newState = state.copyWith(query: searchQuery, page: 0);
+
+      // GAP #1 — Switch replica index based on sort option
+      final baseIndex = EnvConfig().algoliaIndexName;
+      final targetIndex = switch (sortOption) {
+        SortOption.priceLowToHigh => '$baseIndex${AlgoliaReplicaSuffixes.priceAsc}',
+        SortOption.priceHighToLow => '$baseIndex${AlgoliaReplicaSuffixes.priceDesc}',
+        // Newest and relevance both use the base index (default ranking)
+        SortOption.newest || SortOption.relevance => baseIndex,
+      };
+      newState = newState.copyWith(indexName: targetIndex);
+
       // Always filter to active products available to Canadian buyers (SRCH-H1)
       final filters = <FilterFacet>{
         Filter.facet(Fields.lifecycleStatus, ProductLifecycleStatusValues.active),
@@ -42,6 +66,17 @@ class AlgoliaService {
         filters.add(Filter.facet(Fields.subcategory, subcategory));
       }
       newState = newState.copyWith(filterGroups: {FilterGroup.facet(filters: filters)});
+
+      // GAP #2 — Numeric price range filters
+      if (minPriceCents != null || maxPriceCents != null) {
+        final numericFilters = <String>[];
+        if (minPriceCents != null) numericFilters.add('${Fields.priceCents}>=$minPriceCents');
+        if (maxPriceCents != null) numericFilters.add('${Fields.priceCents}<=$maxPriceCents');
+        newState = newState.copyWith(numericFilters: numericFilters);
+      } else {
+        newState = newState.copyWith(numericFilters: []);
+      }
+
       return newState;
     });
   }

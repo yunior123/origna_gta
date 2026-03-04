@@ -30,7 +30,7 @@ def calculate_shipping_cost(req: https_fn.CallableRequest) -> dict:
 
         return {"success": True, "cost": cost}
     except ValueError as e:
-        raise https_fn.HttpsError("invalid-argument", str(e))
+        raise https_fn.HttpsError("invalid-argument", str(e)) from e
     except Exception as e:
         logger.error(f"Error calculating shipping cost: {e}")
-        raise https_fn.HttpsError("internal", "Internal error calculating shipping cost")
+        raise https_fn.HttpsError("internal", "Internal error calculating shipping cost") from e

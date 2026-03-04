@@ -2,6 +2,8 @@
 
 > **Purpose:** When Claude examines or edits ANY file, consult this index first to know ALL files that participate in that workflow. This prevents logic bugs from cross-stack inconsistencies.
 
+**Full system architecture:** See [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) — Mermaid diagrams for all flows, complete Cloud Functions catalog, DB schema, security layers, and Canadian compliance summary.
+
 ---
 
 ## 🧪 E2E TEST CONTEXT

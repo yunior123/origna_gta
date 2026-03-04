@@ -7,6 +7,7 @@ import 'package:origna_gta/models/generated/base_models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/utils/utils.dart' show AppError;
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -49,45 +50,52 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
   Widget build(BuildContext context) {
     final warehousesAsync = ref.watch(sellerWarehousesStreamProvider);
     final vmState = ref.watch(warehousesViewModelProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBarFactory.simple(
-        title: 'seller.warehouses_title'.tr(),
-      ),
-      body: warehousesAsync.when(
-        loading: () => const Center(child: ModernLoadingIndicator()),
-        error: (e, _) => Center(
-          child: AnimatedEmptyState(
-            icon: Icons.error_outline_rounded,
-            title: 'common.error_loading'.tr(),
-            subtitle: AppError.getMessage(e),
-            action: ModernButton(
-              label: 'common.retry'.tr(),
-              onPressed: () => ref.invalidate(sellerWarehousesStreamProvider),
-              icon: Icons.refresh,
+    return Container(
+      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBarFactory.simple(
+          title: 'seller.warehouses_title'.tr(),
+          subtitle: 'seller.warehouses_subtitle'.tr(),
+        ),
+        body: warehousesAsync.when(
+          loading: () => const Center(child: ModernLoadingIndicator()),
+          error: (e, _) => Center(
+            child: AnimatedEmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'common.error_loading'.tr(),
+              subtitle: AppError.getMessage(e),
+              action: ModernButton(
+                label: 'common.retry'.tr(),
+                onPressed: () => ref.invalidate(sellerWarehousesStreamProvider),
+                icon: Icons.refresh,
+              ),
             ),
           ),
+          data: (warehouses) => _WarehousesList(
+            warehouses: warehouses,
+            isActionLoading: vmState.isLoading,
+          ),
         ),
-        data: (warehouses) => _WarehousesList(
-          warehouses: warehouses,
-          isActionLoading: vmState.isLoading,
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: DesignTokens.primary,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add_location_alt_outlined),
+          label: Text('seller.add_location'.tr()),
+          onPressed: vmState.isLoading ? null : () => _showWarehouseForm(context),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: DesignTokens.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_location_alt_outlined),
-        label: Text('seller.add_location'.tr()),
-        onPressed: vmState.isLoading ? null : () => _showWarehouseForm(context),
       ),
     );
   }
 
   void _showWarehouseForm(BuildContext context, {SellerWarehouse? existing}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? DesignTokens.darkCard : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -174,30 +182,35 @@ class _WarehousesList extends ConsumerWidget {
     return RefreshIndicator(
       color: DesignTokens.primary,
       onRefresh: () async => ref.invalidate(sellerWarehousesStreamProvider),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: warehouses.length,
-        itemBuilder: (context, i) {
-          final wh = warehouses[i];
-          return _WarehouseCard(
-            warehouse: wh,
-            isActionLoading: isActionLoading,
-            onEdit: () => context
-                .findAncestorStateOfType<_SellerWarehousesScreenState>()
-                ?._showWarehouseForm(context, existing: wh),
-            onDelete: () async {
-              final confirmed = await _confirmDelete(context, wh.label);
-              if (confirmed == true) {
-                await ref.read(warehousesViewModelProvider.notifier).deleteWarehouse(wh.warehouseId);
-              }
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: warehouses.length,
+            itemBuilder: (context, i) {
+              final wh = warehouses[i];
+              return _WarehouseCard(
+                warehouse: wh,
+                isActionLoading: isActionLoading,
+                onEdit: () => context
+                    .findAncestorStateOfType<_SellerWarehousesScreenState>()
+                    ?._showWarehouseForm(context, existing: wh),
+                onDelete: () async {
+                  final confirmed = await _confirmDelete(context, wh.label);
+                  if (confirmed == true) {
+                    await ref.read(warehousesViewModelProvider.notifier).deleteWarehouse(wh.warehouseId);
+                  }
+                },
+                onSetDefault: () => ref.read(warehousesViewModelProvider.notifier).updateWarehouse(
+                  warehouseId: wh.warehouseId,
+                  isDefault: true,
+                ),
+              );
             },
-            onSetDefault: () => ref.read(warehousesViewModelProvider.notifier).updateWarehouse(
-              warehouseId: wh.warehouseId,
-              isDefault: true,
-            ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -207,7 +220,7 @@ class _WarehousesList extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('common.delete'.tr()),
-        content: Text('Remove "$label"? Product references to this location will be cleaned up automatically.'),
+        content: Text('seller.warehouse_delete_confirm'.tr(namedArgs: {'name': label})),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -245,9 +258,10 @@ class _WarehouseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.white,
+      color: isDark ? DesignTokens.darkCard : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: warehouse.isDefault
@@ -263,7 +277,7 @@ class _WarehouseCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Color.fromRGBO(102, 126, 234, 0.15),
+                color: DesignTokens.primary.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
@@ -294,7 +308,7 @@ class _WarehouseCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Color.fromRGBO(102, 126, 234, 0.2),
+                            color: DesignTokens.primary.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -327,8 +341,8 @@ class _WarehouseCard extends StatelessWidget {
             ),
             // Actions
             PopupMenuButton<String>(
-              tooltip: 'Warehouse options',
-              color: Colors.white,
+              tooltip: 'seller.warehouse_options'.tr(),
+              color: isDark ? DesignTokens.darkCard : Colors.white,
               iconColor: DesignTokens.textSecondary,
               itemBuilder: (_) => [
                 if (!warehouse.isDefault)
@@ -473,6 +487,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.existing != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
@@ -498,7 +513,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
               Text(
                 isEdit ? 'seller.edit_location'.tr() : 'seller.add_shipping_location'.tr(),
                 style: TextStyle(
-                  color: DesignTokens.textPrimary,
+                  color: isDark ? Colors.white : DesignTokens.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -555,7 +570,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                     child: _Field(
                       controller: _cityCtrl,
                       label: 'address.city'.tr(),
-                      hint: 'Toronto',
+                      hint: 'seller.city_hint'.tr(),
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'address.city_required'.tr() : null,
                     ),
                   ),
@@ -609,7 +624,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                     child: _Field(
                       controller: _countryCtrl,
                       label: 'address.country'.tr(),
-                      hint: 'Canada',
+                      hint: 'seller.country_hint'.tr(),
                     ),
                   ),
                 ],
@@ -628,7 +643,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                   Expanded(
                     child: Text(
                       'seller.set_default_shipping'.tr(),
-                      style: TextStyle(color: DesignTokens.textPrimary, fontSize: 14),
+                      style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary, fontSize: 14),
                     ),
                   ),
                 ],
@@ -680,33 +695,40 @@ class _TypeChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? Color.fromRGBO(102, 126, 234, 0.15) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? DesignTokens.primary : DesignTokens.outline,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16,
-                color: selected ? DesignTokens.primary : DesignTokens.textSecondary),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? DesignTokens.primary : DesignTokens.textSecondary,
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+      child: Builder(
+        builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? DesignTokens.primary.withValues(alpha: 0.15)
+                  : isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? DesignTokens.primary : DesignTokens.outline,
+                width: selected ? 1.5 : 1,
               ),
             ),
-          ],
-        ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16,
+                    color: selected ? DesignTokens.primary : DesignTokens.textSecondary),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? DesignTokens.primary : DesignTokens.textSecondary,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -729,18 +751,19 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextFormField(
       controller: controller,
       validator: validator,
       maxLength: maxLength,
-      style: TextStyle(color: DesignTokens.textPrimary, fontSize: 14),
+      style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: TextStyle(color: DesignTokens.textSecondary),
         hintStyle: TextStyle(color: DesignTokens.textTertiary),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
         counterText: '',
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

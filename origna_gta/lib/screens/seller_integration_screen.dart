@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,7 +20,8 @@ class SellerIntegrationScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: CustomAppBar(title: 'seller_integration.title'.tr()),
+      appBar: AppBarFactory.simple(title: 'seller_integration.title'.tr()),
+      backgroundColor: Colors.transparent,
       body: Container(
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: CustomScrollView(
@@ -101,7 +103,7 @@ class _CodeBlock extends StatelessWidget {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(14, 12, 44, 12),
-          decoration: BoxDecoration(color: isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF4F4F8), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: isDark ? DesignTokens.darkSurface : const Color(0xFFF4F4F8), borderRadius: BorderRadius.circular(8)),
           child: SelectableText(code, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, height: 1.6)),
         ),
         Positioned(
@@ -571,3 +573,23 @@ func activateLicense(key: String, platform: String = "macos") async throws -> Bo
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'SellerIntegrationScreen — Dark', group: 'SellerIntegrationScreen')
+Widget previewSellerIntegrationScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const SellerIntegrationScreen(),
+      ),
+    );
+
+@Preview(name: 'SellerIntegrationScreen — Light', group: 'SellerIntegrationScreen')
+Widget previewSellerIntegrationScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const SellerIntegrationScreen(),
+      ),
+    );

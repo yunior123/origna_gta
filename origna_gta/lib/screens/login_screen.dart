@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -64,10 +65,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
             opacity: _fadeAnimation,
             child: SlideTransition(
               position: _slideAnimation,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 500),
-                  child: SingleChildScrollView(
+              child: LayoutBuilder(
+                builder: (_, constraints) {
+                  final isDesktop = constraints.maxWidth >= 900;
+                  final formPanel = SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing20, vertical: DesignTokens.spacing24),
                     child: Form(
                       key: _formKey,
@@ -384,8 +385,65 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                         ],
                       ),
                     ),
-                  ),
-                ),
+                  );
+                  if (isDesktop) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.08)],
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ShaderMask(
+                                  shaderCallback: (b) => DesignTokens.primaryGradient.createShader(b),
+                                  child: const Text(
+                                    'OrignaGTA',
+                                    style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: Colors.white),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text('app.tagline'.tr(), style: TextStyle(fontSize: 17, color: DesignTokens.textSecondary, height: 1.5)),
+                                const SizedBox(height: 48),
+                                ...['auth.feature_1', 'auth.feature_2', 'auth.feature_3'].map(
+                                  (key) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 20),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, shape: BoxShape.circle),
+                                          child: const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(child: Text(key.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 500, child: formPanel),
+                      ],
+                    );
+                  }
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 500),
+                      child: formPanel,
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -650,3 +708,23 @@ class _GoogleGPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'LoginScreen — Dark', group: 'LoginScreen')
+Widget previewLoginScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const LoginScreen(),
+      ),
+    );
+
+@Preview(name: 'LoginScreen — Light', group: 'LoginScreen')
+Widget previewLoginScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const LoginScreen(),
+      ),
+    );

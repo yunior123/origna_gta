@@ -76,6 +76,24 @@
       "title": "Helpfulcount",
       "type": "integer"
     },
+    "verifiedPurchase": {
+      "default": true,
+      "title": "Verifiedpurchase",
+      "type": "boolean"
+    },
+    "isRelatedParty": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "True when shipping address matches seller address — flagged for moderation.",
+      "title": "Isrelatedparty"
+    },
     "helpfulVoterIds": {
       "items": {
         "type": "string"

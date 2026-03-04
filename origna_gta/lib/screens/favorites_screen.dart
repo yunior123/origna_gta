@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -26,7 +28,12 @@ class FavoritesScreen extends ConsumerWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'favorites.my_favorites'.tr()),
+        appBar: AppBarFactory.simple(
+          title: 'favorites.my_favorites'.tr(),
+          subtitle: favoritesAsync.valueOrNull != null && favoritesAsync.valueOrNull!.isNotEmpty
+              ? 'favorites.items_count'.tr(namedArgs: {'count': '${favoritesAsync.valueOrNull!.length}'})
+              : null,
+        ),
         backgroundColor: Colors.transparent,
         body: favoritesAsync.when(
           loading: () => Center(
@@ -85,7 +92,7 @@ class FavoritesScreen extends ConsumerWidget {
 
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900),
+                constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
                 child: RefreshIndicator(
                   color: DesignTokens.primary,
                   onRefresh: () async => ref.invalidate(favoritedProductsProvider),
@@ -162,3 +169,23 @@ class FavoritesScreen extends ConsumerWidget {
     return 0.95;
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'FavoritesScreen — Dark', group: 'FavoritesScreen')
+Widget previewFavoritesScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const FavoritesScreen(),
+      ),
+    );
+
+@Preview(name: 'FavoritesScreen — Light', group: 'FavoritesScreen')
+Widget previewFavoritesScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const FavoritesScreen(),
+      ),
+    );

@@ -728,8 +728,13 @@ class ProductCreate(BaseModel):
     @field_validator("lifecycleStatus")
     @classmethod
     def validate_lifecycle_status_create(cls, v: str) -> str:
-        if v not in ProductLifecycleStatusValues.ALL:
-            raise ValueError(f"Invalid lifecycleStatus: {v}. Must be one of: {ProductLifecycleStatusValues.ALL}")
+        # Sellers can only create in 'draft'. The handler overwrites to 'under_review',
+        # but we enforce this at the model layer too (defense-in-depth against model misuse).
+        if v != ProductLifecycleStatusValues.DRAFT:
+            raise ValueError(
+                f"lifecycleStatus must be '{ProductLifecycleStatusValues.DRAFT}' when creating a product; "
+                f"got '{v}'. Status transitions are managed by the backend."
+            )
         return v
 
     @field_validator("condition")
@@ -752,6 +757,14 @@ class ProductCreate(BaseModel):
         if v is not None and not v.startswith("https://"):
             raise ValueError("bookSourceUrl must start with https://")
         return v
+
+    @model_validator(mode="after")
+    def validate_variant_sku_uniqueness(self) -> "ProductCreate":
+        """Variant SKUs must be unique within a product when set."""
+        skus = [v.sku for v in self.variants if v.sku]
+        if len(skus) != len(set(skus)):
+            raise ValueError("Each variant SKU must be unique within the product")
+        return self
 
     @model_validator(mode="after")
     def validate_digital_consistency_create(self) -> "ProductCreate":
@@ -849,7 +862,8 @@ class ProductUpdate(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name_update(cls, v: str | None) -> str | None:
-        if v is None: return v
+        if v is None:
+            return v
         import re
         if re.search(r"[<>]", v):
             raise ValueError("Name contains disallowed characters")

@@ -21,6 +21,21 @@
 
   <!-- Stripe JS (defer to not block initial paint) -->
   <script src="https://js.stripe.com/v3/" defer></script>
+  <!-- Guard: prevents passkeys_web plugin from crashing if bundle.js hasn't loaded yet.
+       Stubs all 7 methods from interop.dart; real SDK overwrites on production load. -->
+  <script>
+    if (typeof window.PasskeyAuthenticator === 'undefined') {
+      window.PasskeyAuthenticator = {
+        init: function() {},
+        register: function() { return Promise.reject('passkeys not loaded'); },
+        login: function() { return Promise.reject('passkeys not loaded'); },
+        cancelCurrentAuthenticatorOperation: function() {},
+        isUserVerifyingPlatformAuthenticatorAvailable: function() { return Promise.resolve(false); },
+        isConditionalMediationAvailable: function() { return Promise.resolve(false); },
+        hasPasskeySupport: function() { return false; }
+      };
+    }
+  </script>
   <!-- Passkeys Web SDK (required by passkeys_web package for WebAuthn/FIDO2) -->
   <script src="https://github.com/corbado/flutter-passkeys/releases/download/2.4.0/bundle.js" type="application/javascript"></script>
 </head>

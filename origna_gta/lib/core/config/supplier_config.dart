@@ -468,7 +468,6 @@ SupplierPlatformConfig getSupplierConfig(String? supplierId) {
 /// Get all active supplier platforms as dropdown items
 List<DropdownMenuItem<String>> getSupplierDropdownItems() {
   return supplierPlatforms.entries
-      .where((e) => e.value.isActive)
       .map(
         (e) => DropdownMenuItem(
           value: e.key,
@@ -498,7 +497,7 @@ String? getSupplierRegion(String? supplierId) {
 /// Get suppliers grouped by region for organized display
 Map<String, List<SupplierPlatformConfig>> getSuppliersByRegion() {
   final grouped = <String, List<SupplierPlatformConfig>>{};
-  for (final platform in supplierPlatforms.values.where((p) => p.isActive)) {
+  for (final platform in supplierPlatforms.values) {
     grouped.putIfAbsent(platform.region, () => []).add(platform);
   }
   return grouped;
@@ -525,9 +524,6 @@ class SupplierPlatformConfig {
   final String? websiteUrl;
   final String description;
   final bool isInternational;
-  final bool isActive; // Can be disabled without removing
-  final String? deprecationNote; // Set when platform is shut down or deprecated
-
   const SupplierPlatformConfig({
     required this.id,
     required this.displayName,
@@ -543,8 +539,6 @@ class SupplierPlatformConfig {
     this.websiteUrl,
     this.description = '',
     this.isInternational = true,
-    this.isActive = true,
-    this.deprecationNote,
   });
 
   /// Whether this is a custom/user-defined supplier

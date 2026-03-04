@@ -664,7 +664,6 @@ release_cron_lock(job_name)
 | `create_connect_account` | HTTPS Callable | Creates Stripe Express Connect account for seller |
 | `create_account_link` | HTTPS Callable | Generates Stripe Connect onboarding URL |
 | `get_connect_account_status` | HTTPS Callable | Polls Stripe for seller's chargesEnabled + payoutsEnabled |
-| `capture_payment` | HTTPS Callable | Manual payment capture (legacy — replaced by automatic capture) |
 
 ### Orders — `orders.py`
 

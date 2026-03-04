@@ -135,6 +135,8 @@ enum PaymentStatus {
   partiallyRefunded,
   @JsonValue('voided')
   voided,
+  @JsonValue('cancel_failed')
+  cancelFailed,
 }
 
 enum ShippingApprovalStatus {

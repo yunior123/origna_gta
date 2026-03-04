@@ -68,6 +68,7 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
     now = datetime.now(UTC)
 
     # Idempotent re-activation: same device already registered
+    digital_type = lic.get(Fields.DIGITAL_TYPE)
     for i, act in enumerate(activations):
         if act.get(Fields.DEVICE_ID) == device_id:
             activations[i] = {**act, Fields.LAST_VERIFIED_AT: now}
@@ -76,13 +77,15 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
             )
             builds = lic.get(Fields.DIGITAL_BUILDS, {})
             activated_at = act.get("activatedAt")
+            # Never expose real seller download URLs — software downloads use /sdl token redirect
+            safe_builds: dict = {p: "" for p in builds} if digital_type == DigitalTypeValues.SOFTWARE else {}
             return {
                 "approved": True,
                 "licenseKey": license_key,
                 "activatedAt": activated_at.isoformat() if hasattr(activated_at, 'isoformat') else str(activated_at) if activated_at else None,
                 Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
                 "platforms": list(builds.keys()) if builds else [],
-                "downloadUrls": builds if isinstance(builds, dict) else {},
+                "downloadUrls": safe_builds,
             }
 
     # Check device limit
@@ -101,13 +104,15 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
     db.collection(Collections.LICENSES).document(license_key).update({"activations": activations, "updatedAt": now})
 
     builds = lic.get(Fields.DIGITAL_BUILDS, {})
+    # Never expose real seller download URLs — software downloads use /sdl token redirect
+    safe_builds_new: dict = {p: "" for p in builds} if digital_type == DigitalTypeValues.SOFTWARE else {}
     return {
         "approved": True,
         "licenseKey": license_key,
         "activatedAt": now.isoformat(),
         Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
         "platforms": list(builds.keys()) if builds else [],
-        "downloadUrls": builds if isinstance(builds, dict) else {},
+        "downloadUrls": safe_builds_new,
     }
 
 
@@ -220,7 +225,8 @@ def _revoke_digital_licenses_for_order(order_id: str) -> int:
     any refund invalidates the license.
     """
     db = get_db()
-    licenses = db.collection(Collections.LICENSES).where(Fields.ORDER_ID, "==", order_id).stream()
+    # Cost fix: limit to 100 — an order cannot have more licenses than cart items (bounded by MAX_CART_ITEMS)
+    licenses = db.collection(Collections.LICENSES).where(Fields.ORDER_ID, "==", order_id).limit(100).stream()
     count = 0
     now = datetime.now(UTC)
     batch = db.batch()

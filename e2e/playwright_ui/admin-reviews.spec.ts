@@ -125,21 +125,23 @@ test.describe('Admin Reviews Tab', () => {
 
     const reviewCount = await reviewItems.count();
     const hasEmpty = await emptyState.isVisible({ timeout: 5_000 }).catch(() => false);
-    const isLoading = await loadingIndicator.isVisible({ timeout: 3_000 }).catch(() => false);
+    // Wait longer for loading to complete
+    await page.waitForTimeout(3000);
+    const isLoading = await loadingIndicator.isVisible({ timeout: 1_000 }).catch(() => false);
 
-    // The tab should show either reviews, an empty state, or at minimum be done loading
     if (reviewCount > 0) {
       console.log(`Found ${reviewCount} review items in admin panel`);
     } else if (hasEmpty) {
       console.log('Empty state shown — no reviews in dev environment');
-    } else if (isLoading) {
-      console.log('Still loading — reviews tab is responsive but slow');
     } else {
-      console.log('Reviews tab content rendered (no review items, no empty state detected)');
+      console.log('Reviews tab rendered — no review items or empty state detected');
     }
 
-    // Soft pass: the tab was clickable and rendered without crashing
-    expect(true, 'Reviews tab rendered without errors').toBe(true);
+    // The tab must show review items OR an empty state (not still loading after 5s+)
+    expect(
+      reviewCount > 0 || hasEmpty,
+      `Admin reviews tab must show review items (${reviewCount}) or empty state (${hasEmpty}) — not stuck loading (${isLoading})`
+    ).toBe(true);
 
     // Cleanup
     await navigateHome(page, TARGET_URL);
@@ -196,6 +198,7 @@ test.describe('Admin Reviews Tab', () => {
         // Flag the review
         const flagResult = await callCallable('admin_flag_review', {
           reviewId,
+          flagged: true,
           reason: 'E2E test flag — inappropriate content',
         }, adminAuth.idToken);
 
@@ -225,6 +228,7 @@ test.describe('Admin Reviews Tab', () => {
 
     const flagResult = await callCallable('admin_flag_review', {
       reviewId,
+      flagged: true,
       reason: 'E2E test flag — admin review moderation',
     }, adminAuth.idToken);
 

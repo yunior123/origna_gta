@@ -1529,6 +1529,135 @@
         }
       ],
       "comment": "FIX 2026-03-02: auto_archive_old_orders cron — orderStatus + updatedAt ASC + __name__ ASC (FLUTTER-Q/Z: 12 events)"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "lifecycleStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "priceCents",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "FIX 2026-03-03: fetchProducts price-range filter + priceLowToHigh sort — lifecycleStatus + priceCents ASC + createdAt DESC (product_repository.dart:178-187)"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "lifecycleStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "priceCents",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "FIX 2026-03-03: fetchProducts priceHighToLow sort — lifecycleStatus + priceCents DESC + createdAt DESC (product_repository.dart:189)"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "lifecycleStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "categoryId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "priceCents",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "FIX 2026-03-03: fetchProducts categoryId + price-range filter + priceLowToHigh — lifecycleStatus + categoryId + priceCents ASC + createdAt (product_repository.dart:168-189)"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "lifecycleStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "categoryId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "priceCents",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "FIX 2026-03-03: fetchProducts categoryId + priceHighToLow — lifecycleStatus + categoryId + priceCents DESC + createdAt (product_repository.dart:168-189)"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "stripeSessionId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "FIX 2026-03-03: watchPaidOrderBySession — stripeSessionId == sessionId + paymentStatus == captured (order_repository.dart:109-110)"
+    },
+    {
+      "collectionGroup": "licenses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orderId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "FIX 2026-03-03: Revoke digital license for specific item — orderId + productId equality (orders.py:1231-1232)"
+    },
+    {
+      "collectionGroup": "favorites",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dateFavorited",
+          "order": "ASCENDING"
+        }
+      ],
+      "comment": "FIX 2026-03-03: Paginated price-drop fan-out — productId filter + dateFavorited cursor (products.py:_fire_price_drop_notifications)"
     }
   ],
   "fieldOverrides": []

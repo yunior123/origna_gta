@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/features/products/product_rating_viewmodel.dart';
@@ -9,6 +10,7 @@ import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/features/subscription/subscription_state.dart';
 
 /// Shows the rating dialog
 Future<void> showRatingDialog({
@@ -41,6 +43,13 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
   bool _isSubmitting = false;
   final List<Uint8List> _reviewImages = [];
   final _picker = ImagePicker();
+  final _reviewTextController = TextEditingController();
+
+  @override
+  void dispose() {
+    _reviewTextController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +77,21 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
               child: Text(
                 _getRatingText(),
                 style: TextStyle(color: _selectedRating > 0 ? DesignTokens.warning : DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Review text field
+            TextField(
+              controller: _reviewTextController,
+              maxLines: 3,
+              maxLength: 500,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: 'rating.review_body'.tr(),
+                hintText: 'rating.review_body_hint'.tr(),
+                alignLabelWithHint: true,
+                counterText: '',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -124,7 +148,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         const SizedBox(height: 8),
         if (!isPremium)
           Tooltip(
-            message: 'Upgrade to add photos',
+            message: 'rating.upgrade_photos_tooltip'.tr(),
             child: GestureDetector(
               onTap: () {
                 Navigator.of(context).pop();
@@ -259,11 +283,13 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final viewModel = ref.read(productRatingViewModelProvider.notifier);
+    final reviewText = _reviewTextController.text.trim();
     final success = await viewModel.submitRating(
       widget.orderId,
       widget.productId,
       _selectedRating,
       reviewImages: _reviewImages.isNotEmpty ? List.unmodifiable(_reviewImages) : null,
+      reviewText: reviewText.isNotEmpty ? reviewText : null,
     );
 
     if (!mounted) return;
@@ -279,3 +305,64 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     }
   }
 }
+
+// ─── Flutter Widget Previews ─────────────────────────────────────────────────
+// NOTE: .tr() renders as raw keys in preview mode — acceptable.
+// NOTE: image_picker (dart:io) will throw on web — photo picker area renders as
+//       a disabled placeholder in preview; this is expected and acceptable.
+
+@Preview(name: 'Rating Dialog — Non-Premium', group: 'RatingDialog')
+Widget previewRatingDialogNonPremium() => ProviderScope(
+  overrides: [
+    subscriptionStreamProvider.overrideWith(
+      (_) => Stream.value(const SubscriptionInfo(status: 'inactive', isPremium: false)),
+    ),
+  ],
+  child: MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData.dark().copyWith(
+      colorScheme: ColorScheme.dark(
+        primary: DesignTokens.primary,
+        surface: DesignTokens.darkSurface,
+      ),
+    ),
+    home: Scaffold(
+      backgroundColor: DesignTokens.darkBackground,
+      body: Center(
+        child: RatingDialog(
+          orderId: 'preview-order-123',
+          productId: 'preview-product-456',
+          productName: 'Handmade Canadian Maple Syrup',
+        ),
+      ),
+    ),
+  ),
+);
+
+@Preview(name: 'Rating Dialog — Premium', group: 'RatingDialog')
+Widget previewRatingDialogPremium() => ProviderScope(
+  overrides: [
+    subscriptionStreamProvider.overrideWith(
+      (_) => Stream.value(const SubscriptionInfo(status: 'active', isPremium: true)),
+    ),
+  ],
+  child: MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData.dark().copyWith(
+      colorScheme: ColorScheme.dark(
+        primary: DesignTokens.primary,
+        surface: DesignTokens.darkSurface,
+      ),
+    ),
+    home: Scaffold(
+      backgroundColor: DesignTokens.darkBackground,
+      body: Center(
+        child: RatingDialog(
+          orderId: 'preview-order-456',
+          productId: 'preview-product-789',
+          productName: 'Artisan Quebec Cheese Board',
+        ),
+      ),
+    ),
+  ),
+);

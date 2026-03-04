@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -693,3 +694,40 @@ class MascotPainter extends CustomPainter {
       lookTarget != oldDelegate.lookTarget ||
       excitement != oldDelegate.excitement;
 }
+
+// ─── Flutter Widget Previews ─────────────────────────────────────────────────
+
+@Preview(name: 'Sparky — Default (80px)', group: 'ShopMascot')
+Widget previewShopMascotDefault() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Center(
+      child: ShopMascot(
+        controller: MascotController(),
+        size: 80,
+        showSpeechBubble: false,
+      ),
+    ),
+  ),
+);
+
+@Preview(name: 'Sparky — Large (140px)', group: 'ShopMascot')
+Widget previewShopMascotLarge() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(80),
+        child: ShopMascot(
+          controller: MascotController(),
+          size: 140,
+          showSpeechBubble: false,
+        ),
+      ),
+    ),
+  ),
+);

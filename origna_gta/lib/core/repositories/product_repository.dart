@@ -144,6 +144,8 @@ class FirebaseProductRepository implements ProductRepository {
   /// Fetches a paginated list of active products with optional keyword and category filters.
   ///
   /// [lastDocument] is the pagination cursor returned by a previous call.
+  /// [sortOption] affects the orderBy clause; price sorts require a Firestore composite index.
+  /// [minPriceCents] / [maxPriceCents] add numeric range filters on [Fields.priceCents].
   /// Returns [ProductQueryResult] containing the page of products, the new cursor, and [hasMore].
   Future<ProductQueryResult> fetchProducts({
     String? searchQuery,
@@ -151,6 +153,9 @@ class FirebaseProductRepository implements ProductRepository {
     String? subcategory,
     DocumentSnapshot? lastDocument,
     int pageSize = 20,
+    SortOption sortOption = SortOption.relevance,
+    int? minPriceCents,
+    int? maxPriceCents,
   }) async {
     Query query = _firestore.collection(Collections.products);
 
@@ -168,8 +173,27 @@ class FirebaseProductRepository implements ProductRepository {
       query = query.where(Fields.subcategory, isEqualTo: subcategory);
     }
 
+    // GAP #2 — Price range filters
+    if (minPriceCents != null) {
+      query = query.where(Fields.priceCents, isGreaterThanOrEqualTo: minPriceCents);
+    }
+    if (maxPriceCents != null) {
+      query = query.where(Fields.priceCents, isLessThanOrEqualTo: maxPriceCents);
+    }
+
+    // GAP #1 — Sort ordering
+    switch (sortOption) {
+      case SortOption.priceLowToHigh:
+        query = query.orderBy(Fields.priceCents).orderBy(Fields.createdAt, descending: true);
+      case SortOption.priceHighToLow:
+        query = query.orderBy(Fields.priceCents, descending: true).orderBy(Fields.createdAt, descending: true);
+      case SortOption.newest:
+      case SortOption.relevance:
+        query = query.orderBy(Fields.createdAt, descending: true);
+    }
+
     // N+1 pattern: fetch one extra item to accurately determine if more exist
-    query = query.orderBy(Fields.createdAt, descending: true).limit(pageSize + 1);
+    query = query.limit(pageSize + 1);
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);
@@ -496,7 +520,16 @@ abstract class ProductRepository {
   Future<String> createProductAtomic(Product product, List<Uint8List> imageBytes, {List<String>? testImageUrls, String? bookSourceUrl});
   Future<void> deleteProduct(String productId);
   Future<Product?> fetchProductById(String productId);
-  Future<ProductQueryResult> fetchProducts({String? searchQuery, int? categoryId, String? subcategory, DocumentSnapshot? lastDocument, int pageSize = 20});
+  Future<ProductQueryResult> fetchProducts({
+    String? searchQuery,
+    int? categoryId,
+    String? subcategory,
+    DocumentSnapshot? lastDocument,
+    int pageSize = 20,
+    SortOption sortOption = SortOption.relevance,
+    int? minPriceCents,
+    int? maxPriceCents,
+  });
   Future<List<Product>> fetchProductsByIds(List<String> productIds);
   String generateProductId();
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query);

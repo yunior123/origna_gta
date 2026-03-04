@@ -38,17 +38,17 @@ class _EditDigitalTypeChip extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
-          border: Border.all(color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor, width: selected ? 2 : 1),
+          color: selected ? DesignTokens.primary.withValues(alpha: 0.15) : Colors.transparent,
+          border: Border.all(color: selected ? DesignTokens.primary : DesignTokens.textSecondary.withValues(alpha: 0.3), width: selected ? 2 : 1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Icon(icon, color: selected ? Theme.of(context).colorScheme.primary : null),
+            Icon(icon, color: selected ? DesignTokens.primary : null),
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: selected ? Theme.of(context).colorScheme.primary : null),
+              style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: selected ? DesignTokens.primary : null),
             ),
           ],
         ),
@@ -99,21 +99,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late final TextEditingController _expressPriceController;
   late final TextEditingController _sameDayPriceController;
 
-  final Map<String, String> _provinceNames = {
-    'AB': 'Alberta',
-    'BC': 'British Columbia',
-    'MB': 'Manitoba',
-    'NB': 'New Brunswick',
-    'NL': 'Newfoundland and Labrador',
-    'NT': 'Northwest Territories',
-    'NS': 'Nova Scotia',
-    'NU': 'Nunavut',
-    'ON': 'Ontario',
-    'PE': 'Prince Edward Island',
-    'QC': 'Quebec',
-    'SK': 'Saskatchewan',
-    'YT': 'Yukon',
-  };
+  static const Map<String, String> _provinceNames = ProvinceCodeValues.names;
 
   @override
   Widget build(BuildContext context) {
@@ -162,18 +148,18 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF3340).withValues(alpha: 0.05),
+                      color: DesignTokens.canadaRed.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFEF3340).withValues(alpha: 0.2)),
+                      border: Border.all(color: DesignTokens.canadaRed.withValues(alpha: 0.2)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFEF3340)),
+                        Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.canadaRed),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'product.french_section_subtitle'.tr(),
-                            style: const TextStyle(fontSize: 12, color: Color(0xFFEF3340), fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 12, color: DesignTokens.canadaRed, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ],
@@ -610,14 +596,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     String subtitle = '';
 
     if (status == ProductLifecycleStatusValues.rejected) {
-      bgColor = const Color(0xFFFEE2E2);
-      textColor = const Color(0xFFDC2626);
+      bgColor = DesignTokens.error.withValues(alpha: 0.10);
+      textColor = DesignTokens.error;
       icon = Icons.cancel_rounded;
       title = 'product.approval_rejected_title'.tr();
       subtitle = reason ?? 'product.approval_rejected_generic'.tr();
     } else {
-      bgColor = const Color(0xFFFEF3C7);
-      textColor = const Color(0xFFB45309);
+      bgColor = DesignTokens.warning.withValues(alpha: 0.12);
+      textColor = DesignTokens.warningText;
       icon = Icons.hourglass_top_rounded;
       title = 'product.under_review_title'.tr();
       subtitle = 'product.under_review_edit_note'.tr();
@@ -775,19 +761,19 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           const SizedBox(height: 4),
           _editUrlField(
             key: const Key('editproduct_macos_url'),
-            label: 'macOS (.dmg)',
+            label: 'product.mac_os_label'.tr(),
             controller: _macosUrlController,
             onChanged: (v) => viewModel.setMacosDownloadUrl(v.isEmpty ? null : v),
           ),
           _editUrlField(
             key: const Key('editproduct_windows_url'),
-            label: 'Windows (.exe / .msi)',
+            label: 'product.windows_label'.tr(),
             controller: _windowsUrlController,
             onChanged: (v) => viewModel.setWindowsDownloadUrl(v.isEmpty ? null : v),
           ),
           _editUrlField(
             key: const Key('editproduct_linux_url'),
-            label: 'Linux (.deb / .AppImage) — optional',
+            label: 'product.linux_label'.tr(),
             controller: _linuxUrlController,
             onChanged: (v) => viewModel.setLinuxDownloadUrl(v.isEmpty ? null : v),
           ),
@@ -795,7 +781,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           TextFormField(
             key: const Key('editproduct_device_limit'),
             controller: _deviceLimitController,
-            decoration: const InputDecoration(labelText: 'Device limit', hintText: 'Blank = unlimited'),
+            decoration: InputDecoration(labelText: 'product.device_limit_label'.tr(), hintText: 'product.device_limit_hint'.tr()),
             keyboardType: TextInputType.number,
             onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v)),
           ),
@@ -806,7 +792,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           const SizedBox(height: 6),
           _editUrlField(
             key: const Key('editproduct_book_url'),
-            label: 'Book download URL (PDF/EPUB)',
+            label: 'product.book_download_url'.tr(),
             controller: _bookUrlController,
             onChanged: (v) => viewModel.setBookSourceUrl(v.isEmpty ? null : v),
           ),
@@ -1046,3 +1032,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     return null;
   }
 }
+
+// @Preview skipped — requires live auth/navigation context
+// EditProductScreen requires a fully-populated Product model (generated/freezed).

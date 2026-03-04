@@ -36,7 +36,7 @@ class RatingHistogram extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : DesignTokens.textSecondary,
+                    color: DesignTokens.textSecondary,
                   ),
                   textAlign: TextAlign.right,
                 ),
@@ -52,7 +52,7 @@ class RatingHistogram extends StatelessWidget {
                     minHeight: 8,
                     color: DesignTokens.warning,
                     backgroundColor: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
+                        ? DesignTokens.darkSurfaceVariant
                         : DesignTokens.outlineVariant,
                   ),
                 ),
@@ -64,7 +64,7 @@ class RatingHistogram extends StatelessWidget {
                   '$count',
                   style: TextStyle(
                     fontSize: 11,
-                    color: isDark ? Colors.white54 : DesignTokens.textSecondary,
+                    color: DesignTokens.textDisabled,
                   ),
                   textAlign: TextAlign.right,
                 ),

@@ -177,9 +177,9 @@
     "SellerDeliveryOption": {
       "description": "Seller-specific delivery options with quantity-based pricing",
       "example": {
-        "additionalItemCost": 1.5,
-        "availableInternational": true,
-        "cost": 5.99,
+        "additionalItemCostCents": 150,
+        "availableNationwide": true,
+        "costCents": 599,
         "description": "Standard shipping",
         "estimatedDays": 5,
         "maxItemsPerShipment": 10,
@@ -199,11 +199,11 @@
           "title": "Description",
           "type": "string"
         },
-        "cost": {
-          "description": "Base cost in CAD",
+        "costCents": {
+          "description": "Base shipping cost in integer cents (CAD). Divide by 100 for display.",
           "minimum": 0,
-          "title": "Cost",
-          "type": "number"
+          "title": "Costcents",
+          "type": "integer"
         },
         "estimatedDays": {
           "description": "Estimated delivery days",
@@ -227,24 +227,24 @@
           "title": "Maxitemspershipment",
           "type": "integer"
         },
-        "additionalItemCost": {
-          "default": 0.0,
-          "description": "Additional cost per item after maxItemsPerShipment",
+        "additionalItemCostCents": {
+          "default": 0,
+          "description": "Additional cost per item after maxItemsPerShipment, in integer cents",
           "minimum": 0,
-          "title": "Additionalitemcost",
-          "type": "number"
+          "title": "Additionalitemcostcents",
+          "type": "integer"
         },
-        "availableInternational": {
+        "availableNationwide": {
           "default": true,
-          "description": "Whether option is available for international suppliers",
-          "title": "Availableinternational",
+          "description": "Whether this delivery option ships anywhere in Canada (vs local-only)",
+          "title": "Availablenationwide",
           "type": "boolean"
         }
       },
       "required": [
         "type",
         "description",
-        "cost",
+        "costCents",
         "estimatedDays"
       ],
       "title": "SellerDeliveryOption",

@@ -1,4 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
@@ -169,7 +171,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
       stretch: true,
       backgroundColor: DesignTokens.gradientMiddle,
       leading: IconButton(
-        tooltip: 'Back',
+        tooltip: 'legal.back'.tr(),
         icon: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -280,7 +282,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 200),
                       child: Text(
-                        'Last updated February 2026  •  ${_sections.length} sections',
+                        '${'legal.last_updated_february_2026'.tr()}  •  ${_sections.length}',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.55),
                           fontSize: 13,
@@ -305,7 +307,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
           child: Text(
-            'JUMP TO SECTION',
+            'legal.jump_to_section'.tr(),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -533,7 +535,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                     style: TextStyle(
                       fontSize: 13.5,
                       height: 1.6,
-                      color: isDark ? Colors.white70 : const Color(0xFF4A4A5A),
+                      color: isDark ? Colors.white70 : DesignTokens.textSecondary,
                     ),
                   ),
                 ),
@@ -550,7 +552,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
               style: TextStyle(
                 fontSize: 13.5,
                 height: 1.65,
-                color: isDark ? Colors.white70 : const Color(0xFF4A4A5A),
+                color: isDark ? Colors.white70 : DesignTokens.textSecondary,
               ),
             ),
           ),
@@ -564,3 +566,68 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
     );
   }
 }
+
+// ─── Flutter Widget Previews ─────────────────────────────────────────────────
+
+const _kPrivacyMock = '''
+1. Information We Collect
+We collect your name, email, and purchase history to process your orders and improve our marketplace.
+
+2. How We Use Your Data
+Your data is used solely to provide and improve our services. We never sell your data to third parties.
+
+3. Your Rights
+You have the right to access, correct, or delete your personal data at any time by contacting us.
+
+4. Security
+We use industry-standard encryption and security measures to protect your personal information.
+
+5. Contact Us
+For privacy questions, please reach out to privacy@orignaventures.ca.
+''';
+
+const _kTermsMock = '''
+1. Acceptance of Terms
+By using OrignaGTA, you agree to these Terms of Service and our Privacy Policy.
+
+2. Account Responsibilities
+You are responsible for maintaining the confidentiality of your account credentials.
+
+3. Purchases and Payments
+All purchases are final unless eligible for a return as described in our Return Policy.
+
+4. Prohibited Activities
+Users may not post fraudulent listings, spam, or violate any Canadian law while using this platform.
+
+5. Governing Law
+These terms are governed by the laws of the Province of Ontario, Canada.
+''';
+
+@Preview(name: 'Privacy Policy — Dark', group: 'LegalScreenBody')
+Widget previewLegalPrivacy() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: const LegalScreenBody(
+      heroTitle: 'Privacy Policy',
+      heroBadge: 'PRIVACY',
+      heroBadgeIcon: Icons.shield_outlined,
+      rawContent: _kPrivacyMock,
+    ),
+  ),
+);
+
+@Preview(name: 'Terms of Service — Light', group: 'LegalScreenBody')
+Widget previewLegalTerms() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.light(),
+  home: const Scaffold(
+    body: LegalScreenBody(
+      heroTitle: 'Terms of Service',
+      heroBadge: 'TERMS',
+      heroBadgeIcon: Icons.gavel_outlined,
+      rawContent: _kTermsMock,
+    ),
+  ),
+);

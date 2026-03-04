@@ -102,7 +102,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(errorMessage: 'product.description_too_long'.tr());
       return;
     }
-    if (price <= 0) {
+    if (price <= 0.99) {
       state = state.copyWith(errorMessage: 'product.please_enter_price'.tr());
       return;
     }
@@ -236,7 +236,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         return;
       }
       final invalidVariants = state.variants.where((v) {
-        return v.priceCents == null || v.priceCents! <= 0;
+        return v.priceCents == null || v.priceCents! < 99;
       });
       if (invalidVariants.isNotEmpty) {
         state = state.copyWith(errorMessage: 'product.variant_price_required'.tr());

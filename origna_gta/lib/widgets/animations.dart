@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 
@@ -263,3 +264,90 @@ class _ScaleBounceState extends State<ScaleBounce> with SingleTickerProviderStat
     );
   }
 }
+
+// ─── Flutter Widget Previews ─────────────────────────────────────────────────
+
+@Preview(name: 'FadeSlideIn', group: 'Animations')
+Widget previewFadeSlideIn() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Center(
+      child: FadeSlideIn(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: DesignTokens.darkCard, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+          child: const Text('Faded In ✓', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+        ),
+      ),
+    ),
+  ),
+);
+
+@Preview(name: 'Empty State — Cart', group: 'Animations')
+Widget previewEmptyStateCart() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: AnimatedEmptyState(
+      icon: Icons.shopping_cart_outlined,
+      title: 'Your cart is empty',
+      subtitle: 'Start adding items to see them here.',
+    ),
+  ),
+);
+
+@Preview(name: 'Empty State — With Action', group: 'Animations')
+Widget previewEmptyStateAction() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: AnimatedEmptyState(
+      icon: Icons.favorite_border_rounded,
+      title: 'No favorites yet',
+      subtitle: 'Tap the heart icon on any product to save it here.',
+      action: ElevatedButton(onPressed: null, child: const Text('Browse Products')),
+    ),
+  ),
+);
+
+@Preview(name: 'Empty State — With Mascot', group: 'Animations')
+Widget previewEmptyStateMascot() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: AnimatedEmptyState(
+      icon: Icons.inbox_outlined,
+      title: 'No orders yet',
+      subtitle: 'Your completed orders will appear here.',
+      showMascot: true,
+    ),
+  ),
+);
+
+@Preview(name: 'StaggeredList', group: 'Animations')
+Widget previewStaggeredList() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Padding(
+      padding: const EdgeInsets.all(24),
+      child: StaggeredList(
+        children: [
+          for (int i = 1; i <= 4; i++)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: DesignTokens.darkCard, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+              child: Text('Item $i', style: const TextStyle(color: Colors.white)),
+            ),
+        ],
+      ),
+    ),
+  ),
+);

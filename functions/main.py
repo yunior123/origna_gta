@@ -97,6 +97,7 @@ from handlers.addresses import get_address_suggestions  # noqa: E402
 from handlers.admin import (  # noqa: E402
     admin_delete_review,
     admin_flag_review,
+    admin_get_reviews,
     admin_mfa_disable,
     admin_mfa_enroll,
     admin_mfa_verify,
@@ -131,7 +132,7 @@ from handlers.coupons import (  # noqa: E402
 from handlers.cron_jobs import (  # noqa: E402
     auto_archive_old_orders,
     auto_capture_confirmed_receipts,
-    check_expired_authorizations,
+    stale_orders_dispatcher,
     check_low_stock_alerts,
     cleanup_orphaned_r2_images,
     cleanup_stale_rate_limits,
@@ -160,6 +161,7 @@ from handlers.digital import (  # noqa: E402
 # EMAIL TASK QUEUE HANDLER (Cloud Tasks)
 # ===============================================
 from handlers.email_tasks import sendEmailTask  # noqa: E402
+from handlers.tasks import stale_orders_worker # noqa: E402
 
 # ===============================================
 # ORDER HANDLERS
@@ -170,6 +172,7 @@ from handlers.orders import (  # noqa: E402
     cancel_order,
     confirm_item_receipt,
     create_return_request,
+    escalate_return_request,
     on_order_item_delivered,
     on_order_item_shipped,
     on_order_status_changed,
@@ -361,6 +364,7 @@ __all__ = [
     "create_return_request",
     "approve_return_request",
     "reject_return_request",
+    "escalate_return_request",
     # Admin
     "update_user_roles",
     "suspend_seller",
@@ -371,6 +375,7 @@ __all__ = [
     "admin_delete_product_rating",
     "admin_update_warehouse_commission",
     "admin_flag_review",
+    "admin_get_reviews",
     "admin_refund_order",
     "admin_mfa_enroll",
     "admin_mfa_verify",
@@ -399,7 +404,7 @@ __all__ = [
     "get_provider_status",
     # Cron jobs
     "auto_capture_confirmed_receipts",
-    "check_expired_authorizations",
+    "stale_orders_dispatcher",
     "auto_archive_old_orders",
     "monitor_algolia_sync",
     "revalidate_digital_product_urls",
@@ -417,6 +422,7 @@ __all__ = [
     "escalate_stale_return_requests",
     # Cloud Tasks
     "sendEmailTask",
+    "stale_orders_worker",
     # Shipping
     "calculate_shipping_cost",
     # Digital products

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 class SellerMetrics {
   final double? avgResponseHours;
@@ -96,7 +97,8 @@ class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
           totalReviews: (data[Fields.totalReviews] as num?)?.toInt(),
         ),
       );
-    } catch (_) {
+    } catch (e, st) {
+      AppError.log(e, stackTrace: st, context: 'fetchSellerMetrics');
       state = state.copyWith(sellerMetricsLoading: false, sellerMetrics: const SellerMetrics());
     }
   }

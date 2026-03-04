@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -526,3 +527,23 @@ class SellerSetupRefreshScreen extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'SellerSetupCompleteScreen — Dark', group: 'SellerSetupCompleteScreen')
+Widget previewSellerSetupCompleteScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const SellerSetupCompleteScreen(),
+      ),
+    );
+
+@Preview(name: 'SellerSetupCompleteScreen — Light', group: 'SellerSetupCompleteScreen')
+Widget previewSellerSetupCompleteScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const SellerSetupCompleteScreen(),
+      ),
+    );

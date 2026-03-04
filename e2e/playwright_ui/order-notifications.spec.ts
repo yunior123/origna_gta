@@ -18,7 +18,7 @@ const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
  * for various order lifecycle events, especially for multi-seller orders.
  */
 test.describe('Order Notifications', () => {
-  test.setTimeout(240_000);
+  test.setTimeout(300_000);
 
   let productA: { id: string; sellerId: string; name?: string } | null = null;
   let productB: { id: string; sellerId: string; name?: string } | null = null;

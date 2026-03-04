@@ -1,6 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -14,6 +16,105 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+/// Compact 3-step progress indicator for the checkout flow.
+/// Steps: Cart (0) → Details (1) → Confirm (2)
+class _CheckoutStepper extends StatelessWidget {
+  final int currentStep; // 0 = cart, 1 = address, 2 = payment/confirm
+
+  const _CheckoutStepper({required this.currentStep});
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = [
+      'checkout.step_cart'.tr(),
+      'checkout.step_details'.tr(),
+      'checkout.step_confirm'.tr(),
+    ];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: isDark ? DesignTokens.darkSurface : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.primary.withValues(alpha: isDark ? 0.08 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: List.generate(steps.length * 2 - 1, (i) {
+          if (i.isOdd) {
+            // Connector line
+            final stepIndex = (i + 1) ~/ 2;
+            final isCompleted = stepIndex <= currentStep;
+            return Expanded(
+              child: Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  gradient: isCompleted
+                      ? const LinearGradient(
+                          colors: [DesignTokens.primary, DesignTokens.secondary],
+                        )
+                      : null,
+                  color: isCompleted ? null : DesignTokens.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
+            );
+          }
+          final stepIndex = i ~/ 2;
+          final isCompleted = stepIndex < currentStep;
+          final isCurrent = stepIndex == currentStep;
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isCompleted
+                      ? DesignTokens.success
+                      : isCurrent
+                          ? DesignTokens.primary
+                          : DesignTokens.primary.withValues(alpha: 0.12),
+                  border: isCurrent
+                      ? Border.all(color: DesignTokens.primary, width: 2)
+                      : null,
+                ),
+                child: Center(
+                  child: isCompleted
+                      ? const Icon(Icons.check_rounded, size: 12, color: Colors.white)
+                      : Text(
+                          '${stepIndex + 1}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: isCurrent ? Colors.white : DesignTokens.primary.withValues(alpha: 0.5),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                steps[stepIndex],
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
+                  color: isCurrent ? DesignTokens.primary : DesignTokens.textSecondary,
+                ),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
 
 /// Provider for terms acceptance state — shared between _TermsText and _CheckoutButton
 final _termsAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
@@ -148,22 +249,46 @@ class _CheckoutButton extends ConsumerWidget {
     final termsAccepted = ref.watch(_termsAcceptedProvider);
     final isDisabled = isProcessing || isCalculating || shippingError != null || !termsAccepted;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.textPrimary : DesignTokens.surface,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -8))],
+      padding: EdgeInsets.fromLTRB(
+        ResponsiveBreakpoints.getSpacing(context, SpacingSize.md),
+        12,
+        ResponsiveBreakpoints.getSpacing(context, SpacingSize.md),
+        ResponsiveBreakpoints.getSpacing(context, SpacingSize.md),
       ),
-      child: Semantics(
-        button: true,
-        label: 'btn-place-order',
-        child: ModernButton(
-          key: const Key('checkout_place_order_button'),
-          label: isProcessing ? 'common.processing'.tr() : 'checkout.place_order'.tr(),
-          onPressed: isDisabled ? null : () => _showOrderReview(context, ref),
-          isLoading: isProcessing,
-          icon: Icons.payment,
-        ),
+      decoration: BoxDecoration(
+        color: isDark ? DesignTokens.darkSurface : DesignTokens.surface,
+        border: Border(top: BorderSide(color: DesignTokens.primary.withValues(alpha: 0.15))),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, -8))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Semantics(
+            button: true,
+            label: 'btn-place-order',
+            child: ModernButton(
+              key: const Key('checkout_place_order_button'),
+              label: isProcessing ? 'common.processing'.tr() : 'checkout.place_order'.tr(),
+              onPressed: isDisabled ? null : () => _showOrderReview(context, ref),
+              isLoading: isProcessing,
+              icon: Icons.payment,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outlined, size: 12, color: DesignTokens.success.withValues(alpha: 0.7)),
+              const SizedBox(width: 4),
+              Text(
+                'checkout.secure_stripe'.tr(),
+                style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -211,7 +336,10 @@ class _CheckoutButton extends ConsumerWidget {
     switch (result) {
       case CheckoutSuccess(:final checkoutUrl):
         // Persist terms acceptance server-side (fire-and-forget — never blocks checkout redirect)
-        ref.read(userRepositoryProvider).recordTermsAcceptance().catchError((_) {});
+        // Failures are reported to Sentry so compliance gaps are visible (PIPEDA / CASL audit trail).
+        ref.read(userRepositoryProvider).recordTermsAcceptance().catchError((Object e, StackTrace st) {
+          Sentry.captureException(e, stackTrace: st, hint: Hint.withMap({'context': 'recordTermsAcceptance at checkout'}));
+        });
         await _redirectToStripe(checkoutUrl, context);
       case CheckoutError(:final message):
         messenger.showSnackBar(
@@ -255,18 +383,15 @@ class _CheckoutContent extends ConsumerWidget {
         final rawState = userModel.address?.state;
         final digitalProvince = (rawState != null && rawState.trim().isNotEmpty) ? rawState.trim() : ProvinceCodeValues.ontario;
         final digitalTaxRate = getTaxRate(digitalProvince);
-        final digitalTax = subtotal * digitalTaxRate;
-        final digitalTotal = subtotal + digitalTax;
+        final digitalCouponDiscountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
+        final digitalEffective = (subtotal - digitalCouponDiscountCents / 100.0).clamp(0.0, double.infinity);
+        // Platform fee is deducted from the seller's payout — NOT added to the buyer's charge.
+        // Stripe PaymentIntent = discounted_subtotal + tax only. The fee row is informational only.
+        final digitalTax = digitalEffective * digitalTaxRate;
+        final digitalTotal = digitalEffective + digitalTax;
         return Container(
           decoration: BoxDecoration(
-            // ── AUDIT FIX [CRITICAL]: textPrimary (#1A1A2E) was used as both
-            // gradient start AND end in dark mode — identical opaque colours,
-            // and semantically wrong (text colour ≠ surface colour).
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [isDark ? DesignTokens.darkBackground : DesignTokens.surface, isDark ? DesignTokens.darkSurface : Colors.white],
-            ),
+            gradient: DesignTokens.backgroundGradient(isDark: isDark),
           ),
           child: Column(
             children: [
@@ -317,66 +442,124 @@ class _CheckoutContent extends ConsumerWidget {
     final discount = couponDiscountCents / 100.0;
     final effectiveSubtotal = (subtotal - discount).clamp(0.0, double.infinity);
     final taxRate = getTaxRate(address.state);
+    // Platform fee is deducted from the seller's payout — NOT added to the buyer's charge.
+    // Stripe PaymentIntent = discounted_subtotal + shipping + tax only. Fee row is informational.
     final taxableAmount = effectiveSubtotal + shippingCost; // GST/HST applies to shipping in Canada
     final tax = taxableAmount * taxRate;
     final totalWithTax = effectiveSubtotal + tax + shippingCost;
 
-    return Container(
-      decoration: BoxDecoration(
-        // ── AUDIT FIX [CRITICAL]: same textPrimary-as-background bug fixed ──
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [isDark ? DesignTokens.darkBackground : DesignTokens.surface, isDark ? DesignTokens.darkSurface : Colors.white],
+    final isDesktop = ResponsiveBreakpoints.isDesktop(context);
+    final hPad = ResponsiveBreakpoints.getSpacing(context, SpacingSize.lg);
+    final bgDecoration = BoxDecoration(
+      gradient: DesignTokens.backgroundGradient(isDark: isDark),
+    );
+
+    // Form sections (shared between both layouts)
+    final formSections = <Widget>[
+      _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
+      SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl)),
+      if (hasPhysicalItems) ...[
+        _FreeShippingBanner(subtotal: subtotal),
+        const SizedBox(height: 12),
+        const _DeliveryOptionsSection(),
+        const SizedBox(height: 28),
+      ] else ...[
+        GlassContainer(
+          child: Row(
+            children: [
+              Icon(Icons.download_done, color: DesignTokens.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'checkout.digital_delivery_no_shipping'.tr(),
+                  style: TextStyle(color: isDark ? DesignTokens.outline : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+        const SizedBox(height: 28),
+      ],
+      _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
+      const SizedBox(height: 28),
+      _CouponSection(subtotalCents: (subtotal * 100).round(), sellerIds: items.map((i) => i.sellerId).where((id) => id.isNotEmpty).toSet().toList()),
+    ];
+
+    // Sticky bottom actions (same in both layouts)
+    final bottomActions = <Widget>[
+      const _BuyerProtectionBanner(),
+      _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: totalWithTax),
+      _TermsText(),
+      const SizedBox(height: 16),
+      _SecurityInfo(),
+    ];
+
+    final orderSummary = _OrderSummary(items: items, subtotal: subtotal, state: address.state);
+
+    // Desktop: 2-column — form left (60%), sticky order summary right (40%)
+    if (isDesktop) {
+      return Container(
+        decoration: bgDecoration,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(hPad, hPad, hPad / 2, hPad),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: formSections),
+                    ),
+                  ),
+                  ...bottomActions,
+                ],
+              ),
+            ),
+            // Order summary sidebar
+            SizedBox(
+              width: 360,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(hPad / 2, hPad, hPad, hPad),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? DesignTokens.darkCard : Colors.white,
+                    borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                    border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.3)),
+                    boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: isDark ? 0.1 : 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: orderSummary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Mobile/tablet: single-column stacked layout
+    return Container(
+      decoration: bgDecoration,
       child: Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.lg)),
+              padding: EdgeInsets.all(hPad),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
-                  SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl)),
-                  if (hasPhysicalItems) ...[
-                    _FreeShippingBanner(subtotal: subtotal),
-                    const SizedBox(height: 12),
-                    const _DeliveryOptionsSection(),
-                    const SizedBox(height: 28),
-                  ] else ...[
-                    GlassContainer(
-                      child: Row(
-                        children: [
-                          Icon(Icons.download_done, color: DesignTokens.primary),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'checkout.digital_delivery_no_shipping'.tr(),
-                              style: TextStyle(color: isDark ? DesignTokens.outline : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                  ],
-                  _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
+                  ...formSections,
                   const SizedBox(height: 28),
-                  _CouponSection(subtotalCents: (subtotal * 100).round(), sellerIds: items.map((i) => i.sellerId).where((id) => id.isNotEmpty).toSet().toList()),
-                  const SizedBox(height: 28),
-                  _OrderSummary(items: items, subtotal: subtotal, state: address.state),
+                  orderSummary,
                   const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
-          const _BuyerProtectionBanner(),
-          _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: totalWithTax),
-          _TermsText(),
-          const SizedBox(height: 16),
-          _SecurityInfo(),
+          ...bottomActions,
         ],
       ),
     );
@@ -388,12 +571,26 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Widget build(BuildContext context) {
     final userProfileAsync = ref.watch(userProfileProvider);
 
+    final address = ref.watch(checkoutStateProvider.select((s) => s.address));
+    // Step 0: Cart ✓ — Step 1: Address — Step 2: Payment/Confirm
+    final stepIndex = address != null ? 2 : 1;
+
     return Scaffold(
       key: const Key('checkout_screen_root'),
-      appBar: AppBarFactory.simple(title: 'checkout.checkout'.tr()),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight + 44),
+        child: Column(
+          children: [
+            AppBarFactory.simple(title: 'checkout.checkout'.tr()),
+            _CheckoutStepper(currentStep: stepIndex),
+          ],
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
+          constraints: BoxConstraints(
+            maxWidth: ResponsiveBreakpoints.isDesktop(context) ? ResponsiveBreakpoints.contentMaxWidth : 800,
+          ),
           child: userProfileAsync.when(
             loading: () => const ModernLoadingIndicator.fullScreen(),
             error: (error, stack) => Center(
@@ -750,6 +947,8 @@ class _OrderSummary extends ConsumerWidget {
     final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
     final shippingError = ref.watch(checkoutStateProvider.select((state) => state.shippingError));
     final isPremium = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? false;
+    final couponDiscountCentsForTax = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
+    final effectiveSubtotalForTax = (subtotal - couponDiscountCentsForTax / 100.0).clamp(0.0, double.infinity);
 
     return Column(
       key: const Key('checkout_summary_section'),
@@ -789,7 +988,7 @@ class _OrderSummary extends ConsumerWidget {
               const SizedBox(height: 8),
               _buildCouponDiscountRow(ref),
               _buildPlatformFeeRow(ref, isPremium),
-              ..._buildTaxBreakdown(state, subtotal + shippingCost),
+              ..._buildTaxBreakdown(state, effectiveSubtotalForTax + shippingCost),
               const SizedBox(height: 8),
               Row(
                 key: const Key('checkout_shipping_section'),
@@ -853,8 +1052,9 @@ class _OrderSummary extends ConsumerWidget {
                     final discountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
                     final discount = discountCents / 100.0;
                     final effective = (subtotal - discount).clamp(0.0, double.infinity);
-                    final platformFee = isPremium ? 0.0 : effective * (BusinessRules.platformFeePercent / 100.0);
-                    final total = effective + platformFee + (getTaxRate(state) * (effective + shippingCost)) + shippingCost;
+                    // Platform fee is deducted from seller's payout — NOT added to buyer charge.
+                    // Stripe PaymentIntent = discounted_subtotal + shipping + tax only.
+                    final total = effective + (getTaxRate(state) * (effective + shippingCost)) + shippingCost;
                     return Text(
                       '\$${total.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: DesignTokens.primary),
@@ -1128,6 +1328,21 @@ class _PaymentProviderSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text('checkout.stripe_secure_notice'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: ['VISA', 'MC', 'AMEX', 'Apple Pay', 'Google Pay'].map((label) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                border: Border.all(color: DesignTokens.outline),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary)),
+            );
+          }).toList(),
+        ),
       ],
     );
   }
@@ -1310,15 +1525,23 @@ class _OrderReviewSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(checkoutStateProvider);
+    // Use targeted selects so this sheet only rebuilds when the fields it
+    // actually reads change — not on every checkoutStateProvider mutation.
+    final couponDiscountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
+    final addressState = ref.watch(checkoutStateProvider.select((s) => s.address?.state));
+    final formattedAddress = ref.watch(checkoutStateProvider.select((s) => s.address?.formattedAddress));
+    final couponCode = ref.watch(checkoutStateProvider.select((s) => s.couponCode));
+    final shippingCost = ref.watch(checkoutStateProvider.select((s) => s.shippingCost));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final couponDiscount = state.couponDiscountCents / 100.0;
+    final couponDiscount = couponDiscountCents / 100.0;
     final effectiveSubtotal = (subtotal - couponDiscount).clamp(0.0, double.infinity);
-    final province = state.address?.state ?? ProvinceCodeValues.ontario;
+    final province = addressState ?? ProvinceCodeValues.ontario;
     final taxRate = getTaxRate(province);
-    final tax = (effectiveSubtotal + state.shippingCost) * taxRate;
-    final total = effectiveSubtotal + state.shippingCost + tax;
+    // Platform fee is deducted from the seller's payout — NOT added to the buyer's charge.
+    // Stripe PaymentIntent = discounted_subtotal + shipping + tax only. Fee row is informational.
+    final tax = (effectiveSubtotal + shippingCost) * taxRate;
+    final total = effectiveSubtotal + shippingCost + tax;
 
     final bgColor = isDark ? DesignTokens.darkCard : Colors.white;
 
@@ -1387,12 +1610,13 @@ class _OrderReviewSheet extends ConsumerWidget {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: item.imageUrls.isNotEmpty
-                                ? Image.network(
-                                    item.imageUrls.first,
+                                ? CachedNetworkImage(
+                                    imageUrl: item.imageUrls.first,
                                     width: 56,
                                     height: 56,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => _ItemImagePlaceholder(),
+                                    placeholder: (context, url) => _ItemImagePlaceholder(),
+                                    errorWidget: (context, url, error) => _ItemImagePlaceholder(),
                                   )
                                 : _ItemImagePlaceholder(),
                           ),
@@ -1413,13 +1637,13 @@ class _OrderReviewSheet extends ConsumerWidget {
                     ),
                   ),
                   // Shipping address
-                  if (state.address != null) ...[
+                  if (formattedAddress != null) ...[
                     const Divider(height: 24),
                     Text('checkout.order_review_shipping_to'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     GlassContainer(
                       child: Text(
-                        state.address!.formattedAddress,
+                        formattedAddress,
                         style: TextStyle(fontSize: 14, height: 1.5, color: isDark ? DesignTokens.outline : DesignTokens.textPrimary),
                       ),
                     ),
@@ -1428,8 +1652,8 @@ class _OrderReviewSheet extends ConsumerWidget {
                   const Divider(height: 24),
                   _buildPriceLine('cart.subtotal'.tr(), subtotal),
                   if (couponDiscount > 0)
-                    _buildCouponLine(state.couponCode, couponDiscount),
-                  _buildPriceLine('checkout.estimated_shipping'.tr(), state.shippingCost),
+                    _buildCouponLine(couponCode, couponDiscount),
+                  _buildPriceLine('checkout.estimated_shipping'.tr(), shippingCost),
                   _buildPriceLine(
                     'checkout.tax_estimate_label'.tr(namedArgs: {'name': 'checkout.tax_label'.tr(), 'rate': (taxRate * 100).toStringAsFixed(2)}),
                     tax,
@@ -1617,3 +1841,6 @@ class _TermsText extends ConsumerWidget {
     );
   }
 }
+
+// @Preview skipped — requires live auth/navigation context
+// CheckoutScreen requires List<CartItemDetailModel> which depends on live Firestore/Timestamp.

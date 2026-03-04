@@ -210,7 +210,8 @@ def send_push_notifications_batch(user_ids: list[str], title: str, body: str, da
                         try:
                             t_ref.delete()
                             logger.info(f"NOTIF-L2: Removed stale token for user {t_uid}")
-                        except Exception: pass
+                        except Exception:
+                            pass
 
     if total_sent > 0:
         logger.info(f"Batch push sent: {total_sent} messages to {len(unique_user_ids)} users")

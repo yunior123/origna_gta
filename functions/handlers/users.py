@@ -571,24 +571,33 @@ def delete_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
                 "Please wait until your order is delivered or cancelled."
             )
 
-    was_default = current_address.get(Fields.IS_DEFAULT)
     user_ref = db.collection(Collections.USERS).document(user_id)
 
-    # Always use a batch so we atomically decrement addressCount
-    batch = db.batch()
-    batch.delete(address_ref)
-    batch.update(user_ref, {Fields.ADDRESS_COUNT: _get_firestore_increment(-1)})
+    from firebase_admin import firestore as _fs
 
-    # If it was default, promote another address
-    if was_default:
-        existing_addresses = list(addresses_ref.get())
-        promoted = False
-        for existing_doc in existing_addresses:
-            if existing_doc.id != address_id and not promoted:
-                batch.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
-                promoted = True
+    @_fs.transactional
+    def _delete_address_txn(transaction):
+        # Re-read inside transaction to ensure consistency under concurrent deletes
+        snap = address_ref.get(transaction=transaction)
+        if not snap.exists:
+            # Idempotent: already deleted by a concurrent request
+            return
 
-    batch.commit()
+        is_default = snap.to_dict().get(Fields.IS_DEFAULT, False)
+        transaction.delete(address_ref)
+        transaction.update(user_ref, {Fields.ADDRESS_COUNT: _get_firestore_increment(-1)})
+
+        if is_default:
+            existing = list(addresses_ref.get(transaction=transaction))
+            promoted = False
+            for existing_doc in existing:
+                if existing_doc.id != address_id and not promoted:
+                    transaction.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
+                    promoted = True
+
+    transaction = db.transaction()
+    _delete_address_txn(transaction)
+
     return create_success_response({"deleted": True})
 
 

@@ -1,7 +1,9 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -14,6 +16,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+import '../core/theme_provider.dart';
 import '../features/auth/auth_provider.dart';
 import '../features/subscription/subscription_provider.dart';
 import '../features/profile/profile_viewmodel.dart';
@@ -62,15 +65,10 @@ class ProfileScreen extends ConsumerWidget {
               child: const ModernLoadingIndicator(color: Colors.white, strokeWidth: 3, centered: false),
             ),
           ),
-          error: (err, stack) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 80, color: DesignTokens.error),
-                const SizedBox(height: 16),
-                Text('profile.error_loading'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
-              ],
-            ),
+          error: (err, stack) => AnimatedEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'profile.error_loading'.tr(),
+            subtitle: 'common.retry_later'.tr(),
           ),
           data: (userModel) {
             if (userModel == null) {
@@ -157,7 +155,9 @@ class ProfileScreen extends ConsumerWidget {
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 50),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            _buildSectionHeader(context, 'profile.section_navigation'.tr()),
                             _buildMenuItem(
                               context,
                               key: const Key('profile_my_orders_button'),
@@ -227,7 +227,9 @@ class ProfileScreen extends ConsumerWidget {
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 100),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            _buildSectionHeader(context, 'profile.section_settings'.tr()),
                             Builder(builder: (context) {
                               final isPremiumForNotif = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userModel.isPremium;
                               if (!isPremiumForNotif) return const SizedBox.shrink();
@@ -238,9 +240,18 @@ class ProfileScreen extends ConsumerWidget {
                                 semanticLabel: 'menu-notifications',
                                 title: 'profile.notifications'.tr(),
                                 subtitle: 'profile.manage_notifications'.tr(),
-                                onTap: () => Navigator.pushNamed(context, AppRoutes.subscription),
+                                onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
                               );
                             }),
+                            _buildMenuItem(
+                              context,
+                              key: const Key('profile_messages_button'),
+                              icon: Icons.chat_bubble_outline_rounded,
+                              semanticLabel: 'menu-my-messages',
+                              title: 'chat.inbox_title'.tr(),
+                              subtitle: 'chat.inbox_subtitle'.tr(),
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.chatInbox),
+                            ),
                             _buildMenuItem(
                               context,
                               key: const Key('profile_favorites_button'),
@@ -290,6 +301,7 @@ class ProfileScreen extends ConsumerWidget {
                                 await viewModel.updateLanguage(newLocale.languageCode);
                               },
                             ),
+                            _buildThemeToggle(context, ref, isDark),
                             _buildMenuItem(
                               context,
                               key: const Key('profile_export_button'),
@@ -304,6 +316,19 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 32),
+
+                      // Support & Info Section
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 125),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionHeader(context, 'profile.section_support'.tr()),
+                            _buildAppInfoSection(context, isDark),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
                       // Danger Zone
                       FadeSlideIn(
@@ -357,6 +382,209 @@ class ProfileScreen extends ConsumerWidget {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: DesignTokens.textSecondary,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppInfoSection(BuildContext context, bool isDark) {
+    const appVersion = '1.1.0';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'profile.app_info'.tr(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: DesignTokens.textSecondary,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ),
+        _buildMenuItem(
+          context,
+          key: const Key('profile_rate_app_button'),
+          icon: Icons.star_outline_rounded,
+          semanticLabel: 'menu-rate-app',
+          title: 'profile.rate_app'.tr(),
+          subtitle: 'profile.rate_app_desc'.tr(),
+          onTap: () {},
+        ),
+        _buildMenuItem(
+          context,
+          key: const Key('profile_share_app_button'),
+          icon: Icons.share_outlined,
+          semanticLabel: 'menu-share-app',
+          title: 'profile.share_app'.tr(),
+          subtitle: 'profile.share_app_desc'.tr(),
+          onTap: () => SharePlus.instance.share(
+            ShareParams(text: 'profile.share_text'.tr()),
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                ),
+                child: const Icon(Icons.info_outline_rounded, color: DesignTokens.primary, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  'profile.app_version'.tr(namedArgs: {'version': appVersion}),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                'OrignaGTA',
+                style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildThemeToggle(BuildContext context, WidgetRef ref, bool isDark) {
+    final themeMode = ref.watch(themeModeProvider);
+
+    return Container(
+      key: const Key('profile_theme_button'),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Semantics(
+        label: 'menu-appearance',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                ),
+                child: Icon(
+                  themeMode == ThemeMode.dark
+                      ? Icons.dark_mode_rounded
+                      : themeMode == ThemeMode.light
+                          ? Icons.light_mode_rounded
+                          : Icons.brightness_auto_rounded,
+                  color: DesignTokens.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'profile.theme'.tr(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'profile.theme_desc'.tr(),
+                      style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // 3-segment pill toggle: Light | System | Dark
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant,
+                  borderRadius: BorderRadius.circular(DesignTokens.radius20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ThemePill(
+                      icon: Icons.light_mode_rounded,
+                      label: 'profile.theme_light'.tr(),
+                      selected: themeMode == ThemeMode.light,
+                      isDark: isDark,
+                      onTap: () => ref.read(themeModeProvider.notifier).state = ThemeMode.light,
+                    ),
+                    _ThemePill(
+                      icon: Icons.brightness_auto_rounded,
+                      label: 'profile.theme_system'.tr(),
+                      selected: themeMode == ThemeMode.system,
+                      isDark: isDark,
+                      onTap: () => ref.read(themeModeProvider.notifier).state = ThemeMode.system,
+                    ),
+                    _ThemePill(
+                      icon: Icons.dark_mode_rounded,
+                      label: 'profile.theme_dark'.tr(),
+                      selected: themeMode == ThemeMode.dark,
+                      isDark: isDark,
+                      onTap: () => ref.read(themeModeProvider.notifier).state = ThemeMode.dark,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -576,7 +804,7 @@ class ProfileScreen extends ConsumerWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
-                      colors: [const Color(0xFF5CE1E6).withValues(alpha: 0.28), Colors.transparent],
+                      colors: [DesignTokens.accent.withValues(alpha: 0.28), Colors.transparent],
                     ),
                   ),
                 ),
@@ -591,7 +819,7 @@ class ProfileScreen extends ConsumerWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
-                      colors: [const Color(0xFFFF6B6B).withValues(alpha: 0.22), Colors.transparent],
+                      colors: [DesignTokens.tertiary.withValues(alpha: 0.22), Colors.transparent],
                     ),
                   ),
                 ),
@@ -614,7 +842,7 @@ class ProfileScreen extends ConsumerWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: isPremium
-                                ? const Color(0xFFFFD700).withValues(alpha: 0.1)
+                                ? DesignTokens.warning.withValues(alpha: 0.1)
                                 : Colors.white.withValues(alpha: 0.06),
                           ),
                         ),
@@ -626,7 +854,7 @@ class ProfileScreen extends ConsumerWidget {
                             shape: BoxShape.circle,
                             color: Colors.white.withValues(alpha: 0.1),
                             border: Border.all(
-                              color: isPremium ? const Color(0xFFFFD700).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.18),
+                              color: isPremium ? DesignTokens.warning.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.18),
                               width: isPremium ? 1.5 : 1,
                             ),
                           ),
@@ -646,7 +874,7 @@ class ProfileScreen extends ConsumerWidget {
                             boxShadow: [
                               BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 22, offset: const Offset(0, 8)),
                               if (isPremium)
-                                BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.35), blurRadius: 24, spreadRadius: 2),
+                                BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.35), blurRadius: 24, spreadRadius: 2),
                             ],
                           ),
                           child: Center(
@@ -672,11 +900,11 @@ class ProfileScreen extends ConsumerWidget {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                  colors: [DesignTokens.warning, DesignTokens.tertiary],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
-                                boxShadow: [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.6), blurRadius: 8, spreadRadius: 1)],
+                                boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.6), blurRadius: 8, spreadRadius: 1)],
                                 border: Border.all(color: Colors.white, width: 2),
                               ),
                               child: const Center(
@@ -735,6 +963,8 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 18),
+                    _ProfileCompletionBar(userModel: userModel, isPremium: isPremium),
                   ],
                 ),
               ),
@@ -747,6 +977,70 @@ class ProfileScreen extends ConsumerWidget {
 
   void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
     showDialog(context: context, builder: (context) => const _DeleteAccountDialog());
+  }
+}
+
+/// Profile completion bar shown inside the profile header card.
+/// 4 steps: name set · address added · notifications on · premium
+class _ProfileCompletionBar extends StatelessWidget {
+  final UserModel userModel;
+  /// Authoritative premium flag from subscriptionStreamProvider — never
+  /// use userModel.isPremium here as it can lag behind subscription updates.
+  final bool isPremium;
+  const _ProfileCompletionBar({required this.userModel, required this.isPremium});
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = [
+      userModel.name.isNotEmpty, // Name set
+      userModel.address != null, // Address added
+      userModel.notifyNewProducts || userModel.notifyTrending, // Notifications
+      isPremium, // Premium — from subscriptionStreamProvider (authoritative)
+    ];
+    final completed = steps.where((s) => s).length;
+    final pct = completed / steps.length;
+
+    if (pct >= 1.0) return const SizedBox.shrink(); // 100% — hide bar
+
+    final pctInt = (pct * 100).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'profile.completion'.tr(),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+              ),
+            ),
+            Text(
+              '$pctInt%',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: pct,
+            minHeight: 5,
+            backgroundColor: Colors.white.withValues(alpha: 0.15),
+            valueColor: const AlwaysStoppedAnimation<Color>(DesignTokens.accent),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -872,10 +1166,10 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [const Color(0xFFFFF3E0), const Color(0xFFFFE0B2).withValues(alpha: 0.5)]),
+                    gradient: LinearGradient(colors: [DesignTokens.warning.withValues(alpha: 0.15), DesignTokens.warning.withValues(alpha: 0.08)]),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.mark_email_unread_outlined, size: 56, color: Color(0xFFF57C00)),
+                  child: Icon(Icons.mark_email_unread_outlined, size: 56, color: DesignTokens.warning),
                 ),
               ),
               const SizedBox(height: 24),
@@ -1068,3 +1362,60 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
     }
   }
 }
+
+/// Single pill segment for the theme toggle row.
+class _ThemePill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _ThemePill({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: DesignTokens.durationFast,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: selected ? DesignTokens.primaryGradient : null,
+          borderRadius: BorderRadius.circular(DesignTokens.radius20),
+        ),
+        child: Icon(
+          icon,
+          size: 16,
+          color: selected ? Colors.white : DesignTokens.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'ProfileScreen — Dark', group: 'ProfileScreen')
+Widget previewProfileScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const ProfileScreen(),
+      ),
+    );
+
+@Preview(name: 'ProfileScreen — Light', group: 'ProfileScreen')
+Widget previewProfileScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const ProfileScreen(),
+      ),
+    );

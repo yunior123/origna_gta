@@ -96,13 +96,46 @@ test.describe('Return Request Flow (Flow 6)', () => {
     expect(returnDataApproved.returnStatus).toBe('approved');
   });
 
-  test('Cannot request return for digital products', async ({ page }) => {
-    const digitalProductId = 'product_010'; // Assuming this is digital
-    // For this test, let's just try to call the API directly with a mock order if possible, 
-    // or just rely on the fact that we have a digital product in seed.
-    
-    // Actually, let's just use the buyer auth and a fake order ID that points to a digital item
-    // but that's complex to setup. 
-    // Let's stick to the main flow for now to ensure quality.
+  test('Cannot request return for digital products', async () => {
+    // Seed a fake delivered order with a digital item, then assert the backend rejects the return.
+    const buyerAuth = await signIn(BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
+    const fakeOrderId = `e2e_digital_return_${Date.now()}`;
+    const fakeProductId = 'product_010'; // Canadian History eBook Bundle (isDigital: true)
+
+    // Create minimal order doc with a delivered digital item
+    await writeDoc(
+      `orders/${fakeOrderId}`,
+      toFirestoreFields({
+        userId: buyerAuth.uid,
+        status: 'completed',
+        paymentStatus: 'paid',
+        items: [
+          {
+            productId: fakeProductId,
+            name: 'Canadian History eBook Bundle',
+            price: 14.99,
+            quantity: 1,
+            isDigital: true,
+            status: 'delivered',
+            confirmedByBuyer: true,
+            sellerId: 'seller_test',
+            deliveredAt: new Date().toISOString(),
+          },
+        ],
+        createdAt: new Date().toISOString(),
+      }),
+      buyerAuth.idToken
+    );
+
+    try {
+      await callOk(
+        'create_return_request',
+        { orderId: fakeOrderId, productId: fakeProductId, returnReason: 'I want a refund' },
+        buyerAuth.idToken
+      );
+      throw new Error('Expected create_return_request to reject digital product return');
+    } catch (e: any) {
+      expect(e.message).toMatch(/digital products cannot be returned/i);
+    }
   });
 });

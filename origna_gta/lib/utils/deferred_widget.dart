@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -63,7 +64,7 @@ class _DeferredWidgetState extends State<DeferredWidget> {
                   children: [
                     Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
                     const SizedBox(height: 16),
-                    const Text('Failed to load page'),
+                    Text('common.failed_to_load_page'.tr()),
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () {
@@ -72,7 +73,7 @@ class _DeferredWidgetState extends State<DeferredWidget> {
                           _libraryFuture = DeferredWidget.preload(widget.loader);
                         });
                       },
-                      child: const Text('Retry'),
+                      child: Text('common.retry'.tr()),
                     ),
                   ],
                 ),

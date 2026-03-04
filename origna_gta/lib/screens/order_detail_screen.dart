@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -103,3 +104,23 @@ class _OrderDetailView extends ConsumerWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'OrderDetailScreen — Dark', group: 'OrderDetailScreen')
+Widget previewOrderDetailScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const OrderDetailScreen(orderId: 'preview-id'),
+      ),
+    );
+
+@Preview(name: 'OrderDetailScreen — Light', group: 'OrderDetailScreen')
+Widget previewOrderDetailScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const OrderDetailScreen(orderId: 'preview-id'),
+      ),
+    );

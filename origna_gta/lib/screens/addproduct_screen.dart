@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -2882,3 +2883,23 @@ class _VariantRow extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'AddProductScreen — Dark', group: 'AddProductScreen')
+Widget previewAddProductScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const AddProductScreen(),
+      ),
+    );
+
+@Preview(name: 'AddProductScreen — Light', group: 'AddProductScreen')
+Widget previewAddProductScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const AddProductScreen(),
+      ),
+    );

@@ -36,11 +36,8 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
       // Use the providers.dart userRepository to avoid magic string collection names
       final userData = ref.read(userProfileProvider).valueOrNull;
       if (!mounted) return;
-      // userData is old UserModel (no mfaEnabled field) — read from Firestore via provider
-      // Use a safe dynamic cast fallback
       setState(() {
-        // ignore: avoid_dynamic_calls
-        _mfaEnabled = (userData as dynamic)?.mfaEnabled as bool? ?? false;
+        _mfaEnabled = userData?.mfaEnabled ?? false;
       });
     });
   }
@@ -381,7 +378,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   _qrCodeUri = null;
                   _backupCodes = [];
                 });
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.security.mfa_disabled_success'.tr()), backgroundColor: DesignTokens.textPrimary));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.security.mfa_disabled_success'.tr()), backgroundColor: DesignTokens.success));
               }
             },
             child: Text('admin.security.disable_mfa'.tr(), style: const TextStyle(color: DesignTokens.error)),

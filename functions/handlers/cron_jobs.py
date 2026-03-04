@@ -7,13 +7,16 @@ Scheduled Cron Jobs
 - Archive old orders (every 12 hours)
 """
 
+import json
 import logging
+import os
 from datetime import UTC, datetime, timedelta
 
 import sentry_sdk
 import stripe
 from firebase_functions import scheduler_fn
 from google.api_core import exceptions as google_exceptions
+from google.cloud import tasks_v2
 
 from config import (
     BASE_URL,
@@ -21,6 +24,10 @@ from config import (
     PLATFORM_FEE_RATIO,
     get_stripe_secret_key,
 )
+
+# GCP project + region: set automatically by Cloud Functions runtime
+_GCP_PROJECT_ID: str = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+_GCP_REGION: str = "northamerica-northeast1"
 from schema_constants import (
     AlgoliaActionValues,
     BusinessRules,
@@ -664,43 +671,50 @@ def _run_auto_capture() -> None:
 
 
 @scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
-def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
+def stale_orders_dispatcher(event: scheduler_fn.ScheduledEvent) -> None:
     """
-    Expires orders with authorizations older than AUTHORIZATION_EXPIRY_DAYS (6) days.
+    Dispatches tasks to process stale/expired orders.
 
     Runs: Every 1 hour
 
     Logic:
-    - With automatic capture, there are no authorization holds to expire.
-    - This cron now cleans up stale PENDING orders (checkout abandoned)
-      that were never paid and are older than AUTHORIZATION_EXPIRY_DAYS.
-    - Restores stock for these abandoned orders.
+    - Queries for stale PENDING or AUTHORIZED orders older than a cutoff.
+    - Creates a Google Cloud Task for each order to be processed by the
+      `stale_orders_worker` function.
+    - This decouples finding orders from processing them, improving
+      scalability and reliability.
     """
-    logger.info("Running check_expired_authorizations cron job (stale order cleanup)")
+    logger.info("Running stale_orders_dispatcher cron job")
 
-    # SECURITY FIX #16: Distributed lock prevents concurrent execution
-    if not acquire_cron_lock("check_expired_authorizations"):
-        logger.info("check_expired_authorizations: Lock held by another instance, skipping")
+    if not acquire_cron_lock("stale_orders_dispatcher"):
+        logger.info("stale_orders_dispatcher: Lock held by another instance, skipping")
         return
 
     try:
-        _run_expired_authorizations()
+        _dispatch_stale_orders()
     except Exception as exc:
-        # M-14: Alert on unhandled cron failure
-        _alert_cron_failure("check_expired_authorizations", exc)
+        _alert_cron_failure("stale_orders_dispatcher", exc)
     finally:
-        release_cron_lock("check_expired_authorizations")
+        release_cron_lock("stale_orders_dispatcher")
 
 
-def _run_expired_authorizations() -> None:
-    """Inner implementation of expired authorization cleanup."""
-    # M4: Set stripe key once at top, not per-iteration inside the loop
-    stripe.api_key = get_stripe_secret_key()
+def _dispatch_stale_orders() -> None:
+    """Queries for stale orders and creates a Cloud Task for each."""
+    # Required environment variables (must be set in Firebase Functions deployment config):
+    # - STALE_ORDER_WORKER_URL: HTTPS URL of the `stale_orders_worker` Cloud Function.
+    # - TASK_HANDLER_SA_EMAIL: Service Account email authorized to invoke the worker.
+    # - TASKS_QUEUE_ID: Cloud Tasks queue ID (defaults to 'stale-orders-queue').
+    worker_url = os.environ.get("STALE_ORDER_WORKER_URL")
+    task_handler_sa_email = os.environ.get("TASK_HANDLER_SA_EMAIL")
+    queue_id = os.environ.get("TASKS_QUEUE_ID", "stale-orders-queue")
+    
+    if not all([worker_url, task_handler_sa_email]):
+        logger.critical("Missing environment variables for Cloud Tasks dispatcher.")
+        raise ValueError("STALE_ORDER_WORKER_URL and TASK_HANDLER_SA_EMAIL must be set.")
+
 
     cutoff_date = datetime.now(UTC) - timedelta(days=BusinessRules.AUTHORIZATION_EXPIRY_DAYS)
 
-    # Find stale PENDING orders that were never paid (session expired/abandoned)
-    # OR were AUTHORIZED but never captured (manual capture expiry)
     orders = list(
         get_db()
         .collection(Collections.ORDERS)
@@ -720,136 +734,40 @@ def _run_expired_authorizations() -> None:
     )
 
     if not orders:
-        logger.info("No stale orders found to expire")
+        logger.info("No stale orders found to dispatch")
         return
 
-    from concurrent.futures import ThreadPoolExecutor
-
-    def process_one_order(order_doc):
+    client = tasks_v2.CloudTasksClient()
+    parent = client.queue_path(_GCP_PROJECT_ID, _GCP_REGION, queue_id)
+    
+    dispatched_count = 0
+    for order_doc in orders:
         try:
-            order_data = order_doc.to_dict()
             order_id = order_doc.id
+            payload = {"order_id": order_id}
 
-            # FIX 2: Check STOCK_RESTORED from fresh doc inside transaction
-            @get_firestore().transactional
-            def try_expire_order(transaction, order_doc=order_doc, order_data=order_data):
-                fresh_doc = order_doc.reference.get(transaction=transaction)
-                if not fresh_doc.exists:
-                    return "not_found", False, [], None
-                fresh_data = fresh_doc.to_dict()
-                current_status = fresh_data.get(Fields.ORDER_STATUS)
-                fresh_payment_status = fresh_data.get(Fields.PAYMENT_STATUS)
-
-                # C-10: Prevent race condition with capture.
-                if fresh_payment_status in [PaymentStatusValues.CAPTURING, PaymentStatusValues.CAPTURED]:
-                    return f"locked_by_capture:{fresh_payment_status}", False, [], None
-
-                if current_status not in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED]:
-                    return f"invalid_status:{current_status}", False, [], None
-
-                stock_already_restored = fresh_data.get(Fields.STOCK_RESTORED, False)
-                new_payment_status = (
-                    PaymentStatusValues.AUTHORIZATION_EXPIRED
-                    if fresh_payment_status == PaymentStatusValues.AUTHORIZED
-                    else PaymentStatusValues.SESSION_EXPIRED
-                )
-                transaction.update(
-                    order_doc.reference,
-                    {
-                        Fields.ORDER_STATUS: OrderStatusValues.EXPIRED,
-                        Fields.PAYMENT_STATUS: new_payment_status,
-                        Fields.UPDATED_AT: get_server_timestamp(),
+            task = {
+                "http_request": {
+                    "http_method": tasks_v2.HttpMethod.POST,
+                    "url": worker_url,
+                    "headers": {"Content-type": "application/json"},
+                    "body": json.dumps(payload).encode(),
+                    "oidc_token": {
+                        "REDACTED_SECRET_email": task_handler_sa_email,
+                        "audience": worker_url,
                     },
-                )
-                return "locked", stock_already_restored, fresh_data.get(Fields.ITEMS, []), fresh_payment_status
-
-            try:
-                expire_result, stock_already_restored, fresh_items, prev_payment_status = try_expire_order(get_db().transaction())
-                if expire_result != "locked":
-                    logger.info(f"Order {order_id} cannot be expired: {expire_result}")
-                    return False
-            except (
-                google_exceptions.GoogleAPICallError,
-                google_exceptions.RetryError,
-                ValueError,
-                TypeError,
-                RuntimeError,
-            ) as e:
-                logger.warning(f"⚠️ Failed to lock order {order_id} for expiry: {str(e)}")
-                return False
-
-            # C-10 FIX 1: Cancel Stripe authorization AFTER successful Firestore lock
-            if prev_payment_status == PaymentStatusValues.AUTHORIZED:
-                pi_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
-                if pi_id:
-                    try:
-                        logger.info(f"Cancelling stale authorization for order {order_id} (PI: {pi_id})")
-                        stripe.PaymentIntent.cancel(pi_id, idempotency_key=f"cancel_auth_{order_id}")
-                    except Exception as cancel_err:
-                        logger.warning(f"⚠️ Failed to cancel Stripe PI {pi_id} for expired order {order_id}: {cancel_err}")
-
-            # Use fresh stock_already_restored from transaction (Fix 2)
-            stock_restored_ok = stock_already_restored  # assume True if already done
-            if stock_already_restored:
-                logger.info(f"Stock already restored for expired order {order_id}")
-            else:
-                # CRITICAL FIX: Only mark STOCK_RESTORED=True if the batch actually succeeds.
-                stock_batch = get_db().batch()
-                for item in fresh_items:
-                    product_id = item.get(Fields.PRODUCT_ID)
-                    if not product_id:
-                        continue
-                    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
-                    qty = item[Fields.QUANTITY]
-                    stock_patch = {Fields.STOCK_QUANTITY: get_firestore().Increment(qty)}
-                    fulfillment_wh = item.get(Fields.FULFILLMENT_WAREHOUSE_ID, "")
-                    if fulfillment_wh:
-                        stock_patch[f"{Fields.WAREHOUSE_STOCK}.{fulfillment_wh}"] = get_firestore().Increment(qty)
-                    stock_batch.update(product_ref, stock_patch)
-                    if fulfillment_wh:
-                        inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
-                        stock_batch.set(inv_ref, {
-                            Fields.AVAILABLE_QUANTITY: get_firestore().Increment(qty),
-                            Fields.LAST_SYNCED_AT: get_server_timestamp(),
-                        }, merge=True)
-                try:
-                    stock_batch.commit()
-                    stock_restored_ok = True
-                except Exception as e:
-                    logger.error(f"Failed to restore stock batch for order {order_id}: {str(e)}")
-                    sentry_sdk.capture_exception(e)
-                    stock_restored_ok = False
-
-            update_fields: dict = {
-                Fields.EXPIRES_AT: get_server_timestamp(),
-                Fields.UPDATED_AT: get_server_timestamp(),
+                }
             }
-            if stock_restored_ok:
-                update_fields[Fields.STOCK_RESTORED] = True
-            order_doc.reference.update(update_fields)
-
-            # EMAIL-C2 FIX: Send authorization expired email — only for AUTHORIZED orders
-            if prev_payment_status == PaymentStatusValues.AUTHORIZED:
-                try:
-                    from services.email_service import send_authorization_expired_email
-                    lang = order_data.get(Fields.PREFERRED_LANGUAGE, "en")
-                    send_authorization_expired_email(order_id, order_data, lang=lang)
-                except Exception as email_err:
-                    logger.warning(f"Failed to send authorization expired email for order {order_id}: {email_err}")
-
-            return True
+            # Use order ID for task name to prevent duplicates if dispatcher runs multiple times
+            client.create_task(parent=parent, task=task, task_id=f"expire-{order_id}")
+            dispatched_count += 1
+        except google_exceptions.AlreadyExists:
+             logger.info(f"Task for order {order_id} already exists. Skipping.")
         except Exception as e:
-            logger.error(f"Error processing order {order_doc.id} in expiry cron: {e}")
+            logger.error(f"Failed to create task for order {order_doc.id}: {e}")
             sentry_sdk.capture_exception(e)
-            return False
 
-    # Process orders in parallel (max 10 threads to avoid exhausting resources/DB connections)
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        results = list(executor.map(process_one_order, orders))
-
-    expired_count = sum(1 for r in results if r)
-    logger.info(f"Stale order cleanup completed: {expired_count} orders expired")
-
+    logger.info(f"Stale order dispatch completed: {dispatched_count} tasks created")
 
 @scheduler_fn.on_schedule(schedule="every 12 hours", **CRON_OPTIONS)
 def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
@@ -1012,41 +930,50 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running cleanup_stale_rate_limits cron job")
 
-    # CRON-H2: 2hr cutoff (not 1hr) so entries at the edge of the 1hr window
-    # are never deleted while still potentially active.
-    cutoff_time = datetime.now(UTC) - timedelta(hours=2)
+    if not acquire_cron_lock("cleanup_stale_rate_limits", ttl_minutes=35):
+        logger.info("cleanup_stale_rate_limits: lock held, skipping")
+        return
 
-    query = get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500)
+    try:
+        # CRON-H2: 2hr cutoff (not 1hr) so entries at the edge of the 1hr window
+        # are never deleted while still potentially active.
+        cutoff_time = datetime.now(UTC) - timedelta(hours=2)
 
-    deleted_count = 0
-    batch = get_db().batch()
+        query = get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500)
 
-    while True:
-        docs = list(query.stream())
-        if not docs:
-            break
+        deleted_count = 0
+        batch = get_db().batch()
 
-        for doc in docs:
-            try:
-                batch.delete(doc.reference)
-                deleted_count += 1
+        while True:
+            docs = list(query.stream())
+            if not docs:
+                break
 
-                # Commit every 500 deletes
-                if deleted_count % 500 == 0:
-                    batch.commit()
-                    batch = get_db().batch()
+            for doc in docs:
+                try:
+                    batch.delete(doc.reference)
+                    deleted_count += 1
 
-            except Exception as e:
-                logger.error(f"Error processing item in batch: {e}")
-                sentry_sdk.capture_exception(e)
+                    # Commit every 500 deletes
+                    if deleted_count % 500 == 0:
+                        batch.commit()
+                        batch = get_db().batch()
 
-        last_doc = docs[-1]
-        query = get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500).start_after(last_doc)
-    # Commit remaining
-    if deleted_count % 500 != 0:
-        batch.commit()
+                except Exception as e:
+                    logger.error(f"Error processing item in batch: {e}")
+                    sentry_sdk.capture_exception(e)
 
-    logger.info(f"Rate limit cleanup completed: {deleted_count} documents deleted")
+            last_doc = docs[-1]
+            query = get_db().collection(Collections.RATE_LIMITS).where(Fields.LAST_REQUEST, "<=", cutoff_time).limit(500).start_after(last_doc)
+        # Commit remaining
+        if deleted_count % 500 != 0:
+            batch.commit()
+
+        logger.info(f"Rate limit cleanup completed: {deleted_count} documents deleted")
+    except Exception as exc:
+        _alert_cron_failure("cleanup_stale_rate_limits", exc)
+    finally:
+        release_cron_lock("cleanup_stale_rate_limits")
 
 
 @scheduler_fn.on_schedule(schedule="0 3 * * *", **CRON_OPTIONS)
@@ -1069,111 +996,120 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
 
     logger.info("Running cleanup_orphaned_r2_images cron job")
 
-    # Collect all image URLs currently referenced by products
-    # select() fetches only imageUrls field — avoids reading full product docs
-    referenced_keys = set()
-
-    query = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).limit(500)
-    while True:
-        docs = list(query.stream())
-        if not docs:
-            break
-
-        for product_doc in docs:
-            try:
-                product_data = product_doc.to_dict()
-                image_urls = product_data.get(Fields.IMAGE_URLS, [])
-                for url in image_urls:
-                    # Extract R2 key from CDN URL
-                    # URL format: https://cdn.origna.ca/products/uuid.ext
-                    if isinstance(url, str) and "/" in url:
-                        # Get path after domain
-                        path_parts = url.split("/")
-                        # Reconstruct key: e.g. "products/uuid.ext" or "dev/products/uuid.ext"
-                        for i, part in enumerate(path_parts):
-                            if part in ("products", "dev"):
-                                key = "/".join(path_parts[i:])
-                                referenced_keys.add(key)
-                                break
-            except Exception as e:
-                logger.error(f"Error processing item in batch: {e}")
-                sentry_sdk.capture_exception(e)
-
-        last_doc = docs[-1]
-        query = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).limit(500).start_after(last_doc)
-
-    logger.info(f"  Found {len(referenced_keys)} referenced image keys")
-
-    # List R2 objects
-    r2_creds = get_r2_credentials()
-    r2_access_key = r2_creds.get("access_key")
-    r2_secret_key = r2_creds.get("secret_key")
-    r2_account_id = r2_creds.get("account_id")
-
-    if not all([r2_access_key, r2_secret_key, r2_account_id]):
-        logger.warning("  ⚠️ R2 credentials not configured, skipping cleanup")
+    if not acquire_cron_lock("cleanup_orphaned_r2_images"):
+        logger.info("cleanup_orphaned_r2_images: lock held, skipping")
         return
 
-    s3_client = boto3.client(
-        "s3",
-        endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=r2_access_key,
-        aws_secret_access_key=r2_secret_key,
-        config=Config(signature_version="s3v4"),
-        region_name="auto",
-    )
+    try:
+        # Collect all image URLs currently referenced by products
+        # select() fetches only imageUrls field — avoids reading full product docs
+        referenced_keys = set()
 
-    bucket_name = R2Config.BUCKET_NAME
-    prefix = R2Config.get_image_path("products", "").rsplit("/", 1)[0] + "/"
+        query = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).limit(500)
+        while True:
+            docs = list(query.stream())
+            if not docs:
+                break
 
-    # List objects in products/ prefix
-    orphaned_keys = []
-    continuation_token = None
-    cutoff = datetime.now(UTC) - timedelta(hours=24)
+            for product_doc in docs:
+                try:
+                    product_data = product_doc.to_dict()
+                    image_urls = product_data.get(Fields.IMAGE_URLS, [])
+                    for url in image_urls:
+                        # Extract R2 key from CDN URL
+                        # URL format: https://cdn.origna.ca/products/uuid.ext
+                        if isinstance(url, str) and "/" in url:
+                            # Get path after domain
+                            path_parts = url.split("/")
+                            # Reconstruct key: e.g. "products/uuid.ext" or "dev/products/uuid.ext"
+                            for i, part in enumerate(path_parts):
+                                if part in ("products", "dev"):
+                                    key = "/".join(path_parts[i:])
+                                    referenced_keys.add(key)
+                                    break
+                except Exception as e:
+                    logger.error(f"Error processing item in batch: {e}")
+                    sentry_sdk.capture_exception(e)
 
-    while True:
-        list_kwargs = {
-            "Bucket": bucket_name,
-            "Prefix": prefix,
-            "MaxKeys": 1000,
-        }
-        if continuation_token:
-            list_kwargs["ContinuationToken"] = continuation_token
+            last_doc = docs[-1]
+            query = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).limit(500).start_after(last_doc)
 
-        try:
-            response = s3_client.list_objects_v2(**list_kwargs)
-        except Exception as e:
-            logger.warning(f"  ⚠️ R2 list error: {e}")
+        logger.info(f"  Found {len(referenced_keys)} referenced image keys")
+
+        # List R2 objects
+        r2_creds = get_r2_credentials()
+        r2_access_key = r2_creds.get("access_key")
+        r2_secret_key = r2_creds.get("secret_key")
+        r2_account_id = r2_creds.get("account_id")
+
+        if not all([r2_access_key, r2_secret_key, r2_account_id]):
+            logger.warning("  ⚠️ R2 credentials not configured, skipping cleanup")
             return
 
-        for obj in response.get("Contents", []):
-            key = obj["Key"]
-            last_modified = obj.get("LastModified")
+        s3_client = boto3.client(
+            "s3",
+            endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
+            aws_access_key_id=r2_access_key,
+            aws_secret_access_key=r2_secret_key,
+            config=Config(signature_version="s3v4"),
+            region_name="auto",
+        )
 
-            # Safety: skip recently uploaded files (race condition with active uploads)
-            if last_modified and last_modified > cutoff:
-                continue
+        bucket_name = R2Config.BUCKET_NAME
+        prefix = R2Config.get_image_path("products", "").rsplit("/", 1)[0] + "/"
 
-            if key not in referenced_keys:
-                orphaned_keys.append(key)
+        # List objects in products/ prefix
+        orphaned_keys = []
+        continuation_token = None
+        cutoff = datetime.now(UTC) - timedelta(hours=24)
 
-        if not response.get("IsTruncated"):
-            break
-        continuation_token = response.get("NextContinuationToken")
+        while True:
+            list_kwargs = {
+                "Bucket": bucket_name,
+                "Prefix": prefix,
+                "MaxKeys": 1000,
+            }
+            if continuation_token:
+                list_kwargs["ContinuationToken"] = continuation_token
 
-    logger.info(f"  Found {len(orphaned_keys)} orphaned images to delete")
+            try:
+                response = s3_client.list_objects_v2(**list_kwargs)
+            except Exception as e:
+                logger.warning(f"  ⚠️ R2 list error: {e}")
+                return
 
-    # Delete orphaned objects in batches of 100
-    deleted_count = 0
-    for i in range(0, len(orphaned_keys), 100):
-        batch_keys = orphaned_keys[i : i + 100]
-        try:
-            s3_client.delete_objects(Bucket=bucket_name, Delete={"Objects": [{"Key": k} for k in batch_keys]})
-            deleted_count += len(batch_keys)
-        except Exception as e:
-            logger.warning(f"  ⚠️ R2 delete error for batch {i}: {e}")
+            for obj in response.get("Contents", []):
+                key = obj["Key"]
+                last_modified = obj.get("LastModified")
 
-    logger.info(f"  R2 orphan cleanup completed: {deleted_count} files deleted")
+                # Safety: skip recently uploaded files (race condition with active uploads)
+                if last_modified and last_modified > cutoff:
+                    continue
+
+                if key not in referenced_keys:
+                    orphaned_keys.append(key)
+
+            if not response.get("IsTruncated"):
+                break
+            continuation_token = response.get("NextContinuationToken")
+
+        logger.info(f"  Found {len(orphaned_keys)} orphaned images to delete")
+
+        # Delete orphaned objects in batches of 100
+        deleted_count = 0
+        for i in range(0, len(orphaned_keys), 100):
+            batch_keys = orphaned_keys[i : i + 100]
+            try:
+                s3_client.delete_objects(Bucket=bucket_name, Delete={"Objects": [{"Key": k} for k in batch_keys]})
+                deleted_count += len(batch_keys)
+            except Exception as e:
+                logger.warning(f"  ⚠️ R2 delete error for batch {i}: {e}")
+
+        logger.info(f"  R2 orphan cleanup completed: {deleted_count} files deleted")
+    except Exception as exc:
+        _alert_cron_failure("cleanup_orphaned_r2_images", exc)
+    finally:
+        release_cron_lock("cleanup_orphaned_r2_images")
 
 
 @scheduler_fn.on_schedule(schedule="0 4 * * *", **CRON_OPTIONS)
@@ -1190,31 +1126,40 @@ def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running cleanup_stale_webhook_events cron job")
 
-    cutoff_time = datetime.now(UTC) - timedelta(days=BusinessRules.WEBHOOK_EVENT_RETENTION_DAYS)
+    if not acquire_cron_lock("cleanup_stale_webhook_events"):
+        logger.info("cleanup_stale_webhook_events: lock held, skipping")
+        return
 
-    webhook_docs = (
-        get_db().collection(Collections.WEBHOOK_EVENTS).where(Fields.TIMESTAMP, "<=", cutoff_time).limit(500).stream()
-    )
+    try:
+        cutoff_time = datetime.now(UTC) - timedelta(days=BusinessRules.WEBHOOK_EVENT_RETENTION_DAYS)
 
-    deleted_count = 0
-    batch = get_db().batch()
+        webhook_docs = (
+            get_db().collection(Collections.WEBHOOK_EVENTS).where(Fields.TIMESTAMP, "<=", cutoff_time).limit(500).stream()
+        )
 
-    for doc in webhook_docs:
-        try:
-            batch.delete(doc.reference)
-            deleted_count += 1
+        deleted_count = 0
+        batch = get_db().batch()
 
-            if deleted_count % 500 == 0:
-                batch.commit()
-                batch = get_db().batch()
+        for doc in webhook_docs:
+            try:
+                batch.delete(doc.reference)
+                deleted_count += 1
 
-        except Exception as e:
-            logger.error(f"Error processing item in batch: {e}")
-            sentry_sdk.capture_exception(e)
-    if deleted_count % 500 != 0:
-        batch.commit()
+                if deleted_count % 500 == 0:
+                    batch.commit()
+                    batch = get_db().batch()
 
-    logger.info(f"Webhook event cleanup completed: {deleted_count} documents deleted")
+            except Exception as e:
+                logger.error(f"Error processing item in batch: {e}")
+                sentry_sdk.capture_exception(e)
+        if deleted_count % 500 != 0:
+            batch.commit()
+
+        logger.info(f"Webhook event cleanup completed: {deleted_count} documents deleted")
+    except Exception as exc:
+        _alert_cron_failure("cleanup_stale_webhook_events", exc)
+    finally:
+        release_cron_lock("cleanup_stale_webhook_events")
 
 
 @scheduler_fn.on_schedule(schedule="0 5 * * *", **CRON_OPTIONS)
@@ -1230,36 +1175,45 @@ def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info("Running cleanup_stale_security_alerts cron job")
 
-    cutoff_time = datetime.now(UTC) - timedelta(days=BusinessRules.SECURITY_ALERT_RETENTION_DAYS)
+    if not acquire_cron_lock("cleanup_stale_security_alerts"):
+        logger.info("cleanup_stale_security_alerts: lock held, skipping")
+        return
 
-    alert_docs = (
-        get_db()
-        .collection(Collections.SECURITY_ALERTS)
-        .where(Fields.RESOLVED, "==", True)
-        .where(Fields.TIMESTAMP, "<=", cutoff_time)
-        .limit(500)
-        .stream()
-    )
+    try:
+        cutoff_time = datetime.now(UTC) - timedelta(days=BusinessRules.SECURITY_ALERT_RETENTION_DAYS)
 
-    deleted_count = 0
-    batch = get_db().batch()
+        alert_docs = (
+            get_db()
+            .collection(Collections.SECURITY_ALERTS)
+            .where(Fields.RESOLVED, "==", True)
+            .where(Fields.TIMESTAMP, "<=", cutoff_time)
+            .limit(500)
+            .stream()
+        )
 
-    for doc in alert_docs:
-        try:
-            batch.delete(doc.reference)
-            deleted_count += 1
+        deleted_count = 0
+        batch = get_db().batch()
 
-            if deleted_count % 500 == 0:
-                batch.commit()
-                batch = get_db().batch()
+        for doc in alert_docs:
+            try:
+                batch.delete(doc.reference)
+                deleted_count += 1
 
-        except Exception as e:
-            logger.error(f"Error processing item in batch: {e}")
-            sentry_sdk.capture_exception(e)
-    if deleted_count % 500 != 0:
-        batch.commit()
+                if deleted_count % 500 == 0:
+                    batch.commit()
+                    batch = get_db().batch()
 
-    logger.info(f"Security alert cleanup completed: {deleted_count} resolved alerts deleted")
+            except Exception as e:
+                logger.error(f"Error processing item in batch: {e}")
+                sentry_sdk.capture_exception(e)
+        if deleted_count % 500 != 0:
+            batch.commit()
+
+        logger.info(f"Security alert cleanup completed: {deleted_count} resolved alerts deleted")
+    except Exception as exc:
+        _alert_cron_failure("cleanup_stale_security_alerts", exc)
+    finally:
+        release_cron_lock("cleanup_stale_security_alerts")
 
 
 @scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
@@ -1391,6 +1345,7 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
             .collection(Collections.PRODUCTS)
             .where(Fields.IS_DIGITAL, "==", True)
             .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
+            .limit(500)
             .stream()
         )
 
@@ -1486,6 +1441,7 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
             get_db()
             .collection(Collections.PRODUCTS)
             .where(Fields.LIFECYCLE_STATUS, "==", ProductLifecycleStatusValues.ACTIVE)
+            .limit(1000)
         )
 
         now_utc = datetime.now(UTC)
@@ -1554,6 +1510,8 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
 
             product_name = data.get(Fields.NAME, "Your product")
             subject = f"[Origna] Low stock alert: {product_name}"
+            from services.email_service import _get_signed_unsubscribe_url, UNSUBSCRIBE_URL
+            unsub_url = _get_signed_unsubscribe_url(seller_email) if seller_email else UNSUBSCRIBE_URL
             html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #E53E3E;">⚠️ Low Stock Alert</h2>
@@ -1575,7 +1533,8 @@ def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
       <p style="color:#999; font-size:12px; margin-top:20px;">
         You are receiving this because you enabled low stock alerts for this product.<br>
         To disable, edit the product and uncheck "Notify me when stock falls below threshold".<br>
-        Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}
+        Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}<br>
+        <a href="{unsub_url}" style="color:#667EEA;">Unsubscribe from seller notifications</a>
       </p>
     </div>"""
 
@@ -1629,7 +1588,7 @@ def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
         skipped_count = 0
 
         # Fetch users who opted into marketing and haven't been emailed in 3 days
-        users_query = get_db().collection(Collections.USERS).where(Fields.MARKETING_OPT_IN, "==", True)
+        users_query = get_db().collection(Collections.USERS).where(Fields.MARKETING_OPT_IN, "==", True).limit(500)
 
         for user_doc in users_query.stream():
             user_data = user_doc.to_dict() or {}
@@ -1802,7 +1761,6 @@ def _compute_avg_response_time(seller_id: str, window_start: object) -> float:
 
 
 @scheduler_fn.on_schedule(schedule="every 168 hours", **CRON_OPTIONS)  # weekly
-@scheduler_fn.on_schedule(schedule="every 168 hours", **CRON_OPTIONS)  # weekly
 def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
     """
     TASK 11 — Weekly cron: compute seller health metrics and raise security alerts for threshold breaches.
@@ -1921,78 +1879,95 @@ def _compute_seller_metrics_logic() -> None:
                     seller_chats[sid] = []
                 seller_chats[sid].append(hours)
 
-        # 3. Process all sellers
-        sellers_ref = db.collection(Collections.USERS).where(Fields.ROLES, "array_contains", UserRoleValues.SELLER)
+        # 3. Process all sellers — paginated to avoid unbounded full-collection stream.
+        # Cost fix: was sellers_ref.stream() with no limit, scanning ALL seller users at once.
+        sellers_query = (
+            db.collection(Collections.USERS)
+            .where(Fields.ROLES, "array_contains", UserRoleValues.SELLER)
+            .order_by(Fields.CREATED_AT)
+            .limit(500)
+        )
         processed_count = 0
         alerted_count = 0
+        last_seller_doc = None
 
-        for seller_doc in sellers_ref.stream():
-            seller_id = seller_doc.id
-            stats = seller_stats.get(seller_id, {
-                "total_orders": 0,
-                "disputed_orders": 0,
-                "total_seller_items": 0,
-                "refunded_items": 0,
-                "cancelled_items": 0,
-                "late_shipped_items": 0,
-                "total_revenue_cents": 0,
-            })
+        while True:
+            page_query = sellers_query if last_seller_doc is None else sellers_query.start_after(last_seller_doc)
+            seller_page = list(page_query.stream())
+            if not seller_page:
+                break
 
-            total_orders = stats["total_orders"]
-            total_items = stats["total_seller_items"]
+            for seller_doc in seller_page:
+                seller_id = seller_doc.id
+                stats = seller_stats.get(seller_id, {
+                    "total_orders": 0,
+                    "disputed_orders": 0,
+                    "total_seller_items": 0,
+                    "refunded_items": 0,
+                    "cancelled_items": 0,
+                    "late_shipped_items": 0,
+                    "total_revenue_cents": 0,
+                })
 
-            dispute_rate = stats["disputed_orders"] / total_orders if total_orders > 0 else 0.0
-            refund_rate = stats["refunded_items"] / total_items if total_items > 0 else 0.0
-            cancel_rate = stats["cancelled_items"] / total_items if total_items > 0 else 0.0
-            late_rate = stats["late_shipped_items"] / total_items if total_items > 0 else 0.0
+                total_orders = stats["total_orders"]
+                total_items = stats["total_seller_items"]
 
-            # Response time from pre-fetched chats
-            hours_list = seller_chats.get(seller_id, [])
-            avg_response = round(sum(hours_list) / len(hours_list), 4) if hours_list else 0.0
+                dispute_rate = stats["disputed_orders"] / total_orders if total_orders > 0 else 0.0
+                refund_rate = stats["refunded_items"] / total_items if total_items > 0 else 0.0
+                cancel_rate = stats["cancelled_items"] / total_items if total_items > 0 else 0.0
+                late_rate = stats["late_shipped_items"] / total_items if total_items > 0 else 0.0
 
-            # Write metrics doc
-            db.collection(Collections.SELLER_METRICS).document(seller_id).set({
-                Fields.SELLER_ID: seller_id,
-                Fields.DISPUTE_RATE: round(dispute_rate, 4),
-                Fields.REFUND_RATE: round(refund_rate, 4),
-                Fields.CANCELLATION_RATE: round(cancel_rate, 4),
-                Fields.LATE_SHIPMENT_RATE: round(late_rate, 4),
-                Fields.AVG_RESPONSE_TIME_HOURS: avg_response,
-                Fields.TOTAL_ORDERS_30D: total_orders,
-                Fields.TOTAL_REVENUE_CENTS_30D: stats["total_revenue_cents"],
-                Fields.COMPUTED_AT: now_utc,
-            })
-            processed_count += 1
+                # Response time from pre-fetched chats
+                hours_list = seller_chats.get(seller_id, [])
+                avg_response = round(sum(hours_list) / len(hours_list), 4) if hours_list else 0.0
 
-            # Check breaches
-            breaches = []
-            if dispute_rate > DISPUTE_THRESHOLD:
-                breaches.append(f"disputeRate={dispute_rate:.1%}")
-            if refund_rate > REFUND_THRESHOLD:
-                breaches.append(f"refundRate={refund_rate:.1%}")
-            if cancel_rate > CANCEL_THRESHOLD:
-                breaches.append(f"cancellationRate={cancel_rate:.1%}")
+                # Write metrics doc
+                db.collection(Collections.SELLER_METRICS).document(seller_id).set({
+                    Fields.SELLER_ID: seller_id,
+                    Fields.DISPUTE_RATE: round(dispute_rate, 4),
+                    Fields.REFUND_RATE: round(refund_rate, 4),
+                    Fields.CANCELLATION_RATE: round(cancel_rate, 4),
+                    Fields.LATE_SHIPMENT_RATE: round(late_rate, 4),
+                    Fields.AVG_RESPONSE_TIME_HOURS: avg_response,
+                    Fields.TOTAL_ORDERS_30D: total_orders,
+                    Fields.TOTAL_REVENUE_CENTS_30D: stats["total_revenue_cents"],
+                    Fields.COMPUTED_AT: now_utc,
+                })
+                processed_count += 1
 
-            if breaches:
-                # Deduplicate security alerts
-                existing = db.collection(Collections.SECURITY_ALERTS)\
-                    .where(Fields.TYPE, "==", SecurityAlertTypes.SELLER_METRICS_BREACH)\
-                    .where(Fields.SELLER_ID, "==", seller_id)\
-                    .where(Fields.RESOLVED, "==", False)\
-                    .limit(1).get()
+                # Check breaches
+                breaches = []
+                if dispute_rate > DISPUTE_THRESHOLD:
+                    breaches.append(f"disputeRate={dispute_rate:.1%}")
+                if refund_rate > REFUND_THRESHOLD:
+                    breaches.append(f"refundRate={refund_rate:.1%}")
+                if cancel_rate > CANCEL_THRESHOLD:
+                    breaches.append(f"cancellationRate={cancel_rate:.1%}")
 
-                if not existing:
-                    db.collection(Collections.SECURITY_ALERTS).add({
-                        Fields.TYPE: SecurityAlertTypes.SELLER_METRICS_BREACH,
-                        Fields.SELLER_ID: seller_id,
-                        Fields.BREACHES: breaches,
-                        Fields.TOTAL_ORDERS: total_orders,
-                        Fields.SEVERITY: SeverityLevels.HIGH,
-                        Fields.CREATED_AT: now_utc,
-                        Fields.RESOLVED: False,
-                    })
-                    alerted_count += 1
-                    logger.warning(f"Seller {seller_id} metrics breach: {', '.join(breaches)}")
+                if breaches:
+                    # Deduplicate security alerts
+                    existing = db.collection(Collections.SECURITY_ALERTS)\
+                        .where(Fields.TYPE, "==", SecurityAlertTypes.SELLER_METRICS_BREACH)\
+                        .where(Fields.SELLER_ID, "==", seller_id)\
+                        .where(Fields.RESOLVED, "==", False)\
+                        .limit(1).get()
+
+                    if not existing:
+                        db.collection(Collections.SECURITY_ALERTS).add({
+                            Fields.TYPE: SecurityAlertTypes.SELLER_METRICS_BREACH,
+                            Fields.SELLER_ID: seller_id,
+                            Fields.BREACHES: breaches,
+                            Fields.TOTAL_ORDERS: total_orders,
+                            Fields.SEVERITY: SeverityLevels.HIGH,
+                            Fields.CREATED_AT: now_utc,
+                            Fields.RESOLVED: False,
+                        })
+                        alerted_count += 1
+                        logger.warning(f"Seller {seller_id} metrics breach: {', '.join(breaches)}")
+
+            last_seller_doc = seller_page[-1]
+            if len(seller_page) < 500:
+                break
 
         logger.info(f"compute_seller_metrics done: {processed_count} sellers processed, {alerted_count} alerts raised")
     except Exception as e:
@@ -2054,7 +2029,7 @@ def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
             view_count = data.get(Fields.VIEW_COUNT, 0) or 0
             purchase_count = data.get(Fields.PURCHASE_COUNT, 0) or 0
             # SRCH-M2: favoriteCount now tracked via toggle_favorite Cloud Function
-            favorite_count = data.get("favoriteCount", 0) or 0
+            favorite_count = data.get(Fields.FAVORITE_COUNT, 0) or 0
             score = (
                 view_count
                 + (purchase_count * TRENDING_PURCHASE_WEIGHT)
@@ -2130,7 +2105,8 @@ def _notify_trending_products(db, top_products: list[tuple]) -> None:
 
         tokens = []
         for user in users_query:
-            token_docs = user.reference.collection(Collections.FCM_TOKENS).stream()
+            # Cost fix: limit FCM tokens per user to avoid unbounded subcollection reads
+            token_docs = user.reference.collection(Collections.FCM_TOKENS).limit(10).stream()
             for td in token_docs:
                 t = (td.to_dict() or {}).get("token")
                 if t:
@@ -2372,10 +2348,11 @@ def _run_return_escalation() -> None:
 
     try:
         # Query return requests stuck in 'requested' status past cutoff
+        # BUGFIX: return_requests use Fields.REQUESTED_AT ('requestedAt'), not Fields.CREATED_AT ('createdAt')
         stale_returns = (
             db.collection(Collections.RETURN_REQUESTS)
             .where(Fields.RETURN_STATUS, "==", ReturnStatusValues.REQUESTED)
-            .where(Fields.CREATED_AT, "<", cutoff)
+            .where(Fields.REQUESTED_AT, "<", cutoff)
             .limit(200)
             .stream()
         )

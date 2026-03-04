@@ -29,12 +29,18 @@ final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
   return getTaxRate(checkoutState.address!.state);
 });
 
-/// Computed provider for checkout total
+/// Computed provider for checkout total.
+/// Formula: (subtotal - coupon) + tax + shipping.
+/// NOTE: The platform fee is deducted from the SELLER's payout — it is NOT added to the buyer's
+/// charge. Stripe PaymentIntent amount = discounted_subtotal + shipping + tax only.
+/// The checkout_screen.dart displays a separate informational "service fee" row but the
+/// actual Stripe charge does NOT include this fee on top of the buyer's total.
+/// This provider reflects what the buyer actually pays (matches total_amount_cents on backend).
 final checkoutTotalProvider = Provider.autoDispose<double>((ref) {
   final checkoutState = ref.watch(checkoutStateProvider);
   final subtotal = ref.watch(cartSubtotalProvider);
   final couponDiscount = checkoutState.couponDiscountCents / 100.0;
-  return subtotal + checkoutState.taxAmount + checkoutState.shippingCost - couponDiscount;
+  return (subtotal - couponDiscount).clamp(0.0, double.infinity) + checkoutState.taxAmount + checkoutState.shippingCost;
 });
 
 final _shippingCircuitBreaker = CircuitBreakerRegistry.get('shipping_calc', config: CircuitBreakerConfig.searchDefault);

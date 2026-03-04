@@ -10,6 +10,9 @@ import 'package:origna_gta/services/algolia_service.dart';
 
 import 'product_repository.dart';
 
+// Export SortOption so callers importing algolia_product_repository can use it.
+export 'package:origna_gta/core/schema/schema_constants.dart' show SortOption;
+
 /// Algolia-based product repository with Firestore fallback
 /// Provides fast search with automatic fallback to reliable Firestore queries
 class AlgoliaProductRepository implements ProductRepository {
@@ -49,13 +52,25 @@ class AlgoliaProductRepository implements ProductRepository {
     String? subcategory,
     DocumentSnapshot? lastDocument,
     int pageSize = 20,
+    SortOption sortOption = SortOption.relevance,
+    int? minPriceCents,
+    int? maxPriceCents,
   }) async {
     final hasTextSearch = searchQuery != null && searchQuery.isNotEmpty;
 
     // Route: text search + Algolia available → Algolia (with Firestore fallback)
+    // Algolia handles sort via replica indexes; price filters via numericFilters.
     if (hasTextSearch && _algoliaService.isAvailable) {
       try {
-        return await _searchWithAlgolia(searchQuery, categoryId, subcategory, pageSize);
+        return await _searchWithAlgolia(
+          searchQuery,
+          categoryId,
+          subcategory,
+          pageSize,
+          sortOption: sortOption,
+          minPriceCents: minPriceCents,
+          maxPriceCents: maxPriceCents,
+        );
       } catch (e) {
         if (kDebugMode) {
           debugPrint('⚠️  Algolia error, falling back to Firestore: $e');
@@ -71,6 +86,9 @@ class AlgoliaProductRepository implements ProductRepository {
       subcategory: subcategory,
       lastDocument: lastDocument,
       pageSize: pageSize,
+      sortOption: sortOption,
+      minPriceCents: minPriceCents,
+      maxPriceCents: maxPriceCents,
     );
   }
 
@@ -230,6 +248,9 @@ class AlgoliaProductRepository implements ProductRepository {
     String? subcategory,
     DocumentSnapshot? lastDocument,
     int pageSize = 20,
+    SortOption sortOption = SortOption.relevance,
+    int? minPriceCents,
+    int? maxPriceCents,
   }) async {
     if (kDebugMode) debugPrint('📍 Using Firestore fallback');
 
@@ -254,7 +275,22 @@ class AlgoliaProductRepository implements ProductRepository {
       }
     }
 
-    query = query.orderBy(Fields.createdAt, descending: true);
+    if (minPriceCents != null) {
+      query = query.where(Fields.priceCents, isGreaterThanOrEqualTo: minPriceCents);
+    }
+    if (maxPriceCents != null) {
+      query = query.where(Fields.priceCents, isLessThanOrEqualTo: maxPriceCents);
+    }
+
+    switch (sortOption) {
+      case SortOption.priceLowToHigh:
+        query = query.orderBy(Fields.priceCents).orderBy(Fields.createdAt, descending: true);
+      case SortOption.priceHighToLow:
+        query = query.orderBy(Fields.priceCents, descending: true).orderBy(Fields.createdAt, descending: true);
+      case SortOption.newest:
+      case SortOption.relevance:
+        query = query.orderBy(Fields.createdAt, descending: true);
+    }
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);
@@ -282,10 +318,24 @@ class AlgoliaProductRepository implements ProductRepository {
     return ProductQueryResult(products: products, hasMore: hasMore, lastDocument: docsToMap.isNotEmpty ? docsToMap.last : null);
   }
 
-  Future<ProductQueryResult> _searchWithAlgolia(String query, int? categoryId, String? subcategory, int pageSize) async {
+  Future<ProductQueryResult> _searchWithAlgolia(
+    String query,
+    int? categoryId,
+    String? subcategory,
+    int pageSize, {
+    SortOption sortOption = SortOption.relevance,
+    int? minPriceCents,
+    int? maxPriceCents,
+  }) async {
     try {
-      // Trigger search
-      _algoliaService.search(query, categoryId: categoryId, subcategory: subcategory);
+      _algoliaService.search(
+        query,
+        categoryId: categoryId,
+        subcategory: subcategory,
+        sortOption: sortOption,
+        minPriceCents: minPriceCents,
+        maxPriceCents: maxPriceCents,
+      );
 
       // Wait for response with timeout to prevent infinite hang
       // when Algolia is unreachable (e.g. emulator environment)

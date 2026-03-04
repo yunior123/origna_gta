@@ -37,10 +37,10 @@ class BuyerOrdersViewModel extends StateNotifier<BuyerOrdersState> {
       // Extract productId from itemKey (format: "orderId_productId")
       final productId = itemKey.startsWith('${orderId}_') ? itemKey.substring(orderId.length + 1) : null;
       await _ref.read(orderRepositoryProvider).confirmReceipt(orderId, productId: productId);
-      state = state.copyWith(isLoading: false, isSuccess: true);
+      state = state.copyWith(isLoading: false, isSuccess: true, confirmingItemId: null);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to confirm order receipt'));
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to confirm order receipt'), confirmingItemId: null);
       return false;
     }
   }

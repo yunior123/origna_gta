@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -10,12 +11,14 @@ import 'package:shimmer/shimmer.dart';
 
 class CartItemScreen extends StatelessWidget {
   final String productId;
+  final String cartItemId;
   final Map<String, dynamic> item;
   final VoidCallback onRemove;
 
   const CartItemScreen({
     super.key,
     required this.productId,
+    required this.cartItemId,
     required this.item,
     required this.onRemove,
   });
@@ -221,7 +224,7 @@ class CartItemScreen extends StatelessWidget {
                                 icon: Icons.remove_rounded,
                                 onPressed: quantity > 1
                                     ? () => cartController.updateQuantity(
-                                        productId,
+                                        cartItemId,
                                         quantity - 1,
                                       )
                                     : null,
@@ -255,7 +258,7 @@ class CartItemScreen extends StatelessWidget {
                                 onPressed: () async {
                                   // AUDIT FIX (H6): Show feedback if stock limit reached
                                   final success = await cartController
-                                      .updateQuantity(productId, quantity + 1);
+                                      .updateQuantity(cartItemId, quantity + 1);
                                   if (!success && context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
@@ -300,7 +303,7 @@ class CartItemScreen extends StatelessWidget {
                             size: 20,
                           ),
                           onPressed: () =>
-                              _saveForLater(context, ref, productId),
+                              _saveForLater(context, ref, productId, cartItemId),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           splashRadius: 18,
@@ -325,11 +328,12 @@ class CartItemScreen extends StatelessWidget {
     BuildContext context,
     WidgetRef ref,
     String productId,
+    String cartItemId,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final success = await ref
         .read(cartControllerProvider)
-        .saveForLater(productId);
+        .saveForLater(productId, cartItemId);
     if (context.mounted) {
       messenger.showSnackBar(
         SnackBar(
@@ -377,13 +381,13 @@ class CartItemScreen extends StatelessWidget {
         fit: BoxFit.cover,
         placeholder: (context, url) => Shimmer.fromColors(
           baseColor: isDark
-              ? DesignTokens.textPrimary
+              ? DesignTokens.darkOutline
               : DesignTokens.outlineVariant,
           highlightColor: isDark
-              ? DesignTokens.textPrimary
+              ? DesignTokens.darkSurfaceVariant
               : DesignTokens.surface,
           child: Container(
-            color: isDark ? DesignTokens.textPrimary : Colors.white,
+            color: isDark ? DesignTokens.darkSurface : Colors.white,
           ),
         ),
         errorWidget: (context, url, error) => Container(
@@ -421,13 +425,13 @@ class CartItemScreen extends StatelessWidget {
               fit: BoxFit.cover,
               placeholder: (context, url) => Shimmer.fromColors(
                 baseColor: isDark
-                    ? DesignTokens.textPrimary
+                    ? DesignTokens.darkSurface
                     : DesignTokens.outlineVariant,
                 highlightColor: isDark
-                    ? DesignTokens.textPrimary
+                    ? DesignTokens.darkSurfaceVariant
                     : DesignTokens.surface,
                 child: Container(
-                  color: isDark ? DesignTokens.textPrimary : Colors.white,
+                  color: isDark ? DesignTokens.darkSurface : Colors.white,
                 ),
               ),
               errorWidget: (context, url, error) => Container(
@@ -619,7 +623,7 @@ class CartItemScreen extends StatelessWidget {
                     final note = controller.text.trim();
                     ref
                         .read(cartControllerProvider)
-                        .updateBuyerNote(productId, note.isEmpty ? null : note);
+                        .updateBuyerNote(cartItemId, note.isEmpty ? null : note);
                     Navigator.pop(context);
                   },
                   child: Text(
@@ -686,3 +690,33 @@ class _QuantityButton extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'CartItemScreen — Dark', group: 'CartItemScreen')
+Widget previewCartItemScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: CartItemScreen(
+          productId: 'preview-id',
+          cartItemId: 'preview-cart-item-id',
+          item: const {'name': 'Preview Product', 'price': 9.99, 'quantity': 1},
+          onRemove: () {},
+        ),
+      ),
+    );
+
+@Preview(name: 'CartItemScreen — Light', group: 'CartItemScreen')
+Widget previewCartItemScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: CartItemScreen(
+          productId: 'preview-id',
+          cartItemId: 'preview-cart-item-id',
+          item: const {'name': 'Preview Product', 'price': 9.99, 'quantity': 1},
+          onRemove: () {},
+        ),
+      ),
+    );

@@ -120,6 +120,7 @@ abstract class User with _$User {
       // MFA status (secrets live in user_security — backend only)
       mfaEnabled: data[Fields.mfaEnabled] ?? false,
       mfaEnrolledAt: _parseDateTime(data[Fields.mfaEnrolledAt]),
+      lastMfaVerify: _parseDateTime(data[Fields.lastMfaVerify]),
       // === CONSENT & COMPLIANCE ===
       emailConsent: data[Fields.emailConsent] ?? true,
       marketingOptIn: data[Fields.marketingOptIn] ?? false,

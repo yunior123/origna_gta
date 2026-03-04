@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,8 @@ import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/shipping_approval_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -21,11 +24,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [isDark ? DesignTokens.textPrimary : DesignTokens.surface, isDark ? DesignTokens.textPrimary : Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'seller.shipping_approvals'.tr()),
@@ -52,7 +51,17 @@ class ShippingApprovalScreen extends ConsumerWidget {
             ),
           ),
           error: (error, stack) => Center(
-            child: Padding(padding: const EdgeInsets.all(24), child: Text('seller.error_prefix'.tr(namedArgs: {'error': error.toString()}))),
+            child: AnimatedEmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'common.error_loading'.tr(),
+              subtitle: AppError.getMessage(error),
+              action: ModernButton(
+                label: 'common.retry'.tr(),
+                icon: Icons.refresh,
+                onPressed: () => ref.invalidate(pendingShippingApprovalsProvider),
+                isPrimary: false,
+              ),
+            ),
           ),
           data: (approvals) {
             if (approvals.isEmpty) {
@@ -432,7 +441,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
-        backgroundColor: isDark ? DesignTokens.textPrimary : Colors.white,
+        backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
         title: Row(
           children: [
             Icon(Icons.warning_rounded, color: DesignTokens.warning, size: 28),
@@ -484,3 +493,23 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'ShippingApprovalScreen — Dark', group: 'ShippingApprovalScreen')
+Widget previewShippingApprovalScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const ShippingApprovalScreen(),
+      ),
+    );
+
+@Preview(name: 'ShippingApprovalScreen — Light', group: 'ShippingApprovalScreen')
+Widget previewShippingApprovalScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const ShippingApprovalScreen(),
+      ),
+    );

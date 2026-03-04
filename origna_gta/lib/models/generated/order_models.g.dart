@@ -35,6 +35,11 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   sellerIds:
       (json['sellerIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
+  productIds:
+      (json['productIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
   stripeSessionId: json['stripeSessionId'] as String?,
   shippingApprovalStatus:
       $enumDecodeNullable(
@@ -125,6 +130,7 @@ Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
   'createdAt': instance.createdAt.toIso8601String(),
   'currency': instance.currency,
   'sellerIds': instance.sellerIds,
+  'productIds': instance.productIds,
   'stripeSessionId': instance.stripeSessionId,
   'shippingApprovalStatus':
       _$ShippingApprovalStatusEnumMap[instance.shippingApprovalStatus]!,
@@ -194,6 +200,7 @@ const _$PaymentStatusEnumMap = {
   PaymentStatus.expiring: 'expiring',
   PaymentStatus.partiallyRefunded: 'partially_refunded',
   PaymentStatus.voided: 'voided',
+  PaymentStatus.cancelFailed: 'cancel_failed',
 };
 
 const _$ShippingApprovalStatusEnumMap = {

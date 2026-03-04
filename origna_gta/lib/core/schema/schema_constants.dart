@@ -37,6 +37,10 @@ abstract final class AddressLabelValues {
 
 abstract final class AdminActionValues {
   static const paymentProviderUpdate = 'payment_provider_update';
+  static const stockUpdate = 'stock_update';
+  static const orderRefund = 'order_refund';
+  static const reviewDelete = 'review_delete';
+  static const reviewFlag = 'review_flag';
 }
 
 // =============================================================================
@@ -155,13 +159,15 @@ abstract final class BusinessRules {
   static const sellerDisputeRateThreshold = 0.05; // 5% dispute rate triggers health alert
   static const sellerRefundRateThreshold = 0.10; // 10% refund rate threshold
   static const maxMessagesPerThread = 500; // Hard cap per thread to prevent unbounded storage
+  static const minMessageLength = 10; // Must match Python ValidationLimits.MIN_MESSAGE_LENGTH
+  static const maxMessageLength = 1000; // Must match Python ValidationLimits.MAX_MESSAGE_LENGTH
   static const maxProductImages = 5; // Maximum number of images per product listing
   static const maxVideoBytes = 100 * 1024 * 1024; // 100 MB max video size
   static const maxVideoDurationSeconds = 60; // 60s max video duration
   static const trendingTopN = 20; // Number of products to mark as trending
   static const trendingWindowHours = 24; // Rolling window for trending calculation
   static const trendingPurchaseWeight = 3; // Weight for purchase events
-  static const trendingFavoriteWeight = 1; // Weight for favorite events
+  static const trendingFavoriteWeight = 2; // Weight for favorite events
   static const freeShippingThresholdCents = 7500; // $75 CAD — subtotals at or above qualify for free standard shipping
   static const localDeliveryRadiusKm = 50.0; // 50km radius for local delivery Eligibility (BUG-L1)
   // BOOT-L1: session timeout extracted to constant
@@ -719,6 +725,8 @@ abstract final class Fields {
   static const supplierType = 'supplierType';
   static const isRelatedParty = 'isRelatedParty'; // F-312: Gaming prevention
   static const supplier = 'supplier';
+  static const supplierSku = 'supplierSku'; // Supplier's product SKU (internal use, not exposed to buyers)
+  static const supplierUrl = 'supplierUrl'; // Direct URL to supplier product (internal use, not exposed to buyers)
   static const inventory = 'inventory';
   // Inventory sub-fields (keys inside the `inventory` map)
   static const allowBackorder = 'allowBackorder';
@@ -1067,6 +1075,7 @@ abstract final class Fields {
 
   // === CART & FAVORITES FIELDS ===
   static const dateFavorited = 'dateFavorited';
+  static const favoriteCount = 'favoriteCount';
 
   // === ALTERNATE FIELD NAMES (used in Firestore deserialization fallbacks) ===
   /// Alternate name for [confirmedByBuyer]
@@ -1211,8 +1220,9 @@ abstract final class NotificationTypes {
   static const backInStock = 'back_in_stock';
   static const refundIssued = 'refund_issued';
   static const messageReport = 'message_report'; // F-121: Flagged chat message
+  static const perishableOrderUrgent = 'perishable_order_urgent'; // GAP-13: Urgent perishable order alert to seller
 
-  static const all = {orderStatus, orderUpdate, newMessage, promo, system, account, returnRequest, returnStatus, backInStock, refundIssued, messageReport};
+  static const all = {orderStatus, orderUpdate, newMessage, promo, system, account, returnRequest, returnStatus, backInStock, refundIssued, messageReport, perishableOrderUrgent};
 }
 
 // =============================================================================
@@ -1832,6 +1842,7 @@ abstract final class RateLimitActions {
   static const createReturnRequest = 'create_return_request';
   static const approveReturnRequest = 'approve_return_request';
   static const rejectReturnRequest = 'reject_return_request';
+  static const escalateReturnRequest = 'escalate_return_request';
   static const uploadImages = 'upload_images';
   static const uploadVideo = 'upload_video';
   static const deleteProduct = 'delete_product';
@@ -1853,4 +1864,48 @@ abstract final class RateLimitActions {
   static const getPaymentProviders = 'get_payment_providers';
   static const updatePaymentProvider = 'update_payment_provider';
   static const getProviderStatus = 'get_provider_status';
+}
+
+// =============================================================================
+// SORT OPTIONS — Product listing sort modes (GAP #1)
+// =============================================================================
+
+/// Sort options for product listings.
+/// Each maps to a specific Algolia index replica or sort parameter.
+enum SortOption {
+  /// Default relevance ranking — uses the main Algolia index (no replica).
+  relevance,
+
+  /// Price ascending — maps to Algolia replica `<index>_price_asc`.
+  priceLowToHigh,
+
+  /// Price descending — maps to Algolia replica `<index>_price_desc`.
+  priceHighToLow,
+
+  /// Newest first — sorts by [Fields.createdAt] descending.
+  newest,
+}
+
+// =============================================================================
+// LOCAL STORAGE KEYS — SharedPreferences keys (GAP #6, GAP #7)
+// =============================================================================
+
+/// SharedPreferences keys for client-side persistence.
+abstract final class LocalStorageKeys {
+  /// JSON-encoded `List<String>` of recent product IDs (max 10). Written by product detail screen.
+  static const recentlyViewed = 'recently_viewed';
+
+  /// JSON-encoded `List<String>` of recent search queries (max 5).
+  static const recentSearches = 'recent_searches';
+}
+
+// =============================================================================
+// ALGOLIA INDEX REPLICAS — Index names for sort replicas (GAP #1)
+// =============================================================================
+
+/// Algolia replica index suffixes for sort options.
+/// Appended to the base index name: `<base>_price_asc`, `<base>_price_desc`.
+abstract final class AlgoliaReplicaSuffixes {
+  static const priceAsc = '_price_asc';
+  static const priceDesc = '_price_desc';
 }

@@ -17,6 +17,7 @@ from config import (
 )
 from schema_constants import (
     AppConfig,
+    Collections,
     DeliveryTypeValues,
     DigitalPlatformValues,
     DigitalTypeValues,
@@ -243,6 +244,10 @@ _EMAIL_STRINGS: dict[str, dict[str, str]] = {
     # Email subjects (used in handlers)
     "sub.confirmed": {"en": "Order Confirmation - Origna", "fr": "Confirmation de commande - Origna"},
     "sub.new_order": {"en": "New Order Received - Origna", "fr": "Nouvelle commande reçue - Origna"},
+    "sub.new_order_seller": {
+        "en": "New Order #{oid} — Action Required",
+        "fr": "Nouvelle commande #{oid} — Action requise",
+    },
     "sub.processing": {
         "en": "Order #{oid} Is Being Processed - Origna",
         "fr": "Commande #{oid} en cours de traitement - Origna",
@@ -278,6 +283,10 @@ _EMAIL_STRINGS: dict[str, dict[str, str]] = {
         "fr": "Remboursement partiel pour la commande #{oid} - Origna",
     },
     "sub.payment_issue": {"en": "Payment Issue - Order #{oid}", "fr": "Problème de paiement - Commande #{oid}"},
+    "sub.perishable_urgent": {
+        "en": "URGENT: Perishable Order #{oid} — Ship Today",
+        "fr": "URGENT: Commande périssable #{oid} — Expédier aujourd'hui",
+    },
     # Payment capture failed — "What happened" / "Next steps" sections (fix #5: i18n for FR buyers)
     "capture.what_happened_h": {"en": "What happened?", "fr": "Que s'est-il passé ?"},
     "capture.what_happened_b": {
@@ -419,7 +428,7 @@ def _log_email_for_testing(to_email: str, subject: str, html_body: str) -> None:
     from firebase_admin import firestore
     try:
         db = firestore.client()
-        db.collection("_mail_logs").add({
+        db.collection(Collections.MAIL_LOGS).add({
             "to": to_email,
             "subject": subject,
             "html": html_body,
@@ -839,7 +848,7 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
     """
 
 
-def get_seller_notification_email(order_data, order_id=None, seller_id=None, lang: str = "en"):
+def get_seller_notification_email(order_data, order_id=None, seller_id=None, lang: str = "en", seller_email: str = ""):
     """Generate HTML email for seller notification
 
     Args:
@@ -1054,7 +1063,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None, lan
         </td></tr>
 
         <!-- CASL-COMPLIANT FOOTER -->
-        {_casl_compliant_footer(include_gst=False, lang=lang)}
+        {_casl_compliant_footer(include_gst=False, lang=lang, recipient_email=seller_email)}
 
         </table>
         </td></tr>

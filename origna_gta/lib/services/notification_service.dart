@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -185,7 +186,7 @@ class NotificationService {
               content: Text('${notification.title ?? ''}: ${notification.body ?? ''}'),
               duration: const Duration(seconds: 4),
               // HIGH-5: Add action to SnackBar
-              action: SnackBarAction(label: 'View', onPressed: () => _handleNotificationTap(message)),
+              action: SnackBarAction(label: 'common.view'.tr(), onPressed: () => _handleNotificationTap(message)),
             ),
           );
         }

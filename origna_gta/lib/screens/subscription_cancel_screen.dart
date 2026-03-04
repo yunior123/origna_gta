@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/routes.dart';
@@ -16,7 +17,7 @@ class SubscriptionCancelScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [const Color(0xFFF8F9FA), Colors.white],
+            colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [DesignTokens.surface, Colors.white],
           ),
         ),
         child: SafeArea(
@@ -102,3 +103,19 @@ class SubscriptionCancelScreen extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'SubscriptionCancelScreen — Dark', group: 'SubscriptionCancelScreen')
+Widget previewSubscriptionCancelScreenDark() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(),
+      home: const SubscriptionCancelScreen(),
+    );
+
+@Preview(name: 'SubscriptionCancelScreen — Light', group: 'SubscriptionCancelScreen')
+Widget previewSubscriptionCancelScreenLight() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(),
+      home: const SubscriptionCancelScreen(),
+    );

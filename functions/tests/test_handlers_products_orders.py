@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, Mock, call, patch
 import pytest
 from firebase_admin import firestore
 from firebase_functions import firestore_fn, https_fn
+from schema_constants import BusinessRules
 
 
 class TestProductHandlers:
@@ -712,7 +713,7 @@ class TestOrderEdgeCases:
         # Refund 1 item = $30 refund
         # Platform keeps fee on refunded amount
         refund_amount = 30.00
-        platform_fee_rate = 0.025
+        platform_fee_rate = BusinessRules.PLATFORM_FEE_RATIO
 
         platform_keeps = refund_amount * platform_fee_rate
         seller_refund = refund_amount - platform_keeps

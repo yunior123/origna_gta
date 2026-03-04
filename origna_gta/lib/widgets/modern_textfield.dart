@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../utils/design_tokens.dart';
@@ -90,7 +91,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
               suffixIcon: widget.suffixIcon != null
                   ? Semantics(
                       button: true,
-                      label: 'Toggle password visibility',
+                      label: 'common.toggle_password_visibility'.tr(),
                       child: SizedBox(
                         width: 48,
                         height: 48,

@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 
+import '../core/schema/schema_constants.dart';
 import '../features/chat/chat_provider.dart';
 import '../features/chat/chat_repository.dart';
 
@@ -403,12 +405,26 @@ class _MessageBubble extends StatelessWidget {
                 bottomRight: Radius.circular(isMe ? 4 : 16),
               ),
             ),
-            child: Text(
-              message.text,
-              style: TextStyle(
-                color: isMe ? Colors.white : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
-                fontSize: 15,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  message.text,
+                  style: TextStyle(
+                    color: isMe ? Colors.white : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat.jm().format(message.createdAt),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isMe ? Colors.white.withValues(alpha: 0.65) : DesignTokens.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -461,9 +477,13 @@ class _MessageInput extends StatelessWidget {
               focusNode: focusNode,
               minLines: 1,
               maxLines: 4,
+              maxLength: BusinessRules.maxMessageLength,
+              maxLengthEnforcement: MaxLengthEnforcement.enforced,
+              // Hide the default counter label — VM error message handles user feedback.
+              buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
               textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
-                hintText: 'Type a message...',
+                hintText: 'chat.type_a_message'.tr(),
                 hintStyle: TextStyle(color: DesignTokens.textSecondary),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
@@ -496,3 +516,29 @@ class _MessageInput extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'ChatScreen — Dark', group: 'ChatScreen')
+Widget previewChatScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const ChatScreen(
+          productId: 'preview-id',
+          productTitle: 'Preview Product',
+        ),
+      ),
+    );
+
+@Preview(name: 'ChatScreen — Light', group: 'ChatScreen')
+Widget previewChatScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const ChatScreen(
+          productId: 'preview-id',
+          productTitle: 'Preview Product',
+        ),
+      ),
+    );

@@ -107,6 +107,7 @@ abstract class Product with _$Product {
     String? descriptionF,
     required List<String> imageUrls,
     String? videoUrl,
+    int? videoDurationSeconds,
     required String sellerId,
     String? madeInCountry,
     // sellerAddress is optional — products with warehouses use warehouseIds instead

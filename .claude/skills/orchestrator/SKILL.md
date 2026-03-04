@@ -38,13 +38,12 @@ This skill governs how Claude Code orchestrates multiple AI models for complex t
 gemini -p "YOUR PROMPT" --yolo
 ```
 
-### With Model Selection (auto-select based on task)
+### With Model Selection (ALWAYS use highest available model)
 ```bash
-# FAST: Large codebase analysis, research, summarization
-gemini -m gemini-2.5-flash -p "PROMPT" --yolo
+# DEFAULT: Always use gemini-3.1-pro-preview (or higher if available)
+gemini -m gemini-3.1-pro-preview -p "PROMPT" --yolo
 
-# PRO: Complex reasoning, architecture decisions, synthesis
-gemini -m gemini-2.5-pro -p "PROMPT" --yolo
+# NEVER use gemini-2.5-flash, gemini-2.5-pro, or any 2.x model — they sabotage output quality
 ```
 
 ### With Specific Directory Context
@@ -72,10 +71,10 @@ gemini -p "PROMPT" --yolo > .orch/results/gemini-task-name.txt 2>&1
 ## Model Selection Rules
 
 ```
-Task involves >50 files OR web search OR "summarize everything" → gemini-2.5-flash
-Task is "compare approaches" OR "design architecture" OR "synthesize findings" → gemini-2.5-pro
-Task is a domain audit (payment, security, schema, orders) → Claude subagent
-Task involves parallel independent work → multiple Task tool calls simultaneously
+ALL Gemini tasks → gemini-3.1-pro-preview (or highest model in /model list)
+NEVER use gemini-2.5-flash or gemini-2.5-pro — always prefer top model
+Domain audits (payment, security, schema, orders) → Claude subagent
+Parallel independent work → multiple Task tool calls simultaneously
 ```
 
 ---
@@ -94,7 +93,7 @@ For multi-step orchestration, use `.orch/` as shared state:
 **Create a task file:**
 ```bash
 mkdir -p .orch/tasks .orch/results .orch/synthesis
-echo '{"id":"t1","type":"gemini","model":"gemini-2.5-flash","prompt":"..."}' > .orch/tasks/t1.json
+echo '{"id":"t1","type":"gemini","model":"gemini-3.1-pro-preview","prompt":"..."}' > .orch/tasks/t1.json
 ```
 
 **Execute and store result:**
@@ -143,14 +142,14 @@ Before marking orchestration complete:
 ### Codebase Architecture Analysis via Gemini
 ```bash
 find . -name "*.py" -not -path "*/node_modules/*" | head -100 | xargs cat | \
-  gemini -p "Analyze this Python backend codebase. Identify: 1) architecture patterns, 2) potential bugs, 3) missing features. Be specific with file:line references." \
-  --yolo -m gemini-2.5-flash
+  gemini -m gemini-3.1-pro-preview -p "Analyze this Python backend codebase. Identify: 1) architecture patterns, 2) potential bugs, 3) missing features. Be specific with file:line references." \
+  --yolo
 ```
 
 ### Competitive Research
 ```bash
-gemini -p "Search the web for: how do top e-commerce apps handle multi-seller cart splitting? Compare Medusa, Saleor, Vendure. Return concrete implementation patterns." \
-  --yolo -m gemini-2.5-pro
+gemini -m gemini-3.1-pro-preview -p "Search the web for: how do top e-commerce apps handle multi-seller cart splitting? Compare Medusa, Saleor, Vendure. Return concrete implementation patterns." \
+  --yolo
 ```
 
 ### Full-Stack Audit (Claude subagent)
@@ -193,6 +192,6 @@ Round 3: If findings > 0 → fix and re-evaluate
 
 - Do NOT use Gemini for tasks that require project memory (use Claude subagents instead)
 - Do NOT serialize tasks that can run in parallel
-- Do NOT use Gemini Pro for simple analysis (wastes quota)
+- Do NOT use gemini-2.5 or lower — always use gemini-3.1-pro-preview or higher
 - Do NOT skip the routing matrix — always justify your routing choice
 - Do NOT synthesize without citing sources (which model said what)

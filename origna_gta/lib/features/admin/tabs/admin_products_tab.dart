@@ -593,13 +593,13 @@ class _ProductCard extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Approval'),
-        content: Text('Approve "${product.name}" and make it live for buyers?'),
+        title: Text('admin.products.approve_confirm_title'.tr()),
+        content: Text('admin.products.approve_confirm_body'.tr(namedArgs: {'name': product.name})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Approve'),
+            child: Text('admin.products.approve_action'.tr()),
           ),
         ],
       ),
@@ -611,15 +611,15 @@ class _ProductCard extends ConsumerWidget {
     if (!context.mounted) return;
     if (success) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('✅ Product approved and now live'),
-          backgroundColor: Color(0xFF22C55E),
+        SnackBar(
+          content: Text('admin.products.approve_success'.tr()),
+          backgroundColor: const Color(0xFF22C55E),
         ),
       );
     } else {
       final error =
           ref.read(adminActionsViewModelProvider).errorMessage ??
-          'Failed to approve product';
+          'admin.products.approve_error'.tr();
       messenger.showSnackBar(
         SnackBar(content: Text(error), backgroundColor: DesignTokens.error),
       );
@@ -791,7 +791,7 @@ class _ProductCard extends ConsumerWidget {
           children: [
             Icon(Icons.link_rounded, color: DesignTokens.info),
             const SizedBox(width: 10),
-            const Text('Download URLs'),
+            Text('admin.products.download_urls_title'.tr()),
           ],
         ),
         content: SingleChildScrollView(
@@ -800,14 +800,14 @@ class _ProductCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Type: ${product.digitalType ?? 'unknown'}',
+                'admin.products.digital_type_label'.tr(namedArgs: {'type': product.digitalType ?? 'unknown'}),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
               if (builds.isEmpty)
-                const Text(
-                  'No digitalBuilds URLs',
-                  style: TextStyle(color: Color(0xFF6B7280)),
+                Text(
+                  'admin.products.no_download_urls'.tr(),
+                  style: const TextStyle(color: Color(0xFF6B7280)),
                 )
               else
                 ...builds.entries.map(
@@ -860,7 +860,7 @@ class _ProductCard extends ConsumerWidget {
           children: [
             Icon(Icons.cancel_rounded, color: DesignTokens.error),
             const SizedBox(width: 10),
-            const Text('Reject Product'),
+            Text('admin.products.reject_title'.tr()),
           ],
         ),
         content: Column(
@@ -868,7 +868,7 @@ class _ProductCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Product: ${product.name}',
+              'admin.products.reject_product_label'.tr(namedArgs: {'name': product.name}),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
@@ -876,11 +876,10 @@ class _ProductCard extends ConsumerWidget {
               controller: reasonController,
               maxLines: 3,
               maxLength: 1000,
-              decoration: const InputDecoration(
-                labelText: 'Rejection reason (shown to seller)',
-                border: OutlineInputBorder(),
-                hintText:
-                    'e.g. Images are low quality, please upload clearer photos.',
+              decoration: InputDecoration(
+                labelText: 'admin.products.reject_reason_label'.tr(),
+                border: const OutlineInputBorder(),
+                hintText: 'admin.products.reject_reason_hint'.tr(),
               ),
             ),
           ],
@@ -903,14 +902,14 @@ class _ProductCard extends ConsumerWidget {
               if (success) {
                 messenger.showSnackBar(
                   SnackBar(
-                    content: const Text('❌ Product rejected. Seller notified.'),
+                    content: Text('admin.products.reject_success'.tr()),
                     backgroundColor: DesignTokens.error,
                   ),
                 );
               } else {
                 final error =
                     ref.read(adminActionsViewModelProvider).errorMessage ??
-                    'Failed to reject product';
+                    'admin.products.reject_error'.tr();
                 messenger.showSnackBar(
                   SnackBar(
                     content: Text(error),
@@ -920,7 +919,7 @@ class _ProductCard extends ConsumerWidget {
               }
             },
             style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
-            child: const Text('Reject'),
+            child: Text('admin.products.reject_action'.tr()),
           ),
         ],
       ),

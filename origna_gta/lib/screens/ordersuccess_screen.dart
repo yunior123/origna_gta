@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 // OrderSuccessScreen
 import 'dart:math' as math;
 
@@ -15,12 +16,18 @@ class OrderSuccessScreen extends StatefulWidget {
   final String orderId;
   final double valueCad;
   final int itemCount;
+  /// Max estimated ship days across all order items (null = don't show window)
+  final int? estimatedShipDays;
+  /// True when all items are local-delivery-only (show hours, not days)
+  final bool isLocalDelivery;
 
   const OrderSuccessScreen({
     super.key,
     required this.orderId,
     this.valueCad = 0,
     this.itemCount = 0,
+    this.estimatedShipDays,
+    this.isLocalDelivery = false,
   });
 
   @override
@@ -224,6 +231,17 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                         ),
                       ),
                     ],
+                    // Delivery window from Stitch UX
+                    if (widget.estimatedShipDays != null || widget.isLocalDelivery) ...[
+                      const SizedBox(height: 16),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 250),
+                        child: _DeliveryWindowCard(
+                          estimatedShipDays: widget.estimatedShipDays ?? 0,
+                          isLocalDelivery: widget.isLocalDelivery,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 48),
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 300),
@@ -265,6 +283,75 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
         ], // Stack children
       ), // Stack
         ), // SafeArea
+      ),
+    );
+  }
+}
+
+// ── Delivery window card ────────────────────────────────────────────────────
+
+class _DeliveryWindowCard extends StatelessWidget {
+  final int estimatedShipDays;
+  final bool isLocalDelivery;
+
+  const _DeliveryWindowCard({
+    required this.estimatedShipDays,
+    this.isLocalDelivery = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final String windowLabel;
+
+    if (isLocalDelivery) {
+      // Local / same-day: show in hours (2–4h window)
+      windowLabel = 'orders.delivery_window_hours'.tr();
+    } else {
+      final now = DateTime.now();
+      // Processing time: +1 day
+      final earliest = now.add(Duration(days: estimatedShipDays + 1));
+      final latest = now.add(Duration(days: estimatedShipDays + 3));
+      final fmt = DateFormat('MMM d');
+      windowLabel = '${fmt.format(earliest)} – ${fmt.format(latest)}';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? DesignTokens.success.withValues(alpha: 0.08)
+            : DesignTokens.success.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(color: DesignTokens.success.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.local_shipping_outlined, size: 20, color: DesignTokens.success),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'orders.estimated_delivery'.tr(),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: DesignTokens.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                windowLabel,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: DesignTokens.success,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -379,3 +466,18 @@ class _ConfettiPainter extends CustomPainter {
   @override
   bool shouldRepaint(_ConfettiPainter old) => t != old.t;
 }
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'OrderSuccessScreen — Dark', group: 'OrderSuccessScreen')
+Widget previewOrderSuccessScreenDark() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(),
+      home: const OrderSuccessScreen(orderId: 'preview-id'),
+    );
+
+@Preview(name: 'OrderSuccessScreen — Light', group: 'OrderSuccessScreen')
+Widget previewOrderSuccessScreenLight() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(),
+      home: const OrderSuccessScreen(orderId: 'preview-id'),
+    );

@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,14 +11,59 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
-import 'package:origna_gta/widgets/modern_loading_indicator.dart';
-import 'package:origna_gta/widgets/order_widgets.dart';
 
-class OrdersScreen extends ConsumerWidget {
+import 'package:origna_gta/widgets/order_widgets.dart';
+import 'package:shimmer/shimmer.dart';
+
+// Filter identifiers — no magic strings
+class _OrderFilter {
+  static const String all = 'all';
+  static const String active = 'active';
+  static const String delivered = 'delivered';
+  static const String cancelled = 'cancelled';
+}
+
+class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
+  static const List<OrderStatus> _activeStatuses = [
+    OrderStatus.pending,
+    OrderStatus.confirmed,
+    OrderStatus.processing,
+    OrderStatus.shipped,
+    OrderStatus.inTransit,
+  ];
+
+  static const List<OrderStatus> _cancelledStatuses = [
+    OrderStatus.cancelled,
+    OrderStatus.failed,
+    OrderStatus.expired,
+    OrderStatus.refunded,
+    OrderStatus.partiallyRefunded,
+  ];
+
+  String _selectedFilter = _OrderFilter.all;
+
+  List<Order> _applyFilter(List<Order> orders) {
+    switch (_selectedFilter) {
+      case _OrderFilter.active:
+        return orders.where((o) => _activeStatuses.contains(o.orderStatus)).toList();
+      case _OrderFilter.delivered:
+        return orders.where((o) => o.orderStatus == OrderStatus.delivered).toList();
+      case _OrderFilter.cancelled:
+        return orders.where((o) => _cancelledStatuses.contains(o.orderStatus)).toList();
+      default:
+        return orders;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(currentUserProvider);
 
@@ -37,8 +83,8 @@ class OrdersScreen extends ConsumerWidget {
         appBar: AppBarFactory.simple(title: 'orders.my_orders'.tr()),
         backgroundColor: Colors.transparent,
         body: ordersAsync.when(
-          loading: () => const Center(child: ModernLoadingIndicator()),
-          error: (error, stack) => _buildErrorState(context, ref, error),
+          loading: () => _OrdersLoadingSkeleton(),
+          error: (error, stack) => _buildErrorState(context, error),
           data: (orders) {
             if (orders.isEmpty) {
               return AnimatedEmptyState(
@@ -51,32 +97,50 @@ class OrdersScreen extends ConsumerWidget {
             }
 
             final pendingApprovalsCount = orders.where((o) => o.shippingApprovalStatus == ShippingApprovalStatus.pending).length;
+            final visibleOrders = _applyFilter(orders);
+
+            // On desktop, cap order list to readable width (840px) — cards shouldn't stretch to 1200px
+            final ordersMaxWidth = ResponsiveBreakpoints.isDesktop(context)
+                ? 840.0
+                : ResponsiveBreakpoints.contentMaxWidth.toDouble();
 
             return Column(
               children: [
                 if (pendingApprovalsCount > 0) PendingApprovalsBanner(count: pendingApprovalsCount),
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: ordersMaxWidth),
+                    child: _FilterRow(
+                      selectedFilter: _selectedFilter,
+                      onFilterSelected: (filter) => setState(() => _selectedFilter = filter),
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Align(
                     alignment: Alignment.topCenter,
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
-                  child: RefreshIndicator(
-                    color: DesignTokens.primary,
-                    onRefresh: () async => ref.invalidate(buyerOrdersProvider),
-                    child: ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      itemCount: orders.length,
-                      itemBuilder: (context, index) {
-                        return FadeSlideIn(
-                          delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
-                          child: BuyerOrderCard(order: orders[index]),
-                        );
-                      },
+                      constraints: BoxConstraints(maxWidth: ordersMaxWidth),
+                      child: RefreshIndicator(
+                        color: DesignTokens.primary,
+                        onRefresh: () async => ref.invalidate(buyerOrdersProvider),
+                        child: visibleOrders.isEmpty
+                            ? _buildEmptyFilter()
+                            : ListView.builder(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                itemCount: visibleOrders.length,
+                                itemBuilder: (context, index) {
+                                  return FadeSlideIn(
+                                    delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
+                                    child: BuyerOrderCard(order: visibleOrders[index]),
+                                  );
+                                },
+                              ),
+                      ),
                     ),
                   ),
-                    ), // ConstrainedBox
-                  ), // Align
                 ),
               ],
             );
@@ -86,7 +150,23 @@ class OrdersScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
+  Widget _buildEmptyFilter() {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 64),
+          child: AnimatedEmptyState(
+            icon: Icons.inbox_outlined,
+            title: 'orders.no_orders_found'.tr(),
+            subtitle: 'orders.no_orders_match'.tr(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, Object error) {
     final message = AppError.getMessage(error);
     return Center(
       child: Padding(
@@ -111,3 +191,137 @@ class OrdersScreen extends ConsumerWidget {
     );
   }
 }
+
+class _FilterRow extends StatelessWidget {
+  const _FilterRow({required this.selectedFilter, required this.onFilterSelected});
+
+  final String selectedFilter;
+  final ValueChanged<String> onFilterSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          _OrderFilterChip(
+            label: 'orders.filter_all'.tr(),
+            selected: selectedFilter == _OrderFilter.all,
+            onTap: () => onFilterSelected(_OrderFilter.all),
+          ),
+          const SizedBox(width: 8),
+          _OrderFilterChip(
+            label: 'orders.filter_active'.tr(),
+            selected: selectedFilter == _OrderFilter.active,
+            onTap: () => onFilterSelected(_OrderFilter.active),
+          ),
+          const SizedBox(width: 8),
+          _OrderFilterChip(
+            label: 'orders.filter_delivered'.tr(),
+            selected: selectedFilter == _OrderFilter.delivered,
+            onTap: () => onFilterSelected(_OrderFilter.delivered),
+          ),
+          const SizedBox(width: 8),
+          _OrderFilterChip(
+            label: 'orders.filter_cancelled'.tr(),
+            selected: selectedFilter == _OrderFilter.cancelled,
+            onTap: () => onFilterSelected(_OrderFilter.cancelled),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrderFilterChip extends StatelessWidget {
+  const _OrderFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: selected
+            ? const BoxDecoration(
+                gradient: DesignTokens.primaryGradient,
+                borderRadius: BorderRadius.all(Radius.circular(20)),
+              )
+            : BoxDecoration(
+                border: Border.all(
+                  color: isDark ? DesignTokens.darkOutline : DesignTokens.outline,
+                ),
+                borderRadius: const BorderRadius.all(Radius.circular(20)),
+                color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
+              ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected
+                ? DesignTokens.textOnPrimary
+                : (isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shimmer skeleton shown while the orders list loads.
+class _OrdersLoadingSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Shimmer.fromColors(
+      baseColor: isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant,
+      highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: 5,
+        itemBuilder: (context, i) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          height: 90,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'OrdersScreen — Dark', group: 'OrdersScreen')
+Widget previewOrdersScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const OrdersScreen(),
+      ),
+    );
+
+@Preview(name: 'OrdersScreen — Light', group: 'OrdersScreen')
+Widget previewOrdersScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const OrdersScreen(),
+      ),
+    );

@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -99,11 +100,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [isDark ? DesignTokens.textPrimary : DesignTokens.surface, isDark ? DesignTokens.textPrimary : Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'seller.become_seller'.tr()),
@@ -615,3 +612,23 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 
   // Status row builder - reserved for future use if needed
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'SellerRegistrationScreen — Dark', group: 'SellerRegistrationScreen')
+Widget previewSellerRegistrationScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const SellerRegistrationScreen(),
+      ),
+    );
+
+@Preview(name: 'SellerRegistrationScreen — Light', group: 'SellerRegistrationScreen')
+Widget previewSellerRegistrationScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const SellerRegistrationScreen(),
+      ),
+    );

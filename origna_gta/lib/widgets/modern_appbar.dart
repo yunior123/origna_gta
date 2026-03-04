@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 
 import '../utils/design_tokens.dart';
 
@@ -141,3 +142,73 @@ class _NavBarItem extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Widget Previews ─────────────────────────────────────────────────
+
+final _navItems = [
+  BottomNavItem(icon: Icons.home_rounded, label: 'Home'),
+  BottomNavItem(icon: Icons.search_rounded, label: 'Search'),
+  BottomNavItem(icon: Icons.favorite_border_rounded, label: 'Favorites'),
+  BottomNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
+];
+
+@Preview(name: 'AppBar — No Back Button', group: 'ModernAppBar')
+Widget previewAppBarMain() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    appBar: ModernAppBar(title: 'OrignaGTA', showBackButton: false),
+    body: const SizedBox.shrink(),
+  ),
+);
+
+@Preview(name: 'AppBar — With Back Button', group: 'ModernAppBar')
+Widget previewAppBarBack() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    appBar: ModernAppBar(title: 'Product Details'),
+    body: const SizedBox.shrink(),
+  ),
+);
+
+@Preview(name: 'AppBar — With Actions', group: 'ModernAppBar')
+Widget previewAppBarActions() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    appBar: ModernAppBar(
+      title: 'My Orders',
+      showBackButton: false,
+      actions: [
+        IconButton(icon: const Icon(Icons.filter_list_rounded), onPressed: null, tooltip: 'Filter'),
+      ],
+    ),
+    body: const SizedBox.shrink(),
+  ),
+);
+
+@Preview(name: 'BottomNavBar — Home Active', group: 'ModernAppBar')
+Widget previewBottomNavHome() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    bottomNavigationBar: ModernBottomNavBar(currentIndex: 0, onIndexChanged: (_) {}, items: _navItems),
+    body: const SizedBox.shrink(),
+  ),
+);
+
+@Preview(name: 'BottomNavBar — Search Active', group: 'ModernAppBar')
+Widget previewBottomNavSearch() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    bottomNavigationBar: ModernBottomNavBar(currentIndex: 1, onIndexChanged: (_) {}, items: _navItems),
+    body: const SizedBox.shrink(),
+  ),
+);

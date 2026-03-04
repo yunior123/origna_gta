@@ -19,7 +19,6 @@ class AppConfig {
   static const String websiteUrl = 'https://www.orignaventures.ca';
   static const String currency = 'cad';
   static const String currencySymbol = '\$';
-  static const double platformFeePercent = 0.025; // 2.5% platform fee
   static const int autoConfirmDays = 5; // Auto-confirm orders after 5 days (2-day safety margin before Stripe 7-day auth expires)
 }
 

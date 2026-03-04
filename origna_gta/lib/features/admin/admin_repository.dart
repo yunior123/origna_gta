@@ -181,9 +181,13 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Stream<List<Map<String, dynamic>>> watchReviews({bool flaggedOnly = false, bool hasPhotosOnly = false, int limit = 100}) {
-    Query query = _firestore.collection(Collections.productRatings).orderBy(Fields.createdAt, descending: true).limit(limit);
+    // FIX 2026-03-03: where() must precede orderBy() to avoid FailedPrecondition.
+    // Composite indexes for (isFlagged+createdAt), (hasPhotos+createdAt), and
+    // (isFlagged+hasPhotos+createdAt) are declared in firestore.indexes.json.
+    Query query = _firestore.collection(Collections.productRatings);
     if (flaggedOnly) query = query.where(Fields.isFlagged, isEqualTo: true);
     if (hasPhotosOnly) query = query.where(Fields.hasPhotos, isEqualTo: true);
+    query = query.orderBy(Fields.createdAt, descending: true).limit(limit);
     return query.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) => <String, dynamic>{'id': doc.id, ...doc.data() as Map<String, dynamic>}).toList();
     });

@@ -406,8 +406,8 @@ def geocode_address(address: dict) -> tuple[bool, str, dict]:
             updated_addr = dict(address)
             updated_addr[Fields.LONGITUDE] = coords[0]
             updated_addr[Fields.LATITUDE] = coords[1]
-            # Record confidence score for future quality auditing
-            updated_addr["geocodingConfidence"] = confidence
+            # Log confidence for auditing but do NOT persist — field is not in Address schema
+            logger.info("Geocoding confidence=%.3f for query='%s'", confidence, query)
             return True, "", updated_addr
 
         return False, "Geocoding returned invalid results", address

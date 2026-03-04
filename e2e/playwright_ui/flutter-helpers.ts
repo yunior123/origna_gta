@@ -295,13 +295,17 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     await waitForFlutter(page, 60000);
 
     // Verify login: Settings button should be visible (home screen loaded)
-    // 60s timeout — 8 parallel workers create resource contention on dev; button is
-    // always present, just sometimes slow to render under load (confirmed by screenshots).
+    // 120s timeout — 8 parallel workers create resource contention on dev; login + Flutter
+    // rebuild can take >60s under load (confirmed by error-context screenshots showing login
+    // form still open at 60s mark).
     const verifySettingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
-    await expect(verifySettingsBtn).toBeAttached({ timeout: 60000 });
+    await expect(verifySettingsBtn).toBeAttached({ timeout: 120000 });
+    // Wait for button to be visible before clicking (Flutter re-renders on login)
+    // 60s to handle resource contention under 4 parallel workers
+    await expect(verifySettingsBtn).toBeVisible({ timeout: 60000 });
 
     // Extra check: clicking Settings should navigate to /profile (not show dialog)
-    await verifySettingsBtn.click();
+    await verifySettingsBtn.click({ timeout: 30000 });
     const signInCheck = page.getByRole('button', { name: BTN_SIGN_IN }).first();
     const stillLoggedOut = await signInCheck.isVisible({ timeout: 5000 }).catch(() => false);
     if (stillLoggedOut) {

@@ -22,6 +22,7 @@ from schema_constants import (
     BusinessRules,
     Collections,
     Fields,
+    OrderStatusValues,
     ProductLifecycleStatusValues,
     UserRoleValues,
     ValidationLimits,
@@ -133,18 +134,27 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     if seller_id == buyer_id:
         raise https_fn.HttpsError("permission-denied", "You cannot chat with yourself.")
 
-    # Business Rule: Buyers can only chat about items they have purchased
-    order_query = (
-        db.collection(Collections.ORDERS)
-        .where(Fields.USER_ID, "==", buyer_id)
-        .where(Fields.PRODUCT_IDS, "array_contains", product_id)
-        .limit(1)
-        .get()
-    )
-    if not order_query:
+    # Business Rule: Buyers can only chat about items they have received (delivered or disputed).
+    # A pending/cancelled/processing order does NOT grant chat access — the transaction must
+    # have been fulfilled so the buyer has a legitimate post-purchase support need.
+    eligible_statuses = [OrderStatusValues.DELIVERED, OrderStatusValues.DISPUTED]
+    order_found = False
+    for status in eligible_statuses:
+        order_query = (
+            db.collection(Collections.ORDERS)
+            .where(Fields.USER_ID, "==", buyer_id)
+            .where(Fields.PRODUCT_IDS, "array_contains", product_id)
+            .where(Fields.ORDER_STATUS, "==", status)
+            .limit(1)
+            .get()
+        )
+        if order_query:
+            order_found = True
+            break
+    if not order_found:
         raise https_fn.HttpsError(
             "failed-precondition",
-            "You must purchase the product before starting a chat with the seller.",
+            "You must have a delivered order for this product before starting a chat with the seller.",
         )
 
     # Thread ID format: {productId}_{buyerId} ensures 1 thread per pair
@@ -258,10 +268,16 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not chat_id or (not text_raw and not image_urls):
         raise https_fn.HttpsError("invalid-argument", "chatId and text/images required.")
 
-    # Validate image_urls type and count
+    # Validate image_urls type, count, and CDN origin
     if image_urls:
         if not isinstance(image_urls, list) or len(image_urls) > 5:
             raise https_fn.HttpsError("invalid-argument", "Maximum 5 images per message.")
+        for _url in image_urls:
+            if not isinstance(_url, str) or not _url.startswith(BusinessRules.CDN_BASE_URL):
+                raise https_fn.HttpsError(
+                    "invalid-argument",
+                    "Chat images must be uploaded to the Origna CDN before sending."
+                )
 
     text = _sanitize_text(text_raw)
 
@@ -288,7 +304,8 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     last_text = chat_data.get(Fields.LAST_MESSAGE_TEXT)
     last_update = chat_data.get(Fields.UPDATED_AT)
     if text and last_text == text and last_update:
-        if not last_update.tzinfo: last_update = last_update.replace(tzinfo=UTC)
+        if not last_update.tzinfo:
+            last_update = last_update.replace(tzinfo=UTC)
         if (datetime.now(UTC) - last_update).total_seconds() < 5:
             raise https_fn.HttpsError("already-exists", "Message already sent.")
 
@@ -311,7 +328,8 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("resource-exhausted", "Rate limit exceeded.")
 
     msg_ref = chat_ref.collection(Collections.CHAT_MESSAGES).document(message_id) if message_id else chat_ref.collection(Collections.CHAT_MESSAGES).document()
-    if message_id and msg_ref.get().exists: return {"success": True, "messageId": msg_ref.id}
+    if message_id and msg_ref.get().exists:
+        return {"success": True, "messageId": msg_ref.id}
 
     # Persist message
     msg_ref.set({
@@ -340,7 +358,8 @@ def send_message(req: https_fn.CallableRequest) -> dict[str, Any]:
     elif uid == seller_id and not chat_data.get(Fields.FIRST_SELLER_REPLY_AT):
         fb_msg = chat_data.get(Fields.FIRST_BUYER_MESSAGE_AT)
         if fb_msg:
-            if not fb_msg.tzinfo: fb_msg = fb_msg.replace(tzinfo=UTC)
+            if not fb_msg.tzinfo:
+                fb_msg = fb_msg.replace(tzinfo=UTC)
             hours = (datetime.now(UTC) - fb_msg).total_seconds() / 3600.0
             thread_update[Fields.FIRST_SELLER_REPLY_AT] = get_server_timestamp()
             thread_update[Fields.FIRST_REPLY_HOURS] = hours

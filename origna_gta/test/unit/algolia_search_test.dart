@@ -61,9 +61,6 @@ void main() {
 
       // Mock the search stream
       when(mockAlgoliaService.isAvailable).thenReturn(true);
-      when(mockAlgoliaService.search(any, categoryId: anyNamed('categoryId'))).thenAnswer((_) async {
-        return;
-      });
       when(mockAlgoliaService.responses).thenAnswer((_) => Stream.value(mockResponse));
 
       // Act
@@ -92,7 +89,6 @@ void main() {
       });
 
       when(mockAlgoliaService.isAvailable).thenReturn(true);
-      when(mockAlgoliaService.search(any, categoryId: anyNamed('categoryId'))).thenAnswer((_) {});
       when(mockAlgoliaService.responses).thenAnswer((_) => Stream.value(mockResponse));
 
       // Act
@@ -157,9 +153,6 @@ void main() {
       });
 
       when(mockAlgoliaService.isAvailable).thenReturn(true);
-      when(mockAlgoliaService.search(any, categoryId: anyNamed('categoryId'))).thenAnswer((_) async {
-        return;
-      });
       when(mockAlgoliaService.responses).thenAnswer((_) => Stream.value(mockResponse));
 
       // Act
@@ -209,9 +202,6 @@ void main() {
       });
 
       when(mockAlgoliaService.isAvailable).thenReturn(true);
-      when(mockAlgoliaService.search(any, categoryId: anyNamed('categoryId'))).thenAnswer((_) async {
-        return;
-      });
       when(mockAlgoliaService.responses).thenAnswer((_) => Stream.value(mockResponse));
 
       // Act

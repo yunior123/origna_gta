@@ -30,6 +30,7 @@ from config import (
     get_stripe_webhook_secret,
 )
 from models.order_event import OrderEvent
+from handlers.coupons import _compute_discount as _coupon_compute_discount
 from schema_constants import (
     ApiKeys,
     AppConfig,
@@ -119,6 +120,31 @@ def get_rate_limiter():
 def get_transactional():
     """Get Firestore transactional decorator (lazy initialization)."""
     return get_firestore().transactional
+
+
+def _get_seller_stripe_snapshot(order_id: str, order_data: dict) -> dict:
+    """
+    SECURITY FIX (HIGH-01): Read seller Stripe account snapshot from the backend-only
+    private subcollection (`orders/{orderId}/_private/stripe`) instead of the main order doc.
+    Returns empty dict if not found (callers then do live lookup from seller_profiles).
+    """
+    try:
+        snap_doc = (
+            get_db()
+            .collection(Collections.ORDERS)
+            .document(order_id)
+            .collection("_private")
+            .document("stripe")
+            .get()
+        )
+        if snap_doc.exists:
+            private_data = snap_doc.to_dict() or {}
+            accounts = private_data.get(Fields.SELLER_STRIPE_ACCOUNTS)
+            if accounts:
+                return accounts
+    except Exception as _e:
+        logger.warning(f"Failed to read private stripe snapshot for order {order_id}: {_e}")
+    return {}
 
 
 def _assert_seller_active(seller_id: str, require_approval: bool = True) -> dict[str, Any]:
@@ -235,7 +261,7 @@ def _rollback_checkout(validated_items: list, order_ref, coupon_code: str | None
                     if _uc <= 1:
                         _txn.delete(_ur)
                     else:
-                        _txn.update(_ur, {Fields.COUNT: _uc - 1})
+                        _txn.update(_ur, {"useCount": _uc - 1})  # MEDIUM-3: was Fields.COUNT ("count"), wrong field
 
             _undo_coupon_txn(_db.transaction())
             logger.info(f"Coupon {coupon_code} pre-reservation rolled back for user {user_id}")
@@ -701,8 +727,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         from utils.helpers import validate_postal_code
         validate_postal_code(postal_code)
-    except (ValueError, Exception):
-        raise https_fn.HttpsError("invalid-argument", "Invalid Canadian postal code format")
+    except (ValueError, Exception) as e:
+        raise https_fn.HttpsError("invalid-argument", "Invalid Canadian postal code format") from e
 
     # Province validation
     province_code = (shipping_address.get(Fields.STATE) or "").strip().upper()
@@ -747,6 +773,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         if d.exists
     }
 
+    # Batch fetch seller_profiles (onboardingCompleted + chargesEnabled live here).
+    # Pre-fetching outside the item loop prevents an N+1 Firestore read pattern.
+    seller_profile_docs_pre = {
+        d.id: (d.to_dict() if d.exists else {})
+        for d in db.get_all([db.collection(Collections.SELLER_PROFILES).document(sid) for sid in seller_ids])
+    }
+
     for item in items:
         pid = item.get(Fields.PRODUCT_ID)
         p_data = product_docs.get(pid)
@@ -789,9 +822,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
 
         # Seller onboarding check — ensure seller can receive payments
-        sp_ref = db.collection(Collections.SELLER_PROFILES).document(sid)
-        sp_snap = sp_ref.get()
-        sp_data = sp_snap.to_dict() if sp_snap.exists else {}
+        # Uses pre-fetched batch (seller_profile_docs_pre) to avoid per-item Firestore reads.
+        sp_data = seller_profile_docs_pre.get(sid, {})
         if not sp_data.get(Fields.ONBOARDING_COMPLETED, False):
             raise https_fn.HttpsError(
                 "failed-precondition",
@@ -859,6 +891,27 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     coupon_code = None
     coupon_seller_id = None
 
+    # Apply coupon discount server-side — re-validate and compute (never trust client amount)
+    coupon_code_input = (data.get(Fields.COUPON_CODE) or "").strip().upper() or None  # LOW-5: normalize
+    if coupon_code_input:
+        coupon_doc = get_db().collection(Collections.COUPONS).document(coupon_code_input).get()
+        if not coupon_doc.exists:
+            raise https_fn.HttpsError("not-found", "Coupon not found or has been removed.")
+        c_data = coupon_doc.to_dict() or {}
+        if not _coupon_not_expired(c_data):
+            raise https_fn.HttpsError("failed-precondition", "Coupon has expired.")
+        if not _coupon_within_limits(c_data, user_id):
+            raise https_fn.HttpsError("resource-exhausted", "Coupon usage limit reached.")
+        if not _coupon_seller_allowed(c_data, sellers):
+            raise https_fn.HttpsError("failed-precondition", "Coupon is not valid for items in your cart.")
+        if not _coupon_min_order_met(c_data, actual_subtotal_cents):
+            raise https_fn.HttpsError("failed-precondition", "Order does not meet the coupon minimum requirement.")
+        # HIGH-3: use shared _compute_discount (enforces MIN_CHECKOUT_TOTAL + MAX_COUPON_RATIO caps)
+        discount_amount_cents = _coupon_compute_discount(c_data, actual_subtotal_cents)
+        discounted_subtotal_cents = actual_subtotal_cents - discount_amount_cents
+        coupon_code = coupon_code_input
+        coupon_seller_id = c_data.get(Fields.SELLER_ID)  # None = platform-wide
+
     # Detect all-digital cart early — bypasses physical shipping/address rules.
     # NOTE: isDigital is re-verified server-side per item during product validation below.
     # Recompute all_digital from server-verified validated_items — never trust client payload
@@ -916,7 +969,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 for item in validated_items:
                     item_subtotal_cents = round(int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY] * discount_ratio)
                     item_tax_rate = get_item_tax_rate(item, state_code)
-                    if item.get(Fields.IS_SMALL_SUPPLIER, False): item_tax_rate = 0.0
+                    if item.get(Fields.IS_SMALL_SUPPLIER, False):
+                        item_tax_rate = 0.0
                     item_tax_cents = round(item_subtotal_cents * item_tax_rate)
                     tax_amount_cents += item_tax_cents
                     item_taxes.append({Fields.PRODUCT_ID: item[Fields.PRODUCT_ID], Fields.TAX_CENTS: item_tax_cents, Fields.TAX_RATE: item_tax_rate})
@@ -937,7 +991,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             for item in validated_items:
                 item_subtotal_cents = round(int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY] * discount_ratio)
                 item_tax_rate = get_item_tax_rate(item, state_code)
-                if item.get(Fields.IS_SMALL_SUPPLIER, False): item_tax_rate = 0.0
+                if item.get(Fields.IS_SMALL_SUPPLIER, False):
+                    item_tax_rate = 0.0
                 item_tax_cents = round(item_subtotal_cents * item_tax_rate)
                 tax_amount_cents += item_tax_cents
                 item_taxes.append({Fields.PRODUCT_ID: item[Fields.PRODUCT_ID], Fields.TAX_CENTS: item_tax_cents, Fields.TAX_RATE: item_tax_rate})
@@ -982,7 +1037,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                     try:
                         existing_session = stripe.checkout.Session.retrieve(existing_session_id)
                         checkout_url = existing_session.url
-                    except Exception: checkout_url = None
+                    except Exception:
+                        checkout_url = None
                     if checkout_url:
                         return {ApiKeys.SUCCESS: True, ApiKeys.SESSION_ID: existing_session_id, Fields.ORDER_ID: recent_doc.id, ApiKeys.CHECKOUT_URL: checkout_url, ApiKeys.DUPLICATE: True}
 
@@ -994,7 +1050,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             try:
                 inv_docs = get_db().collection(Collections.PRODUCTS).document(p_id).collection(Collections.INVENTORY_LEVELS).order_by(Fields.AVAILABLE_QUANTITY, direction="DESCENDING").limit(50).get()
                 inventory_candidates[p_id] = [(d.id, (d.to_dict() or {}).get(Fields.AVAILABLE_QUANTITY, 0)) for d in inv_docs if d.exists]
-            except Exception: inventory_candidates[p_id] = []
+            except Exception:
+                inventory_candidates[p_id] = []
 
     # Final order data construction
     order_ref = get_db().collection(Collections.ORDERS).document()
@@ -1027,7 +1084,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
         Fields.DELIVERY_SPEED: delivery_speed,
-        Fields.PLATFORM_FEE_TOTAL_CENTS: 0 if _check_premium_from_sub(user_id) else round(actual_subtotal_cents * PLATFORM_FEE_RATIO),
+        Fields.PLATFORM_FEE_TOTAL_CENTS: 0 if _check_premium_from_sub(user_id) else round(discounted_subtotal_cents * PLATFORM_FEE_RATIO),
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
         Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
@@ -1038,6 +1095,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         **({ApiKeys.IDEMPOTENCY_KEY: client_idempotency_key} if client_idempotency_key else {}),
         **({Fields.COUPON_PRERESERVED: True} if coupon_code else {}),
     }
+
+    _stripe_snapshot_ref: list[dict | None] = [None]  # mutable container for cross-scope state
 
     @get_transactional()
     def checkout_atomic_transaction(transaction):
@@ -1073,7 +1132,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         inv_level_writes_tx = []
         for i, item in enumerate(validated_items):
             snapshot = product_snapshots_tx[i]
-            if not snapshot.exists: raise https_fn.HttpsError('not-found', f'Product {item[Fields.PRODUCT_ID]} not found')
+            if not snapshot.exists:
+                raise https_fn.HttpsError('not-found', f'Product {item[Fields.PRODUCT_ID]} not found')
             p_data_tx = snapshot.to_dict() or {}
             current_stock = p_data_tx.get(Fields.STOCK_QUANTITY, 0)
             allow_backorder = p_data_tx.get(Fields.INVENTORY, {}).get(Fields.ALLOW_BACKORDER, False)
@@ -1103,17 +1163,32 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             inv_level_writes_tx.append(wh_inv_writes)
 
         if coupon_snap:
-            if not coupon_snap.exists: raise https_fn.HttpsError('not-found', 'Coupon invalid')
+            if not coupon_snap.exists:
+                raise https_fn.HttpsError('not-found', 'Coupon invalid')
             c_data = coupon_snap.to_dict() or {}
-            if c_data.get(Fields.USED_COUNT, 0) >= c_data.get(Fields.MAX_USES_TOTAL, 999999): raise https_fn.HttpsError('resource-exhausted', 'Coupon fully used')
-            u_count = coupon_use_snap.to_dict().get('useCount', 0) if coupon_use_snap.exists else 0
-            if u_count >= c_data.get(Fields.MAX_USES_PER_USER, 1): raise https_fn.HttpsError('resource-exhausted', 'Coupon limit per user reached')
+            # MEDIUM-4: re-check expiry inside transaction (race: coupon expires between validation and txn)
+            if not _coupon_not_expired(c_data):
+                raise https_fn.HttpsError('failed-precondition', 'Coupon has expired')
+            if c_data.get(Fields.USED_COUNT, 0) >= c_data.get(Fields.MAX_USES_TOTAL, 999999):
+                raise https_fn.HttpsError('resource-exhausted', 'Coupon fully used')
+            u_count = coupon_use_snap.to_dict().get(Fields.USE_COUNT, 0) if coupon_use_snap.exists else 0
+            if u_count >= c_data.get(Fields.MAX_USES_PER_USER, 1):
+                raise https_fn.HttpsError('resource-exhausted', 'Coupon limit per user reached')
 
         seller_account_snapshot = {sid: snap.to_dict().get(Fields.STRIPE_ACCOUNT_ID) for sid, snap in seller_profile_snaps.items() if snap.exists and snap.to_dict().get(Fields.STRIPE_ACCOUNT_ID)}
-        if seller_account_snapshot: order_data[Fields.SELLER_STRIPE_ACCOUNTS] = seller_account_snapshot
+        # SECURITY FIX (HIGH-01): stripeAccountId values must NOT be stored on the main order doc
+        # because orders are readable by the buyer (resource.data.userId == request.auth.uid).
+        # Store the snapshot in a backend-only private subcollection instead.
+        # _stripe_snapshot is written AFTER the transaction via Admin SDK (bypasses client rules).
+        _stripe_snapshot_ref[0] = seller_account_snapshot if seller_account_snapshot else None
 
         # 3. WRITE PHASE
         for i, (ref, n_stock, wh_patches, item_wh_id) in enumerate(updates_tx):
+            # Digital products have no physical stock — skip all stock decrement writes
+            if validated_items[i].get(Fields.IS_DIGITAL, False):
+                if item_wh_id:
+                    order_data[Fields.ITEMS][i][Fields.FULFILLMENT_WAREHOUSE_ID] = item_wh_id
+                continue
             patch = {Fields.STOCK_QUANTITY: n_stock}
             patch.update(wh_patches)
             variant_id = validated_items[i].get(Fields.VARIANT_ID)
@@ -1124,23 +1199,42 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                     v_list[v_idx][Fields.STOCK_QUANTITY] -= validated_items[i][Fields.QUANTITY]
                     patch[Fields.VARIANTS] = v_list
             transaction.update(ref, patch)
-            for inv_ref, n_avail in inv_level_writes_tx[i]: transaction.set(inv_ref, {Fields.AVAILABLE_QUANTITY: n_avail, Fields.LAST_SYNCED_AT: get_server_timestamp()}, merge=True)
-            if item_wh_id: order_data[Fields.ITEMS][i][Fields.FULFILLMENT_WAREHOUSE_ID] = item_wh_id
+            for inv_ref, n_avail in inv_level_writes_tx[i]:
+                transaction.set(inv_ref, {Fields.AVAILABLE_QUANTITY: n_avail, Fields.LAST_SYNCED_AT: get_server_timestamp()}, merge=True)
+            if item_wh_id:
+                order_data[Fields.ITEMS][i][Fields.FULFILLMENT_WAREHOUSE_ID] = item_wh_id
 
         if coupon_ref:
             transaction.update(coupon_ref, {Fields.USED_COUNT: get_firestore().Increment(1)})
-            if coupon_use_snap.exists: transaction.update(coupon_use_ref, {'useCount': get_firestore().Increment(1), 'lastUsedAt': get_server_timestamp()})
-            else: transaction.set(coupon_use_ref, {'useCount': 1, 'usedAt': get_server_timestamp(), 'lastUsedAt': get_server_timestamp()})
+            if coupon_use_snap.exists:
+                transaction.update(coupon_use_ref, {Fields.USE_COUNT: get_firestore().Increment(1), Fields.LAST_USED_AT: get_server_timestamp()})
+            else:
+                transaction.set(coupon_use_ref, {Fields.USE_COUNT: 1, Fields.USED_AT: get_server_timestamp(), Fields.LAST_USED_AT: get_server_timestamp()})
 
         transaction.set(order_ref, order_data)
         return True
 
     try:
         checkout_atomic_transaction(get_db().transaction())
-    except https_fn.HttpsError: raise
+    except https_fn.HttpsError:
+        raise
     except Exception as e:
         logger.error(f'Checkout atomic transaction error: {str(e)}')
-        raise https_fn.HttpsError('internal', 'Could not complete checkout. Please try again.')
+        raise https_fn.HttpsError('internal', 'Could not complete checkout. Please try again.') from e
+
+    # SECURITY FIX (HIGH-01): Write stripe account snapshot to backend-only private subcollection.
+    # This doc is protected by firestore.rules `allow read, write: if false` (client-inaccessible);
+    # backend reads via Admin SDK which bypasses rules. This prevents exposing seller Stripe account
+    # IDs to the buyer who can read their own order document.
+    if _stripe_snapshot_ref[0]:
+        try:
+            get_db().collection(Collections.ORDERS).document(order_id) \
+                .collection("_private").document("stripe") \
+                .set({Fields.SELLER_STRIPE_ACCOUNTS: _stripe_snapshot_ref[0],
+                      Fields.CREATED_AT: get_server_timestamp()})
+        except Exception as _snap_err:
+            # Non-fatal: capture code falls back to live seller_profiles lookup
+            logger.error(f"Failed to write stripe snapshot for order {order_id}: {_snap_err}")
 
     # Create Stripe Checkout Session
     try:
@@ -1243,7 +1337,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 StripeConstants.METADATA: {StripeConstants.METADATA_ORDER_ID: order_id},
             }},
             **({StripeConstants.CUSTOMER_EMAIL: buyer_email} if buyer_email else {}),
-            # NOTE: automatic_tax disabled - we calculate tax server-side to avoid double taxation
             # AUDIT FIX (CRITICAL-001): Idempotency key prevents duplicate sessions on retry
             idempotency_key=client_idempotency_key or f"checkout_{order_id}",
         )
@@ -1717,7 +1810,8 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
             try:
                 # Use seller Stripe account snapshot from order (set at checkout) for security.
                 # This prevents account-swap attacks if seller changes their Connect account after checkout.
-                seller_stripe_accounts = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
+                # SECURITY FIX (HIGH-01): Read from private subcollection, not buyer-readable order doc.
+                seller_stripe_accounts = _get_seller_stripe_snapshot(order_id, order_data)
                 acct_id = seller_stripe_accounts.get(seller_id)
                 if not acct_id:
                     # Fallback: fetch from seller_profiles (for orders without snapshot)
@@ -1819,10 +1913,10 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
                 seller_email = seller_data.get(Fields.EMAIL)
                 if seller_email:
                     seller_lang = seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
-                    seller_email_html = get_seller_notification_email(order_data, order_id, seller_id, lang=seller_lang)
+                    seller_email_html = get_seller_notification_email(order_data, order_id, seller_id, lang=seller_lang, seller_email=seller_email)
                     enqueue_email_task(
                         to_email=seller_email,
-                        subject=_email_t("sub.new_order", seller_lang),
+                        subject=_email_t("sub.new_order_seller", seller_lang).replace("{oid}", order_id[:8]),
                         html_content=seller_email_html,
                         event_type=OrderEventTypes.ORDER_CONFIRMED_SELLER,
                         order_id=order_id,
@@ -1839,6 +1933,73 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
                     )
                 except Exception as push_err:
                     logger.warning(f"Failed to send push to seller {seller_id}: {push_err}")
+
+        # GAP-13: Perishable urgent notifications — CFIA compliance.
+        # Any order with perishable items must trigger an immediate URGENT push + email
+        # to the responsible seller(s) so items are shipped same-day.
+        try:
+            all_items: list[dict] = order_data.get(Fields.ITEMS, [])
+            has_perishable = any(
+                item.get(Fields.IS_PERISHABLE, False) for item in all_items
+            )
+            if has_perishable:
+                perishable_by_seller: dict[str, list[dict]] = {}
+                for item in all_items:
+                    if item.get(Fields.IS_PERISHABLE, False):
+                        sid = item.get(Fields.SELLER_ID, "")
+                        if sid:
+                            perishable_by_seller.setdefault(sid, []).append(item)
+
+                for p_seller_id, p_items in perishable_by_seller.items():
+                    item_names = ", ".join(
+                        i.get(Fields.NAME, "item") for i in p_items[:3]
+                    )
+                    oid_short_p = order_id[:8].upper()
+                    # Urgent push — fires immediately, before email task queue
+                    try:
+                        from services.push_service import send_push_notification as _push_perishable
+                        _push_perishable(
+                            p_seller_id,
+                            title="URGENT: Perishable Order",
+                            body=f"Perishable items ({item_names}) — ship TODAY. Order #{oid_short_p}",
+                            data={
+                                "type": NotificationTypes.PERISHABLE_ORDER_URGENT,
+                                "orderId": order_id,
+                                "priority": "high",
+                            },
+                        )
+                    except Exception as p_push_err:
+                        logger.warning(
+                            f"GAP-13: Failed perishable push to seller {p_seller_id}: {p_push_err}"
+                        )
+                    # Urgent email via task queue (non-blocking)
+                    try:
+                        p_seller_doc = get_db().collection(Collections.USERS).document(p_seller_id).get()
+                        if p_seller_doc.exists:
+                            p_seller_data = p_seller_doc.to_dict() or {}
+                            p_seller_email = p_seller_data.get(Fields.EMAIL)
+                            if p_seller_email:
+                                p_lang = p_seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
+                                p_subject = _email_t("sub.perishable_urgent", p_lang).replace(
+                                    "{oid}", oid_short_p
+                                )
+                                p_html = get_seller_notification_email(
+                                    order_data, order_id, p_seller_id, lang=p_lang, seller_email=p_seller_email
+                                )
+                                enqueue_email_task(
+                                    to_email=p_seller_email,
+                                    subject=p_subject,
+                                    html_content=p_html,
+                                    event_type=OrderEventTypes.ORDER_CONFIRMED_SELLER,
+                                    order_id=order_id,
+                                )
+                    except Exception as p_email_err:
+                        logger.warning(
+                            f"GAP-13: Failed perishable email to seller {p_seller_id}: {p_email_err}"
+                        )
+        except Exception as p_err:
+            logger.error(f"GAP-13: Perishable notification block failed for order {order_id}: {p_err}")
+
     except Exception as e:
         logger.error(f"Failed to send confirmation emails: {str(e)}")
 
@@ -1850,7 +2011,7 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
     # the original redeem_coupon() path so old orders are not broken.
     try:
         applied_coupon_code = order_data.get(Fields.COUPON_CODE)
-        coupon_already_prereserved = order_data.get("couponPrereserved", False)
+        coupon_already_prereserved = order_data.get(Fields.COUPON_PRERESERVED, False)
         if applied_coupon_code and not coupon_already_prereserved:
             from handlers.coupons import redeem_coupon as _redeem_coupon
             _redeem_coupon(applied_coupon_code, order_data[Fields.USER_ID], order_id=order_id)
@@ -2075,16 +2236,23 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
 
 def _clear_user_cart(user_id: str) -> None:
-    """Deletes all items from user's cart subcollection using batched writes."""
+    """Deletes all items from user's cart subcollection using paginated batched writes.
+
+    Cost fix: paginated with limit(500) to avoid unbounded stream reads on large carts.
+    Cart size is already bounded by BusinessRules.MAX_CART_ITEMS but defensive pagination
+    prevents full-collection scans.
+    """
     cart_ref = get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART)
-    docs = list(cart_ref.stream())
-    if not docs:
-        return
-    for chunk_start in range(0, len(docs), 500):
+    while True:
+        docs = list(cart_ref.limit(500).stream())
+        if not docs:
+            return
         batch = get_db().batch()
-        for doc in docs[chunk_start:chunk_start + 500]:
+        for doc in docs:
             batch.delete(doc.reference)
         batch.commit()
+        if len(docs) < 500:
+            return
 
 
 def process_async_payment_succeeded(session: dict) -> str | None:
@@ -2262,6 +2430,29 @@ def process_async_payment_failed(session: dict) -> str | None:
             )
         except Exception as e:
             logger.warning(f"Failed to write order event for {order_id}: {e}")
+
+        # Notify buyer that payment capture failed so they can update payment method
+        try:
+            from services.email_service import send_payment_capture_failed_email
+            buyer_email = order_data.get(Fields.CUSTOMER_EMAIL)
+            if not buyer_email:
+                buyer_doc = get_db().collection(Collections.USERS).document(order_data.get(Fields.USER_ID, "")).get()
+                if buyer_doc.exists:
+                    buyer_email = (buyer_doc.to_dict() or {}).get(Fields.EMAIL)
+            if buyer_email:
+                buyer_name = order_data.get(Fields.CUSTOMER_NAME, "")
+                lang = order_data.get(Fields.PREFERRED_LANGUAGE, "en")
+                amount = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
+                send_payment_capture_failed_email(
+                    order_id=order_id,
+                    customer_email=buyer_email,
+                    customer_name=buyer_name,
+                    amount=amount,
+                    error_message="Payment could not be processed",
+                    lang=lang,
+                )
+        except Exception as email_err:
+            logger.warning(f"Failed to send payment capture failed email for order {order_id}: {email_err}")
 
     return f"Order {order_id} cancelled due to payment failure"
 
@@ -2667,6 +2858,7 @@ def process_charge_refunded(charge: dict) -> str | None:
             .collection(Collections.PAYOUTS)
             .where(Fields.ORDER_ID, "==", order_id)
             .where(Fields.STATUS, "in", [PayoutStatusValues.COMPLETED, PayoutStatusValues.PARTIALLY_REVERSED])
+            .limit(50)  # Cost fix: orders have ≤50 sellers; unbounded stream was wasteful
             .stream()
         )
 
@@ -3258,12 +3450,14 @@ def process_dispute_closed(dispute: dict) -> str | None:
                     .collection(Collections.PAYOUTS)
                     .where(Fields.ORDER_ID, "==", order_id)
                     .where(Fields.STATUS, "in", [PayoutStatusValues.REVERSED, PayoutStatusValues.PARTIALLY_REVERSED])
+                    .limit(50)  # Cost fix: bounded by seller count per order
                     .stream()
                 )
 
                 re_transferred = 0
                 # Load the seller Stripe account snapshot stored at checkout time
-                seller_stripe_snapshot = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
+                # SECURITY FIX (HIGH-01): Read from private subcollection, not buyer-readable order doc.
+                seller_stripe_snapshot = _get_seller_stripe_snapshot(order_id, order_data)
                 for payout_doc in payouts:
                     payout_data = payout_doc.to_dict()
                     seller_id = payout_data.get(Fields.SELLER_ID, "")
@@ -3752,10 +3946,14 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         eventually_due = list(requirements.eventually_due or [])
         pending_requirements = list(set(currently_due + eventually_due))
 
+        # FIX M-02 (get_connect_account_status): onboardingCompleted requires BOTH
+        # details_submitted AND charges_enabled — consistent with process_account_updated.
+        # Setting it on details_submitted alone marks a seller as "onboarded" before
+        # Stripe has approved charges, misleading any gate that checks only onboardingCompleted.
         sp_update = {
             Fields.CHARGES_ENABLED: account.charges_enabled,
             Fields.PAYOUTS_ENABLED: account.payouts_enabled,
-            Fields.ONBOARDING_COMPLETED: account.details_submitted,
+            Fields.ONBOARDING_COMPLETED: account.details_submitted and account.charges_enabled,
             Fields.PENDING_REQUIREMENTS: pending_requirements,
             Fields.UPDATED_AT: get_server_timestamp(),
         }
@@ -3942,7 +4140,8 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                     # Attempt Stripe Transfer (may fail in emulator with fake accounts)
                     if charge_id:
                         # Prefer checkout-time snapshot to prevent account-swap attacks
-                        seller_stripe_accounts = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
+                        # SECURITY FIX (HIGH-01): Read from private subcollection, not buyer-readable order doc.
+                        seller_stripe_accounts = _get_seller_stripe_snapshot(order_id, order_data)
                         acct_id = seller_stripe_accounts.get(seller_id)
                         if not acct_id:
                             sp_doc = get_db().collection(Collections.SELLER_PROFILES).document(seller_id).get()
@@ -4172,7 +4371,8 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
             # SECURITY FIX (CRITICAL-014): Use snapshotted stripeAccountId from checkout.
             # Falls back to live lookup if snapshot not available (old orders).
-            seller_account_snapshot = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
+            # SECURITY FIX (HIGH-01): Read from private subcollection, not buyer-readable order doc.
+            seller_account_snapshot = _get_seller_stripe_snapshot(order_id, order_data)
             snapshot_account_id = seller_account_snapshot.get(seller_id)
 
             # Get seller's current data for suspension/charges checks

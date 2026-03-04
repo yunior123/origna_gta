@@ -40,6 +40,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
         // Modern Search and Filter Bar
@@ -47,7 +48,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? DesignTokens.darkCard : Colors.white,
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
             boxShadow: DesignTokens.shadowSm,
           ),

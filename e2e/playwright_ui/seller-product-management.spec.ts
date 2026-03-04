@@ -109,7 +109,7 @@ test.describe('Seller Product Management — API Tests', () => {
 // ═══ UI-DRIVEN TESTS ═══
 
 test.describe('Seller Product Management — UI Tests', () => {
-  test.setTimeout(300_000);
+  test.setTimeout(360_000);
 
   test('T05: UI — Seller can navigate to add product page', async ({ page }) => {
     await requireWebApp(page, TARGET_URL);

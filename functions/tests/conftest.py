@@ -1029,6 +1029,8 @@ class FirestoreMockBuilder:
                 mock_doc_ref.update = update_impl
                 mock_doc_ref.set = set_impl
                 mock_doc_ref.delete = MagicMock()
+                # Tag the ref with its collection so get_all_impl can resolve correctly
+                mock_doc_ref._col_name = collection_name
 
                 return mock_doc_ref
 
@@ -1147,11 +1149,24 @@ class FirestoreMockBuilder:
         mock_db.transaction = transaction_impl
         mock_db.batch = MagicMock(return_value=MagicMock())
 
-        # Implement get_all() — batch fetch used by create_checkout_session
+        # Implement get_all() — batch fetch used by create_checkout_session.
+        # Collection-aware: uses the _col_name tag set by document_impl so that
+        # refs pointing to different collections with the same doc_id (e.g.
+        # users/seller_123 vs seller_profiles/seller_123) resolve correctly.
         def get_all_impl(doc_refs):
             results = []
             for doc_ref in doc_refs:
                 doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)
+                # Prefer collection derived from the tagged _col_name attribute
+                tagged_col = getattr(doc_ref, "_col_name", None)
+                if isinstance(tagged_col, str) and tagged_col in builder.documents and doc_id in builder.documents[tagged_col]:
+                    mock_doc = MagicMock()
+                    mock_doc.exists = True
+                    mock_doc.id = doc_id
+                    mock_doc.to_dict.return_value = builder.documents[tagged_col][doc_id]
+                    results.append(mock_doc)
+                    continue
+                # Fallback: search all collections for untagged document refs
                 found = False
                 for col_docs in builder.documents.values():
                     if doc_id in col_docs:

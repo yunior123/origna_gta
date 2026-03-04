@@ -1,6 +1,6 @@
 # Favorites Auditor Memory
 
-## Audit Run: 2026-03-01
+## Audit Run: 2026-03-03
 
 ### Key Confirmed Patterns
 
@@ -15,8 +15,12 @@
 - GAP: `bulk_update_products` PAUSE action does NOT clean favorites. This is acceptable — paused products appear dimmed in UI, not removed.
 - GAP: `toggle_favorite` callable does NOT decrement `favoriteCount` on deletion cleanup paths. `favoriteCount` on product doc can drift when batch-delete cleanup runs (cleanup deletes sub-docs but does not decrement the product counter).
 
-**favoriteCount Magic String (MEDIUM)**
-- `toggle_favorite` uses literal string `"favoriteCount"` in both product updates (lines 3955, 3966). No constant defined in `schema_constants.py` or `schema_constants.dart`. Violates no-magic-strings rule.
+**favoriteCount Magic String (FIXED 2026-03-03)**
+- Added `Fields.FAVORITE_COUNT = "favoriteCount"` to `schema_constants.py` (line ~803) and `Fields.favoriteCount = 'favoriteCount'` to `schema_constants.dart` (line ~1072).
+- Replaced all 3 magic string usages: `products.py` (toggle_favorite, 2 sites) + `cron_jobs.py` (trending score, 1 site).
+
+**toggle_favorite inactive product guard (FIXED 2026-03-03)**
+- Added `lifecycleStatus == ACTIVE` check inside `toggle_fav_txn` before creating new favorite doc. Unfavoriting an inactive product is still allowed (cleanup path). Only the creation branch is gated.
 
 **Seller Product Listing (PASS)**
 - `sellerProductsProvider` queries Firestore directly with `where(sellerId == userId)`. Algolia is not used.

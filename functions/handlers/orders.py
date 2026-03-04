@@ -19,6 +19,7 @@ from models.order_event import OrderEvent
 from schema_constants import (
     ApiKeys,
     BusinessRules,
+    CancellationReasonValues,
     Collections,
     DeliveryItemStatusTransitions,
     DeliveryStatusValues,
@@ -104,10 +105,10 @@ def confirm_item_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     user_id = req.auth.uid
     order_id = req.data.get(Fields.ORDER_ID)
-    cart_item_id = req.data.get(Fields.CART_ITEM_ID)
+    product_id = req.data.get(Fields.PRODUCT_ID)
 
-    if not order_id or not cart_item_id:
-        raise https_fn.HttpsError("invalid-argument", "orderId and cartItemId required")
+    if not order_id or not product_id:
+        raise https_fn.HttpsError("invalid-argument", "orderId and productId required")
 
     db = get_db()
     order_ref = db.collection(Collections.ORDERS).document(order_id)
@@ -126,7 +127,7 @@ def confirm_item_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
 
         items = order_data.get(Fields.ITEMS, [])
-        item_index = next((i for i, it in enumerate(items) if it.get(Fields.CART_ITEM_ID) == cart_item_id), None)
+        item_index = next((i for i, it in enumerate(items) if it.get(Fields.PRODUCT_ID) == product_id), None)
 
         if item_index is None:
             raise https_fn.HttpsError("not-found", "Item not found in order")
@@ -166,9 +167,12 @@ def confirm_item_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
 
         if all_delivered:
-            update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
-            update_data[Fields.CONFIRMED_AT] = now_utc
-            update_data[Fields.CONFIRMED_BY_CLIENT] = True
+            # Only promote to DELIVERED when payment is confirmed captured — prevents
+            # premature DELIVERED status if payment capture is somehow still pending.
+            if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
+                update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+                update_data[Fields.CONFIRMED_AT] = now_utc
+                update_data[Fields.CONFIRMED_BY_CLIENT] = True
 
         transaction.update(order_ref, update_data)
         return {"success": True, "allDelivered": all_delivered}
@@ -1545,7 +1549,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                     Fields.SHIPPING_APPROVAL_STATUS: ShippingApprovalStatusValues.REJECTED,
                     Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
                     Fields.PAYMENT_STATUS: cancel_payment_status,
-                    Fields.CANCELLATION_REASON: "Buyer rejected shipping cost",
+                    Fields.CANCELLATION_REASON: CancellationReasonValues.SHIPPING_REJECTED,
                     Fields.UPDATED_AT: get_server_timestamp(),
                 },
             )
@@ -1774,9 +1778,12 @@ def _assert_within_return_window(item_data: dict) -> None:
     """Shared helper — raises if the return window has expired."""
     delivered_at = item_data.get(Fields.DELIVERED_AT)
     if delivered_at:
-        if isinstance(delivered_at, str):
+        # Handle Firestore Timestamp objects (have .timestamp() but are not datetime)
+        if hasattr(delivered_at, "timestamp") and not isinstance(delivered_at, datetime):
+            delivered_at = datetime.fromtimestamp(delivered_at.timestamp(), tz=UTC)
+        elif isinstance(delivered_at, str):
             delivered_at = datetime.fromisoformat(delivered_at)
-        if hasattr(delivered_at, "tzinfo") and delivered_at.tzinfo is None:
+        if isinstance(delivered_at, datetime) and delivered_at.tzinfo is None:
             delivered_at = delivered_at.replace(tzinfo=UTC)
         elapsed = (datetime.now(UTC) - delivered_at).days
         if elapsed > BusinessRules.RETURN_WINDOW_DAYS:
@@ -2006,18 +2013,22 @@ def _process_return_refund(order_id: str, product_id: str, return_id: str, buyer
             }
             break
     order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: now_utc})
-    _finalise_return_refunded(order_id, product_id, return_id)
+    _finalise_return_refunded(order_id, product_id, return_id, refund_amount_cents=refund_amount_cents)
     logger.info(f"_process_return_refund: refund {refund.id} issued for return {return_id}")
 
 
-def _finalise_return_refunded(order_id: str, product_id: str, return_id: str) -> None:
-    """Mark the return request as refunded."""
+def _finalise_return_refunded(order_id: str, product_id: str, return_id: str, refund_amount_cents: int | None = None) -> None:
+    """Mark the return request as refunded, recording the refund amount and resolved timestamp."""
     db = get_db()
     return_ref = db.collection(Collections.RETURN_REQUESTS).document(return_id)
-    return_ref.update({
+    patch: dict = {
         Fields.RETURN_STATUS: ReturnStatusValues.REFUNDED,
+        Fields.RESOLVED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
-    })
+    }
+    if refund_amount_cents is not None:
+        patch[Fields.RETURN_REFUND_AMOUNT_CENTS] = refund_amount_cents
+    return_ref.update(patch)
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -2167,11 +2178,25 @@ def approve_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
         new_status = _mark_received_txn(txn)
 
         # Initiate Stripe refund and transition return to 'refunded'
+        # NOTE: Stock was already restored above (in transaction). If refund fails here,
+        # stock is restored but buyer has no refund — requires manual admin intervention.
         try:
             _process_return_refund(order_id, product_id, return_id, buyer_id)
             new_status = ReturnStatusValues.REFUNDED  # Update for response
         except Exception as _refund_err:
-            logger.error(f"mark_received: refund initiation failed for return {return_id}: {_refund_err}")
+            logger.error(
+                f"mark_received: STOCK RESTORED BUT REFUND FAILED for return {return_id} "
+                f"order {order_id} — manual refund required: {_refund_err}"
+            )
+            # Alert Sentry so an admin can issue the refund manually
+            try:
+                import sentry_sdk as _sentry
+                _sentry.capture_exception(
+                    _refund_err,
+                    extras={"return_id": return_id, "order_id": order_id, "product_id": product_id},
+                )
+            except Exception:
+                pass
 
         # Notify buyer
         send_push_notification(
@@ -2259,6 +2284,91 @@ def reject_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
     )
 
     return create_success_response({Fields.RETURN_STATUS: ReturnStatusValues.REJECTED, Fields.RETURN_ID: return_id})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def escalate_return_request(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Buyer-initiated escalation of a return request to admin after seller inaction.
+
+    Only the buyer on the return can call this.
+    Only valid from 'approved' or 'requested' status; not after seller has already rejected.
+
+    Request data:
+        returnId: Return request ID
+        escalationReason: Buyer's escalation reason (required, max 1000 chars)
+
+    Returns:
+        {success: True, returnStatus: 'escalated', returnId: str}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    from services.rate_limiter import RateLimiter
+    from utils.helpers import sanitized_text
+
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action=RateLimitActions.CREATE_RETURN_REQUEST, max_requests=3, window_minutes=60, fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", msg)
+
+    buyer_id = req.auth.uid
+    data = req.data
+    return_id = data.get(Fields.RETURN_ID)
+    escalation_reason = sanitized_text(data.get(Fields.ESCALATION_REASON, ""))[:1000]
+
+    if not return_id:
+        raise https_fn.HttpsError("invalid-argument", "returnId required")
+    if not escalation_reason.strip():
+        raise https_fn.HttpsError("invalid-argument", "escalationReason is required")
+
+    return_ref = get_db().collection(Collections.RETURN_REQUESTS).document(return_id)
+    return_doc = return_ref.get()
+    if not return_doc.exists:
+        raise https_fn.HttpsError("not-found", "Return request not found")
+
+    return_data = return_doc.to_dict()
+    if return_data.get(Fields.BUYER_ID) != buyer_id:
+        raise https_fn.HttpsError("permission-denied", "Only the buyer can escalate their return request")
+
+    current_status = return_data.get(Fields.RETURN_STATUS)
+    if "escalated" not in ReturnStatusValues.VALID_TRANSITIONS.get(current_status, set()):
+        raise https_fn.HttpsError(
+            "failed-precondition",
+            f"Cannot escalate return in status '{current_status}'. Escalation is only allowed from 'requested' or 'approved'.",
+        )
+
+    now_utc = datetime.now(UTC)
+    return_ref.update({
+        Fields.RETURN_STATUS: ReturnStatusValues.ESCALATED,
+        Fields.ESCALATION_REASON: escalation_reason,
+        Fields.ESCALATED_AT: now_utc,
+        Fields.UPDATED_AT: now_utc,
+    })
+
+    order_id = return_data.get(Fields.ORDER_ID, "")
+
+    # Notify admins
+    try:
+        admin_docs = list(
+            get_db().collection(Collections.USERS)
+            .where(Fields.ROLES, "array_contains", UserRoleValues.ADMIN)
+            .limit(10)
+            .stream()
+        )
+        for admin_doc in admin_docs:
+            send_push_notification(
+                admin_doc.id,
+                "Return Escalated by Buyer",
+                f"Return #{return_id[:8]} on order #{order_id[:8]} escalated — needs admin review",
+                data={"type": NotificationTypes.RETURN_STATUS, "orderId": order_id, "returnId": return_id},
+            )
+    except Exception as _admin_err:
+        logger.warning(f"escalate_return_request: failed to notify admins for return {return_id}: {_admin_err}")
+
+    return create_success_response({Fields.RETURN_STATUS: ReturnStatusValues.ESCALATED, Fields.RETURN_ID: return_id})
 
 
 def _handle_payment_status_email(order_id: str, after_data: dict, payment_status: str, buyer_email: str | None = None) -> None:
@@ -2433,7 +2543,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                             if _seller_email_c:
                                 _slang_c = _sdata_c.get(Fields.PREFERRED_LANGUAGE, "en")
                                 _seller_html_c = get_seller_notification_email(
-                                    after_data, order_id, _sid_c, lang=_slang_c
+                                    after_data, order_id, _sid_c, lang=_slang_c, seller_email=_seller_email_c
                                 )
                                 enqueue_email_task(
                                     to_email=_seller_email_c,
@@ -2448,6 +2558,72 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                             )
                     except Exception as _ce:
                         logger.warning(f"Failed to send confirmed notification to seller {_sid_c}: {_ce}")
+
+            # GAP-13: Perishable urgent notifications — CFIA compliance.
+            # Fires after the standard seller notification so it never blocks it.
+            try:
+                _all_items_p: list[dict] = after_data.get(Fields.ITEMS, [])
+                _has_perishable = any(
+                    _it.get(Fields.IS_PERISHABLE, False) for _it in _all_items_p
+                )
+                if _has_perishable:
+                    _perishable_by_seller: dict[str, list[dict]] = {}
+                    for _it in _all_items_p:
+                        if _it.get(Fields.IS_PERISHABLE, False):
+                            _p_sid = _it.get(Fields.SELLER_ID, "")
+                            if _p_sid:
+                                _perishable_by_seller.setdefault(_p_sid, []).append(_it)
+
+                    for _p_seller_id, _p_items in _perishable_by_seller.items():
+                        _item_names = ", ".join(
+                            _i.get(Fields.NAME, "item") for _i in _p_items[:3]
+                        )
+                        _oid_short_p = order_id[:8].upper()
+                        # Urgent push
+                        try:
+                            send_push_notification(
+                                _p_seller_id,
+                                title="URGENT: Perishable Order",
+                                body=f"Perishable items ({_item_names}) — ship TODAY. Order #{_oid_short_p}",
+                                data={
+                                    "type": NotificationTypes.PERISHABLE_ORDER_URGENT,
+                                    "orderId": order_id,
+                                    "priority": "high",
+                                },
+                            )
+                        except Exception as _p_push_err:
+                            logger.warning(
+                                f"GAP-13: Failed perishable push to seller {_p_seller_id}: {_p_push_err}"
+                            )
+                        # Urgent email via task queue
+                        try:
+                            _p_sdoc = get_db().collection(Collections.USERS).document(_p_seller_id).get()
+                            if _p_sdoc.exists:
+                                _p_sdata = _p_sdoc.to_dict() or {}
+                                _p_email = _p_sdata.get(Fields.EMAIL)
+                                if _p_email:
+                                    _p_lang = _p_sdata.get(Fields.PREFERRED_LANGUAGE, "en")
+                                    _p_subject = _email_t("sub.perishable_urgent", _p_lang).replace(
+                                        "{oid}", _oid_short_p
+                                    )
+                                    _p_html = get_seller_notification_email(
+                                        after_data, order_id, _p_seller_id, lang=_p_lang, seller_email=_p_email
+                                    )
+                                    enqueue_email_task(
+                                        to_email=_p_email,
+                                        subject=_p_subject,
+                                        html_content=_p_html,
+                                        event_type=OrderEventTypes.ORDER_CONFIRMED_SELLER,
+                                        order_id=order_id,
+                                    )
+                        except Exception as _p_email_err:
+                            logger.warning(
+                                f"GAP-13: Failed perishable email to seller {_p_seller_id}: {_p_email_err}"
+                            )
+            except Exception as _p_err:
+                logger.error(
+                    f"GAP-13: Perishable notification block failed for order {order_id}: {_p_err}"
+                )
 
         elif new_status == OrderStatusValues.PROCESSING:
             processing_html = get_order_processing_email(after_data, order_id, lang=lang)
@@ -2536,7 +2712,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                             seller_lang = seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
                             # Use seller notification with seller_id filter (multi-seller privacy)
                             seller_shipped_html = get_seller_notification_email(
-                                after_data, order_id, sid, lang=seller_lang
+                                after_data, order_id, sid, lang=seller_lang, seller_email=seller_email
                             )
                             enqueue_email_task(
                                 to_email=seller_email,
@@ -2816,6 +2992,37 @@ def _send_return_email(return_data: dict, return_id: str, order_id: str, buyer_i
             enqueue_email_task(to_email=buyer_email, subject=subject, html_content=html_body,
                                event_type="return_rejected", order_id=order_id)
 
+    elif status == ReturnStatusValues.LABEL_ISSUED:
+        # EMAIL: notify buyer that return shipping label has been issued
+        buyer_email, buyer_lang = _fetch_email(buyer_id)
+        if buyer_email:
+            tracking_number = return_data.get(Fields.RETURN_TRACKING_NUMBER, "")
+            tracking_line_en = f"<p>Tracking #: <strong>{tracking_number}</strong></p>" if tracking_number else ""
+            tracking_line_fr = f"<p>N° de suivi : <strong>{tracking_number}</strong></p>" if tracking_number else ""
+            body_en = (
+                f"<p>Your return shipping label for order <strong>#{oid_short}</strong> has been issued. "
+                "Please use it to ship the item back to the seller.</p>"
+                f"{tracking_line_en}"
+                "<p>Once shipped, please mark the return as shipped in the app.</p>"
+            )
+            body_fr = (
+                f"<p>Votre étiquette de retour pour la commande <strong>#{oid_short}</strong> a été émise. "
+                "Veuillez l'utiliser pour renvoyer l'article au vendeur.</p>"
+                f"{tracking_line_fr}"
+                "<p>Une fois expédié, veuillez marquer le retour comme expédié dans l'application.</p>"
+            )
+            body = body_fr if buyer_lang == "fr" else body_en
+            subj_en = f"Return Label Issued - Order #{oid_short}"
+            subj_fr = f"Étiquette de retour émise - Commande #{oid_short}"
+            subject = subj_fr if buyer_lang == "fr" else subj_en
+            from services.email_service import _email_wrapper as _ew_lbl, _hero_header as _hh_lbl  # noqa: E402
+            content = _hh_lbl("📦", subj_en if buyer_lang == "en" else subj_fr,
+                               f"Order #{oid_short}", "rgba(102, 126, 234, 0.2)")
+            content += f"<tr><td style='padding:28px 40px;font-size:14px;color:#333;line-height:1.6;'>{body}</td></tr>"
+            html_body = _ew_lbl("Return Label Issued", content, include_gst=False, lang=buyer_lang, recipient_email=buyer_email)
+            enqueue_email_task(to_email=buyer_email, subject=subject, html_content=html_body,
+                               event_type="return_label_issued", order_id=order_id)
+
     elif status == ReturnStatusValues.RECEIVED:
         # FIX F6-1: Email buyer — returned item received, refund in progress
         buyer_email, buyer_lang = _fetch_email(buyer_id)
@@ -2837,6 +3044,29 @@ def _send_return_email(return_data: dict, return_id: str, order_id: str, buyer_i
             subject = subject_fr if buyer_lang == "fr" else subject_en
             enqueue_email_task(to_email=buyer_email, subject=subject, html_content=html_body,
                                event_type="return_refunded", order_id=order_id)
+
+    elif status == ReturnStatusValues.ESCALATED:
+        # Email buyer — return escalated to admin
+        buyer_email, buyer_lang = _fetch_email(buyer_id)
+        if buyer_email:
+            from services.email_service import _email_wrapper as _ew_esc, _hero_header as _hh_esc  # noqa: E402
+            subj_en = f"Return Escalated - Order #{oid_short}"
+            subj_fr = f"Retour escaladé - Commande #{oid_short}"
+            subject = subj_fr if buyer_lang == "fr" else subj_en
+            body_en = (
+                f"<p>Your return request for order <strong>#{oid_short}</strong> has been escalated to our support team. "
+                "An admin will review it and contact you within 2 business days.</p>"
+            )
+            body_fr = (
+                f"<p>Votre demande de retour pour la commande <strong>#{oid_short}</strong> a été transmise à notre équipe de support. "
+                "Un administrateur l'examinera et vous contactera dans les 2 jours ouvrables.</p>"
+            )
+            body = body_fr if buyer_lang == "fr" else body_en
+            content = _hh_esc("🔔", subj_en if buyer_lang == "en" else subj_fr, f"Order #{oid_short}", "rgba(251, 191, 36, 0.2)")
+            content += f"<tr><td style='padding:28px 40px;font-size:14px;color:#333;line-height:1.6;'>{body}</td></tr>"
+            html_body = _ew_esc("Return Escalated", content, include_gst=False, lang=buyer_lang, recipient_email=buyer_email)
+            enqueue_email_task(to_email=buyer_email, subject=subject, html_content=html_body,
+                               event_type="return_escalated", order_id=order_id)
 
 
 @firestore_fn.on_document_updated(document="return_requests/{returnId}", **FIRESTORE_TRIGGER_OPTIONS)
@@ -2913,6 +3143,14 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
                 data={"type": NotificationTypes.RETURN_REQUEST, "orderId": order_id, "returnId": return_id, "status": new_status},
             )
             _send_return_email(after_data, return_id, order_id, buyer_id, seller_id, new_status)
+        elif new_status == ReturnStatusValues.LABEL_ISSUED and buyer_id:
+            send_push_notification(
+                buyer_id,
+                "Return Label Issued",
+                f"Your return shipping label for order #{oid_short} is ready",
+                data={"type": NotificationTypes.RETURN_REQUEST, "orderId": order_id, "returnId": return_id, "status": new_status},
+            )
+            _send_return_email(after_data, return_id, order_id, buyer_id, seller_id, new_status)
         elif new_status == ReturnStatusValues.RECEIVED:
             if buyer_id:
                 send_push_notification(
@@ -2928,6 +3166,8 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
                     f"Returned item for order #{oid_short} marked as received",
                     data={"type": NotificationTypes.RETURN_REQUEST, "orderId": order_id, "returnId": return_id, "status": new_status},
                 )
+            # EMAIL: notify buyer that return was received and refund is in progress
+            _send_return_email(after_data, return_id, order_id, buyer_id, seller_id, new_status)
         elif new_status == ReturnStatusValues.REFUNDED and buyer_id:
             send_push_notification(
                 buyer_id,
@@ -2935,6 +3175,8 @@ def on_return_request_status_changed(event: firestore_fn.Event) -> None:
                 f"Your refund for return on order #{oid_short} has been processed",
                 data={"type": NotificationTypes.RETURN_REQUEST, "orderId": order_id, "returnId": return_id, "status": new_status},
             )
+            # EMAIL: notify buyer that the return refund has been processed
+            _send_return_email(after_data, return_id, order_id, buyer_id, seller_id, new_status)
         elif new_status == ReturnStatusValues.ESCALATED and buyer_id:
             send_push_notification(
                 buyer_id,

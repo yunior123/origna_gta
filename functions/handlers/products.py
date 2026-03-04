@@ -530,6 +530,10 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_id = req.auth.uid
     product_id = req.data.get(Fields.PRODUCT_ID)
 
+    # Validate productId before consuming rate-limit tokens — prevents quota exhaustion via empty calls
+    if not product_id:
+        raise https_fn.HttpsError("invalid-argument", "productId required")
+
     # Rate limit: 10/min — prevent mass-deletion abuse
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
@@ -537,9 +541,6 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
-
-    if not product_id:
-        raise https_fn.HttpsError("invalid-argument", "productId required")
 
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
     product_doc = product_ref.get()
@@ -604,6 +605,25 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
         algolia_delete_product(product_id)
     except Exception as e:
         logger.error(f"Failed to delete from Algolia: {str(e)}")
+
+    # Delete R2 images — soft delete does not trigger on_product_deleted, so cleanup must happen here.
+    # Non-fatal: failures are logged but do not block the response.
+    try:
+        s3 = _get_cached_s3_client()
+        bucket = R2Config.BUCKET_NAME
+        cdn_prefix = CDN_BASE_URL + "/"
+        valid_prefixes = ("products/", "emulator/products/", "dev/products/", "staging/products/")
+        for img_url in product_data.get(Fields.IMAGE_URLS) or []:
+            if not isinstance(img_url, str) or not img_url.startswith(cdn_prefix):
+                continue
+            key = img_url[len(cdn_prefix):]
+            if not any(key.startswith(p) for p in valid_prefixes):
+                continue
+            with contextlib.suppress(Exception):
+                s3.delete_object(Bucket=bucket, Key=key)
+        logger.info(f"delete_product: R2 images cleaned up for product {product_id}")
+    except Exception as e:
+        logger.error(f"Failed to cleanup R2 images for deleted product {product_id}: {e}")
 
     # Clean up stock_notification subscriptions for this product (paginated for 200+ watchers)
     try:
@@ -692,6 +712,18 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
     if order_data.get(Fields.ORDER_STATUS) not in {OrderStatusValues.DELIVERED, OrderStatusValues.DISPUTED}:
         raise https_fn.HttpsError("failed-precondition", "Order not in ratable state")
 
+    # Block sellers from rating their own product
+    rated_item = next(
+        (item for item in order_data.get(Fields.ITEMS, []) if item.get(Fields.PRODUCT_ID) == product_id),
+        None,
+    )
+    if rated_item and rated_item.get(Fields.SELLER_ID) == user_id:
+        raise https_fn.HttpsError("permission-denied", "Sellers cannot rate their own products")
+
+    # Ensure the rated product is actually in this order
+    if not any(item.get(Fields.PRODUCT_ID) == product_id for item in order_data.get(Fields.ITEMS, [])):
+        raise https_fn.HttpsError("invalid-argument", "Product not in this order")
+
     # 3. Image Upload (R2)
     review_image_urls = []
     uploaded_keys = []
@@ -705,10 +737,12 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
         try:
             for i, img_item in enumerate(images_raw):
                 content_type = img_item.get("contentType", "image/jpeg")
-                if content_type not in ALLOWED_MIME_TYPES: continue
+                if content_type not in ALLOWED_MIME_TYPES:
+                    continue
 
                 img_bytes = _base64.b64decode(img_item.get("data", ""))
-                if not img_bytes: continue
+                if not img_bytes:
+                    continue
 
                 ext = MIME_TO_EXT[content_type]
                 key = R2Config.get_image_path("reviews", f"{uuid.uuid4()}.{ext}")
@@ -721,8 +755,9 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
         except Exception as e:
             # Cleanup
             for k in uploaded_keys:
-                with contextlib.suppress(Exception): s3_client.delete_object(Bucket=bucket_name, Key=k)
-            raise https_fn.HttpsError("internal", f"Image upload failed: {e}")
+                with contextlib.suppress(Exception):
+                    s3_client.delete_object(Bucket=bucket_name, Key=k)
+            raise https_fn.HttpsError("internal", f"Image upload failed: {e}") from e
 
     # 4. Atomically write rating and update product avg
     from utils.helpers import sanitized_text
@@ -746,10 +781,23 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
 
     @get_firestore().transactional
     def update_rating_txn(transaction):
-        # Duplicate checks
+        # Duplicate check by order (prevents double-click)
         existing_order = list(get_db().collection(Collections.PRODUCT_RATINGS).where(Fields.ORDER_ID, "==", order_id).limit(1).stream(transaction=transaction))
         if existing_order:
             _txn_error["err"] = https_fn.HttpsError("already-exists", "Already rated")
+            return None, None
+
+        # Duplicate check by user+product (one rating per user per product across all orders)
+        existing_user_product = list(
+            get_db()
+            .collection(Collections.PRODUCT_RATINGS)
+            .where(Fields.USER_ID, "==", user_id)
+            .where(Fields.PRODUCT_ID, "==", product_id)
+            .limit(1)
+            .stream(transaction=transaction)
+        )
+        if existing_user_product:
+            _txn_error["err"] = https_fn.HttpsError("already-exists", "You have already rated this product")
             return None, None
 
         p_snap = product_ref.get(transaction=transaction)
@@ -770,16 +818,22 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
 
     try:
         new_avg, new_count = update_rating_txn(get_db().transaction())
-        if "err" in _txn_error: raise _txn_error["err"]
+        if "err" in _txn_error:
+            raise _txn_error["err"]
+        # Sync updated rating to Algolia so sort-by-rating returns correct results
+        if new_avg is not None:
+            algolia_partial_update(product_id, {Fields.RATING: new_avg, Fields.RATING_COUNT: new_count})
         return create_success_response({"newRating": new_avg, "ratingCount": new_count})
     except Exception as e:
         # ROLLBACK R2 IMAGES if Firestore fails
         s3_client = _get_cached_s3_client()
         for k in uploaded_keys:
-            with contextlib.suppress(Exception): s3_client.delete_object(Bucket=R2Config.BUCKET_NAME, Key=k)
-        if isinstance(e, https_fn.HttpsError): raise
+            with contextlib.suppress(Exception):
+                s3_client.delete_object(Bucket=R2Config.BUCKET_NAME, Key=k)
+        if isinstance(e, https_fn.HttpsError):
+            raise
         logger.error(f"submit_product_rating_atomic failed: {e}")
-        raise https_fn.HttpsError("internal", str(e))
+        raise https_fn.HttpsError("internal", str(e)) from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -1368,8 +1422,9 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Override server-controlled fields — NEVER trust client values for these
     product_data[Fields.IMAGE_URLS] = image_urls
     product_data[Fields.SELLER_ID] = user_id
-    # Set under_review directly — the on_product_created trigger only handles edge cases now
-    product_data[Fields.LIFECYCLE_STATUS] = ProductLifecycleStatusValues.UNDER_REVIEW
+    # Remove client-sent lifecycleStatus — ProductCreate validator requires DRAFT (its default).
+    # We re-apply UNDER_REVIEW after Pydantic validation below.
+    product_data.pop(Fields.LIFECYCLE_STATUS, None)
     product_data[Fields.CREATED_AT] = get_server_timestamp()
     product_data[Fields.UPDATED_AT] = get_server_timestamp()
     product_data.pop(Fields.PRODUCT_ID, None)  # Generated server-side below
@@ -1504,6 +1559,12 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
         product_data[Fields.CREATED_AT] = get_server_timestamp()
         product_data[Fields.UPDATED_AT] = get_server_timestamp()
         product_data[Fields.PRODUCT_ID] = product_id
+        # Server-enforced: all new products enter UNDER_REVIEW regardless of client value.
+        product_data[Fields.LIFECYCLE_STATUS] = ProductLifecycleStatusValues.UNDER_REVIEW
+        # SECURITY: Extract supplier data before writing to public product document.
+        # Supplier fields (cost, SKU, URL, notes) must NOT be readable by buyers.
+        # They live in the `supplier_private` subcollection, protected by Firestore rules.
+        supplier_private_data = product_data.pop("supplier", None)
     except ValidationError as e:
         # Surface the first validation error to the client with a clear message
         first_error = e.errors()[0]
@@ -1517,6 +1578,9 @@ def create_product_atomic(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     try:
         product_ref.set(product_data)
+        # Write supplier fields to protected subcollection (Admin SDK bypasses rules).
+        if supplier_private_data:
+            product_ref.collection("supplier_private").document(user_id).set(supplier_private_data)
     except Exception as e:
         # Cleanup uploaded images and SKU collision doc before surfacing the error
         import contextlib
@@ -2326,6 +2390,9 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             if product_data.get(key) != before_data.get(key)
         }
 
+        # Detect address changes so the Geoapify re-validation block below actually runs.
+        _address_changed = Fields.SELLER_ADDRESS in changed_fields
+
         # ── RESUBMIT: Seller edited a rejected product — reset to under_review ──
         _SELLER_EDITABLE_FIELDS = {
             Fields.NAME,
@@ -2433,8 +2500,6 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             logger.error(f"Price drop notification error for {product_id}: {e}")
 
         return
-        # Track whether address changed — skip geocoding if it didn't
-        _address_changed = before_data.get(Fields.SELLER_ADDRESS) != product_data.get(Fields.SELLER_ADDRESS)
 
     # ── SERVER-SIDE VALIDATION on update (same as on_product_created) ──
     from utils.helpers import sanitized_text
@@ -2466,13 +2531,16 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         )
         return
 
-    # Validate compareAtPrice > price to prevent fraudulent discount display
+    # Validate compareAtPrice > price AND gap >= $0.50 to prevent fraudulent discount display
+    # Must mirror the same rule enforced in on_product_created and ProductModel.validate_compare_at_price.
     compare_at_price = product_data.get(Fields.COMPARE_AT_PRICE)
     if compare_at_price is not None and price is not None and (
-        not isinstance(compare_at_price, (int, float)) or compare_at_price <= price
+        not isinstance(compare_at_price, (int, float))
+        or compare_at_price <= price
+        or (compare_at_price - price) < 0.50
     ):
         logger.info(
-            f"SECURITY: Product {product_id} updated with invalid compareAtPrice ({compare_at_price}) <= price ({price}) — deactivating"
+            f"SECURITY: Product {product_id} updated with invalid compareAtPrice ({compare_at_price}) vs price ({price}) — deactivating"
         )
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
@@ -2832,10 +2900,14 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
             docs = docs[:limit]
 
         # Formatter les produits
+        # SECURITY: Strip supplier private fields — cost, SKU, URL must never reach buyers.
+        _SUPPLIER_PRIVATE_KEYS = {"supplier", "supplierSku", "supplierUrl"}
         products = []
         for doc in docs:
             product_data = doc.to_dict()
             product_data["id"] = doc.id
+            for _k in _SUPPLIER_PRIVATE_KEYS:
+                product_data.pop(_k, None)
             products.append(product_data)
 
         # Cursor pour la prochaine page
@@ -3093,16 +3165,16 @@ def admin_update_warehouse_commission(req: https_fn.CallableRequest) -> dict[str
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "Authentication required")
 
-    # Verify admin role
+    # Verify admin role — Fields.ROLES is a list, not a scalar string
     user_doc = get_db().collection(Collections.USERS).document(req.auth.uid).get()
-    if not user_doc.exists or user_doc.to_dict().get(Fields.ROLE) != UserRoleValues.ADMIN:
+    if not user_doc.exists or UserRoleValues.ADMIN not in user_doc.to_dict().get(Fields.ROLES, []):
         raise https_fn.HttpsError("permission-denied", "Admin privileges required")
 
     data = req.data or {}
     seller_id = data.get(Fields.SELLER_ID)
-    warehouse_id = data.get("warehouseId")
-    new_rate_bps = data.get("commissionRateBps")
-    reason = data.get("reason", "Manual adjustment")
+    warehouse_id = data.get("warehouseId")  # API param key — no Firestore field constant
+    new_rate_bps = data.get(Fields.COMMISSION_RATE_BPS)
+    reason = data.get(Fields.REASON, "Manual adjustment")
 
     if not all([seller_id, warehouse_id, new_rate_bps is not None]):
         raise https_fn.HttpsError("invalid-argument", "sellerId, warehouseId, and commissionRateBps required")
@@ -3115,16 +3187,16 @@ def admin_update_warehouse_commission(req: https_fn.CallableRequest) -> dict[str
     if not wh_snap.exists:
         raise https_fn.HttpsError("not-found", "Warehouse not found")
 
-    old_rate = wh_snap.to_dict().get("commissionRateBps")
+    old_rate = wh_snap.to_dict().get(Fields.COMMISSION_RATE_BPS)
 
     # Transactional update with audit log
     @get_firestore().transactional
     def update_commission_txn(transaction):
         # Update warehouse doc
         transaction.update(wh_ref, {
-            "commissionRateBps": new_rate_bps,
-            "updatedAt": get_server_timestamp(),
-            "updatedBy": req.auth.uid
+            Fields.COMMISSION_RATE_BPS: new_rate_bps,
+            Fields.UPDATED_AT: get_server_timestamp(),
+            Fields.UPDATED_BY: req.auth.uid,
         })
 
         # Add to audit log subcollection
@@ -3132,9 +3204,9 @@ def admin_update_warehouse_commission(req: https_fn.CallableRequest) -> dict[str
         transaction.set(audit_ref, {
             "oldRateBps": old_rate,
             "newRateBps": new_rate_bps,
-            "reason": reason,
+            Fields.REASON: reason,
             "changedBy": req.auth.uid,
-            "timestamp": get_server_timestamp()
+            Fields.CREATED_AT: get_server_timestamp(),
         })
 
     update_commission_txn(get_db().transaction())
@@ -3803,6 +3875,19 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     user_id = req.auth.uid
+
+    # Rate limit: max 10 subscribe calls per user per minute to prevent Firestore spam
+    _sub_limiter = RateLimiter(get_db())
+    _sub_allowed, _sub_msg = _sub_limiter.check_rate_limit(
+        identifier=user_id,
+        action=RateLimitActions.SUBSCRIBE_STOCK_NOTIFICATION,
+        max_requests=10,
+        window_minutes=1,
+        fail_closed=False,
+    )
+    if not _sub_allowed:
+        raise https_fn.HttpsError("resource-exhausted", _sub_msg or "Too many requests. Try again later.")
+
     data = req.data
     product_id = data.get(Fields.PRODUCT_ID)
     if not product_id:
@@ -3895,6 +3980,19 @@ def unsubscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, A
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     user_id = req.auth.uid
+
+    # Rate limit: max 10 unsubscribe calls per user per minute
+    _unsub_limiter = RateLimiter(get_db())
+    _unsub_allowed, _unsub_msg = _unsub_limiter.check_rate_limit(
+        identifier=user_id,
+        action=RateLimitActions.UNSUBSCRIBE_STOCK_NOTIFICATION,
+        max_requests=10,
+        window_minutes=1,
+        fail_closed=False,
+    )
+    if not _unsub_allowed:
+        raise https_fn.HttpsError("resource-exhausted", _unsub_msg or "Too many requests. Try again later.")
+
     data = req.data
     product_id = data.get(Fields.PRODUCT_ID)
     if not product_id:
@@ -3958,18 +4056,22 @@ def toggle_favorite(req: https_fn.CallableRequest) -> dict[str, Any]:
             # Unfavorite
             transaction.delete(fav_ref)
             transaction.update(product_ref, {
-                "favoriteCount": get_firestore().Increment(-1),
+                Fields.FAVORITE_COUNT: get_firestore().Increment(-1),
                 Fields.UPDATED_AT: get_server_timestamp()
             })
             return False
         else:
+            # Only allow favoriting active products
+            p_data = p_snap.to_dict() or {}
+            if p_data.get(Fields.LIFECYCLE_STATUS) != ProductLifecycleStatusValues.ACTIVE:
+                raise https_fn.HttpsError("failed-precondition", "Product is not available")
             # Favorite
             transaction.set(fav_ref, {
                 Fields.PRODUCT_ID: product_id,
                 Fields.DATE_FAVORITED: get_server_timestamp()
             })
             transaction.update(product_ref, {
-                "favoriteCount": get_firestore().Increment(1),
+                Fields.FAVORITE_COUNT: get_firestore().Increment(1),
                 Fields.UPDATED_AT: get_server_timestamp()
             })
             return True
@@ -3981,9 +4083,10 @@ def toggle_favorite(req: https_fn.CallableRequest) -> dict[str, Any]:
             "message": "Product added to favorites" if favorited else "Product removed from favorites"
         })
     except Exception as e:
-        if isinstance(e, https_fn.HttpsError): raise
+        if isinstance(e, https_fn.HttpsError):
+            raise
         logger.error(f"toggle_favorite failed: {e}")
-        raise https_fn.HttpsError("internal", str(e))
+        raise https_fn.HttpsError("internal", str(e)) from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -4071,16 +4174,18 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
             seller_email = (seller_doc.to_dict() or {}).get(Fields.EMAIL)
             if seller_email:
                 product_name = product_data.get(Fields.NAME, "your product")
+                safe_product_name = _html.escape(product_name)
+                safe_product_id = _html.escape(str(product_id))
                 subject = f"[Origna] New question on {product_name}"
                 html = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #5B30F6;">New buyer question</h2>
-  <p>A buyer asked a question about <strong>{product_name}</strong>:</p>
+  <p>A buyer asked a question about <strong>{safe_product_name}</strong>:</p>
   <blockquote style="border-left:3px solid #5B30F6; padding-left:12px; color:#333; margin:16px 0;">
     {question}
   </blockquote>
   <p style="margin-top:20px;">
-    <a href="https://orignagta.ca/seller/products/{product_id}/questions"
+    <a href="https://orignagta.ca/seller/products/{safe_product_id}/questions"
        style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
       Answer question
     </a>
@@ -4180,20 +4285,23 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
                     if pdoc.exists:
                         product_name = (pdoc.to_dict() or {}).get(Fields.NAME, "")
                 if asker_email:
+                    safe_pname = _html.escape(product_name) if product_name else ""
+                    safe_question_text = _html.escape(question_data.get(Fields.QUESTION_TEXT, ""))
+                    safe_pid = _html.escape(str(product_id)) if product_id else ""
                     subject = "[Origna] Your question was answered"
                     html = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #5B30F6;">Your question was answered!</h2>
-  {"<p>About <strong>" + product_name + "</strong>:</p>" if product_name else ""}
+  {"<p>About <strong>" + safe_pname + "</strong>:</p>" if safe_pname else ""}
   <p style="color:#555;"><strong>Your question:</strong></p>
   <blockquote style="border-left:3px solid #5B30F6; padding-left:12px; color:#333; margin:8px 0 16px;">
-    {question_data.get(Fields.QUESTION_TEXT, "")}
+    {safe_question_text}
   </blockquote>
   <p style="color:#555;"><strong>Answer:</strong></p>
   <blockquote style="border-left:3px solid #38A169; padding-left:12px; color:#333; margin:8px 0 16px;">
     {answer}
   </blockquote>
-  {"<p><a href='https://orignagta.ca/products/" + product_id + "' style='background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;'>View product</a></p>" if product_id else ""}
+  {"<p><a href='https://orignagta.ca/products/" + safe_pid + "' style='background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;'>View product</a></p>" if safe_pid else ""}
   <p style="color:#999; font-size:12px; margin-top:24px;">Origna Ventures Inc.</p>
 </div>"""
                     from services.email_task import enqueue_email_task
@@ -4266,9 +4374,9 @@ def admin_delete_product_question(req: https_fn.CallableRequest) -> dict[str, An
     # Verify admin role
     is_admin = (req.auth.token or {}).get("admin") is True
     if not is_admin:
-        # Fallback check if token is stale
+        # Fallback check if token is stale — Fields.ROLES is a list, not a scalar string
         user_doc = get_db().collection(Collections.USERS).document(req.auth.uid).get()
-        if not user_doc.exists or user_doc.to_dict().get(Fields.ROLE) != UserRoleValues.ADMIN:
+        if not user_doc.exists or UserRoleValues.ADMIN not in user_doc.to_dict().get(Fields.ROLES, []):
             raise https_fn.HttpsError("permission-denied", "Admin privileges required")
 
     data = req.data or {}
@@ -4318,8 +4426,9 @@ def admin_delete_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]
 
     is_admin = (req.auth.token or {}).get("admin") is True
     if not is_admin:
+        # Fallback check — Fields.ROLES is a list, not a scalar string
         user_doc = get_db().collection(Collections.USERS).document(req.auth.uid).get()
-        if not user_doc.exists or user_doc.to_dict().get(Fields.ROLE) != UserRoleValues.ADMIN:
+        if not user_doc.exists or UserRoleValues.ADMIN not in user_doc.to_dict().get(Fields.ROLES, []):
             raise https_fn.HttpsError("permission-denied", "Admin privileges required")
 
     data = req.data or {}
@@ -4883,7 +4992,7 @@ def update_product(req: https_fn.CallableRequest) -> dict[str, Any]:
         validated = ProductUpdate(**update_data)
         clean_update = validated.model_dump(exclude_unset=True)
     except ValidationError as e:
-        raise https_fn.HttpsError("invalid-argument", f"Validation failed: {e.errors()[0]['msg']}")
+        raise https_fn.HttpsError("invalid-argument", f"Validation failed: {e.errors()[0]['msg']}") from e
 
     # Strip server-managed fields
     PROTECTED_FIELDS = {
@@ -4936,8 +5045,18 @@ def update_product(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     clean_update[Fields.UPDATED_AT] = get_server_timestamp()
 
+    # SECURITY: Extract supplier data before updating the public product document.
+    # Supplier fields must live in supplier_private subcollection, not the public doc.
+    supplier_update = clean_update.pop("supplier", None)
+
     # Commit to Firestore
     product_ref.update(clean_update)
+
+    # Update supplier private subcollection if seller is updating supplier info.
+    if supplier_update:
+        product_ref.collection("supplier_private").document(user_id).set(
+            supplier_update, merge=True
+        )
 
     return create_success_response({"updated": True})
 
@@ -4953,16 +5072,27 @@ def _fire_price_drop_notifications(product_id: str, before_price: float, after_p
 
     logger.info(f"Price drop detected for {product_id} ({product_name}): {before_price} -> {after_price} (-{drop_percent*100:.1f}%)")
 
-    # Find users who have this product in their favorites
-    # collection_group query over all users' favorites subcollections
-    favs_ref = get_db().collection_group(Collections.FAVORITES)
-    fav_query = favs_ref.where(Fields.PRODUCT_ID, "==", product_id).stream()
-
-    # PERFORMANCE: Collect UIDs to send push in batch
-    uids_to_push = []
-    for fav_doc in fav_query:
-        # parent.parent is users/{uid}
-        uids_to_push.append(fav_doc.reference.parent.parent.id)
+    # Find ALL users who have this product in their favorites using cursor pagination.
+    # Requires composite index: favorites(productId ASC, dateFavorited ASC) — COLLECTION_GROUP.
+    # See firestore.indexes.json for the index definition.
+    _PAGE_SIZE = 500
+    uids_to_push: list[str] = []
+    last_fav_doc = None
+    base_query = (
+        get_db()
+        .collection_group(Collections.FAVORITES)
+        .where(Fields.PRODUCT_ID, "==", product_id)
+        .order_by(Fields.DATE_FAVORITED)
+        .limit(_PAGE_SIZE)
+    )
+    while True:
+        page_query = base_query if last_fav_doc is None else base_query.start_after(last_fav_doc)
+        page = list(page_query.stream())
+        for fav_doc in page:
+            uids_to_push.append(fav_doc.reference.parent.parent.id)
+        if len(page) < _PAGE_SIZE:
+            break
+        last_fav_doc = page[-1]
 
     if uids_to_push:
         from services.push_service import send_push_notifications_batch

@@ -1,3 +1,5 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,8 +12,9 @@ import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
     show CarrierValues;
 import 'package:origna_gta/utils/constants.dart'
-    hide PaymentStatus, ShippingApprovalStatus;
+    hide PaymentStatus, ShippingApprovalStatus, OrderStatus;
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -160,20 +163,62 @@ class SellerOrdersScreen extends ConsumerWidget {
               );
             }
 
+            // Compute seller's earnings summary (display-only approximation)
+            var totalRevenue = 0.0;
+            var pendingCount = 0;
+            var completedCount = 0;
+            // Terminal/excluded statuses: not active orders
+            const excludedStatuses = {
+              OrderStatus.cancelled,
+              OrderStatus.failed,
+              OrderStatus.expired,
+              OrderStatus.refunded,
+              OrderStatus.partiallyRefunded,
+              OrderStatus.disputed,
+            };
+            for (final order in orders) {
+              final sellerItems = order.items.where((i) => i.sellerId == user.uid);
+              final subtotal = sellerItems.fold<double>(0.0, (acc, i) => acc + i.price * i.quantity);
+              // Derive seller's share of platform fee proportional to their items
+              final orderSubtotal = order.subtotal > 0 ? order.subtotal : subtotal;
+              final feeShare = orderSubtotal > 0 ? (order.platformFeeTotal / orderSubtotal) * subtotal : 0.0;
+              totalRevenue += subtotal - feeShare;
+              if (order.orderStatus == OrderStatus.delivered) {
+                completedCount++;
+              } else if (!excludedStatuses.contains(order.orderStatus)) {
+                pendingCount++;
+              }
+            }
+
+            // Cap to 840px on desktop for readability — cards shouldn't stretch to 1200px
+            final ordersMaxWidth = ResponsiveBreakpoints.isDesktop(context)
+                ? 840.0
+                : ResponsiveBreakpoints.contentMaxWidth.toDouble();
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 700),
+                constraints: BoxConstraints(maxWidth: ordersMaxWidth),
                 child: RefreshIndicator(
                   color: DesignTokens.primary,
                   onRefresh: () async => ref.invalidate(sellerOrdersProvider),
                   child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(DesignTokens.spacing16),
-                    itemCount: orders.length,
+                    itemCount: orders.length + 1,
                     itemBuilder: (context, index) {
-                      final order = orders[index];
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: DesignTokens.spacing16),
+                          child: _EarningsSummaryCard(
+                            totalRevenue: totalRevenue,
+                            pendingCount: pendingCount,
+                            completedCount: completedCount,
+                            isDark: isDark,
+                          ),
+                        );
+                      }
+                      final order = orders[index - 1];
                       return FadeSlideIn(
-                        delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
+                        delay: Duration(milliseconds: 50 * (index - 1).clamp(0, 8)),
                         child: _SellerOrderCard(order: order, sellerId: user.uid),
                       );
                     },
@@ -554,12 +599,20 @@ class _SellerOrderCard extends ConsumerWidget {
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(DesignTokens.radius8),
           child: item.imageUrls.isNotEmpty
-              ? Image.network(
-                  item.imageUrls.first,
+              ? CachedNetworkImage(
+                  imageUrl: item.imageUrls.first,
                   width: 44,
                   height: 44,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
+                  placeholder: (context, url) => Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: DesignTokens.surfaceVariant,
+                      borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
@@ -1183,3 +1236,156 @@ class _SellerOrderCard extends ConsumerWidget {
     );
   }
 }
+
+/// Revenue summary card shown at the top of the seller orders list.
+class _EarningsSummaryCard extends StatelessWidget {
+  final double totalRevenue;
+  final int pendingCount;
+  final int completedCount;
+  final bool isDark;
+
+  const _EarningsSummaryCard({
+    required this.totalRevenue,
+    required this.pendingCount,
+    required this.completedCount,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.primary.withValues(alpha: 0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'seller.total_earnings'.tr(),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '\$${totalRevenue.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'seller.after_platform_fee'.tr(),
+                  style: const TextStyle(color: Colors.white54, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _StatPill(
+                icon: Icons.hourglass_empty_rounded,
+                label: '$pendingCount',
+                sublabel: 'seller.pending'.tr(),
+                color: DesignTokens.warning,
+              ),
+              const SizedBox(height: 8),
+              _StatPill(
+                icon: Icons.check_circle_rounded,
+                label: '$completedCount',
+                sublabel: 'seller.completed'.tr(),
+                color: DesignTokens.success,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String sublabel;
+  final Color color;
+
+  const _StatPill({
+    required this.icon,
+    required this.label,
+    required this.sublabel,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            sublabel,
+            style: const TextStyle(color: Colors.white70, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'SellerOrdersScreen — Dark', group: 'SellerOrdersScreen')
+Widget previewSellerOrdersScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const SellerOrdersScreen(),
+      ),
+    );
+
+@Preview(name: 'SellerOrdersScreen — Light', group: 'SellerOrdersScreen')
+Widget previewSellerOrdersScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const SellerOrdersScreen(),
+      ),
+    );

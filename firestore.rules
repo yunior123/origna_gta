@@ -286,7 +286,7 @@ service cloud.firestore {
         // multiple isDefault:true warehouses simultaneously.
         allow create: if false;  // Routed through create_warehouse CF (enforces isDefault exclusivity)
         allow update: if false;  // Routed through update_warehouse CF (enforces isDefault exclusivity)
-        allow delete: if isAdmin();  // Sellers use delete_warehouse callable (enforces stock check)
+        allow delete: if false;  // All deletes via delete_warehouse CF (enforces stock/order checks); Admin SDK bypasses rules
       }
     }
     
@@ -403,6 +403,17 @@ service cloud.firestore {
         );
         allow write: if isAdmin();  // Admin bypass for E2E test seeding; else backend Admin SDK only
       }
+
+      // SECURITY: Supplier private data — cost, SKU, URL, notes.
+      // NEVER readable by buyers. Only the owning seller or admin can read.
+      // Writes go through backend Admin SDK only (create_product_atomic / update_product).
+      match /supplier_private/{docId} {
+        allow read: if isAdmin() || (
+          isAuthenticated() &&
+          get(/databases/$(database)/documents/products/$(productId)).data.sellerId == request.auth.uid
+        );
+        allow write: if isAdmin();  // Backend Admin SDK only — never client-side
+      }
     }
 
     // ================================================================
@@ -467,6 +478,14 @@ service cloud.firestore {
       
       // No one can delete orders (only backend)
       allow delete: if false;
+
+      // --- ORDERS PRIVATE SUBCOLLECTION ---
+      // Backend-only: stores checkout-time seller Stripe account snapshots.
+      // Must never be readable by clients (buyer or seller) — Admin SDK only.
+      // SECURITY FIX (HIGH-01): prevents seller Stripe account IDs leaking to buyers.
+      match /_private/{privateDocId} {
+        allow read, write: if false;
+      }
     }
     
     // ================================================================
@@ -604,6 +623,46 @@ service cloud.firestore {
     }
 
     match /algolia_sync_failures/{failureId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // ================================================================
+    // SELLER_RATINGS COLLECTION (F-315)
+    // Separate seller performance ratings from product ratings.
+    // Any authenticated user may read (public seller reputation).
+    // All writes are backend-only via Cloud Functions (Admin SDK bypasses rules).
+    // ================================================================
+    match /seller_ratings/{ratingId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if false;
+    }
+
+    // ================================================================
+    // BACKEND-ONLY FINANCIAL / OPERATIONAL COLLECTIONS
+    // These collections exist in schema_constants.py and are written
+    // exclusively by backend Cloud Functions via Admin SDK.
+    // Explicit rules here are defence-in-depth on top of the catch-all.
+    // ================================================================
+    match /platform_debt/{debtId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /pending_redemptions/{redemptionId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /seller_skus/{docId} {
+      allow read, write: if false;
+    }
+
+    match /_cron_locks/{lockId} {
+      allow read, write: if false;
+    }
+
+    match /_cron_failures/{failureId} {
       allow read: if isAdmin();
       allow create, update, delete: if false;
     }

@@ -31,6 +31,10 @@ _ReturnRequest _$ReturnRequestFromJson(Map<String, dynamic> json) =>
       resolvedAt: json['resolvedAt'] == null
           ? null
           : DateTime.parse(json['resolvedAt'] as String),
+      escalatedAt: json['escalatedAt'] == null
+          ? null
+          : DateTime.parse(json['escalatedAt'] as String),
+      escalationReason: json['escalationReason'] as String?,
     );
 
 Map<String, dynamic> _$ReturnRequestToJson(_ReturnRequest instance) =>
@@ -51,4 +55,6 @@ Map<String, dynamic> _$ReturnRequestToJson(_ReturnRequest instance) =>
       'requestedAt': instance.requestedAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
       'resolvedAt': instance.resolvedAt?.toIso8601String(),
+      'escalatedAt': instance.escalatedAt?.toIso8601String(),
+      'escalationReason': instance.escalationReason,
     };

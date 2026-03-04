@@ -13,7 +13,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/firebase_options.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils/env_config.dart';
@@ -58,7 +57,8 @@ Future<void> initAppForTest() async {
   if (!_appInitialized) {
     WidgetsFlutterBinding.ensureInitialized();
     await EasyLocalization.ensureInitialized();
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    // Always use dev project for test helper — never prod
+    await Firebase.initializeApp(options: FirebaseConfigDev.currentPlatform);
 
     // EMULATOR CONFIGURATION
     final host = _emulatorHost;
@@ -129,7 +129,7 @@ Future<void> mainTest() async {
             firebaseOptions = FirebaseConfigProd.currentPlatform;
             break;
           case AppEnvironment.emulator:
-            firebaseOptions = FirebaseConfigProd.currentPlatform;
+            firebaseOptions = FirebaseConfigDev.currentPlatform;
             break;
         }
       }

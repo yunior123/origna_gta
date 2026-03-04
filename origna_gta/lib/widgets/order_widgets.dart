@@ -2,10 +2,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/orders/buyer_orders_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -193,6 +195,21 @@ int getTimelineStep(OrderStatus status) {
   }
 }
 
+/// Maps per-item delivery status string → 3-step package timeline step.
+/// Steps: 0=Preparing, 1=Shipped, 2=Delivered
+int getItemDeliveryStep(String status) {
+  switch (status) {
+    case DeliveryStatusValues.pending:
+      return 0;
+    case DeliveryStatusValues.shipped:
+      return 1;
+    case DeliveryStatusValues.delivered:
+      return 2;
+    default:
+      return -1; // terminal (refunded)
+  }
+}
+
 class BookDownloadButton extends ConsumerStatefulWidget {
   final OrderItem item;
   const BookDownloadButton({super.key, required this.item});
@@ -353,6 +370,96 @@ class OrderStatusTimeline extends StatelessWidget {
   }
 }
 
+/// Compact 3-step timeline for a single seller's package.
+/// Steps: Preparing → Shipped → Delivered
+class SellerPackageTimeline extends StatelessWidget {
+  static const _steps = [Icons.inventory_2_outlined, Icons.local_shipping_outlined, Icons.check_circle_outline];
+  static const _stepColors = [
+    DesignTokens.primary,       // Preparing
+    DesignTokens.statusShipped, // Shipped
+    DesignTokens.success,       // Delivered
+  ];
+
+  static List<String> get _stepLabels => [
+    'orders.status.processing'.tr(),
+    'orders.status.shipped'.tr(),
+    'orders.status.delivered'.tr(),
+  ];
+
+  final int currentStep;
+  const SellerPackageTimeline({super.key, required this.currentStep});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inactiveColor = isDark ? Colors.white12 : Colors.black12;
+
+    return SizedBox(
+      height: 64,
+      child: Row(
+        children: List.generate(_steps.length * 2 - 1, (index) {
+          if (index.isEven) {
+            final stepIndex = index ~/ 2;
+            final isCompleted = stepIndex < currentStep;
+            final isCurrent = stepIndex == currentStep;
+            final isActive = isCompleted || isCurrent;
+            final color = _stepColors[stepIndex];
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: isCurrent ? 34 : 26,
+                  height: isCurrent ? 34 : 26,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: isActive ? LinearGradient(colors: [color, color.withValues(alpha: 0.7)]) : null,
+                    color: isActive ? null : inactiveColor,
+                    boxShadow: isCurrent ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 2)] : null,
+                  ),
+                  child: Icon(
+                    isCompleted ? Icons.check_rounded : _steps[stepIndex],
+                    size: isCurrent ? 17 : 13,
+                    color: isActive ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _stepLabels[stepIndex],
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                    color: isActive ? color : (isDark ? Colors.white38 : Colors.black38),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            final lineIndex = index ~/ 2;
+            final isCompleted = lineIndex < currentStep;
+            final fromColor = _stepColors[lineIndex];
+            final toColor = _stepColors[lineIndex + 1];
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 17),
+                child: Container(
+                  height: 3,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    gradient: isCompleted ? LinearGradient(colors: [fromColor, toColor]) : null,
+                    color: isCompleted ? null : inactiveColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            );
+          }
+        }),
+      ),
+    );
+  }
+}
+
 class PendingApprovalsBanner extends StatelessWidget {
   final int count;
   const PendingApprovalsBanner({super.key, required this.count});
@@ -464,7 +571,7 @@ class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
       await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: ${e.toString()}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.download_failed'.tr())));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -480,7 +587,6 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     final statusConfig = getOrderStatusConfig(order.orderStatus);
     final isAuthorized = order.paymentStatus == PaymentStatus.authorized;
     final isPendingApproval = order.shippingApprovalStatus == ShippingApprovalStatus.pending;
-    final showTimeline = getTimelineStep(order.orderStatus) >= 0;
     final isTerminal = [OrderStatus.cancelled, OrderStatus.failed, OrderStatus.expired, OrderStatus.disputed, OrderStatus.refunded, OrderStatus.partiallyRefunded].contains(order.orderStatus);
 
     return Container(
@@ -510,13 +616,8 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           // ─── ORDER HEADER ───────────────────────────────────
           _buildHeader(order, statusConfig, isDark),
 
-          // ─── STATUS TIMELINE or TERMINAL BADGE ──────────────
-          if (showTimeline)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: OrderStatusTimeline(currentStep: getTimelineStep(order.orderStatus)),
-            )
-          else if (isTerminal)
+          // ─── TERMINAL BADGE (cancelled / failed / refunded) ─────────
+          if (isTerminal)
             _buildTerminalBadge(statusConfig, isDark),
 
           // ─── STATUS DESCRIPTION ─────────────────────────────
@@ -559,20 +660,26 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
             child: Divider(height: 1, color: (isDark ? Colors.white : DesignTokens.textSecondary).withValues(alpha: 0.1)),
           ),
 
-          // ─── ITEMS LIST ─────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Text(
-              'orders.items'.tr(namedArgs: {'count': order.items.length.toString()}),
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary, letterSpacing: 0.5),
-            ),
-          ),
-          ...order.items.map(
-            (item) => Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: _buildOrderItem(context, item, order.confirmedByClient)),
-          ),
+          // ─── SELLER PACKAGES (Amazon-style per-seller grouping) ─────
+          _buildSellerPackages(order, isDark),
 
           // ─── PRICE BREAKDOWN ─────────────────────────────────
           Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 8), child: _buildPriceBreakdown(order, isDark)),
+
+          // ─── BUY AGAIN (delivered orders only) ──────────────
+          if (order.orderStatus == OrderStatus.delivered)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: SizedBox(
+                width: double.infinity,
+                child: _actionButton(
+                  icon: Icons.replay_rounded,
+                  label: 'orders.buy_again'.tr(),
+                  color: DesignTokens.primary,
+                  onTap: () => _reorderItems(order),
+                ),
+              ),
+            ),
 
           // ─── DELIVERY ADDRESS ───────────────────────────────
           if (order.shippingAddress != null)
@@ -959,6 +1066,276 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // SELLER PACKAGES — Amazon-style per-seller grouping with individual timelines
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildSellerPackages(Order order, bool isDark) {
+    // Group items by sellerId, preserving insertion order
+    final grouped = <String, List<OrderItem>>{};
+    for (final item in order.items) {
+      grouped.putIfAbsent(item.sellerId, () => []).add(item);
+    }
+
+    final entries = grouped.entries.toList();
+    return Column(
+      children: List.generate(entries.length, (i) {
+        return _buildSellerPackage(entries[i].value, order, isDark, index: i + 1, total: entries.length);
+      }),
+    );
+  }
+
+  Widget _buildSellerPackage(
+    List<OrderItem> items,
+    Order order,
+    bool isDark, {
+    required int index,
+    required int total,
+  }) {
+    final first = items.first;
+    final sellerName = (first.sellerName?.isNotEmpty == true) ? first.sellerName! : 'orders.unknown_seller'.tr();
+    final country = first.sellerAddress?.country ?? '';
+    final isCanada = country.toLowerCase().contains('canada') || country.toLowerCase() == 'ca';
+
+    final hasPerishable = items.any((i) => i.isPerishable);
+
+    // Compute the most-behind item's step for this package's collective status
+    final steps = items.map((i) => getItemDeliveryStep(i.status)).toList();
+    final packageStep = steps.reduce((a, b) => a < b ? a : b);
+    final isTerminalPackage = items.any((i) => i.status == DeliveryStatusValues.refunded);
+    final isDelivered = packageStep == 2;
+
+    // Representative status config = worst item's
+    final worstItem = items.firstWhere(
+      (i) => getItemDeliveryStep(i.status) == packageStep,
+      orElse: () => first,
+    );
+    final packageStatusConfig = getItemStatusConfig(worstItem.status);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white,
+        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        border: Border.all(
+          color: isTerminalPackage
+              ? DesignTokens.error.withValues(alpha: 0.3)
+              : isDelivered
+                  ? DesignTokens.success.withValues(alpha: 0.3)
+                  : packageStatusConfig.color.withValues(alpha: 0.2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: packageStatusConfig.color.withValues(alpha: isDark ? 0.08 : 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Package header ─────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  packageStatusConfig.color.withValues(alpha: 0.07),
+                  Colors.transparent,
+                ],
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(DesignTokens.radius16)),
+            ),
+            child: Row(
+              children: [
+                // Flag + origin chip
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isCanada
+                        ? DesignTokens.canadaRed.withValues(alpha: 0.08)
+                        : DesignTokens.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isCanada
+                          ? DesignTokens.canadaRed.withValues(alpha: 0.2)
+                          : DesignTokens.primary.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(isCanada ? '🇨🇦' : '🌍', style: const TextStyle(fontSize: 14)),
+                      const SizedBox(width: 5),
+                      Text(
+                        isCanada ? 'orders.ships_from_canada'.tr() : 'orders.ships_international'.tr(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isCanada ? DesignTokens.canadaRed : DesignTokens.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sellerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : DesignTokens.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          if (total > 1) ...[
+                            Text(
+                              'orders.package_label'.tr(namedArgs: {'index': index.toString(), 'total': total.toString()}),
+                              style: TextStyle(fontSize: 10, color: DesignTokens.textSecondary),
+                            ),
+                            if (hasPerishable) const SizedBox(width: 6),
+                          ],
+                          if (hasPerishable)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: DesignTokens.success.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: DesignTokens.success.withValues(alpha: 0.35)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('🥬', style: TextStyle(fontSize: 10)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'orders.perishable_chip'.tr(),
+                                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: DesignTokens.success),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Package status badge
+                if (!isTerminalPackage)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [
+                        packageStatusConfig.color.withValues(alpha: 0.15),
+                        packageStatusConfig.color.withValues(alpha: 0.05),
+                      ]),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: packageStatusConfig.color.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(packageStatusConfig.icon, size: 12, color: packageStatusConfig.color),
+                        const SizedBox(width: 4),
+                        Text(
+                          packageStatusConfig.label,
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: packageStatusConfig.color),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // ── Per-package timeline ────────────────────────────────────────
+          if (!isTerminalPackage)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+              child: SellerPackageTimeline(currentStep: packageStep),
+            ),
+
+          // ── Perishable urgency banner (only when preparing / not yet shipped) ──
+          if (hasPerishable && packageStep == 0 && !isTerminalPackage)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: DesignTokens.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                  border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.timer_outlined, size: 14, color: DesignTokens.warning),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'orders.perishable_urgency'.tr(),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.warning),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Estimated delivery (not delivered, not terminal) ────────────
+          if (!isTerminalPackage && !isDelivered && first.estimatedShipDays > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              child: _buildEstimatedDelivery(first, isCanada, isDark),
+            ),
+
+          // ── Divider ─────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Divider(height: 1, color: (isDark ? Colors.white : DesignTokens.textSecondary).withValues(alpha: 0.1)),
+          ),
+
+          // ── Items in this package ───────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+            child: Column(
+              children: items.map((item) => _buildOrderItem(context, item, order.confirmedByClient)).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEstimatedDelivery(OrderItem item, bool isCanada, bool isDark) {
+    // International adds ~7 additional business days on top of seller's estimate
+    final extraDays = isCanada ? 0 : 7;
+    final earliest = DateTime.now().add(Duration(days: item.estimatedShipDays + extraDays));
+    final latest = earliest.add(const Duration(days: 3));
+    final fmt = DateFormat('MMM d');
+    final rangeStr = '${fmt.format(earliest)} – ${fmt.format(latest)}';
+
+    return Row(
+      children: [
+        Icon(Icons.access_time_rounded, size: 13, color: DesignTokens.textSecondary),
+        const SizedBox(width: 6),
+        Text(
+          'orders.est_delivery'.tr(namedArgs: {'date': rangeStr}),
+          style: const TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTerminalBadge(StatusConfig config, bool isDark) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
@@ -1011,6 +1388,31 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       final error = ref.read(buyerOrdersViewModelProvider).errorMessage ?? 'orders.failed_confirm_receipt'.tr();
       messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
+  }
+
+  Future<void> _reorderItems(Order order) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final cartController = ref.read(cartControllerProvider);
+    int added = 0;
+
+    for (final item in order.items) {
+      if (item.isDigital) continue; // skip digital — already owned
+      final success = await cartController.addToCart(item.productId, item.quantity, variantId: item.variantId);
+      if (success) added++;
+    }
+
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('orders.items_added_to_cart'.tr(namedArgs: {'count': added.toString()})),
+        backgroundColor: DesignTokens.success,
+        action: SnackBarAction(
+          label: 'cart.view_cart'.tr(),
+          textColor: Colors.white,
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.cart),
+        ),
+      ),
+    );
   }
 
   Widget _buildTrackingWidget(OrderItem item, bool isDark) {
@@ -1251,10 +1653,62 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
       await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: ${e.toString()}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.download_failed'.tr())));
       }
     } finally {
       if (mounted) setState(() => _loading[platform] = false);
     }
   }
 }
+
+// ─── Flutter Widget Previews ─────────────────────────────────────────────────
+
+@Preview(name: 'Timeline — Confirmed', group: 'OrderWidgets')
+Widget previewTimelineConfirmed() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Padding(padding: const EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 0)),
+  ),
+);
+
+@Preview(name: 'Timeline — Shipped', group: 'OrderWidgets')
+Widget previewTimelineShipped() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Padding(padding: const EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 2)),
+  ),
+);
+
+@Preview(name: 'Timeline — Delivered', group: 'OrderWidgets')
+Widget previewTimelineDelivered() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Padding(padding: const EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 4)),
+  ),
+);
+
+@Preview(name: 'Seller Package — Shipped', group: 'OrderWidgets')
+Widget previewSellerPackageShipped() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Padding(padding: const EdgeInsets.all(24), child: SellerPackageTimeline(currentStep: 1)),
+  ),
+);
+
+@Preview(name: 'Pending Approvals Banner', group: 'OrderWidgets')
+Widget previewPendingBanner() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Column(mainAxisAlignment: MainAxisAlignment.center, children: [PendingApprovalsBanner(count: 3)]),
+  ),
+);

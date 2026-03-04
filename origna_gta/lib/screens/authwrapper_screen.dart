@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -31,3 +32,23 @@ class AuthWrapper extends ConsumerWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'AuthWrapper — Dark', group: 'AuthWrapper')
+Widget previewAuthWrapperDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const AuthWrapper(),
+      ),
+    );
+
+@Preview(name: 'AuthWrapper — Light', group: 'AuthWrapper')
+Widget previewAuthWrapperLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const AuthWrapper(),
+      ),
+    );

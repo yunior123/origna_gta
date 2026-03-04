@@ -1,4 +1,6 @@
+import 'package:flutter/widget_previews.dart';
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -66,10 +68,17 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
               ? _buildTimeoutFallback(isDark)
               : _ConfirmingPaymentView(message: 'payment.processing'.tr(), isDark: isDark);
         }
+        final isLocalDelivery = order.items.isNotEmpty &&
+            order.items.every((i) => i.isLocalDeliveryOnly);
+        final maxShipDays = (order.items.isEmpty || isLocalDelivery)
+            ? null
+            : order.items.map((i) => i.estimatedShipDays).reduce(math.max);
         return OrderSuccessScreen(
           orderId: order.orderId,
           valueCad: order.pendingTotal,
           itemCount: order.items.length,
+          estimatedShipDays: maxShipDays,
+          isLocalDelivery: isLocalDelivery,
         );
       },
     );
@@ -298,3 +307,19 @@ class PaymentCanceledScreen extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'PaymentCanceledScreen — Dark', group: 'PaymentCanceledScreen')
+Widget previewPaymentCanceledScreenDark() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(),
+      home: const PaymentCanceledScreen(),
+    );
+
+@Preview(name: 'PaymentCanceledScreen — Light', group: 'PaymentCanceledScreen')
+Widget previewPaymentCanceledScreenLight() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(),
+      home: const PaymentCanceledScreen(),
+    );

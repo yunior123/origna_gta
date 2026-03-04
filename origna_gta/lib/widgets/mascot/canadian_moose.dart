@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -319,7 +320,7 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
           padding: const EdgeInsets.only(right: 12),
           child: CustomPaint(
             size: const Size(16, 12),
-            painter: _ModernBubbleTail(color: Colors.white),
+            painter: const _ModernBubbleTail(color: Colors.white),
           ),
         ),
       ],
@@ -329,7 +330,7 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
 
 class _ModernBubbleTail extends CustomPainter {
   final Color color;
-  _ModernBubbleTail({required this.color});
+  const _ModernBubbleTail({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -570,5 +571,49 @@ class MoosePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant MoosePainter oldDelegate) => true;
+  bool shouldRepaint(covariant MoosePainter oldDelegate) =>
+      idleValue != oldDelegate.idleValue ||
+      jumpValue != oldDelegate.jumpValue ||
+      blinkValue != oldDelegate.blinkValue ||
+      earWiggle != oldDelegate.earWiggle ||
+      breathingValue != oldDelegate.breathingValue ||
+      lookTarget != oldDelegate.lookTarget ||
+      excitement != oldDelegate.excitement;
 }
+
+// ─── Flutter Widget Previews ─────────────────────────────────────────────────
+
+@Preview(name: 'Moose — Default (90px)', group: 'CanadianMoose')
+Widget previewCanadianMooseDefault() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Center(
+      child: CanadianMoose(
+        controller: MooseController(),
+        size: 90,
+        showSpeechBubble: false,
+      ),
+    ),
+  ),
+);
+
+@Preview(name: 'Moose — Large (150px)', group: 'CanadianMoose')
+Widget previewCanadianMooseLarge() => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: ThemeData.dark(),
+  home: Scaffold(
+    backgroundColor: DesignTokens.darkBackground,
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(80),
+        child: CanadianMoose(
+          controller: MooseController(),
+          size: 150,
+          showSpeechBubble: false,
+        ),
+      ),
+    ),
+  ),
+);

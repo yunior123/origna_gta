@@ -92,10 +92,12 @@ Sellers using international suppliers (AliExpress, DHgate, Alibaba, etc.) must:
 ### 2.3 Perishable & Local-Only Items
 
 Products marked as "perishable" or "local delivery only":
-- Must be delivered within 100 km of seller location
+- Must be delivered within **50 km** of seller location (`LOCAL_DELIVERY_RADIUS_KM = 50.0`)
 - Cannot be shipped outside the seller's province
-- Require same-day or next-day delivery options
+- Require same-day or next-day delivery options (platform enforces this — products without these options are auto-deactivated per CFIA compliance)
 - Must include proper temperature control packaging
+- Cross-province perishable shipments incur an additional surcharge
+- Buyers outside the 50 km radius cannot purchase local-only items
 
 ---
 

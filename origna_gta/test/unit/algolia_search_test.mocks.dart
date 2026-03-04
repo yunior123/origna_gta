@@ -4,7 +4,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i5;
-import 'dart:typed_data' as _i11;
+import 'dart:typed_data' as _i12;
 
 import 'package:algolia_helper_flutter/algolia_helper_flutter.dart' as _i6;
 import 'package:cloud_firestore/cloud_firestore.dart' as _i4;
@@ -15,7 +15,8 @@ import 'package:cloud_functions_platform_interface/cloud_functions_platform_inte
     as _i7;
 import 'package:firebase_core/firebase_core.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i10;
+import 'package:mockito/src/dummies.dart' as _i11;
+import 'package:origna_gta/core/schema/schema_constants.dart' as _i10;
 import 'package:origna_gta/services/algolia_service.dart' as _i9;
 
 // ignore_for_file: type=lint
@@ -127,15 +128,27 @@ class MockAlgoliaService extends _i1.Mock implements _i9.AlgoliaService {
   );
 
   @override
-  void search(String? searchQuery, {int? categoryId, String? subcategory}) =>
-      super.noSuchMethod(
-        Invocation.method(
-          #search,
-          [searchQuery],
-          {#categoryId: categoryId, #subcategory: subcategory},
-        ),
-        returnValueForMissingStub: null,
-      );
+  void search(
+    String? searchQuery, {
+    int? categoryId,
+    String? subcategory,
+    _i10.SortOption? sortOption = _i10.SortOption.relevance,
+    int? minPriceCents,
+    int? maxPriceCents,
+  }) => super.noSuchMethod(
+    Invocation.method(
+      #search,
+      [searchQuery],
+      {
+        #categoryId: categoryId,
+        #subcategory: subcategory,
+        #sortOption: sortOption,
+        #minPriceCents: minPriceCents,
+        #maxPriceCents: maxPriceCents,
+      },
+    ),
+    returnValueForMissingStub: null,
+  );
 }
 
 /// A class which mocks [FirebaseFirestore].
@@ -158,7 +171,7 @@ class MockFirebaseFirestore extends _i1.Mock implements _i4.FirebaseFirestore {
   String get databaseId =>
       (super.noSuchMethod(
             Invocation.getter(#databaseId),
-            returnValue: _i10.dummyValue<String>(
+            returnValue: _i11.dummyValue<String>(
               this,
               Invocation.getter(#databaseId),
             ),
@@ -230,7 +243,7 @@ class MockFirebaseFirestore extends _i1.Mock implements _i4.FirebaseFirestore {
           as _i5.Future<void>);
 
   @override
-  _i4.LoadBundleTask loadBundle(_i11.Uint8List? bundle) =>
+  _i4.LoadBundleTask loadBundle(_i12.Uint8List? bundle) =>
       (super.noSuchMethod(
             Invocation.method(#loadBundle, [bundle]),
             returnValue: _FakeLoadBundleTask_4(
@@ -371,8 +384,8 @@ class MockFirebaseFirestore extends _i1.Mock implements _i4.FirebaseFirestore {
               {#timeout: timeout, #maxAttempts: maxAttempts},
             ),
             returnValue:
-                _i10.ifNotNull(
-                  _i10.dummyValueOrNull<T>(
+                _i11.ifNotNull(
+                  _i11.dummyValueOrNull<T>(
                     this,
                     Invocation.method(
                       #runTransaction,
@@ -454,7 +467,7 @@ class MockHitsSearcher extends _i1.Mock implements _i6.HitsSearcher {
   String get indexName =>
       (super.noSuchMethod(
             Invocation.getter(#indexName),
-            returnValue: _i10.dummyValue<String>(
+            returnValue: _i11.dummyValue<String>(
               this,
               Invocation.getter(#indexName),
             ),

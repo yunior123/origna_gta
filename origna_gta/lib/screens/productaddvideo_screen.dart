@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -279,3 +280,19 @@ class _VideoTile extends StatelessWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'ProductAddVideo — Dark', group: 'ProductAddVideo')
+Widget previewProductAddVideoDark() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(),
+      home: const ProductAddVideo(),
+    );
+
+@Preview(name: 'ProductAddVideo — Light', group: 'ProductAddVideo')
+Widget previewProductAddVideoLight() => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(),
+      home: const ProductAddVideo(),
+    );

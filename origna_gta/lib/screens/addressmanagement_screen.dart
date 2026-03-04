@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -49,8 +50,9 @@ class AddressManagementScreen extends ConsumerWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: CustomAppBar(
+        appBar: AppBarFactory.custom(
           title: 'profile.addresses'.tr(),
+          subtitle: 'address.count_subtitle'.tr(namedArgs: {'count': addressCount.toString(), 'max': '10'}),
           actions: [
             IconButton(
               icon: const Icon(Icons.add, color: Colors.white),
@@ -453,3 +455,23 @@ class AddressManagementScreen extends ConsumerWidget {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'AddressManagementScreen — Dark', group: 'AddressManagementScreen')
+Widget previewAddressManagementScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const AddressManagementScreen(),
+      ),
+    );
+
+@Preview(name: 'AddressManagementScreen — Light', group: 'AddressManagementScreen')
+Widget previewAddressManagementScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const AddressManagementScreen(),
+      ),
+    );

@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -185,3 +186,23 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     super.dispose();
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'ResetPasswordScreen — Dark', group: 'ResetPasswordScreen')
+Widget previewResetPasswordScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const ResetPasswordScreen(oobCode: 'preview-code'),
+      ),
+    );
+
+@Preview(name: 'ResetPasswordScreen — Light', group: 'ResetPasswordScreen')
+Widget previewResetPasswordScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const ResetPasswordScreen(oobCode: 'preview-code'),
+      ),
+    );

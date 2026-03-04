@@ -140,7 +140,9 @@ class EmailConfig:
     UNSUBSCRIBE_URL_DEV = "https://orignagta-dev.web.app/unsubscribe"
     UNSUBSCRIBE_URL_EMULATOR = "http://localhost:5005/unsubscribe"
     # Privacy Officer contact — REQUIRED by Quebec Law 25 (since Sept 2022)
-    # NOTE: Using support@ until dedicated privacy@ mailbox is provisioned
+    # TODO[Law25-H1]: Replace with a dedicated privacy@orignaventures.ca mailbox before launch.
+    # CASL / PIPEDA require the privacy officer to be reachable via a distinct address.
+    # Until the mailbox is provisioned, support@ is acceptable but must be updated at launch.
     PRIVACY_OFFICER_EMAIL = "support@orignaventures.ca"
     PRIVACY_OFFICER_NAME = "Yunior Rodriguez Osorio"
 
@@ -295,6 +297,16 @@ class UIMessages:
     COUPON_APPLIED = "Coupon applied."
     COUPON_REMOVED = "Coupon removed."
     COUPON_CREATED = "Coupon created."
+
+class CancellationReasonValues:
+    """Valid values for cancellationReason field — mirrors Dart CancellationReasonValues."""
+
+    BUYER_REQUESTED = "requested_by_customer"
+    SELLER_CANCELLED = "seller_cancelled"
+    SHIPPING_REJECTED = "Buyer rejected shipping cost"
+    PAYMENT_FAILED = "payment_failed"
+    EXPIRED = "authorization_expired"
+
 
 class ConfirmationValues:
     """Confirmation strings for sensitive operations."""
@@ -470,7 +482,7 @@ class Fields:
 
     # === INTERNATIONAL SHIPPING (T-4) ===
     IS_INTERNATIONAL = "isInternational"
-    SHIP_FROM_COUNTRY = "shipFromCountry"
+    # Note: SHIP_FROM_COUNTRY is already defined above in PRODUCT FIELDS section
     SUPPLIER_TYPE = "supplierType"
 
     # === TAX FIELDS (new) ===
@@ -553,6 +565,8 @@ class Fields:
     AVAILABLE_NATIONWIDE = "availableNationwide"
 
     SUPPLIER = "supplier"
+    SUPPLIER_SKU = "supplierSku"  # Supplier's product SKU (internal use, not exposed to buyers)
+    SUPPLIER_URL = "supplierUrl"  # Direct URL to supplier product (internal use, not exposed to buyers)
     INVENTORY = "inventory"
     # === INVENTORY SUB-FIELDS (keys inside the `inventory` map) ===
     ALLOW_BACKORDER = "allowBackorder"
@@ -800,6 +814,7 @@ class Fields:
 
     # === FAVORITES FIELDS ===
     DATE_FAVORITED = "dateFavorited"
+    FAVORITE_COUNT = "favoriteCount"
 
     # === CRON LOCK FIELDS ===
     LOCKED_AT = "lockedAt"
@@ -874,6 +889,9 @@ class Fields:
     MAX_USES_TOTAL = "maxUsesTotal"
     MAX_USES_PER_USER = "maxUsesPerUser"
     USED_COUNT = "usedCount"
+    USE_COUNT = "useCount"  # coupon_uses subcollection: per-user use count
+    USED_AT = "usedAt"  # coupon_uses subcollection: first use timestamp
+    LAST_USED_AT = "lastUsedAt"  # coupon_uses subcollection: most recent use timestamp
     PRICE_CENTS = "priceCents"  # Integer cents derived from price (9.99 → 999) — use for arithmetic
     SCHEMA_VERSION = "schemaVersion"  # Schema layout version for migration tracking
     SELLER_NAME = "sellerName"  # Seller display name snapshotted at purchase time
@@ -1021,6 +1039,7 @@ class PaymentStatusValues:
             CAPTURING,
             CANCELLING,
             EXPIRING,
+            VOIDED,
             CANCEL_FAILED,
         }
     )
@@ -2036,6 +2055,7 @@ class NotificationTypes:
     BACK_IN_STOCK = "back_in_stock"
     REFUND_ISSUED = "refund_issued"
     MESSAGE_REPORT = "message_report"
+    PERISHABLE_ORDER_URGENT = "perishable_order_urgent"
 
 
 class OrderEventTypes:
@@ -2108,6 +2128,9 @@ class RateLimitActions:
     VERIFY_LICENSE_IP = "verify_license_ip"
     GET_PAYMENT_PROVIDERS = "get_payment_providers"
     UPDATE_PAYMENT_PROVIDER = "update_payment_provider"
+    GET_PROVIDER_STATUS = "get_provider_status"
+    SUBSCRIBE_STOCK_NOTIFICATION = "subscribe_stock_notification"
+    UNSUBSCRIBE_STOCK_NOTIFICATION = "unsubscribe_stock_notification"
 
 
 # =============================================================================
@@ -2163,4 +2186,3 @@ class ErrorCodes:
     SYS_NETWORK_ERROR = "ORIGNA-SYS-001"
     SYS_SERVER_ERROR = "ORIGNA-SYS-002"
     SYS_UNKNOWN = "ORIGNA-SYS-999"
-    GET_PROVIDER_STATUS = "get_provider_status"

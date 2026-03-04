@@ -52,6 +52,7 @@ class DesignTokens {
   static const Color info = Color(0xFF3B82F6); // Blue
   static const Color statusShipped = Color(0xFF06B6D4); // Cyan — shipped status
   static const Color statusInTransit = Color(0xFF14B8A6); // Teal — in-transit status
+  static const Color canadaRed = Color(0xFFD80027); // Canadian flag red — Canada-only badge
 
   // Payment provider brand colors (used in seller registration screen)
   static const Color stripeViolet = Color(0xFF635BFF);

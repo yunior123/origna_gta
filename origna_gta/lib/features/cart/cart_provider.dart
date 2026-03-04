@@ -324,16 +324,15 @@ class CartController {
     _ref.invalidate(cartItemsProvider);
   }
 
-  Future<void> removeFromCart(String productId) async {
+  Future<void> removeFromCart(String cartItemId) async {
     final userId = _userId;
     if (userId == null) return;
-    final cartItemId = await _resolveCartItemId(userId, productId);
-    if (cartItemId != null) await _repository.removeFromCart(userId, cartItemId);
+    await _repository.removeFromCart(userId, cartItemId);
   }
 
   /// Saves a cart item to the user's favorites and removes it from the cart.
   /// Returns true on success, false on failure.
-  Future<bool> saveForLater(String productId) async {
+  Future<bool> saveForLater(String productId, String cartItemId) async {
     final userId = _userId;
     if (userId == null) return false;
 
@@ -343,7 +342,7 @@ class CartController {
         Fields.productId: productId,
         Fields.dateFavorited: FieldValue.serverTimestamp(),
       });
-      await removeFromCart(productId);
+      await removeFromCart(cartItemId);
       return true;
     } catch (e, st) {
       Sentry.captureException(e, stackTrace: st);
@@ -351,38 +350,22 @@ class CartController {
     }
   }
 
-  Future<void> updateBuyerNote(String productId, String? note) async {
+  Future<void> updateBuyerNote(String cartItemId, String? note) async {
     final userId = _userId;
     if (userId == null) return;
-    final cartItemId = await _resolveCartItemId(userId, productId);
-    if (cartItemId != null) await _repository.updateBuyerNote(userId, cartItemId, note);
+    await _repository.updateBuyerNote(userId, cartItemId, note);
   }
 
-  /// Updates the quantity of a product in the cart.
-  /// AUDIT FIX (H6): Returns false if the requested quantity exceeds available stock.
-  Future<bool> updateQuantity(String productId, int newQuantity) async {
+  /// Updates the quantity of a cart item.
+  /// Returns false if the update fails (e.g., item not found).
+  Future<bool> updateQuantity(String cartItemId, int newQuantity) async {
     final userId = _userId;
     if (userId == null) return false;
 
     // Client-side stock check removed — it's non-transactional (race condition).
     // Server-side validation at checkout is properly transactional and authoritative.
 
-    final cartItemId = await _resolveCartItemId(userId, productId);
-    if (cartItemId == null) return false;
     await _repository.updateQuantity(userId, cartItemId, newQuantity);
     return true;
-  }
-
-  /// Resolve a productId to the first matching cartItemId (auto-generated doc ID).
-  Future<String?> _resolveCartItemId(String userId, String productId) async {
-    final firestore = _ref.read(firestoreProvider);
-    final snap = await firestore
-        .collection(Collections.users)
-        .doc(userId)
-        .collection(Collections.cart)
-        .where(Fields.productId, isEqualTo: productId)
-        .limit(1)
-        .get();
-    return snap.docs.isNotEmpty ? snap.docs.first.id : null;
   }
 }

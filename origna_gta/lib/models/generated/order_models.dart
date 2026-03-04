@@ -176,6 +176,8 @@ abstract class Order with _$Order {
     required DateTime createdAt,
     @Default(BusinessRules.defaultCurrency) String currency,
     @Default([]) List<String> sellerIds,
+    // Unique product IDs in this order (computed from items — enables chat gate query)
+    @Default([]) List<String> productIds,
     String? stripeSessionId,
     // Shipping approval
     @Default(ShippingApprovalStatus.notRequired) ShippingApprovalStatus shippingApprovalStatus,
@@ -291,6 +293,12 @@ abstract class Order with _$Order {
           return PaymentStatus.cancelling;
         case PaymentStatusValues.expiring:
           return PaymentStatus.expiring;
+        case PaymentStatusValues.partiallyRefunded:
+          return PaymentStatus.partiallyRefunded;
+        case PaymentStatusValues.voided:
+          return PaymentStatus.voided;
+        case PaymentStatusValues.cancelFailed:
+          return PaymentStatus.cancelFailed;
         default:
           return PaymentStatus.awaitingPayment;
       }
@@ -356,6 +364,7 @@ abstract class Order with _$Order {
       createdAt: _parseDateTime(data[Fields.createdAt]) ?? DateTime.now(),
       currency: _safeString(data[Fields.currency], BusinessRules.defaultCurrency),
       sellerIds: _safeStringList(data[Fields.sellerIds]),
+      productIds: _safeStringList(data[Fields.productIds]),
       stripeSessionId: data[Fields.stripeSessionId] != null ? _safeString(data[Fields.stripeSessionId]) : null,
       shippingApprovalStatus: parseShippingApprovalStatus(data[Fields.shippingApprovalStatus]),
       shippingApprovalRequired: _safeBool(data[Fields.shippingApprovalRequired]),

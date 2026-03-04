@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -360,7 +361,7 @@ class _TermsBodyState extends State<_TermsBody> {
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 200),
                       child: Text(
-                        'Last updated February 2026  •  ${_sections.length} sections',
+                        '${'legal.last_updated_february_2026'.tr()}  •  ${_sections.length}',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.55),
                           fontSize: 13,
@@ -696,3 +697,23 @@ class _TermsBodyState extends State<_TermsBody> {
     }).join(' ');
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'TermsScreen — Dark', group: 'TermsScreen')
+Widget previewTermsScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const TermsScreen(),
+      ),
+    );
+
+@Preview(name: 'TermsScreen — Light', group: 'TermsScreen')
+Widget previewTermsScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const TermsScreen(),
+      ),
+    );

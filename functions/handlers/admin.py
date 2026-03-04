@@ -542,10 +542,10 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     admin_id = req.auth.uid
     data = req.data
 
-    # Rate limit
+    # Rate limit — fail_closed=True: unsuspend is an account-state change, must not bypass on limiter error
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action=RateLimitActions.UNSUSPEND_SELLER, max_requests=10, window_minutes=1, fail_closed=False
+        identifier=admin_id, action=RateLimitActions.UNSUSPEND_SELLER, max_requests=10, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -713,7 +713,7 @@ def admin_update_product_stock(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action=RateLimitActions.ADMIN_UPDATE_STOCK, max_requests=30, window_minutes=1, fail_closed=False
+        identifier=admin_id, action=RateLimitActions.ADMIN_UPDATE_STOCK, max_requests=30, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -1644,7 +1644,7 @@ def export_my_data(req: https_fn.CallableRequest) -> dict[str, Any]:
         batch_docs = list(query.stream())
         for order_doc in batch_docs:
             order_data = order_doc.to_dict()
-            order_data["orderId"] = order_doc.id
+            order_data[Fields.ORDER_ID] = order_doc.id
             for key, val in order_data.items():
                 if hasattr(val, "isoformat"):
                     order_data[key] = val.isoformat()
@@ -1746,7 +1746,7 @@ def e2e_get_mail_logs(req: https_fn.CallableRequest) -> dict[str, Any]:
     from google.cloud.firestore_v1.base_query import FieldFilter
 
     logs = (
-        db.collection("_mail_logs")
+        db.collection(Collections.MAIL_LOGS)
         .where(filter=FieldFilter("to", "==", to_email))
         .order_by("sentAt", direction=get_firestore().Query.DESCENDING)
         .limit(10)
@@ -1815,6 +1815,48 @@ def e2e_seed_license(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     license_ref.set(data)
     return create_success_response({"created": license_key})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_get_reviews(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """List product reviews (admin only). Supports pagination and flagged filter."""
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    admin_id = req.auth.uid
+    admin_doc = get_db().collection(Collections.USERS).document(admin_id).get()
+    if not admin_doc.exists or UserRoleValues.ADMIN not in admin_doc.to_dict().get(Fields.ROLES, []):
+        raise https_fn.HttpsError("permission-denied", "Admin role required")
+
+    limit = min(int(req.data.get("limit", 20)), 100)
+    start_after_id = req.data.get("startAfter")
+    flagged_only = bool(req.data.get("flaggedOnly", False))
+
+    query = get_db().collection(Collections.PRODUCT_RATINGS).order_by(Fields.CREATED_AT, direction="DESCENDING")
+
+    if flagged_only:
+        query = query.where(Fields.IS_FLAGGED, "==", True)
+
+    if start_after_id:
+        snap = get_db().collection(Collections.PRODUCT_RATINGS).document(start_after_id).get()
+        if snap.exists:
+            query = query.start_after(snap)
+
+    docs = list(query.limit(limit).stream())
+    reviews = []
+    for doc in docs:
+        data = doc.to_dict() or {}
+        reviews.append({
+            Fields.REVIEW_ID: doc.id,
+            Fields.PRODUCT_ID: data.get(Fields.PRODUCT_ID),
+            Fields.USER_ID: data.get(Fields.USER_ID),
+            Fields.RATING: data.get(Fields.RATING),
+            Fields.COMMENT: data.get(Fields.COMMENT),
+            Fields.IS_FLAGGED: data.get(Fields.IS_FLAGGED, False),
+            Fields.CREATED_AT: data.get(Fields.CREATED_AT),
+        })
+
+    return create_success_response({"reviews": reviews, "count": len(reviews)})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -1977,6 +2019,7 @@ def admin_refund_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         .collection(Collections.PAYOUTS)
         .where(Fields.ORDER_ID, "==", order_id)
         .where(Fields.STATUS, "==", PayoutStatusValues.COMPLETED)
+        .limit(50)  # Cost fix: bounded by seller count per order
         .stream()
     )
     for payout_doc in payout_docs:

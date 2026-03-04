@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -107,7 +108,7 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [const Color(0xFFF0F2FF), Colors.white],
+                colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [DesignTokens.surfaceSubtle, Colors.white],
               ),
             ),
             child: Center(
@@ -172,7 +173,7 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [const Color(0xFFF0F2FF), Colors.white],
+              colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [DesignTokens.surfaceSubtle, Colors.white],
             ),
           ),
           child: SafeArea(
@@ -311,3 +312,23 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
     });
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'SubscriptionSuccessScreen — Dark', group: 'SubscriptionSuccessScreen')
+Widget previewSubscriptionSuccessScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const SubscriptionSuccessScreen(),
+      ),
+    );
+
+@Preview(name: 'SubscriptionSuccessScreen — Light', group: 'SubscriptionSuccessScreen')
+Widget previewSubscriptionSuccessScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const SubscriptionSuccessScreen(),
+      ),
+    );

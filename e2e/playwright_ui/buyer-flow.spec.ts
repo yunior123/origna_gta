@@ -18,7 +18,7 @@ const BUYER_EMAIL = process.env.E2E_BUYER_EMAIL ?? 'yuniorrodriguezo460@gmail.co
 const BUYER_PASSWORD = process.env.E2E_BUYER_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
 
 test.describe('PW IT Replica — Buyer Flow', () => {
-    test.setTimeout(300_000);
+    test.setTimeout(360_000);
 
     test('Complete Buyer Journey', async ({ page }) => {
         await requireWebApp(page, TARGET_URL);

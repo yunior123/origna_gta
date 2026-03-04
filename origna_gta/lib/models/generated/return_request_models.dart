@@ -23,6 +23,8 @@ abstract class ReturnRequest with _$ReturnRequest {
     DateTime? requestedAt,
     DateTime? updatedAt,
     DateTime? resolvedAt,
+    DateTime? escalatedAt,
+    String? escalationReason,
   }) = _ReturnRequest;
 
   factory ReturnRequest.fromJson(Map<String, dynamic> json) =>
@@ -49,6 +51,8 @@ abstract class ReturnRequest with _$ReturnRequest {
       requestedAt: (data['requestedAt'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
       resolvedAt: (data['resolvedAt'] as Timestamp?)?.toDate(),
+      escalatedAt: (data['escalatedAt'] as Timestamp?)?.toDate(),
+      escalationReason: data['escalationReason'] as String?,
     );
   }
 }

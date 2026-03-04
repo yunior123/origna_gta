@@ -20,27 +20,29 @@ Think like Magnus Carlsen: plan 10 moves ahead before moving a single piece.
 
 | Tool | Binary | Version | Best For |
 |------|--------|---------|---------|
-| Gemini CLI | `gemini` | 0.30.0 | 1M context, Google Search, large codebase dumps |
+| Gemini CLI | `gemini` | 0.31.0 | 1M context, Google Search, large codebase dumps |
 | Claude Code | built-in subagents | latest | Domain expertise, project memory, code generation |
 
 ## Gemini CLI Reference (critical)
 
 ```bash
-# Non-interactive with model selection
-gemini -m gemini-2.0-flash -p "PROMPT" --yolo        # Fast (analysis/research)
-gemini -m gemini-1.5-pro -p "PROMPT" --yolo           # Smart (synthesis/architecture)
+# ALWAYS use gemini-3.1-pro-preview (or highest available in /model list)
+# NEVER use gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-pro or any lower model
+
+# Standard call
+gemini -m gemini-3.1-pro-preview -p "PROMPT" --yolo
 
 # With directory context
-gemini --include-directories ./functions -p "PROMPT" --yolo
+gemini -m gemini-3.1-pro-preview --include-directories ./functions -p "PROMPT" --yolo
 
 # Pipe file content
-cat file.py | gemini -p "Review this code for security issues" --yolo
+cat file.py | gemini -m gemini-3.1-pro-preview -p "Review this code for security issues" --yolo
 
 # Background + save output
-gemini -p "PROMPT" --yolo > .orch/results/task.txt 2>&1
+gemini -m gemini-3.1-pro-preview -p "PROMPT" --yolo > .orch/results/task.txt 2>&1
 
 # JSON structured output
-gemini -p "Return JSON: PROMPT" --output-format json --yolo
+gemini -m gemini-3.1-pro-preview -p "Return JSON: PROMPT" --output-format json --yolo
 ```
 
 ## Step 1: Decompose the Task
@@ -62,7 +64,7 @@ IF subtasks are independent → parallelize all of them
 ### Gemini in background:
 ```bash
 # Launch multiple Gemini tasks simultaneously using run_in_background: true
-gemini -m gemini-2.0-flash -p "Analyze backend auth flow" --yolo > .orch/results/auth.txt 2>&1
+gemini -m gemini-3.1-pro-preview -p "Analyze backend auth flow" --yolo > .orch/results/auth.txt 2>&1
 ```
 
 ### Claude subagents in parallel:
@@ -143,4 +145,4 @@ After each orchestration run, update agent memory with:
 2. **Never serialize parallel work** — if tasks are independent, run them together
 3. **Never trust Gemini for project-specific memory** — it doesn't know our codebase architecture; use Claude subagents for that
 4. **Always label sources** — "Gemini found X" vs "logic-auditor found Y" are different confidence levels
-5. **Gemini Flash for analysis, Gemini Pro for synthesis** — don't waste Pro quota on dumps
+5. **Always use gemini-3.1-pro-preview or higher** — never use 2.5 or below, they sabotage output quality

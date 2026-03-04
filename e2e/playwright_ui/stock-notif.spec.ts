@@ -327,37 +327,44 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
    */
   const TEMP_PRODUCT_ID = 'test_notif_stock_restore';
 
+  let adminToken: string;
+
   test.beforeAll(async () => {
     const auth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
-    // Seed a temporary OOS product that mimics an active product.
-    // sellerId must match ADMIN (token owner) so Firestore rules allow the write.
-    // isActive:true is required for Flutter's product detail screen to show the product.
-    await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({
-      productId: TEMP_PRODUCT_ID,
+    adminToken = auth.idToken;
+    // Delete any leftover from a previous run before seeding fresh
+    await deleteDoc(`products/${TEMP_PRODUCT_ID}`, adminToken).catch(() => {});
+    await new Promise(resolve => setTimeout(resolve, 1_000));
+    // Seed a temporary OOS product (full write — not partial — to ensure correct state)
+    const ok = await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({
       name: 'Test Stock Restore Product',
-      description: 'Temporary product for stock restore test',
-      priceCents: 1999,
+      description: 'Temporary product for stock restore test — E2E only',
       price: 19.99,
       stockQuantity: 0,
       lifecycleStatus: 'active',
-      isActive: true,
       isDigital: false,
       sellerId: TEST_UIDS.ADMIN,
+      sellerSku: 'STOCK-RESTORE-TEST',
       categoryId: 1,
       imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
-      hasVariants: false,
-      variants: [],
-      variantOptions: [],
-      rating: 0,
-      ratingCount: 0,
-      createdAt: new Date().toISOString(),
-    }), auth.idToken, true);
+      keywords: ['test', 'stock', 'restore'],
+      sellerAddress: {
+        street: '100 University Ave',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5J 1V6',
+        country: 'Canada',
+      },
+      isInternational: false,
+      createdAt: new Date(),
+    }), adminToken, false);
+    if (!ok) throw new Error('Suite 2 beforeAll: failed to seed TEMP_PRODUCT_ID in Firestore');
     // Give Firestore a moment to propagate the write
-    await new Promise(resolve => setTimeout(resolve, 1_000));
+    await new Promise(resolve => setTimeout(resolve, 2_000));
   });
 
   test.afterAll(async () => {
-    await deleteDoc(`products/${TEMP_PRODUCT_ID}`).catch(() => {});
+    if (adminToken) await deleteDoc(`products/${TEMP_PRODUCT_ID}`, adminToken).catch(() => {});
   });
 
   test('2.1 OOS product shows Notify Me, then after stock restored shows Add to Cart', async ({ page, baseURL }) => {
@@ -375,8 +382,9 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
     await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 10 }), adminAuth.idToken, true);
 
     // Re-navigate to force provider re-fetch — clear SW first to avoid stale routing
+    // Use 'load' not 'networkidle' — Flutter Web has persistent Firebase connections
     await clearServiceWorkers(page);
-    await page.goto(`${baseURL}/product/${TEMP_PRODUCT_ID}`, { waitUntil: 'networkidle' });
+    await page.goto(`${baseURL}/product/${TEMP_PRODUCT_ID}`, { waitUntil: 'load' });
     await waitForFlutter(page);
     await page.waitForTimeout(5_000);
     // Scroll to bring the add-to-cart button into Flutter's accessibility tree

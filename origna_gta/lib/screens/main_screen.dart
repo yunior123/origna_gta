@@ -1,3 +1,4 @@
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -53,3 +54,23 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 }
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
+@Preview(name: 'MainScreen — Dark', group: 'MainScreen')
+Widget previewMainScreenDark() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: const MainScreen(),
+      ),
+    );
+
+@Preview(name: 'MainScreen — Light', group: 'MainScreen')
+Widget previewMainScreenLight() => ProviderScope(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.light(),
+        home: const MainScreen(),
+      ),
+    );

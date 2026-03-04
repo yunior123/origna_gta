@@ -42,6 +42,7 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
       .map((e) => e as String)
       .toList(),
   videoUrl: json['videoUrl'] as String?,
+  videoDurationSeconds: (json['videoDurationSeconds'] as num?)?.toInt(),
   sellerId: json['sellerId'] as String,
   madeInCountry: json['madeInCountry'] as String?,
   sellerAddress: json['sellerAddress'] == null
@@ -140,6 +141,7 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'descriptionF': instance.descriptionF,
   'imageUrls': instance.imageUrls,
   'videoUrl': instance.videoUrl,
+  'videoDurationSeconds': instance.videoDurationSeconds,
   'sellerId': instance.sellerId,
   'madeInCountry': instance.madeInCountry,
   'sellerAddress': instance.sellerAddress,
