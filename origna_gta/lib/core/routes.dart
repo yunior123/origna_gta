@@ -44,7 +44,8 @@ class AppRoutes {
   static const String subscriptionSuccess = '/subscription/success';
   static const String subscriptionCancel = '/subscription/cancel';
   static const String chat = '/chat';
-  static const String categories = '/categories';
+  static const String chatInbox = '/chat/inbox';
+  static const String notifications = '/notifications';
   AppRoutes._(); // Prevent instantiation
 }
 

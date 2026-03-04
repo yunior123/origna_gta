@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 class ChatMessage {
   final String id;
@@ -106,28 +107,44 @@ class ChatRepository {
         .orderBy(Fields.createdAt, descending: false)
         .limitToLast(100)
         .snapshots()
-        .map((snap) => snap.docs.map(ChatMessage.fromFirestore).toList());
+        .map((snap) => snap.docs.map(ChatMessage.fromFirestore).toList())
+        .handleError((Object e, StackTrace st) {
+          AppError.log(e, stackTrace: st, context: 'chat.messagesStream');
+          if (e is! FirebaseException) throw e;
+        });
   }
 
   /// Stream all chat threads for the current user (buyer or seller).
   Stream<List<ChatThread>> userChatsStream(String userId) {
     // Queries threads where user is the buyer; seller threads are via sellerChatsStream.
+    // FIX 2026-03-03: limit(50) prevents unbounded listener scan at scale.
     return _firestore
         .collection(Collections.chats)
         .where(Fields.buyerId, isEqualTo: userId)
         .orderBy(Fields.lastMessageAt, descending: true)
+        .limit(50)
         .snapshots()
-        .map((snap) => snap.docs.map(ChatThread.fromFirestore).toList());
+        .map((snap) => snap.docs.map(ChatThread.fromFirestore).toList())
+        .handleError((Object e, StackTrace st) {
+          AppError.log(e, stackTrace: st, context: 'chat.userChatsStream');
+          if (e is! FirebaseException) throw e;
+        });
   }
 
   /// Stream chat threads where user is seller.
   Stream<List<ChatThread>> sellerChatsStream(String sellerId) {
+    // FIX 2026-03-03: limit(50) prevents unbounded listener scan at scale.
     return _firestore
         .collection(Collections.chats)
         .where(Fields.sellerId, isEqualTo: sellerId)
         .orderBy(Fields.lastMessageAt, descending: true)
+        .limit(50)
         .snapshots()
-        .map((snap) => snap.docs.map(ChatThread.fromFirestore).toList());
+        .map((snap) => snap.docs.map(ChatThread.fromFirestore).toList())
+        .handleError((Object e, StackTrace st) {
+          AppError.log(e, stackTrace: st, context: 'chat.sellerChatsStream');
+          if (e is! FirebaseException) throw e;
+        });
   }
 
   /// F-71: Unified inbox that merges buyer and seller threads, sorted by lastMessageAt desc.
@@ -139,7 +156,11 @@ class ChatRepository {
     List<ChatThread> sellerThreads = [];
 
     void emit() {
-      final merged = {...buyerThreads, ...sellerThreads}.toList()
+      final mergedMap = <String, ChatThread>{
+        for (final t in buyerThreads) t.chatId: t,
+        for (final t in sellerThreads) t.chatId: t,
+      };
+      final merged = mergedMap.values.toList()
         ..sort((a, b) {
           final at = a.lastMessageAt;
           final bt = b.lastMessageAt;

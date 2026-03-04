@@ -8,15 +8,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/core/theme_provider.dart';
 // Deferred imports for code splitting — reduces initial JS bundle on Flutter Web
 import 'package:origna_gta/features/admin/admin_panel_screen.dart' deferred as admin_panel;
 import 'package:origna_gta/features/products/products_provider.dart';
-import 'package:origna_gta/models/models.dart' show Address;
 import 'package:origna_gta/screens/addproduct_screen.dart' deferred as add_product;
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/screens/authwrapper_screen.dart';
 import 'package:origna_gta/screens/cart_screen.dart';
-import 'package:origna_gta/screens/categories_screen.dart';
+import 'package:origna_gta/screens/chat_conversations_screen.dart';
 import 'package:origna_gta/screens/chat_screen.dart';
 import 'package:origna_gta/screens/checkout_screen.dart' deferred as checkout;
 import 'package:origna_gta/screens/common_screens.dart';
@@ -24,6 +24,7 @@ import 'package:origna_gta/screens/editaddress_screen.dart';
 import 'package:origna_gta/screens/editproduct_screen.dart' deferred as edit_product;
 import 'package:origna_gta/screens/favorites_screen.dart';
 import 'package:origna_gta/screens/login_screen.dart';
+import 'package:origna_gta/screens/notifications_screen.dart';
 import 'package:origna_gta/screens/order_detail_screen.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
@@ -48,6 +49,7 @@ import 'package:origna_gta/services/session_timeout_service.dart';
 import 'package:origna_gta/utils/animations.dart';
 import 'package:origna_gta/utils/deferred_widget.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/widgets/env_preview_banner.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -556,8 +558,18 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     );
   }
 
-  if (uri.path == AppRoutes.categories) {
-    return SlidePageRoute(settings: settings, page: const CategoriesScreen());
+  if (uri.path == AppRoutes.chatInbox) {
+    return SlidePageRoute(
+      settings: settings,
+      page: const AuthRequiredGate(child: ChatConversationsScreen()),
+    );
+  }
+
+  if (uri.path == AppRoutes.notifications) {
+    return SlidePageRoute(
+      settings: settings,
+      page: const AuthRequiredGate(child: NotificationsScreen()),
+    );
   }
 
   // Default fallback: redirect unknown routes to home
@@ -588,6 +600,8 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return Focus(
       onKeyEvent: (_, _) {
         _sessionTimeout.recordActivity();
@@ -615,6 +629,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
           ),
           onGenerateTitle: (ctx) => 'app.title'.tr(),
           debugShowCheckedModeBanner: !kReleaseMode && !envConfig.isProduction,
+          themeMode: themeMode,
           // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
           onGenerateInitialRoutes: _onGenerateInitialRoutes,
           onGenerateRoute: _onGenerateRoute,
@@ -622,9 +637,9 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             settings: const RouteSettings(name: '/'),
             page: const AuthWrapper(),
           ),
+          // ── Light Theme ──────────────────────────────────────────────────────
           theme: ThemeData(
             useMaterial3: true,
-            // Centralized Theme using DesignTokens
             colorScheme: ColorScheme.fromSeed(
               seedColor: DesignTokens.primary,
               primary: DesignTokens.primary,
@@ -646,7 +661,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
               style: ElevatedButton.styleFrom(
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
                 backgroundColor: DesignTokens.primary,
                 foregroundColor: DesignTokens.textOnPrimary,
               ),
@@ -656,25 +671,83 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
               fillColor: DesignTokens.surface,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: DesignTokens.outlineVariant),
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                borderSide: const BorderSide(color: DesignTokens.outlineVariant),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: DesignTokens.outlineVariant),
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                borderSide: const BorderSide(color: DesignTokens.outlineVariant),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
                 borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
               ),
             ),
             cardTheme: CardThemeData(
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
               color: DesignTokens.surface,
               surfaceTintColor: DesignTokens.surface,
             ),
-            dividerTheme: DividerThemeData(color: DesignTokens.outlineVariant, thickness: 1, space: 1),
+            dividerTheme: const DividerThemeData(color: DesignTokens.outlineVariant, thickness: 1, space: 1),
+          ),
+          // ── Dark Theme ───────────────────────────────────────────────────────
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: DesignTokens.primary,
+              primary: DesignTokens.primary,
+              secondary: DesignTokens.secondary,
+              tertiary: DesignTokens.tertiary,
+              surface: DesignTokens.darkSurface,
+              brightness: Brightness.dark,
+            ),
+            scaffoldBackgroundColor: DesignTokens.darkBackground,
+            fontFamily: 'Roboto',
+            appBarTheme: const AppBarTheme(
+              centerTitle: false,
+              elevation: 0,
+              scrolledUnderElevation: 1,
+              backgroundColor: DesignTokens.darkSurface,
+              foregroundColor: DesignTokens.textOnDark,
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                backgroundColor: DesignTokens.primary,
+                foregroundColor: DesignTokens.textOnPrimary,
+              ),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: DesignTokens.darkSurfaceVariant,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                borderSide: const BorderSide(color: DesignTokens.darkOutline),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                borderSide: const BorderSide(color: DesignTokens.darkOutline),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
+              ),
+              labelStyle: const TextStyle(color: DesignTokens.textOnDarkSecondary),
+              hintStyle: const TextStyle(color: DesignTokens.textOnDarkSecondary),
+            ),
+            cardTheme: const CardThemeData(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(DesignTokens.radius16)),
+              ),
+              color: DesignTokens.darkCard,
+              surfaceTintColor: DesignTokens.darkCard,
+            ),
+            dividerTheme: const DividerThemeData(color: DesignTokens.darkOutline, thickness: 1, space: 1),
           ),
         ),
       ), // Listener
@@ -794,7 +867,7 @@ class _ProductBySlugScreen extends ConsumerWidget {
           loading: () => const Scaffold(body: Center(child: ModernLoadingIndicator())),
           error: (error, _) => Scaffold(
             appBar: AppBar(),
-            body: Center(child: Text('Error loading product: $error')),
+            body: Center(child: Text(AppError.getMessage(error))),
           ),
         );
   }
