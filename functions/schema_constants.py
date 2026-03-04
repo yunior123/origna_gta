@@ -1854,6 +1854,7 @@ class ApiKeys:
     """
 
     # === REQUEST PARAMS (sent to Cloud Functions) ===
+    TURNSTILE_TOKEN = "turnstileToken"  # Cloudflare Turnstile challenge token (web-only)
     ADD = "add"
     REMOVE = "remove"
     REASON = "reason"

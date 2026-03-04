@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/services/notification_service.dart';
+import 'package:origna_gta/services/turnstile_service.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -402,11 +403,15 @@ class FirebaseAuthRepository implements AuthRepository {
       if (isGoogle) consentMethod = ConsentMethodValues.googleOauth;
       if (isApple) consentMethod = ConsentMethodValues.appleOauth;
 
+      // Web: attach Turnstile bot-protection token; mobile uses App Check.
+      final turnstileToken = await TurnstileService.getToken();
+
       await callable.call<Map<String, dynamic>>({
         Fields.name: savedName ?? user.displayName ?? 'User',
         Fields.preferredLanguage: _deviceLanguage(),
         Fields.marketingOptIn: marketingOptIn,
         Fields.consentMethod: consentMethod,
+        ApiKeys.turnstileToken: ?turnstileToken,
       });
     }
     // If doc already exists, roles are managed server-side by the CF — no direct write here.

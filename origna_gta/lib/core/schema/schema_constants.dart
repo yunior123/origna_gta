@@ -61,6 +61,7 @@ abstract final class AlgoliaActionValues {
 /// Flutter and Cloud Functions (request params + response keys).
 abstract final class ApiKeys {
   // === REQUEST PARAMS (sent to Cloud Functions) ===
+  static const turnstileToken = 'turnstileToken'; // Cloudflare Turnstile challenge token (web-only)
   static const add = 'add';
   static const remove = 'remove';
   static const reason = 'reason';

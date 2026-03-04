@@ -28,6 +28,7 @@ from schema_constants import (
 from utils.db import get_db, get_server_timestamp
 from utils.function_options import DEFAULT_OPTIONS
 from utils.helpers import create_success_response, sanitized_text
+from utils.turnstile import verify_turnstile_token
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,17 @@ def create_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
     doc = user_ref.get()
     if doc.exists:
         return create_success_response({"created": False, "existing": True})
+
+    # Cloudflare Turnstile — bot protection for new registrations (web-only).
+    # Mobile clients do not send a token; verification is skipped if secret not set (dev).
+    from schema_constants import ApiKeys
+    turnstile_token = data.get(ApiKeys.TURNSTILE_TOKEN)
+    if not verify_turnstile_token(turnstile_token):
+        logger.warning("Turnstile verification failed for new user uid=%s", user_id)
+        raise https_fn.HttpsError(
+            "permission-denied",
+            "Bot verification failed. Please try again.",
+        )
 
     # Validate and sanitize name
     name_raw = data.get(Fields.NAME, "").strip()

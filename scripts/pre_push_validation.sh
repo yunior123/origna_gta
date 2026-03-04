@@ -48,18 +48,24 @@ get_env_config() {
       ENV_NAME="dev"
       BUILD_MODE="--debug"
       DART_DEFINES="--dart-define=ENVIRONMENT=dev --dart-define=FORCE_SEMANTICS=true"
+      # Cloudflare Turnstile: always-pass test key for dev
+      TURNSTILE_SITE_KEY="1x00000000000000000000AA"
       ;;
     orignagta-staging)
       ENV_NAME="staging"
       BUILD_MODE="--profile"
       # reCAPTCHA Enterprise key for staging (orignagta-staging project)
       DART_DEFINES="--dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true --dart-define=RECAPTCHA_SITE_KEY=REDACTED_SECRET"
+      # Cloudflare Turnstile: staging widget (orignagta-staging.web.app)
+      TURNSTILE_SITE_KEY="0x4AAAAAACmRNCDQqc20J_1T"
       ;;
     orignagta)
       ENV_NAME="prod"
       BUILD_MODE="--release"
       # reCAPTCHA Enterprise key for prod (orignagta project, domain: www.orignagta.ca)
       DART_DEFINES="--dart-define=ENVIRONMENT=production --dart-define=RECAPTCHA_SITE_KEY=6LeRUH8sAAAAAAy_kF_aBSzAP3cdneh-P_a14Og-"
+      # Cloudflare Turnstile: prod widget (www.orignagta.ca)
+      TURNSTILE_SITE_KEY="0x4AAAAAACmRNXgZQ1M928iq"
       ;;
   esac
 }
@@ -78,6 +84,12 @@ for PROJECT in orignagta-dev orignagta-staging orignagta; do
 
   if grep -q "ENVIRONMENT" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
       echo -e "  ${GREEN}Build verified for $ENV_NAME${NC}"
+  fi
+
+  # Inject Turnstile site key into built index.html (placeholder → real key)
+  if [ -f "$BUILD_DIR/index.html" ]; then
+      sed -i '' "s/__TURNSTILE_SITE_KEY__/${TURNSTILE_SITE_KEY}/g" "$BUILD_DIR/index.html"
+      echo -e "  ${GREEN}Turnstile site key injected for $ENV_NAME${NC}"
   fi
 
   # Guardrail: prod build must NOT contain FORCE_SEMANTICS
