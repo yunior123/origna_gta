@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/previews/_preview_theme.dart';
@@ -9,20 +8,20 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 @Preview(name: 'Custom AppBar — Cart Scenarios', group: 'CustomAppBar')
 Widget previewAppBarCart() => previewGrid(
   children: [
-    ProviderScope(
-      overrides: [cartItemCountProvider.overrideWith((ref) => 0)],
+    previewScope(
+      extraOverrides: [cartItemCountProvider.overrideWith((ref) => 0)],
       child: AppBarFactory.withCart(title: 'Empty Cart'),
     ),
-    ProviderScope(
-      overrides: [cartItemCountProvider.overrideWith((ref) => 105)],
+    previewScope(
+      extraOverrides: [cartItemCountProvider.overrideWith((ref) => 105)],
       child: AppBarFactory.withCart(title: 'Full Cart'),
     ),
   ],
 );
 
 @Preview(name: 'Custom AppBar — Variants', group: 'CustomAppBar')
-Widget previewAppBarVariants() => ProviderScope(
-  overrides: [
+Widget previewAppBarVariants() => previewScope(
+  extraOverrides: [
     cartItemCountProvider.overrideWith((ref) => 3),
     currentUserProvider.overrideWith((ref) => null), // Not logged in
   ],

@@ -8,7 +8,7 @@ import '../_preview_theme.dart';
 @Preview(name: 'Order Detail Screen', group: 'Order Screens')
 Widget previewOrderDetailScreen() {
   return previewResponsiveBreakpoints(
-    builder: (breakpoint) => ProviderScope(
+    builder: (breakpoint) => previewScope(
       child: OrderDetailScreenLayout(orderAsync: const AsyncValue.loading(), onBack: () {}, onRefresh: () {}),
     ),
   );

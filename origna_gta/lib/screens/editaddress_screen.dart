@@ -259,7 +259,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                         'address.set_as_default'.tr(),
                         style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
                       ),
-                      activeColor: DesignTokens.primary,
+                      activeThumbColor: DesignTokens.primary,
                       contentPadding: EdgeInsets.zero,
                     ),
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
@@ -10,8 +9,8 @@ import '../_preview_theme.dart';
 
 @Preview(name: 'Product Details', group: 'Screens')
 Widget previewProductDetailScreen() => previewResponsiveBreakpoints(
-  builder: (breakpoint) => ProviderScope(
-    overrides: [
+  builder: (breakpoint) => previewScope(
+    extraOverrides: [
       productByIdProvider('preview-id').overrideWith(
         (ref) => Future.value(
           Product(
@@ -31,4 +30,5 @@ Widget previewProductDetailScreen() => previewResponsiveBreakpoints(
     ],
     child: const ProductDetailScreen(productId: 'preview-id'),
   ),
+
 );

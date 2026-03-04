@@ -7,7 +7,7 @@ import '../_preview_theme.dart';
 
 @Preview(name: 'Notifications Center', group: 'Screens')
 Widget previewNotificationsScreen() => previewResponsiveBreakpoints(
-  builder: (breakpoint) => ProviderScope(
+  builder: (breakpoint) => previewScope(
     child: NotificationsScreenLayout(
       notificationsAsync: const AsyncValue.loading(),
       uid: 'preview-uid',
@@ -21,7 +21,7 @@ Widget previewNotificationsScreen() => previewResponsiveBreakpoints(
 
 @Preview(name: 'Notifications — Empty State', group: 'Screens')
 Widget previewNotificationsScreenEmpty() => previewResponsiveBreakpoints(
-  builder: (breakpoint) => ProviderScope(
+  builder: (breakpoint) => previewScope(
     child: NotificationsScreenLayout(
       notificationsAsync: const AsyncValue.data([]),
       uid: 'preview-uid',

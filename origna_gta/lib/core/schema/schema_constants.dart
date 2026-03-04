@@ -759,6 +759,7 @@ abstract final class Fields {
   static const taxes = 'taxes';
   static const taxAmountCents = 'taxAmountCents';
   static const shippingCostCents = 'shippingCostCents';
+  static const shippingCostDeltaCents = 'shippingCostDeltaCents';
   static const totalAmountCents = 'totalAmountCents';
   static const currency = 'currency';
   static const orderStatus = 'orderStatus';
@@ -1066,6 +1067,10 @@ abstract final class Fields {
   static const lockedAt = 'lockedAt';
   static const lockedBy = 'lockedBy';
 
+  // === CRON FAILURE FIELDS (M-14) ===
+  static const jobName = 'jobName';
+  static const errorType = 'errorType';
+
   // === ALGOLIA SYNC FAILURE FIELDS ===
   static const retryCount = 'retryCount';
   static const maxRetriesExceeded = 'maxRetriesExceeded';
@@ -1151,6 +1156,9 @@ abstract final class Fields {
   static const maxUsesTotal = 'maxUsesTotal';
   static const maxUsesPerUser = 'maxUsesPerUser';
   static const usedCount = 'usedCount';
+  static const useCount = 'useCount'; // coupon_uses subcollection: per-user use count
+  static const usedAt = 'usedAt'; // coupon_uses subcollection: first use timestamp
+  static const lastUsedAt = 'lastUsedAt'; // coupon_uses subcollection: most recent use timestamp
 
   // === N-09: Product variants ===
   static const hasVariants = 'hasVariants';
@@ -1865,6 +1873,8 @@ abstract final class RateLimitActions {
   static const getPaymentProviders = 'get_payment_providers';
   static const updatePaymentProvider = 'update_payment_provider';
   static const getProviderStatus = 'get_provider_status';
+  static const subscribeStockNotification = 'subscribe_stock_notification';
+  static const unsubscribeStockNotification = 'unsubscribe_stock_notification';
 }
 
 // =============================================================================

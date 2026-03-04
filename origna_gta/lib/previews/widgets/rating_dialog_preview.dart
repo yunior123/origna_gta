@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_state.dart';
 import 'package:origna_gta/previews/_preview_theme.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
 
 @Preview(name: 'Rating Dialog — Premium', group: 'RatingDialog')
-Widget previewRatingDialogPremium() => ProviderScope(
-  overrides: [subscriptionStreamProvider.overrideWith((_) => Stream.value(const SubscriptionInfo(status: 'active', isPremium: true)))],
+Widget previewRatingDialogPremium() => previewScope(
+  extraOverrides: [subscriptionStreamProvider.overrideWith((_) => Stream.value(const SubscriptionInfo(status: 'active', isPremium: true)))],
   child: previewGrid(
     children: [RatingDialog(orderId: 'preview-order-456', productId: 'preview-product-789', productName: 'Artisan Quebec Cheese Board')],
   ),
 );
 
 @Preview(name: 'Rating Dialog — Variants', group: 'RatingDialog')
-Widget previewRatingDialogVariants() => ProviderScope(
-  overrides: [subscriptionStreamProvider.overrideWith((_) => Stream.value(const SubscriptionInfo(status: 'inactive', isPremium: false)))],
+Widget previewRatingDialogVariants() => previewScope(
+  extraOverrides: [subscriptionStreamProvider.overrideWith((_) => Stream.value(const SubscriptionInfo(status: 'inactive', isPremium: false)))],
   child: previewGrid(
     children: [RatingDialog(orderId: 'preview-order-123', productId: 'preview-product-456', productName: 'Handmade Canadian Maple Syrup')],
   ),

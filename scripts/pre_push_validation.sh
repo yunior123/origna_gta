@@ -9,6 +9,29 @@ echo "============================================"
 echo "  Pre-Push Validation Suite"
 echo "============================================"
 
+# 0a. Flutter unit/widget tests — run FIRST while RAM is fresh (before heavy builds)
+echo ""
+echo "--- [0a] Flutter Tests (pre-build, RAM-fresh) ---"
+cd origna_gta
+if ! flutter test --reporter compact --concurrency=4; then
+    echo "❌ ERROR: Flutter tests failed."
+    exit 1
+fi
+cd "$REPO_ROOT"
+echo "✅ Flutter tests passed."
+
+# 0b. Python backend tests — run before builds too
+echo ""
+echo "--- [0b] Python Backend Tests (pre-build) ---"
+cd functions
+pip install -q pytest pytest-mock mockito sentry_sdk > /dev/null 2>&1
+if ! python3 -m pytest tests/ -q --tb=short; then
+    echo "❌ ERROR: Backend Python tests failed."
+    exit 1
+fi
+cd "$REPO_ROOT"
+echo "✅ Backend tests passed."
+
 # 0. Validate Flutter builds for all 3 environments
 echo ""
 echo "--- [0/10] Multi-Env Build Validation ---"
@@ -104,28 +127,8 @@ echo "--- [7/10] Cloud Functions & Deploy Parity ---"
 python3 scripts/verify_functions_sync.py
 python3 scripts/check_deploy_versions.py
 
-# 8. Flutter unit/widget tests
-echo ""
-echo "--- [8/10] Flutter Tests ---"
-cd origna_gta
-if ! flutter test --reporter compact; then
-    echo "❌ ERROR: Flutter tests failed."
-    exit 1
-fi
-cd "$REPO_ROOT"
-echo "✅ Flutter tests passed."
-
-# 9. Python backend tests
-echo ""
-echo "--- [9/10] Python Backend Tests ---"
-cd functions
-pip install -q pytest pytest-mock mockito sentry_sdk > /dev/null 2>&1
-if ! python3 -m pytest tests/ -q --tb=short; then
-    echo "❌ ERROR: Backend Python tests failed."
-    exit 1
-fi
-cd "$REPO_ROOT"
-echo "✅ Backend tests passed."
+# 8. (Flutter tests already ran in step 0a)
+# 9. (Python tests already ran in step 0b)
 
 # 10. Playwright E2E tests against dev
 echo ""

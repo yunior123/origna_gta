@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/screens/cartitem_screen.dart';
 
 import '../_preview_theme.dart';
@@ -8,7 +7,7 @@ import '../_preview_theme.dart';
 @Preview(name: 'Cart Item Screen', group: 'Cart Screens')
 Widget previewCartItemScreen() {
   return previewResponsiveBreakpoints(
-    builder: (breakpoint) => ProviderScope(
+    builder: (breakpoint) => previewScope(
       child: Scaffold(
         body: Center(
           child: Padding(

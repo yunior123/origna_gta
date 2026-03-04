@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 
@@ -20,7 +19,7 @@ Widget previewProductCardScreen() {
     createdAt: DateTime.now(),
   );
   return previewResponsiveBreakpoints(
-    builder: (breakpoint) => ProviderScope(
+    builder: (breakpoint) => previewScope(
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

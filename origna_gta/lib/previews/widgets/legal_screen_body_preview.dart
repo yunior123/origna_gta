@@ -21,7 +21,7 @@ Widget previewLegalResponsive() => previewResponsiveBreakpoints(
 @Preview(name: 'Legal Content — Variants', group: 'LegalScreenBody')
 Widget previewLegalVariants() => previewGrid(
   children: [
-    const LegalScreenBody(heroTitle: 'Privacy Policy', heroBadge: 'PRIVACY', heroBadgeIcon: Icons.shield_outlined, rawContent: _kPrivacyMock),
-    const LegalScreenBody(heroTitle: 'Terms of Service', heroBadge: 'TERMS', heroBadgeIcon: Icons.gavel_outlined, rawContent: _kTermsMock),
+    SizedBox(height: 700, child: const LegalScreenBody(heroTitle: 'Privacy Policy', heroBadge: 'PRIVACY', heroBadgeIcon: Icons.shield_outlined, rawContent: _kPrivacyMock)),
+    SizedBox(height: 700, child: const LegalScreenBody(heroTitle: 'Terms of Service', heroBadge: 'TERMS', heroBadgeIcon: Icons.gavel_outlined, rawContent: _kTermsMock)),
   ],
 );

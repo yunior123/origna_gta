@@ -291,8 +291,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       if (cap == null) return 'product.invalid_price'.tr();
                       final currentPrice =
                           double.tryParse(_priceController.text.trim()) ?? 0;
-                      if (cap <= currentPrice)
+                      if (cap <= currentPrice) {
                         return 'product.compare_at_price_must_be_higher'.tr();
+                      }
                       return null;
                     },
                   ),
@@ -798,8 +799,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     final status = widget.product.lifecycleStatus;
     final reason = widget.product.approvalRejectionReason;
     if (status == ProductLifecycleStatusValues.active ||
-        status == ProductLifecycleStatusValues.approved)
+        status == ProductLifecycleStatusValues.approved) {
       return const SizedBox.shrink();
+    }
 
     Color bgColor;
     Color textColor;
@@ -1402,8 +1404,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   String? _validatePostalCode(String? v) {
     if (v == null || v.isEmpty) return 'common.required'.tr();
     final reg = RegExp(r'^[A-Z]\d[A-Z] \d[A-Z]\d$');
-    if (!reg.hasMatch(v.toUpperCase().trim()))
+    if (!reg.hasMatch(v.toUpperCase().trim())) {
       return 'product.invalid_postal'.tr();
+    }
     return null;
   }
 }

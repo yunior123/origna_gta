@@ -26,7 +26,7 @@ const _kShipFromProvince = 'ON';
 
 /// Wrap a [ModernProductCard] in a fixed-height box so the Expanded flex
 /// inside the card has a bounded constraint during preview rendering.
-Widget _cardBox(Widget card) => SizedBox(width: 220, height: 340, child: card);
+Widget _cardBox(Widget card) => SizedBox(width: 220, height: 460, child: card);
 
 // ─── Standard card ────────────────────────────────────────────────────────────
 

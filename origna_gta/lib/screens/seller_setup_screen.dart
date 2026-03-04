@@ -484,11 +484,12 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
 
         // Clear message after 5 seconds
         Future.delayed(const Duration(seconds: 5), () {
-          if (mounted)
+          if (mounted) {
             setState(() {
               _statusMessage = null;
               _checkResult = null;
             });
+          }
         });
       }
     } catch (e) {

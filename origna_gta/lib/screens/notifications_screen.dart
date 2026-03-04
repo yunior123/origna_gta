@@ -12,7 +12,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Stream of the current user's notifications, newest first.
-final _userNotificationsProvider = StreamProvider.autoDispose<List<_AppNotification>>((ref) {
+final _userNotificationsProvider = StreamProvider.autoDispose<List<AppNotification>>((ref) {
   final uid = ref.watch(currentUserProvider)?.uid;
   if (uid == null) return Stream.value([]);
   return ref
@@ -23,7 +23,7 @@ final _userNotificationsProvider = StreamProvider.autoDispose<List<_AppNotificat
       .orderBy(Fields.createdAt, descending: true)
       .limit(50)
       .snapshots()
-      .map((snap) => snap.docs.map(_AppNotification.fromDoc).toList());
+      .map((snap) => snap.docs.map(AppNotification.fromDoc).toList());
 });
 
 class NotificationsScreen extends ConsumerWidget {
@@ -69,7 +69,7 @@ class NotificationsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _markRead(_AppNotification notification, String? uid, WidgetRef ref) async {
+  Future<void> _markRead(AppNotification notification, String? uid, WidgetRef ref) async {
     if (notification.isRead || uid == null) return;
     await ref.read(firestoreProvider).collection(Collections.users).doc(uid).collection(Collections.notifications).doc(notification.id).update({
       Fields.isRead: true,
@@ -78,12 +78,12 @@ class NotificationsScreen extends ConsumerWidget {
 }
 
 class NotificationsScreenLayout extends StatelessWidget {
-  final AsyncValue<List<_AppNotification>> notificationsAsync;
+  final AsyncValue<List<AppNotification>> notificationsAsync;
   final String? uid;
   final Future<void> Function() onRefresh;
   final VoidCallback onBack;
   final VoidCallback onMarkAllRead;
-  final void Function(_AppNotification) onMarkRead;
+  final void Function(AppNotification) onMarkRead;
 
   const NotificationsScreenLayout({
     super.key,
@@ -123,9 +123,9 @@ class NotificationsScreenLayout extends StatelessWidget {
             }
 
             final now = DateTime.now();
-            final today = <_AppNotification>[];
-            final thisWeek = <_AppNotification>[];
-            final earlier = <_AppNotification>[];
+            final today = <AppNotification>[];
+            final thisWeek = <AppNotification>[];
+            final earlier = <AppNotification>[];
 
             for (final n in notifications) {
               final diff = now.difference(n.createdAt);
@@ -191,7 +191,7 @@ class NotificationsScreenLayout extends StatelessWidget {
 }
 
 /// A notification item read from Firestore users/{uid}/notifications.
-class _AppNotification {
+class AppNotification {
   final String id;
   final String title;
   final String body;
@@ -199,12 +199,12 @@ class _AppNotification {
   final bool isRead;
   final DateTime createdAt;
 
-  const _AppNotification({required this.id, required this.title, required this.body, required this.type, required this.isRead, required this.createdAt});
+  const AppNotification({required this.id, required this.title, required this.body, required this.type, required this.isRead, required this.createdAt});
 
-  factory _AppNotification.fromDoc(DocumentSnapshot doc) {
+  factory AppNotification.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     final ts = data[Fields.createdAt];
-    return _AppNotification(
+    return AppNotification(
       id: doc.id,
       title: data['title'] as String? ?? '',
       body: data['body'] as String? ?? '',
@@ -246,7 +246,7 @@ class _MarkAllReadBar extends StatelessWidget {
 }
 
 class _NotificationTile extends StatelessWidget {
-  final _AppNotification notification;
+  final AppNotification notification;
   final VoidCallback onMarkRead;
 
   const _NotificationTile({required this.notification, required this.onMarkRead});

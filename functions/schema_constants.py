@@ -2109,6 +2109,7 @@ class RateLimitActions:
     CREATE_RETURN_REQUEST = "create_return_request"
     APPROVE_RETURN_REQUEST = "approve_return_request"
     REJECT_RETURN_REQUEST = "reject_return_request"
+    ESCALATE_RETURN_REQUEST = "escalate_return_request"
     UPLOAD_IMAGES = "upload_images"
     UPLOAD_VIDEO = "upload_video"
     DELETE_PRODUCT = "delete_product"
