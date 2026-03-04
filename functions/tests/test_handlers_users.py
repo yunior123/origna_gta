@@ -12,9 +12,17 @@ from schema_constants import Collections, Fields
 
 
 class TestBuyerAddressHandlers:
+    @patch("utils.helpers.geocode_address")
     @patch("handlers.users.get_db")
-    def test_add_buyer_address_first_is_default(self, mock_get_db):
+    def test_add_buyer_address_first_is_default(self, mock_get_db, mock_geocode):
         from handlers.users import add_buyer_address
+
+        mock_geocode.return_value = (
+            True,
+            None,
+            {"street": "123 Main St", "city": "Toronto", "state": "ON",
+             "postalCode": "M5V 2H1", "country": "Canada"},
+        )
 
         # Mock DB
         mock_db = Mock()
@@ -72,9 +80,17 @@ class TestBuyerAddressHandlers:
         added_data = mock_transaction.set.call_args[0][1]
         assert added_data[Fields.IS_DEFAULT] is True
 
+    @patch("utils.helpers.geocode_address")
     @patch("handlers.users.get_db")
-    def test_add_buyer_address_limit_exceeded(self, mock_get_db):
+    def test_add_buyer_address_limit_exceeded(self, mock_get_db, mock_geocode):
         from handlers.users import add_buyer_address
+
+        mock_geocode.return_value = (
+            True,
+            None,
+            {"street": "123 Main St", "city": "Toronto", "state": "ON",
+             "postalCode": "M5V 2H1", "country": "Canada"},
+        )
 
         mock_db = Mock()
         mock_get_db.return_value = mock_db
