@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,8 +19,26 @@ class OrderDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final orderAsync = ref.watch(orderByIdProvider(orderId));
+
+    return OrderDetailScreenLayout(
+      orderAsync: orderAsync,
+      onRefresh: () => ref.invalidate(orderByIdProvider(orderId)),
+      onBack: () => Navigator.of(context).pop(),
+    );
+  }
+}
+
+class OrderDetailScreenLayout extends StatelessWidget {
+  final AsyncValue<Order?> orderAsync;
+  final VoidCallback onRefresh;
+  final VoidCallback onBack;
+
+  const OrderDetailScreenLayout({super.key, required this.orderAsync, required this.onRefresh, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
@@ -30,7 +47,7 @@ class OrderDetailScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         body: orderAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
-          error: (error, stack) => _buildErrorState(context, ref, error),
+          error: (error, stack) => _buildErrorState(error),
           data: (order) {
             if (order == null) {
               return Center(
@@ -41,14 +58,14 @@ class OrderDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     Text('orders.not_found'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
                     const SizedBox(height: 24),
-                    ModernButton(onPressed: () => Navigator.of(context).pop(), label: 'common.back'.tr(), icon: Icons.arrow_back),
+                    ModernButton(onPressed: onBack, label: 'common.back'.tr(), icon: Icons.arrow_back),
                   ],
                 ),
               );
             }
             return RefreshIndicator(
               color: DesignTokens.primary,
-              onRefresh: () async => ref.invalidate(orderByIdProvider(orderId)),
+              onRefresh: () async => onRefresh(),
               child: Align(
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
@@ -67,7 +84,7 @@ class OrderDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
+  Widget _buildErrorState(Object error) {
     final message = AppError.getMessage(error);
     return Center(
       child: Padding(
@@ -85,7 +102,7 @@ class OrderDetailScreen extends ConsumerWidget {
               style: TextStyle(color: DesignTokens.textSecondary),
             ),
             const SizedBox(height: 24),
-            ModernButton(onPressed: () => ref.invalidate(orderByIdProvider(orderId)), label: 'orders.retry'.tr(), icon: Icons.refresh),
+            ModernButton(onPressed: onRefresh, label: 'orders.retry'.tr(), icon: Icons.refresh),
           ],
         ),
       ),
@@ -104,23 +121,3 @@ class _OrderDetailView extends ConsumerWidget {
     );
   }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'OrderDetailScreen — Dark', group: 'OrderDetailScreen')
-Widget previewOrderDetailScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const OrderDetailScreen(orderId: 'preview-id'),
-      ),
-    );
-
-@Preview(name: 'OrderDetailScreen — Light', group: 'OrderDetailScreen')
-Widget previewOrderDetailScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const OrderDetailScreen(orderId: 'preview-id'),
-      ),
-    );

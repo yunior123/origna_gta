@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -573,23 +572,3 @@ func activateLicense(key: String, platform: String = "macos") async throws -> Bo
     );
   }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'SellerIntegrationScreen — Dark', group: 'SellerIntegrationScreen')
-Widget previewSellerIntegrationScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const SellerIntegrationScreen(),
-      ),
-    );
-
-@Preview(name: 'SellerIntegrationScreen — Light', group: 'SellerIntegrationScreen')
-Widget previewSellerIntegrationScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const SellerIntegrationScreen(),
-      ),
-    );

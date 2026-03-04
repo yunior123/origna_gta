@@ -1,9 +1,7 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -15,11 +13,12 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../core/theme_provider.dart';
 import '../features/auth/auth_provider.dart';
-import '../features/subscription/subscription_provider.dart';
 import '../features/profile/profile_viewmodel.dart';
+import '../features/subscription/subscription_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -29,20 +28,79 @@ class ProfileScreen extends ConsumerWidget {
     final userProfileAsync = ref.watch(userProfileProvider);
     final profileState = ref.watch(profileViewModelProvider);
     final viewModel = ref.read(profileViewModelProvider.notifier);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentUser = ref.watch(currentUserProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final isPremium = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userProfileAsync.valueOrNull?.isPremium ?? false;
 
     // Listen for success/error messages
     ref.listen(profileViewModelProvider, (previous, next) {
       if (next.successMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.successMessage!), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.successMessage!), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating));
       } else if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error, behavior: SnackBarBehavior.floating),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error, behavior: SnackBarBehavior.floating));
       }
     });
+
+    return ProfileScreenLayout(
+      userProfileAsync: userProfileAsync,
+      currentUser: currentUser,
+      isExportLoading: profileState.isLoading,
+      themeMode: themeMode,
+      isPremium: isPremium,
+      onSignIn: () => Navigator.pushNamed(context, AppRoutes.login),
+      onSignOut: () async {
+        await viewModel.signOut();
+        if (context.mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+        }
+      },
+      onDeleteAccountRequested: () => showDialog(context: context, builder: (context) => const _DeleteAccountDialog()),
+      onExportData: () => viewModel.exportData(),
+      onThemeChange: (mode) => ref.read(themeModeProvider.notifier).state = mode,
+      onLanguageChange: (lang) async {
+        final newLocale = Locale(lang);
+        await context.setLocale(newLocale);
+        await viewModel.updateLanguage(lang);
+      },
+    );
+  }
+}
+
+class ProfileScreenLayout extends StatelessWidget {
+  final AsyncValue<UserModel?> userProfileAsync;
+  final User? currentUser;
+  final bool isExportLoading;
+  final ThemeMode themeMode;
+  final bool isPremium;
+  final VoidCallback onSignIn;
+  final VoidCallback onSignOut;
+  final VoidCallback onDeleteAccountRequested;
+  final VoidCallback onExportData;
+  final void Function(ThemeMode) onThemeChange;
+  final void Function(String) onLanguageChange;
+
+  const ProfileScreenLayout({
+    super.key,
+    required this.userProfileAsync,
+    required this.currentUser,
+    required this.isExportLoading,
+    required this.themeMode,
+    required this.isPremium,
+    required this.onSignIn,
+    required this.onSignOut,
+    required this.onDeleteAccountRequested,
+    required this.onExportData,
+    required this.onThemeChange,
+    required this.onLanguageChange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'profile.settings'.tr()),
@@ -65,23 +123,16 @@ class ProfileScreen extends ConsumerWidget {
               child: const ModernLoadingIndicator(color: Colors.white, strokeWidth: 3, centered: false),
             ),
           ),
-          error: (err, stack) => AnimatedEmptyState(
-            icon: Icons.error_outline_rounded,
-            title: 'profile.error_loading'.tr(),
-            subtitle: 'common.retry_later'.tr(),
-          ),
+          error: (err, stack) =>
+              AnimatedEmptyState(icon: Icons.error_outline_rounded, title: 'profile.error_loading'.tr(), subtitle: 'common.retry_later'.tr()),
           data: (userModel) {
             if (userModel == null) {
-              final currentUser = ref.watch(currentUserProvider);
               if (currentUser != null) {
-                // User is authenticated but has no Firestore profile
-                // Check if email verification is needed
                 final needsVerification =
-                    !currentUser.emailVerified && !currentUser.providerData.any((p) => p.providerId == 'google.com') && !EnvConfig().isEmulator;
+                    !currentUser!.emailVerified && !currentUser!.providerData.any((p) => p.providerId == 'google.com') && !EnvConfig().isEmulator;
                 if (needsVerification) {
-                  return _EmailVerificationRequiredView(user: currentUser);
+                  return _EmailVerificationRequiredView(user: currentUser!);
                 }
-                // Email is verified but Firestore doc not yet created - transient state
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -109,7 +160,7 @@ class ProfileScreen extends ConsumerWidget {
                       label: 'btn-sign-in',
                       child: ElevatedButton.icon(
                         key: const Key('profile_sign_in_button'),
-                        onPressed: () => Navigator.pushNamed(context, AppRoutes.login),
+                        onPressed: onSignIn,
                         icon: const Icon(Icons.login_rounded),
                         label: Text('auth.sign_in'.tr()),
                         style: ElevatedButton.styleFrom(
@@ -128,13 +179,7 @@ class ProfileScreen extends ConsumerWidget {
             final isSeller = userModel.roles.contains(UserRoles.seller) || userModel.roles.contains(UserRoles.admin);
             final isAdmin = userModel.roles.contains(UserRoles.admin);
 
-            final maxWidth = ResponsiveBreakpoints.getValue<double>(
-              context: context,
-              mobile: double.infinity, // 320px - full width
-              mobilePlus: 500, // 480px - constrained
-              tablet: 600, // 768px - comfortable
-              desktop: 700, // 1024px+ - spacious
-            );
+            final maxWidth = ResponsiveBreakpoints.getValue<double>(context: context, mobile: double.infinity, mobilePlus: 500, tablet: 600, desktop: 700);
             final padding = ResponsiveBreakpoints.getSpacing(context, SpacingSize.lg);
 
             return Center(
@@ -144,14 +189,9 @@ class ProfileScreen extends ConsumerWidget {
                   padding: EdgeInsets.all(padding),
                   child: Column(
                     children: [
-                      // Profile Header
-                      FadeSlideIn(child: _buildProfileHeader(
-                        userModel, isDark,
-                        isPremium: ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userModel.isPremium,
-                      )),
+                      FadeSlideIn(child: _buildProfileHeader(userModel, isDark, isPremium: isPremium)),
                       SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl)),
 
-                      // Main Navigation Menu
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 50),
                         child: Column(
@@ -211,29 +251,17 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 24),
 
-                      // Premium Subscription Section
-                      FadeSlideIn(
-                        delay: const Duration(milliseconds: 75),
-                        child: Builder(builder: (context) {
-                          // Use subscriptionStreamProvider (authoritative) rather than
-                          // userModel.isPremium which may lag behind subscription doc updates.
-                          final isPremiumFromStream = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userModel.isPremium;
-                          return _buildPremiumMenuItem(context, isPremiumFromStream);
-                        }),
-                      ),
+                      FadeSlideIn(delay: const Duration(milliseconds: 75), child: _buildPremiumMenuItem(context, isPremium)),
                       const SizedBox(height: 24),
 
-                      // Account Settings Section
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 100),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildSectionHeader(context, 'profile.section_settings'.tr()),
-                            Builder(builder: (context) {
-                              final isPremiumForNotif = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userModel.isPremium;
-                              if (!isPremiumForNotif) return const SizedBox.shrink();
-                              return _buildMenuItem(
+                            if (isPremium)
+                              _buildMenuItem(
                                 context,
                                 key: const Key('profile_notifications_button'),
                                 icon: Icons.notifications_outlined,
@@ -241,8 +269,7 @@ class ProfileScreen extends ConsumerWidget {
                                 title: 'profile.notifications'.tr(),
                                 subtitle: 'profile.manage_notifications'.tr(),
                                 onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
-                              );
-                            }),
+                              ),
                             _buildMenuItem(
                               context,
                               key: const Key('profile_messages_button'),
@@ -295,13 +322,12 @@ class ProfileScreen extends ConsumerWidget {
                               semanticLabel: 'menu-language',
                               title: 'profile.language'.tr(),
                               subtitle: context.locale.languageCode == 'fr' ? 'Français' : 'English',
-                              onTap: () async {
-                                final newLocale = context.locale.languageCode == 'fr' ? const Locale('en') : const Locale('fr');
-                                await context.setLocale(newLocale);
-                                await viewModel.updateLanguage(newLocale.languageCode);
+                              onTap: () {
+                                final newLocale = context.locale.languageCode == 'fr' ? 'en' : 'fr';
+                                onLanguageChange(newLocale);
                               },
                             ),
-                            _buildThemeToggle(context, ref, isDark),
+                            _buildThemeToggle(context, isDark),
                             _buildMenuItem(
                               context,
                               key: const Key('profile_export_button'),
@@ -309,28 +335,23 @@ class ProfileScreen extends ConsumerWidget {
                               semanticLabel: 'menu-export-data',
                               title: 'profile.export_data'.tr(),
                               subtitle: 'profile.export_desc'.tr(),
-                              isLoading: profileState.isLoading,
-                              onTap: () => viewModel.exportData(),
+                              isLoading: isExportLoading,
+                              onTap: onExportData,
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 32),
 
-                      // Support & Info Section
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 125),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionHeader(context, 'profile.section_support'.tr()),
-                            _buildAppInfoSection(context, isDark),
-                          ],
+                          children: [_buildSectionHeader(context, 'profile.section_support'.tr()), _buildAppInfoSection(context, isDark)],
                         ),
                       ),
                       const SizedBox(height: 24),
 
-                      // Danger Zone
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 150),
                         child: Column(
@@ -341,12 +362,7 @@ class ProfileScreen extends ConsumerWidget {
                               child: ModernButton(
                                 key: const Key('profile_sign_out_button'),
                                 label: 'auth.sign_out'.tr(),
-                                onPressed: () async {
-                                  await viewModel.signOut();
-                                  if (context.mounted) {
-                                    Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
-                                  }
-                                },
+                                onPressed: onSignOut,
                                 icon: Icons.logout,
                               ),
                             ),
@@ -356,7 +372,7 @@ class ProfileScreen extends ConsumerWidget {
                               label: 'btn-delete-account',
                               child: GestureDetector(
                                 key: const Key('profile_delete_account_button'),
-                                onTap: () => _showDeleteAccountDialog(context, ref),
+                                onTap: onDeleteAccountRequested,
                                 behavior: HitTestBehavior.opaque,
                                 child: Semantics(
                                   container: true,
@@ -387,21 +403,6 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: DesignTokens.textSecondary,
-          letterSpacing: 0.8,
-        ),
-      ),
-    );
-  }
-
   Widget _buildAppInfoSection(BuildContext context, bool isDark) {
     const appVersion = '1.1.0';
 
@@ -412,12 +413,7 @@ class ProfileScreen extends ConsumerWidget {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             'profile.app_info'.tr(),
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: DesignTokens.textSecondary,
-              letterSpacing: 0.8,
-            ),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.8),
           ),
         ),
         _buildMenuItem(
@@ -436,9 +432,7 @@ class ProfileScreen extends ConsumerWidget {
           semanticLabel: 'menu-share-app',
           title: 'profile.share_app'.tr(),
           subtitle: 'profile.share_app_desc'.tr(),
-          onTap: () => SharePlus.instance.share(
-            ShareParams(text: 'profile.share_text'.tr()),
-          ),
+          onTap: () => SharePlus.instance.share(ShareParams(text: 'profile.share_text'.tr())),
         ),
         Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -466,127 +460,14 @@ class ProfileScreen extends ConsumerWidget {
               Expanded(
                 child: Text(
                   'profile.app_version'.tr(namedArgs: {'version': appVersion}),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
                 ),
               ),
-              Text(
-                'OrignaGTA',
-                style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary),
-              ),
+              Text('OrignaGTA', style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildThemeToggle(BuildContext context, WidgetRef ref, bool isDark) {
-    final themeMode = ref.watch(themeModeProvider);
-
-    return Container(
-      key: const Key('profile_theme_button'),
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
-        borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Semantics(
-        label: 'menu-appearance',
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                ),
-                child: Icon(
-                  themeMode == ThemeMode.dark
-                      ? Icons.dark_mode_rounded
-                      : themeMode == ThemeMode.light
-                          ? Icons.light_mode_rounded
-                          : Icons.brightness_auto_rounded,
-                  color: DesignTokens.primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'profile.theme'.tr(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'profile.theme_desc'.tr(),
-                      style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // 3-segment pill toggle: Light | System | Dark
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant,
-                  borderRadius: BorderRadius.circular(DesignTokens.radius20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _ThemePill(
-                      icon: Icons.light_mode_rounded,
-                      label: 'profile.theme_light'.tr(),
-                      selected: themeMode == ThemeMode.light,
-                      isDark: isDark,
-                      onTap: () => ref.read(themeModeProvider.notifier).state = ThemeMode.light,
-                    ),
-                    _ThemePill(
-                      icon: Icons.brightness_auto_rounded,
-                      label: 'profile.theme_system'.tr(),
-                      selected: themeMode == ThemeMode.system,
-                      isDark: isDark,
-                      onTap: () => ref.read(themeModeProvider.notifier).state = ThemeMode.system,
-                    ),
-                    _ThemePill(
-                      icon: Icons.dark_mode_rounded,
-                      label: 'profile.theme_dark'.tr(),
-                      selected: themeMode == ThemeMode.dark,
-                      isDark: isDark,
-                      onTap: () => ref.read(themeModeProvider.notifier).state = ThemeMode.dark,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -629,8 +510,8 @@ class ProfileScreen extends ConsumerWidget {
           child: Semantics(
             container: true,
             child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
@@ -657,16 +538,13 @@ class ProfileScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  if (isLoading)
-                    const ModernLoadingIndicator.small()
-                  else
-                    Icon(Icons.chevron_right, color: DesignTokens.textDisabled, size: 20),
+                  if (isLoading) const ModernLoadingIndicator.small() else Icon(Icons.chevron_right, color: DesignTokens.textDisabled, size: 20),
                 ],
               ),
             ),
           ),
-          ),
         ),
+      ),
     );
   }
 
@@ -749,8 +627,8 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
-          ),
         ),
+      ),
     );
   }
 
@@ -762,20 +640,8 @@ class ProfileScreen extends ConsumerWidget {
     return Builder(
       builder: (context) {
         final headerPadding = ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl);
-        final avatarSize = ResponsiveBreakpoints.getValue<double>(
-          context: context,
-          mobile: 76.0,
-          mobilePlus: 86.0,
-          tablet: 96.0,
-          desktop: 106.0,
-        );
-        final fontSize = ResponsiveBreakpoints.getValue<double>(
-          context: context,
-          mobile: 32.0,
-          mobilePlus: 36.0,
-          tablet: 40.0,
-          desktop: 44.0,
-        );
+        final avatarSize = ResponsiveBreakpoints.getValue<double>(context: context, mobile: 76.0, mobilePlus: 86.0, tablet: 96.0, desktop: 106.0);
+        final fontSize = ResponsiveBreakpoints.getValue<double>(context: context, mobile: 32.0, mobilePlus: 36.0, tablet: 40.0, desktop: 44.0);
 
         return Container(
           clipBehavior: Clip.antiAlias,
@@ -803,9 +669,7 @@ class ProfileScreen extends ConsumerWidget {
                   height: 140,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [DesignTokens.accent.withValues(alpha: 0.28), Colors.transparent],
-                    ),
+                    gradient: RadialGradient(colors: [DesignTokens.accent.withValues(alpha: 0.28), Colors.transparent]),
                   ),
                 ),
               ),
@@ -818,9 +682,7 @@ class ProfileScreen extends ConsumerWidget {
                   height: 110,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [DesignTokens.tertiary.withValues(alpha: 0.22), Colors.transparent],
-                    ),
+                    gradient: RadialGradient(colors: [DesignTokens.tertiary.withValues(alpha: 0.22), Colors.transparent]),
                   ),
                 ),
               ),
@@ -841,9 +703,7 @@ class ProfileScreen extends ConsumerWidget {
                           height: avatarSize + 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isPremium
-                                ? DesignTokens.warning.withValues(alpha: 0.1)
-                                : Colors.white.withValues(alpha: 0.06),
+                            color: isPremium ? DesignTokens.warning.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
                           ),
                         ),
                         // Middle ring
@@ -873,19 +733,13 @@ class ProfileScreen extends ConsumerWidget {
                             border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2.5),
                             boxShadow: [
                               BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 22, offset: const Offset(0, 8)),
-                              if (isPremium)
-                                BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.35), blurRadius: 24, spreadRadius: 2),
+                              if (isPremium) BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.35), blurRadius: 24, spreadRadius: 2),
                             ],
                           ),
                           child: Center(
                             child: Text(
                               initials,
-                              style: TextStyle(
-                                fontSize: fontSize,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -2,
-                              ),
+                              style: TextStyle(fontSize: fontSize, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: -2),
                             ),
                           ),
                         ),
@@ -907,9 +761,7 @@ class ProfileScreen extends ConsumerWidget {
                                 boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.6), blurRadius: 8, spreadRadius: 1)],
                                 border: Border.all(color: Colors.white, width: 2),
                               ),
-                              child: const Center(
-                                child: Icon(Icons.workspace_premium, size: 14, color: Colors.white),
-                              ),
+                              child: const Center(child: Icon(Icons.workspace_premium, size: 14, color: Colors.white)),
                             ),
                           ),
                       ],
@@ -917,12 +769,7 @@ class ProfileScreen extends ConsumerWidget {
                     const SizedBox(height: 18),
                     Text(
                       userModel.name,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
-                      ),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 6),
@@ -944,20 +791,11 @@ class ProfileScreen extends ConsumerWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              isAdmin ? Icons.admin_panel_settings_rounded : Icons.storefront_rounded,
-                              color: Colors.white,
-                              size: 14,
-                            ),
+                            Icon(isAdmin ? Icons.admin_panel_settings_rounded : Icons.storefront_rounded, color: Colors.white, size: 14),
                             const SizedBox(width: 6),
                             Text(
                               isAdmin ? 'Admin' : 'Seller',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.8,
-                              ),
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8),
                             ),
                           ],
                         ),
@@ -975,71 +813,112 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
-    showDialog(context: context, builder: (context) => const _DeleteAccountDialog());
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
+      child: Text(
+        title,
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.8),
+      ),
+    );
   }
-}
 
-/// Profile completion bar shown inside the profile header card.
-/// 4 steps: name set · address added · notifications on · premium
-class _ProfileCompletionBar extends StatelessWidget {
-  final UserModel userModel;
-  /// Authoritative premium flag from subscriptionStreamProvider — never
-  /// use userModel.isPremium here as it can lag behind subscription updates.
-  final bool isPremium;
-  const _ProfileCompletionBar({required this.userModel, required this.isPremium});
+  Widget _buildThemeToggle(BuildContext context, bool isDark) {
+    final themeMode = this.themeMode;
 
-  @override
-  Widget build(BuildContext context) {
-    final steps = [
-      userModel.name.isNotEmpty, // Name set
-      userModel.address != null, // Address added
-      userModel.notifyNewProducts || userModel.notifyTrending, // Notifications
-      isPremium, // Premium — from subscriptionStreamProvider (authoritative)
-    ];
-    final completed = steps.where((s) => s).length;
-    final pct = completed / steps.length;
-
-    if (pct >= 1.0) return const SizedBox.shrink(); // 100% — hide bar
-
-    final pctInt = (pct * 100).round();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'profile.completion'.tr(),
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.4,
+    return Container(
+      key: const Key('profile_theme_button'),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Semantics(
+        label: 'menu-appearance',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                ),
+                child: Icon(
+                  themeMode == ThemeMode.dark
+                      ? Icons.dark_mode_rounded
+                      : themeMode == ThemeMode.light
+                      ? Icons.light_mode_rounded
+                      : Icons.brightness_auto_rounded,
+                  color: DesignTokens.primary,
+                  size: 20,
+                ),
               ),
-            ),
-            Text(
-              '$pctInt%',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'profile.theme'.tr(),
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text('profile.theme_desc'.tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: pct,
-            minHeight: 5,
-            backgroundColor: Colors.white.withValues(alpha: 0.15),
-            valueColor: const AlwaysStoppedAnimation<Color>(DesignTokens.accent),
+              const SizedBox(width: 8),
+              // 3-segment pill toggle: Light | System | Dark
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant,
+                  borderRadius: BorderRadius.circular(DesignTokens.radius20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ThemePill(
+                      icon: Icons.light_mode_rounded,
+                      label: 'profile.theme_light'.tr(),
+                      selected: themeMode == ThemeMode.light,
+                      isDark: isDark,
+                      onTap: () => onThemeChange(ThemeMode.light),
+                    ),
+                    _ThemePill(
+                      icon: Icons.brightness_auto_rounded,
+                      label: 'profile.theme_system'.tr(),
+                      selected: themeMode == ThemeMode.system,
+                      isDark: isDark,
+                      onTap: () => onThemeChange(ThemeMode.system),
+                    ),
+                    _ThemePill(
+                      icon: Icons.dark_mode_rounded,
+                      label: 'profile.theme_dark'.tr(),
+                      selected: themeMode == ThemeMode.dark,
+                      isDark: isDark,
+                      onTap: () => onThemeChange(ThemeMode.dark),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -1205,10 +1084,7 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'profile.verify_email_desc'.tr(),
-                        style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5),
-                      ),
+                      Text('profile.verify_email_desc'.tr(), style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, height: 1.5)),
                       const SizedBox(height: 16),
                       _buildStep('1', 'profile.verify_step_1'.tr()),
                       _buildStep('2', 'profile.verify_step_2'.tr()),
@@ -1316,11 +1192,7 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('profile.not_verified_error'.tr()),
-                backgroundColor: DesignTokens.warning,
-                behavior: SnackBarBehavior.floating,
-              ),
+              SnackBar(content: Text('profile.not_verified_error'.tr()), backgroundColor: DesignTokens.warning, behavior: SnackBarBehavior.floating),
             );
           }
         }
@@ -1363,6 +1235,62 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
   }
 }
 
+/// Profile completion bar shown inside the profile header card.
+/// 4 steps: name set · address added · notifications on · premium
+class _ProfileCompletionBar extends StatelessWidget {
+  final UserModel userModel;
+
+  /// Authoritative premium flag from subscriptionStreamProvider — never
+  /// use userModel.isPremium here as it can lag behind subscription updates.
+  final bool isPremium;
+  const _ProfileCompletionBar({required this.userModel, required this.isPremium});
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = [
+      userModel.name.isNotEmpty, // Name set
+      userModel.address != null, // Address added
+      userModel.notifyNewProducts || userModel.notifyTrending, // Notifications
+      isPremium, // Premium — from subscriptionStreamProvider (authoritative)
+    ];
+    final completed = steps.where((s) => s).length;
+    final pct = completed / steps.length;
+
+    if (pct >= 1.0) return const SizedBox.shrink(); // 100% — hide bar
+
+    final pctInt = (pct * 100).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'profile.completion'.tr(),
+              style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4),
+            ),
+            Text(
+              '$pctInt%',
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: pct,
+            minHeight: 5,
+            backgroundColor: Colors.white.withValues(alpha: 0.15),
+            valueColor: const AlwaysStoppedAnimation<Color>(DesignTokens.accent),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Single pill segment for the theme toggle row.
 class _ThemePill extends StatelessWidget {
   final IconData icon;
@@ -1371,13 +1299,7 @@ class _ThemePill extends StatelessWidget {
   final bool isDark;
   final VoidCallback onTap;
 
-  const _ThemePill({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.isDark,
-    required this.onTap,
-  });
+  const _ThemePill({required this.icon, required this.label, required this.selected, required this.isDark, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1386,36 +1308,9 @@ class _ThemePill extends StatelessWidget {
       child: AnimatedContainer(
         duration: DesignTokens.durationFast,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          gradient: selected ? DesignTokens.primaryGradient : null,
-          borderRadius: BorderRadius.circular(DesignTokens.radius20),
-        ),
-        child: Icon(
-          icon,
-          size: 16,
-          color: selected ? Colors.white : DesignTokens.textSecondary,
-        ),
+        decoration: BoxDecoration(gradient: selected ? DesignTokens.primaryGradient : null, borderRadius: BorderRadius.circular(DesignTokens.radius20)),
+        child: Icon(icon, size: 16, color: selected ? Colors.white : DesignTokens.textSecondary),
       ),
     );
   }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'ProfileScreen — Dark', group: 'ProfileScreen')
-Widget previewProfileScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const ProfileScreen(),
-      ),
-    );
-
-@Preview(name: 'ProfileScreen — Light', group: 'ProfileScreen')
-Widget previewProfileScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const ProfileScreen(),
-      ),
-    );

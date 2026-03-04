@@ -1984,7 +1984,7 @@ def _run_post_payment_side_effects(order_id: str, order_data: dict) -> None:
                                     "{oid}", oid_short_p
                                 )
                                 p_html = get_seller_notification_email(
-                                    order_data, order_id, p_seller_id, lang=p_lang, seller_email=p_seller_email
+                                    order_data, order_id, p_seller_id, lang=p_lang, seller_email=p_seller_email, is_urgent_perishable=True
                                 )
                                 enqueue_email_task(
                                     to_email=p_seller_email,

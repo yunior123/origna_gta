@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -305,20 +304,3 @@ class _ProductAvatar extends StatelessWidget {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-@Preview(name: 'ChatConversationsScreen — Dark', group: 'ChatConversationsScreen')
-Widget previewChatConversationsScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const ChatConversationsScreen(),
-      ),
-    );
-
-@Preview(name: 'ChatConversationsScreen — Light', group: 'ChatConversationsScreen')
-Widget previewChatConversationsScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const ChatConversationsScreen(),
-      ),
-    );

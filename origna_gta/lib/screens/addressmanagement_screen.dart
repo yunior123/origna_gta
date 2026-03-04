@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -458,20 +457,3 @@ class AddressManagementScreen extends ConsumerWidget {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-@Preview(name: 'AddressManagementScreen — Dark', group: 'AddressManagementScreen')
-Widget previewAddressManagementScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const AddressManagementScreen(),
-      ),
-    );
-
-@Preview(name: 'AddressManagementScreen — Light', group: 'AddressManagementScreen')
-Widget previewAddressManagementScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const AddressManagementScreen(),
-      ),
-    );

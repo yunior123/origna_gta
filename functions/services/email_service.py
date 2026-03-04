@@ -848,7 +848,7 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
     """
 
 
-def get_seller_notification_email(order_data, order_id=None, seller_id=None, lang: str = "en", seller_email: str = ""):
+def get_seller_notification_email(order_data, order_id=None, seller_id=None, lang: str = "en", seller_email: str = "", is_urgent_perishable: bool = False):
     """Generate HTML email for seller notification
 
     Args:
@@ -911,6 +911,35 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None, lan
         order_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
     customer_email = html.escape(order_data.get(Fields.CUSTOMER_EMAIL, "N/A"))
 
+    if is_urgent_perishable:
+        hero_bg = "#B91C1C"
+        hero_grad = "linear-gradient(135deg, #B91C1C 0%, #DC2626 40%, #EF4444 100%)"
+        hero_icon = "🚨"
+        hero_icon_bg = "rgba(254, 226, 226, 0.2)"
+        hero_title = _t("seller.hero_h_urgent", lang)
+        if hero_title == "seller.hero_h_urgent":
+            hero_title = "URGENT: PERISHABLE ORDER" if lang != "fr" else "URGENT : COMMANDE PÉRISSABLE"
+
+        hero_sub = _t("seller.hero_s_urgent", lang)
+        if hero_sub == "seller.hero_s_urgent":
+            hero_sub = "CFIA Compliance Required: Ship Today" if lang != "fr" else "Conformité ACIA requise : Expédier aujourd'hui"
+        urgent_banner_html = f"""
+        <!-- CFIA COMPLIANCE BANNER -->
+        <tr><td bgcolor="#FEF2F2" style="background-color: #FEF2F2; padding: 16px 40px; border-bottom: 2px solid #FECACA; text-align: center;">
+            <div style="font-size: 13px; font-weight: 700; color: #DC2626; letter-spacing: 0.5px; line-height: 1.5;">
+                🛑 COMPLIANCE NOTICE: This order contains perishable items. To meet CFIA safety regulations, you MUST fulfill and ship this order TODAY.<br/>Delayed shipping may result in liability and account suspension.
+            </div>
+        </td></tr>
+        """
+    else:
+        hero_bg = "#1F235A"
+        hero_grad = "linear-gradient(135deg, #1F235A 0%, #2F3B8F 40%, #764BA2 100%)"
+        hero_icon = "💰"
+        hero_icon_bg = "rgba(245, 158, 11, 0.2)"
+        hero_title = _t("seller.hero_h", lang)
+        hero_sub = _t("seller.hero_s", lang)
+        urgent_banner_html = ""
+
     return f"""
     <!DOCTYPE html>
     <html lang="{lang}">
@@ -928,17 +957,19 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None, lan
 
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(102, 126, 234, 0.15);">
 
+        {urgent_banner_html}
+
         <!-- HERO HEADER -->
-        <tr><td bgcolor="#1F235A" style="background-color: #1F235A; background-image: linear-gradient(135deg, #1F235A 0%, #2F3B8F 40%, #764BA2 100%); padding: 48px 40px 40px 40px; text-align: center;">
+        <tr><td bgcolor="{hero_bg}" style="background-color: {hero_bg}; background-image: {hero_grad}; padding: 48px 40px 40px 40px; text-align: center;">
             <div style="margin-bottom: 8px;">
                 <span style="font-size: 14px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,0.6);">O R I G N A</span>
             </div>
-            <!-- Ka-ching icon -->
-            <div style="width: 72px; height: 72px; margin: 16px auto; background: rgba(245, 158, 11, 0.2); border-radius: 50%; line-height: 72px; font-size: 36px;">
-                💰
+            <!-- icon -->
+            <div style="width: 72px; height: 72px; margin: 16px auto; background: {hero_icon_bg}; border-radius: 50%; line-height: 72px; font-size: 36px;">
+                {hero_icon}
             </div>
-            <h1 style="margin: 16px 0 8px 0; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">{_t("seller.hero_h", lang)}</h1>
-            <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.75);">{_t("seller.hero_s", lang)}</p>
+            <h1 style="margin: 16px 0 8px 0; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">{hero_title}</h1>
+            <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.75);">{hero_sub}</p>
 
             <!-- Stats row -->
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 28px;">
@@ -1327,7 +1358,20 @@ def get_order_item_shipped_email(
     safe_tracking = html.escape(str(tracking_number))
     safe_carrier = html.escape(str(carrier))
 
-    content = _hero_header("📦", _t("shipped.hero_h", lang), f"Items from order #{short_oid} are on their way!", "rgba(59, 130, 246, 0.2)")
+    # Detect if any of the items originated internationally
+    is_international = False
+    for item in shipped_items:
+        address = item.get(Fields.SELLER_ADDRESS, {})
+        country = str(address.get(Fields.COUNTRY, "Canada")).strip().lower()
+        if country and country not in ("canada", "ca"):
+            is_international = True
+            break
+
+    hero_sub_text = f"Items from order #{short_oid} are on their way!"
+    if is_international:
+        hero_sub_text += "<br/><br/><strong style='color: #4B5563;'>🌍 Note: This package is arriving from overseas.</strong><br/>International shipments typically require an additional 7+ business days for customs clearance and regional transport."
+
+    content = _hero_header("📦", _t("shipped.hero_h", lang), hero_sub_text, "rgba(59, 130, 246, 0.2)")
 
     # Tracking block
     t_tracking = _t("section.tracking", lang)

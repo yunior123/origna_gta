@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -600,20 +599,3 @@ class _PremiumMascotState extends State<_PremiumMascot> {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-@Preview(name: 'SubscriptionScreen — Dark', group: 'SubscriptionScreen')
-Widget previewSubscriptionScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const SubscriptionScreen(),
-      ),
-    );
-
-@Preview(name: 'SubscriptionScreen — Light', group: 'SubscriptionScreen')
-Widget previewSubscriptionScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const SubscriptionScreen(),
-      ),
-    );

@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,9 +30,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (state.isVerifying) {
-      return const Scaffold(
-        body: Center(child: ModernLoadingIndicator()),
-      );
+      return const Scaffold(body: Center(child: ModernLoadingIndicator()));
     }
 
     if (state.isSuccess) {
@@ -50,11 +47,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 children: [
                   const Icon(Icons.check_circle_outline, color: DesignTokens.success, size: 80),
                   const SizedBox(height: DesignTokens.spacing24),
-                  Text(
-                    'auth.reset_success_title'.tr(),
-                    style: Theme.of(context).textTheme.headlineSmall,
-                    textAlign: TextAlign.center,
-                  ),
+                  Text('auth.reset_success_title'.tr(), style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
                   const SizedBox(height: DesignTokens.spacing16),
                   Text(
                     'auth.reset_success_desc'.tr(),
@@ -65,10 +58,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   Semantics(
                     button: true,
                     label: 'reset_password_go_to_login_button',
-                    child: ModernButton(
-                      label: 'auth.go_to_login'.tr(),
-                      onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
-                    ),
+                    child: ModernButton(label: 'auth.go_to_login'.tr(), onPressed: () => Navigator.of(context).pushReplacementNamed('/')),
                   ),
                 ],
               ),
@@ -154,20 +144,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                         isLoading: state.isLoading,
                         onPressed: () => ref
                             .read(resetPasswordViewModelProvider(widget.oobCode).notifier)
-                            .resetPassword(
-                              _passwordController.text.trim(),
-                              _confirmController.text.trim(),
-                            ),
+                            .resetPassword(_passwordController.text.trim(), _confirmController.text.trim()),
                       ),
                     ),
                   ] else ...[
                     Semantics(
                       button: true,
                       label: 'reset_password_go_to_login_button',
-                      child: ModernButton(
-                        label: 'auth.go_to_login'.tr(),
-                        onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
-                      ),
+                      child: ModernButton(label: 'auth.go_to_login'.tr(), onPressed: () => Navigator.of(context).pushReplacementNamed('/')),
                     ),
                   ],
                 ],
@@ -186,23 +170,3 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     super.dispose();
   }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'ResetPasswordScreen — Dark', group: 'ResetPasswordScreen')
-Widget previewResetPasswordScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const ResetPasswordScreen(oobCode: 'preview-code'),
-      ),
-    );
-
-@Preview(name: 'ResetPasswordScreen — Light', group: 'ResetPasswordScreen')
-Widget previewResetPasswordScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const ResetPasswordScreen(oobCode: 'preview-code'),
-      ),
-    );

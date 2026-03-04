@@ -78,11 +78,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
       if (widget.shipFromProvince != null) widget.shipFromProvince!,
       if (widget.shipFromCountry != null) widget.shipFromCountry!,
       // If no individual address fields but a single country is provided in the list, use it
-      if (widget.shipFromCity == null &&
-          widget.shipFromCountry == null &&
-          countries != null &&
-          countries.length == 1)
-        countries[0],
+      if (widget.shipFromCity == null && widget.shipFromCountry == null && countries != null && countries.length == 1) countries[0],
     ];
     return parts.isEmpty ? '' : 'product.ships_from_label'.tr(namedArgs: {'locations': parts.join(', ')});
   }
@@ -98,17 +94,17 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
         scale: _scaleAnimation,
         child: Semantics(
           label: widget.compareAtPrice != null
-              ? 'product.a11y_on_sale'.tr(namedArgs: {
-                  'name': widget.productName,
-                  'price': '\$${widget.price.toStringAsFixed(2)}',
-                  'originalPrice': '\$${widget.compareAtPrice!.toStringAsFixed(2)}',
-                  'rating': widget.rating.toStringAsFixed(1),
-                })
-              : 'product.a11y_regular'.tr(namedArgs: {
-                  'name': widget.productName,
-                  'price': '\$${widget.price.toStringAsFixed(2)}',
-                  'rating': widget.rating.toStringAsFixed(1),
-                }),
+              ? 'product.a11y_on_sale'.tr(
+                  namedArgs: {
+                    'name': widget.productName,
+                    'price': '\$${widget.price.toStringAsFixed(2)}',
+                    'originalPrice': '\$${widget.compareAtPrice!.toStringAsFixed(2)}',
+                    'rating': widget.rating.toStringAsFixed(1),
+                  },
+                )
+              : 'product.a11y_regular'.tr(
+                  namedArgs: {'name': widget.productName, 'price': '\$${widget.price.toStringAsFixed(2)}', 'rating': widget.rating.toStringAsFixed(1)},
+                ),
           child: GestureDetector(
             onTap: widget.onTap,
             child: Container(
@@ -129,87 +125,74 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
+                              ),
                             ),
+                            child: widget.imageUrl.isNotEmpty
+                                ? ColorFiltered(
+                                    colorFilter: widget.isOutOfStock
+                                        ? const ColorFilter.mode(Colors.grey, BlendMode.saturation)
+                                        : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+                                    child: CachedNetworkImage(
+                                      imageUrl: widget.imageUrl,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => const SizedBox.shrink(),
+                                      errorWidget: (context, url, error) => Center(
+                                        child: Container(
+                                          width: 52,
+                                          height: 52,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: DesignTokens.primary.withValues(alpha: 0.12),
+                                            border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1.5),
+                                          ),
+                                          child: const Icon(Icons.camera_alt_outlined, color: DesignTokens.primary, size: 26),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Container(
+                                      width: 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: DesignTokens.primary.withValues(alpha: 0.12),
+                                        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1.5),
+                                      ),
+                                      child: const Icon(Icons.camera_alt_outlined, color: DesignTokens.primary, size: 26),
+                                    ),
+                                  ),
                           ),
-                          child: widget.imageUrl.isNotEmpty
-                              ? ColorFiltered(
-                                  colorFilter: widget.isOutOfStock
-                                      ? const ColorFilter.mode(Colors.grey, BlendMode.saturation)
-                                      : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
-                                  child: CachedNetworkImage(
-                                    imageUrl: widget.imageUrl,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => const SizedBox.shrink(),
-                                    errorWidget: (context, url, error) =>
-                                        Center(
-                                        child: Container(
-                                          width: 52,
-                                          height: 52,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: DesignTokens.primary.withValues(alpha: 0.12),
-                                            border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1.5),
-                                          ),
-                                          child: const Icon(Icons.camera_alt_outlined, color: DesignTokens.primary, size: 26),
-                                        ),
-                                      ),
-                                  ),
-                                )
-                              : Center(
-                                        child: Container(
-                                          width: 52,
-                                          height: 52,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: DesignTokens.primary.withValues(alpha: 0.12),
-                                            border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1.5),
-                                          ),
-                                          child: const Icon(Icons.camera_alt_outlined, color: DesignTokens.primary, size: 26),
-                                        ),
-                                      ),
-                        ),
-                        // SRCH-M1: Out of Stock overlay
-                        if (widget.isOutOfStock)
-                          Positioned.fill(
-                            child: Container(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              child: Center(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.7),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                                  ),
-                                  child: Text(
-                                    'product.out_of_stock_label'.tr(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1.2,
+                          // SRCH-M1: Out of Stock overlay
+                          if (widget.isOutOfStock)
+                            Positioned.fill(
+                              child: Container(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.7),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                    ),
+                                    child: Text(
+                                      'product.out_of_stock_label'.tr(),
+                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        // N-10: isTrending badge (HOT / RISING)
-                        if (widget.isTrending && !widget.isOutOfStock)
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: _TrendingBadge(
-                              score: widget.trendingScore,
-                              isCompact: false,
-                            ),
-                          ),
+                          // N-10: isTrending badge (HOT / RISING)
+                          if (widget.isTrending && !widget.isOutOfStock)
+                            Positioned(top: 8, left: 8, child: _TrendingBadge(score: widget.trendingScore, isCompact: false)),
                         ],
                       ),
                     ),
@@ -248,6 +231,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                       _shipFromLabel,
                                       style: TextStyle(fontSize: 11, color: DesignTokens.textTertiary),
                                       overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
                                     ),
                                   ),
                                 ],
@@ -272,27 +256,32 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '\$${widget.price.toStringAsFixed(2)}',
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.primary),
-                                    ),
-                                    if (widget.compareAtPrice != null)
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        '\$${widget.compareAtPrice!.toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: DesignTokens.textSecondary,
-                                          decoration: TextDecoration.lineThrough,
-                                          decorationColor: DesignTokens.error,
-                                        ),
+                                        '\$${widget.price.toStringAsFixed(2)}',
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.primary),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                  ],
+                                      if (widget.compareAtPrice != null)
+                                        Text(
+                                          '\$${widget.compareAtPrice!.toStringAsFixed(2)}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: DesignTokens.textSecondary,
+                                            decoration: TextDecoration.lineThrough,
+                                            decorationColor: DesignTokens.error,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                    ],
+                                  ),
                                 ),
-                                if (widget.onAddToCart != null && !widget.isOutOfStock)
+                                if (widget.onAddToCart != null && !widget.isOutOfStock) ...[
+                                  const SizedBox(width: 8),
                                   Semantics(
                                     button: true,
                                     label: 'common.add_to_cart_semantics'.tr(namedArgs: {'name': widget.productName}),
@@ -308,6 +297,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                       ),
                                     ),
                                   ),
+                                ],
                               ],
                             ),
                           ],
@@ -349,35 +339,19 @@ class _TrendingBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final isHot = score >= 50;
     final label = isHot ? 'product.trending_hot'.tr() : 'product.trending_rising'.tr();
-    final colors = isHot
-        ? [const Color(0xFFFF6B35), const Color(0xFFFF3D00)]
-        : [const Color(0xFF00BFA5), const Color(0xFF1DE9B6)];
+    final colors = isHot ? [const Color(0xFFFF6B35), const Color(0xFFFF3D00)] : [const Color(0xFF00BFA5), const Color(0xFF1DE9B6)];
     final glowColor = isHot ? const Color(0xFFFF6B35) : const Color(0xFF00BFA5);
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 5 : 7,
-        vertical: isCompact ? 2 : 3,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: isCompact ? 5 : 7, vertical: isCompact ? 2 : 3),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: colors),
         borderRadius: BorderRadius.circular(4),
-        boxShadow: [
-          BoxShadow(
-            color: glowColor.withValues(alpha: 0.45),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: glowColor.withValues(alpha: 0.45), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: isCompact ? 9 : 10,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-          letterSpacing: 0.3,
-        ),
+        style: TextStyle(fontSize: isCompact ? 9 : 10, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.3),
       ),
     );
   }

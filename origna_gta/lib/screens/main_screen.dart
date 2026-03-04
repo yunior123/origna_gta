@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -13,21 +12,6 @@ class MainScreen extends ConsumerStatefulWidget {
 
 class _MainScreenState extends ConsumerState<MainScreen> {
   bool _timedOut = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Safety timeout: if user profile takes more than 3 seconds, show home anyway
-    // This prevents infinite loading if Firestore is slow or unresponsive
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        final userProfileAsync = ref.read(userProfileProvider);
-        if (userProfileAsync.isLoading) {
-          setState(() => _timedOut = true);
-        }
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,24 +37,19 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       data: (userModel) => HomeScreen(userModel: userModel),
     );
   }
+
+  @override
+  void initState() {
+    super.initState();
+    // Safety timeout: if user profile takes more than 3 seconds, show home anyway
+    // This prevents infinite loading if Firestore is slow or unresponsive
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        final userProfileAsync = ref.read(userProfileProvider);
+        if (userProfileAsync.isLoading) {
+          setState(() => _timedOut = true);
+        }
+      }
+    });
+  }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'MainScreen — Dark', group: 'MainScreen')
-Widget previewMainScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const MainScreen(),
-      ),
-    );
-
-@Preview(name: 'MainScreen — Light', group: 'MainScreen')
-Widget previewMainScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const MainScreen(),
-      ),
-    );

@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -519,26 +518,3 @@ class _MessageInput extends StatelessWidget {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-@Preview(name: 'ChatScreen — Dark', group: 'ChatScreen')
-Widget previewChatScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const ChatScreen(
-          productId: 'preview-id',
-          productTitle: 'Preview Product',
-        ),
-      ),
-    );
-
-@Preview(name: 'ChatScreen — Light', group: 'ChatScreen')
-Widget previewChatScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const ChatScreen(
-          productId: 'preview-id',
-          productTitle: 'Preview Product',
-        ),
-      ),
-    );

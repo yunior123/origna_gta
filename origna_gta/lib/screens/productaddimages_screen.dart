@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,23 +15,79 @@ class ProductAddImages extends StatefulWidget {
   State<ProductAddImages> createState() => _ProductAddImagesState();
 }
 
+/// Individual image tile with overlay controls
+class _ImageTile extends StatelessWidget {
+  final ImageModel imageModel;
+  final int index;
+  final bool isPrimary;
+  final VoidCallback onRemove;
+
+  const _ImageTile({required this.imageModel, required this.index, required this.isPrimary, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Image
+        Container(
+          width: 110,
+          height: 110,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: isPrimary ? Border.all(color: DesignTokens.primary, width: 2) : Border.all(color: DesignTokens.outline.withValues(alpha: 0.2)),
+            boxShadow: DesignTokens.shadowSm,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(isPrimary ? 14 : 15),
+            child: Semantics(
+              image: true,
+              label: isPrimary ? 'product-image-cover' : 'product-image-${index + 1}',
+              child: Image.memory(imageModel.bytes, width: 110, height: 110, fit: BoxFit.cover, cacheWidth: 110, cacheHeight: 110),
+            ),
+          ),
+        ),
+        // Primary badge
+        if (isPrimary)
+          Positioned(
+            bottom: 6,
+            left: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(8)),
+              child: Text(
+                'product.cover'.tr(),
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        // Remove button
+        Positioned(
+          top: 4,
+          right: 4,
+          child: Semantics(
+            button: true,
+            label: 'btn-remove-image',
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: DesignTokens.error.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4)],
+                ),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ProductAddImagesState extends State<ProductAddImages> {
   late List<ImageModel> _imageModels;
-
-  @override
-  void initState() {
-    super.initState();
-    _imageModels = List<ImageModel>.from(widget.imageModels);
-  }
-
-  @override
-  void didUpdateWidget(covariant ProductAddImages oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Sync internal list when parent passes new images (e.g., after edit screen loads saved images)
-    if (widget.imageModels != oldWidget.imageModels) {
-      setState(() => _imageModels = List<ImageModel>.from(widget.imageModels));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,10 +132,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                       widget.onImagesChanged?.call(List.unmodifiable(_imageModels));
                     },
                     proxyDecorator: (child, index, animation) {
-                      return Material(
-                        color: Colors.transparent,
-                        child: child,
-                      );
+                      return Material(color: Colors.transparent, child: child);
                     },
                     itemBuilder: (context, index) {
                       final m = _imageModels[index];
@@ -119,21 +171,14 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                         decoration: BoxDecoration(
                           color: DesignTokens.surfaceVariant,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: DesignTokens.primary.withValues(alpha: 0.3),
-                            width: 1.5,
-                            strokeAlign: BorderSide.strokeAlignInside,
-                          ),
+                          border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.3), width: 1.5, strokeAlign: BorderSide.strokeAlignInside),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
                               padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                gradient: DesignTokens.primaryGradient,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(12)),
                               child: const Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 22),
                             ),
                             const SizedBox(height: 6),
@@ -152,6 +197,21 @@ class _ProductAddImagesState extends State<ProductAddImages> {
         ),
       ],
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant ProductAddImages oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync internal list when parent passes new images (e.g., after edit screen loads saved images)
+    if (widget.imageModels != oldWidget.imageModels) {
+      setState(() => _imageModels = List<ImageModel>.from(widget.imageModels));
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _imageModels = List<ImageModel>.from(widget.imageModels);
   }
 
   // FIX [MEDIUM] UX: Single-pick replaced with multi-image select — sellers can pick multiple
@@ -207,107 +267,3 @@ class _ProductAddImagesState extends State<ProductAddImages> {
     }
   }
 }
-
-/// Individual image tile with overlay controls
-class _ImageTile extends StatelessWidget {
-  final ImageModel imageModel;
-  final int index;
-  final bool isPrimary;
-  final VoidCallback onRemove;
-
-  const _ImageTile({
-    required this.imageModel,
-    required this.index,
-    required this.isPrimary,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Image
-        Container(
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: isPrimary
-                ? Border.all(color: DesignTokens.primary, width: 2)
-                : Border.all(color: DesignTokens.outline.withValues(alpha: 0.2)),
-            boxShadow: DesignTokens.shadowSm,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(isPrimary ? 14 : 15),
-            child: Semantics(
-              image: true,
-              label: isPrimary ? 'product-image-cover' : 'product-image-${index + 1}',
-              child: Image.memory(
-                imageModel.bytes,
-                width: 110,
-                height: 110,
-                fit: BoxFit.cover,
-                cacheWidth: 110,
-                cacheHeight: 110,
-              ),
-            ),
-          ),
-        ),
-        // Primary badge
-        if (isPrimary)
-          Positioned(
-            bottom: 6,
-            left: 6,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                gradient: DesignTokens.primaryGradient,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'product.cover'.tr(),
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        // Remove button
-        Positioned(
-          top: 4,
-          right: 4,
-          child: Semantics(
-            button: true,
-            label: 'btn-remove-image',
-            child: GestureDetector(
-            onTap: onRemove,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: DesignTokens.error.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4)],
-              ),
-              child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
-            ),
-          ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'ProductAddImages — Dark', group: 'ProductAddImages')
-Widget previewProductAddImagesDark() => MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
-      home: const ProductAddImages(imageModels: []),
-    );
-
-@Preview(name: 'ProductAddImages — Light', group: 'ProductAddImages')
-Widget previewProductAddImagesLight() => MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(),
-      home: const ProductAddImages(imageModels: []),
-    );

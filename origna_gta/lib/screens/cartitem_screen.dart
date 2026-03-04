@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -15,21 +14,13 @@ class CartItemScreen extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onRemove;
 
-  const CartItemScreen({
-    super.key,
-    required this.productId,
-    required this.cartItemId,
-    required this.item,
-    required this.onRemove,
-  });
+  const CartItemScreen({super.key, required this.productId, required this.cartItemId, required this.item, required this.onRemove});
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // Extract item fields using schema constants (static - won't rebuild on quantity change)
-    final imageUrlsList =
-        (item[Fields.imageUrls] as List<dynamic>?)?.cast<String>() ?? [];
-    final name =
-        item[Fields.name] as String? ?? 'product.product_fallback'.tr();
+    final imageUrlsList = (item[Fields.imageUrls] as List<dynamic>?)?.cast<String>() ?? [];
+    final name = item[Fields.name] as String? ?? 'product.product_fallback'.tr();
     final unitPrice = (item[Fields.price] ?? 0.0).toDouble();
     final isDigital = item[Fields.isDigital] as bool? ?? false;
     final buyerNote = item[Fields.buyerNote] as String?;
@@ -46,10 +37,7 @@ class CartItemScreen extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              DesignTokens.error.withValues(alpha: 0.8),
-              DesignTokens.error,
-            ],
+            colors: [DesignTokens.error.withValues(alpha: 0.8), DesignTokens.error],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
@@ -65,16 +53,10 @@ class CartItemScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDark ? DesignTokens.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : DesignTokens.outline.withValues(alpha: 0.5),
-          ),
+          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
-              color: DesignTokens.primary.withValues(
-                alpha: isDark ? 0.08 : 0.04,
-              ),
+              color: DesignTokens.primary.withValues(alpha: isDark ? 0.08 : 0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -92,11 +74,7 @@ class CartItemScreen extends StatelessWidget {
                 // Product image
                 ClipRRect(
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                  child: SizedBox(
-                    width: 80,
-                    height: 80,
-                    child: _buildImage(imageUrlsList, isDark),
-                  ),
+                  child: SizedBox(width: 80, height: 80, child: _buildImage(imageUrlsList, isDark)),
                 ),
                 const SizedBox(width: DesignTokens.spacing12),
                 // Name + price
@@ -106,13 +84,7 @@ class CartItemScreen extends StatelessWidget {
                     children: [
                       Text(
                         name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: isDark
-                              ? Colors.white
-                              : DesignTokens.textPrimary,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -120,23 +92,11 @@ class CartItemScreen extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(
-                              Icons.download_outlined,
-                              size: 11,
-                              color: DesignTokens.digital.withValues(
-                                alpha: 0.8,
-                              ),
-                            ),
+                            Icon(Icons.download_outlined, size: 11, color: DesignTokens.digital.withValues(alpha: 0.8)),
                             const SizedBox(width: 3),
                             Text(
                               'cart.digital_instant_delivery'.tr(),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: DesignTokens.digital.withValues(
-                                  alpha: 0.8,
-                                ),
-                                fontWeight: FontWeight.w500,
-                              ),
+                              style: TextStyle(fontSize: 11, color: DesignTokens.digital.withValues(alpha: 0.8), fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -145,22 +105,14 @@ class CartItemScreen extends StatelessWidget {
                       // Price display wrapped in Consumer - only this rebuilds when quantity changes
                       Consumer(
                         builder: (context, ref, _) {
-                          final quantityAsync = ref.watch(
-                            cartItemQuantityProvider(productId),
-                          );
+                          final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
                           final quantity = quantityAsync.valueOrNull ?? 1;
                           final totalPrice = unitPrice * quantity;
                           return ShaderMask(
-                            shaderCallback: (bounds) => DesignTokens
-                                .primaryGradient
-                                .createShader(bounds),
+                            shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
                             child: Text(
                               '\$${totalPrice.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
+                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white),
                             ),
                           );
                         },
@@ -168,20 +120,14 @@ class CartItemScreen extends StatelessWidget {
                       // Unit price hint when qty > 1
                       Consumer(
                         builder: (context, ref, _) {
-                          final quantityAsync = ref.watch(
-                            cartItemQuantityProvider(productId),
-                          );
+                          final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
                           final quantity = quantityAsync.valueOrNull ?? 1;
                           if (quantity <= 1) return const SizedBox.shrink();
                           return Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               '\$${unitPrice.toStringAsFixed(2)} ${'cart.each_suffix'.tr()}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: DesignTokens.textSecondary,
-                                fontWeight: FontWeight.w500,
-                              ),
+                              style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                             ),
                           );
                         },
@@ -194,9 +140,7 @@ class CartItemScreen extends StatelessWidget {
                   children: [
                     Consumer(
                       builder: (context, ref, _) {
-                        final quantityAsync = ref.watch(
-                          cartItemQuantityProvider(productId),
-                        );
+                        final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
                         final quantity = quantityAsync.valueOrNull ?? 0;
                         final cartController = ref.read(cartControllerProvider);
 
@@ -204,17 +148,9 @@ class CartItemScreen extends StatelessWidget {
 
                         return Container(
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.06)
-                                : DesignTokens.surfaceVariant,
-                            borderRadius: BorderRadius.circular(
-                              DesignTokens.radius12,
-                            ),
-                            border: Border.all(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : DesignTokens.outline.withValues(alpha: 0.6),
-                            ),
+                            color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.surfaceVariant,
+                            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : DesignTokens.outline.withValues(alpha: 0.6)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -222,33 +158,19 @@ class CartItemScreen extends StatelessWidget {
                               _QuantityButton(
                                 key: Key('cart_qty_minus_$productId'),
                                 icon: Icons.remove_rounded,
-                                onPressed: quantity > 1
-                                    ? () => cartController.updateQuantity(
-                                        cartItemId,
-                                        quantity - 1,
-                                      )
-                                    : null,
+                                onPressed: quantity > 1 ? () => cartController.updateQuantity(cartItemId, quantity - 1) : null,
                                 isDark: isDark,
                                 semanticLabel: 'btn-cart-qty-minus',
                               ),
                               AnimatedSwitcher(
                                 duration: DesignTokens.durationFast,
-                                transitionBuilder: (child, anim) =>
-                                    ScaleTransition(scale: anim, child: child),
+                                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
                                 child: Padding(
                                   key: ValueKey(quantity),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
                                   child: Text(
                                     '$quantity',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: isDark
-                                          ? Colors.white
-                                          : DesignTokens.textPrimary,
-                                    ),
+                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
                                   ),
                                 ),
                               ),
@@ -257,14 +179,11 @@ class CartItemScreen extends StatelessWidget {
                                 icon: Icons.add_rounded,
                                 onPressed: () async {
                                   // AUDIT FIX (H6): Show feedback if stock limit reached
-                                  final success = await cartController
-                                      .updateQuantity(cartItemId, quantity + 1);
+                                  final success = await cartController.updateQuantity(cartItemId, quantity + 1);
                                   if (!success && context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(
-                                          'cart.stock_limit_reached'.tr(),
-                                        ),
+                                        content: Text('cart.stock_limit_reached'.tr()),
                                         duration: const Duration(seconds: 2),
                                         behavior: SnackBarBehavior.floating,
                                       ),
@@ -282,11 +201,7 @@ class CartItemScreen extends StatelessWidget {
                     const SizedBox(height: DesignTokens.spacing8),
                     IconButton(
                       tooltip: 'cart.remove_from_cart'.tr(),
-                      icon: Icon(
-                        Icons.delete_outline_rounded,
-                        color: DesignTokens.error.withValues(alpha: 0.7),
-                        size: 20,
-                      ),
+                      icon: Icon(Icons.delete_outline_rounded, color: DesignTokens.error.withValues(alpha: 0.7), size: 20),
                       onPressed: onRemove,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -297,13 +212,8 @@ class CartItemScreen extends StatelessWidget {
                       builder: (context, ref, _) {
                         return IconButton(
                           tooltip: 'cart.save_for_later'.tr(),
-                          icon: Icon(
-                            Icons.bookmark_outline_rounded,
-                            color: DesignTokens.primary.withValues(alpha: 0.8),
-                            size: 20,
-                          ),
-                          onPressed: () =>
-                              _saveForLater(context, ref, productId, cartItemId),
+                          icon: Icon(Icons.bookmark_outline_rounded, color: DesignTokens.primary.withValues(alpha: 0.8), size: 20),
+                          onPressed: () => _saveForLater(context, ref, productId, cartItemId),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           splashRadius: 18,
@@ -322,32 +232,6 @@ class CartItemScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _saveForLater(
-    BuildContext context,
-    WidgetRef ref,
-    String productId,
-    String cartItemId,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final success = await ref
-        .read(cartControllerProvider)
-        .saveForLater(productId, cartItemId);
-    if (context.mounted) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'cart.saved_for_later'.tr()
-                : 'cart.save_for_later_error'.tr(),
-          ),
-          backgroundColor: success ? DesignTokens.success : DesignTokens.error,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-        ),
-      );
-    }
   }
 
   Widget _buildImage(List<String> imageUrlsList, bool isDark) {
@@ -380,15 +264,9 @@ class CartItemScreen extends StatelessWidget {
         imageUrl: imageUrlsList[0],
         fit: BoxFit.cover,
         placeholder: (context, url) => Shimmer.fromColors(
-          baseColor: isDark
-              ? DesignTokens.darkOutline
-              : DesignTokens.outlineVariant,
-          highlightColor: isDark
-              ? DesignTokens.darkSurfaceVariant
-              : DesignTokens.surface,
-          child: Container(
-            color: isDark ? DesignTokens.darkSurface : Colors.white,
-          ),
+          baseColor: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
+          highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
+          child: Container(color: isDark ? DesignTokens.darkSurface : Colors.white),
         ),
         errorWidget: (context, url, error) => Container(
           decoration: BoxDecoration(
@@ -424,23 +302,13 @@ class CartItemScreen extends StatelessWidget {
               imageUrl: imageUrlsList[index],
               fit: BoxFit.cover,
               placeholder: (context, url) => Shimmer.fromColors(
-                baseColor: isDark
-                    ? DesignTokens.darkSurface
-                    : DesignTokens.outlineVariant,
-                highlightColor: isDark
-                    ? DesignTokens.darkSurfaceVariant
-                    : DesignTokens.surface,
-                child: Container(
-                  color: isDark ? DesignTokens.darkSurface : Colors.white,
-                ),
+                baseColor: isDark ? DesignTokens.darkSurface : DesignTokens.outlineVariant,
+                highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
+                child: Container(color: isDark ? DesignTokens.darkSurface : Colors.white),
               ),
               errorWidget: (context, url, error) => Container(
                 color: isDark ? const Color(0xFF2A2A3E) : DesignTokens.surface,
-                child: Icon(
-                  Icons.image_not_supported_outlined,
-                  size: 24,
-                  color: DesignTokens.textDisabled,
-                ),
+                child: Icon(Icons.image_not_supported_outlined, size: 24, color: DesignTokens.textDisabled),
               ),
             );
           },
@@ -450,10 +318,7 @@ class CartItemScreen extends StatelessWidget {
           right: 4,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -461,11 +326,7 @@ class CartItemScreen extends StatelessWidget {
                 const SizedBox(width: 2),
                 Text(
                   '${imageUrlsList.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -485,19 +346,11 @@ class CartItemScreen extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.add_comment_outlined,
-                size: 14,
-                color: DesignTokens.primary,
-              ),
+              Icon(Icons.add_comment_outlined, size: 14, color: DesignTokens.primary),
               const SizedBox(width: 6),
               Text(
                 'cart.item_note_add'.tr(),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: DesignTokens.primary,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 12, color: DesignTokens.primary, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -518,31 +371,17 @@ class CartItemScreen extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.edit_note_outlined,
-              size: 16,
-              color: DesignTokens.textSecondary,
-            ),
+            Icon(Icons.edit_note_outlined, size: 16, color: DesignTokens.textSecondary),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'cart.item_note_label'.tr(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: DesignTokens.textSecondary,
-                    ),
-                  ),
+                  Text('cart.item_note_label'.tr(), style: TextStyle(fontSize: 10, color: DesignTokens.textSecondary)),
                   const SizedBox(height: 2),
                   Text(
                     buyerNote,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: DesignTokens.textPrimary,
-                      fontStyle: FontStyle.italic,
-                    ),
+                    style: TextStyle(fontSize: 12, color: DesignTokens.textPrimary, fontStyle: FontStyle.italic),
                   ),
                 ],
               ),
@@ -554,6 +393,21 @@ class CartItemScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _saveForLater(BuildContext context, WidgetRef ref, String productId, String cartItemId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final success = await ref.read(cartControllerProvider).saveForLater(productId, cartItemId);
+    if (context.mounted) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(success ? 'cart.saved_for_later'.tr() : 'cart.save_for_later_error'.tr()),
+          backgroundColor: success ? DesignTokens.success : DesignTokens.error,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
+  }
+
   void _showAddNoteSheet(BuildContext context, {String? initialNote}) {
     final controller = TextEditingController(text: initialNote);
     showModalBottomSheet(
@@ -561,12 +415,7 @@ class CartItemScreen extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          top: 24,
-          left: 20,
-          right: 20,
-        ),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 20, top: 24, left: 20, right: 20),
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -579,19 +428,10 @@ class CartItemScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  initialNote == null
-                      ? 'cart.item_note_add'.tr()
-                      : 'cart.item_note_edit'.tr(),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  initialNote == null ? 'cart.item_note_add'.tr() : 'cart.item_note_edit'.tr(),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: 'common.close'.tr(),
-                  onPressed: () => Navigator.pop(context),
-                ),
+                IconButton(icon: const Icon(Icons.close_rounded), tooltip: 'common.close'.tr(), onPressed: () => Navigator.pop(context)),
               ],
             ),
             const SizedBox(height: 16),
@@ -602,9 +442,7 @@ class CartItemScreen extends StatelessWidget {
               maxLines: 3,
               decoration: InputDecoration(
                 hintText: 'cart.item_note_hint'.tr(),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -615,24 +453,14 @@ class CartItemScreen extends StatelessWidget {
                     backgroundColor: DesignTokens.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () {
                     final note = controller.text.trim();
-                    ref
-                        .read(cartControllerProvider)
-                        .updateBuyerNote(cartItemId, note.isEmpty ? null : note);
+                    ref.read(cartControllerProvider).updateBuyerNote(cartItemId, note.isEmpty ? null : note);
                     Navigator.pop(context);
                   },
-                  child: Text(
-                    'cart.item_note_save'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: Text('cart.item_note_save'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 );
               },
             ),
@@ -650,13 +478,7 @@ class _QuantityButton extends StatelessWidget {
   final bool isDark;
   final String semanticLabel;
 
-  const _QuantityButton({
-    super.key,
-    required this.icon,
-    this.onPressed,
-    required this.isDark,
-    required this.semanticLabel,
-  });
+  const _QuantityButton({super.key, required this.icon, this.onPressed, required this.isDark, required this.semanticLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -677,46 +499,10 @@ class _QuantityButton extends StatelessWidget {
                 },
           child: Padding(
             padding: const EdgeInsets.all(6),
-            child: Icon(
-              icon,
-              size: 18,
-              color: isDisabled
-                  ? DesignTokens.textDisabled
-                  : (isDark ? Colors.white70 : DesignTokens.primary),
-            ),
+            child: Icon(icon, size: 18, color: isDisabled ? DesignTokens.textDisabled : (isDark ? Colors.white70 : DesignTokens.primary)),
           ),
         ),
       ),
     );
   }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'CartItemScreen — Dark', group: 'CartItemScreen')
-Widget previewCartItemScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: CartItemScreen(
-          productId: 'preview-id',
-          cartItemId: 'preview-cart-item-id',
-          item: const {'name': 'Preview Product', 'price': 9.99, 'quantity': 1},
-          onRemove: () {},
-        ),
-      ),
-    );
-
-@Preview(name: 'CartItemScreen — Light', group: 'CartItemScreen')
-Widget previewCartItemScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: CartItemScreen(
-          productId: 'preview-id',
-          cartItemId: 'preview-cart-item-id',
-          item: const {'name': 'Preview Product', 'price': 9.99, 'quantity': 1},
-          onRemove: () {},
-        ),
-      ),
-    );

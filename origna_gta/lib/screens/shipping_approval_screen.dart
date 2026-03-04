@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -496,20 +495,3 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-@Preview(name: 'ShippingApprovalScreen — Dark', group: 'ShippingApprovalScreen')
-Widget previewShippingApprovalScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const ShippingApprovalScreen(),
-      ),
-    );
-
-@Preview(name: 'ShippingApprovalScreen — Light', group: 'ShippingApprovalScreen')
-Widget previewShippingApprovalScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const ShippingApprovalScreen(),
-      ),
-    );

@@ -1,0 +1,66 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
+import 'package:origna_gta/previews/_preview_theme.dart';
+import 'package:origna_gta/widgets/modern_product_card.dart';
+
+@Preview(name: 'Modern Product Card — States', group: 'ModernProductCard')
+Widget previewProductCardStates() => previewGrid(
+  children: [
+    ModernProductCard(
+      productName: 'Limited Edition Winter Parka',
+      price: 299.00,
+      imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=3087&auto=format&fit=crop',
+      sellerName: 'Northern Gear',
+      onTap: () {},
+      isOutOfStock: true,
+    ),
+    ModernProductCard(
+      productName: 'Pacific Salmon Fillets (Fresh)',
+      price: 18.50,
+      imageUrl: '', // Empty URL to trigger placeholder
+      sellerName: 'Ocean Harvest',
+      rating: 4.5,
+      reviewCount: 22,
+      onTap: () {},
+      onAddToCart: () {},
+      shipFromCountries: const ['Canada', 'USA'],
+      isTrending: true,
+      trendingScore: 40, // Rising
+    ),
+  ],
+);
+
+@Preview(name: 'Modern Product Card — Variants', group: 'ModernProductCard')
+Widget previewProductCardVariants() => previewGrid(
+  children: [
+    ModernProductCard(
+      productName: 'Handmade Canadian Maple Syrup',
+      price: 24.99,
+      imageUrl: 'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?q=80&w=3087&auto=format&fit=crop',
+      sellerName: 'Maple Artisans Co.',
+      rating: 4.8,
+      reviewCount: 154,
+      onTap: () {},
+      onAddToCart: () {},
+      shipFromCity: 'Toronto',
+      shipFromProvince: 'ON',
+      shipFromCountry: 'Canada',
+    ),
+    ModernProductCard(
+      productName: 'Artisan Quebec Cheese Board',
+      price: 45.00,
+      compareAtPrice: 55.00,
+      imageUrl: 'https://images.unsplash.com/photo-1631451095765-2c91616fc9e6?q=80&w=3087&auto=format&fit=crop',
+      sellerName: 'Fromagerie de Quebec',
+      rating: 4.9,
+      reviewCount: 89,
+      onTap: () {},
+      onAddToCart: () {},
+      shipFromCity: 'Quebec City',
+      shipFromProvince: 'QC',
+      shipFromCountry: 'Canada',
+      isTrending: true,
+      trendingScore: 85,
+    ),
+  ],
+);

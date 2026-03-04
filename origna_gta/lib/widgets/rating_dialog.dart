@@ -2,15 +2,13 @@ import 'dart:typed_data';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/products/product_rating_viewmodel.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
-import 'package:origna_gta/core/routes.dart';
-import 'package:origna_gta/features/subscription/subscription_state.dart';
 
 /// Shows the rating dialog
 Future<void> showRatingDialog({
@@ -44,12 +42,6 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
   final List<Uint8List> _reviewImages = [];
   final _picker = ImagePicker();
   final _reviewTextController = TextEditingController();
-
-  @override
-  void dispose() {
-    _reviewTextController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,97 +102,19 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           button: true,
           label: 'rating.submit_label'.tr(),
           child: ElevatedButton(
-          onPressed: (_selectedRating == 0 || _isSubmitting) ? null : _submitRating,
-          style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
-          child: _isSubmitting
-              ? const ModernLoadingIndicator.small(color: Colors.white)
-              : Text('common.submit'.tr()),
-        ),
+            onPressed: (_selectedRating == 0 || _isSubmitting) ? null : _submitRating,
+            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
+            child: _isSubmitting ? const ModernLoadingIndicator.small(color: Colors.white) : Text('common.submit'.tr()),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildPhotoPicker(bool isPremium) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              'rating.add_photos'.tr(),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary),
-            ),
-            const SizedBox(width: 4),
-            if (isPremium)
-              Text('(${_reviewImages.length}/3)', style: const TextStyle(fontSize: 12, color: DesignTokens.textDisabled))
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  gradient: DesignTokens.primaryGradient,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text('common.premium'.tr(), style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (!isPremium)
-          Tooltip(
-            message: 'rating.upgrade_photos_tooltip'.tr(),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pushNamed(AppRoutes.subscription);
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                decoration: BoxDecoration(
-                  color: DesignTokens.surface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: DesignTokens.outlineVariant),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.lock_rounded, color: DesignTokens.textDisabled, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'rating.photos_premium_only'.tr(),
-                        style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded, color: DesignTokens.textDisabled, size: 18),
-                  ],
-                ),
-              ),
-            ),
-          )
-        else
-          Row(
-            children: [
-              ..._reviewImages.asMap().entries.map((entry) => _buildImageThumb(entry.key, entry.value)),
-              if (_reviewImages.length < 3)
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: DesignTokens.outlineVariant, style: BorderStyle.solid),
-                      borderRadius: BorderRadius.circular(8),
-                      color: DesignTokens.surface,
-                    ),
-                    child: const Icon(Icons.add_photo_alternate_outlined, color: DesignTokens.textSecondary, size: 28),
-                  ),
-                ),
-            ],
-          ),
-      ],
-    );
+  @override
+  void dispose() {
+    _reviewTextController.dispose();
+    super.dispose();
   }
 
   Widget _buildImageThumb(int index, Uint8List bytes) {
@@ -231,11 +145,83 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     );
   }
 
-  Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1200);
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    if (mounted) setState(() => _reviewImages.add(bytes));
+  Widget _buildPhotoPicker(bool isPremium) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'rating.add_photos'.tr(),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary),
+            ),
+            const SizedBox(width: 4),
+            if (isPremium)
+              Text('(${_reviewImages.length}/3)', style: const TextStyle(fontSize: 12, color: DesignTokens.textDisabled))
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(4)),
+                child: Text(
+                  'common.premium'.tr(),
+                  style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (!isPremium)
+          Tooltip(
+            message: 'rating.upgrade_photos_tooltip'.tr(),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamed(AppRoutes.subscription);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                decoration: BoxDecoration(
+                  color: DesignTokens.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: DesignTokens.outlineVariant),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_rounded, color: DesignTokens.textDisabled, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('rating.photos_premium_only'.tr(), style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: DesignTokens.textDisabled, size: 18),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          Row(
+            children: [
+              ..._reviewImages.asMap().entries.map((entry) => _buildImageThumb(entry.key, entry.value)),
+              if (_reviewImages.length < 3)
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: DesignTokens.outlineVariant, style: BorderStyle.solid),
+                      borderRadius: BorderRadius.circular(8),
+                      color: DesignTokens.surface,
+                    ),
+                    child: const Icon(Icons.add_photo_alternate_outlined, color: DesignTokens.textSecondary, size: 28),
+                  ),
+                ),
+            ],
+          ),
+      ],
+    );
   }
 
   Widget _buildStarRating() {
@@ -277,6 +263,13 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1200);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (mounted) setState(() => _reviewImages.add(bytes));
+  }
+
   Future<void> _submitRating() async {
     setState(() => _isSubmitting = true);
 
@@ -310,59 +303,3 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
 // NOTE: .tr() renders as raw keys in preview mode — acceptable.
 // NOTE: image_picker (dart:io) will throw on web — photo picker area renders as
 //       a disabled placeholder in preview; this is expected and acceptable.
-
-@Preview(name: 'Rating Dialog — Non-Premium', group: 'RatingDialog')
-Widget previewRatingDialogNonPremium() => ProviderScope(
-  overrides: [
-    subscriptionStreamProvider.overrideWith(
-      (_) => Stream.value(const SubscriptionInfo(status: 'inactive', isPremium: false)),
-    ),
-  ],
-  child: MaterialApp(
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData.dark().copyWith(
-      colorScheme: ColorScheme.dark(
-        primary: DesignTokens.primary,
-        surface: DesignTokens.darkSurface,
-      ),
-    ),
-    home: Scaffold(
-      backgroundColor: DesignTokens.darkBackground,
-      body: Center(
-        child: RatingDialog(
-          orderId: 'preview-order-123',
-          productId: 'preview-product-456',
-          productName: 'Handmade Canadian Maple Syrup',
-        ),
-      ),
-    ),
-  ),
-);
-
-@Preview(name: 'Rating Dialog — Premium', group: 'RatingDialog')
-Widget previewRatingDialogPremium() => ProviderScope(
-  overrides: [
-    subscriptionStreamProvider.overrideWith(
-      (_) => Stream.value(const SubscriptionInfo(status: 'active', isPremium: true)),
-    ),
-  ],
-  child: MaterialApp(
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData.dark().copyWith(
-      colorScheme: ColorScheme.dark(
-        primary: DesignTokens.primary,
-        surface: DesignTokens.darkSurface,
-      ),
-    ),
-    home: Scaffold(
-      backgroundColor: DesignTokens.darkBackground,
-      body: Center(
-        child: RatingDialog(
-          orderId: 'preview-order-456',
-          productId: 'preview-product-789',
-          productName: 'Artisan Quebec Cheese Board',
-        ),
-      ),
-    ),
-  ),
-);

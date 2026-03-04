@@ -28,7 +28,13 @@ class _EditDigitalTypeChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _EditDigitalTypeChip({super.key, required this.label, required this.icon, required this.selected, required this.onTap});
+  const _EditDigitalTypeChip({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +44,15 @@ class _EditDigitalTypeChip extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? DesignTokens.primary.withValues(alpha: 0.15) : Colors.transparent,
-          border: Border.all(color: selected ? DesignTokens.primary : DesignTokens.textSecondary.withValues(alpha: 0.3), width: selected ? 2 : 1),
+          color: selected
+              ? DesignTokens.primary.withValues(alpha: 0.15)
+              : Colors.transparent,
+          border: Border.all(
+            color: selected
+                ? DesignTokens.primary
+                : DesignTokens.textSecondary.withValues(alpha: 0.3),
+            width: selected ? 2 : 1,
+          ),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -48,7 +61,10 @@ class _EditDigitalTypeChip extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: selected ? DesignTokens.primary : null),
+              style: TextStyle(
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                color: selected ? DesignTokens.primary : null,
+              ),
             ),
           ],
         ),
@@ -104,14 +120,21 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(editProductViewModelProvider(widget.product));
-    final viewModel = ref.read(editProductViewModelProvider(widget.product).notifier);
+    final viewModel = ref.read(
+      editProductViewModelProvider(widget.product).notifier,
+    );
 
     // Listen for success or error
     ref.listen(editProductViewModelProvider(widget.product), (previous, next) {
       if (next.isSuccess) {
         _onUpdateSuccess();
       } else if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: DesignTokens.error,
+          ),
+        );
       }
     });
 
@@ -132,16 +155,26 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   TextFormField(
                     key: const Key('product_edit_name_field'),
                     controller: _nameController,
-                    decoration: InputDecoration(labelText: 'product.product_name'.tr(), prefixIcon: const Icon(Icons.shopping_bag_outlined)),
-                    validator: (value) => value?.isEmpty ?? true ? 'product.please_enter_name'.tr() : null,
+                    decoration: InputDecoration(
+                      labelText: 'product.product_name'.tr(),
+                      prefixIcon: const Icon(Icons.shopping_bag_outlined),
+                    ),
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'product.please_enter_name'.tr()
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     key: const Key('product_edit_description_field'),
                     controller: _descriptionController,
                     maxLines: 3,
-                    decoration: InputDecoration(labelText: 'product.description'.tr(), prefixIcon: const Icon(Icons.description_outlined)),
-                    validator: (value) => value?.isEmpty ?? true ? 'product.please_enter_description'.tr() : null,
+                    decoration: InputDecoration(
+                      labelText: 'product.description'.tr(),
+                      prefixIcon: const Icon(Icons.description_outlined),
+                    ),
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'product.please_enter_description'.tr()
+                        : null,
                   ),
                   const SizedBox(height: 16),
                   _buildSectionTitle('product.french_section_title'.tr()),
@@ -150,16 +183,26 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     decoration: BoxDecoration(
                       color: DesignTokens.canadaRed.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: DesignTokens.canadaRed.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: DesignTokens.canadaRed.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.canadaRed),
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 14,
+                          color: DesignTokens.canadaRed,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'product.french_section_subtitle'.tr(),
-                            style: TextStyle(fontSize: 12, color: DesignTokens.canadaRed, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: DesignTokens.canadaRed,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -193,9 +236,16 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                         child: TextFormField(
                           key: const Key('product_edit_price_field'),
                           controller: _priceController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: InputDecoration(labelText: 'product.price'.tr(), prefixIcon: const Icon(Icons.attach_money_outlined)),
-                          validator: (value) => value?.isEmpty ?? true ? 'product.please_enter_price'.tr() : null,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'product.price'.tr(),
+                            prefixIcon: const Icon(Icons.attach_money_outlined),
+                          ),
+                          validator: (value) => value?.isEmpty ?? true
+                              ? 'product.please_enter_price'.tr()
+                              : null,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -208,9 +258,15 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           decoration: InputDecoration(
                             labelText: 'product.stock'.tr(),
                             prefixIcon: const Icon(Icons.inventory_2_outlined),
-                            suffixText: state.isSoldOut ? 'product.sold_out'.tr() : null,
+                            suffixText: state.isSoldOut
+                                ? 'product.sold_out'.tr()
+                                : null,
                           ),
-                          validator: (value) => !state.isSoldOut && (value == null || value.isEmpty) ? 'product.enter_quantity'.tr() : null,
+                          validator: (value) =>
+                              !state.isSoldOut &&
+                                  (value == null || value.isEmpty)
+                              ? 'product.enter_quantity'.tr()
+                              : null,
                         ),
                       ),
                     ],
@@ -219,7 +275,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   TextFormField(
                     key: const Key('product_edit_compare_at_price_field'),
                     controller: _compareAtPriceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'product.compare_at_price'.tr(),
                       prefixIcon: const Icon(Icons.local_offer_outlined),
@@ -231,8 +289,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       if (v == null || v.isEmpty) return null; // optional
                       final cap = double.tryParse(v);
                       if (cap == null) return 'product.invalid_price'.tr();
-                      final currentPrice = double.tryParse(_priceController.text.trim()) ?? 0;
-                      if (cap <= currentPrice) return 'product.compare_at_price_must_be_higher'.tr();
+                      final currentPrice =
+                          double.tryParse(_priceController.text.trim()) ?? 0;
+                      if (cap <= currentPrice)
+                        return 'product.compare_at_price_must_be_higher'.tr();
                       return null;
                     },
                   ),
@@ -246,9 +306,16 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       hintText: 'product.tax_code_hint'.tr(),
                       helperText: 'product.stripe_tax_codes_body'.tr(),
                     ),
-                    validator: (v) => v == null || v.isEmpty || isValidTaxCode(v) ? null : 'product.invalid_tax_code'.tr(),
+                    validator: (v) =>
+                        v == null || v.isEmpty || isValidTaxCode(v)
+                        ? null
+                        : 'product.invalid_tax_code'.tr(),
                   ),
-                  _buildTappableInfoHint('product.tax_code_learn_more'.tr(), 'product.stripe_tax_codes'.tr(), 'product.stripe_tax_codes_body'.tr()),
+                  _buildTappableInfoHint(
+                    'product.tax_code_learn_more'.tr(),
+                    'product.stripe_tax_codes'.tr(),
+                    'product.stripe_tax_codes_body'.tr(),
+                  ),
                   const SizedBox(height: 12),
                   SwitchListTile(
                     title: Text('product.mark_sold_out'.tr()),
@@ -276,7 +343,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       key: const Key('editproduct_low_stock_threshold_field'),
                       controller: _lowStockThresholdController,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: 'product.low_stock_threshold'.tr(), prefixIcon: const Icon(Icons.warning_amber_rounded)),
+                      decoration: InputDecoration(
+                        labelText: 'product.low_stock_threshold'.tr(),
+                        prefixIcon: const Icon(Icons.warning_amber_rounded),
+                      ),
                     ),
                     const SizedBox(height: 4),
                   ],
@@ -288,14 +358,31 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     contentPadding: EdgeInsets.zero,
                     onChanged: viewModel.toggleDigital,
                   ),
-                  if (state.isDigital) ...[const SizedBox(height: 12), _buildEditDigitalSection(state, viewModel)],
+                  if (state.isDigital) ...[
+                    const SizedBox(height: 12),
+                    _buildEditDigitalSection(state, viewModel),
+                  ],
                   DropdownButtonFormField<String>(
                     key: const Key('product_edit_category_dropdown'),
-                    initialValue: _categoryController.text.isNotEmpty ? _categoryController.text : null,
-                    decoration: InputDecoration(labelText: 'product.category'.tr(), prefixIcon: const Icon(Icons.category_outlined)),
-                    items: productCategories.map((c) => DropdownMenuItem(value: c.categoryId.toString(), child: Text(c.name.tr()))).toList(),
-                    onChanged: (v) => setState(() => _categoryController.text = v ?? ''),
-                    validator: (v) => v == null ? 'product.select_category'.tr() : null,
+                    initialValue: _categoryController.text.isNotEmpty
+                        ? _categoryController.text
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: 'product.category'.tr(),
+                      prefixIcon: const Icon(Icons.category_outlined),
+                    ),
+                    items: productCategories
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c.categoryId.toString(),
+                            child: Text(c.name.tr()),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _categoryController.text = v ?? ''),
+                    validator: (v) =>
+                        v == null ? 'product.select_category'.tr() : null,
                   ),
                   const SizedBox(height: 24),
 
@@ -324,8 +411,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           Expanded(
                             child: TextFormField(
                               controller: _weightController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: InputDecoration(labelText: 'product.weight'.tr(), prefixIcon: const Icon(Icons.scale_outlined)),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: InputDecoration(
+                                labelText: 'product.weight'.tr(),
+                                prefixIcon: const Icon(Icons.scale_outlined),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -333,7 +426,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                             child: TextFormField(
                               controller: _shipDaysController,
                               keyboardType: TextInputType.number,
-                              decoration: InputDecoration(labelText: 'product.ship_days'.tr(), prefixIcon: const Icon(Icons.schedule_outlined)),
+                              decoration: InputDecoration(
+                                labelText: 'product.ship_days'.tr(),
+                                prefixIcon: const Icon(Icons.schedule_outlined),
+                              ),
                             ),
                           ),
                         ],
@@ -344,21 +440,27 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           Expanded(
                             child: TextFormField(
                               controller: _lengthController,
-                              decoration: InputDecoration(labelText: 'product.length_cm'.tr()),
+                              decoration: InputDecoration(
+                                labelText: 'product.length_cm'.tr(),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextFormField(
                               controller: _widthController,
-                              decoration: InputDecoration(labelText: 'product.width_cm'.tr()),
+                              decoration: InputDecoration(
+                                labelText: 'product.width_cm'.tr(),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextFormField(
                               controller: _heightController,
-                              decoration: InputDecoration(labelText: 'product.height_cm'.tr()),
+                              decoration: InputDecoration(
+                                labelText: 'product.height_cm'.tr(),
+                              ),
                             ),
                           ),
                         ],
@@ -370,9 +472,19 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                             child: TextFormField(
                               controller: _minOrderController,
                               keyboardType: TextInputType.number,
-                              decoration: InputDecoration(labelText: 'product.min_order_qty'.tr(), prefixIcon: const Icon(Icons.format_list_numbered)),
-                              validator: (value) => value?.isEmpty ?? true ? 'common.required'.tr() : null,
-                              onChanged: (v) => viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
+                              decoration: InputDecoration(
+                                labelText: 'product.min_order_qty'.tr(),
+                                prefixIcon: const Icon(
+                                  Icons.format_list_numbered,
+                                ),
+                              ),
+                              validator: (value) => value?.isEmpty ?? true
+                                  ? 'common.required'.tr()
+                                  : null,
+                              onChanged: (v) =>
+                                  viewModel.setMinimumOrderQuantity(
+                                    int.tryParse(v) ?? 1,
+                                  ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -396,27 +508,49 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   _buildSectionTitle('product.product_location'.tr()),
                   TextFormField(
                     controller: _streetController,
-                    decoration: InputDecoration(labelText: 'product.street_address'.tr(), prefixIcon: const Icon(Icons.location_on_outlined)),
+                    decoration: InputDecoration(
+                      labelText: 'product.street_address'.tr(),
+                      prefixIcon: const Icon(Icons.location_on_outlined),
+                    ),
                     onChanged: viewModel.onStreetChanged,
-                    validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
+                    validator: (v) =>
+                        v?.isEmpty ?? true ? 'common.required'.tr() : null,
                   ),
-                  if (state.showSuggestions && state.addressSuggestions.isNotEmpty) _buildAddressSuggestions(state, viewModel),
+                  if (state.showSuggestions &&
+                      state.addressSuggestions.isNotEmpty)
+                    _buildAddressSuggestions(state, viewModel),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
                           controller: _cityController,
-                          decoration: InputDecoration(labelText: 'product.city'.tr(), prefixIcon: const Icon(Icons.location_city_outlined)),
-                          validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
+                          decoration: InputDecoration(
+                            labelText: 'product.city'.tr(),
+                            prefixIcon: const Icon(
+                              Icons.location_city_outlined,
+                            ),
+                          ),
+                          validator: (v) => v?.isEmpty ?? true
+                              ? 'common.required'.tr()
+                              : null,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           initialValue: state.selectedProvince,
-                          decoration: InputDecoration(labelText: 'product.province'.tr()),
-                          items: _provinceNames.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.key))).toList(),
+                          decoration: InputDecoration(
+                            labelText: 'product.province'.tr(),
+                          ),
+                          items: _provinceNames.entries
+                              .map(
+                                (e) => DropdownMenuItem(
+                                  value: e.key,
+                                  child: Text(e.key),
+                                ),
+                              )
+                              .toList(),
                           onChanged: (v) => viewModel.setProvince(v!),
                         ),
                       ),
@@ -425,7 +559,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _postalCodeController,
-                    decoration: InputDecoration(labelText: 'product.postal_code'.tr(), prefixIcon: const Icon(Icons.pin_outlined)),
+                    decoration: InputDecoration(
+                      labelText: 'product.postal_code'.tr(),
+                      prefixIcon: const Icon(Icons.pin_outlined),
+                    ),
                     validator: _validatePostalCode,
                   ),
                   const SizedBox(height: 24),
@@ -439,7 +576,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   ProductAddVideo(
                     videoFile: state.videoFile,
                     existingVideoUrl: state.existingVideoUrl,
-                    onVideoAdded: (file, duration) => viewModel.setVideo(file, duration),
+                    onVideoAdded: (file, duration) =>
+                        viewModel.setVideo(file, duration),
                     onVideoRemoved: () => viewModel.removeVideo(),
                   ),
                   const SizedBox(height: 32),
@@ -452,15 +590,28 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       height: 50,
                       child: ElevatedButton(
                         key: const Key('product_edit_save_button'),
-                        onPressed: state.isLoading ? null : () => _handleSave(viewModel),
+                        onPressed: state.isLoading
+                            ? null
+                            : () => _handleSave(viewModel),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: DesignTokens.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: state.isLoading
-                            ? const ModernLoadingIndicator(color: Colors.white, centered: false)
-                            : Text('product.save_changes'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            ? const ModernLoadingIndicator(
+                                color: Colors.white,
+                                centered: false,
+                              )
+                            : Text(
+                                'product.save_changes'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                   ),
@@ -518,54 +669,112 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _descriptionController = TextEditingController(text: p.description);
     _descriptionFController = TextEditingController(text: p.descriptionF ?? '');
     _priceController = TextEditingController(text: p.price.toString());
-    _compareAtPriceController = TextEditingController(text: p.compareAtPrice?.toString() ?? '');
+    _compareAtPriceController = TextEditingController(
+      text: p.compareAtPrice?.toString() ?? '',
+    );
     _categoryController = TextEditingController(text: p.categoryId.toString());
-    _streetController = TextEditingController(text: p.sellerAddress?.street ?? '');
-    _apartmentController = TextEditingController(text: p.sellerAddress?.apartment ?? '');
-    _cityController = TextEditingController(text: p.sellerAddress?.city ?? p.shipFromCity ?? '');
-    _postalCodeController = TextEditingController(text: p.sellerAddress?.postalCode ?? '');
+    _streetController = TextEditingController(
+      text: p.sellerAddress?.street ?? '',
+    );
+    _apartmentController = TextEditingController(
+      text: p.sellerAddress?.apartment ?? '',
+    );
+    _cityController = TextEditingController(
+      text: p.sellerAddress?.city ?? p.shipFromCity ?? '',
+    );
+    _postalCodeController = TextEditingController(
+      text: p.sellerAddress?.postalCode ?? '',
+    );
     _stockController = TextEditingController(text: p.stockQuantity.toString());
-    _weightController = TextEditingController(text: p.weightKg?.toString() ?? '');
-    _lengthController = TextEditingController(text: p.lengthCm?.toString() ?? '');
+    _weightController = TextEditingController(
+      text: p.weightKg?.toString() ?? '',
+    );
+    _lengthController = TextEditingController(
+      text: p.lengthCm?.toString() ?? '',
+    );
     _widthController = TextEditingController(text: p.widthCm?.toString() ?? '');
-    _heightController = TextEditingController(text: p.heightCm?.toString() ?? '');
-    _shipDaysController = TextEditingController(text: p.estimatedShipDays.toString());
-    _minOrderController = TextEditingController(text: p.minimumOrderQuantity.toString());
+    _heightController = TextEditingController(
+      text: p.heightCm?.toString() ?? '',
+    );
+    _shipDaysController = TextEditingController(
+      text: p.estimatedShipDays.toString(),
+    );
+    _minOrderController = TextEditingController(
+      text: p.minimumOrderQuantity.toString(),
+    );
     _taxCodeController = TextEditingController(text: p.taxCode ?? '');
     final existingThreshold = p.inventory?.lowStockThreshold ?? 0;
     _lowStockAlertEnabled = existingThreshold > 0;
-    _lowStockThresholdController = TextEditingController(text: existingThreshold > 0 ? existingThreshold.toString() : '5');
-    _macosUrlController = TextEditingController(text: p.digitalBuilds?[DigitalPlatformValues.macos] ?? '');
-    _windowsUrlController = TextEditingController(text: p.digitalBuilds?[DigitalPlatformValues.windows] ?? '');
-    _linuxUrlController = TextEditingController(text: p.digitalBuilds?[DigitalPlatformValues.linux] ?? '');
+    _lowStockThresholdController = TextEditingController(
+      text: existingThreshold > 0 ? existingThreshold.toString() : '5',
+    );
+    _macosUrlController = TextEditingController(
+      text: p.digitalBuilds?[DigitalPlatformValues.macos] ?? '',
+    );
+    _windowsUrlController = TextEditingController(
+      text: p.digitalBuilds?[DigitalPlatformValues.windows] ?? '',
+    );
+    _linuxUrlController = TextEditingController(
+      text: p.digitalBuilds?[DigitalPlatformValues.linux] ?? '',
+    );
     _bookUrlController = TextEditingController(); // empty — server-side only
-    _deviceLimitController = TextEditingController(text: p.deviceLimit?.toString() ?? '');
+    _deviceLimitController = TextEditingController(
+      text: p.deviceLimit?.toString() ?? '',
+    );
 
     // Initialize delivery options
     final standardOpt = _findOption(
       p.deliveryOptions,
       'standard',
-      SellerDeliveryOption(type: 'standard', description: 'product.standard_delivery'.tr(), costCents: 0, estimatedDays: 5),
+      SellerDeliveryOption(
+        type: 'standard',
+        description: 'product.standard_delivery'.tr(),
+        costCents: 0,
+        estimatedDays: 5,
+      ),
     );
     final expressOpt = _findOption(
       p.deliveryOptions,
       'express',
-      SellerDeliveryOption(type: 'express', description: 'product.express_delivery'.tr(), costCents: 999, estimatedDays: 2),
+      SellerDeliveryOption(
+        type: 'express',
+        description: 'product.express_delivery'.tr(),
+        costCents: 999,
+        estimatedDays: 2,
+      ),
     );
     final sameDayOpt = _findOption(
       p.deliveryOptions,
       'same_day',
-      SellerDeliveryOption(type: 'same_day', description: 'product.same_day_delivery'.tr(), costCents: 1499, estimatedDays: 0),
+      SellerDeliveryOption(
+        type: 'same_day',
+        description: 'product.same_day_delivery'.tr(),
+        costCents: 1499,
+        estimatedDays: 0,
+      ),
     );
 
-    _standardDaysController = TextEditingController(text: standardOpt.estimatedDays.toString());
-    _standardPriceController = TextEditingController(text: (standardOpt.costCents / 100.0).toStringAsFixed(2));
-    _expressDaysController = TextEditingController(text: expressOpt.estimatedDays.toString());
-    _expressPriceController = TextEditingController(text: (expressOpt.costCents / 100.0).toStringAsFixed(2));
-    _sameDayPriceController = TextEditingController(text: (sameDayOpt.costCents / 100.0).toStringAsFixed(2));
+    _standardDaysController = TextEditingController(
+      text: standardOpt.estimatedDays.toString(),
+    );
+    _standardPriceController = TextEditingController(
+      text: (standardOpt.costCents / 100.0).toStringAsFixed(2),
+    );
+    _expressDaysController = TextEditingController(
+      text: expressOpt.estimatedDays.toString(),
+    );
+    _expressPriceController = TextEditingController(
+      text: (expressOpt.costCents / 100.0).toStringAsFixed(2),
+    );
+    _sameDayPriceController = TextEditingController(
+      text: (sameDayOpt.costCents / 100.0).toStringAsFixed(2),
+    );
   }
 
-  Widget _buildAddressSuggestions(EditProductState state, EditProductViewModel viewModel) {
+  Widget _buildAddressSuggestions(
+    EditProductState state,
+    EditProductViewModel viewModel,
+  ) {
     return Card(
       child: Column(
         children: state.addressSuggestions.map((s) {
@@ -574,7 +783,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             title: Text(props['formatted'] ?? ''),
             onTap: () {
               viewModel.selectAddress(s);
-              _streetController.text = props['street'] ?? props['formatted'] ?? '';
+              _streetController.text =
+                  props['street'] ?? props['formatted'] ?? '';
               _cityController.text = props['city'] ?? '';
               _postalCodeController.text = props['postcode'] ?? '';
             },
@@ -587,7 +797,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   Widget _buildApprovalStatusBanner() {
     final status = widget.product.lifecycleStatus;
     final reason = widget.product.approvalRejectionReason;
-    if (status == ProductLifecycleStatusValues.active || status == ProductLifecycleStatusValues.approved) return const SizedBox.shrink();
+    if (status == ProductLifecycleStatusValues.active ||
+        status == ProductLifecycleStatusValues.approved)
+      return const SizedBox.shrink();
 
     Color bgColor;
     Color textColor;
@@ -612,7 +824,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -624,9 +839,19 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontWeight: FontWeight.w700, color: textColor, fontSize: 13),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: textColor,
+                    fontSize: 13,
+                  ),
                 ),
-                ...[const SizedBox(height: 4), Text(subtitle, style: TextStyle(color: textColor, fontSize: 12))],
+                ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: textColor, fontSize: 12),
+                  ),
+                ],
               ],
             ),
           ),
@@ -635,7 +860,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 
-  Widget _buildDeliveryOptions(EditProductState state, EditProductViewModel viewModel) {
+  Widget _buildDeliveryOptions(
+    EditProductState state,
+    EditProductViewModel viewModel,
+  ) {
     return Card(
       elevation: 0,
       color: DesignTokens.surface,
@@ -686,7 +914,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     return Column(
       children: [
         SwitchListTile(
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
           value: enabled,
           onChanged: onToggle,
           activeThumbColor: DesignTokens.primary,
@@ -701,7 +932,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     child: TextFormField(
                       controller: daysController,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: unitLabel, isDense: true),
+                      decoration: InputDecoration(
+                        labelText: unitLabel,
+                        isDense: true,
+                      ),
                     ),
                   ),
                 if (extraController != null)
@@ -709,15 +943,23 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     child: TextFormField(
                       controller: extraController,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: unitLabel, isDense: true),
+                      decoration: InputDecoration(
+                        labelText: unitLabel,
+                        isDense: true,
+                      ),
                     ),
                   ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
                     controller: priceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(labelText: 'product.price_dollar'.tr(), isDense: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'product.price_dollar'.tr(),
+                      isDense: true,
+                    ),
                   ),
                 ),
               ],
@@ -727,7 +969,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 
-  Widget _buildEditDigitalSection(EditProductState state, EditProductViewModel viewModel) {
+  Widget _buildEditDigitalSection(
+    EditProductState state,
+    EditProductViewModel viewModel,
+  ) {
     return Column(
       key: const Key('editproduct_digital_section'),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -740,7 +985,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                 label: 'product.digital_type_software'.tr(),
                 icon: Icons.computer_outlined,
                 selected: state.digitalType == DigitalTypeValues.software,
-                onTap: () => viewModel.setDigitalType(DigitalTypeValues.software),
+                onTap: () =>
+                    viewModel.setDigitalType(DigitalTypeValues.software),
               ),
             ),
             const SizedBox(width: 8),
@@ -757,38 +1003,50 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         ),
         if (state.digitalType == DigitalTypeValues.software) ...[
           const SizedBox(height: 16),
-          Text('product.download_links'.tr(), style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'product.download_links'.tr(),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 4),
           _editUrlField(
             key: const Key('editproduct_macos_url'),
             label: 'product.mac_os_label'.tr(),
             controller: _macosUrlController,
-            onChanged: (v) => viewModel.setMacosDownloadUrl(v.isEmpty ? null : v),
+            onChanged: (v) =>
+                viewModel.setMacosDownloadUrl(v.isEmpty ? null : v),
           ),
           _editUrlField(
             key: const Key('editproduct_windows_url'),
             label: 'product.windows_label'.tr(),
             controller: _windowsUrlController,
-            onChanged: (v) => viewModel.setWindowsDownloadUrl(v.isEmpty ? null : v),
+            onChanged: (v) =>
+                viewModel.setWindowsDownloadUrl(v.isEmpty ? null : v),
           ),
           _editUrlField(
             key: const Key('editproduct_linux_url'),
             label: 'product.linux_label'.tr(),
             controller: _linuxUrlController,
-            onChanged: (v) => viewModel.setLinuxDownloadUrl(v.isEmpty ? null : v),
+            onChanged: (v) =>
+                viewModel.setLinuxDownloadUrl(v.isEmpty ? null : v),
           ),
           const SizedBox(height: 8),
           TextFormField(
             key: const Key('editproduct_device_limit'),
             controller: _deviceLimitController,
-            decoration: InputDecoration(labelText: 'product.device_limit_label'.tr(), hintText: 'product.device_limit_hint'.tr()),
+            decoration: InputDecoration(
+              labelText: 'product.device_limit_label'.tr(),
+              hintText: 'product.device_limit_hint'.tr(),
+            ),
             keyboardType: TextInputType.number,
             onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v)),
           ),
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[
           const SizedBox(height: 16),
-          Text('product.reenter_download_url_update'.tr(), style: const TextStyle(fontSize: 12, color: Colors.orange)),
+          Text(
+            'product.reenter_download_url_update'.tr(),
+            style: const TextStyle(fontSize: 12, color: Colors.orange),
+          ),
           const SizedBox(height: 6),
           _editUrlField(
             key: const Key('editproduct_book_url'),
@@ -801,7 +1059,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 
-  Widget _buildImageGrid(EditProductState state, EditProductViewModel viewModel) {
+  Widget _buildImageGrid(
+    EditProductState state,
+    EditProductViewModel viewModel,
+  ) {
     if (state.existingImageUrls.isEmpty) return const SizedBox.shrink();
     return SizedBox(
       height: 100,
@@ -815,14 +1076,20 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               width: 100,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(image: NetworkImage(state.existingImageUrls[index]), fit: BoxFit.cover),
+                image: DecorationImage(
+                  image: NetworkImage(state.existingImageUrls[index]),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             Positioned(
               top: 0,
               right: 8,
               child: IconButton(
-                icon: const Icon(Icons.remove_circle, color: DesignTokens.error),
+                icon: const Icon(
+                  Icons.remove_circle,
+                  color: DesignTokens.error,
+                ),
                 tooltip: 'product.remove_image'.tr(),
                 onPressed: () => viewModel.removeExistingImage(index),
               ),
@@ -838,7 +1105,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       padding: const EdgeInsets.only(bottom: 12, top: 4),
       child: Text(
         title,
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: DesignTokens.primary),
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: DesignTokens.primary,
+        ),
       ),
     );
   }
@@ -850,19 +1121,38 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         padding: const EdgeInsets.only(top: 6),
         child: Row(
           children: [
-            Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.info.withValues(alpha: 0.6)),
+            Icon(
+              Icons.info_outline_rounded,
+              size: 14,
+              color: DesignTokens.info.withValues(alpha: 0.6),
+            ),
             const SizedBox(width: 6),
             Expanded(
-              child: Text(shortText, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+              child: Text(
+                shortText,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: DesignTokens.textSecondary,
+                ),
+              ),
             ),
-            Icon(Icons.chevron_right_rounded, size: 14, color: DesignTokens.textDisabled),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 14,
+              color: DesignTokens.textDisabled,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _editUrlField({Key? key, required String label, required TextEditingController controller, required void Function(String) onChanged}) {
+  Widget _editUrlField({
+    Key? key,
+    required String label,
+    required TextEditingController controller,
+    required void Function(String) onChanged,
+  }) {
     return Padding(
       key: key,
       padding: const EdgeInsets.only(bottom: 10),
@@ -875,7 +1165,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 
-  SellerDeliveryOption _findOption(List<SellerDeliveryOption> options, String type, SellerDeliveryOption fallback) {
+  SellerDeliveryOption _findOption(
+    List<SellerDeliveryOption> options,
+    String type,
+    SellerDeliveryOption fallback,
+  ) {
     return options.firstWhere((o) => o.type == type, orElse: () => fallback);
   }
 
@@ -885,18 +1179,38 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     final state = ref.read(editProductViewModelProvider(widget.product));
 
     // Bug #6: Preserve existing quantityDiscounts/additionalItemCost/maxItemsPerShipment from product
-    final existingStandard = widget.product.deliveryOptions.where((o) => o.type == 'standard').firstOrNull;
-    final existingExpress = widget.product.deliveryOptions.where((o) => o.type == 'express').firstOrNull;
-    final existingQuantityDiscounts = existingStandard?.quantityDiscounts ?? existingExpress?.quantityDiscounts ?? const <ShippingQuantityDiscount>[];
-    final existingAdditionalItemCostCents = existingStandard?.additionalItemCostCents ?? existingExpress?.additionalItemCostCents ?? 0;
-    final existingMaxItems = existingStandard?.maxItemsPerShipment ?? existingExpress?.maxItemsPerShipment ?? 0;
+    final existingStandard = widget.product.deliveryOptions
+        .where((o) => o.type == 'standard')
+        .firstOrNull;
+    final existingExpress = widget.product.deliveryOptions
+        .where((o) => o.type == 'express')
+        .firstOrNull;
+    final existingQuantityDiscounts =
+        existingStandard?.quantityDiscounts ??
+        existingExpress?.quantityDiscounts ??
+        const <ShippingQuantityDiscount>[];
+    final existingAdditionalItemCostCents =
+        existingStandard?.additionalItemCostCents ??
+        existingExpress?.additionalItemCostCents ??
+        0;
+    final existingMaxItems =
+        existingStandard?.maxItemsPerShipment ??
+        existingExpress?.maxItemsPerShipment ??
+        0;
 
     List<SellerDeliveryOption> deliveryOptions;
     if (state.isDigital) {
       deliveryOptions = <SellerDeliveryOption>[];
     } else if (state.isLocalDeliveryOnly) {
       // Bug #2: Inject pickup option for local-only products
-      deliveryOptions = [SellerDeliveryOption(type: 'pickup', description: 'product.local_pickup_only'.tr(), estimatedDays: 0, costCents: 0)];
+      deliveryOptions = [
+        SellerDeliveryOption(
+          type: 'pickup',
+          description: 'product.local_pickup_only'.tr(),
+          estimatedDays: 0,
+          costCents: 0,
+        ),
+      ];
     } else {
       deliveryOptions = <SellerDeliveryOption>[
         if (state.standardEnabled)
@@ -904,7 +1218,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             type: 'standard',
             description: 'product.standard_delivery'.tr(),
             estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
-            costCents: ((double.tryParse(_standardPriceController.text) ?? 0.0) * 100).round(),
+            costCents:
+                ((double.tryParse(_standardPriceController.text) ?? 0.0) * 100)
+                    .round(),
             quantityDiscounts: existingQuantityDiscounts,
             additionalItemCostCents: existingAdditionalItemCostCents,
             maxItemsPerShipment: existingMaxItems,
@@ -914,7 +1230,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             type: 'express',
             description: 'product.express_delivery'.tr(),
             estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
-            costCents: ((double.tryParse(_expressPriceController.text) ?? 9.99) * 100).round(),
+            costCents:
+                ((double.tryParse(_expressPriceController.text) ?? 9.99) * 100)
+                    .round(),
             quantityDiscounts: existingQuantityDiscounts,
             additionalItemCostCents: existingAdditionalItemCostCents,
             maxItemsPerShipment: existingMaxItems,
@@ -924,19 +1242,30 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             type: 'same_day',
             description: 'product.same_day_delivery'.tr(),
             estimatedDays: 0,
-            costCents: ((double.tryParse(_sameDayPriceController.text) ?? 14.99) * 100).round(),
+            costCents:
+                ((double.tryParse(_sameDayPriceController.text) ?? 14.99) * 100)
+                    .round(),
           ),
       ];
     }
 
-    final existingInventory = widget.product.inventory ?? const InventoryConfig();
-    final updatedInventory = existingInventory.copyWith(lowStockThreshold: _lowStockAlertEnabled ? (int.tryParse(_lowStockThresholdController.text) ?? 5) : 0);
+    final existingInventory =
+        widget.product.inventory ?? const InventoryConfig();
+    final updatedInventory = existingInventory.copyWith(
+      lowStockThreshold: _lowStockAlertEnabled
+          ? (int.tryParse(_lowStockThresholdController.text) ?? 5)
+          : 0,
+    );
 
     viewModel.updateProduct(
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
-      nameF: _nameFController.text.trim().isEmpty ? null : _nameFController.text.trim(),
-      descriptionF: _descriptionFController.text.trim().isEmpty ? null : _descriptionFController.text.trim(),
+      nameF: _nameFController.text.trim().isEmpty
+          ? null
+          : _nameFController.text.trim(),
+      descriptionF: _descriptionFController.text.trim().isEmpty
+          ? null
+          : _descriptionFController.text.trim(),
       price: double.tryParse(_priceController.text.trim()) ?? 0,
       stock: int.tryParse(_stockController.text.trim()) ?? 0,
       categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
@@ -948,16 +1277,25 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       length: double.tryParse(_lengthController.text),
       width: double.tryParse(_widthController.text),
       height: double.tryParse(_heightController.text),
-      shipDays: state.isDigital ? 0 : int.tryParse(_shipDaysController.text) ?? 3,
+      shipDays: state.isDigital
+          ? 0
+          : int.tryParse(_shipDaysController.text) ?? 3,
       taxCode: _taxCodeController.text.trim(),
       deliveryOptions: deliveryOptions,
       inventory: updatedInventory,
-      compareAtPrice: _compareAtPriceController.text.trim().isEmpty ? null : double.tryParse(_compareAtPriceController.text.trim()),
+      compareAtPrice: _compareAtPriceController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_compareAtPriceController.text.trim()),
     );
   }
 
   void _onUpdateSuccess() {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('product.updated_success'.tr()), backgroundColor: DesignTokens.success));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('product.updated_success'.tr()),
+        backgroundColor: DesignTokens.success,
+      ),
+    );
     Navigator.pop(context, true);
   }
 
@@ -972,7 +1310,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         decoration: BoxDecoration(
           color: DesignTokens.textOnPrimary,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -982,28 +1326,53 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: DesignTokens.info.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.lightbulb_rounded, color: DesignTokens.info, size: 20),
+                  decoration: BoxDecoration(
+                    color: DesignTokens.info.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.lightbulb_rounded,
+                    color: DesignTokens.info,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: DesignTokens.darkSurface,
+                    ),
                   ),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pop(ctx),
                   child: Container(
                     padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(color: DesignTokens.surfaceVariant, shape: BoxShape.circle),
-                    child: const Icon(Icons.close_rounded, size: 16, color: DesignTokens.textSecondary),
+                    decoration: BoxDecoration(
+                      color: DesignTokens.surfaceVariant,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: DesignTokens.textSecondary,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Text(body, style: TextStyle(fontSize: 14, color: DesignTokens.darkSurface.withValues(alpha: 0.8), height: 1.5)),
+            Text(
+              body,
+              style: TextStyle(
+                fontSize: 14,
+                color: DesignTokens.darkSurface.withValues(alpha: 0.8),
+                height: 1.5,
+              ),
+            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -1013,10 +1382,15 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   backgroundColor: DesignTokens.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 0,
                 ),
-                child: Text('common.got_it'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(
+                  'common.got_it'.tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
@@ -1028,10 +1402,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   String? _validatePostalCode(String? v) {
     if (v == null || v.isEmpty) return 'common.required'.tr();
     final reg = RegExp(r'^[A-Z]\d[A-Z] \d[A-Z]\d$');
-    if (!reg.hasMatch(v.toUpperCase().trim())) return 'product.invalid_postal'.tr();
+    if (!reg.hasMatch(v.toUpperCase().trim()))
+      return 'product.invalid_postal'.tr();
     return null;
   }
 }
-
-// @Preview skipped — requires live auth/navigation context
-// EditProductScreen requires a fully-populated Product model (generated/freezed).

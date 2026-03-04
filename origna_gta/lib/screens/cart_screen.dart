@@ -1,5 +1,3 @@
-import 'package:flutter/widget_previews.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -1162,20 +1160,3 @@ extension CartItemDetailModelExtension on CartItemDetailModel {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-@Preview(name: 'CartScreen — Dark', group: 'CartScreen')
-Widget previewCartScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const CartScreen(),
-      ),
-    );
-
-@Preview(name: 'CartScreen — Light', group: 'CartScreen')
-Widget previewCartScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const CartScreen(),
-      ),
-    );

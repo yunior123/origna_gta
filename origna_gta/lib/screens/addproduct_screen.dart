@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1011,92 +1010,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
-  Widget _buildFrenchTranslationSection() {
-    return AnimatedContainer(
-      key: const Key('addproduct_section_french'),
-      duration: DesignTokens.durationNormal,
-      decoration: BoxDecoration(
-        color: DesignTokens.textOnPrimary,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: DesignTokens.outlineVariant),
-        boxShadow: DesignTokens.shadowSm,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [const Color(0xFF003087), const Color(0xFFEF3340)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.translate_rounded, color: Colors.white, size: 20),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'product.french_section_title'.tr(),
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3),
-                      ),
-                      const SizedBox(height: 2),
-                      Text('product.french_section_subtitle'.tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF3340).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFEF3340).withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    'Loi 96',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFFEF3340)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 24, indent: 20, endIndent: 20),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildGlassTextField(
-                  key: const Key('product_name_f_field'),
-                  controller: _nameFController,
-                  label: 'product.name_french'.tr(),
-                  icon: Icons.sell_rounded,
-                  hint: 'product.name_french_hint'.tr(),
-                ),
-                const SizedBox(height: 16),
-                _buildGlassTextField(
-                  key: const Key('product_description_f_field'),
-                  controller: _descriptionFController,
-                  label: 'product.description_french'.tr(),
-                  icon: Icons.notes_rounded,
-                  hint: 'product.description_french_hint'.tr(),
-                  maxLines: 3,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   List<SellerDeliveryOption> _buildDeliveryOptions(AddProductState state) {
     if (state.isDigital) return [];
 
@@ -1292,6 +1205,90 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildFrenchTranslationSection() {
+    return AnimatedContainer(
+      key: const Key('addproduct_section_french'),
+      duration: DesignTokens.durationNormal,
+      decoration: BoxDecoration(
+        color: DesignTokens.textOnPrimary,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: DesignTokens.outlineVariant),
+        boxShadow: DesignTokens.shadowSm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [const Color(0xFF003087), const Color(0xFFEF3340)]),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.translate_rounded, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'product.french_section_title'.tr(),
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3),
+                      ),
+                      const SizedBox(height: 2),
+                      Text('product.french_section_subtitle'.tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF3340).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFEF3340).withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    'Loi 96',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFFEF3340)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 24, indent: 20, endIndent: 20),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildGlassTextField(
+                  key: const Key('product_name_f_field'),
+                  controller: _nameFController,
+                  label: 'product.name_french'.tr(),
+                  icon: Icons.sell_rounded,
+                  hint: 'product.name_french_hint'.tr(),
+                ),
+                const SizedBox(height: 16),
+                _buildGlassTextField(
+                  key: const Key('product_description_f_field'),
+                  controller: _descriptionFController,
+                  label: 'product.description_french'.tr(),
+                  icon: Icons.notes_rounded,
+                  hint: 'product.description_french_hint'.tr(),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1805,7 +1802,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             gradient: (state.isLoading || state.isUploadingVideo) ? null : DesignTokens.primaryGradient,
             color: (state.isLoading || state.isUploadingVideo) ? DesignTokens.outline : null,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: (state.isLoading || state.isUploadingVideo) ? [] : [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
+            boxShadow: (state.isLoading || state.isUploadingVideo)
+                ? []
+                : [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
           ),
           child: Material(
             color: Colors.transparent,
@@ -2360,6 +2359,37 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
+  void _onSuccess() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        key: const Key('addproduct_success_snackbar'),
+        content: Row(
+          children: [
+            Icon(Icons.hourglass_top_rounded, color: DesignTokens.textOnPrimary, size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('product.under_review_title'.tr(), style: TextStyle(fontWeight: FontWeight.w700)),
+                  Text('product.under_review_subtitle'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.textOnPrimary.withValues(alpha: 0.7))),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: DesignTokens.warning, // FIX [LOW] Was hardcoded Color(0xFFF59E0B)
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 5),
+      ),
+    );
+    Navigator.pop(context);
+  }
+
   /// PROD-C1: Clears all text controllers so the form is blank when re-entering after a successful submit.
   void _resetControllers() {
     _nameController.clear();
@@ -2397,37 +2427,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     _shippingDiscount5Controller.clear();
     _additionalItemCostController.text = '0.00';
     _maxItemsPerShipmentController.text = '0';
-  }
-
-  void _onSuccess() {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        key: const Key('addproduct_success_snackbar'),
-        content: Row(
-          children: [
-            Icon(Icons.hourglass_top_rounded, color: DesignTokens.textOnPrimary, size: 20),
-            SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('product.under_review_title'.tr(), style: TextStyle(fontWeight: FontWeight.w700)),
-                  Text('product.under_review_subtitle'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.textOnPrimary.withValues(alpha: 0.7))),
-                ],
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: DesignTokens.warning, // FIX [LOW] Was hardcoded Color(0xFFF59E0B)
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 5),
-      ),
-    );
-    Navigator.pop(context);
   }
 
   // FIX [MEDIUM] Missing SafeArea: bottom sheet content was clipped on notched devices.
@@ -2883,23 +2882,3 @@ class _VariantRow extends StatelessWidget {
     );
   }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'AddProductScreen — Dark', group: 'AddProductScreen')
-Widget previewAddProductScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const AddProductScreen(),
-      ),
-    );
-
-@Preview(name: 'AddProductScreen — Light', group: 'AddProductScreen')
-Widget previewAddProductScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const AddProductScreen(),
-      ),
-    );

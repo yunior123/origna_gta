@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widget_previews.dart';
 
 import '../utils/design_tokens.dart';
 
@@ -29,10 +28,7 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.centerTitle = true,
     this.showBackButton = true,
     this.backgroundColor,
-  }) : assert(
-          !(showBackButton && leadingIcon != null),
-          'leadingIcon is ignored when showBackButton is true',
-        );
+  }) : assert(!(showBackButton && leadingIcon != null), 'leadingIcon is ignored when showBackButton is true');
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -108,107 +104,37 @@ class _NavBarItem extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-        duration: DesignTokens.durationNormal,
-        padding: EdgeInsets.symmetric(
-          horizontal: isActive ? DesignTokens.spacing16 : DesignTokens.spacing12,
-          vertical: DesignTokens.spacing12, // WCAG 2.5.8: 12+20+12=44dp ≈ 48dp
-        ),
-        decoration: BoxDecoration(
-          gradient: isActive
-              ? const LinearGradient(
-                  colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          boxShadow: isActive ? [BoxShadow(color: DesignTokens.gradientStart.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(item.icon, color: isActive ? Colors.white : DesignTokens.textSecondary, size: 20),
-            if (isActive) ...[
-              const SizedBox(width: DesignTokens.spacing8),
-              Text(
-                item.label,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 0.3),
-              ),
+          duration: DesignTokens.durationNormal,
+          padding: EdgeInsets.symmetric(
+            horizontal: isActive ? DesignTokens.spacing16 : DesignTokens.spacing12,
+            vertical: DesignTokens.spacing12, // WCAG 2.5.8: 12+20+12=44dp ≈ 48dp
+          ),
+          decoration: BoxDecoration(
+            gradient: isActive
+                ? const LinearGradient(
+                    colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            boxShadow: isActive ? [BoxShadow(color: DesignTokens.gradientStart.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(item.icon, color: isActive ? Colors.white : DesignTokens.textSecondary, size: 20),
+              if (isActive) ...[
+                const SizedBox(width: DesignTokens.spacing8),
+                Text(
+                  item.label,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 0.3),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
       ),
     );
   }
 }
-
-// ─── Flutter Widget Previews ─────────────────────────────────────────────────
-
-final _navItems = [
-  BottomNavItem(icon: Icons.home_rounded, label: 'Home'),
-  BottomNavItem(icon: Icons.search_rounded, label: 'Search'),
-  BottomNavItem(icon: Icons.favorite_border_rounded, label: 'Favorites'),
-  BottomNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
-];
-
-@Preview(name: 'AppBar — No Back Button', group: 'ModernAppBar')
-Widget previewAppBarMain() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    appBar: ModernAppBar(title: 'OrignaGTA', showBackButton: false),
-    body: const SizedBox.shrink(),
-  ),
-);
-
-@Preview(name: 'AppBar — With Back Button', group: 'ModernAppBar')
-Widget previewAppBarBack() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    appBar: ModernAppBar(title: 'Product Details'),
-    body: const SizedBox.shrink(),
-  ),
-);
-
-@Preview(name: 'AppBar — With Actions', group: 'ModernAppBar')
-Widget previewAppBarActions() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    appBar: ModernAppBar(
-      title: 'My Orders',
-      showBackButton: false,
-      actions: [
-        IconButton(icon: const Icon(Icons.filter_list_rounded), onPressed: null, tooltip: 'Filter'),
-      ],
-    ),
-    body: const SizedBox.shrink(),
-  ),
-);
-
-@Preview(name: 'BottomNavBar — Home Active', group: 'ModernAppBar')
-Widget previewBottomNavHome() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    bottomNavigationBar: ModernBottomNavBar(currentIndex: 0, onIndexChanged: (_) {}, items: _navItems),
-    body: const SizedBox.shrink(),
-  ),
-);
-
-@Preview(name: 'BottomNavBar — Search Active', group: 'ModernAppBar')
-Widget previewBottomNavSearch() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    bottomNavigationBar: ModernBottomNavBar(currentIndex: 1, onIndexChanged: (_) {}, items: _navItems),
-    body: const SizedBox.shrink(),
-  ),
-);

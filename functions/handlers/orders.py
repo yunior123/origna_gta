@@ -2607,7 +2607,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                                         "{oid}", _oid_short_p
                                     )
                                     _p_html = get_seller_notification_email(
-                                        after_data, order_id, _p_seller_id, lang=_p_lang, seller_email=_p_email
+                                        after_data, order_id, _p_seller_id, lang=_p_lang, seller_email=_p_email, is_urgent_perishable=True
                                     )
                                     enqueue_email_task(
                                         to_email=_p_email,

@@ -133,35 +133,62 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                       itemBuilder: (context, index) {
                                         return ColorFiltered(
                                           colorFilter: isOutOfStock
-                                              ? const ColorFilter.mode(Colors.grey, BlendMode.saturation)
-                                              : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+                                              ? const ColorFilter.mode(
+                                                  Colors.grey,
+                                                  BlendMode.saturation,
+                                                )
+                                              : const ColorFilter.mode(
+                                                  Colors.transparent,
+                                                  BlendMode.multiply,
+                                                ),
                                           child: CachedNetworkImage(
                                             imageUrl:
-                                                isValidImageUrl(imageUrls[index])
+                                                isValidImageUrl(
+                                                  imageUrls[index],
+                                                )
                                                 ? imageUrls[index]
                                                 : '',
                                             fit: BoxFit.cover,
                                             placeholder: (context, url) =>
                                                 Shimmer.fromColors(
-                                                  baseColor:
-                                                      DesignTokens.outlineVariant,
+                                                  baseColor: DesignTokens
+                                                      .outlineVariant,
                                                   highlightColor:
                                                       DesignTokens.surface,
                                                   child: Container(
                                                     color: Colors.white,
                                                   ),
                                                 ),
-                                            errorWidget: (context, url, error) =>
-                                                Container(
-                                                  decoration: const BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
-                                                      begin: Alignment.topLeft,
-                                                      end: Alignment.bottomRight,
-                                                    ),
-                                                  ),
+                                            errorWidget:
+                                                (
+                                                  context,
+                                                  url,
+                                                  error,
+                                                ) => Container(
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                          colors: [
+                                                            DesignTokens
+                                                                .gradientStart,
+                                                            DesignTokens
+                                                                .gradientMiddle,
+                                                          ],
+                                                          begin:
+                                                              Alignment.topLeft,
+                                                          end: Alignment
+                                                              .bottomRight,
+                                                        ),
+                                                      ),
                                                   child: Center(
-                                                    child: Icon(Icons.camera_alt_outlined, size: isCompact ? 24 : 36, color: Colors.white.withValues(alpha: 0.8)),
+                                                    child: Icon(
+                                                      Icons.camera_alt_outlined,
+                                                      size: isCompact ? 24 : 36,
+                                                      color: Colors.white
+                                                          .withValues(
+                                                            alpha: 0.8,
+                                                          ),
+                                                    ),
                                                   ),
                                                 ),
                                           ),
@@ -171,17 +198,30 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                     if (isOutOfStock)
                                       Positioned.fill(
                                         child: Container(
-                                          color: Colors.black.withValues(alpha: 0.3),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.3,
+                                          ),
                                           child: Center(
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 6,
+                                                  ),
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withValues(alpha: 0.7),
-                                                borderRadius: BorderRadius.circular(20),
-                                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.7,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.2),
+                                                ),
                                               ),
                                               child: Text(
-                                                'product.out_of_stock_label'.tr(),
+                                                'product.out_of_stock_label'
+                                                    .tr(),
                                                 style: const TextStyle(
                                                   color: Colors.white,
                                                   fontSize: 10,
@@ -225,13 +265,22 @@ class _ProductCardState extends ConsumerState<ProductCard>
                               : Container(
                                   decoration: const BoxDecoration(
                                     gradient: LinearGradient(
-                                      colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
+                                      colors: [
+                                        DesignTokens.gradientStart,
+                                        DesignTokens.gradientMiddle,
+                                      ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
                                   ),
                                   child: Center(
-                                    child: Icon(Icons.camera_alt_outlined, size: isCompact ? 24 : 36, color: Colors.white.withValues(alpha: 0.8)),
+                                    child: Icon(
+                                      Icons.camera_alt_outlined,
+                                      size: isCompact ? 24 : 36,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                    ),
                                   ),
                                 ),
                         ),
@@ -239,7 +288,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                     ),
                     // N-10: Trending badge (HOT = score≥50, RISING = score<50)
                     // Rank badge replaces trending badge for top-3; others show trending badge
-                    if (widget.trendingRank != null && widget.trendingRank! <= 3)
+                    if (widget.trendingRank != null &&
+                        widget.trendingRank! <= 3)
                       Positioned(
                         top: isCompact ? 4 : 8,
                         left: isCompact ? 4 : 8,
@@ -363,7 +413,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                             ],
                           ),
                         ),
-                      if (widget.product.isTrending && widget.product.viewCount > 0)
+                      if (widget.product.isTrending &&
+                          widget.product.viewCount > 0)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 2),
                           child: Row(
@@ -376,7 +427,13 @@ class _ProductCardState extends ConsumerState<ProductCard>
                               ),
                               const SizedBox(width: 3),
                               Text(
-                                'product.social_proof_views'.tr(namedArgs: {'count': _formatViewCount(widget.product.viewCount)}),
+                                'product.social_proof_views'.tr(
+                                  namedArgs: {
+                                    'count': _formatViewCount(
+                                      widget.product.viewCount,
+                                    ),
+                                  },
+                                ),
                                 style: TextStyle(
                                   fontSize: isCompact ? 9 : 10,
                                   color: DesignTokens.statusInTransit,
@@ -424,7 +481,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (widget.product.compareAtPrice != null && widget.product.compareAtPrice! > price)
+                                if (widget.product.compareAtPrice != null &&
+                                    widget.product.compareAtPrice! > price)
                                   Text(
                                     '\$${widget.product.compareAtPrice!.toStringAsFixed(2)}',
                                     style: TextStyle(
@@ -439,7 +497,10 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: priceFontSize,
-                                    color: widget.product.compareAtPrice != null && widget.product.compareAtPrice! > price
+                                    color:
+                                        widget.product.compareAtPrice != null &&
+                                            widget.product.compareAtPrice! >
+                                                price
                                         ? DesignTokens.error
                                         : DesignTokens.primary,
                                   ),
@@ -484,7 +545,8 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                           content: Text(
                                             success
                                                 ? 'cart.added_to_cart'.tr()
-                                                : 'cart.add_to_cart_failed'.tr(),
+                                                : 'cart.add_to_cart_failed'
+                                                      .tr(),
                                           ),
                                           backgroundColor: success
                                               ? DesignTokens.success
@@ -790,14 +852,11 @@ class _DeliveryEstimate extends StatelessWidget {
     }
 
     if (product.isLocalDeliveryOnly) {
-      return _chip(
-        'product.delivery_local'.tr(),
-        DesignTokens.info,
-        fontSize,
-      );
+      return _chip('product.delivery_local'.tr(), DesignTokens.info, fontSize);
     }
 
-    final isInternational = product.shipFromCountry != null &&
+    final isInternational =
+        product.shipFromCountry != null &&
         product.shipFromCountry!.isNotEmpty &&
         product.shipFromCountry!.toUpperCase() != 'CA' &&
         product.shipFromCountry!.toUpperCase() != 'CANADA';
@@ -806,16 +865,18 @@ class _DeliveryEstimate extends StatelessWidget {
       final int min = product.estimatedShipDays;
       final int max = min + 10;
       return _chip(
-        'product.delivery_intl_days'
-            .tr(namedArgs: {'min': '$min', 'max': '$max'}),
+        'product.delivery_intl_days'.tr(
+          namedArgs: {'min': '$min', 'max': '$max'},
+        ),
         DesignTokens.textSecondary,
         fontSize,
       );
     }
 
     // Standard Canadian delivery estimate: estimatedShipDays + 2 transit days.
-    final deliveryDate =
-        DateTime.now().add(Duration(days: product.estimatedShipDays + 2));
+    final deliveryDate = DateTime.now().add(
+      Duration(days: product.estimatedShipDays + 2),
+    );
     final formatted = DateFormat('MMM d').format(deliveryDate);
     return _chip(
       'product.delivery_get_by'.tr(namedArgs: {'date': formatted}),
@@ -896,11 +957,15 @@ class _TrendingBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isHot = score >= 50;
-    final label = isHot ? 'product.trending_hot'.tr() : 'product.trending_rising'.tr();
+    final label = isHot
+        ? 'product.trending_hot'.tr()
+        : 'product.trending_rising'.tr();
     final colors = isHot
         ? [DesignTokens.tertiary, const Color(0xFFFF3D00)]
         : [DesignTokens.statusInTransit, DesignTokens.accent];
-    final glowColor = isHot ? DesignTokens.tertiary : DesignTokens.statusInTransit;
+    final glowColor = isHot
+        ? DesignTokens.tertiary
+        : DesignTokens.statusInTransit;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -930,6 +995,3 @@ class _TrendingBadge extends StatelessWidget {
     );
   }
 }
-
-// @Preview skipped — requires live auth/navigation context
-// ProductCard requires a fully-populated Product (generated/freezed) model.

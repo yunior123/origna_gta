@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +6,10 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+
 import '../features/profile/address_viewmodel.dart';
+
+// ─── Flutter Previews ────────────────────────────────────────────────────────
 
 class AddEditAddressScreen extends ConsumerStatefulWidget {
   final Address? address;
@@ -24,29 +26,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _phoneController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.address != null) {
-      _streetController.text = widget.address!.street;
-      _cityController.text = widget.address!.city;
-      _postalCodeController.text = widget.address!.postalCode;
-      _apartmentController.text = widget.address!.apartment;
-      _phoneController.text = widget.address!.phoneNumber ?? '';
-    }
-    Future.microtask(() => ref.read(addressViewModelProvider.notifier).setInitialData(widget.address));
-  }
-
-  @override
-  void dispose() {
-    _streetController.dispose();
-    _apartmentController.dispose();
-    _cityController.dispose();
-    _postalCodeController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,9 +58,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     });
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: DesignTokens.backgroundGradient(isDark: isDark),
-      ),
+      decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: widget.address == null ? 'address.add_address'.tr() : 'address.edit_address'.tr()),
         backgroundColor: Colors.transparent,
@@ -102,30 +79,32 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       spacing: 10,
                       children: [AddressLabelValues.home, AddressLabelValues.work, AddressLabelValues.other].map((label) {
                         final isSelected = state.selectedLabel == label;
-                        final displayLabel = label == AddressLabelValues.home ? 'address.home'.tr() : label == AddressLabelValues.work ? 'address.work'.tr() : 'address.other'.tr();
+                        final displayLabel = label == AddressLabelValues.home
+                            ? 'address.home'.tr()
+                            : label == AddressLabelValues.work
+                            ? 'address.work'.tr()
+                            : 'address.other'.tr();
                         return Semantics(
                           button: true,
                           label: 'chip-address-label-${label.toLowerCase()}',
                           selected: isSelected,
                           child: ChoiceChip(
-                          label: Text(displayLabel),
-                          selected: isSelected,
-                          onSelected: (selected) => viewModel.setLabel(label),
-                          selectedColor: DesignTokens.primary,
-                          backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : (isDark ? Colors.white : DesignTokens.textPrimary),
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                            side: BorderSide(
-                              color: isSelected ? DesignTokens.primary : (isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
+                            label: Text(displayLabel),
+                            selected: isSelected,
+                            onSelected: (selected) => viewModel.setLabel(label),
+                            selectedColor: DesignTokens.primary,
+                            backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : (isDark ? Colors.white : DesignTokens.textPrimary),
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                             ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                              side: BorderSide(color: isSelected ? DesignTokens.primary : (isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant)),
+                            ),
+                            elevation: isSelected ? 2 : 0,
+                            shadowColor: DesignTokens.primary.withValues(alpha: 0.3),
                           ),
-                          elevation: isSelected ? 2 : 0,
-                          shadowColor: DesignTokens.primary.withValues(alpha: 0.3),
-                        ),
                         );
                       }).toList(),
                     ),
@@ -180,10 +159,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                           '';
                                       final formatted = (props?['formatted'] as String?)?.trim() ?? '';
 
-                                      final fullStreet =
-                                          (houseNumber.isNotEmpty && street.isNotEmpty)
-                                              ? '$houseNumber $street'
-                                              : (street.isNotEmpty ? street : formatted);
+                                      final fullStreet = (houseNumber.isNotEmpty && street.isNotEmpty)
+                                          ? '$houseNumber $street'
+                                          : (street.isNotEmpty ? street : formatted);
 
                                       _streetController.text = fullStreet;
                                       _cityController.text = s['properties']?['city'] ?? '';
@@ -230,7 +208,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                               filled: true,
                               fillColor: isDark ? DesignTokens.darkSurface : Colors.white,
                             ),
-                            items: ProvinceCodeValues.all.map((code) => DropdownMenuItem(value: code, child: Text('${ProvinceCodeValues.names[code]} ($code)'))).toList(),
+                            items: ProvinceCodeValues.all
+                                .map((code) => DropdownMenuItem(value: code, child: Text('${ProvinceCodeValues.names[code]} ($code)')))
+                                .toList(),
                             onChanged: (v) => viewModel.setProvince(v!),
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
@@ -275,7 +255,11 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                     SwitchListTile.adaptive(
                       value: state.isDefault,
                       onChanged: (v) => viewModel.setDefault(v),
-                      title: Text('address.set_as_default'.tr()),
+                      title: Text(
+                        'address.set_as_default'.tr(),
+                        style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
+                      ),
+                      activeColor: DesignTokens.primary,
                       contentPadding: EdgeInsets.zero,
                     ),
 
@@ -285,24 +269,24 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       button: true,
                       label: 'btn-save-address',
                       child: ModernButton(
-                      key: const Key('btn_save_address'),
-                      label: state.isLoading ? 'address.saving'.tr() : 'address.save_address'.tr(),
-                      icon: Icons.save_outlined,
-                      isLoading: state.isLoading,
-                      onPressed: state.isLoading
-                          ? null
-                          : () {
-                              if (_formKey.currentState!.validate()) {
-                                viewModel.saveAddress(
-                                  street: _streetController.text,
-                                  apartment: _apartmentController.text,
-                                  city: _cityController.text,
-                                  postalCode: _postalCodeController.text,
-                                  phoneNumber: _phoneController.text,
-                                );
-                              }
-                            },
-                    ),
+                        key: const Key('btn_save_address'),
+                        label: state.isLoading ? 'address.saving'.tr() : 'address.save_address'.tr(),
+                        icon: Icons.save_outlined,
+                        isLoading: state.isLoading,
+                        onPressed: state.isLoading
+                            ? null
+                            : () {
+                                if (_formKey.currentState!.validate()) {
+                                  viewModel.saveAddress(
+                                    street: _streetController.text,
+                                    apartment: _apartmentController.text,
+                                    city: _cityController.text,
+                                    postalCode: _postalCodeController.text,
+                                    phoneNumber: _phoneController.text,
+                                  );
+                                }
+                              },
+                      ),
                     ),
 
                     const SizedBox(height: DesignTokens.spacing32),
@@ -316,6 +300,29 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _streetController.dispose();
+    _apartmentController.dispose();
+    _cityController.dispose();
+    _postalCodeController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.address != null) {
+      _streetController.text = widget.address!.street;
+      _cityController.text = widget.address!.city;
+      _postalCodeController.text = widget.address!.postalCode;
+      _apartmentController.text = widget.address!.apartment;
+      _phoneController.text = widget.address!.phoneNumber ?? '';
+    }
+    Future.microtask(() => ref.read(addressViewModelProvider.notifier).setInitialData(widget.address));
+  }
+
   Widget _buildSectionTitle(String title, IconData icon) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
@@ -323,9 +330,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
-            ),
+            gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)]),
             borderRadius: BorderRadius.circular(DesignTokens.radius8),
           ),
           child: Icon(icon, size: 18, color: DesignTokens.primary),
@@ -379,22 +384,3 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     );
   }
 }
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'AddEditAddressScreen — Dark', group: 'AddEditAddressScreen')
-Widget previewAddEditAddressScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const AddEditAddressScreen(),
-      ),
-    );
-
-@Preview(name: 'AddEditAddressScreen — Light', group: 'AddEditAddressScreen')
-Widget previewAddEditAddressScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const AddEditAddressScreen(),
-      ),
-    );

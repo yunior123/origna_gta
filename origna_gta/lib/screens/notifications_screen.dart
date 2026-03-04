@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -12,84 +11,106 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-/// A notification item read from Firestore users/{uid}/notifications.
-class _AppNotification {
-  final String id;
-  final String title;
-  final String body;
-  final String type;
-  final bool isRead;
-  final DateTime createdAt;
-
-  const _AppNotification({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.type,
-    required this.isRead,
-    required this.createdAt,
-  });
-
-  factory _AppNotification.fromDoc(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-    final ts = data[Fields.createdAt];
-    return _AppNotification(
-      id: doc.id,
-      title: data['title'] as String? ?? '',
-      body: data['body'] as String? ?? '',
-      type: data[Fields.type] as String? ?? '',
-      isRead: data[Fields.isRead] as bool? ?? false,
-      createdAt: ts is Timestamp ? ts.toDate() : DateTime.now(),
-    );
-  }
-}
-
 /// Stream of the current user's notifications, newest first.
-final _userNotificationsProvider = StreamProvider.autoDispose<List<_AppNotification>>(
-  (ref) {
-    final uid = ref.watch(currentUserProvider)?.uid;
-    if (uid == null) return Stream.value([]);
-    return ref
-        .watch(firestoreProvider)
-        .collection(Collections.users)
-        .doc(uid)
-        .collection(Collections.notifications)
-        .orderBy(Fields.createdAt, descending: true)
-        .limit(50)
-        .snapshots()
-        .map((snap) => snap.docs.map(_AppNotification.fromDoc).toList());
-  },
-);
+final _userNotificationsProvider = StreamProvider.autoDispose<List<_AppNotification>>((ref) {
+  final uid = ref.watch(currentUserProvider)?.uid;
+  if (uid == null) return Stream.value([]);
+  return ref
+      .watch(firestoreProvider)
+      .collection(Collections.users)
+      .doc(uid)
+      .collection(Collections.notifications)
+      .orderBy(Fields.createdAt, descending: true)
+      .limit(50)
+      .snapshots()
+      .map((snap) => snap.docs.map(_AppNotification.fromDoc).toList());
+});
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final notificationsAsync = ref.watch(_userNotificationsProvider);
     final uid = ref.watch(currentUserProvider)?.uid;
+
+    return NotificationsScreenLayout(
+      notificationsAsync: notificationsAsync,
+      uid: uid,
+      onRefresh: () async => ref.invalidate(_userNotificationsProvider),
+      onBack: () => Navigator.of(context).pop(),
+      onMarkAllRead: () => _markAll(context, uid, ref),
+      onMarkRead: (n) => _markRead(n, uid, ref),
+    );
+  }
+
+  Future<void> _markAll(BuildContext context, String? uid, WidgetRef ref) async {
+    if (uid == null) return;
+    try {
+      final firestore = ref.read(firestoreProvider);
+      final snap = await firestore.collection(Collections.users).doc(uid).collection(Collections.notifications).where(Fields.isRead, isEqualTo: false).get();
+      final batch = firestore.batch();
+      for (final doc in snap.docs) {
+        batch.update(doc.reference, {Fields.isRead: true});
+      }
+      await batch.commit();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('notifications.all_marked_read'.tr()), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating),
+        );
+      }
+    } catch (e, st) {
+      AppError.log(e, stackTrace: st, context: 'NotificationsScreen._markAll');
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('errors.generic_error'.tr()), backgroundColor: DesignTokens.error, behavior: SnackBarBehavior.floating));
+      }
+    }
+  }
+
+  Future<void> _markRead(_AppNotification notification, String? uid, WidgetRef ref) async {
+    if (notification.isRead || uid == null) return;
+    await ref.read(firestoreProvider).collection(Collections.users).doc(uid).collection(Collections.notifications).doc(notification.id).update({
+      Fields.isRead: true,
+    });
+  }
+}
+
+class NotificationsScreenLayout extends StatelessWidget {
+  final AsyncValue<List<_AppNotification>> notificationsAsync;
+  final String? uid;
+  final Future<void> Function() onRefresh;
+  final VoidCallback onBack;
+  final VoidCallback onMarkAllRead;
+  final void Function(_AppNotification) onMarkRead;
+
+  const NotificationsScreenLayout({
+    super.key,
+    required this.notificationsAsync,
+    required this.uid,
+    required this.onRefresh,
+    required this.onBack,
+    required this.onMarkAllRead,
+    required this.onMarkRead,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBarFactory.simple(
-          title: 'notifications.title'.tr(),
-          onBackPressed: () => Navigator.of(context).pop(),
-        ),
+        appBar: AppBarFactory.simple(title: 'notifications.title'.tr(), onBackPressed: onBack),
         body: notificationsAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
           error: (e, _) => AnimatedEmptyState(
             icon: Icons.error_outline_rounded,
             title: 'common.error_loading'.tr(),
             subtitle: AppError.getMessage(e),
-            action: ModernButton(
-              label: 'common.retry'.tr(),
-              icon: Icons.refresh,
-              isPrimary: false,
-              onPressed: () => ref.invalidate(_userNotificationsProvider),
-            ),
+            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isPrimary: false, onPressed: onRefresh),
           ),
           data: (notifications) {
             if (notifications.isEmpty) {
@@ -97,6 +118,7 @@ class NotificationsScreen extends ConsumerWidget {
                 icon: Icons.notifications_none_rounded,
                 title: 'notifications.no_notifications'.tr(),
                 subtitle: 'notifications.no_notifications_desc'.tr(),
+                showMascot: true,
               );
             }
 
@@ -121,27 +143,38 @@ class NotificationsScreen extends ConsumerWidget {
             return Column(
               children: [
                 // Mark all read action bar
-                if (hasUnread && uid != null)
-                  _MarkAllReadBar(uid: uid, firestore: ref.read(firestoreProvider)),
+                if (hasUnread && uid != null) _MarkAllReadBar(onMarkAllRead: onMarkAllRead),
                 Expanded(
                   child: RefreshIndicator(
                     color: DesignTokens.primary,
-                    onRefresh: () async => ref.invalidate(_userNotificationsProvider),
+                    onRefresh: onRefresh,
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(DesignTokens.spacing16),
                       children: [
                         if (today.isNotEmpty) ...[
                           _SectionHeader(label: 'notifications.today'.tr()),
-                          ...today.map((n) => FadeSlideIn(child: _NotificationTile(notification: n, uid: uid, firestore: ref.read(firestoreProvider)))),
+                          ...today.map(
+                            (n) => FadeSlideIn(
+                              child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)),
+                            ),
+                          ),
                         ],
                         if (thisWeek.isNotEmpty) ...[
                           _SectionHeader(label: 'notifications.this_week'.tr()),
-                          ...thisWeek.map((n) => FadeSlideIn(child: _NotificationTile(notification: n, uid: uid, firestore: ref.read(firestoreProvider)))),
+                          ...thisWeek.map(
+                            (n) => FadeSlideIn(
+                              child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)),
+                            ),
+                          ),
                         ],
                         if (earlier.isNotEmpty) ...[
                           _SectionHeader(label: 'notifications.earlier'.tr()),
-                          ...earlier.map((n) => FadeSlideIn(child: _NotificationTile(notification: n, uid: uid, firestore: ref.read(firestoreProvider)))),
+                          ...earlier.map(
+                            (n) => FadeSlideIn(
+                              child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)),
+                            ),
+                          ),
                         ],
                         const SizedBox(height: DesignTokens.spacing32),
                       ],
@@ -157,47 +190,35 @@ class NotificationsScreen extends ConsumerWidget {
   }
 }
 
-class _MarkAllReadBar extends StatelessWidget {
-  final String uid;
-  final FirebaseFirestore firestore;
+/// A notification item read from Firestore users/{uid}/notifications.
+class _AppNotification {
+  final String id;
+  final String title;
+  final String body;
+  final String type;
+  final bool isRead;
+  final DateTime createdAt;
 
-  const _MarkAllReadBar({required this.uid, required this.firestore});
+  const _AppNotification({required this.id, required this.title, required this.body, required this.type, required this.isRead, required this.createdAt});
 
-  Future<void> _markAll(BuildContext context) async {
-    try {
-      final snap = await firestore
-          .collection(Collections.users)
-          .doc(uid)
-          .collection(Collections.notifications)
-          .where(Fields.isRead, isEqualTo: false)
-          .get();
-      final batch = firestore.batch();
-      for (final doc in snap.docs) {
-        batch.update(doc.reference, {Fields.isRead: true});
-      }
-      await batch.commit();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('notifications.all_marked_read'.tr()),
-            backgroundColor: DesignTokens.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e, st) {
-      AppError.log(e, stackTrace: st, context: 'NotificationsScreen._markAll');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('errors.generic_error'.tr()),
-            backgroundColor: DesignTokens.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
+  factory _AppNotification.fromDoc(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final ts = data[Fields.createdAt];
+    return _AppNotification(
+      id: doc.id,
+      title: data['title'] as String? ?? '',
+      body: data['body'] as String? ?? '',
+      type: data[Fields.type] as String? ?? '',
+      isRead: data[Fields.isRead] as bool? ?? false,
+      createdAt: ts is Timestamp ? ts.toDate() : DateTime.now(),
+    );
   }
+}
+
+class _MarkAllReadBar extends StatelessWidget {
+  final VoidCallback onMarkAllRead;
+
+  const _MarkAllReadBar({required this.onMarkAllRead});
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +232,7 @@ class _MarkAllReadBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           TextButton.icon(
-            onPressed: () => _markAll(context),
+            onPressed: onMarkAllRead,
             icon: const Icon(Icons.done_all_rounded, size: 18, color: DesignTokens.primary),
             label: Text(
               'notifications.mark_all_read'.tr(),
@@ -224,37 +245,109 @@ class _MarkAllReadBar extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  const _SectionHeader({required this.label});
+class _NotificationTile extends StatelessWidget {
+  final _AppNotification notification;
+  final VoidCallback onMarkRead;
+
+  const _NotificationTile({required this.notification, required this.onMarkRead});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: DesignTokens.textSecondary,
-          letterSpacing: 0.5,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Semantics(
+      button: true,
+      label: notification.isRead ? notification.title : 'notifications.unread_label'.tr(namedArgs: {'title': notification.title}),
+      child: GestureDetector(
+        onTap: onMarkRead,
+        child: AnimatedContainer(
+          duration: DesignTokens.durationFast,
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(DesignTokens.spacing16),
+          decoration: BoxDecoration(
+            color: notification.isRead
+                ? (isDark ? DesignTokens.darkSurfaceVariant : Colors.white.withValues(alpha: 0.9))
+                : (isDark ? DesignTokens.primary.withValues(alpha: 0.1) : DesignTokens.primary.withValues(alpha: 0.05)),
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            border: Border.all(
+              color: notification.isRead
+                  ? (isDark ? Colors.white.withValues(alpha: 0.05) : DesignTokens.outline.withValues(alpha: 0.3))
+                  : DesignTokens.primary.withValues(alpha: 0.25),
+              width: notification.isRead ? 1 : 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Icon
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: notification.isRead
+                      ? null
+                      : LinearGradient(colors: [DesignTokens.gradientStart.withValues(alpha: 0.15), DesignTokens.gradientEnd.withValues(alpha: 0.15)]),
+                  color: notification.isRead ? DesignTokens.primary.withValues(alpha: 0.08) : null,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_iconForType(notification.type), size: 22, color: DesignTokens.primary),
+              ),
+              const SizedBox(width: 12),
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            notification.title,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.w700,
+                              color: isDark ? Colors.white : DesignTokens.textPrimary,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(_relativeTime(notification.createdAt), style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+                      ],
+                    ),
+                    if (notification.body.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        notification.body,
+                        style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, height: 1.4),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (!notification.isRead)
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(left: 8, top: 4),
+                  decoration: const BoxDecoration(color: DesignTokens.primary, shape: BoxShape.circle),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
-}
-
-class _NotificationTile extends StatelessWidget {
-  final _AppNotification notification;
-  final String? uid;
-  final FirebaseFirestore firestore;
-
-  const _NotificationTile({
-    required this.notification,
-    required this.uid,
-    required this.firestore,
-  });
 
   IconData _iconForType(String type) {
     return switch (type) {
@@ -277,151 +370,20 @@ class _NotificationTile extends StatelessWidget {
     if (diff.inDays < 7) return 'notifications.time_days_ago'.tr(namedArgs: {'n': diff.inDays.toString()});
     return 'notifications.time_weeks_ago'.tr(namedArgs: {'n': (diff.inDays / 7).floor().toString()});
   }
+}
 
-  Future<void> _markRead() async {
-    if (notification.isRead || uid == null) return;
-    await firestore
-        .collection(Collections.users)
-        .doc(uid)
-        .collection(Collections.notifications)
-        .doc(notification.id)
-        .update({Fields.isRead: true});
-  }
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  const _SectionHeader({required this.label});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Semantics(
-      button: true,
-      label: notification.isRead
-          ? notification.title
-          : 'notifications.unread_label'.tr(namedArgs: {'title': notification.title}),
-      child: GestureDetector(
-      onTap: _markRead,
-      child: AnimatedContainer(
-        duration: DesignTokens.durationFast,
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(DesignTokens.spacing16),
-        decoration: BoxDecoration(
-          color: notification.isRead
-              ? (isDark ? DesignTokens.darkSurfaceVariant : Colors.white.withValues(alpha: 0.9))
-              : (isDark
-                  ? DesignTokens.primary.withValues(alpha: 0.1)
-                  : DesignTokens.primary.withValues(alpha: 0.05)),
-          borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          border: Border.all(
-            color: notification.isRead
-                ? (isDark ? Colors.white.withValues(alpha: 0.05) : DesignTokens.outline.withValues(alpha: 0.3))
-                : DesignTokens.primary.withValues(alpha: 0.25),
-            width: notification.isRead ? 1 : 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icon
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: notification.isRead
-                    ? null
-                    : LinearGradient(colors: [DesignTokens.gradientStart.withValues(alpha: 0.15), DesignTokens.gradientEnd.withValues(alpha: 0.15)]),
-                color: notification.isRead ? DesignTokens.primary.withValues(alpha: 0.08) : null,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _iconForType(notification.type),
-                size: 22,
-                color: DesignTokens.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          notification.title,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.w700,
-                            color: isDark ? Colors.white : DesignTokens.textPrimary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _relativeTime(notification.createdAt),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: DesignTokens.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (notification.body.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      notification.body,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: DesignTokens.textSecondary,
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (!notification.isRead)
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(left: 8, top: 4),
-                decoration: const BoxDecoration(
-                  color: DesignTokens.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-          ],
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.5),
       ),
     );
   }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'NotificationsScreen — Dark', group: 'NotificationsScreen')
-Widget previewNotificationsScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const NotificationsScreen(),
-      ),
-    );
-
-@Preview(name: 'NotificationsScreen — Light', group: 'NotificationsScreen')
-Widget previewNotificationsScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const NotificationsScreen(),
-      ),
-    );

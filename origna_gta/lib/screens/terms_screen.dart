@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -700,20 +699,3 @@ class _TermsBodyState extends State<_TermsBody> {
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
-@Preview(name: 'TermsScreen — Dark', group: 'TermsScreen')
-Widget previewTermsScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const TermsScreen(),
-      ),
-    );
-
-@Preview(name: 'TermsScreen — Light', group: 'TermsScreen')
-Widget previewTermsScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const TermsScreen(),
-      ),
-    );

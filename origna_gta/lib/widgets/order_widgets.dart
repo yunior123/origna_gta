@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
@@ -15,6 +14,21 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+/// Maps per-item delivery status string → 3-step package timeline step.
+/// Steps: 0=Preparing, 1=Shipped, 2=Delivered
+int getItemDeliveryStep(String status) {
+  switch (status) {
+    case DeliveryStatusValues.pending:
+      return 0;
+    case DeliveryStatusValues.shipped:
+      return 1;
+    case DeliveryStatusValues.delivered:
+      return 2;
+    default:
+      return -1; // terminal (refunded)
+  }
+}
 
 StatusConfig getItemStatusConfig(String status) {
   if (status == OrderStatusValues.confirmed) {
@@ -195,20 +209,7 @@ int getTimelineStep(OrderStatus status) {
   }
 }
 
-/// Maps per-item delivery status string → 3-step package timeline step.
-/// Steps: 0=Preparing, 1=Shipped, 2=Delivered
-int getItemDeliveryStep(String status) {
-  switch (status) {
-    case DeliveryStatusValues.pending:
-      return 0;
-    case DeliveryStatusValues.shipped:
-      return 1;
-    case DeliveryStatusValues.delivered:
-      return 2;
-    default:
-      return -1; // terminal (refunded)
-  }
-}
+// ─── Flutter Widget Previews ─────────────────────────────────────────────────
 
 class BookDownloadButton extends ConsumerStatefulWidget {
   final OrderItem item;
@@ -370,21 +371,84 @@ class OrderStatusTimeline extends StatelessWidget {
   }
 }
 
+class PendingApprovalsBanner extends StatelessWidget {
+  final int count;
+  const PendingApprovalsBanner({super.key, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeSlideIn(
+      beginOffset: const Offset(0, -0.1),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [DesignTokens.warning, DesignTokens.warning.withValues(alpha: 0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 4))],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          child: InkWell(
+            onTap: () => Navigator.pushNamed(context, AppRoutes.shippingApproval),
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                    child: const Icon(Icons.pending_actions, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'orders.orders_need_approval'.tr(namedArgs: {'count': count.toString()}),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'orders.review_shipping_cost'.tr(),
+                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                    child: const Icon(Icons.chevron_right, color: Colors.white, size: 20),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Compact 3-step timeline for a single seller's package.
 /// Steps: Preparing → Shipped → Delivered
 class SellerPackageTimeline extends StatelessWidget {
   static const _steps = [Icons.inventory_2_outlined, Icons.local_shipping_outlined, Icons.check_circle_outline];
   static const _stepColors = [
-    DesignTokens.primary,       // Preparing
+    DesignTokens.primary, // Preparing
     DesignTokens.statusShipped, // Shipped
-    DesignTokens.success,       // Delivered
+    DesignTokens.success, // Delivered
   ];
 
-  static List<String> get _stepLabels => [
-    'orders.status.processing'.tr(),
-    'orders.status.shipped'.tr(),
-    'orders.status.delivered'.tr(),
-  ];
+  static List<String> get _stepLabels => ['orders.status.processing'.tr(), 'orders.status.shipped'.tr(), 'orders.status.delivered'.tr()];
 
   final int currentStep;
   const SellerPackageTimeline({super.key, required this.currentStep});
@@ -460,73 +524,6 @@ class SellerPackageTimeline extends StatelessWidget {
   }
 }
 
-class PendingApprovalsBanner extends StatelessWidget {
-  final int count;
-  const PendingApprovalsBanner({super.key, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeSlideIn(
-      beginOffset: const Offset(0, -0.1),
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [DesignTokens.warning, DesignTokens.warning.withValues(alpha: 0.8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 4))],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          child: InkWell(
-            onTap: () => Navigator.pushNamed(context, AppRoutes.shippingApproval),
-            borderRadius: BorderRadius.circular(DesignTokens.radius16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                    child: const Icon(Icons.pending_actions, color: Colors.white, size: 22),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'orders.orders_need_approval'.tr(namedArgs: {'count': count.toString()}),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'orders.review_shipping_cost'.tr(),
-                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                    child: const Icon(Icons.chevron_right, color: Colors.white, size: 20),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class SoftwareDownloadLinks extends ConsumerStatefulWidget {
   final OrderItem item;
   const SoftwareDownloadLinks({super.key, required this.item});
@@ -587,7 +584,14 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     final statusConfig = getOrderStatusConfig(order.orderStatus);
     final isAuthorized = order.paymentStatus == PaymentStatus.authorized;
     final isPendingApproval = order.shippingApprovalStatus == ShippingApprovalStatus.pending;
-    final isTerminal = [OrderStatus.cancelled, OrderStatus.failed, OrderStatus.expired, OrderStatus.disputed, OrderStatus.refunded, OrderStatus.partiallyRefunded].contains(order.orderStatus);
+    final isTerminal = [
+      OrderStatus.cancelled,
+      OrderStatus.failed,
+      OrderStatus.expired,
+      OrderStatus.disputed,
+      OrderStatus.refunded,
+      OrderStatus.partiallyRefunded,
+    ].contains(order.orderStatus);
 
     return Container(
       margin: widget.isDetailView ? EdgeInsets.zero : const EdgeInsets.only(bottom: 20),
@@ -617,8 +621,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           _buildHeader(order, statusConfig, isDark),
 
           // ─── TERMINAL BADGE (cancelled / failed / refunded) ─────────
-          if (isTerminal)
-            _buildTerminalBadge(statusConfig, isDark),
+          if (isTerminal) _buildTerminalBadge(statusConfig, isDark),
 
           // ─── STATUS DESCRIPTION ─────────────────────────────
           Padding(
@@ -771,6 +774,31 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     );
   }
 
+  Widget _buildEstimatedDelivery(OrderItem item, DateTime orderDate, bool isCanada, bool isDark) {
+    // International adds ~7 additional business days on top of seller's estimate
+    final extraDays = isCanada ? 0 : 7;
+    // Calculate from the order creation date, not DateTime.now()
+    final earliest = orderDate.add(Duration(days: item.estimatedShipDays + extraDays));
+    final latest = earliest.add(const Duration(days: 3));
+    final fmt = DateFormat('MMM d');
+    final rangeStr = '${fmt.format(earliest)} – ${fmt.format(latest)}';
+
+    return Row(
+      children: [
+        Icon(Icons.access_time_rounded, size: 13, color: DesignTokens.textSecondary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'orders.est_delivery'.tr(namedArgs: {'date': rangeStr}),
+            style: const TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeader(Order order, StatusConfig statusConfig, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -815,6 +843,8 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                   child: Text(
                     'orders.order_id_prefix'.tr() + (order.orderId.length > 8 ? order.orderId.substring(0, 8).toUpperCase() : order.orderId.toUpperCase()),
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: Colors.white),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1066,32 +1096,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // SELLER PACKAGES — Amazon-style per-seller grouping with individual timelines
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Widget _buildSellerPackages(Order order, bool isDark) {
-    // Group items by sellerId, preserving insertion order
-    final grouped = <String, List<OrderItem>>{};
-    for (final item in order.items) {
-      grouped.putIfAbsent(item.sellerId, () => []).add(item);
-    }
-
-    final entries = grouped.entries.toList();
-    return Column(
-      children: List.generate(entries.length, (i) {
-        return _buildSellerPackage(entries[i].value, order, isDark, index: i + 1, total: entries.length);
-      }),
-    );
-  }
-
-  Widget _buildSellerPackage(
-    List<OrderItem> items,
-    Order order,
-    bool isDark, {
-    required int index,
-    required int total,
-  }) {
+  Widget _buildSellerPackage(List<OrderItem> items, Order order, bool isDark, {required int index, required int total}) {
     final first = items.first;
     final sellerName = (first.sellerName?.isNotEmpty == true) ? first.sellerName! : 'orders.unknown_seller'.tr();
     final country = first.sellerAddress?.country ?? '';
@@ -1099,17 +1104,19 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
 
     final hasPerishable = items.any((i) => i.isPerishable);
 
-    // Compute the most-behind item's step for this package's collective status
-    final steps = items.map((i) => getItemDeliveryStep(i.status)).toList();
+    // Compute the most-behind item's step for this package's collective status, excluding completely refunded terminal items
+    final activeItems = items.where((i) => i.status != DeliveryStatusValues.refunded).toList();
+    final steps = activeItems.isNotEmpty ? activeItems.map((i) => getItemDeliveryStep(i.status)).toList() : [-1];
     final packageStep = steps.reduce((a, b) => a < b ? a : b);
-    final isTerminalPackage = items.any((i) => i.status == DeliveryStatusValues.refunded);
+
+    // Package is terminal ONLY if EVERY item is refunded, not if just one is.
+    final isTerminalPackage = items.every((i) => i.status == DeliveryStatusValues.refunded);
     final isDelivered = packageStep == 2;
 
-    // Representative status config = worst item's
-    final worstItem = items.firstWhere(
-      (i) => getItemDeliveryStep(i.status) == packageStep,
-      orElse: () => first,
-    );
+    // Representative status config = worst active item's
+    final worstItem = activeItems.isNotEmpty
+        ? activeItems.firstWhere((i) => getItemDeliveryStep(i.status) == packageStep, orElse: () => activeItems.first)
+        : items.first;
     final packageStatusConfig = getItemStatusConfig(worstItem.status);
 
     return Container(
@@ -1121,8 +1128,8 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           color: isTerminalPackage
               ? DesignTokens.error.withValues(alpha: 0.3)
               : isDelivered
-                  ? DesignTokens.success.withValues(alpha: 0.3)
-                  : packageStatusConfig.color.withValues(alpha: 0.2),
+              ? DesignTokens.success.withValues(alpha: 0.3)
+              : packageStatusConfig.color.withValues(alpha: 0.2),
         ),
         boxShadow: [
           BoxShadow(
@@ -1139,12 +1146,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           Container(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  packageStatusConfig.color.withValues(alpha: 0.07),
-                  Colors.transparent,
-                ],
-              ),
+              gradient: LinearGradient(colors: [packageStatusConfig.color.withValues(alpha: 0.07), Colors.transparent]),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(DesignTokens.radius16)),
             ),
             child: Row(
@@ -1153,15 +1155,9 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: isCanada
-                        ? DesignTokens.canadaRed.withValues(alpha: 0.08)
-                        : DesignTokens.primary.withValues(alpha: 0.08),
+                    color: isCanada ? DesignTokens.canadaRed.withValues(alpha: 0.08) : DesignTokens.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isCanada
-                          ? DesignTokens.canadaRed.withValues(alpha: 0.2)
-                          : DesignTokens.primary.withValues(alpha: 0.2),
-                    ),
+                    border: Border.all(color: isCanada ? DesignTokens.canadaRed.withValues(alpha: 0.2) : DesignTokens.primary.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1170,11 +1166,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                       const SizedBox(width: 5),
                       Text(
                         isCanada ? 'orders.ships_from_canada'.tr() : 'orders.ships_international'.tr(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isCanada ? DesignTokens.canadaRed : DesignTokens.primary,
-                        ),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isCanada ? DesignTokens.canadaRed : DesignTokens.primary),
                       ),
                     ],
                   ),
@@ -1188,19 +1180,19 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                         sellerName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : DesignTokens.textPrimary,
-                        ),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
                       ),
                       const SizedBox(height: 3),
                       Row(
                         children: [
                           if (total > 1) ...[
-                            Text(
-                              'orders.package_label'.tr(namedArgs: {'index': index.toString(), 'total': total.toString()}),
-                              style: TextStyle(fontSize: 10, color: DesignTokens.textSecondary),
+                            Flexible(
+                              child: Text(
+                                'orders.package_label'.tr(namedArgs: {'index': index.toString(), 'total': total.toString()}),
+                                style: TextStyle(fontSize: 10, color: DesignTokens.textSecondary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             if (hasPerishable) const SizedBox(width: 6),
                           ],
@@ -1234,10 +1226,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        packageStatusConfig.color.withValues(alpha: 0.15),
-                        packageStatusConfig.color.withValues(alpha: 0.05),
-                      ]),
+                      gradient: LinearGradient(colors: [packageStatusConfig.color.withValues(alpha: 0.15), packageStatusConfig.color.withValues(alpha: 0.05)]),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: packageStatusConfig.color.withValues(alpha: 0.3)),
                     ),
@@ -1293,10 +1282,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
 
           // ── Estimated delivery (not delivered, not terminal) ────────────
           if (!isTerminalPackage && !isDelivered && first.estimatedShipDays > 0)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              child: _buildEstimatedDelivery(first, isCanada, isDark),
-            ),
+            Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 10), child: _buildEstimatedDelivery(first, order.createdAt, isCanada, isDark)),
 
           // ── Divider ─────────────────────────────────────────────────────
           Padding(
@@ -1307,32 +1293,29 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           // ── Items in this package ───────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-            child: Column(
-              children: items.map((item) => _buildOrderItem(context, item, order.confirmedByClient)).toList(),
-            ),
+            child: Column(children: items.map((item) => _buildOrderItem(context, item, order.confirmedByClient)).toList()),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEstimatedDelivery(OrderItem item, bool isCanada, bool isDark) {
-    // International adds ~7 additional business days on top of seller's estimate
-    final extraDays = isCanada ? 0 : 7;
-    final earliest = DateTime.now().add(Duration(days: item.estimatedShipDays + extraDays));
-    final latest = earliest.add(const Duration(days: 3));
-    final fmt = DateFormat('MMM d');
-    final rangeStr = '${fmt.format(earliest)} – ${fmt.format(latest)}';
+  // ─────────────────────────────────────────────────────────────────────────
+  // SELLER PACKAGES — Amazon-style per-seller grouping with individual timelines
+  // ─────────────────────────────────────────────────────────────────────────
 
-    return Row(
-      children: [
-        Icon(Icons.access_time_rounded, size: 13, color: DesignTokens.textSecondary),
-        const SizedBox(width: 6),
-        Text(
-          'orders.est_delivery'.tr(namedArgs: {'date': rangeStr}),
-          style: const TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
-        ),
-      ],
+  Widget _buildSellerPackages(Order order, bool isDark) {
+    // Group items by sellerId, preserving insertion order
+    final grouped = <String, List<OrderItem>>{};
+    for (final item in order.items) {
+      grouped.putIfAbsent(item.sellerId, () => []).add(item);
+    }
+
+    final entries = grouped.entries.toList();
+    return Column(
+      children: List.generate(entries.length, (i) {
+        return _buildSellerPackage(entries[i].value, order, isDark, index: i + 1, total: entries.length);
+      }),
     );
   }
 
@@ -1374,47 +1357,6 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     );
   }
 
-  Future<void> _confirmReceipt(OrderItem item) async {
-    final itemKey = '${widget.order.orderId}_${item.productId}';
-    final messenger = ScaffoldMessenger.of(context);
-    final viewModel = ref.read(buyerOrdersViewModelProvider.notifier);
-
-    final success = await viewModel.confirmReceipt(widget.order.orderId, itemKey);
-    if (!mounted) return;
-
-    if (success) {
-      messenger.showSnackBar(SnackBar(content: Text('orders.receipt_confirmed'.tr()), backgroundColor: DesignTokens.success));
-    } else {
-      final error = ref.read(buyerOrdersViewModelProvider).errorMessage ?? 'orders.failed_confirm_receipt'.tr();
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
-    }
-  }
-
-  Future<void> _reorderItems(Order order) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final cartController = ref.read(cartControllerProvider);
-    int added = 0;
-
-    for (final item in order.items) {
-      if (item.isDigital) continue; // skip digital — already owned
-      final success = await cartController.addToCart(item.productId, item.quantity, variantId: item.variantId);
-      if (success) added++;
-    }
-
-    if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('orders.items_added_to_cart'.tr(namedArgs: {'count': added.toString()})),
-        backgroundColor: DesignTokens.success,
-        action: SnackBarAction(
-          label: 'cart.view_cart'.tr(),
-          textColor: Colors.white,
-          onPressed: () => Navigator.pushNamed(context, AppRoutes.cart),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTrackingWidget(OrderItem item, bool isDark) {
     final carrier = item.carrier;
     final trackingNum = item.trackingNumber!;
@@ -1429,9 +1371,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DesignTokens.statusShipped.withValues(alpha: 0.12), DesignTokens.statusShipped.withValues(alpha: 0.04)],
-            ),
+            gradient: LinearGradient(colors: [DesignTokens.statusShipped.withValues(alpha: 0.12), DesignTokens.statusShipped.withValues(alpha: 0.04)]),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: DesignTokens.statusShipped.withValues(alpha: 0.2)),
           ),
@@ -1516,17 +1456,11 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     );
   }
 
-  String? _carrierTrackingUrl(String? carrier, String trackingNum) {
-    if (carrier == null || carrier == CarrierValues.other) return null;
-    final encoded = Uri.encodeComponent(trackingNum);
+  IconData _carrierIcon(String? carrier) {
     return switch (carrier) {
-      CarrierValues.canadaPost => 'https://www.canadapost-postescanada.ca/track-reperage/en#/details/$encoded',
-      CarrierValues.ups => 'https://www.ups.com/track?tracknum=$encoded',
-      CarrierValues.fedex => 'https://www.fedex.com/fedextrack/?trknbr=$encoded',
-      CarrierValues.purolator => 'https://www.purolator.com/en/shipping/tracker?Pin=$encoded',
-      CarrierValues.dhl => 'https://www.dhl.com/ca-en/home/tracking/tracking-express.html?submit=1&tracking-id=$encoded',
-      CarrierValues.usps => 'https://tools.usps.com/go/TrackConfirmAction?tLabels=$encoded',
-      _ => null,
+      CarrierValues.canadaPost => Icons.mail_outline_rounded,
+      CarrierValues.ups || CarrierValues.fedex || CarrierValues.purolator || CarrierValues.dhl || CarrierValues.usps => Icons.local_shipping_outlined,
+      _ => Icons.inventory_2_outlined,
     };
   }
 
@@ -1543,12 +1477,34 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     };
   }
 
-  IconData _carrierIcon(String? carrier) {
+  String? _carrierTrackingUrl(String? carrier, String trackingNum) {
+    if (carrier == null || carrier == CarrierValues.other) return null;
+    final encoded = Uri.encodeComponent(trackingNum);
     return switch (carrier) {
-      CarrierValues.canadaPost => Icons.mail_outline_rounded,
-      CarrierValues.ups || CarrierValues.fedex || CarrierValues.purolator || CarrierValues.dhl || CarrierValues.usps => Icons.local_shipping_outlined,
-      _ => Icons.inventory_2_outlined,
+      CarrierValues.canadaPost => 'https://www.canadapost-postescanada.ca/track-reperage/en#/details/$encoded',
+      CarrierValues.ups => 'https://www.ups.com/track?tracknum=$encoded',
+      CarrierValues.fedex => 'https://www.fedex.com/fedextrack/?trknbr=$encoded',
+      CarrierValues.purolator => 'https://www.purolator.com/en/shipping/tracker?Pin=$encoded',
+      CarrierValues.dhl => 'https://www.dhl.com/ca-en/home/tracking/tracking-express.html?submit=1&tracking-id=$encoded',
+      CarrierValues.usps => 'https://tools.usps.com/go/TrackConfirmAction?tLabels=$encoded',
+      _ => null,
     };
+  }
+
+  Future<void> _confirmReceipt(OrderItem item) async {
+    final itemKey = '${widget.order.orderId}_${item.productId}';
+    final messenger = ScaffoldMessenger.of(context);
+    final viewModel = ref.read(buyerOrdersViewModelProvider.notifier);
+
+    final success = await viewModel.confirmReceipt(widget.order.orderId, itemKey);
+    if (!mounted) return;
+
+    if (success) {
+      messenger.showSnackBar(SnackBar(content: Text('orders.receipt_confirmed'.tr()), backgroundColor: DesignTokens.success));
+    } else {
+      final error = ref.read(buyerOrdersViewModelProvider).errorMessage ?? 'orders.failed_confirm_receipt'.tr();
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+    }
   }
 
   Widget _infoPill(String text, bool isDark) {
@@ -1588,6 +1544,27 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                 errorWidget: (context, url, error) => Icon(Icons.camera_alt_outlined, color: DesignTokens.primary.withValues(alpha: 0.5), size: 28),
               )
             : Icon(Icons.camera_alt_outlined, color: DesignTokens.primary.withValues(alpha: 0.5), size: 28),
+      ),
+    );
+  }
+
+  Future<void> _reorderItems(Order order) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final cartController = ref.read(cartControllerProvider);
+    int added = 0;
+
+    for (final item in order.items) {
+      if (item.isDigital) continue; // skip digital — already owned
+      final success = await cartController.addToCart(item.productId, item.quantity, variantId: item.variantId);
+      if (success) added++;
+    }
+
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('orders.items_added_to_cart'.tr(namedArgs: {'count': added.toString()})),
+        backgroundColor: DesignTokens.success,
+        action: SnackBarAction(label: 'cart.view_cart'.tr(), textColor: Colors.white, onPressed: () => Navigator.pushNamed(context, AppRoutes.cart)),
       ),
     );
   }
@@ -1660,55 +1637,3 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
     }
   }
 }
-
-// ─── Flutter Widget Previews ─────────────────────────────────────────────────
-
-@Preview(name: 'Timeline — Confirmed', group: 'OrderWidgets')
-Widget previewTimelineConfirmed() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    body: Padding(padding: const EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 0)),
-  ),
-);
-
-@Preview(name: 'Timeline — Shipped', group: 'OrderWidgets')
-Widget previewTimelineShipped() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    body: Padding(padding: const EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 2)),
-  ),
-);
-
-@Preview(name: 'Timeline — Delivered', group: 'OrderWidgets')
-Widget previewTimelineDelivered() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    body: Padding(padding: const EdgeInsets.all(24), child: OrderStatusTimeline(currentStep: 4)),
-  ),
-);
-
-@Preview(name: 'Seller Package — Shipped', group: 'OrderWidgets')
-Widget previewSellerPackageShipped() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    body: Padding(padding: const EdgeInsets.all(24), child: SellerPackageTimeline(currentStep: 1)),
-  ),
-);
-
-@Preview(name: 'Pending Approvals Banner', group: 'OrderWidgets')
-Widget previewPendingBanner() => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: ThemeData.dark(),
-  home: Scaffold(
-    backgroundColor: DesignTokens.darkBackground,
-    body: Column(mainAxisAlignment: MainAxisAlignment.center, children: [PendingApprovalsBanner(count: 3)]),
-  ),
-);

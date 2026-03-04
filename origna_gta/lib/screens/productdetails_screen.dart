@@ -1,4 +1,3 @@
-import 'package:flutter/widget_previews.dart';
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -9,9 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
-import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
@@ -21,6 +19,7 @@ import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/models/qa_model.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
@@ -47,6 +46,8 @@ final _productRatingsProvider = StreamProvider.autoDispose.family<List<Map<Strin
       .map((snap) => snap.docs.map((d) => {...d.data(), Fields.ratingId: d.id}).toList()),
 );
 
+// ─── Flutter Previews ────────────────────────────────────────────────────────
+
 class ProductDetailScreen extends ConsumerWidget {
   final String productId;
   final Map<String, dynamic>? product; // Optional initial data
@@ -62,9 +63,7 @@ class ProductDetailScreen extends ConsumerWidget {
     final product = productAsync.valueOrNull;
     final isOutOfStock = (product?.stockQuantity ?? 1) <= 0;
     final profileSnapshot = ref.watch(userProfileProvider).valueOrNull;
-    final canManage = product != null &&
-        (profileSnapshot?.uid == product.sellerId ||
-            profileSnapshot?.roles.contains(UserRoles.admin) == true);
+    final canManage = product != null && (profileSnapshot?.uid == product.sellerId || profileSnapshot?.roles.contains(UserRoles.admin) == true);
 
     return Scaffold(
       // Sticky bottom CTA — only visible on mobile when product is loaded, user is a buyer,
@@ -73,20 +72,12 @@ class ProductDetailScreen extends ConsumerWidget {
       // would use product-level stockQuantity and no variantKey, causing the wrong stock check
       // and subscribing the user to a product-level (variant-unscoped) notification.
       bottomNavigationBar: product != null && !canManage && !product.hasVariants && MediaQuery.of(context).size.width < ResponsiveBreakpoints.tablet
-          ? _StickyBottomCTA(
-              product: product,
-              isOutOfStock: isOutOfStock,
-              isDark: isDark,
-            )
+          ? _StickyBottomCTA(product: product, isOutOfStock: isOutOfStock, isDark: isDark)
           : null,
       body: productAsync.when(
         data: (product) {
           if (product == null) {
-            return AnimatedEmptyState(
-              icon: Icons.inventory_2_outlined,
-              title: 'product.not_found'.tr(),
-              subtitle: 'product.not_found_desc'.tr(),
-            );
+            return AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: 'product.not_found'.tr(), subtitle: 'product.not_found_desc'.tr());
           }
           // Trigger seller-metrics fetch + record recently viewed once product is available
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -183,28 +174,27 @@ class ProductDetailScreen extends ConsumerWidget {
                                       highlightColor: DesignTokens.surface,
                                       child: Container(color: Colors.white),
                                     ),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
-                              ),
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 88,
-                                height: 88,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.12),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 2),
-                                ),
-                                child: const Icon(Icons.camera_alt_outlined, size: 40, color: Colors.white),
-                              ),
-                            ),
-                          ),
+                                    errorWidget: (context, url, error) => Container(
+                                      decoration: const BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Container(
+                                          width: 88,
+                                          height: 88,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.white.withValues(alpha: 0.12),
+                                            border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 2),
+                                          ),
+                                          child: const Icon(Icons.camera_alt_outlined, size: 40, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -212,26 +202,26 @@ class ProductDetailScreen extends ConsumerWidget {
                           },
                         )
                       : Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
-                          ),
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 88,
-                            height: 88,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.12),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 2),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
                             ),
-                            child: const Icon(Icons.camera_alt_outlined, size: 40, color: Colors.white),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 88,
+                              height: 88,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.12),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 2),
+                              ),
+                              child: const Icon(Icons.camera_alt_outlined, size: 40, color: Colors.white),
+                            ),
                           ),
                         ),
-                      ),
                   Positioned(bottom: 16, left: 0, right: 0, child: _ImageDots(imageCount: totalMediaCount)),
                 ],
               ),
@@ -332,10 +322,7 @@ class ProductDetailScreen extends ConsumerWidget {
                       if (product.compareAtPrice != null && product.compareAtPrice! > product.price)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
                           child: Text(
                             '-${((1 - product.price / product.compareAtPrice!) * 100).round()}%',
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
@@ -345,10 +332,7 @@ class ProductDetailScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.only(left: 2),
-                  child: _buildDeliveryEstimate(context, product),
-                ),
+                Padding(padding: const EdgeInsets.only(left: 2), child: _buildDeliveryEstimate(context, product)),
                 const SizedBox(height: 16),
                 if (!product.isDigital) _DeliveryInfoCard(product: product),
                 if (!product.isDigital) const SizedBox(height: 28),
@@ -389,7 +373,10 @@ class ProductDetailScreen extends ConsumerWidget {
                               icon: const Icon(Icons.share_outlined),
                               tooltip: 'product.share'.tr(),
                               onPressed: () => SharePlus.instance.share(
-                                ShareParams(text: '${'product.share_text'.tr(namedArgs: {'productName': product.name})}\n${envConfig.baseUrl}/p/${product.slug}', subject: product.name),
+                                ShareParams(
+                                  text: '${'product.share_text'.tr(namedArgs: {'productName': product.name})}\n${envConfig.baseUrl}/p/${product.slug}',
+                                  subject: product.name,
+                                ),
                               ),
                             ),
                         ],
@@ -406,16 +393,10 @@ class ProductDetailScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Left: Image gallery (sticky-like with fixed height)
-                            Expanded(
-                              flex: 5,
-                              child: buildImageGallery(height: 480),
-                            ),
+                            Expanded(flex: 5, child: buildImageGallery(height: 480)),
                             const SizedBox(width: 32),
                             // Right: Product info
-                            Expanded(
-                              flex: 5,
-                              child: buildProductInfo(),
-                            ),
+                            Expanded(flex: 5, child: buildProductInfo()),
                           ],
                         ),
                       ),
@@ -462,7 +443,10 @@ class ProductDetailScreen extends ConsumerWidget {
                       icon: const Icon(Icons.share_outlined),
                       tooltip: 'product.share'.tr(),
                       onPressed: () => SharePlus.instance.share(
-                        ShareParams(text: '${'product.share_text'.tr(namedArgs: {'productName': product.name})}\n${envConfig.baseUrl}/p/${product.slug}', subject: product.name),
+                        ShareParams(
+                          text: '${'product.share_text'.tr(namedArgs: {'productName': product.name})}\n${envConfig.baseUrl}/p/${product.slug}',
+                          subject: product.name,
+                        ),
                       ),
                     ),
                 ],
@@ -535,14 +519,43 @@ class ProductDetailScreen extends ConsumerWidget {
           subtitle: AppError.getMessage(e),
           action: SizedBox(
             width: 200,
-            child: ModernButton(
-              label: 'common.retry'.tr(),
-              icon: Icons.refresh_rounded,
-              onPressed: () => ref.invalidate(productByIdProvider(productId)),
-            ),
+            child: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh_rounded, onPressed: () => ref.invalidate(productByIdProvider(productId))),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDeliveryEstimate(BuildContext context, Product product) {
+    if (product.isDigital) return const SizedBox.shrink();
+
+    if (product.isPerishable) {
+      return _DeliveryChip(icon: Icons.schedule_outlined, label: 'product.delivery_same_day_available'.tr(), color: DesignTokens.success);
+    }
+
+    if (product.freeShipping || product.isLocalDeliveryOnly) {
+      return _DeliveryChip(
+        icon: Icons.local_shipping_outlined,
+        label: product.isLocalDeliveryOnly ? 'product.delivery_local_free'.tr() : 'product.delivery_free'.tr(),
+        color: DesignTokens.success,
+      );
+    }
+
+    final deliveryInfo = product.deliveryInfo;
+
+    if (deliveryInfo.isInternational) {
+      return _DeliveryChip(
+        icon: Icons.flight_outlined,
+        label: 'product.delivery_intl'.tr(namedArgs: {'min': deliveryInfo.minDays.toString(), 'max': deliveryInfo.maxDays.toString()}),
+        color: DesignTokens.textSecondary,
+      );
+    }
+
+    final arrivalDate = DateTime.now().add(Duration(days: deliveryInfo.minDays + 2));
+    return _DeliveryChip(
+      icon: Icons.local_shipping_outlined,
+      label: 'product.delivery_get_by'.tr(namedArgs: {'date': DateFormat('MMM d').format(arrivalDate)}),
+      color: DesignTokens.success,
     );
   }
 
@@ -612,74 +625,6 @@ class ProductDetailScreen extends ConsumerWidget {
     final updated = [id, ...raw.where((e) => e != id)].take(20).toList();
     await prefs.setStringList(LocalStorageKeys.recentlyViewed, updated);
   }
-
-  Widget _buildDeliveryEstimate(BuildContext context, Product product) {
-    if (product.isDigital) return const SizedBox.shrink();
-
-    if (product.isPerishable) {
-      return _DeliveryChip(
-        icon: Icons.schedule_outlined,
-        label: 'product.delivery_same_day_available'.tr(),
-        color: DesignTokens.success,
-      );
-    }
-
-    if (product.freeShipping || product.isLocalDeliveryOnly) {
-      return _DeliveryChip(
-        icon: Icons.local_shipping_outlined,
-        label: product.isLocalDeliveryOnly
-            ? 'product.delivery_local_free'.tr()
-            : 'product.delivery_free'.tr(),
-        color: DesignTokens.success,
-      );
-    }
-
-    final deliveryInfo = product.deliveryInfo;
-
-    if (deliveryInfo.isInternational) {
-      return _DeliveryChip(
-        icon: Icons.flight_outlined,
-        label: 'product.delivery_intl'.tr(namedArgs: {
-          'min': deliveryInfo.minDays.toString(),
-          'max': deliveryInfo.maxDays.toString(),
-        }),
-        color: DesignTokens.textSecondary,
-      );
-    }
-
-    final arrivalDate = DateTime.now().add(Duration(days: deliveryInfo.minDays + 2));
-    return _DeliveryChip(
-      icon: Icons.local_shipping_outlined,
-      label: 'product.delivery_get_by'.tr(namedArgs: {
-        'date': DateFormat('MMM d').format(arrivalDate),
-      }),
-      color: DesignTokens.success,
-    );
-  }
-}
-
-/// Compact delivery estimate chip shown directly below the price on product detail.
-class _DeliveryChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _DeliveryChip({required this.icon, required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500),
-        ),
-      ],
-    );
-  }
 }
 
 class _AddToCartButton extends ConsumerStatefulWidget {
@@ -696,34 +641,6 @@ class _AddToCartButton extends ConsumerStatefulWidget {
 
 class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
   bool _isBuyingNow = false;
-
-  Future<void> _handleBuyNow(BuildContext context, int quantity) async {
-    final user = ref.read(currentUserProvider);
-    if (user == null) {
-      if (context.mounted) showLoginPrompt(context);
-      return;
-    }
-    if (context.mounted) {
-      final verified = await checkEmailVerifiedOrPrompt(context);
-      if (!verified) return;
-    }
-    if (!context.mounted) return;
-
-    setState(() => _isBuyingNow = true);
-    try {
-      final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity);
-      if (!success || !context.mounted) return;
-
-      final cartDetails = await ref.read(cartWithDetailsProvider.future);
-      if (!context.mounted) return;
-      if (cartDetails.isEmpty) return;
-
-      final subtotal = cartDetails.fold(0.0, (total, item) => total + (item.price * item.quantity));
-      Navigator.pushNamed(context, AppRoutes.checkout, arguments: CheckoutArgs(items: cartDetails, total: subtotal));
-    } finally {
-      if (mounted) setState(() => _isBuyingNow = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -834,6 +751,38 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
     );
   }
 
+  Future<void> _handleBuyNow(BuildContext context, int quantity) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) {
+      if (context.mounted) showLoginPrompt(context);
+      return;
+    }
+    if (context.mounted) {
+      final verified = await checkEmailVerifiedOrPrompt(context);
+      if (!verified) return;
+    }
+    if (!context.mounted) return;
+
+    setState(() => _isBuyingNow = true);
+    try {
+      final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity);
+      if (!success || !context.mounted) return;
+
+      final cartDetails = await ref.read(cartWithDetailsProvider.future);
+      if (!context.mounted) return;
+      if (cartDetails.isEmpty) return;
+
+      final subtotal = cartDetails.fold(0.0, (total, item) => total + (item.price * item.quantity));
+      Navigator.pushNamed(
+        context,
+        AppRoutes.checkout,
+        arguments: CheckoutArgs(items: cartDetails, total: subtotal),
+      );
+    } finally {
+      if (mounted) setState(() => _isBuyingNow = false);
+    }
+  }
+
   Future<void> _toggleNotification(BuildContext context, dynamic currentUser) async {
     if (currentUser == null) {
       showLoginPrompt(context);
@@ -859,6 +808,30 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
         messenger.showSnackBar(SnackBar(content: Text(AppError.getMessage(e, 'product.notify_error'.tr())), backgroundColor: DesignTokens.error));
       }
     }
+  }
+}
+
+/// Compact delivery estimate chip shown directly below the price on product detail.
+class _DeliveryChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _DeliveryChip({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
   }
 }
 
@@ -1042,87 +1015,51 @@ class _DigitalProductInfo extends StatelessWidget {
   }
 }
 
-/// Shimmer skeleton displayed while product data is loading.
-/// Matches the layout sections of the real product detail screen.
-class _ProductDetailSkeleton extends StatelessWidget {
+// ============================================================================
+// EXPANDABLE DESCRIPTION — "Read more / Show less" for long product descriptions
+// ============================================================================
+
+class _ExpandableDescription extends StatefulWidget {
+  final String description;
+  const _ExpandableDescription({required this.description});
+
+  @override
+  State<_ExpandableDescription> createState() => _ExpandableDescriptionState();
+}
+
+class _ExpandableDescriptionState extends State<_ExpandableDescription> {
+  static const _collapseThreshold = 100; // ~3-4 lines on 390px mobile
+  static const _maxLines = 4;
+  bool _expanded = false;
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant;
-    final highlightColor = isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface;
+    final isLong = widget.description.length > _collapseThreshold;
+    final textStyle = TextStyle(fontSize: 15, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.6, fontWeight: FontWeight.w400);
 
-    return Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
-      child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hero image placeholder
-            Container(
-              height: 340,
-              width: double.infinity,
-              color: Colors.white,
-            ),
-            Padding(
-              padding: const EdgeInsets.all(DesignTokens.spacing20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Product name
-                  Container(
-                    width: double.infinity,
-                    height: 28,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                  ),
-                  const SizedBox(height: DesignTokens.spacing8),
-                  Container(
-                    width: 200,
-                    height: 28,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                  ),
-                  const SizedBox(height: DesignTokens.spacing12),
-                  // Rating row
-                  Row(
-                    children: [
-                      Container(width: 80, height: 28, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8))),
-                      const SizedBox(width: 8),
-                      Container(width: 50, height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
-                    ],
-                  ),
-                  const SizedBox(height: DesignTokens.spacing16),
-                  // Price block
-                  Container(
-                    width: double.infinity,
-                    height: 80,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
-                  ),
-                  const SizedBox(height: DesignTokens.spacing20),
-                  // Description header
-                  Container(width: 120, height: 20, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
-                  const SizedBox(height: DesignTokens.spacing12),
-                  // Description body
-                  Container(
-                    width: double.infinity,
-                    height: 96,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
-                  ),
-                  const SizedBox(height: DesignTokens.spacing20),
-                  // Section header
-                  Container(width: 100, height: 20, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
-                  const SizedBox(height: DesignTokens.spacing12),
-                  // Reviews placeholder
-                  Container(
-                    width: double.infinity,
-                    height: 60,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
-                  ),
-                ],
+    return GlassContainer(
+      key: const Key('product_description_section'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.description,
+            style: textStyle,
+            maxLines: (_expanded || !isLong) ? null : _maxLines,
+            overflow: (_expanded || !isLong) ? TextOverflow.visible : TextOverflow.fade,
+          ),
+          if (isLong) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Text(
+                _expanded ? 'common.see_less'.tr() : 'common.see_more'.tr(),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.primary),
               ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1181,6 +1118,104 @@ class _MetricPill extends StatelessWidget {
           Text('$label: ', style: TextStyle(fontSize: 11, color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
           Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
         ],
+      ),
+    );
+  }
+}
+
+/// Shimmer skeleton displayed while product data is loading.
+/// Matches the layout sections of the real product detail screen.
+class _ProductDetailSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant;
+    final highlightColor = isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Hero image placeholder
+            Container(height: 340, width: double.infinity, color: Colors.white),
+            Padding(
+              padding: const EdgeInsets.all(DesignTokens.spacing20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product name
+                  Container(
+                    width: double.infinity,
+                    height: 28,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                  ),
+                  const SizedBox(height: DesignTokens.spacing8),
+                  Container(
+                    width: 200,
+                    height: 28,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                  ),
+                  const SizedBox(height: DesignTokens.spacing12),
+                  // Rating row
+                  Row(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 28,
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 50,
+                        height: 16,
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: DesignTokens.spacing16),
+                  // Price block
+                  Container(
+                    width: double.infinity,
+                    height: 80,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                  ),
+                  const SizedBox(height: DesignTokens.spacing20),
+                  // Description header
+                  Container(
+                    width: 120,
+                    height: 20,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+                  ),
+                  const SizedBox(height: DesignTokens.spacing12),
+                  // Description body
+                  Container(
+                    width: double.infinity,
+                    height: 96,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                  ),
+                  const SizedBox(height: DesignTokens.spacing20),
+                  // Section header
+                  Container(
+                    width: 100,
+                    height: 20,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+                  ),
+                  const SizedBox(height: DesignTokens.spacing12),
+                  // Reviews placeholder
+                  Container(
+                    width: double.infinity,
+                    height: 60,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1499,9 +1534,7 @@ class _QASectionState extends ConsumerState<_QASection> {
       context: context,
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: PremiumPaywallWidget(
-          featureName: 'subscription.ask_questions'.tr(),
-        ),
+        child: PremiumPaywallWidget(featureName: 'subscription.ask_questions'.tr()),
       ),
     );
   }
@@ -1945,10 +1978,7 @@ class _ReviewsSection extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      (ratingCount == 1
-                              ? 'product.ratings_no_text_one'
-                              : 'product.ratings_no_text_other')
-                          .tr(namedArgs: {'count': '$ratingCount'}),
+                      (ratingCount == 1 ? 'product.ratings_no_text_one' : 'product.ratings_no_text_other').tr(namedArgs: {'count': '$ratingCount'}),
                       style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
                     ),
                   ),
@@ -1992,20 +2022,13 @@ class _SellerInfoCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: DesignTokens.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                ),
+                decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(DesignTokens.radius8)),
                 child: const Icon(Icons.storefront_outlined, size: 16, color: DesignTokens.primary),
               ),
               const SizedBox(width: 8),
               Text(
                 'product.seller_info'.tr(),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : DesignTokens.textPrimary,
-                ),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary),
               ),
             ],
           ),
@@ -2013,61 +2036,6 @@ class _SellerInfoCard extends StatelessWidget {
           _SellerMetricsRow(sellerId: product.sellerId),
           const SizedBox(height: 8),
           _TrustBadges(product: product),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// EXPANDABLE DESCRIPTION — "Read more / Show less" for long product descriptions
-// ============================================================================
-
-class _ExpandableDescription extends StatefulWidget {
-  final String description;
-  const _ExpandableDescription({required this.description});
-
-  @override
-  State<_ExpandableDescription> createState() => _ExpandableDescriptionState();
-}
-
-class _ExpandableDescriptionState extends State<_ExpandableDescription> {
-  bool _expanded = false;
-  static const _collapseThreshold = 100; // ~3-4 lines on 390px mobile
-  static const _maxLines = 4;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isLong = widget.description.length > _collapseThreshold;
-    final textStyle = TextStyle(
-      fontSize: 15,
-      color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
-      height: 1.6,
-      fontWeight: FontWeight.w400,
-    );
-
-    return GlassContainer(
-      key: const Key('product_description_section'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.description,
-            style: textStyle,
-            maxLines: (_expanded || !isLong) ? null : _maxLines,
-            overflow: (_expanded || !isLong) ? TextOverflow.visible : TextOverflow.fade,
-          ),
-          if (isLong) ...[
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Text(
-                _expanded ? 'common.see_less'.tr() : 'common.see_more'.tr(),
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.primary),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -2108,6 +2076,117 @@ class _SellerMetricsRow extends ConsumerWidget {
         if (metrics.totalReviews != null && metrics.totalReviews! > 0)
           _MetricPill(icon: Icons.rate_review_outlined, label: 'product.reviews_title'.tr(), value: '${metrics.totalReviews}', isDark: isDark),
       ],
+    );
+  }
+}
+
+// ============================================================================
+// SIMILAR PRODUCTS SECTION — Horizontal row of products in same category
+// ============================================================================
+
+class _SimilarProductsSection extends ConsumerWidget {
+  final String productId;
+  final int categoryId;
+
+  const _SimilarProductsSection({required this.productId, required this.categoryId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Skip if category is unset (0)
+    if (categoryId == 0) return const SizedBox.shrink();
+
+    final similarAsync = ref.watch(similarProductsProvider((excludeProductId: productId, categoryId: categoryId)));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return similarAsync.when(
+      data: (products) {
+        if (products.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'product.customers_also_bought'.tr(),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 220,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: products.length,
+                separatorBuilder: (context, i) => const SizedBox(width: 12),
+                itemBuilder: (context, idx) {
+                  final p = products[idx];
+                  return SizedBox(
+                    width: 150,
+                    child: ProductCard(productId: p.productId, product: p, userModel: null),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (err, st) => const SizedBox.shrink(),
+    );
+  }
+}
+
+// ============================================================================
+// STICKY BOTTOM CTA — fixed Add-to-Cart / Buy-Now bar on mobile
+// ============================================================================
+
+class _StickyBottomCTA extends ConsumerWidget {
+  final Product product;
+  final bool isOutOfStock;
+  final bool isDark;
+
+  const _StickyBottomCTA({required this.product, required this.isOutOfStock, required this.isDark});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quantity = ref.watch(productDetailViewModelProvider.select((s) => s.quantity));
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDark ? DesignTokens.darkSurface.withValues(alpha: 0.96) : Colors.white.withValues(alpha: 0.96),
+          border: Border(top: BorderSide(color: DesignTokens.primary.withValues(alpha: 0.15))),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 16, offset: const Offset(0, -4))],
+        ),
+        child: Row(
+          children: [
+            // Price chip
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '\$${(product.price * quantity).toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: DesignTokens.primary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (quantity > 1)
+                    Text(
+                      '\$${product.price.toStringAsFixed(2)} × $quantity',
+                      style: const TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Add to Cart button
+            Expanded(
+              child: _AddToCartButton(productId: product.productId, sellerId: product.sellerId, stockQuantity: product.stockQuantity),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -2162,59 +2241,6 @@ class _TrustBadges extends ConsumerWidget {
             ),
           )
           .toList(),
-    );
-  }
-}
-
-// ============================================================================
-// SIMILAR PRODUCTS SECTION — Horizontal row of products in same category
-// ============================================================================
-
-class _SimilarProductsSection extends ConsumerWidget {
-  final String productId;
-  final int categoryId;
-
-  const _SimilarProductsSection({required this.productId, required this.categoryId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Skip if category is unset (0)
-    if (categoryId == 0) return const SizedBox.shrink();
-
-    final similarAsync = ref.watch(similarProductsProvider((excludeProductId: productId, categoryId: categoryId)));
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return similarAsync.when(
-      data: (products) {
-        if (products.isEmpty) return const SizedBox.shrink();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'product.customers_also_bought'.tr(),
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 220,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: products.length,
-                separatorBuilder: (context, i) => const SizedBox(width: 12),
-                itemBuilder: (context, idx) {
-                  final p = products[idx];
-                  return SizedBox(
-                    width: 150,
-                    child: ProductCard(productId: p.productId, product: p, userModel: null),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (err, st) => const SizedBox.shrink(),
     );
   }
 }
@@ -2348,9 +2374,11 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
               children: [
                 Icon(Icons.inventory_2_outlined, size: 16, color: DesignTokens.warning),
                 const SizedBox(width: 6),
-                Text(
-                  'product.low_stock'.tr(namedArgs: {'count': _effectiveStock.toString()}),
-                  style: TextStyle(fontSize: 13, color: DesignTokens.warning, fontWeight: FontWeight.w600),
+                Expanded(
+                  child: Text(
+                    'product.low_stock'.tr(namedArgs: {'count': _effectiveStock.toString()}),
+                    style: TextStyle(fontSize: 13, color: DesignTokens.warning, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
@@ -2364,74 +2392,6 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
           variantKey: _matchedVariant?['variantId'] as String?,
         ),
       ],
-    );
-  }
-}
-
-// ============================================================================
-// STICKY BOTTOM CTA — fixed Add-to-Cart / Buy-Now bar on mobile
-// ============================================================================
-
-class _StickyBottomCTA extends ConsumerWidget {
-  final Product product;
-  final bool isOutOfStock;
-  final bool isDark;
-
-  const _StickyBottomCTA({
-    required this.product,
-    required this.isOutOfStock,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final quantity = ref.watch(productDetailViewModelProvider.select((s) => s.quantity));
-
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isDark ? DesignTokens.darkSurface.withValues(alpha: 0.96) : Colors.white.withValues(alpha: 0.96),
-          border: Border(top: BorderSide(color: DesignTokens.primary.withValues(alpha: 0.15))),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 16, offset: const Offset(0, -4)),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Price chip
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '\$${(product.price * quantity).toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: DesignTokens.primary,
-                  ),
-                ),
-                if (quantity > 1)
-                  Text(
-                    '\$${product.price.toStringAsFixed(2)} × $quantity',
-                    style: const TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 12),
-            // Add to Cart button
-            Expanded(
-              child: _AddToCartButton(
-                productId: product.productId,
-                sellerId: product.sellerId,
-                stockQuantity: product.stockQuantity,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -2530,23 +2490,3 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
     }
   }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'ProductDetailScreen — Dark', group: 'ProductDetailScreen')
-Widget previewProductDetailScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const ProductDetailScreen(productId: 'preview-id'),
-      ),
-    );
-
-@Preview(name: 'ProductDetailScreen — Light', group: 'ProductDetailScreen')
-Widget previewProductDetailScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const ProductDetailScreen(productId: 'preview-id'),
-      ),
-    );

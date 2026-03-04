@@ -1,9 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/widget_previews.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -18,6 +16,7 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:shimmer/shimmer.dart';
 
 class SellerProductsScreen extends ConsumerWidget {
   const SellerProductsScreen({super.key});
@@ -74,16 +73,16 @@ class SellerProductsScreen extends ConsumerWidget {
             icon: Icons.error_outline_rounded,
             title: tr('seller.something_wrong'),
             subtitle: AppError.getMessage(e),
-            action: ModernButton(
-              label: 'common.retry'.tr(),
-              icon: Icons.refresh,
-              onPressed: () => ref.invalidate(sellerProductsProvider),
-              isPrimary: false,
-            ),
+            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, onPressed: () => ref.invalidate(sellerProductsProvider), isPrimary: false),
           ),
           data: (products) {
             if (products.isEmpty) {
-              return AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: tr('seller.no_products_yet'), subtitle: tr('seller.add_first_product'), showMascot: true);
+              return AnimatedEmptyState(
+                icon: Icons.inventory_2_outlined,
+                title: tr('seller.no_products_yet'),
+                subtitle: tr('seller.add_first_product'),
+                showMascot: true,
+              );
             }
 
             return Column(
@@ -163,36 +162,6 @@ class SellerProductsScreen extends ConsumerWidget {
             child: Text(tr('seller.archive')),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Shimmer skeleton for seller products list loading state.
-class _SellerProductsSkeleton extends StatelessWidget {
-  final bool isDark;
-  const _SellerProductsSkeleton({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final baseColor = isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant;
-    final highlightColor = isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface;
-
-    return Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
-      child: ListView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(DesignTokens.spacing16),
-        itemCount: 5,
-        itemBuilder: (_, index) => Container(
-          margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
-          height: 100,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          ),
-        ),
       ),
     );
   }
@@ -316,6 +285,65 @@ class _BulkActionBar extends StatelessWidget {
   }
 }
 
+class _RejectionBanner extends StatelessWidget {
+  final String reason;
+  final VoidCallback onFixAndResubmit;
+  const _RejectionBanner({required this.reason, required this.onFixAndResubmit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: DesignTokens.error.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.25), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded, size: 13, color: DesignTokens.error),
+              const SizedBox(width: 4),
+              Text(
+                tr('seller.rejection_reason_label'),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: DesignTokens.error),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            reason,
+            style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: onFixAndResubmit,
+              icon: Icon(Icons.edit_outlined, size: 14, color: DesignTokens.primary),
+              label: Text(
+                tr('seller.fix_and_resubmit'),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DesignTokens.primary),
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: DesignTokens.primary.withValues(alpha: 0.08),
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                minimumSize: Size.zero,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SellerProductCard extends StatelessWidget {
   final Product product;
   final bool isSelected;
@@ -376,7 +404,14 @@ class _SellerProductCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: product.imageUrls.isNotEmpty
-                  ? CachedNetworkImage(imageUrl: product.imageUrls.first, width: 56, height: 56, fit: BoxFit.cover, errorWidget: (context, url, error) => _placeholderImage(), placeholder: (context, url) => _placeholderImage())
+                  ? CachedNetworkImage(
+                      imageUrl: product.imageUrls.first,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => _placeholderImage(),
+                      placeholder: (context, url) => _placeholderImage(),
+                    )
                   : _placeholderImage(),
             ),
             const SizedBox(width: 12),
@@ -454,52 +489,28 @@ class _SellerProductCard extends StatelessWidget {
   }
 }
 
-class _RejectionBanner extends StatelessWidget {
-  final String reason;
-  final VoidCallback onFixAndResubmit;
-  const _RejectionBanner({required this.reason, required this.onFixAndResubmit});
+/// Shimmer skeleton for seller products list loading state.
+class _SellerProductsSkeleton extends StatelessWidget {
+  final bool isDark;
+  const _SellerProductsSkeleton({required this.isDark});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: DesignTokens.error.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.25), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline_rounded, size: 13, color: DesignTokens.error),
-              const SizedBox(width: 4),
-              Text(
-                tr('seller.rejection_reason_label'),
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: DesignTokens.error),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(reason, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary), maxLines: 3, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton.icon(
-              onPressed: onFixAndResubmit,
-              icon: Icon(Icons.edit_outlined, size: 14, color: DesignTokens.primary),
-              label: Text(tr('seller.fix_and_resubmit'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DesignTokens.primary)),
-              style: TextButton.styleFrom(
-                backgroundColor: DesignTokens.primary.withValues(alpha: 0.08),
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                minimumSize: Size.zero,
-              ),
-            ),
-          ),
-        ],
+    final baseColor = isDark ? DesignTokens.darkCard : DesignTokens.outlineVariant;
+    final highlightColor = isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(DesignTokens.spacing16),
+        itemCount: 5,
+        itemBuilder: (_, index) => Container(
+          margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
+          height: 100,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        ),
       ),
     );
   }
@@ -542,17 +553,13 @@ class _UnansweredQaBadge extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(sellerUnansweredQaProvider(sellerId)).valueOrNull ?? 0;
     return Tooltip(
-      message: count > 0
-          ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()])
-          : 'seller.no_pending_questions'.tr(),
+      message: count > 0 ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()]) : 'seller.no_pending_questions'.tr(),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           IconButton(
             icon: const Icon(Icons.forum_outlined),
-            tooltip: count > 0
-                ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()])
-                : 'seller.no_pending_questions'.tr(),
+            tooltip: count > 0 ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()]) : 'seller.no_pending_questions'.tr(),
             onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerOrders),
           ),
           if (count > 0)
@@ -580,23 +587,3 @@ class _UnansweredQaBadge extends ConsumerWidget {
     );
   }
 }
-
-// ─── Flutter Previews ────────────────────────────────────────────────────────
-
-@Preview(name: 'SellerProductsScreen — Dark', group: 'SellerProductsScreen')
-Widget previewSellerProductsScreenDark() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: const SellerProductsScreen(),
-      ),
-    );
-
-@Preview(name: 'SellerProductsScreen — Light', group: 'SellerProductsScreen')
-Widget previewSellerProductsScreenLight() => ProviderScope(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.light(),
-        home: const SellerProductsScreen(),
-      ),
-    );
