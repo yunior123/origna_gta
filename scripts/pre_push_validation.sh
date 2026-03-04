@@ -5,11 +5,10 @@ set -e
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# --skip-builds: skip Flutter multi-env builds when deploy_rules.sh already ran them
-SKIP_BUILDS=false
-for arg in "$@"; do
-  [ "$arg" = "--skip-builds" ] && SKIP_BUILDS=true
-done
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
 echo "============================================"
 echo "  Pre-Push Validation Suite"
@@ -38,54 +37,81 @@ fi
 cd "$REPO_ROOT"
 echo "✅ Backend tests passed."
 
-# 0. Validate Flutter builds for all 3 environments
+# 0. Per-environment: build → validate → deploy (3 builds total, one per env)
 echo ""
-echo "--- [0/10] Multi-Env Build Validation ---"
+echo "--- [0/10] Multi-Env Build + Deploy ---"
 BUILD_DIR="$REPO_ROOT/origna_gta/build/web"
 
-if [ "$SKIP_BUILDS" = true ]; then
-    # deploy_rules.sh already built and deployed all 3 envs — reuse prod build for guardrail check
-    echo "  ⏭  Skipping builds (already done by deploy_rules.sh)"
-    if grep -q "FORCE_SEMANTICS" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
-        echo "❌ ERROR: FORCE_SEMANTICS found in PROD build — dev/staging artifacts leaked into release!"
-        exit 1
-    fi
-    echo "  ✅ PROD build guardrail OK (no dev/staging artifacts)"
-else
-    cd "$REPO_ROOT/origna_gta"
+get_env_config() {
+  case "$1" in
+    orignagta-dev)
+      ENV_NAME="dev"
+      BUILD_MODE="--debug"
+      DART_DEFINES="--dart-define=ENVIRONMENT=dev --dart-define=FORCE_SEMANTICS=true"
+      ;;
+    orignagta-staging)
+      ENV_NAME="staging"
+      BUILD_MODE="--profile"
+      DART_DEFINES="--dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true"
+      ;;
+    orignagta)
+      ENV_NAME="prod"
+      BUILD_MODE="--release"
+      DART_DEFINES="--dart-define=ENVIRONMENT=production"
+      ;;
+  esac
+}
 
-    echo "  Building DEV..."
-    flutter build web --debug --dart-define=ENVIRONMENT=dev --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "❌ ERROR: Flutter DEV build failed."
-        exit 1
-    fi
-    echo "  ✅ DEV build OK"
+for PROJECT in orignagta-dev orignagta-staging orignagta; do
+  get_env_config "$PROJECT"
+  echo ""
+  echo -e "${YELLOW}→ [$ENV_NAME] $PROJECT${NC}"
 
-    echo "  Building STAGING..."
-    flutter build web --profile --dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "❌ ERROR: Flutter STAGING build failed."
-        exit 1
-    fi
-    echo "  ✅ STAGING build OK"
+  echo -e "  ${YELLOW}Building Flutter web for $ENV_NAME...${NC}"
+  cd "$REPO_ROOT/origna_gta"
+  if ! flutter build web $BUILD_MODE $DART_DEFINES; then
+      echo "❌ ERROR: Flutter $ENV_NAME build failed."
+      exit 1
+  fi
 
-    echo "  Building PROD..."
-    flutter build web --release --dart-define=ENVIRONMENT=production > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "❌ ERROR: Flutter PROD build failed."
-        exit 1
-    fi
-    # Guardrail: prod build must NOT contain FORCE_SEMANTICS
-    if grep -q "FORCE_SEMANTICS" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
-        echo "❌ ERROR: FORCE_SEMANTICS found in PROD build — dev/staging artifacts leaked into release!"
-        exit 1
-    fi
-    echo "  ✅ PROD build OK (no dev/staging artifacts)"
+  if grep -q "ENVIRONMENT" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
+      echo -e "  ${GREEN}Build verified for $ENV_NAME${NC}"
+  fi
 
-    cd "$REPO_ROOT"
-fi
-echo "✅ All 3 environment builds validated."
+  # Guardrail: prod build must NOT contain FORCE_SEMANTICS
+  if [ "$ENV_NAME" = "prod" ]; then
+      if grep -q "FORCE_SEMANTICS" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
+          echo "❌ ERROR: FORCE_SEMANTICS found in PROD build — dev/staging artifacts leaked into release!"
+          exit 1
+      fi
+      echo -e "  ${GREEN}PROD build guardrail OK (no dev/staging artifacts)${NC}"
+  fi
+
+  cd "$REPO_ROOT"
+
+  # Deploy Firestore rules, indexes, and hosting
+  firebase deploy --only firestore:rules,firestore:indexes,hosting --project "$PROJECT"
+
+  # Deploy storage rules — gracefully skip if Firebase Storage not provisioned
+  storage_exit=0
+  storage_out=$(firebase deploy --only storage --project "$PROJECT" 2>&1) || storage_exit=$?
+  if echo "$storage_out" | grep -q "Firebase Storage has not been set up"; then
+      echo -e "  ${YELLOW}[$ENV_NAME] Firebase Storage not provisioned — skipping${NC}"
+  elif [ "${storage_exit}" -ne 0 ]; then
+      echo "$storage_out"
+      exit "${storage_exit}"
+  fi
+
+  echo -e "  ${GREEN}[$ENV_NAME] Done${NC}"
+done
+
+echo ""
+echo "Recording deployed versions..."
+python3 "$REPO_ROOT/scripts/record_deploy_version.py" --env=dev     --component=all
+python3 "$REPO_ROOT/scripts/record_deploy_version.py" --env=staging --component=all
+python3 "$REPO_ROOT/scripts/record_deploy_version.py" --env=prod    --component=all
+
+echo "✅ All 3 environments built and deployed."
 
 # 1. Check for credential leaks
 echo ""
