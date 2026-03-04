@@ -1,34 +1,20 @@
 # STATE.md — Session Progress
 
 ---
-## 🟡 IN PROGRESS (2026-03-04) — Cloudflare Turnstile Integration
+## ✅ COMPLETE (2026-03-04) — Cloudflare Turnstile Integration
 
-**Status:** CODE COMPLETE — needs real Cloudflare site keys for staging/prod.
+**Status:** FULLY COMPLETE — widgets created, secrets stored, code wired, committed.
 
-**All code done ✅:**
-- `functions/utils/turnstile.py` — `verify_turnstile_token()` (fail-open)
-- `functions/handlers/users.py` — Turnstile check on `create_user_profile`
-- `functions/schema_constants.py` — `ApiKeys.TURNSTILE_TOKEN`
-- `functions/tests/test_turnstile.py` — 9 tests, all pass ✅
-- `origna_gta/lib/core/schema/schema_constants.dart` — `ApiKeys.turnstileToken`
-- `origna_gta/lib/services/turnstile_service.dart` — platform dispatcher
-- `origna_gta/lib/services/turnstile_service_web.dart` — JS interop (`dart:js_interop`)
-- `origna_gta/lib/services/turnstile_service_stub.dart` — non-web no-op
-- `origna_gta/web/index.html` — Turnstile script + invisible widget + `window._getTurnstileToken()` / `window._resetTurnstile()`
-- `origna_gta/lib/core/repositories/auth_repository.dart` — passes `ApiKeys.turnstileToken: ?turnstileToken`
-- `origna_gta/lib/main.dart` — ReCaptchaEnterpriseProvider
-- `scripts/pre_push_validation.sh` — Enterprise key env vars
-- `flutter analyze --no-fatal-infos` → Exit 0 ✅
+**Widgets:**
+- Staging: sitekey `0x4AAAAAACmRNCDQqc20J_1T` (orignagta-staging.web.app)
+- Prod: sitekey `0x4AAAAAACmRNXgZQ1M928iq` (www.orignagta.ca)
+- Dev: `1x00000000000000000000AA` (always-pass, no widget needed)
 
-**Remaining (needs Cloudflare MCP OAuth — restart Claude Code):**
-1. Use Cloudflare MCP to create Turnstile widgets for **staging** + **prod** (account ID: `9b027cd3919483d27f0abeb2090ac626`)
-2. Save secret keys to Firebase Secret Manager: `CLOUDFLARE_TURNSTILE_SECRET` for staging + prod
-3. Replace `__TURNSTILE_SITE_KEY__` placeholder in `web/index.html` build step (or use `--dart-define=TURNSTILE_SITE_KEY=...` approach)
-4. Commit + push all pending changes (currently ~7 uncommitted files)
+**Secret storage:** `APP_SECRETS` JSON blob, key `cloudflare_turnstile_secret` (staging v4, prod v2)
 
-**Dev keys (always-pass — active in dev):**
-- Site key: `1x00000000000000000000AA`
-- Secret: `1x0000000000000000000000000000000AA`
+**Build injection:** `pre_push_validation.sh` runs `sed` on `build/web/index.html` after `flutter build web`
+
+**Pending:** `git push` — 7 commits staged, not yet pushed to remote
 
 ---
 

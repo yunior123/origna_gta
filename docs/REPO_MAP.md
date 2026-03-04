@@ -51,7 +51,7 @@
 | `pdf_invoice_service.py` | PDF invoice generation. |
 | `email_task.py` | Helper for sending email tasks via Cloud Tasks. |
 
-### Tests — `functions/tests/` (449 tests)
+### Tests — `functions/tests/` (458 tests)
 | File | Coverage Area |
 |------|---------------|
 | `test_critical_flow_scenarios.py` | End-to-end business flows |
@@ -72,6 +72,7 @@
 | `test_backend_integration.py` | Backend integration |
 | `test_adversarial_scenarios.py` | Security scenarios against tampering |
 | `test_algolia_simple.py` | Basic Algolia client functionality |
+| `test_turnstile.py` | Cloudflare Turnstile token verification (9 tests) |
 | `test_checkout_fixes_Feb2026.py` | Recent checkout bug fixes |
 | `test_email_service.py` | Email sending service tests |
 | `test_handlers_digital.py` | Digital product license handling |
@@ -177,6 +178,9 @@
 | `session_timeout_service.dart` | Session management |
 | `notification_service.dart` | Manages local and push notifications. |
 | `splash_service.dart` | App splash/loading |
+| `turnstile_service.dart` | Cloudflare Turnstile platform dispatcher (web/stub) |
+| `turnstile_service_web.dart` | Web implementation via `dart:js_interop` → `window._getTurnstileToken()` |
+| `turnstile_service_stub.dart` | Non-web no-op (mobile/desktop — App Check handles attestation) |
 
 ### Widgets — `lib/widgets/`
 | File | Responsibility |
