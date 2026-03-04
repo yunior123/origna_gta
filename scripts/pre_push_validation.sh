@@ -5,6 +5,12 @@ set -e
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# --skip-builds: skip Flutter multi-env builds when deploy_rules.sh already ran them
+SKIP_BUILDS=false
+for arg in "$@"; do
+  [ "$arg" = "--skip-builds" ] && SKIP_BUILDS=true
+done
+
 echo "============================================"
 echo "  Pre-Push Validation Suite"
 echo "============================================"
@@ -36,38 +42,49 @@ echo "✅ Backend tests passed."
 echo ""
 echo "--- [0/10] Multi-Env Build Validation ---"
 BUILD_DIR="$REPO_ROOT/origna_gta/build/web"
-cd "$REPO_ROOT/origna_gta"
 
-echo "  Building DEV..."
-flutter build web --debug --dart-define=ENVIRONMENT=dev --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Flutter DEV build failed."
-    exit 1
-fi
-echo "  ✅ DEV build OK"
+if [ "$SKIP_BUILDS" = true ]; then
+    # deploy_rules.sh already built and deployed all 3 envs — reuse prod build for guardrail check
+    echo "  ⏭  Skipping builds (already done by deploy_rules.sh)"
+    if grep -q "FORCE_SEMANTICS" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
+        echo "❌ ERROR: FORCE_SEMANTICS found in PROD build — dev/staging artifacts leaked into release!"
+        exit 1
+    fi
+    echo "  ✅ PROD build guardrail OK (no dev/staging artifacts)"
+else
+    cd "$REPO_ROOT/origna_gta"
 
-echo "  Building STAGING..."
-flutter build web --profile --dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Flutter STAGING build failed."
-    exit 1
-fi
-echo "  ✅ STAGING build OK"
+    echo "  Building DEV..."
+    flutter build web --debug --dart-define=ENVIRONMENT=dev --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Flutter DEV build failed."
+        exit 1
+    fi
+    echo "  ✅ DEV build OK"
 
-echo "  Building PROD..."
-flutter build web --release --dart-define=ENVIRONMENT=production > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Flutter PROD build failed."
-    exit 1
-fi
-# Guardrail: prod build must NOT contain FORCE_SEMANTICS
-if grep -q "FORCE_SEMANTICS" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
-    echo "❌ ERROR: FORCE_SEMANTICS found in PROD build — dev/staging artifacts leaked into release!"
-    exit 1
-fi
-echo "  ✅ PROD build OK (no dev/staging artifacts)"
+    echo "  Building STAGING..."
+    flutter build web --profile --dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Flutter STAGING build failed."
+        exit 1
+    fi
+    echo "  ✅ STAGING build OK"
 
-cd "$REPO_ROOT"
+    echo "  Building PROD..."
+    flutter build web --release --dart-define=ENVIRONMENT=production > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Flutter PROD build failed."
+        exit 1
+    fi
+    # Guardrail: prod build must NOT contain FORCE_SEMANTICS
+    if grep -q "FORCE_SEMANTICS" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
+        echo "❌ ERROR: FORCE_SEMANTICS found in PROD build — dev/staging artifacts leaked into release!"
+        exit 1
+    fi
+    echo "  ✅ PROD build OK (no dev/staging artifacts)"
+
+    cd "$REPO_ROOT"
+fi
 echo "✅ All 3 environment builds validated."
 
 # 1. Check for credential leaks
