@@ -906,10 +906,11 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                       style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
                     ),
                     const SizedBox(height: 6),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         _infoPill('orders.qty_prefix'.tr(namedArgs: {'count': item.quantity.toString()}), isDark),
-                        const SizedBox(width: 8),
                         _infoPill('\$${item.price.toStringAsFixed(2)}', isDark),
                       ],
                     ),

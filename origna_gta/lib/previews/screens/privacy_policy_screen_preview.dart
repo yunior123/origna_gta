@@ -4,5 +4,14 @@ import 'package:origna_gta/screens/privacy_policy_screen.dart';
 
 import '../_preview_theme.dart';
 
-@Preview(name: 'Privacy Policy', group: 'Screens — Legal')
-Widget previewPrivacyPolicyScreen() => previewResponsiveBreakpoints(builder: (breakpoint) => const PrivacyPolicyScreen());
+@Preview(name: 'Privacy Policy — Mobile', group: 'Screens — Legal', size: Size(390, 844))
+Widget previewPrivacyPolicyScreenMobile() => previewMobile(child: const PrivacyPolicyScreen());
+
+@Preview(name: 'Privacy Policy — Tablet', group: 'Screens — Legal', size: Size(768, 1024))
+Widget previewPrivacyPolicyScreenTablet() => previewTablet(child: const PrivacyPolicyScreen());
+
+@Preview(name: 'Privacy Policy — Desktop', group: 'Screens — Legal', size: Size(1280, 800))
+Widget previewPrivacyPolicyScreenDesktop() => previewDesktop(child: const PrivacyPolicyScreen());
+
+@Preview(name: 'Privacy Policy — Web', group: 'Screens — Legal', size: Size(1440, 900))
+Widget previewPrivacyPolicyScreenWeb() => previewWeb(child: const PrivacyPolicyScreen());

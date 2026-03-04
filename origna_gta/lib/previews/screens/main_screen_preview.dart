@@ -4,7 +4,14 @@ import 'package:origna_gta/screens/main_screen.dart';
 
 import '../_preview_theme.dart';
 
-@Preview(name: 'Main Screen', group: 'Home Screens')
-Widget previewMainScreen() {
-  return previewResponsiveBreakpoints(builder: (breakpoint) => previewScope(child: MainScreen()));
-}
+@Preview(name: 'Main Screen — Mobile', group: 'Home Screens', size: Size(390, 844))
+Widget previewMainScreenMobile() => previewMobile(child: previewScope(child: MainScreen()));
+
+@Preview(name: 'Main Screen — Tablet', group: 'Home Screens', size: Size(768, 1024))
+Widget previewMainScreenTablet() => previewTablet(child: previewScope(child: MainScreen()));
+
+@Preview(name: 'Main Screen — Desktop', group: 'Home Screens', size: Size(1280, 800))
+Widget previewMainScreenDesktop() => previewDesktop(child: previewScope(child: MainScreen()));
+
+@Preview(name: 'Main Screen — Web', group: 'Home Screens', size: Size(1440, 900))
+Widget previewMainScreenWeb() => previewWeb(child: previewScope(child: MainScreen()));

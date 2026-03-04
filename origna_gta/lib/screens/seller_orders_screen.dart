@@ -110,7 +110,7 @@ class SellerOrdersScreen extends ConsumerWidget {
             icon: Icons.error_outline_rounded,
             title: 'seller.something_wrong'.tr(),
             subtitle: AppError.getMessage(error),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, onPressed: () => ref.invalidate(sellerOrdersProvider), isPrimary: false),
+            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, onPressed: () => ref.invalidate(sellerOrdersProvider), isOutlined: true),
           ),
           data: (orders) {
             if (orders.isEmpty) {

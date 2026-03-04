@@ -4,23 +4,30 @@ import 'package:origna_gta/screens/cartitem_screen.dart';
 
 import '../_preview_theme.dart';
 
-@Preview(name: 'Cart Item Screen', group: 'Cart Screens')
-Widget previewCartItemScreen() {
-  return previewResponsiveBreakpoints(
-    builder: (breakpoint) => previewScope(
-      child: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: CartItemScreen(
-              productId: 'preview-id',
-              cartItemId: 'preview-cart-item-id',
-              item: const {'name': 'Preview Product', 'price': 9.99, 'quantity': 1},
-              onRemove: () {},
-            ),
-          ),
+Widget _cartItemContent() => previewScope(
+  child: Scaffold(
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: CartItemScreen(
+          productId: 'preview-id',
+          cartItemId: 'preview-cart-item-id',
+          item: const {'name': 'Preview Product', 'price': 9.99, 'quantity': 1},
+          onRemove: () {},
         ),
       ),
     ),
-  );
-}
+  ),
+);
+
+@Preview(name: 'Cart Item — Mobile', group: 'Cart Screens', size: Size(390, 844))
+Widget previewCartItemScreenMobile() => previewMobile(child: _cartItemContent());
+
+@Preview(name: 'Cart Item — Tablet', group: 'Cart Screens', size: Size(768, 1024))
+Widget previewCartItemScreenTablet() => previewTablet(child: _cartItemContent());
+
+@Preview(name: 'Cart Item — Desktop', group: 'Cart Screens', size: Size(1280, 800))
+Widget previewCartItemScreenDesktop() => previewDesktop(child: _cartItemContent());
+
+@Preview(name: 'Cart Item — Web', group: 'Cart Screens', size: Size(1440, 900))
+Widget previewCartItemScreenWeb() => previewWeb(child: _cartItemContent());

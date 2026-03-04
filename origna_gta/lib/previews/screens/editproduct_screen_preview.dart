@@ -5,21 +5,30 @@ import 'package:origna_gta/screens/editproduct_screen.dart';
 
 import '../_preview_theme.dart';
 
-@Preview(name: 'Edit Product Details', group: 'Screens')
-Widget previewEditProductScreen() => previewResponsiveBreakpoints(
-  builder: (breakpoint) => previewScope(
-    child: EditProductScreen(
-      product: Product(
-        productId: 'mock-id',
-        name: 'Mock Product',
-        price: 100.0,
-        description: 'Mock Description',
-        imageUrls: ['https://via.placeholder.com/150'],
-        sellerId: 'mock-seller',
-        categoryId: 1,
-        stockQuantity: 10,
-        createdAt: DateTime.now(),
-      ),
+Widget _editProductContent() => previewScope(
+  child: EditProductScreen(
+    product: Product(
+      productId: 'mock-id',
+      name: 'Mock Product',
+      price: 100.0,
+      description: 'Mock Description',
+      imageUrls: ['https://via.placeholder.com/150'],
+      sellerId: 'mock-seller',
+      categoryId: 1,
+      stockQuantity: 10,
+      createdAt: DateTime.now(),
     ),
   ),
 );
+
+@Preview(name: 'Edit Product — Mobile', group: 'Screens', size: Size(390, 844))
+Widget previewEditProductScreenMobile() => previewMobile(child: _editProductContent());
+
+@Preview(name: 'Edit Product — Tablet', group: 'Screens', size: Size(768, 1024))
+Widget previewEditProductScreenTablet() => previewTablet(child: _editProductContent());
+
+@Preview(name: 'Edit Product — Desktop', group: 'Screens', size: Size(1280, 800))
+Widget previewEditProductScreenDesktop() => previewDesktop(child: _editProductContent());
+
+@Preview(name: 'Edit Product — Web', group: 'Screens', size: Size(1440, 900))
+Widget previewEditProductScreenWeb() => previewWeb(child: _editProductContent());

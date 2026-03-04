@@ -110,7 +110,7 @@ class NotificationsScreenLayout extends StatelessWidget {
             icon: Icons.error_outline_rounded,
             title: 'common.error_loading'.tr(),
             subtitle: AppError.getMessage(e),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isPrimary: false, onPressed: onRefresh),
+            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isOutlined: true, onPressed: onRefresh),
           ),
           data: (notifications) {
             if (notifications.isEmpty) {

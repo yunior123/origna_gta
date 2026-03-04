@@ -63,7 +63,418 @@ Widget previewScopeLoggedIn({required Widget child, String uid = 'preview-uid', 
 }
 
 // ============================================================================
-// WRAPPERS
+// BREAKPOINTS
+// ============================================================================
+
+enum _FrameType { phone, tablet, browser }
+
+enum PreviewBreakpoint {
+  mobileSm(width: 320, height: 568, name: 'Mobile S'),
+  mobile(width: 390, height: 844, name: 'Mobile'),
+  tablet(width: 768, height: 1024, name: 'Tablet'),
+  desktop(width: 1280, height: 800, name: 'Desktop'),
+  web(width: 1440, height: 900, name: 'Web');
+
+  final double width;
+  final double height;
+  final String name;
+
+  const PreviewBreakpoint({required this.width, required this.height, required this.name});
+}
+
+_FrameType _frameTypeOf(PreviewBreakpoint bp) => switch (bp) {
+  PreviewBreakpoint.mobileSm || PreviewBreakpoint.mobile => _FrameType.phone,
+  PreviewBreakpoint.tablet => _FrameType.tablet,
+  PreviewBreakpoint.desktop || PreviewBreakpoint.web => _FrameType.browser,
+};
+
+// ============================================================================
+// DEVICE FRAME OVERLAY — painted on top of content at exact viewport size
+// ============================================================================
+
+/// Overlays device chrome on top of content within the viewport bounds.
+class _DeviceFrameOverlay extends StatelessWidget {
+  const _DeviceFrameOverlay({required this.breakpoint, required this.child});
+
+  final PreviewBreakpoint breakpoint;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (_frameTypeOf(breakpoint)) {
+      _FrameType.phone => _PhoneOverlay(width: breakpoint.width, height: breakpoint.height, child: child),
+      _FrameType.tablet => _TabletOverlay(width: breakpoint.width, height: breakpoint.height, child: child),
+      _FrameType.browser => _BrowserOverlay(width: breakpoint.width, height: breakpoint.height, child: child),
+    };
+  }
+}
+
+/// Phone chrome overlay: notch pill at top, home indicator at bottom, rounded corners.
+class _PhoneOverlay extends StatelessWidget {
+  const _PhoneOverlay({required this.width, required this.height, required this.child});
+  final double width;
+  final double height;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        children: [
+          // Content (full viewport)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(40),
+            child: SizedBox.expand(child: child),
+          ),
+          // Phone chrome overlays
+          CustomPaint(
+            size: Size(width, height),
+            painter: _PhoneChromePainter(width: width, height: height),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhoneChromePainter extends CustomPainter {
+  const _PhoneChromePainter({required this.width, required this.height});
+  final double width;
+  final double height;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final borderPaint = Paint()
+      ..color = const Color(0xFF3A3A5C)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final notchPaint = Paint()..color = const Color(0xFF0A0A1A);
+    final homeBarPaint = Paint()
+      ..color = Colors.white.withAlpha(100)
+      ..style = PaintingStyle.fill
+      ..strokeCap = StrokeCap.round;
+    final shadowPaint = Paint()
+      ..color = Colors.black.withAlpha(60)
+      ..style = PaintingStyle.fill;
+
+    // Rounded corner clip border
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, width, height),
+      const Radius.circular(40),
+    );
+    canvas.drawRRect(rrect, borderPaint);
+
+    // Status bar dark strip + notch
+    const notchW = 110.0;
+    const notchH = 6.0;
+    const notchTop = 10.0;
+    canvas.drawRect(Rect.fromLTWH(0, 0, width, notchTop + notchH + 6), shadowPaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH((width - notchW) / 2, notchTop, notchW, notchH * 2),
+        const Radius.circular(notchH),
+      ),
+      notchPaint,
+    );
+
+    // Home indicator
+    const homeBarW = 100.0;
+    const homeBarH = 4.0;
+    const homeBarBottomOffset = 8.0;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          (width - homeBarW) / 2,
+          height - homeBarBottomOffset - homeBarH,
+          homeBarW,
+          homeBarH,
+        ),
+        const Radius.circular(homeBarH / 2),
+      ),
+      homeBarPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+/// Tablet chrome overlay: camera dot at top, rounded corners, thin border.
+class _TabletOverlay extends StatelessWidget {
+  const _TabletOverlay({required this.width, required this.height, required this.child});
+  final double width;
+  final double height;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox.expand(child: child),
+          ),
+          CustomPaint(
+            size: Size(width, height),
+            painter: _TabletChromePainter(width: width, height: height),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TabletChromePainter extends CustomPainter {
+  const _TabletChromePainter({required this.width, required this.height});
+  final double width;
+  final double height;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final borderPaint = Paint()
+      ..color = const Color(0xFF3A3A5C)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final cameraPaint = Paint()..color = const Color(0xFF1A1A3A);
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, width, height), const Radius.circular(16)),
+      borderPaint,
+    );
+    // Camera dot
+    canvas.drawCircle(Offset(width / 2, 14), 5, cameraPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+/// Browser chrome overlay: opaque top bar with dots + URL, content area is below.
+/// Content is rendered at height - chromeH to leave room for the chrome bar.
+class _BrowserOverlay extends StatelessWidget {
+  const _BrowserOverlay({required this.width, required this.height, required this.child});
+  final double width;
+  final double height;
+  final Widget child;
+
+  static const double _chromeH = 44.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Column(
+          children: [
+            // Browser chrome bar (opaque)
+            _BrowserChromeBar(width: width, height: _chromeH),
+            // Page content fills the rest
+            Expanded(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BrowserChromeBar extends StatelessWidget {
+  const _BrowserChromeBar({required this.width, required this.height});
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      color: const Color(0xFF2A2A40),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          _dot(const Color(0xFFFF5F57)),
+          const SizedBox(width: 5),
+          _dot(const Color(0xFFFFBD2E)),
+          const SizedBox(width: 5),
+          _dot(const Color(0xFF28CA41)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              height: 22,
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              alignment: Alignment.center,
+              child: const Text('orignagta.ca', style: TextStyle(color: Colors.white54, fontSize: 10)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dot(Color color) => Container(
+    width: 10,
+    height: 10,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
+}
+
+// ============================================================================
+// CHECKERBOARD CANVAS BACKGROUND
+// ============================================================================
+
+class _CheckerboardPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const cellSize = 12.0;
+    final paint1 = Paint()..color = const Color(0xFF1E1E2E);
+    final paint2 = Paint()..color = const Color(0xFF252535);
+
+    final cols = (size.width / cellSize).ceil() + 1;
+    final rows = (size.height / cellSize).ceil() + 1;
+
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final paint = (r + c).isEven ? paint1 : paint2;
+        canvas.drawRect(Rect.fromLTWH(c * cellSize.toDouble(), r * cellSize.toDouble(), cellSize, cellSize), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ============================================================================
+// SINGLE-VIEWPORT HELPERS
+// ============================================================================
+
+/// Wraps [child] in a mobile phone frame (390×844).
+/// Use with `@Preview(size: Size(390, 844))`.
+Widget previewMobile({required Widget child, ThemeData? theme, Locale locale = const Locale('en')}) {
+  return _singleViewport(bp: PreviewBreakpoint.mobile, child: child, theme: theme, locale: locale);
+}
+
+/// Wraps [child] in a tablet frame (768×1024).
+/// Use with `@Preview(size: Size(768, 1024))`.
+Widget previewTablet({required Widget child, ThemeData? theme, Locale locale = const Locale('en')}) {
+  return _singleViewport(bp: PreviewBreakpoint.tablet, child: child, theme: theme, locale: locale);
+}
+
+/// Wraps [child] in a browser frame at desktop size (1280×800).
+/// Use with `@Preview(size: Size(1280, 800))`.
+Widget previewDesktop({required Widget child, ThemeData? theme, Locale locale = const Locale('en')}) {
+  return _singleViewport(bp: PreviewBreakpoint.desktop, child: child, theme: theme, locale: locale);
+}
+
+/// Wraps [child] in a browser frame at web size (1440×900).
+/// Use with `@Preview(size: Size(1440, 900))`.
+Widget previewWeb({required Widget child, ThemeData? theme, Locale locale = const Locale('en')}) {
+  return _singleViewport(bp: PreviewBreakpoint.web, child: child, theme: theme, locale: locale);
+}
+
+Widget _singleViewport({
+  required PreviewBreakpoint bp,
+  required Widget child,
+  ThemeData? theme,
+  Locale locale = const Locale('en'),
+}) {
+  final effectiveTheme = theme ?? previewDarkTheme;
+  final isBrowser = _frameTypeOf(bp) == _FrameType.browser;
+  // Browser: content area is below the 44px chrome bar
+  final contentH = isBrowser ? bp.height - _BrowserOverlay._chromeH : bp.height;
+
+  final content = Theme(
+    data: effectiveTheme,
+    child: MediaQuery(
+      data: MediaQueryData(size: Size(bp.width, contentH)),
+      child: Scaffold(backgroundColor: DesignTokens.darkBackground, body: child),
+    ),
+  );
+
+  return _localizationShell(
+    locale: locale,
+    theme: effectiveTheme,
+    size: Size(bp.width, bp.height),
+    child: _DeviceFrameOverlay(breakpoint: bp, child: content),
+  );
+}
+
+// ============================================================================
+// ALL-VIEWPORTS HELPER (horizontal row — 4 frames side by side)
+// ============================================================================
+
+/// Shows a screen across all breakpoints side by side, each with device chrome.
+/// Checkerboard canvas background. Horizontal scroll.
+Widget previewAllViewports({
+  required Widget Function(PreviewBreakpoint bp) builder,
+  List<PreviewBreakpoint> breakpoints = const [
+    PreviewBreakpoint.mobile,
+    PreviewBreakpoint.tablet,
+    PreviewBreakpoint.desktop,
+    PreviewBreakpoint.web,
+  ],
+  ThemeData? theme,
+  Locale locale = const Locale('en'),
+}) {
+  final effectiveTheme = theme ?? previewDarkTheme;
+
+  return _localizationShell(
+    locale: locale,
+    theme: effectiveTheme,
+    child: CustomPaint(
+      painter: _CheckerboardPainter(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.all(32),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final bp in breakpoints) ...[
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildFrame(bp, effectiveTheme, builder(bp)),
+                  const SizedBox(height: 8),
+                  _label('${bp.name}  •  ${bp.width.toInt()}×${bp.height.toInt()}'),
+                ],
+              ),
+              const SizedBox(width: 32),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Builds a device-framed widget for use in the horizontal row view.
+Widget _buildFrame(PreviewBreakpoint bp, ThemeData theme, Widget content) {
+  final isBrowser = _frameTypeOf(bp) == _FrameType.browser;
+  final contentH = isBrowser ? bp.height - _BrowserOverlay._chromeH : bp.height;
+
+  final contentWidget = Theme(
+    data: theme,
+    child: MediaQuery(
+      data: MediaQueryData(size: Size(bp.width, contentH)),
+      child: Scaffold(backgroundColor: DesignTokens.darkBackground, body: content),
+    ),
+  );
+
+  return _DeviceFrameOverlay(breakpoint: bp, child: contentWidget);
+}
+
+// ============================================================================
+// WRAPPERS (legacy + grid)
 // ============================================================================
 
 /// Wrap a widget in MaterialApp + EasyLocalization for complete preview coverage.
@@ -98,24 +509,7 @@ Widget previewWrapper({
     content = Scaffold(backgroundColor: background ?? DesignTokens.darkBackground, body: Center(child: content));
   }
 
-  return EasyLocalization(
-    supportedLocales: const [Locale('en'), Locale('fr')],
-    path: 'packages/origna_gta/assets/translations',
-    fallbackLocale: const Locale('en'),
-    startLocale: locale,
-    useOnlyLangCode: true,
-    // No custom assetLoader — uses default RootBundleAssetLoader to read real translations
-    child: Builder(
-      builder: (context) => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: theme ?? previewDarkTheme,
-        localizationsDelegates: context.localizationDelegates,
-        supportedLocales: context.supportedLocales,
-        locale: context.locale,
-        home: content,
-      ),
-    ),
-  );
+  return _localizationShell(locale: locale, theme: theme, child: content);
 }
 
 /// Preview wrapper for a row/grid of widget variants (no breakpoint sizing).
@@ -138,191 +532,74 @@ Widget previewGrid({required List<Widget> children, ThemeData? theme, Color? bac
 }
 
 // ============================================================================
-// RESPONSIVE PREVIEWS
+// RESPONSIVE PREVIEWS (backward compat — delegates to previewAllViewports)
 // ============================================================================
 
-/// Shows a screen across Mobile, Tablet, and Desktop breakpoints — stacked
-/// vertically. Each frame scales DOWN to fit the panel width (never upscales),
-/// so all layouts are visible without horizontal overflow.
+/// Shows a screen across Mobile, Tablet, Desktop, and Web breakpoints side by side.
+/// Backward-compat alias for [previewAllViewports].
 Widget previewResponsiveBreakpoints({
   required Widget Function(PreviewBreakpoint breakpoint) builder,
   ThemeData? theme,
   Color? background,
   Locale locale = const Locale('en'),
 }) {
-  final effectiveTheme = theme ?? previewDarkTheme;
-  final effectiveBg = background ?? DesignTokens.darkBackground;
-
-  // Only the three sizes that matter for layout decisions.
-  const breakpoints = [PreviewBreakpoint.mobile, PreviewBreakpoint.tablet, PreviewBreakpoint.desktop];
-
-  return previewWrapper(
-    locale: locale,
-    background: const Color(0xff121212),
-    padding: const EdgeInsets.all(16),
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        // Panel width from LayoutBuilder; fall back to 400 if unbounded.
-        final panelW = constraints.maxWidth.isFinite ? constraints.maxWidth : 400.0;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final bp in breakpoints) ...[
-              _label('${bp.name}  •  ${bp.width.toInt()}×${bp.height.toInt()}'),
-              _scaledFrame(bp, panelW, effectiveTheme, effectiveBg, builder),
-              const SizedBox(height: 32),
-            ],
-          ],
-        );
-      },
-    ),
-  );
+  return previewAllViewports(builder: builder, theme: theme, locale: locale);
 }
 
-/// Renders [bp] at its natural dimensions then scales it to fit [panelW].
-/// Caps each frame at [_maxFrameH] so all three breakpoints fit without
-/// excessive vertical scrolling in the widget previewer.
-/// Never upscales (mobile stays at 375px on a wide panel).
-const double _maxFrameH = 350;
-
-Widget _scaledFrame(
-  PreviewBreakpoint bp,
-  double panelW,
-  ThemeData theme,
-  Color bg,
-  Widget Function(PreviewBreakpoint) builder,
-) {
-  final scaleW = (panelW / bp.width).clamp(0.0, 1.0);
-  final scaleH = (_maxFrameH / bp.height).clamp(0.0, 1.0);
-  final scale = scaleW < scaleH ? scaleW : scaleH;
-  final displayH = bp.height * scale;
-  final displayW = bp.width * scale;
-
-  return SizedBox(
-    width: displayW,
-    height: displayH,
-    child: Transform.scale(
-      scale: scale,
-      alignment: Alignment.topLeft,
-      child: SizedBox(
-        width: bp.width,
-        height: bp.height,
-        child: Container(
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.withValues(alpha: 0.3))),
-          child: ClipRect(
-            child: Theme(
-              data: theme,
-              child: MediaQuery(
-                data: MediaQueryData(size: Size(bp.width, bp.height)),
-                child: Scaffold(backgroundColor: bg, body: builder(bp)),
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-/// Shows a screen across ALL breakpoints side by side — use when you explicitly
-/// need multi-viewport comparison. Requires horizontal scrolling in the panel.
+/// Shows a screen across ALL breakpoints side by side.
 Widget previewAllBreakpoints({
   required Widget Function(PreviewBreakpoint breakpoint) builder,
   ThemeData? theme,
   Color? background,
   Locale locale = const Locale('en'),
 }) {
-  Widget buildRow(String title, ThemeData rowTheme, Color rowBg) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _label(title),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: PreviewBreakpoint.values.map((bp) {
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${bp.name} (${bp.width.toInt()}×${bp.height.toInt()})',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: bp.width,
-                      height: bp.height,
-                      decoration: BoxDecoration(border: Border.all(color: Colors.grey.withValues(alpha: 0.3))),
-                      child: ClipRect(
-                        child: Theme(
-                          data: rowTheme,
-                          child: MediaQuery(
-                            data: MediaQueryData(size: Size(bp.width, bp.height)),
-                            child: Scaffold(backgroundColor: rowBg, body: builder(bp)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  return previewWrapper(
+  return previewAllViewports(
+    builder: builder,
+    breakpoints: PreviewBreakpoint.values,
+    theme: theme,
     locale: locale,
-    background: const Color(0xff121212),
-    padding: EdgeInsets.zero,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (theme != null)
-          buildRow('Custom Theme', theme, background ?? DesignTokens.darkBackground)
-        else ...[
-          buildRow('☀️ Light Mode', previewLightTheme, DesignTokens.surface),
-          const Divider(height: 32, color: Colors.grey),
-          buildRow('🌙 Dark Mode', previewDarkTheme, DesignTokens.darkBackground),
-        ],
-      ],
-    ),
   );
-}
-
-// ============================================================================
-// BREAKPOINTS
-// ============================================================================
-
-enum PreviewBreakpoint {
-  mobileSm(width: 320, height: 568, name: 'Mobile Small'),
-  mobile(width: 375, height: 812, name: 'Mobile'),
-  tablet(width: 768, height: 1024, name: 'Tablet'),
-  desktop(width: 1440, height: 900, name: 'Desktop');
-
-  final double width;
-  final double height;
-  final String name;
-
-  const PreviewBreakpoint({required this.width, required this.height, required this.name});
 }
 
 // ============================================================================
 // INTERNALS
 // ============================================================================
 
+
 Widget _label(String text) => Padding(
   padding: const EdgeInsets.only(bottom: 8),
-  child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+  child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white54)),
 );
+
+Widget _localizationShell({
+  required Widget child,
+  ThemeData? theme,
+  Locale locale = const Locale('en'),
+  Size? size,
+}) {
+  Widget home = child;
+  if (size != null) {
+    home = SizedBox(width: size.width, height: size.height, child: child);
+  }
+
+  return EasyLocalization(
+    supportedLocales: const [Locale('en'), Locale('fr')],
+    path: 'packages/origna_gta/assets/translations',
+    fallbackLocale: const Locale('en'),
+    startLocale: locale,
+    useOnlyLangCode: true,
+    child: Builder(
+      builder: (context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme ?? previewDarkTheme,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
+        home: home,
+      ),
+    ),
+  );
+}
 
 /// No-op UserRepository — prevents Firebase calls in previews.
 class _PreviewUserRepository implements UserRepository {

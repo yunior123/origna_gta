@@ -67,7 +67,7 @@ class FavoritesScreen extends ConsumerWidget {
             icon: Icons.error_outline_rounded,
             title: 'favorites.unable_to_load'.tr(),
             subtitle: AppError.getMessage(error),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isPrimary: false, onPressed: () => ref.invalidate(favoritedProductsProvider)),
+            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isOutlined: true, onPressed: () => ref.invalidate(favoritedProductsProvider)),
           ),
           data: (products) {
             if (products.isEmpty) {
