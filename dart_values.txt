@@ -1,926 +1,577 @@
-  static const all = [
-  static const all = [active, revoked];
-  static const all = [macos, windows, linux];
-  static const all = [software, book];
-  static const all = {
-  static const all = {
-  static const all = {
-  static const all = {
-  static const all = {
-  static const all = {admin, seller, buyer};
-  static const all = {canada, canadaCode};
-  static const all = {newCondition, likeNew, good, fair, forParts};
-  static const all = {notRequired, pending, approved, rejected};
-  static const all = {pending, shipped, delivered, refunded};
-  static const all = {percent, fixed, flatRate};
-  static const all = {percent, fixedCents};
-  static const all = {processing, completed, failed};
-  static const all = {signup, checkbox, doubleOptIn, implied};
-  static const all = {stripe};
-  static const all = {ups, fedex, canadaPost, purolator, dhl, usps, other};
-  static const all = {warehouse, personal};
-  static const allowedShippingCountries = {'Canada', 'CA'};
-  static const appTagline = "Canada's Modern Marketplace";
-  static const artCollectibles = 20;
-  static const authorizationExpiryDays = 7;
-  static const autoConfirmDays =
-  static const automotive = 11;
-  static const babyKids = 17;
-  static const beautyPersonalCare = 8;
-  static const bookAccessTokens =
-  static const books = 14;
-  static const carrierNote =
-  static const commissionRateBps =
-  static const computers = 2;
-  static const condition =
-  static const copyrightText =
-  static const couponUses =
-  static const digitalProducts = 21;
-  static const electronics = 1;
-  static const fashion = 5;
-  static const favoritesPageSize =
-  static const fcmTokenKey =
-  static const fcmTokens =
-  static const freeShippingThresholdCents =
-  static const fulfillmentWarehouseId =
-  static const gaming = 3;
-  static const generateSoftwareDownloadSession =
-  static const groceries = 19;
-  static const healthWellness = 9;
-  static const homeKitchen = 4;
-  static const international = {
-  static const inventoryLevels =
-  static const jewelryWatches = 7;
-  static const Map<int, List<String>> _byId = {
-  static const Map<String, List<String>> map = {
-  static const max = 21;
-  static const maxCaptureAttempts = 3;
-  static const maxProductImages =
-  static const maxShippingCostCad =
-  static const min = 1;
-  static const musicInstruments = 15;
-  static const names = {
-  static const officeSupplies = 13;
-  static const ordersPageSize =
-  static const petSupplies = 18;
-  static const physicalAddress =
-  static const platformFeePercent = 2.5;
-  static const platformFeeRatio =
-  static const premiumActive = {active, trialing};
-  static const priceCents =
-  static const productName =
-  static const productQuestions =
-  static const returnWindowDays =
-  static const returnWindowDaysField =
-  static const reviewVotes =
-  static const s1688 =
-  static const schemaVersion =
-  static const sellerDisputeRateThreshold =
-  static const sellerName =
-  static const sellerRefundRateThreshold = 0.10; // 10% refund rate threshold
-  static const sessionExpired =
-  static const shoesAccessories = 6;
-  static const softwareAccessTokens =
-  static const sportsFitness = 10;
-  static const taxRates = {
-  static const terminalStates = {cancelled};
-  static const timestampField = {
-  static const toolsHardware = 12;
-  static const toysGames = 16;
-  static const trendingFavoriteWeight = 1; // Weight for favorite events
-  static const trendingPurchaseWeight = 3; // Weight for purchase events
-  static const trendingTopN = 20; // Number of products to mark as trending
-  static const trendingWindowHours =
-  static const updateNotificationPreferences =
-  static const userSecurity =
-  static const validTransitions = <String, List<String>>{
-  static const validTransitions = <String, List<String>>{
-  static const version =
-  static const warehouseStockMap =
-_cron_locks
-1.0
-708286364RC0001
-AB
-acceptsReturns
-accessToken
-accountId
-accountId
-action
-action
-activations
-active
-active
-active
-actor
-actorType
-actualCost
-actualShippingCents
-add
-additionalItemCostCents
-address
-addressCount
-addresses // users/{userId}/addresses
-addressId
-admin
-admin_approve_product
-admin_create_coupon
-admin_delete_review
-admin_flag_review
-admin_logs
-admin_mfa_disable
-admin_mfa_enroll
-admin_mfa_verify
-admin_refund_order
-admin_reject_product
-admin_update_product_stock
-adminId
-algolia_app_id
-algolia_search_api_key
-algolia_sync_failures
-algolia_sync_issue
-algoliaCount
-alibaba
-aliexpress
-all
-all
-allItemsDelivered
-allItemsShipped
-allowBackorder
-amazon_europe
-amazon_japan
-amazon_usa
-amount
-amountCents
-anonymizedAt
-answer
-answer_product_question
-answeredAt
-answeredBy
-apartment
-apply_coupon
-approvalRejectionReason
-approvalRequired
-approve
-approve_shipping_cost
-approved
-approved
-approved
-approved
-archived
-archived
-archivedAt
-ask_product_question
-askerId
-AUD
-auth_deletion_failed
-authorization_expired
-authorized
-auto_confirmed
-autoCaptured
-autoConfirmed
-available
-availableNationwide
-availableQuantity
-avgRating
-avgResponseTimeHours
-avgShipDays
-awaiting_payment
-backup_codes
-bankAccountLast4
-bankDetails
-BC
-blocked_gst_attempt
-book
-bookAccessToken
-bookSourceUrl
-breaches
-BRL
-bulk_update_products
-businessAddress
-businessName
-buyer
-buyerConfirmed
-buyerId
-buyerNote
-buyerUnreadCount
-CA
-cad
-CAD
-Canada
-Canada
-Canada
-canada_post
-cancel_order
-cancel_subscription
-cancelAtPeriodEnd
-canceled
-cancellation_confirmed
-cancellationRate
-cancellationReason
-cancelled
-cancelled
-cancelledAt
-cancelledBy
-cancelling
-cancelScheduledAt // datetime — when cancellation was requested
-capture_payment
-captureAttempts
-captured
-captured
-capturedAt
-capturing
-carrier
-cart // users/{userId}/cart
-cartItemId
-cartSubtotalCents
-categoryId
-chargeId
-chargesEnabled
-chatId
-chats // chats/{chatId}
-checkbox
-checkoutUrl
-city
-cjdropshipping
-clientIp
-CNY
-code
-comment
-compareAtPrice
-compareAtPriceHistory
-completed
-completed
-completed
-completedAt
-computedAt
-config
-configured
-confirmation
-confirmed
-confirmedAt
-confirmedByBuyer
-confirmedByClient
-consentMethod
-consentTimestamp
-cost
-costCents
-costco
-count
-country
-coupang
-couponCode
-coupons // N-07: coupon/promo code system
-create_account_link
-create_checkout_session
-create_connect_account
-create_product_atomic
-create_stripe_login_link
-create_subscription
-create_warehouse
-createdAt
-critical
-cumulativeRefundedCents
-cumulativeReversedCents
-currency
-currentPeriodEnd
-currentPeriodStart
-custom
-custom
-customerEmail
-customerId
-customerName
-dataProcessingConsent
-dateFavorited
-deactivated
-deactivationReason
-delete
-delete_account
-DELETE_MY_ACCOUNT
-delete_product
-delete_product_images
-delete_warehouse
-deleted
-deletedAt
-deletedBy
-delivered
-delivered
-deliveredAt
-deliveryInstructions
-deliveryOptions
-deliverySpeed
-description
-descriptionF
-destination
-detailsSubmitted
-deviceId
-deviceLimit
-dhgate
-dhl
-digitalBuilds
-digitalType
-digitalUnlocked
-discountAmountCents
-discountType
-discountValue
-dispute_created
-dispute_funds_reinstated
-disputed
-disputed
-disputedAt
-disputeId
-disputeRate
-disputeResolution
-disputeResolvedAt
-disputeStatus
-domestic
-double_opt_in
-draft
-duplicate
-email
-emailConsent
-emulatorMode
-en
-enabled
-enabledProviders
-error
-error
-errorCode
-errorMessage
-escalated
-escalatedAt
-escalationReason
-estimatedDays
-estimatedShipDays
-etsy_wholesale
-EUR
-eventId
-events // orders/{orderId}/events/{eventId}
-eventType
-existing
-expectedCostCents
-expired
-expiresAt
-expiring
-express
-failed
-failed
-failed
-failedAt
-failureMessage
-failureReason
-fair
-faire
-favorites // users/{userId}/favorites
-fcmToken
-fcmTokenUpdatedAt
-features
-fedex
-feeRate
-fileName
-firestoreCount
-first_request
-firstBuyerMessageAt
-firstReplyHours
-firstSellerReplyAt
-fixed
-fixed_cents
-flagged
-flat_rate
-for_parts
-formattedAddress
-fr
-fraudScore
-freeShipping
-fromStatus
-fullName
-GBP
-generate_book_download_session
-geoapify_api_key
-get_address_suggestions
-get_connect_account_status
-get_or_create_chat
-get_payment_providers
-get_product_questions
-get_provider_status
-get_seller_warehouses
-get_subscription_status
-global_sources
-gmarket
-good
-gst
-GST
-gstNumber
-hasChanges
-hasDispute
-hasPhotos
-hasTracking
-hasVariants
-heightCm
-helpfulCount
-helpfulVoterIds
-high
-HKD
-Home
-hst
-HST
-https://dashboard.stripe.com/express
-https://orignagta.ca
-https://orignagta.ca/unsubscribe
-idempotencyKey
-ignored
-image_base_url
-imageUrls
-implied
-in_transit
-inactive // Internal: no subscription doc exists
-incomplete
-incomplete_expired
-index
-indiamart
-INR
-international_generic
-international_supplier
-invalid_gst_attempt
-inventory
-isAnswered
-isCorporate
-isDefault
-isDigital
-isFlagged
-isLocalDeliveryOnly
-isPerishable
-isPremium
-isSeller
-isTrending
-item_delivered
-item_shipped
-itemIds
-items
-itemStatus
-itemTaxes
-JPY
-keywords
-KRW
-label
-label_issued
-last_request
-lastActorId
-lastCaptureError
-lastCartAbandonEmailAt
-lastCheckoutSession
-lastCheckoutTimestamp
-lastLowStockAlertAt
-lastMessage
-lastMessageAt
-lastMfaVerify
-lastOrderId
-lastRetryError
-lastRoleUpdate
-lastRoleUpdateBy
-lastSyncedAt
-lastVerifiedAt
-lateShipmentRate
-latitude
-lengthCm
-licenseKey
-licenseKey
-licenses // users/{userId}/licenses
-lifecycleStatus
-like_new
-linux
-liveAccountId
-livemode
-local
-local_delivery
-localDeliveryOnly
-lockedAt
-lockedBy
-longitude
-low
-lowStockThreshold
-M5V 3A8
-macos
-made_in_china
-manualReviewReason
-mark_messages_read
-mark_received
-marketingOptIn
-maxItemsPerShipment
-maxRetriesExceeded
-maxUsesPerUser
-maxUsesTotal
-MB
-medium
-message
-messages // chats/{chatId}/messages/{msgId}
-mfa_low_backup_codes
-mfaBackupCodes
-mfaBackupCodesSalt
-mfaBackupCodesTemp
-mfaEnabled
-mfaEnrolledAt
-mfaFailedAttempts
-mfaLockoutUntil
-mfaSecret
-mfaSecretTemp
-mfaVerified
-minimumOrderQuantity
-minOrderCents
-minOrderQuantity
-minQuantity
-mismatchPercent
-missingKeys
-MXN
-N/A
-name
-nameF
-NB
-netAmountCents
-new
-newCostCents
-newEnabled
-newPrice
-newRoles
-newShippingCost
-newStatus
-NL
-not_required
-note_added
-notifications // users/{uid}/notifications
-notificationsSent
-notifiedAt
-notifyNewProducts
-notifyTrending
-NS
-NT
-NU
-oberlo
-oldEnabled
-oldPrice
-oldRoles
-ON
-ON
-onboardingCompleted
-optionValues
-orderId
-orders
-ordersCancelled
-orderStatus
-originalCostCents
-originalUserDeleted
-Origna GTA
-other
-other
-Other
-paid
-partial
-partially_refunded
-partially_reversed
-partialRefundAmountCents
-partialReversals
-past_due
-paused
-payloadSize
-payment_authorized
-payment_captured
-payment_failed
-payment_failed
-payment_provider_disabled
-payment_provider_update
-payment_providers
-paymentCompletedAt
-paymentError
-paymentId
-paymentIntentId
-paymentIntentId
-paymentProvider
-paymentStatus
-payout_failed
-payout_record_incomplete
-payoutDate
-payoutErrors
-payoutHoldDays
-payoutId
-payouts
-payoutsEnabled
-payoutStatus
-PE
-pending
-pending
-pending
-pending
-pending_profiles // pending_profiles/{uid}
-pendingRequirements
-pendingTotalCents
-percent
-percent
-perishable
-personal
-phoneNumber
-pickup
-platform
-platform
-platformFee
-platformFeeCents
-platformFeeTotalCents
-positiveRatePct
-postalCode
-preDisputeStatus
-preferredLanguage
-premiumExpiresAt
-premiumSince
-price
-PRICE_CHANGED
-priceChanges
-priceHistory
-priceSnapshot
-primaryWarehouseId
-printful
-printify
-privacyAcceptedAt
-privacyPolicyVersion
-processed
-processed
-processedAt
-processing
-processing
-processing
-processing
-processingStatus
-product_ratings
-productId
-productIds
-productImageUrl
-productName
-products
-productsDeactivated
-productTitle
-provider
-provider
-providerName
-providers
-providerStatus
-provisioning_uri
-pst
-PST
-purchaseCount
-purolator
-pushEnabled
-QC
-qrCodeUrl
-qst
-QST
-quantity
-quantityDiscounts
-question
-questionId
-rakuten
-rate_limits
-rating
-ratingCount
-ratingId
-ratings
-reactivate_subscription
-read
-reason
-reason
-received
-receivedAt
-refreshUrl
-refund_failed
-refund_issued
-refund_order_item
-refund_reversal_failed
-refundAmount
-refundAmountCents
-refundAmountCents
-refunded
-refunded
-refunded
-refundedAt
-refundId
-refundRate
-refundReason
-refunds
-rejected
-rejected
-rejected
-remainingCodes
-remove
-removedProducts
-requested
-requested
-requestedAt
-requestedBy
-requirementsCurrentlyDue
-requiresManualReview
-reservationHoldMinutes
-reservedQuantity
-resolution
-resolved
-resolvedAt
-respondedAt
-retries
-retryCount
-return_requests
-returnAdminNote
-returnId
-returnReason
-returnRefundAmountCents
-returnStatus
-returnTrackingNumber
-returnUrl
-reversalErrors
-reversalId
-reversalReason
-reversed
-reversed_dispute
-reversedAt
-review
-reviewId
-reviewImageUrls
-reviewText
-revoked
-role_change
-roles
-running
-same_day
-savedAt // N-05: Save for Later timestamp
-searchKeywords
-secret
-security_alerts
-seller
-seller_account_changed
-seller_kyc_failed
-seller_metrics // Tasks 11
-seller_metrics_breach // TASK 11
-seller_profiles // Seller-only profile data
-seller_skus // Collision docs for atomic SKU uniqueness
-seller_suspended
-seller_unsuspended
-sellerAddress
-sellerAmountCents
-sellerCaptures
-sellerId
-sellerIds
-sellerPayouts
-sellerProfile
-sellerReply
-sellerReplyAt
-sellerSku
-sellerStripeAccounts
-sellerUnreadCount
-send_message
-senderDisplayName // denormalized at send time
-senderId
-sentry_dns
-Session Expired
-session_expired
-sessionId
-severity
-SGD
-shared_gst_number
-shipFromCity
-shipFromCountries
-shipFromCountry
-shipFromProvince
-shipped
-shipped
-shippedAt
-shippingAddress
-shippingApproval
-shippingApprovalRequired
-shippingApprovalStatus
-shippingCostCents
-shippingDays
-signatureVerified
-signup
-SK
-slug
-snapshotAccountId
-software
-spocket
-standard
-state
-status
-status_changed
-stock_notifications // Tasks 07
-stockChanges
-stockQuantity
-stockRestored
-street
-stripe
-stripe_tax_fallback_gst // Stripe Tax down for GST-exempt buyer
-stripeAccountId
-stripePaymentIntentId
-stripeSessionId
-stripeSubscriptionId
-stripeTransferId
-subcategory
-submit_product_rating
-subscribe_stock_notification
-subscribedAt
-subscriptions // subscriptions/{userId}
-subscriptionStatus
-subtotal
-subtotalCents
-success
-supplier
-supplierShippingDays
-support@orignaventures.ca
-support@orignaventures.ca
-supportedCountries
-supportedCurrencies
-supportedPlatforms
-suspend_seller
-suspended
-suspendedAt
-suspendedBy
-suspensionReason
-suspicious_tax_exemption
-targetUserId
-tax_exemption_pending_review
-taxAmountCents
-taxCents
-taxCode
-taxes
-taxExempt
-taxExemption
-taxRate
-temu
-termsAcceptedAt
-termsVersion
-text
-timestamp
-token_revocation_failed // Suspension token revoke failed
-toStatus
-totalAmountCents
-totalOrders
-totalOrders30d
-totalRevenueCents30d
-totalReviews
-totalSales
-trackingNumber
-trackQuantity
-tradeindia
-transferId
-transfersReversed
-trendingAt
-trendingScore
-trialing
-TWD
-type
-uid
-under_review
-unpaid
-unsubscribe_stock_notification
-unsubscribedAt
-unsuspend_seller
-unsuspendedAt
-unsuspendedBy
-update_item_status
-update_order_status
-update_payment_provider
-update_shipping_cost
-update_user_roles
-update_warehouse
-updatedAt
-updatedBy
-upload_product_images
-upload_review_images
-uploadUrl
-ups
-upvotes
-url
-USD
-USD
-usedCount
-userId
-users
-usps
-variantId
-variantKey
-variantOptions
-variants
-variantSku
-variantTitle
-verificationStatus
-verified
-verifiedPurchase
-verify_cart_prices
-viewCount
-voided
-vote_review_helpful
-walmart
-warehouse
-warehouseIds
-warehouses // users/{sellerId}/warehouses
-warehouseStock
-webhook_events
-webhook_logs
-weightKg
-widthCm
-windows
-Work
-YT
-Yunior Rodriguez Osorio
+AddressLabelValues.home = Home
+AddressLabelValues.work = Work
+AddressLabelValues.other = Other
+AdminActionValues.paymentProviderUpdate = payment_provider_update
+AdminActionValues.stockUpdate = stock_update
+AdminActionValues.orderRefund = order_refund
+AdminActionValues.reviewDelete = review_delete
+AdminActionValues.reviewFlag = review_flag
+AlgoliaActionValues.index = index
+AlgoliaActionValues.delete = delete
+ApiKeys.turnstileToken = turnstileToken
+ApiKeys.add = add
+ApiKeys.remove = remove
+ApiKeys.reason = reason
+ApiKeys.code = code
+ApiKeys.provider = provider
+ApiKeys.enabled = enabled
+ApiKeys.refreshUrl = refreshUrl
+ApiKeys.returnUrl = returnUrl
+ApiKeys.newStatus = newStatus
+ApiKeys.approved = approved
+ApiKeys.newShippingCost = newShippingCost
+ApiKeys.subtotal = subtotal
+ApiKeys.subtotalCents = subtotalCents
+ApiKeys.itemIds = itemIds
+ApiKeys.idempotencyKey = idempotencyKey
+ApiKeys.productId = productId
+ApiKeys.success = success
+ApiKeys.itemStatus = itemStatus
+ApiKeys.allItemsDelivered = allItemsDelivered
+ApiKeys.providerName = providerName
+ApiKeys.checkoutUrl = checkoutUrl
+ApiKeys.sessionId = sessionId
+ApiKeys.url = url
+ApiKeys.downloadUrl = downloadUrl
+ApiKeys.secret = secret
+ApiKeys.qrCodeUrl = qrCodeUrl
+ApiKeys.provisioningUri = provisioning_uri
+ApiKeys.backupCodes = backup_codes
+ApiKeys.mfaVerified = mfaVerified
+ApiKeys.remainingCodes = remainingCodes
+ApiKeys.detailsSubmitted = detailsSubmitted
+ApiKeys.requirementsCurrentlyDue = requirementsCurrentlyDue
+ApiKeys.duplicate = duplicate
+ApiKeys.emulatorMode = emulatorMode
+ApiKeys.captured = captured
+ApiKeys.message = message
+ApiKeys.revokedLicenseCount = revokedLicenseCount
+ApiKeys.paymentIntentId = paymentIntentId
+ApiKeys.accountId = accountId
+ApiKeys.existing = existing
+ApiKeys.hasChanges = hasChanges
+ApiKeys.priceChanges = priceChanges
+ApiKeys.stockChanges = stockChanges
+ApiKeys.removedProducts = removedProducts
+ApiKeys.oldPrice = oldPrice
+ApiKeys.newPrice = newPrice
+ApiKeys.requested = requested
+ApiKeys.available = available
+ApiKeys.productName = productName
+ApiKeys.productData = productData
+ApiKeys.images = images
+ApiKeys.testImageUrls = testImageUrls
+ApiKeys.supportedCurrencies = supportedCurrencies
+ApiKeys.supportedCountries = supportedCountries
+ApiKeys.features = features
+ApiKeys.providers = providers
+ApiKeys.providerStatus = providerStatus
+ApiKeys.configured = configured
+ApiKeys.missingKeys = missingKeys
+ApiKeys.enabledProviders = enabledProviders
+ApiKeys.allItemsShipped = allItemsShipped
+ApiKeys.approvalRequired = approvalRequired
+ApiKeys.cartSubtotalCents = cartSubtotalCents
+ApiKeys.action = action
+ApiKeys.approve = approve
+ApiKeys.markReceived = mark_received
+ApiKeys.expectedCostCents = expectedCostCents
+ApiKeys.licenseKey = licenseKey
+ApiKeys.platform = platform
+ApiKeys.profile = profile
+ApiKeys.orders = orders
+ApiKeys.favorites = favorites
+ApiKeys.exportedAt = exportedAt
+CancellationReasonValues.buyerRequested = requested_by_customer
+CancellationReasonValues.sellerCancelled = seller_cancelled
+CancellationReasonValues.shippingRejected = Buyer rejected shipping cost
+CancellationReasonValues.paymentFailed = payment_failed
+CancellationReasonValues.expired = authorization_expired
+CarrierValues.ups = ups
+CarrierValues.fedex = fedex
+CarrierValues.canadaPost = canada_post
+CarrierValues.purolator = purolator
+CarrierValues.dhl = dhl
+CarrierValues.usps = usps
+CarrierValues.maritime = maritime
+CarrierValues.other = other
+CartVerificationReasonValues.deactivated = deactivated
+CategoryIds.electronics = 1
+CategoryIds.computers = 2
+CategoryIds.gaming = 3
+CategoryIds.homeKitchen = 4
+CategoryIds.fashion = 5
+CategoryIds.shoesAccessories = 6
+CategoryIds.jewelryWatches = 7
+CategoryIds.beautyPersonalCare = 8
+CategoryIds.healthWellness = 9
+CategoryIds.sportsFitness = 10
+CategoryIds.automotive = 11
+CategoryIds.toolsHardware = 12
+CategoryIds.officeSupplies = 13
+CategoryIds.books = 14
+CategoryIds.musicInstruments = 15
+CategoryIds.toysGames = 16
+CategoryIds.babyKids = 17
+CategoryIds.petSupplies = 18
+CategoryIds.groceries = 19
+CategoryIds.artCollectibles = 20
+CategoryIds.digitalProducts = 21
+CategoryIds.min = 1
+CategoryIds.max = 21
+CloudFunctionEndpoints.getAddressSuggestions = get_address_suggestions
+CloudFunctionEndpoints.deleteAccount = delete_account
+CloudFunctionEndpoints.createUserProfile = create_user_profile
+CloudFunctionEndpoints.exportUserData = export_my_data
+CloudFunctionEndpoints.updateUserRoles = update_user_roles
+CloudFunctionEndpoints.suspendSeller = suspend_seller
+CloudFunctionEndpoints.unsuspendSeller = unsuspend_seller
+CloudFunctionEndpoints.adminUpdateProductStock = admin_update_product_stock
+CloudFunctionEndpoints.adminDeleteReview = admin_delete_review
+CloudFunctionEndpoints.adminFlagReview = admin_flag_review
+CloudFunctionEndpoints.adminRefundOrder = admin_refund_order
+CloudFunctionEndpoints.adminMfaEnroll = admin_mfa_enroll
+CloudFunctionEndpoints.adminMfaVerify = admin_mfa_verify
+CloudFunctionEndpoints.adminMfaDisable = admin_mfa_disable
+CloudFunctionEndpoints.adminApproveProduct = admin_approve_product
+CloudFunctionEndpoints.adminRejectProduct = admin_reject_product
+CloudFunctionEndpoints.deleteProduct = delete_product
+CloudFunctionEndpoints.uploadProductImages = upload_product_images
+CloudFunctionEndpoints.uploadReviewImages = upload_review_images
+CloudFunctionEndpoints.deleteProductImages = delete_product_images
+CloudFunctionEndpoints.uploadProductVideo = upload_product_video
+CloudFunctionEndpoints.createProductAtomic = create_product_atomic
+CloudFunctionEndpoints.updateProduct = update_product
+CloudFunctionEndpoints.submitProductRating = submit_product_rating
+CloudFunctionEndpoints.submitProductRatingAtomic = submit_product_rating_atomic
+CloudFunctionEndpoints.toggleFavorite = toggle_favorite
+CloudFunctionEndpoints.voteReviewHelpful = vote_review_helpful
+CloudFunctionEndpoints.subscribeStockNotification = subscribe_stock_notification
+CloudFunctionEndpoints.unsubscribeStockNotification = unsubscribe_stock_notification
+CloudFunctionEndpoints.askProductQuestion = ask_product_question
+CloudFunctionEndpoints.answerProductQuestion = answer_product_question
+CloudFunctionEndpoints.getProductQuestions = get_product_questions
+CloudFunctionEndpoints.bulkUpdateProducts = bulk_update_products
+CloudFunctionEndpoints.createWarehouse = create_warehouse
+CloudFunctionEndpoints.updateWarehouse = update_warehouse
+CloudFunctionEndpoints.deleteWarehouse = delete_warehouse
+CloudFunctionEndpoints.getSellerWarehouses = get_seller_warehouses
+CloudFunctionEndpoints.updateOrderStatus = update_order_status
+CloudFunctionEndpoints.confirmItemReceipt = confirm_item_receipt
+CloudFunctionEndpoints.updateItemStatus = update_item_status
+CloudFunctionEndpoints.cancelOrder = cancel_order
+CloudFunctionEndpoints.refundOrderItem = refund_order_item
+CloudFunctionEndpoints.approveShippingCost = approve_shipping_cost
+CloudFunctionEndpoints.updateShippingCost = update_shipping_cost
+CloudFunctionEndpoints.createCheckoutSession = create_checkout_session
+CloudFunctionEndpoints.verifyCartPrices = verify_cart_prices
+CloudFunctionEndpoints.capturePayment = capture_payment
+CloudFunctionEndpoints.createConnectAccount = create_connect_account
+CloudFunctionEndpoints.createAccountLink = create_account_link
+CloudFunctionEndpoints.getConnectAccountStatus = get_connect_account_status
+CloudFunctionEndpoints.getPaymentProviders = get_payment_providers
+CloudFunctionEndpoints.updatePaymentProvider = update_payment_provider
+CloudFunctionEndpoints.getProviderStatus = get_provider_status
+CloudFunctionEndpoints.createSubscription = create_subscription
+CloudFunctionEndpoints.cancelSubscription = cancel_subscription
+CloudFunctionEndpoints.getSubscriptionStatus = get_subscription_status
+CloudFunctionEndpoints.reactivateSubscription = reactivate_subscription
+CloudFunctionEndpoints.updateNotificationPreferences = update_notification_preferences
+CloudFunctionEndpoints.cleanupFcmToken = cleanup_fcm_token
+CloudFunctionEndpoints.createStripeLoginLink = create_stripe_login_link
+CloudFunctionEndpoints.getOrCreateChat = get_or_create_chat
+CloudFunctionEndpoints.markMessagesRead = mark_messages_read
+CloudFunctionEndpoints.sendMessage = send_message
+CloudFunctionEndpoints.deleteMessage = delete_message
+CloudFunctionEndpoints.generateSoftwareDownloadSession = generate_software_download_session
+CloudFunctionEndpoints.generateBookDownloadSession = generate_book_download_session
+CloudFunctionEndpoints.applyCoupon = apply_coupon
+CloudFunctionEndpoints.adminCreateCoupon = admin_create_coupon
+ConfirmationValues.deleteMyAccount = DELETE_MY_ACCOUNT
+ConsentMethodValues.signup = signup
+ConsentMethodValues.signupForm = signup_form
+ConsentMethodValues.googleOauth = google_oauth
+ConsentMethodValues.appleOauth = apple_oauth
+ConsentMethodValues.checkbox = checkbox
+ConsentMethodValues.doubleOptIn = double_opt_in
+ConsentMethodValues.implied = implied
+ConsentMethodValues.userPreference = user_preference
+ConsentMethodValues.unsubscribe = unsubscribe
+CountryValues.canada = Canada
+CountryValues.canadaCode = CA
+CouponDiscountTypeValues.percent = percent
+CouponDiscountTypeValues.fixedCents = fixed_cents
+CronLockStatusValues.running = running
+CronLockStatusValues.completed = completed
+DeliveryStatusValues.pending = pending
+DeliveryStatusValues.shipped = shipped
+DeliveryStatusValues.delivered = delivered
+DeliveryStatusValues.refunded = refunded
+DeliveryTypeValues.pickup = pickup
+DeliveryTypeValues.standard = standard
+DeliveryTypeValues.express = express
+DeliveryTypeValues.sameDay = same_day
+DeliveryTypeValues.localDelivery = local_delivery
+DeliveryTypeValues.international = international
+DeliveryTypeValues.internationalExpress = international_express
+DeliveryTypeValues.custom = custom
+DigitalPlatformValues.macos = macos
+DigitalPlatformValues.windows = windows
+DigitalPlatformValues.linux = linux
+DigitalPlatformValues.all = [macos, windows, linux]
+DigitalTypeValues.software = software
+DigitalTypeValues.book = book
+DigitalTypeValues.all = [software, book]
+DiscountTypeValues.percent = percent
+DiscountTypeValues.fixed = fixed
+DiscountTypeValues.flatRate = flat_rate
+Documents.paymentProviders = payment_providers
+EmailConfig.supportEmail = support@orignaventures.ca
+EmailConfig.senderName = Origna GTA
+EmailConfig.copyrightText = \u00a9 2026 Origna Ventures Inc. All rights reserved.
+EmailConfig.appTagline = Canada's Modern Marketplace
+EmailConfig.prodUrl = https://orignagta.ca
+EmailConfig.physicalAddress = Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada
+EmailConfig.gstHstNumber = 708286364RC0001
+EmailConfig.unsubscribeUrl = https://orignagta.ca/unsubscribe
+EmailConfig.privacyOfficerEmail = support@orignaventures.ca
+EmailConfig.privacyOfficerName = Yunior Rodriguez Osorio
+ErrorCodeValues.priceChanged = PRICE_CHANGED
+ExternalUrls.stripeDashboard = https://dashboard.stripe.com/express
+FilterValues.all = all
+GeoValues.countryCanada = Canada
+LanguageValues.english = en
+LanguageValues.french = fr
+LicenseStatusValues.active = active
+LicenseStatusValues.revoked = revoked
+LicenseStatusValues.all = [active, revoked]
+NotificationTypes.orderStatus = order_status
+NotificationTypes.orderUpdate = order_update
+NotificationTypes.newMessage = new_message
+NotificationTypes.promo = promo
+NotificationTypes.system = system
+NotificationTypes.account = account
+NotificationTypes.returnRequest = return_request
+NotificationTypes.returnStatus = return_status
+NotificationTypes.backInStock = back_in_stock
+NotificationTypes.refundIssued = refund_issued
+NotificationTypes.messageReport = message_report
+NotificationTypes.perishableOrderUrgent = perishable_order_urgent
+OrderEventTypes.statusChanged = status_changed
+OrderEventTypes.paymentAuthorized = payment_authorized
+OrderEventTypes.paymentCaptured = payment_captured
+OrderEventTypes.paymentFailed = payment_failed
+OrderEventTypes.refundIssued = refund_issued
+OrderEventTypes.itemShipped = item_shipped
+OrderEventTypes.itemDelivered = item_delivered
+OrderEventTypes.cancellationConfirmed = cancellation_confirmed
+OrderEventTypes.noteAdded = note_added
+OrderEventTypes.autoConfirmed = auto_confirmed
+OrderEventTypes.orderConfirmedBuyer = order_confirmed_buyer
+OrderEventTypes.orderConfirmedSeller = order_confirmed_seller
+OrderEventTypes.disputeCreated = dispute_created
+OrderEventTypes.disputeResolved = dispute_resolved
+OrderEventTypes.refundInitiated = refund_initiated
+OrderEventTypes.itemStatusChanged = item_status_changed
+OrderItemIdValues.all = all
+OrderStatusValues.pending = pending
+OrderStatusValues.confirmed = confirmed
+OrderStatusValues.processing = processing
+OrderStatusValues.shipped = shipped
+OrderStatusValues.inTransit = in_transit
+OrderStatusValues.delivered = delivered
+OrderStatusValues.cancelled = cancelled
+OrderStatusValues.failed = failed
+OrderStatusValues.expired = expired
+OrderStatusValues.disputed = disputed
+PaymentProviderValues.stripe = stripe
+PaymentStatusValues.awaitingPayment = awaiting_payment
+PaymentStatusValues.processing = processing
+PaymentStatusValues.paid = paid
+PaymentStatusValues.paymentFailed = payment_failed
+PaymentStatusValues.refunded = refunded
+PaymentStatusValues.partiallyRefunded = partially_refunded
+PaymentStatusValues.sessionExpired = session_expired
+PaymentStatusValues.authorized = authorized
+PaymentStatusValues.captured = captured
+PaymentStatusValues.cancelled = cancelled
+PaymentStatusValues.authorizationExpired = authorization_expired
+PaymentStatusValues.disputed = disputed
+PaymentStatusValues.capturing = capturing
+PaymentStatusValues.cancelling = cancelling
+PaymentStatusValues.expiring = expiring
+PaymentStatusValues.voided = voided
+PaymentStatusValues.cancelFailed = cancel_failed
+PayoutStatusValues.pending = pending
+PayoutStatusValues.processing = processing
+PayoutStatusValues.completed = completed
+PayoutStatusValues.partial = partial
+PayoutStatusValues.failed = failed
+PayoutStatusValues.reversed = reversed
+PayoutStatusValues.partiallyReversed = partially_reversed
+PayoutStatusValues.reversedDispute = reversed_dispute
+PlaceholderAddressValues.unknownText = N/A
+PlaceholderAddressValues.defaultState = ON
+PlaceholderAddressValues.defaultPostalCode = M5V 3A8
+PlaceholderAddressValues.defaultCountry = Canada
+PolicyVersionValues.defaultVersion = 1.0
+ProductConditionValues.newCondition = new
+ProductConditionValues.likeNew = like_new
+ProductConditionValues.good = good
+ProductConditionValues.fair = fair
+ProductConditionValues.forParts = for_parts
+ProductLifecycleStatusValues.draft = draft
+ProductLifecycleStatusValues.underReview = under_review
+ProductLifecycleStatusValues.approved = approved
+ProductLifecycleStatusValues.active = active
+ProductLifecycleStatusValues.paused = paused
+ProductLifecycleStatusValues.archived = archived
+ProductLifecycleStatusValues.rejected = rejected
+ProvinceCodeValues.alberta = AB
+ProvinceCodeValues.britishColumbia = BC
+ProvinceCodeValues.manitoba = MB
+ProvinceCodeValues.newBrunswick = NB
+ProvinceCodeValues.newfoundland = NL
+ProvinceCodeValues.northwestTerritories = NT
+ProvinceCodeValues.novaScotia = NS
+ProvinceCodeValues.nunavut = NU
+ProvinceCodeValues.ontario = ON
+ProvinceCodeValues.princeEdwardIsland = PE
+ProvinceCodeValues.quebec = QC
+ProvinceCodeValues.saskatchewan = SK
+ProvinceCodeValues.yukon = YT
+RefundReasonValues.returnApproved = Return approved
+RefundReasonValues.outOfStock = item_out_of_stock
+RefundReasonValues.buyerRequested = requested_by_customer
+RefundReasonValues.damaged = item_damaged
+RefundReasonValues.incorrectItem = incorrect_item
+RemoteConfigKeys.algoliaAppId = algolia_app_id
+RemoteConfigKeys.algoliaSearchApiKey = algolia_search_api_key
+RemoteConfigKeys.geoapifyApiKey = geoapify_api_key
+RemoteConfigKeys.imageBaseUrl = image_base_url
+RemoteConfigKeys.sentryDnsKey = sentry_dns
+ReturnStatusValues.requested = requested
+ReturnStatusValues.approved = approved
+ReturnStatusValues.labelIssued = label_issued
+ReturnStatusValues.received = received
+ReturnStatusValues.refunded = refunded
+ReturnStatusValues.rejected = rejected
+ReturnStatusValues.escalated = escalated
+SecurityAlertTypes.algoliaSyncIssue = algolia_sync_issue
+SecurityAlertTypes.disputeCreated = dispute_created
+SecurityAlertTypes.disputeFundsReinstated = dispute_funds_reinstated
+SecurityAlertTypes.roleChange = role_change
+SecurityAlertTypes.sellerSuspended = seller_suspended
+SecurityAlertTypes.sellerUnsuspended = seller_unsuspended
+SecurityAlertTypes.paymentProviderDisabled = payment_provider_disabled
+SecurityAlertTypes.refundReversalFailed = refund_reversal_failed
+SecurityAlertTypes.payoutFailed = payout_failed
+SecurityAlertTypes.refundFailed = refund.failed
+SecurityAlertTypes.sellerAccountChanged = seller_account_changed
+SecurityAlertTypes.payoutRecordIncomplete = payout_record_incomplete
+SecurityAlertTypes.mfaLowBackupCodes = mfa_low_backup_codes
+SecurityAlertTypes.sellerKycFailed = seller_kyc_failed
+SecurityAlertTypes.invalidGstAttempt = invalid_gst_attempt
+SecurityAlertTypes.blockedGstAttempt = blocked_gst_attempt
+SecurityAlertTypes.sharedGstNumber = shared_gst_number
+SecurityAlertTypes.taxExemptionPendingReview = tax_exemption_pending_review
+SecurityAlertTypes.suspiciousTaxExemption = suspicious_tax_exemption
+SecurityAlertTypes.authDeletionFailed = auth_deletion_failed
+SecurityAlertTypes.tokenRevocationFailed = token_revocation_failed
+SecurityAlertTypes.sellerMetricsBreach = seller_metrics_breach
+SecurityAlertTypes.stripeTaxFallbackGst = stripe_tax_fallback_gst
+SeverityLevels.low = low
+SeverityLevels.medium = medium
+SeverityLevels.high = high
+SeverityLevels.critical = critical
+ShippingApprovalStatusValues.notRequired = not_required
+ShippingApprovalStatusValues.pending = pending
+ShippingApprovalStatusValues.approved = approved
+ShippingApprovalStatusValues.rejected = rejected
+ShippingSourceValues.internationalSupplier = international_supplier
+ShippingSourceValues.internationalGeneric = international_generic
+ShippingSourceValues.domestic = domestic
+StripeConstants.reverseCharge = reverse_charge
+StripeConstants.shippingReference = shipping
+StripeConstants.taxExemptNone = none
+StripeConstants.addressSourceShipping = shipping
+StripeConstants.addressSource = address_source
+StripeConstants.value = value
+StripeConstants.modePayment = payment
+StripeConstants.paymentMethodCard = card
+StripeConstants.statusPaid = paid
+StripeConstants.statusSucceeded = succeeded
+StripeConstants.statusRequiresCapture = requires_capture
+StripeConstants.accountTypeExpress = express
+StripeConstants.typeAccountOnboarding = account_onboarding
+StripeConstants.amount = amount
+StripeConstants.reason = reason
+StripeConstants.priceData = price_data
+StripeConstants.productData = product_data
+StripeConstants.unitAmount = unit_amount
+StripeConstants.currency = currency
+StripeConstants.quantity = quantity
+StripeConstants.images = images
+StripeConstants.taxCode = tax_code
+StripeConstants.description = description
+StripeConstants.name = name
+StripeConstants.metadataOrderId = order_id
+StripeConstants.metadataUserId = user_id
+StripeConstants.taxCalcAmount = amount
+StripeConstants.taxCalcReference = reference
+StripeConstants.taxCalcTaxCode = tax_code
+StripeConstants.customerTaxId = tax_id
+StripeConstants.customerTaxExempt = tax_exempt
+StripeConstants.customerEmail = customer_email
+StripeConstants.objectId = id
+StripeConstants.data = data
+StripeConstants.object = object
+StripeConstants.metadata = metadata
+StripeConstants.paymentIntent = payment_intent
+StripeConstants.paymentIntentData = payment_intent_data
+StripeConstants.paymentStatus = payment_status
+StripeConstants.subscription = subscription
+StripeConstants.charge = charge
+StripeConstants.created = created
+StripeEventTypes.checkoutCompleted = checkout.session.completed
+StripeEventTypes.asyncPaymentSucceeded = checkout.session.async_payment_succeeded
+StripeEventTypes.asyncPaymentFailed = checkout.session.async_payment_failed
+StripeEventTypes.sessionExpired = checkout.session.expired
+StripeEventTypes.paymentIntentSucceeded = payment_intent.succeeded
+StripeEventTypes.paymentIntentPaymentFailed = payment_intent.payment_failed
+StripeEventTypes.paymentIntentCanceled = payment_intent.canceled
+StripeEventTypes.chargeRefunded = charge.refunded
+StripeEventTypes.disputeCreated = charge.dispute.created
+StripeEventTypes.disputeUpdated = charge.dispute.updated
+StripeEventTypes.disputeClosed = charge.dispute.closed
+StripeEventTypes.disputeFundsReinstated = charge.dispute.funds_reinstated
+StripeEventTypes.transferReversed = transfer.reversed
+StripeEventTypes.payoutFailed = payout.failed
+StripeEventTypes.refundFailed = refund.failed
+StripeEventTypes.accountUpdated = account.updated
+StripeEventTypes.subscriptionCreated = customer.subscription.created
+StripeEventTypes.subscriptionUpdated = customer.subscription.updated
+StripeEventTypes.subscriptionDeleted = customer.subscription.deleted
+StripeEventTypes.invoicePaymentFailed = invoice.payment_failed
+StripeEventTypes.invoicePaid = invoice.paid
+SubscriptionStatusValues.active = active
+SubscriptionStatusValues.canceled = canceled
+SubscriptionStatusValues.inactive = inactive
+SubscriptionStatusValues.pastDue = past_due
+SubscriptionStatusValues.incomplete = incomplete
+SubscriptionStatusValues.incompleteExpired = incomplete_expired
+SubscriptionStatusValues.trialing = trialing
+SubscriptionStatusValues.unpaid = unpaid
+SubscriptionStatusValues.all = [active, canceled, inactive, pastDue, incomplete, incompleteExpired, trialing, unpaid]
+SupplierCurrencyValues.cad = CAD
+SupplierCurrencyValues.usd = USD
+SupplierCurrencyValues.eur = EUR
+SupplierCurrencyValues.gbp = GBP
+SupplierCurrencyValues.cny = CNY
+SupplierCurrencyValues.jpy = JPY
+SupplierCurrencyValues.krw = KRW
+SupplierCurrencyValues.inr = INR
+SupplierCurrencyValues.aud = AUD
+SupplierCurrencyValues.mxn = MXN
+SupplierCurrencyValues.brl = BRL
+SupplierCurrencyValues.hkd = HKD
+SupplierCurrencyValues.sgd = SGD
+SupplierCurrencyValues.twd = TWD
+SupplierCurrencyValues.defaultCurrency = USD
+SupplierTypeValues.aliexpress = aliexpress
+SupplierTypeValues.dhgate = dhgate
+SupplierTypeValues.alibaba = alibaba
+SupplierTypeValues.s1688 = 1688
+SupplierTypeValues.temu = temu
+SupplierTypeValues.cjdropshipping = cjdropshipping
+SupplierTypeValues.local = local
+SupplierTypeValues.other = other
+SupplierTypeValues.spocket = spocket
+SupplierTypeValues.oberlo = oberlo
+SupplierTypeValues.printful = printful
+SupplierTypeValues.printify = printify
+SupplierTypeValues.madeInChina = made_in_china
+SupplierTypeValues.globalSources = global_sources
+SupplierTypeValues.gmarket = gmarket
+SupplierTypeValues.coupang = coupang
+SupplierTypeValues.rakuten = rakuten
+SupplierTypeValues.faire = faire
+SupplierTypeValues.amazonEurope = amazon_europe
+SupplierTypeValues.amazonUsa = amazon_usa
+SupplierTypeValues.amazonJapan = amazon_japan
+SupplierTypeValues.walmart = walmart
+SupplierTypeValues.costco = costco
+SupplierTypeValues.etsyWholesale = etsy_wholesale
+SupplierTypeValues.indiamart = indiamart
+SupplierTypeValues.tradeindia = tradeindia
+SupplierTypeValues.custom = custom
+TransactionSentinel.alreadyRefunded = already_refunded
+TransactionSentinel.refunded = refunded
+UIMessages.sessionExpired = Session expired due to inactivity. Please login again.
+UIMessages.sessionExpiredTitle = Session Expired
+UserRoleValues.admin = admin
+UserRoleValues.seller = seller
+UserRoleValues.buyer = buyer
+WarehouseTypeValues.warehouse = warehouse
+WarehouseTypeValues.personal = personal
+WebhookResponseStatus.processed = processed
+WebhookResponseStatus.ignored = ignored
+WebhookResponseStatus.error = error
+WebhookStatusValues.processing = processing
+WebhookStatusValues.completed = completed
+WebhookStatusValues.failed = failed
+RateLimitActions.verifyCart = verify_cart_prices
+RateLimitActions.createCheckout = create_checkout
+RateLimitActions.stripeWebhook = stripe_webhook
+RateLimitActions.unsubscribe = unsubscribe_email
+RateLimitActions.exportData = export_data
+RateLimitActions.mfaEnroll = mfa_enroll
+RateLimitActions.mfaVerify = mfa_verify
+RateLimitActions.mfaDisable = mfa_disable
+RateLimitActions.mfaBackupVerify = mfa_backup_verify
+RateLimitActions.createConnectAccount = create_connect_account
+RateLimitActions.createAccountLink = create_account_link
+RateLimitActions.getConnectStatus = get_connect_account_status
+RateLimitActions.capturePayment = capture_payment
+RateLimitActions.updateUserRoles = update_user_roles
+RateLimitActions.suspendSeller = suspend_seller
+RateLimitActions.unsuspendSeller = unsuspend_seller
+RateLimitActions.adminUpdateStock = admin_update_stock
+RateLimitActions.deleteAccount = delete_account
+RateLimitActions.updateOrderStatus = update_order_status
+RateLimitActions.updateItemStatus = update_item_status
+RateLimitActions.cancelOrder = cancel_order
+RateLimitActions.refundOrderItem = refund_order_item
+RateLimitActions.approveShippingCost = approve_shipping_cost
+RateLimitActions.updateShippingCost = update_shipping_cost
+RateLimitActions.createReturnRequest = create_return_request
+RateLimitActions.approveReturnRequest = approve_return_request
+RateLimitActions.rejectReturnRequest = reject_return_request
+RateLimitActions.escalateReturnRequest = escalate_return_request
+RateLimitActions.uploadImages = upload_images
+RateLimitActions.uploadVideo = upload_video
+RateLimitActions.deleteProduct = delete_product
+RateLimitActions.submitRating = submit_rating
+RateLimitActions.createProduct = create_product
+RateLimitActions.configureAlgolia = configure_algolia
+RateLimitActions.getProducts = get_products
+RateLimitActions.getSellerProducts = get_seller_products
+RateLimitActions.getProductRatings = get_product_ratings
+RateLimitActions.askProductQuestion = ask_product_question
+RateLimitActions.answerProductQuestion = answer_product_question
+RateLimitActions.answerReview = answer_review
+RateLimitActions.createUserProfile = create_user_profile
+RateLimitActions.updateTaxExemption = update_tax_exemption
+RateLimitActions.applyCoupon = apply_coupon
+RateLimitActions.activateLicense = activate_license
+RateLimitActions.verifyLicense = verify_license
+RateLimitActions.verifyLicenseIp = verify_license_ip
+RateLimitActions.getPaymentProviders = get_payment_providers
+RateLimitActions.updatePaymentProvider = update_payment_provider
+RateLimitActions.getProviderStatus = get_provider_status
+RateLimitActions.subscribeStockNotification = subscribe_stock_notification
+RateLimitActions.unsubscribeStockNotification = unsubscribe_stock_notification
+LocalStorageKeys.recentlyViewed = recently_viewed
+LocalStorageKeys.recentSearches = recent_searches
+AlgoliaReplicaSuffixes.priceAsc = _price_asc
+AlgoliaReplicaSuffixes.priceDesc = _price_desc

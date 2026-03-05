@@ -18,22 +18,23 @@ class ResponsiveBreakpoints {
 
   // Product card aspect ratios (width ÷ height). Lower value = taller card.
   // Content area (Expanded flex:4) must fit: 2-line title + optional trending
-  // view-count row (~14dp) + rating row + price + delivery chip (~14dp).
-  // Calculated per breakpoint to eliminate BOTTOM OVERFLOW at all column counts:
-  //   mobile 2-col ~170px wide → height ≥ 230px → 0.74
-  //   mobilePlus 2-col ~220px wide → height ≥ 278px → 0.79
-  //   tablet 3-col ~235px wide → height ≥ 294px → 0.80
-  //   desktop 6-col ~220px wide → height ≥ 297px → 0.74
-  static const double cardAspectMobile = 0.74;
-  static const double cardAspectMobilePlus = 0.79;
-  static const double cardAspectTablet = 0.80;
-  static const double cardAspectDesktop = 0.74;
+  // view-count row + rating row + price + delivery chip.
+  // Ratios sized for worst case (all optional rows visible: trending + delivery).
+  // Empirically verified via Gemini visual audit 2026-03-04 — 20dp safety margin:
+  //   mobile 2-col ~165px wide → height ≥ 266px → 0.62
+  //   mobilePlus 2-col ~215px wide → height ≥ 320px → 0.67
+  //   tablet 3-col ~235px wide → height ≥ 336px → 0.70
+  //   desktop 6-col ~224px wide → height ≥ 361px → 0.62
+  static const double cardAspectMobile = 0.62;
+  static const double cardAspectMobilePlus = 0.67;
+  static const double cardAspectTablet = 0.70;
+  static const double cardAspectDesktop = 0.62;
 
-  // Aspect ratios for seller/admin cards — management action row adds ~48 dp.
-  static const double cardAspectMobileManage = 0.65;
-  static const double cardAspectMobilePlusManage = 0.70;
-  static const double cardAspectTabletManage = 0.70;
-  static const double cardAspectDesktopManage = 0.65;
+  // Aspect ratios for seller/admin cards — management action row adds ~32–48 dp.
+  static const double cardAspectMobileManage = 0.53;
+  static const double cardAspectMobilePlusManage = 0.58;
+  static const double cardAspectTabletManage = 0.60;
+  static const double cardAspectDesktopManage = 0.53;
 
   /// Maximum height for dropdown/popup menus — 40 % of the viewport height.
   /// Using a viewport fraction avoids magic pixel values and adapts across

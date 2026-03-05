@@ -12,7 +12,8 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
-
+nanobanana-output/
+test/goldens/
 # IntelliJ related
 *.iml
 *.ipr

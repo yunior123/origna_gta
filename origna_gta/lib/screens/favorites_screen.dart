@@ -156,10 +156,12 @@ class FavoritesScreen extends ConsumerWidget {
 
   double _getCardAspectRatio(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    // Lower ratio = taller cards (prevents vertical overflow)
-    if (width < 360) return 0.65;
-    if (width < 600) return 0.70;
-    if (width < 900) return 0.75;
-    return 0.80;
+    // Lower ratio = taller cards (prevents vertical overflow).
+    // Synced with ResponsiveBreakpoints.cardAspect* — sized for worst case
+    // (trending row + delivery chip visible simultaneously).
+    if (width < 360) return 0.58;
+    if (width < 600) return 0.62;
+    if (width < 900) return 0.67;
+    return 0.70;
   }
 }
