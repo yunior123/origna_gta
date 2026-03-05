@@ -102,6 +102,107 @@ class TestProductCacheHelpers:
 
 
 class TestUploadProductImages:
+    def test_upload_product_images_requires_auth(self):
+        from handlers.products import upload_product_images
+
+        req = Mock()
+        req.auth = None
+        req.data = {}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_product_images(req)
+        assert exc.value.code == "unauthenticated"
+
+    @patch("handlers.products.RateLimiter")
+    @patch("handlers.products.get_db")
+    def test_upload_product_images_user_not_found(self, mock_get_db, mock_rl):
+        from handlers.products import upload_product_images
+
+        user_doc = _snap(exists=False)
+        users_col = Mock()
+        users_col.document.return_value.get.return_value = user_doc
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.USERS: users_col}.get(name, Mock())
+        mock_get_db.return_value = db
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {"fileNames": ["x.jpg"], "contentTypes": ["image/jpeg"]}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_product_images(req)
+        assert exc.value.code == "not-found"
+
+    @patch("handlers.products.RateLimiter")
+    @patch("handlers.products.get_db")
+    def test_upload_product_images_suspended_user_blocked(self, mock_get_db, mock_rl):
+        from handlers.products import upload_product_images
+
+        db, _, _ = _seller_db(suspended=True)
+        mock_get_db.return_value = db
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {"fileNames": ["x.jpg"], "contentTypes": ["image/jpeg"]}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_product_images(req)
+        assert exc.value.code == "permission-denied"
+
+    @patch("handlers.products.RateLimiter")
+    @patch("handlers.products.get_db")
+    def test_upload_product_images_role_required(self, mock_get_db, mock_rl):
+        from handlers.products import upload_product_images
+
+        db, _, _ = _seller_db(roles=["buyer"], onboarding_completed=True)
+        mock_get_db.return_value = db
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+
+        req = Mock()
+        req.auth = Mock(uid="buyer_1")
+        req.data = {"fileNames": ["x.jpg"], "contentTypes": ["image/jpeg"]}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_product_images(req)
+        assert exc.value.code == "permission-denied"
+
+    @patch("handlers.products.RateLimiter")
+    @patch("handlers.products.get_db")
+    def test_upload_product_images_rejects_empty_and_mismatched_payload(self, mock_get_db, mock_rl):
+        from handlers.products import upload_product_images
+
+        db, _, _ = _seller_db(onboarding_completed=True)
+        mock_get_db.return_value = db
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {"fileNames": [], "contentTypes": []}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_product_images(req)
+        assert exc.value.code == "invalid-argument"
+
+        req.data = {"fileNames": ["x.jpg"], "contentTypes": []}
+        with pytest.raises(https_fn.HttpsError) as exc2:
+            upload_product_images(req)
+        assert exc2.value.code == "invalid-argument"
+
+    @patch("handlers.products.RateLimiter")
+    @patch("handlers.products.get_db")
+    def test_upload_product_images_rejects_more_than_max_images(self, mock_get_db, mock_rl):
+        from handlers.products import upload_product_images
+
+        db, _, _ = _seller_db(onboarding_completed=True)
+        mock_get_db.return_value = db
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {
+            "fileNames": [f"f{i}.jpg" for i in range(BusinessRules.MAX_PRODUCT_IMAGES + 1)],
+            "contentTypes": ["image/jpeg"] * (BusinessRules.MAX_PRODUCT_IMAGES + 1),
+        }
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_product_images(req)
+        assert exc.value.code == "invalid-argument"
+
     @patch("handlers.products.create_success_response", side_effect=lambda payload: {"success": True, **payload})
     @patch("handlers.products._get_cached_s3_client")
     @patch("handlers.products.RateLimiter")
@@ -217,6 +318,49 @@ class TestUploadProductImages:
 
 
 class TestUploadProductVideoAndDeleteImages:
+    def test_upload_product_video_requires_auth(self):
+        from handlers.products import upload_product_video
+
+        req = Mock()
+        req.auth = None
+        req.data = {}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_product_video(req)
+        assert exc.value.code == "unauthenticated"
+
+    @patch("handlers.products.RateLimiter")
+    @patch("handlers.products.get_db")
+    def test_upload_product_video_rejects_missing_file(self, mock_get_db, mock_rl):
+        from handlers.products import upload_product_video
+
+        db, _, _ = _seller_db(onboarding_completed=True)
+        mock_get_db.return_value = db
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {"contentType": "video/mp4"}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_product_video(req)
+        assert exc.value.code == "invalid-argument"
+
+    @patch("handlers.products._get_cached_s3_client")
+    @patch("handlers.products.RateLimiter")
+    @patch("handlers.products.get_db")
+    def test_upload_product_video_s3_failure_returns_internal(self, mock_get_db, mock_rl, mock_get_s3):
+        from handlers.products import upload_product_video
+
+        db, _, _ = _seller_db(onboarding_completed=True)
+        mock_get_db.return_value = db
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+        mock_get_s3.return_value.generate_presigned_url.side_effect = RuntimeError("r2 down")
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {"fileName": "demo.mp4", "contentType": "video/mp4"}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_product_video(req)
+        assert exc.value.code == "internal"
+
     @patch("handlers.products.create_success_response", side_effect=lambda payload: {"success": True, **payload})
     @patch("handlers.products._get_cached_s3_client")
     @patch("handlers.products.RateLimiter")
@@ -317,8 +461,31 @@ class TestUploadProductVideoAndDeleteImages:
             delete_product_images(req)
         assert exc.value.code == "invalid-argument"
 
+    @patch("handlers.products.get_db")
+    def test_delete_product_images_rejects_too_many_urls(self, mock_get_db):
+        from handlers.products import delete_product_images
+
+        db, _, _ = _seller_db()
+        mock_get_db.return_value = db
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {"publicUrls": [f"https://cdn.origna.io/products/{i}.jpg" for i in range(11)]}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            delete_product_images(req)
+        assert exc.value.code == "invalid-argument"
+
 
 class TestUploadReviewImages:
+    def test_upload_review_images_requires_auth(self):
+        from handlers.products import upload_review_images
+
+        req = Mock()
+        req.auth = None
+        req.data = {}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_review_images(req)
+        assert exc.value.code == "unauthenticated"
+
     @patch("handlers.products.create_success_response", side_effect=lambda payload: {"success": True, **payload})
     @patch("handlers.products._get_cached_s3_client")
     @patch("utils.premium_check.is_premium_authoritative", return_value=True)
@@ -373,8 +540,38 @@ class TestUploadReviewImages:
             upload_review_images(req)
         assert exc2.value.code == "invalid-argument"
 
+        req.data = {"fileNames": ["r1.jpg"], "contentTypes": []}
+        with pytest.raises(https_fn.HttpsError) as exc3:
+            upload_review_images(req)
+        assert exc3.value.code == "invalid-argument"
+
+    @patch("handlers.products._get_cached_s3_client")
+    @patch("utils.premium_check.is_premium_authoritative", return_value=True)
+    @patch("handlers.products.get_db")
+    def test_upload_review_images_presign_failure_returns_internal(self, mock_get_db, _mock_premium, mock_get_s3):
+        from handlers.products import upload_review_images
+
+        mock_get_db.return_value = Mock()
+        mock_get_s3.return_value.generate_presigned_url.side_effect = RuntimeError("presign failed")
+        req = Mock()
+        req.auth = Mock(uid="buyer_1")
+        req.data = {"fileNames": ["r1.jpg"], "contentTypes": ["image/jpeg"]}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            upload_review_images(req)
+        assert exc.value.code == "internal"
+
 
 class TestDeleteProductDeep:
+    def test_delete_product_requires_auth(self):
+        from handlers.products import delete_product
+
+        req = Mock()
+        req.auth = None
+        req.data = {Fields.PRODUCT_ID: "p1"}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            delete_product(req)
+        assert exc.value.code == "unauthenticated"
+
     @patch("handlers.products.create_success_response", side_effect=lambda payload: {"success": True, **payload})
     @patch("handlers.products._get_cached_s3_client")
     @patch("handlers.products.algolia_delete_product", side_effect=RuntimeError("algolia unavailable"))
@@ -537,8 +734,111 @@ class TestDeleteProductDeep:
             delete_product(req)
         assert exc.value.code == "permission-denied"
 
+    @patch("handlers.products.RateLimiter")
+    @patch("handlers.products.get_db")
+    def test_delete_product_rate_limited(self, mock_get_db, mock_rl):
+        from handlers.products import delete_product
+
+        mock_get_db.return_value = Mock()
+        mock_rl.return_value.check_rate_limit.return_value = (False, "slow down")
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {Fields.PRODUCT_ID: "prod_1"}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            delete_product(req)
+        assert exc.value.code == "resource-exhausted"
+
+    @patch("handlers.products.RateLimiter")
+    @patch("handlers.products.get_db")
+    def test_delete_product_not_found(self, mock_get_db, mock_rl):
+        from handlers.products import delete_product
+
+        db = Mock()
+        mock_get_db.return_value = db
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+        product_ref = Mock()
+        product_ref.get.return_value = _snap(exists=False)
+        products_col = Mock()
+        products_col.document.return_value = product_ref
+        db.collection.side_effect = lambda name: {Collections.PRODUCTS: products_col}.get(name, Mock())
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {Fields.PRODUCT_ID: "prod_1"}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            delete_product(req)
+        assert exc.value.code == "not-found"
+
 
 class TestSubmitProductRatingAtomicDeep:
+    def test_submit_product_rating_atomic_requires_auth(self):
+        from handlers.products import submit_product_rating_atomic
+
+        req = Mock()
+        req.auth = None
+        req.data = {}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            submit_product_rating_atomic(req)
+        assert exc.value.code == "unauthenticated"
+
+    @patch("handlers.products.get_db")
+    def test_submit_product_rating_atomic_validates_required_and_rating_range(self, mock_get_db):
+        from handlers.products import submit_product_rating_atomic
+
+        mock_get_db.return_value = Mock()
+        req = Mock()
+        req.auth = Mock(uid="buyer_1")
+        req.data = {Fields.PRODUCT_ID: "p1"}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            submit_product_rating_atomic(req)
+        assert exc.value.code == "invalid-argument"
+
+        req.data = {Fields.PRODUCT_ID: "p1", Fields.ORDER_ID: "o1", Fields.RATING: 6}
+        with pytest.raises(https_fn.HttpsError) as exc2:
+            submit_product_rating_atomic(req)
+        assert exc2.value.code == "invalid-argument"
+
+    @patch("handlers.products.get_db")
+    def test_submit_product_rating_atomic_order_validation_branches(self, mock_get_db):
+        from handlers.products import submit_product_rating_atomic
+
+        order_ref = Mock()
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col}.get(name, Mock())
+        mock_get_db.return_value = db
+
+        req = Mock()
+        req.auth = Mock(uid="buyer_1")
+        req.data = {Fields.PRODUCT_ID: "p1", Fields.ORDER_ID: "o1", Fields.RATING: 5}
+
+        order_ref.get.return_value = _snap(exists=False)
+        with pytest.raises(https_fn.HttpsError) as exc:
+            submit_product_rating_atomic(req)
+        assert exc.value.code == "not-found"
+
+        order_ref.get.return_value = _snap({Fields.USER_ID: "other", Fields.ORDER_STATUS: "delivered", Fields.ITEMS: []})
+        with pytest.raises(https_fn.HttpsError) as exc2:
+            submit_product_rating_atomic(req)
+        assert exc2.value.code == "permission-denied"
+
+        order_ref.get.return_value = _snap({Fields.USER_ID: "buyer_1", Fields.ORDER_STATUS: "processing", Fields.ITEMS: []})
+        with pytest.raises(https_fn.HttpsError) as exc3:
+            submit_product_rating_atomic(req)
+        assert exc3.value.code == "failed-precondition"
+
+        order_ref.get.return_value = _snap(
+            {
+                Fields.USER_ID: "buyer_1",
+                Fields.ORDER_STATUS: "delivered",
+                Fields.ITEMS: [{Fields.PRODUCT_ID: "another"}],
+            }
+        )
+        with pytest.raises(https_fn.HttpsError) as exc4:
+            submit_product_rating_atomic(req)
+        assert exc4.value.code == "invalid-argument"
+
     @patch("handlers.products.create_success_response", side_effect=lambda payload: {"success": True, **payload})
     @patch("handlers.products.algolia_partial_update")
     @patch("handlers.products.get_firestore")

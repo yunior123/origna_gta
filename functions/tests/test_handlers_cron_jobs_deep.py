@@ -1020,6 +1020,435 @@ class TestAdditionalCronCoverage:
         mock_release.assert_called_once_with("send_abandoned_cart_emails")
 
 
+class TestRunAutoCaptureEdgeBranches:
+    @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_auto_capture_skips_orders_without_payment_intent(self, mock_get_db, _mock_enabled):
+        from handlers.cron_jobs import _run_auto_capture
+
+        order_doc = _snapshot(
+            "ord_no_pi",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                Fields.ITEMS: [],
+            },
+        )
+
+        delivered_q = _query(stream_return=[order_doc])
+        shipped_q = _query(stream_return=[])
+        orders_col = Mock()
+        orders_col.where.side_effect = [delivered_q, shipped_q]
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col}[name]
+        mock_get_db.return_value = db
+
+        _run_auto_capture()
+        order_doc.reference.update.assert_not_called()
+
+    @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
+    @patch("handlers.cron_jobs.get_firestore")
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_auto_capture_authorized_lock_conflict_skips_order(self, mock_get_db, mock_get_fs, _mock_enabled):
+        from handlers.cron_jobs import _run_auto_capture
+
+        order_doc = _snapshot(
+            "ord_lock_conflict",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_lock_conflict",
+                Fields.ITEMS: [],
+            },
+        )
+        # Transactional re-read shows status changed; lock returns False branch.
+        order_doc.reference.get.return_value = _snapshot(
+            "ord_lock_conflict",
+            {Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED},
+        )
+
+        delivered_q = _query(stream_return=[order_doc])
+        shipped_q = _query(stream_return=[])
+        orders_col = Mock()
+        orders_col.where.side_effect = [delivered_q, shipped_q]
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col}[name]
+        db.transaction.return_value = Mock()
+        mock_get_db.return_value = db
+        mock_get_fs.return_value = SimpleNamespace(transactional=lambda fn: fn)
+
+        _run_auto_capture()
+
+        order_doc.reference.update.assert_not_called()
+
+    @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
+    @patch("handlers.cron_jobs.sentry_sdk.capture_exception")
+    @patch("handlers.cron_jobs.IS_EMULATOR", False)
+    @patch("handlers.cron_jobs.get_server_timestamp", return_value="ts")
+    @patch("handlers.cron_jobs.get_firestore")
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_auto_capture_capture_error_reverts_status_to_authorized(
+        self,
+        mock_get_db,
+        mock_get_fs,
+        _mock_ts,
+        mock_capture,
+        _mock_enabled,
+    ):
+        import handlers.cron_jobs as cron
+
+        from handlers.cron_jobs import _run_auto_capture
+
+        order_doc = _snapshot(
+            "ord_capture_err",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_capture_err",
+                Fields.ITEMS: [],
+            },
+        )
+        # Lock succeeds (still authorized in fresh read)
+        order_doc.reference.get.return_value = _snapshot(
+            "ord_capture_err",
+            {Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED},
+        )
+
+        delivered_q = _query(stream_return=[order_doc])
+        shipped_q = _query(stream_return=[])
+        orders_col = Mock()
+        orders_col.where.side_effect = [delivered_q, shipped_q]
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col}[name]
+        db.transaction.return_value = Mock()
+        mock_get_db.return_value = db
+        mock_get_fs.return_value = SimpleNamespace(transactional=lambda fn: fn)
+
+        with patch(
+            "handlers.cron_jobs.stripe.PaymentIntent.retrieve",
+            side_effect=cron.stripe.error.StripeError("retrieve failed"),
+        ):
+            _run_auto_capture()
+
+        # First update: lock to CAPTURING; second: revert to AUTHORIZED on capture failure.
+        assert order_doc.reference.update.call_count >= 1
+        assert any(
+            c.args
+            and isinstance(c.args[0], dict)
+            and c.args[0].get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED
+            for c in order_doc.reference.update.call_args_list
+        )
+        mock_capture.assert_called_once()
+
+    @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_auto_capture_skips_order_with_active_dispute(self, mock_get_db, _mock_enabled):
+        from handlers.cron_jobs import _run_auto_capture
+
+        order_doc = _snapshot(
+            "ord_dispute",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_dispute",
+                Fields.ITEMS: [],
+            },
+        )
+
+        delivered_q = _query(stream_return=[order_doc])
+        shipped_q = _query(stream_return=[])
+        orders_col = Mock()
+        orders_col.where.side_effect = [delivered_q, shipped_q]
+
+        alerts_q = _query(get_return=[_snapshot("alert_1", {})])
+        alerts_col = Mock()
+        alerts_col.where.return_value = alerts_q
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.SECURITY_ALERTS: alerts_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        _run_auto_capture()
+        order_doc.reference.update.assert_not_called()
+
+    @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
+    @patch("handlers.cron_jobs.get_firestore")
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_auto_capture_authorized_lock_exception_skips_order(self, mock_get_db, mock_get_fs, _mock_enabled):
+        from handlers.cron_jobs import _run_auto_capture
+
+        order_doc = _snapshot(
+            "ord_lock_err",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_lock_err",
+                Fields.ITEMS: [],
+            },
+        )
+
+        delivered_q = _query(stream_return=[order_doc])
+        shipped_q = _query(stream_return=[])
+        orders_col = Mock()
+        orders_col.where.side_effect = [delivered_q, shipped_q]
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col}[name]
+        db.transaction.side_effect = RuntimeError("tx failed")
+        mock_get_db.return_value = db
+        mock_get_fs.return_value = SimpleNamespace(transactional=lambda fn: fn)
+
+        _run_auto_capture()
+        order_doc.reference.update.assert_not_called()
+
+    @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
+    @patch("handlers.cron_jobs.IS_EMULATOR", False)
+    @patch("handlers.cron_jobs.get_firestore")
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_auto_capture_authorized_unexpected_pi_status_skips(self, mock_get_db, mock_get_fs, _mock_enabled):
+        from handlers.cron_jobs import _run_auto_capture
+
+        order_doc = _snapshot(
+            "ord_pi_weird",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_weird",
+                Fields.ITEMS: [],
+            },
+        )
+        order_doc.reference.get.return_value = _snapshot("ord_pi_weird", {Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED})
+
+        delivered_q = _query(stream_return=[order_doc])
+        shipped_q = _query(stream_return=[])
+        orders_col = Mock()
+        orders_col.where.side_effect = [delivered_q, shipped_q]
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col}[name]
+        db.transaction.return_value = Mock()
+        mock_get_db.return_value = db
+        mock_get_fs.return_value = SimpleNamespace(transactional=lambda fn: fn)
+
+        with patch("handlers.cron_jobs.stripe.PaymentIntent.retrieve", return_value=SimpleNamespace(status="requires_action")):
+            _run_auto_capture()
+
+        order_doc.reference.update.assert_not_called()
+
+    @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_auto_capture_skips_when_dispute_lookup_fails(self, mock_get_db, _mock_enabled):
+        from handlers.cron_jobs import _run_auto_capture
+
+        order_doc = _snapshot(
+            "ord_dispute_err",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_dispute_err",
+                Fields.ITEMS: [],
+            },
+        )
+
+        delivered_q = _query(stream_return=[order_doc])
+        shipped_q = _query(stream_return=[])
+        orders_col = Mock()
+        orders_col.where.side_effect = [delivered_q, shipped_q]
+
+        alerts_q = _query()
+        alerts_q.get.side_effect = RuntimeError("alerts query failed")
+        alerts_col = Mock()
+        alerts_col.where.return_value = alerts_q
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.SECURITY_ALERTS: alerts_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        _run_auto_capture()
+        order_doc.reference.update.assert_not_called()
+
+    @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
+    @patch("handlers.cron_jobs.get_firestore")
+    @patch("models.order_event.OrderEvent.write")
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_auto_capture_shipped_auto_confirm_then_no_charge_marks_manual_review_and_failed(
+        self, mock_get_db, _mock_event_write, mock_get_fs, _mock_enabled
+    ):
+        from handlers.cron_jobs import _run_auto_capture
+
+        old_ts = datetime.now(UTC) - timedelta(days=BusinessRules.AUTO_CONFIRM_DAYS + 3)
+        order_doc = _snapshot(
+            "ord_ship_auto",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.SHIPPED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_ship_auto",
+                Fields.ITEMS: [
+                    {
+                        Fields.SELLER_ID: "seller_auto",
+                        Fields.STATUS: DeliveryStatusValues.SHIPPED,
+                        Fields.PRICE: 20.0,
+                        Fields.QUANTITY: 1,
+                        Fields.SHIPPED_AT: old_ts,
+                    }
+                ],
+                Fields.SELLER_STRIPE_ACCOUNTS: {},
+            },
+        )
+        order_doc.reference.get.return_value = _snapshot(
+            "ord_ship_auto",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.SHIPPED,
+                Fields.ITEMS: [
+                    {
+                        Fields.SELLER_ID: "seller_auto",
+                        Fields.STATUS: DeliveryStatusValues.SHIPPED,
+                        Fields.PRICE: 20.0,
+                        Fields.QUANTITY: 1,
+                    }
+                ],
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_ship_auto",
+            },
+        )
+
+        delivered_q = _query(stream_return=[])
+        shipped_q = _query(stream_return=[order_doc])
+        orders_col = Mock()
+        orders_col.where.side_effect = [delivered_q, shipped_q]
+
+        alerts_q = _query(get_return=[])
+        alerts_col = Mock()
+        alerts_col.where.return_value = alerts_q
+
+        returns_q = _query(get_return=[])
+        returns_col = Mock()
+        returns_col.where.return_value = returns_q
+
+        payouts_lookup_q = _query(get_return=[])
+        payouts_col = Mock()
+        payouts_col.where.return_value = payouts_lookup_q
+        payouts_col.document.return_value = Mock()
+
+        users_col = Mock()
+        users_col.document.side_effect = lambda sid: SimpleNamespace(id=sid, _kind="user")
+        sp_col = Mock()
+        sp_col.document.side_effect = lambda sid: SimpleNamespace(id=sid, _kind="sp")
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.SECURITY_ALERTS: alerts_col,
+            Collections.RETURN_REQUESTS: returns_col,
+            Collections.PAYOUTS: payouts_col,
+            Collections.USERS: users_col,
+            Collections.SELLER_PROFILES: sp_col,
+        }[name]
+        db.transaction.return_value = Mock()
+
+        def _get_all(refs):
+            out = []
+            for ref in refs:
+                if ref._kind == "user":
+                    out.append(_snapshot(ref.id, {Fields.SUSPENDED: False}, exists=True))
+                else:
+                    out.append(
+                        _snapshot(
+                            ref.id,
+                            {Fields.CHARGES_ENABLED: True, Fields.STRIPE_ACCOUNT_ID: "acct_auto"},
+                            exists=True,
+                        )
+                    )
+            return out
+
+        db.get_all.side_effect = _get_all
+        mock_get_db.return_value = db
+        mock_get_fs.return_value = SimpleNamespace(transactional=lambda fn: fn)
+
+        with (
+            patch("handlers.cron_jobs.stripe.PaymentIntent.retrieve", return_value=SimpleNamespace(latest_charge=None)),
+            patch("utils.helpers.get_charge_id_from_pi", return_value=None),
+        ):
+            _run_auto_capture()
+
+        assert any(
+            c.args
+            and isinstance(c.args[0], dict)
+            and c.args[0].get(Fields.MANUAL_REVIEW_REASON, "").startswith("No charge ID found")
+            for c in order_doc.reference.update.call_args_list
+        )
+        assert any(
+            c.args
+            and isinstance(c.args[0], dict)
+            and c.args[0].get(Fields.PAYOUT_STATUS) == PayoutStatusValues.FAILED
+            for c in order_doc.reference.update.call_args_list
+        )
+
+    @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
+    @patch("handlers.cron_jobs.sentry_sdk.capture_exception")
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_auto_capture_outer_stripe_error_sets_failed_status(
+        self, mock_get_db, mock_capture, _mock_enabled
+    ):
+        import handlers.cron_jobs as cron
+
+        from handlers.cron_jobs import _run_auto_capture
+
+        order_doc = _snapshot(
+            "ord_outer_stripe",
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_outer",
+                Fields.ITEMS: [],
+            },
+        )
+        order_doc.reference.update.side_effect = [
+            cron.stripe.error.StripeError("set processing failed"),
+            None,
+        ]
+
+        delivered_q = _query(stream_return=[order_doc])
+        shipped_q = _query(stream_return=[])
+        orders_col = Mock()
+        orders_col.where.side_effect = [delivered_q, shipped_q]
+
+        alerts_q = _query(get_return=[])
+        alerts_col = Mock()
+        alerts_col.where.return_value = alerts_q
+
+        returns_q = _query(get_return=[])
+        returns_col = Mock()
+        returns_col.where.return_value = returns_q
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.SECURITY_ALERTS: alerts_col,
+            Collections.RETURN_REQUESTS: returns_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        _run_auto_capture()
+
+        assert any(
+            c.args
+            and isinstance(c.args[0], dict)
+            and c.args[0].get(Fields.PAYOUT_STATUS) == PayoutStatusValues.FAILED
+            for c in order_doc.reference.update.call_args_list
+        )
+        mock_capture.assert_called_once()
+
+
 class TestReturnEscalationCron:
     @patch("handlers.cron_jobs.release_cron_lock")
     @patch("handlers.cron_jobs.acquire_cron_lock", return_value=False)

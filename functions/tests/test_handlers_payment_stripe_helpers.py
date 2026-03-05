@@ -1,11 +1,20 @@
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from firebase_functions import https_fn
 
 from config import CATEGORY_TAX_CODE_MAP
-from schema_constants import Collections, Fields
+from schema_constants import (
+    ApiKeys,
+    BusinessRules,
+    CartVerificationReasonValues,
+    Collections,
+    Fields,
+    ProductLifecycleStatusValues,
+    StripeConstants,
+)
 
 
 class _FakeProtoTimestamp:
@@ -39,6 +48,14 @@ def _build_seller_db(seller_data: dict | None, profile_data: dict | None, seller
 
     db.collection.side_effect = _collection_side_effect
     return db
+
+
+def _doc(doc_id: str, data: dict | None = None, *, exists: bool = True):
+    snap = Mock()
+    snap.id = doc_id
+    snap.exists = exists
+    snap.to_dict.return_value = {} if data is None else data
+    return snap
 
 
 class TestPaymentStripeHelpers:
@@ -265,3 +282,366 @@ class TestPaymentStripeHelpers:
         assert isinstance(out["obj"], str)
         assert isinstance(out["list"], str)
         assert sanitize_metadata("not-a-dict") == {}
+
+    def test_verify_cart_prices_rejects_unauthenticated(self):
+        from handlers.payment_stripe import verify_cart_prices
+
+        req = Mock()
+        req.auth = None
+        req.data = {}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            verify_cart_prices(req)
+        assert exc.value.code == "unauthenticated"
+
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    def test_verify_cart_prices_rate_limited(self, mock_get_rate_limiter):
+        from handlers.payment_stripe import verify_cart_prices
+
+        limiter = Mock()
+        limiter.check_rate_limit.return_value = (False, "too many")
+        mock_get_rate_limiter.return_value = limiter
+
+        req = Mock()
+        req.auth = Mock(uid="buyer_1")
+        req.data = {Fields.ITEMS: [{Fields.PRODUCT_ID: "p_1"}]}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            verify_cart_prices(req)
+        assert exc.value.code == "resource-exhausted"
+
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    def test_verify_cart_prices_requires_items(self, mock_get_rate_limiter):
+        from handlers.payment_stripe import verify_cart_prices
+
+        limiter = Mock()
+        limiter.check_rate_limit.return_value = (True, "ok")
+        mock_get_rate_limiter.return_value = limiter
+
+        req = Mock()
+        req.auth = Mock(uid="buyer_1")
+        req.data = {Fields.ITEMS: []}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            verify_cart_prices(req)
+        assert exc.value.code == "invalid-argument"
+
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("handlers.payment_stripe.get_db")
+    def test_verify_cart_prices_detects_removed_price_and_stock_changes(self, mock_get_db, mock_get_rate_limiter):
+        from handlers.payment_stripe import verify_cart_prices
+
+        limiter = Mock()
+        limiter.check_rate_limit.return_value = (True, "ok")
+        mock_get_rate_limiter.return_value = limiter
+
+        products_col = Mock()
+        products_col.document.side_effect = lambda doc_id: SimpleNamespace(id=doc_id)
+
+        db = Mock()
+        db.collection.return_value = products_col
+        db.get_all.return_value = [
+            _doc("p_missing", exists=False),
+            _doc(
+                "p_inactive",
+                {
+                    Fields.NAME: "Inactive Listing",
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+                },
+            ),
+            _doc(
+                "p_changed",
+                {
+                    Fields.NAME: "Changed Listing",
+                    Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+                    Fields.PRICE: 14.99,
+                    Fields.STOCK_QUANTITY: 1,
+                },
+            ),
+        ]
+        mock_get_db.return_value = db
+
+        req = Mock()
+        req.auth = Mock(uid="buyer_1")
+        req.data = {
+            Fields.ITEMS: [
+                {Fields.PRODUCT_ID: "", Fields.PRICE: 1.0, Fields.QUANTITY: 1},  # skipped: missing id
+                {Fields.PRODUCT_ID: "p_missing", Fields.PRICE: 1.0, Fields.QUANTITY: 1},
+                {Fields.PRODUCT_ID: "p_inactive", Fields.PRICE: 9.0, Fields.QUANTITY: 1},
+                {Fields.PRODUCT_ID: "p_changed", Fields.PRICE: 10.0, Fields.QUANTITY: 3},
+            ]
+        }
+
+        out = verify_cart_prices(req)
+        assert out[ApiKeys.SUCCESS] is True
+        assert out[ApiKeys.HAS_CHANGES] is True
+        assert any(x[Fields.PRODUCT_ID] == "p_missing" for x in out[ApiKeys.REMOVED_PRODUCTS])
+        assert any(
+            x[Fields.PRODUCT_ID] == "p_inactive" and x[Fields.REASON] == CartVerificationReasonValues.DEACTIVATED
+            for x in out[ApiKeys.REMOVED_PRODUCTS]
+        )
+        assert any(
+            x[Fields.PRODUCT_ID] == "p_changed" and x[ApiKeys.OLD_PRICE] == 10.0 and x[ApiKeys.NEW_PRICE] == 14.99
+            for x in out[ApiKeys.PRICE_CHANGES]
+        )
+        assert any(
+            x[Fields.PRODUCT_ID] == "p_changed" and x[ApiKeys.REQUESTED] == 3 and x[ApiKeys.AVAILABLE] == 1
+            for x in out[ApiKeys.STOCK_CHANGES]
+        )
+
+    @patch("handlers.payment_stripe.get_tax_rate", return_value=0.13)
+    def test_get_item_tax_rate_honors_exempt_codes(self, mock_get_tax_rate):
+        from handlers.payment_stripe import (
+            STRIPE_TAX_CODE_BASIC_GROCERIES,
+            STRIPE_TAX_CODE_CHILDRENS_CLOTHING,
+            get_item_tax_rate,
+        )
+
+        exempt_province = next(iter(BusinessRules.CHILDRENS_CLOTHING_EXEMPT_PROVINCES))
+        assert get_item_tax_rate({Fields.TAX_CODE: STRIPE_TAX_CODE_CHILDRENS_CLOTHING}, exempt_province) == 0.0
+        assert get_item_tax_rate({Fields.TAX_CODE: STRIPE_TAX_CODE_BASIC_GROCERIES}, "ON") == 0.0
+        assert get_item_tax_rate({Fields.TAX_CODE: "txcd_general"}, "ON") == 0.13
+        mock_get_tax_rate.assert_called_once_with("ON")
+
+    @patch("handlers.payment_stripe.ensure_stripe_key")
+    @patch("handlers.payment_stripe.stripe.tax.Calculation.create")
+    def test_calculate_tax_with_stripe_success_maps_breakdown_and_reverse_charge(self, mock_calc_create, _mock_ensure):
+        from handlers.payment_stripe import calculate_tax_with_stripe
+
+        mock_calc_create.return_value = SimpleNamespace(
+            tax_breakdown=[
+                SimpleNamespace(tax_type="gst", amount=130),
+                SimpleNamespace(tax_type="pst", amount=40),
+            ],
+            tax_amount_exclusive=170,
+            line_items=SimpleNamespace(
+                data=[
+                    SimpleNamespace(reference="prod_1", amount_tax=130, amount=1000),
+                    SimpleNamespace(reference=StripeConstants.SHIPPING_REFERENCE, amount_tax=40, amount=400),
+                    SimpleNamespace(reference="prod_zero", amount_tax=0, amount=0),
+                ]
+            ),
+            customer_details=SimpleNamespace(tax_exempt=StripeConstants.REVERSE_CHARGE),
+        )
+
+        tax_cents, breakdown, item_taxes, reverse_charge = calculate_tax_with_stripe(
+            validated_items=[
+                {
+                    Fields.PRODUCT_ID: "prod_small",
+                    Fields.CATEGORY_ID: 1,
+                    Fields.PRICE: 5.0,
+                    Fields.QUANTITY: 1,
+                    Fields.IS_SMALL_SUPPLIER: True,
+                },
+                {
+                    Fields.PRODUCT_ID: "prod_1",
+                    Fields.CATEGORY_ID: "unknown",
+                    Fields.PRICE: 10.0,
+                    Fields.QUANTITY: 1,
+                },
+            ],
+            shipping_address={
+                Fields.STREET: "123 Main",
+                Fields.CITY: "Toronto",
+                Fields.STATE: "ON",
+                Fields.POSTAL_CODE: "M5V3A8",
+            },
+            shipping_cost_cents=400,
+            gst_number="123456789RT0001",
+        )
+
+        assert tax_cents == 170
+        assert isinstance(breakdown, dict) and breakdown
+        assert reverse_charge is True
+        assert len(item_taxes) == 2
+        assert any(t[Fields.PRODUCT_ID] == "prod_1" and t[Fields.TAX_RATE] > 0 for t in item_taxes)
+        assert any(t[Fields.PRODUCT_ID] == "prod_zero" and t[Fields.TAX_RATE] == 0 for t in item_taxes)
+
+        kwargs = mock_calc_create.call_args.kwargs
+        assert kwargs["currency"] == BusinessRules.DEFAULT_CURRENCY
+        assert len(kwargs["line_items"]) == 2  # small supplier skipped, shipping appended
+        assert kwargs["customer_details"][StripeConstants.CUSTOMER_TAX_ID][StripeConstants.VALUE] == "123456789RT0001"
+
+    @patch("handlers.payment_stripe.stripe.tax.Calculation.create", side_effect=RuntimeError("stripe down"))
+    def test_calculate_tax_with_stripe_fallback_on_exception(self, _mock_calc_create):
+        from handlers.payment_stripe import calculate_tax_with_stripe
+
+        out = calculate_tax_with_stripe(
+            validated_items=[{Fields.PRODUCT_ID: "prod_1", Fields.CATEGORY_ID: 1, Fields.PRICE: 10.0, Fields.QUANTITY: 1}],
+            shipping_address={},
+            shipping_cost_cents=0,
+        )
+        assert out == (None, None, None, False)
+
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("handlers.payment_stripe.get_firestore")
+    @patch("handlers.payment_stripe.get_db")
+    def test_rollback_checkout_restores_warehouse_and_coupon_use_count(
+        self,
+        mock_get_db,
+        mock_get_firestore,
+        _mock_ts,
+        _mock_get_transactional,
+    ):
+        from handlers.payment_stripe import _rollback_checkout
+
+        fs = Mock()
+        fs.transactional = lambda fn: fn
+        fs.Increment.side_effect = lambda n: ("inc", n)
+        mock_get_firestore.return_value = fs
+
+        stock_txn = Mock()
+        coupon_txn = Mock()
+        db = Mock()
+        db.transaction.side_effect = [stock_txn, coupon_txn]
+        mock_get_db.return_value = db
+
+        product_ref = Mock()
+        product_ref.get.return_value = _doc("p_1", exists=True)
+        inv_ref = Mock()
+        product_ref.collection.return_value.document.return_value = inv_ref
+        products_col = Mock()
+        products_col.document.return_value = product_ref
+
+        coupon_ref = Mock()
+        coupon_ref.get.return_value = _doc("SAVE10", {Fields.USED_COUNT: 2})
+        user_use_ref = Mock()
+        user_use_ref.get.return_value = _doc("buyer_1", {"useCount": 3})
+        coupon_ref.collection.return_value.document.return_value = user_use_ref
+        coupons_col = Mock()
+        coupons_col.document.return_value = coupon_ref
+
+        db.collection.side_effect = lambda name: {
+            Collections.PRODUCTS: products_col,
+            Collections.COUPONS: coupons_col,
+        }[name]
+
+        order_ref = Mock()
+        _rollback_checkout(
+            validated_items=[
+                {
+                    Fields.PRODUCT_ID: "p_1",
+                    Fields.QUANTITY: 2,
+                    Fields.FULFILLMENT_WAREHOUSE_ID: "wh_1",
+                }
+            ],
+            order_ref=order_ref,
+            coupon_code="SAVE10",
+            user_id="buyer_1",
+        )
+
+        stock_txn.update.assert_called_once()
+        stock_patch = stock_txn.update.call_args.args[1]
+        assert stock_patch[Fields.STOCK_QUANTITY] == ("inc", 2)
+        assert stock_patch[f"{Fields.WAREHOUSE_STOCK}.wh_1"] == ("inc", 2)
+
+        stock_txn.set.assert_called_once_with(
+            inv_ref,
+            {
+                Fields.AVAILABLE_QUANTITY: ("inc", 2),
+                Fields.LAST_SYNCED_AT: "ts",
+            },
+            merge=True,
+        )
+        coupon_txn.update.assert_any_call(coupon_ref, {Fields.USED_COUNT: 1})
+        coupon_txn.update.assert_any_call(user_use_ref, {"useCount": 2})
+        order_ref.update.assert_called_once()
+
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("handlers.payment_stripe.get_firestore")
+    @patch("handlers.payment_stripe.get_db")
+    def test_rollback_checkout_deletes_coupon_use_doc_when_single_use(
+        self,
+        mock_get_db,
+        mock_get_firestore,
+        _mock_ts,
+        _mock_get_transactional,
+    ):
+        from handlers.payment_stripe import _rollback_checkout
+
+        fs = Mock()
+        fs.transactional = lambda fn: fn
+        mock_get_firestore.return_value = fs
+
+        stock_txn = Mock()
+        coupon_txn = Mock()
+        db = Mock()
+        db.transaction.side_effect = [stock_txn, coupon_txn]
+        mock_get_db.return_value = db
+
+        products_col = Mock()
+        coupons_col = Mock()
+
+        coupon_ref = Mock()
+        coupon_ref.get.return_value = _doc("SAVE10", {Fields.USED_COUNT: 1})
+        user_use_ref = Mock()
+        user_use_ref.get.return_value = _doc("buyer_1", {"useCount": 1})
+        coupon_ref.collection.return_value.document.return_value = user_use_ref
+        coupons_col.document.return_value = coupon_ref
+
+        db.collection.side_effect = lambda name: {
+            Collections.PRODUCTS: products_col,
+            Collections.COUPONS: coupons_col,
+        }[name]
+
+        order_ref = Mock()
+        _rollback_checkout(validated_items=[], order_ref=order_ref, coupon_code="SAVE10", user_id="buyer_1")
+
+        coupon_txn.update.assert_called_once_with(coupon_ref, {Fields.USED_COUNT: 0})
+        coupon_txn.delete.assert_called_once_with(user_use_ref)
+        order_ref.update.assert_called_once()
+
+    @patch("handlers.payment_stripe.logger")
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe.get_db")
+    def test_rollback_checkout_handles_stock_and_order_update_failures(
+        self,
+        mock_get_db,
+        _mock_get_transactional,
+        mock_logger,
+    ):
+        from handlers.payment_stripe import _rollback_checkout
+
+        db = Mock()
+        db.collection.side_effect = RuntimeError("firestore down")
+        db.transaction.return_value = Mock()
+        mock_get_db.return_value = db
+
+        order_ref = Mock()
+        order_ref.update.side_effect = RuntimeError("update failed")
+
+        _rollback_checkout(
+            validated_items=[{Fields.PRODUCT_ID: "p_1", Fields.QUANTITY: 1}],
+            order_ref=order_ref,
+        )
+
+        assert mock_logger.critical.call_count >= 2
+
+    @patch("handlers.payment_stripe.logger")
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe.get_firestore")
+    @patch("handlers.payment_stripe.get_db")
+    def test_rollback_checkout_logs_coupon_rollback_errors(
+        self,
+        mock_get_db,
+        mock_get_firestore,
+        _mock_get_transactional,
+        mock_logger,
+    ):
+        from handlers.payment_stripe import _rollback_checkout
+
+        fs = Mock()
+        fs.transactional = lambda fn: fn
+        mock_get_firestore.return_value = fs
+
+        db = Mock()
+        db.collection.side_effect = lambda name: (_ for _ in ()).throw(RuntimeError("coupon boom")) if name == Collections.COUPONS else Mock()
+        db.transaction.return_value = Mock()
+        mock_get_db.return_value = db
+
+        order_ref = Mock()
+        _rollback_checkout(validated_items=[], order_ref=order_ref, coupon_code="SAVE10", user_id="buyer_1")
+
+        mock_logger.error.assert_called_once()

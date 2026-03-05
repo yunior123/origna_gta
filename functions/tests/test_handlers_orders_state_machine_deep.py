@@ -14,6 +14,7 @@ from schema_constants import (
     OrderItemIdValues,
     OrderStatusValues,
     PaymentStatusValues,
+    ShippingApprovalStatusValues,
 )
 
 
@@ -35,6 +36,264 @@ def _query(*, stream_return=None):
 
 
 class TestUpdateOrderStatusDeep:
+    @patch("services.rate_limiter.RateLimiter")
+    @patch("handlers.orders.get_db")
+    def test_update_order_status_rate_limited_returns_resource_exhausted(self, mock_get_db, mock_rl):
+        from handlers.orders import update_order_status
+
+        mock_rl.return_value.check_rate_limit.return_value = (False, "too many")
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {Fields.ORDER_ID: "order_1", ApiKeys.NEW_STATUS: OrderStatusValues.SHIPPED}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_order_status(req)
+        assert exc.value.code == "resource-exhausted"
+        mock_get_db.return_value.collection.assert_not_called()
+
+    @patch("services.rate_limiter.RateLimiter")
+    @patch("handlers.orders.get_db")
+    def test_update_order_status_blocks_archived_orders(self, mock_get_db, mock_rl):
+        from handlers.orders import update_order_status
+
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+        order_ref = Mock()
+        order_ref.get.return_value = _snap({Fields.ARCHIVED: True, Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED})
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col}[name]
+        mock_get_db.return_value = db
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {Fields.ORDER_ID: "order_1", ApiKeys.NEW_STATUS: OrderStatusValues.SHIPPED}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_order_status(req)
+        assert exc.value.code == "failed-precondition"
+
+    @patch("services.rate_limiter.RateLimiter")
+    @patch("handlers.orders.get_db")
+    def test_update_order_status_requires_existing_user_doc(self, mock_get_db, mock_rl):
+        from handlers.orders import update_order_status
+
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+                Fields.ITEMS: [{Fields.SELLER_ID: "seller_1"}],
+            }
+        )
+        user_ref = Mock()
+        user_ref.get.return_value = _snap(exists=False)
+
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+        users_col = Mock()
+        users_col.document.return_value = user_ref
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {Fields.ORDER_ID: "order_1", ApiKeys.NEW_STATUS: OrderStatusValues.SHIPPED}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_order_status(req)
+        assert exc.value.code == "not-found"
+
+    @patch("services.rate_limiter.RateLimiter")
+    @patch("handlers.orders.get_db")
+    def test_update_order_status_blocks_shipping_when_approval_pending(self, mock_get_db, mock_rl):
+        from handlers.orders import update_order_status
+
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+                Fields.ITEMS: [{Fields.SELLER_ID: "seller_1", Fields.STATUS: DeliveryStatusValues.PENDING}],
+                Fields.SHIPPING_APPROVAL: {Fields.STATUS: ShippingApprovalStatusValues.PENDING},
+            }
+        )
+        user_ref = Mock()
+        user_ref.get.return_value = _snap({Fields.ROLES: ["seller"]})
+
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+        users_col = Mock()
+        users_col.document.return_value = user_ref
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {Fields.ORDER_ID: "order_1", ApiKeys.NEW_STATUS: OrderStatusValues.SHIPPED}
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_order_status(req)
+        assert exc.value.code == "failed-precondition"
+
+    @patch("services.rate_limiter.RateLimiter")
+    @patch("handlers.orders.is_valid_order_status_transition", return_value=False)
+    @patch("handlers.orders.get_db")
+    def test_update_order_status_rejects_invalid_transition(self, mock_get_db, _mock_transition, mock_rl):
+        from handlers.orders import update_order_status
+
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+                Fields.ITEMS: [{Fields.SELLER_ID: "seller_1"}],
+            }
+        )
+        user_ref = Mock()
+        user_ref.get.return_value = _snap({Fields.ROLES: ["seller"]})
+
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+        users_col = Mock()
+        users_col.document.return_value = user_ref
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {Fields.ORDER_ID: "order_1", ApiKeys.NEW_STATUS: OrderStatusValues.SHIPPED}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_order_status(req)
+        assert exc.value.code == "failed-precondition"
+
+    @patch("handlers.orders.get_firestore")
+    @patch("services.rate_limiter.RateLimiter")
+    @patch("handlers.orders.is_valid_order_status_transition", return_value=True)
+    @patch("handlers.orders.get_db")
+    def test_update_order_status_seller_transaction_missing_fresh_order_returns_permission_denied(
+        self, mock_get_db, _mock_transition, mock_rl, mock_get_fs
+    ):
+        from handlers.orders import update_order_status
+
+        mock_get_fs.return_value.transactional = lambda fn: fn
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+
+        order_ref = Mock()
+        # Initial read for top-level checks.
+        order_ref.get.return_value = _snap(
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+                Fields.ITEMS: [{Fields.SELLER_ID: "seller_1", Fields.STATUS: DeliveryStatusValues.PENDING}],
+            }
+        )
+        # Transactional re-read returns missing fresh doc.
+        missing_fresh = _snap(exists=False)
+        order_ref.get.side_effect = [order_ref.get.return_value, missing_fresh]
+
+        user_ref = Mock()
+        user_ref.get.return_value = _snap({Fields.ROLES: ["seller"]})
+
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+        users_col = Mock()
+        users_col.document.return_value = user_ref
+
+        tx = Mock()
+        db = Mock()
+        db.transaction.return_value = tx
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {Fields.ORDER_ID: "order_1", ApiKeys.NEW_STATUS: OrderStatusValues.SHIPPED}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_order_status(req)
+        assert exc.value.code == "permission-denied"
+
+    @patch("handlers.orders.create_success_response", side_effect=lambda payload: {"success": True, **payload})
+    @patch("handlers.orders.OrderEvent.write")
+    @patch("handlers.orders.is_valid_order_status_transition", return_value=True)
+    @patch("services.rate_limiter.RateLimiter")
+    @patch("handlers.orders.get_server_timestamp", return_value="ts")
+    @patch("handlers.orders.get_db")
+    def test_update_order_status_admin_shipped_cascades_item_statuses(
+        self,
+        mock_get_db,
+        _mock_ts,
+        mock_rl,
+        _mock_transition,
+        _mock_event,
+        _mock_resp,
+    ):
+        from handlers.orders import update_order_status
+
+        mock_rl.return_value.check_rate_limit.return_value = (True, "")
+
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+                Fields.ITEMS: [
+                    {Fields.STATUS: DeliveryStatusValues.PENDING, Fields.SELLER_ID: "s1"},
+                    {Fields.STATUS: DeliveryStatusValues.DELIVERED, Fields.SELLER_ID: "s1"},
+                ],
+            }
+        )
+        user_ref = Mock()
+        user_ref.get.return_value = _snap({Fields.ROLES: ["admin"]})
+
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+        users_col = Mock()
+        users_col.document.return_value = user_ref
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        req = Mock()
+        req.auth = Mock(uid="admin_1")
+        req.data = {
+            Fields.ORDER_ID: "order_1",
+            ApiKeys.NEW_STATUS: OrderStatusValues.SHIPPED,
+            Fields.TRACKING_NUMBER: "TRK-1",
+            Fields.CARRIER: "CarrierX",
+        }
+
+        out = update_order_status(req)
+
+        assert out["success"] is True
+        update_payload = order_ref.update.call_args.args[0]
+        assert update_payload[Fields.ORDER_STATUS] == OrderStatusValues.SHIPPED
+        assert update_payload[Fields.SHIPPED_AT] == "ts"
+        assert update_payload[Fields.TRACKING_NUMBER] == "TRK-1"
+        assert update_payload[Fields.ITEMS][0][Fields.STATUS] == DeliveryStatusValues.SHIPPED
+        assert update_payload[Fields.ITEMS][1][Fields.STATUS] == DeliveryStatusValues.DELIVERED
+
     @patch("services.rate_limiter.RateLimiter")
     @patch("handlers.orders.get_db")
     def test_update_order_status_blocks_multi_seller_order_level_shipping(self, mock_get_db, mock_rl):

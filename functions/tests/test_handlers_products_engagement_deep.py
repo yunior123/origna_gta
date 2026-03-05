@@ -4,6 +4,7 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 from firebase_functions import https_fn
+from pydantic import ValidationError
 
 from schema_constants import (
     ApiKeys,
@@ -863,6 +864,14 @@ class TestBulkAndUpdateOperations:
             bulk_update_products(_req("seller_1", {"productIds": ["p1"], Fields.ACTION: "bad_action"}))
         assert exc.value.code == "invalid-argument"
 
+    def test_bulk_update_products_rejects_more_than_50_products(self):
+        from handlers.products import bulk_update_products
+
+        too_many = [f"p{i}" for i in range(51)]
+        with pytest.raises(https_fn.HttpsError) as exc:
+            bulk_update_products(_req("seller_1", {"productIds": too_many, Fields.ACTION: "pause"}))
+        assert exc.value.code == "invalid-argument"
+
     @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
     @patch("handlers.products.get_db")
     def test_bulk_update_products_skips_invalid_and_missing_product_ids(self, mock_get_db, _mock_resp):
@@ -964,6 +973,79 @@ class TestBulkAndUpdateOperations:
         fav_batch.delete.assert_called_once_with(fav1.reference)
         fav_batch.commit.assert_called_once()
 
+    @patch("handlers.products.algolia_partial_update")
+    @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
+    @patch("handlers.products.get_db")
+    def test_bulk_update_products_archive_handles_missing_non_owner_and_empty_favorite_pages(
+        self, mock_get_db, _mock_resp, _mock_algolia
+    ):
+        from handlers.products import bulk_update_products
+
+        missing_ref = Mock(id="missing")
+        missing_ref.get.return_value = _snap(exists=False, doc_id="missing")
+        other_ref = Mock(id="other")
+        other_ref.get.return_value = _snap(
+            {Fields.SELLER_ID: "seller_other", Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE},
+            doc_id="other",
+        )
+        mine_ref = Mock(id="mine")
+        mine_ref.get.return_value = _snap(
+            {Fields.SELLER_ID: "seller_1", Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE},
+            doc_id="mine",
+        )
+
+        products_col = Mock()
+        products_col.document.side_effect = lambda pid: {
+            "missing": missing_ref,
+            "other": other_ref,
+            "mine": mine_ref,
+        }[pid]
+
+        fav_query = Mock()
+        fav_query.where.return_value = fav_query
+        fav_query.limit.return_value = fav_query
+        fav_query.stream.return_value = []
+
+        product_batch = Mock()
+        db = Mock()
+        db.collection.return_value = products_col
+        db.collection_group.return_value = fav_query
+        db.batch.return_value = product_batch
+        db.get_all.side_effect = lambda refs: [ref.get() for ref in refs]
+        mock_get_db.return_value = db
+
+        out = bulk_update_products(_req("seller_1", {"productIds": ["missing", "other", "mine"], Fields.ACTION: "archive"}))
+
+        assert out["updated"] == 1
+        assert out["skipped"] == 2
+        product_batch.commit.assert_called_once()
+
+    @patch("handlers.products.algolia_partial_update", side_effect=RuntimeError("algolia down"))
+    @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
+    @patch("handlers.products.get_db")
+    def test_bulk_update_products_activate_handles_algolia_reindex_error(self, mock_get_db, _mock_resp, _mock_algolia):
+        from handlers.products import bulk_update_products
+
+        p1_ref = Mock(id="p1")
+        p1_ref.get.return_value = _snap(
+            {Fields.SELLER_ID: "seller_1", Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED},
+            doc_id="p1",
+        )
+        products_col = Mock()
+        products_col.document.return_value = p1_ref
+
+        batch = Mock()
+        db = Mock()
+        db.collection.return_value = products_col
+        db.batch.return_value = batch
+        db.get_all.side_effect = lambda refs: [ref.get() for ref in refs]
+        mock_get_db.return_value = db
+
+        out = bulk_update_products(_req("seller_1", {"productIds": ["p1"], Fields.ACTION: "activate"}))
+        assert out["updated"] == 1
+        assert out["skipped"] == 0
+        batch.commit.assert_called_once()
+
     @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
     @patch("handlers.products.algolia_partial_update")
     @patch("handlers.products.get_db")
@@ -1063,6 +1145,20 @@ class TestBulkAndUpdateOperations:
             deactivate_supplier_platform(_req("admin_1", {"supplierType": "definitely_invalid"}))
         assert "invalid" in str(exc.value.code).lower()
 
+    @patch("handlers.products.get_db")
+    def test_deactivate_supplier_platform_requires_supplier_type(self, mock_get_db):
+        from handlers.products import deactivate_supplier_platform
+
+        users_col = Mock()
+        users_col.document.return_value.get.return_value = _snap({Fields.ROLES: [UserRoleValues.ADMIN]})
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.USERS: users_col}[name]
+        mock_get_db.return_value = db
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            deactivate_supplier_platform(_req("admin_1", {"supplierType": "   "}))
+        assert "invalid" in str(exc.value.code).lower()
+
     @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
     @patch("handlers.products.get_db")
     def test_deactivate_supplier_platform_no_matching_products_returns_zero(self, mock_get_db, _mock_resp):
@@ -1090,6 +1186,52 @@ class TestBulkAndUpdateOperations:
         out = deactivate_supplier_platform(_req("admin_1", {"supplierType": SupplierTypeValues.ALIEXPRESS}))
         assert out == {"updated": 0, "skipped": 0}
         db.batch.assert_not_called()
+
+    @patch("handlers.products.algolia_partial_update", side_effect=RuntimeError("index fail"))
+    @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
+    @patch("handlers.products.get_db")
+    def test_deactivate_supplier_platform_handles_paused_docs_pagination_and_algolia_error(
+        self, mock_get_db, _mock_resp, _mock_algolia
+    ):
+        from handlers.products import deactivate_supplier_platform
+
+        users_col = Mock()
+        users_col.document.return_value.get.return_value = _snap({Fields.ROLES: [UserRoleValues.ADMIN]})
+
+        paused_page = []
+        for i in range(499):
+            d = _snap({Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED}, doc_id=f"p{i}")
+            d.reference = Mock()
+            paused_page.append(d)
+        active_doc = _snap({Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE}, doc_id="p_active")
+        active_doc.reference = Mock()
+        page1 = paused_page + [active_doc]  # len=500 exercises cursor path
+
+        prod_query = Mock()
+        prod_query.where.return_value = prod_query
+        prod_query.limit.return_value = prod_query
+        prod_query.stream.side_effect = [page1, []]
+        prod_query.start_after.return_value = prod_query
+        products_col = Mock()
+        products_col.where.return_value = prod_query
+
+        batch = Mock()
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.USERS: users_col,
+            Collections.PRODUCTS: products_col,
+        }[name]
+        db.batch.return_value = batch
+        mock_get_db.return_value = db
+
+        out = deactivate_supplier_platform(_req("admin_1", {"supplierType": SupplierTypeValues.ALIEXPRESS}))
+        assert out["updated"] == 1
+        assert out["skipped"] == 499
+        batch.update.assert_called_once_with(
+            active_doc.reference,
+            {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED, Fields.UPDATED_AT: batch.update.call_args.args[1][Fields.UPDATED_AT]},
+        )
+        batch.commit.assert_called_once()
 
     @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
     @patch("handlers.products.get_server_timestamp", return_value="ts")
@@ -1305,6 +1447,31 @@ class TestBulkAndUpdateOperations:
         delete_kwargs = mock_s3.return_value.delete_object.call_args.kwargs
         assert delete_kwargs["Key"] == "videos/old.mp4"
         assert "Bucket" in delete_kwargs
+
+    @patch(
+        "handlers.products.ProductUpdate",
+        side_effect=ValidationError.from_exception_data(
+            "ProductUpdate",
+            [{"type": "string_type", "loc": ("name",), "msg": "Input should be a valid string", "input": 123}],
+        ),
+    )
+    @patch("handlers.products.get_db")
+    def test_update_product_validation_error_is_mapped_to_invalid_argument(self, mock_get_db, _mock_update):
+        from handlers.products import update_product
+
+        product_ref = Mock()
+        product_ref.get.return_value = _snap({Fields.SELLER_ID: "seller_1", Fields.CATEGORY_ID: 1})
+        products_col = Mock()
+        products_col.document.return_value = product_ref
+
+        db = Mock()
+        db.collection.return_value = products_col
+        mock_get_db.return_value = db
+
+        req = _req("seller_1", {ApiKeys.PRODUCT_ID: "p1", ApiKeys.PRODUCT_DATA: {Fields.NAME: 123}})
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_product(req)
+        assert exc.value.code == "invalid-argument"
 
 
 class TestPriceHistoryHelpers:
