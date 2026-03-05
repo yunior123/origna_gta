@@ -745,7 +745,7 @@ class AppError {
       rawMsg = 'errors.service_unavailable'.tr();
     } else {
       // NEVER expose raw e.toString() — it can contain stack traces,
-      // class names, and server internals.
+      // type names and server internals.
       rawMsg = actualFallback;
     }
 
@@ -760,29 +760,6 @@ class AppError {
       return '$rawMsg [$displayCode]';
     }
     return rawMsg;
-  }
-
-  /// Infer an ORIGNA error code from a known Firebase / Stripe error code or
-  /// from the exception type.  Returns null when no mapping exists.
-  static String? _inferCode(dynamic error) {
-    if (error is FirebaseFunctionsException) {
-      return null; // Backend already appends codes; no client-side inference needed.
-    }
-    if (error is FirebaseAuthException) {
-      return switch (error.code) {
-        'email-already-in-use' => ErrorCodes.authEmailInUse,
-        'wrong-password' => ErrorCodes.authWrongPassword,
-        'user-not-found' => ErrorCodes.authUserNotFound,
-        'weak-password' => ErrorCodes.authWeakPassword,
-        'too-many-requests' => ErrorCodes.authTooManyRequests,
-        'session-cookie-expired' || 'user-token-expired' => ErrorCodes.authSessionExpired,
-        _ => ErrorCodes.sysUnknown,
-      };
-    }
-    if (error is FirebaseException) {
-      return ErrorCodes.sysServerError;
-    }
-    return null;
   }
 
   /// Log error with optional user message
@@ -839,6 +816,29 @@ class AppError {
         ),
       ),
     );
+  }
+
+  /// Infer an ORIGNA error code from a known Firebase / Stripe error code or
+  /// from the exception type.  Returns null when no mapping exists.
+  static String? _inferCode(dynamic error) {
+    if (error is FirebaseFunctionsException) {
+      return null; // Backend already appends codes; no client-side inference needed.
+    }
+    if (error is FirebaseAuthException) {
+      return switch (error.code) {
+        'email-already-in-use' => ErrorCodes.authEmailInUse,
+        'wrong-password' => ErrorCodes.authWrongPassword,
+        'user-not-found' => ErrorCodes.authUserNotFound,
+        'weak-password' => ErrorCodes.authWeakPassword,
+        'too-many-requests' => ErrorCodes.authTooManyRequests,
+        'session-cookie-expired' || 'user-token-expired' => ErrorCodes.authSessionExpired,
+        _ => ErrorCodes.sysUnknown,
+      };
+    }
+    if (error is FirebaseException) {
+      return ErrorCodes.sysServerError;
+    }
+    return null;
   }
 }
 

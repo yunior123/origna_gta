@@ -30,6 +30,7 @@ final subscriptionStreamProvider = StreamProvider.autoDispose<SubscriptionInfo?>
   });
 });
 
+/// Documentation for SubscriptionViewModel
 class SubscriptionViewModel extends StateNotifier<SubscriptionState> {
   final Ref _ref;
 

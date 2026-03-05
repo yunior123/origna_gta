@@ -52,6 +52,7 @@ final myAllChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) {
 
 // ─── Chat ViewModel ────────────────────────────────────────────────────────
 
+/// Documentation for ChatState
 class ChatState {
   final bool isLoading;
   final String? errorMessage;
@@ -76,6 +77,7 @@ final chatViewModelProvider =
   return ChatViewModel(ref, productId);
 });
 
+/// Documentation for ChatViewModel
 class ChatViewModel extends StateNotifier<ChatState> {
   final Ref _ref;
   final String _productId;

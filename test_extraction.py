@@ -1,3 +1,4 @@
+"""Module test_extraction.py."""
 import re
 
 with open('origna_gta/lib/core/schema/schema_constants.dart', 'r') as f:

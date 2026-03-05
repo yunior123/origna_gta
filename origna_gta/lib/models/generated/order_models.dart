@@ -22,12 +22,12 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
-
 /// Parse an OrderItem from a Firestore map without relying on generated fromJson
 OrderItem _parseOrderItem(dynamic raw) {
   final map = _safeMap(raw);
   return OrderItem(
     productId: _safeString(map[Fields.productId]),
+    cartItemId: map[Fields.cartItemId] as String?, // F-001/F-003: canonical cart item ID
     name: _safeString(map[Fields.name]),
     description: _safeString(map[Fields.description]),
     price: _safeDouble(map[Fields.price]),
@@ -399,9 +399,7 @@ abstract class Order with _$Order {
       payoutErrors: _safeStringList(data[Fields.payoutErrors]),
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
       // Parse tax fields
-      itemTaxes: (data[Fields.itemTaxes] as List<dynamic>?)
-          ?.map((e) => _safeMap(e))
-          .toList() ?? [],
+      itemTaxes: (data[Fields.itemTaxes] as List<dynamic>?)?.map((e) => _safeMap(e)).toList() ?? [],
       taxExempt: _safeBool(data[Fields.taxExempt]),
       taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
       // Delivery instructions from buyer
@@ -473,6 +471,7 @@ abstract class OrderCreate with _$OrderCreate {
 abstract class OrderItem with _$OrderItem {
   const factory OrderItem({
     required String productId,
+    String? cartItemId, // F-001/F-003: canonical cart item ID — survives duplicate-productId carts
     required String name,
     required String description,
     required double price,
@@ -519,7 +518,8 @@ abstract class OrderItem with _$OrderItem {
     String? taxCode,
     String? buyerNote, // ADDED
     String? fulfillmentWarehouseId, // TASK 02: warehouse from which this item was fulfilled
-  }) = _OrderItem;  factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
+  }) = _OrderItem;
+  factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
 
   const OrderItem._();
 

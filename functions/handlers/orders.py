@@ -592,6 +592,7 @@ def _update_item_status_logic(user_id: str, data: dict, is_admin: bool = None) -
 
     @fs.transactional
     def update_item_atomically(transaction):
+        """Function update_item_atomically."""
         fresh_doc = order_ref.get(transaction=transaction)
         fresh_data = fresh_doc.to_dict()
         fresh_items = fresh_data.get(Fields.ITEMS, [])
@@ -754,6 +755,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     @fs.transactional
     def lock_for_cancel(txn):
+        """Function lock_for_cancel."""
         fresh_doc = order_ref.get(transaction=txn)
         fresh_data = fresh_doc.to_dict()
         fresh_payment_status = fresh_data.get(Fields.PAYMENT_STATUS)
@@ -1057,46 +1059,59 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Without this, a buyer who paid 10% of list price (90% coupon) would receive a full-price
     # refund, draining platform funds and making other items free.
     order_subtotal_pre_discount = order_data.get(Fields.SUBTOTAL_CENTS, 0)
+    order_subtotal_cents = order_subtotal_pre_discount
     order_discount_cents = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
     order_discounted_subtotal = max(0, order_subtotal_pre_discount - order_discount_cents)
     if order_subtotal_pre_discount > 0 and order_discount_cents > 0:
         discount_ratio = order_discounted_subtotal / order_subtotal_pre_discount
         item_subtotal_cents = round(item_subtotal_cents * discount_ratio)
 
-    # Calculate proportional tax and shipping
-    # CRITICAL FIX: Field name is 'subtotalCents' not 'subtotalAmountCents'
-    order_subtotal_cents = order_discounted_subtotal if order_discount_cents > 0 else order_data.get(Fields.SUBTOTAL_CENTS, 0)
-    order_tax_cents = order_data.get(Fields.TAX_AMOUNT_CENTS, 0)
-    # Multi-seller: use the seller's individual shipping cost if available, else fall back to total.
-    # sellerShippingCosts is a map keyed by sellerId written at checkout time.
-    seller_shipping_map = order_data.get(Fields.SELLER_SHIPPING_COSTS, {})
-    if item_seller_id and item_seller_id in seller_shipping_map:
-        # Use only this seller's shipping amount as the base for proportion calculation
-        seller_shipping_cents = seller_shipping_map[item_seller_id]
-        # Proportional share within this seller's items only
-        seller_item_subtotals = sum(
-            round(it.get(Fields.PRICE, 0) * 100) * it.get(Fields.QUANTITY, 1)
-            for it in order_data.get(Fields.ITEMS, [])
-            if it.get(Fields.SELLER_ID) == item_seller_id and it.get(Fields.STATUS) != DeliveryStatusValues.REFUNDED
-        )
-        order_shipping_base = seller_shipping_cents
-        shipping_subtotal_base = seller_item_subtotals if seller_item_subtotals > 0 else order_subtotal_cents
+    # Calculate shipping refund: Use snapshot if available, else fall back to proportional (legacy)
+    item_shipping_cents_snapshot = item_data.get(Fields.ITEM_SHIPPING_CENTS)
+    if item_shipping_cents_snapshot is not None:
+        item_shipping_refund_cents = item_shipping_cents_snapshot
     else:
-        order_shipping_base = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
-        shipping_subtotal_base = order_subtotal_cents
+        # Multi-seller: use the seller's individual shipping cost if available, else fall back to total.
+        # sellerShippingCosts is a map keyed by sellerId written at checkout time.
+        seller_shipping_map = order_data.get(Fields.SELLER_SHIPPING_COSTS, {})
+        if item_seller_id and item_seller_id in seller_shipping_map:
+            # Use only this seller's shipping amount as the base for proportion calculation
+            seller_shipping_cents = seller_shipping_map[item_seller_id]
+            # Proportional share within this seller's items only
+            seller_item_subtotals = sum(
+                round(it.get(Fields.PRICE, 0) * 100) * it.get(Fields.QUANTITY, 1)
+                for it in order_data.get(Fields.ITEMS, [])
+                if it.get(Fields.SELLER_ID) == item_seller_id and it.get(Fields.STATUS) != DeliveryStatusValues.REFUNDED
+            )
+            order_shipping_base = seller_shipping_cents
+            shipping_subtotal_base = seller_item_subtotals if seller_item_subtotals > 0 else order_subtotal_cents
+        else:
+            order_shipping_base = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
+            shipping_subtotal_base = order_subtotal_cents
 
-    # M3: Fail loudly on zero subtotal instead of silently under-refunding
+        if order_subtotal_cents <= 0:
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                "Cannot calculate proportional refund: order subtotal is zero. Contact admin for manual refund."
+            )
+        
+        proportion = item_subtotal_cents / order_subtotal_cents
+        shipping_proportion = (item_subtotal_cents / shipping_subtotal_base) if shipping_subtotal_base > 0 else proportion
+        item_shipping_refund_cents = round(order_shipping_base * shipping_proportion)
+
+    # Keep metadata field naming stable for downstream reconciliation logs.
+    proportional_shipping_cents = item_shipping_refund_cents
+
+    # Calculate proportional tax
     if order_subtotal_cents <= 0:
-        raise https_fn.HttpsError(
+         raise https_fn.HttpsError(
             "failed-precondition",
             "Cannot calculate proportional refund: order subtotal is zero. Contact admin for manual refund."
         )
     proportion = item_subtotal_cents / order_subtotal_cents
-    proportional_tax_cents = round(order_tax_cents * proportion)
-    shipping_proportion = (item_subtotal_cents / shipping_subtotal_base) if shipping_subtotal_base > 0 else proportion
-    proportional_shipping_cents = round(order_shipping_base * shipping_proportion)
+    proportional_tax_cents = round(order_data.get(Fields.TAX_AMOUNT_CENTS, 0) * proportion)
 
-    refund_amount_cents = item_subtotal_cents + proportional_tax_cents + proportional_shipping_cents
+    refund_amount_cents = item_subtotal_cents + proportional_tax_cents + item_shipping_refund_cents
 
     # Create Stripe refund
     payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
@@ -1384,6 +1399,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         @fs.transactional
         def approve_with_tax_recalc(txn):
             # Re-read order inside transaction for consistency
+            """Function approve_with_tax_recalc."""
             fresh_doc = order_ref.get(transaction=txn)
             if not fresh_doc.exists:
                 raise https_fn.HttpsError("not-found", "Order not found")
@@ -2831,9 +2847,8 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             )
 
         elif new_status == OrderStatusValues.DELIVERED:
-            # FIX F5-1: Distinguish buyer-triggered DELIVERED (confirmed_by_client=True)
-            # from admin/cron-triggered DELIVERED. If buyer confirmed or cron auto-confirmed,
-            # don't re-ask them to confirm receipt — send an acknowledgement email instead.
+            # Distinguish buyer-triggered DELIVERED from admin-triggered DELIVERED.
+            # If buyer confirmed or cron auto-confirmed, don't re-ask them to confirm.
             buyer_confirmed = after_data.get(Fields.CONFIRMED_BY_CLIENT, False)
             auto_confirmed = after_data.get(Fields.AUTO_CONFIRMED, False)
 

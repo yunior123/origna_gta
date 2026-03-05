@@ -50,6 +50,7 @@ from hooks.runner import HookRunner
 
 
 def main():
+    """Function main."""
     parser = argparse.ArgumentParser(
         description="🪝 OrignaGta Audit Hooks — Claude-powered code auditing",
         formatter_class=argparse.RawDescriptionHelpFormatter,

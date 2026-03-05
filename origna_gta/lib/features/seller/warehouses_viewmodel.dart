@@ -8,6 +8,7 @@ import 'package:origna_gta/models/generated/product_models.dart';
 // State
 // ---------------------------------------------------------------------------
 
+/// Documentation for WarehousesState
 class WarehousesState {
   final List<SellerWarehouse> warehouses;
   final bool isLoading;
@@ -67,6 +68,7 @@ final warehousesViewModelProvider =
 // ViewModel
 // ---------------------------------------------------------------------------
 
+/// Documentation for WarehousesViewModel
 class WarehousesViewModel extends StateNotifier<WarehousesState> {
   final Ref _ref;
 

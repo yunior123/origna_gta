@@ -12,6 +12,14 @@ import '../features/subscription/subscription_provider.dart';
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
+/// Screen displayed after the user completes a Stripe premium subscription checkout.
+///
+/// Guards itself behind a Firestore `isPremium` check so the success UI only
+/// appears once the webhook has fired and the subscription document is updated.
+/// A 30-second timeout shows a manual-refresh fallback if activation is delayed.
+///
+/// Layout is responsive: content is centered and capped at 500 logical pixels
+/// wide so it looks correct on mobile, tablet, and desktop.
 class SubscriptionSuccessScreen extends ConsumerStatefulWidget {
   const SubscriptionSuccessScreen({super.key});
 
@@ -20,6 +28,10 @@ class SubscriptionSuccessScreen extends ConsumerStatefulWidget {
       _SubscriptionSuccessScreenState();
 }
 
+/// A single row in the premium benefits list shown on the success screen.
+///
+/// Renders a rounded icon container on the left, a bold [title] with a
+/// checkmark, and a secondary [subtitle] description on the right.
 class _BenefitRow extends StatelessWidget {
   final IconData icon;
   final String title;

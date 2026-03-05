@@ -1,3 +1,4 @@
+"""Module update_remote_config.py."""
 
 import os
 import argparse
@@ -21,6 +22,7 @@ def get_access_token():
         return None
 
 def update_remote_config(project_id):
+    """Function update_remote_config."""
     print(f"🔄 Updating Remote Config for {project_id} via REST API...")
 
     token = get_access_token()

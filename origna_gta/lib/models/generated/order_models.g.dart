@@ -245,6 +245,7 @@ Map<String, dynamic> _$OrderCreateToJson(_OrderCreate instance) =>
 
 _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
   productId: json['productId'] as String,
+  cartItemId: json['cartItemId'] as String?,
   name: json['name'] as String,
   description: json['description'] as String,
   price: (json['price'] as num).toDouble(),
@@ -310,6 +311,7 @@ _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
 Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
     <String, dynamic>{
       'productId': instance.productId,
+      'cartItemId': instance.cartItemId,
       'name': instance.name,
       'description': instance.description,
       'price': instance.price,

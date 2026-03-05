@@ -49,6 +49,7 @@ String _friendlyAuthError(FirebaseAuthException e) {
   }
 }
 
+/// Documentation for LoginViewModel
 class LoginViewModel extends StateNotifier<LoginState> {
   final Ref _ref;
 

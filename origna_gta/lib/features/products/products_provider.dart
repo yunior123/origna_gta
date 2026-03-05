@@ -113,6 +113,7 @@ final searchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 /// Currently selected category ID (null = all categories)
 final selectedCategoryProvider = StateProvider.autoDispose<int?>((ref) => null);
 
+/// Documentation for FavoritesController
 class FavoritesController {
   final Ref _ref;
 

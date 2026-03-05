@@ -1,3 +1,4 @@
+"""Module test_checkout_business_rules.py."""
 import logging
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock, patch
@@ -32,6 +33,7 @@ class TestCheckoutFixesFeb2026:
 
         def mock_doc_get(*args, **kwargs):
             # doc_id is usually the first arg if called as ref.get() or implicitly in mocks
+            """Function mock_doc_get."""
             doc = MagicMock()
             doc.exists = True
 
@@ -55,12 +57,14 @@ class TestCheckoutFixesFeb2026:
         set_calls_data = []
 
         def make_doc_ref(doc_id=None):
+            """Function make_doc_ref."""
             mock_ref = MagicMock()
             if doc_id is not None:
                 mock_ref.id = doc_id
             mock_ref.get.side_effect = mock_doc_get
 
             def capture_set(data, **kwargs):
+                """Function capture_set."""
                 set_calls_data.append(data)
 
             mock_ref.set.side_effect = capture_set
@@ -70,12 +74,14 @@ class TestCheckoutFixesFeb2026:
 
         mock_transaction = MagicMock()
         def capture_txn_set(ref, data, **kwargs):
+            """Function capture_txn_set."""
             set_calls_data.append(data)
         mock_transaction.set.side_effect = capture_txn_set
         mock_db.transaction.return_value = mock_transaction
 
         def get_all_impl(refs):
 
+            """Function get_all_impl."""
             results = []
             for ref in refs:
                 doc = mock_doc_get()
@@ -86,7 +92,7 @@ class TestCheckoutFixesFeb2026:
 
         mock_db.get_all = MagicMock(side_effect=get_all_impl)
 
-        mock_shipping_calc.return_value = 15.00
+        mock_shipping_calc.return_value = (15.00, {})
         mock_premium.return_value = False
         mock_stripe_create.return_value = Mock(id="sess_123", url="https://stripe.com/pay")
 
@@ -183,6 +189,7 @@ class TestCouponApplicationInCheckout:
         }
 
         def make_full_doc(doc_id=None):
+            """Function make_full_doc."""
             doc = MagicMock()
             doc.exists = True
             doc.id = doc_id or "mock_id"
@@ -190,16 +197,19 @@ class TestCouponApplicationInCheckout:
             return doc
 
         def make_coupon_doc():
+            """Function make_coupon_doc."""
             doc = MagicMock()
             doc.exists = coupon_exists
             doc.to_dict.return_value = dict(coupon_doc_data) if coupon_doc_data else {}
             return doc
 
         def make_collection(collection_name):
+            """Function make_collection."""
             coll = MagicMock()
 
             if collection_name == "coupons":
                 def make_coupon_ref(doc_id=None):
+                    """Function make_coupon_ref."""
                     ref = MagicMock()
                     ref.id = doc_id
                     ref.get.side_effect = lambda *a, **kw: make_coupon_doc()
@@ -213,6 +223,7 @@ class TestCouponApplicationInCheckout:
                 coll.document.side_effect = make_coupon_ref
             else:
                 def make_generic_ref(doc_id=None):
+                    """Function make_generic_ref."""
                     ref = MagicMock()
                     ref.id = doc_id or "mock_id"
                     ref.get.side_effect = lambda *a, **kw: make_full_doc(doc_id)
@@ -224,6 +235,7 @@ class TestCouponApplicationInCheckout:
                     ref.collection.return_value = inv_coll
 
                     def capture_set(data, **kwargs):
+                        """Function capture_set."""
                         set_calls_data.append(data)
                     ref.set.side_effect = capture_set
                     return ref
@@ -242,6 +254,7 @@ class TestCouponApplicationInCheckout:
         mock_db.collection.side_effect = make_collection
 
         def get_all_impl(refs):
+            """Function get_all_impl."""
             return [make_full_doc(getattr(r, "id", None)) for r in refs]
 
         mock_db.get_all.side_effect = get_all_impl
@@ -249,6 +262,7 @@ class TestCouponApplicationInCheckout:
         mock_transaction = MagicMock()
 
         def capture_txn_set(ref, data, **kwargs):
+            """Function capture_txn_set."""
             set_calls_data.append(data)
 
         mock_transaction.set.side_effect = capture_txn_set
@@ -299,7 +313,7 @@ class TestCouponApplicationInCheckout:
         mock_rl = MagicMock()
         mock_rl.check_rate_limit.return_value = (True, "")
         mock_get_rate_limiter.return_value = mock_rl
-        mock_shipping_calc.return_value = 10.00
+        mock_shipping_calc.return_value = (10.00, {})
         mock_premium.return_value = False
         mock_stripe_create.return_value = Mock(id="sess_123", url="https://stripe.com/pay")
 
@@ -338,7 +352,7 @@ class TestCouponApplicationInCheckout:
         mock_rl = MagicMock()
         mock_rl.check_rate_limit.return_value = (True, "")
         mock_get_rate_limiter.return_value = mock_rl
-        mock_shipping_calc.return_value = 10.00
+        mock_shipping_calc.return_value = (10.00, {})
         mock_premium.return_value = False
         mock_stripe_create.return_value = Mock(id="sess_123", url="https://stripe.com/pay")
 

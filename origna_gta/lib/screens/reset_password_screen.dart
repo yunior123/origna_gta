@@ -9,6 +9,7 @@ import 'package:origna_gta/widgets/modern_textfield.dart';
 
 import '../features/auth/reset_password_view_model.dart';
 
+/// Documentation for ResetPasswordScreen
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   final String oobCode;
 

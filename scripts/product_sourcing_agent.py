@@ -52,7 +52,6 @@ USD_CAD_FALLBACK = 1.38
 RATE_LIMIT_SECONDS = 2
 GEMINI_BIN = str(Path.home() / ".nvm/versions/node/v22.12.0/bin/gemini")
 ERRORS_FILE = "/tmp/product_sourcing_errors.json"
-NANOBANANA_API_KEY = "REDACTED_SECRET"
 
 # Seller address used for shipping source validation (admin seller is in Toronto)
 _SELLER_ADDRESS = {
@@ -65,6 +64,7 @@ _SELLER_ADDRESS = {
 
 # ── Exchange rate ───────────────────────────────────────────────────────────────
 def get_usd_cad_rate() -> float:
+    """Function get_usd_cad_rate."""
     try:
         url = "https://open.er-api.com/v6/latest/USD"
         with urllib.request.urlopen(url, timeout=5) as resp:
@@ -109,6 +109,7 @@ def calculate_price(
 
 # ── Image ──────────────────────────────────────────────────────────────────────
 def download_supplier_image(url: str, dest: str) -> bool:
+    """Function download_supplier_image."""
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=15) as resp, open(dest, "wb") as f:
@@ -120,8 +121,13 @@ def download_supplier_image(url: str, dest: str) -> bool:
 
 
 def edit_image_nanobanana(input_path: str, product_name: str) -> str | None:
+    """Function edit_image_nanobanana."""
     out_dir = "/tmp/product_images/edited"
     Path(out_dir).mkdir(parents=True, exist_ok=True)
+    api_key = os.environ.get("NANOBANANA_GEMINI_API_KEY", "").strip()
+    if not api_key:
+        print("  [image] Skipping nanobanana (NANOBANANA_GEMINI_API_KEY not set)")
+        return None
 
     prompt = (
         f"Professional product photo for Canadian e-commerce. "
@@ -140,7 +146,7 @@ def edit_image_nanobanana(input_path: str, product_name: str) -> str | None:
         before = set(Path(out_dir).glob("*.*"))
         subprocess.run(
             cmd, capture_output=True, text=True, timeout=120,
-            env={**os.environ, "NANOBANANA_GEMINI_API_KEY": NANOBANANA_API_KEY},
+            env={**os.environ, "NANOBANANA_GEMINI_API_KEY": api_key},
         )
         after = set(Path(out_dir).glob("*.*"))
         new_files = sorted(after - before, key=lambda p: p.stat().st_mtime, reverse=True)
@@ -158,6 +164,7 @@ def edit_image_nanobanana(input_path: str, product_name: str) -> str | None:
 
 
 def upload_to_r2(local_path: str) -> str | None:
+    """Function upload_to_r2."""
     try:
         result = subprocess.run(
             [sys.executable, str(_REPO_ROOT / "scripts/upload_r2_helper.py"), local_path],
@@ -175,6 +182,7 @@ def upload_to_r2(local_path: str) -> str | None:
 
 
 def get_product_image_url(image_url: str, product_name: str) -> str:
+    """Function get_product_image_url."""
     raw_dir = "/tmp/product_images/raw"
     Path(raw_dir).mkdir(parents=True, exist_ok=True)
     raw_path = f"{raw_dir}/{uuid.uuid4().hex}.jpg"
@@ -189,6 +197,7 @@ def get_product_image_url(image_url: str, product_name: str) -> str:
 
 # ── Translation ────────────────────────────────────────────────────────────────
 def translate_to_french(name: str, description: str) -> tuple[str | None, str | None]:
+    """Function translate_to_french."""
     prompt = (
         f'Translate to Canadian French (Quebec). '
         f'Return ONLY valid JSON with keys "nameF" and "descriptionF". '
@@ -215,6 +224,7 @@ def translate_to_french(name: str, description: str) -> tuple[str | None, str | 
 
 # ── Firestore ──────────────────────────────────────────────────────────────────
 def init_firestore(project: str):
+    """Function init_firestore."""
     try:
         firebase_admin.get_app()
     except ValueError:
@@ -230,6 +240,7 @@ def init_firestore(project: str):
 
 
 def write_product(db, product_data: dict, dry_run: bool = False) -> bool:
+    """Function write_product."""
     if dry_run:
         print(f"  [DRY RUN] Would write: {product_data.get(Fields.NAME, '?')}")
         return True
@@ -240,6 +251,7 @@ def write_product(db, product_data: dict, dry_run: bool = False) -> bool:
 
 # ── Pipeline ───────────────────────────────────────────────────────────────────
 def process_candidate(candidate: dict, db, usd_cad: float, dry_run: bool) -> dict:
+    """Function process_candidate."""
     name = candidate["name"].strip()
     print(f"\n{'='*60}\nProcessing: {name}")
     errors: list[str] = []
@@ -414,6 +426,7 @@ def process_candidate(candidate: dict, db, usd_cad: float, dry_run: bool) -> dic
 
 
 def main() -> None:
+    """Function main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--candidates", default="/tmp/product_candidates.json")
     parser.add_argument("--project", default=os.environ.get("GCP_PROJECT", "orignagta-dev"))

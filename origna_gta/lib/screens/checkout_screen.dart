@@ -134,6 +134,7 @@ final _ageVerifAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false
 /// Tracks whether user has interacted with the age gate checkbox — gates error display
 final _ageVerifInteractedProvider = StateProvider.autoDispose<bool>((ref) => false);
 
+/// Documentation for CheckoutScreen
 class CheckoutScreen extends ConsumerStatefulWidget {
   final List<CartItemDetailModel> items;
   final double total;

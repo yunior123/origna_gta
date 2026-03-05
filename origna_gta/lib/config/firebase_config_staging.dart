@@ -1,6 +1,7 @@
 // File: lib/config/firebase_config_staging.dart
 import 'package:firebase_core/firebase_core.dart';
 
+/// Documentation for FirebaseConfigStaging
 class FirebaseConfigStaging {
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'REDACTED_SECRET',

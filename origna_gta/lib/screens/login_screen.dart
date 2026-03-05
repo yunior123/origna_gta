@@ -14,6 +14,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../features/auth/login_viewmodel.dart';
 
+/// Documentation for LoginScreen
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -21,6 +22,7 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
+/// Documentation for LoginScreenLayout
 class LoginScreenLayout extends StatelessWidget {
   final bool isLogin;
   final bool isLoading;

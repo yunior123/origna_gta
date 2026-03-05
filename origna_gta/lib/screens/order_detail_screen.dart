@@ -12,6 +12,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/order_widgets.dart';
 
+/// Documentation for OrderDetailScreen
 class OrderDetailScreen extends ConsumerWidget {
   final String orderId;
 
@@ -29,6 +30,7 @@ class OrderDetailScreen extends ConsumerWidget {
   }
 }
 
+/// Documentation for OrderDetailScreenLayout
 class OrderDetailScreenLayout extends StatelessWidget {
   final AsyncValue<Order?> orderAsync;
   final VoidCallback onRefresh;

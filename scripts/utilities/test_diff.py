@@ -1,9 +1,11 @@
+"""Module test_diff.py."""
 import json
 import subprocess
 import urllib.request
 import ssl
 
 def main():
+    """Function main."""
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -23,7 +25,9 @@ def main():
     with open('firestore.rules') as f:
         local = f.read()
         
-    def norm(t): return '\n'.join([l.rstrip() for l in t.strip().splitlines()])
+    def norm(t):
+        """Function norm."""
+        return '\n'.join([l.rstrip() for l in t.strip().splitlines()])
     
     import difflib
     for line in difflib.unified_diff(norm(local).splitlines(), norm(deployed).splitlines()):

@@ -69,6 +69,7 @@ class TestCryptographicSecurity:
         """Passwords must never appear in sanitized log output."""
 
         def sanitize_log(data):
+            """Function sanitize_log."""
             if isinstance(data, dict):
                 return {k: "***" if "password" in k.lower() else v for k, v in data.items()}
             return data

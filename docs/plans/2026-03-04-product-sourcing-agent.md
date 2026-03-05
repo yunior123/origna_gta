@@ -328,7 +328,7 @@ def edit_image_nanobanana(input_path: str, product_name: str) -> str | None:
             capture_output=True,
             text=True,
             timeout=120,
-            env={**os.environ, "NANOBANANA_GEMINI_API_KEY": "REDACTED_SECRET"},
+            env={**os.environ, "NANOBANANA_GEMINI_API_KEY": os.environ["NANOBANANA_GEMINI_API_KEY"]},
         )
         # Find the newest file in out_dir after the command
         files = sorted(Path(out_dir).glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)

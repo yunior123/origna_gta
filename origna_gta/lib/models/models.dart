@@ -26,6 +26,7 @@ Timestamp _parseTimestamp(dynamic value) {
   return Timestamp.now();
 }
 
+/// Documentation for Address
 class Address {
   final String street;
   final String apartment; // Unit, Suite, Apt #
@@ -139,6 +140,7 @@ class Address {
   }
 }
 
+/// Documentation for AddressDetails
 class AddressDetails {
   final String street;
   final String city;
@@ -150,6 +152,7 @@ class AddressDetails {
   AddressDetails({required this.street, required this.city, required this.state, required this.postalCode, required this.latitude, required this.longitude});
 }
 
+/// Documentation for CartItemDetailModel
 class CartItemDetailModel {
   final String productId;
   final String name;
@@ -306,6 +309,7 @@ class CartItemDetailModel {
   }
 }
 
+/// Documentation for CartItemModel
 class CartItemModel {
   final String cartItemId; // Auto-generated Firestore doc ID
   final int quantity;
@@ -361,6 +365,7 @@ class CartItemModel {
   }
 }
 
+/// Documentation for CartModel
 class CartModel {
   final String cartItemId; // Auto-generated Firestore doc ID
   final String productId;
@@ -420,6 +425,7 @@ class CartModel {
   }
 }
 
+/// Documentation for FavoriteItem
 class FavoriteItem {
   final String productId;
   final DateTime dateFavorited;
@@ -436,6 +442,7 @@ class FavoriteItem {
   }
 }
 
+/// Documentation for ImageModel
 class ImageModel {
   final String url;
   final Uint8List bytes;
@@ -443,6 +450,7 @@ class ImageModel {
   ImageModel({required this.url, required this.bytes});
 }
 
+/// Documentation for OrderModel
 class OrderModel {
   final String orderId;
   final String userId;
@@ -700,6 +708,7 @@ class OrderModel {
   }
 }
 
+/// Documentation for ProductCategories
 class ProductCategories {
   final int categoryId;
   final String name;
@@ -708,6 +717,7 @@ class ProductCategories {
   ProductCategories({required this.categoryId, required this.name, required this.icon});
 }
 
+/// Documentation for ProductModel
 class ProductModel {
   final String id;
   final String name;
@@ -968,6 +978,7 @@ class SellerPayout {
   }
 }
 
+/// Documentation for UserModel
 class UserModel {
   final String uid;
   final String email;

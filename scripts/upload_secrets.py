@@ -1,3 +1,4 @@
+"""Module upload_secrets.py."""
 
 import os
 import subprocess
@@ -24,6 +25,7 @@ SECRETS_MAP = {
 PROJECTS = ["orignagta-dev", "orignagta-staging"]
 
 def read_env_file(filepath):
+    """Function read_env_file."""
     secrets = {}
     if not os.path.exists(filepath):
         return secrets
@@ -39,6 +41,7 @@ def read_env_file(filepath):
     return secrets
 
 def upload_secret(project_id, secret_name, secret_value):
+    """Function upload_secret."""
     print(f"Uploading {secret_name} to {project_id}...")
     try:
         # Use gcloud secrets create/versions add because firebase CLI can be interactive/slow
@@ -83,6 +86,7 @@ def upload_secret(project_id, secret_name, secret_value):
 
 def main():
     # Load secrets
+    """Function main."""
     env_secrets = read_env_file("functions/.env")
     local_secrets = read_env_file("functions/.env.local")
     

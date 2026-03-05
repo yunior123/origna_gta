@@ -11,6 +11,7 @@ final addressViewModelProvider = StateNotifierProvider.autoDispose<AddressViewMo
   return AddressViewModel(ref);
 });
 
+/// Documentation for AddressViewModel
 class AddressViewModel extends StateNotifier<AddressState> {
   final Ref _ref;
   Timer? _debounce;

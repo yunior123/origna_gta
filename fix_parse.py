@@ -1,3 +1,4 @@
+"""Module fix_parse.py."""
 import re
 
 with open('origna_gta/lib/core/schema/schema_constants.dart', 'r') as f:
@@ -48,6 +49,7 @@ for class_name, class_body in py_classes:
                 py_enum[f"{class_name}.{var_name}"] = var_val
 
 def to_camel_case(snake_str):
+    """Function to_camel_case."""
     components = snake_str.lower().split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
 

@@ -93,6 +93,7 @@ void debugStep(String id, String message) {
   print('[$id] $message');
 }
 
+/// Documentation for CaseTracker
 class CaseTracker {
   final bool strictIntegration;
   int caseCount = 0;
@@ -218,6 +219,7 @@ String _resolvedSellerPassword() {
   return sellerPassword.isNotEmpty ? sellerPassword : adminPassword;
 }
 
+/// Documentation for Credential
 class Credential {
   final String label;
   final String email;

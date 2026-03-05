@@ -1,3 +1,4 @@
+"""Module test_payment_integration.py."""
 import os
 import sys
 import unittest
@@ -85,6 +86,7 @@ class TestPaymentFlow(unittest.TestCase):
 
         # Setup DB mock
         def mock_document_chain(doc_id):
+            """Function mock_document_chain."""
             mock_ref = MagicMock()
             if doc_id == "seller_1":
                 mock_ref.get.return_value = mock_seller_doc
@@ -190,6 +192,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_db.transaction.return_value = mock_transaction
 
         def mock_document_chain(doc_id=None):
+            """Function mock_document_chain."""
             mock_ref = MagicMock()
             mock_ref.id = doc_id or "new_order_id"
             if doc_id == "seller_1":
@@ -203,6 +206,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_db.collection.return_value.document.side_effect = mock_document_chain
 
         def get_all_impl(refs):
+            """Function get_all_impl."""
             results = []
             for ref in refs:
                 doc = ref.get()
@@ -269,6 +273,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_event_log.get.return_value.exists = False
 
         def doc_side_effect(arg):
+            """Function doc_side_effect."""
             if arg == "evt_123":
                 return mock_event_log
             elif arg == "order_123":
@@ -329,6 +334,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_event_log.get.return_value.exists = False
 
         def doc_side_effect(arg):
+            """Function doc_side_effect."""
             if arg == "evt_456":
                 return mock_event_log
             elif arg == "order_456":
@@ -382,6 +388,7 @@ class TestPaymentFlow(unittest.TestCase):
         products_collection.document.return_value = product_ref
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             if name == Collections.ORDERS:
                 return orders_collection
             elif name == Collections.PRODUCTS:

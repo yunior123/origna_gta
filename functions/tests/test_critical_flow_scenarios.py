@@ -505,6 +505,7 @@ class TestPaymentCapture:
 
         # Mock multiple collection calls
         def side_effect_collection(name):
+            """Function side_effect_collection."""
             mock_coll = MagicMock()
             if name == "orders":
                 mock_coll.document.return_value.get.return_value = order_doc
@@ -657,6 +658,7 @@ class TestOrderCancellation:
 
         # Return order_doc for orders, user_doc for users
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = MagicMock()
             if name == "orders":
                 coll.document.return_value.get.return_value = order_doc
@@ -688,6 +690,7 @@ class TestOrderCancellation:
         user_doc = make_mock_doc({"roles": ["buyer"]}, doc_id="buyer_123")
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = MagicMock()
             if name == "orders":
                 coll.document.return_value.get.return_value = order_doc
@@ -718,6 +721,7 @@ class TestOrderCancellation:
         user_doc = make_mock_doc({"roles": ["buyer"]}, doc_id="buyer_123")
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = MagicMock()
             if name == "orders":
                 coll.document.return_value.get.return_value = order_doc
@@ -761,6 +765,7 @@ class TestOrderCancellation:
         user_doc = make_mock_doc({"roles": ["buyer"]}, doc_id="hacker_999")
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = MagicMock()
             if name == "orders":
                 coll.document.return_value.get.return_value = order_doc
@@ -839,6 +844,7 @@ class TestOrderStatusUpdate:
         user_doc = make_mock_doc({"roles": ["seller"]}, doc_id="seller_001")
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = MagicMock()
             if name == "orders":
                 coll.document.return_value.get.return_value = order_doc
@@ -868,6 +874,7 @@ class TestOrderStatusUpdate:
         user_doc = make_mock_doc({"roles": ["buyer"]}, doc_id="buyer_123")
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = MagicMock()
             if name == "orders":
                 coll.document.return_value.get.return_value = order_doc
@@ -1196,8 +1203,9 @@ class TestShippingCalculation:
         ]
         buyer = {"state": "ON", "latitude": 43.7, "longitude": -79.4}
 
-        cost = calculate_shipping_cost(items, buyer)
+        cost, breakdown = calculate_shipping_cost(items, buyer)
         assert cost == 0.0
+        assert breakdown == {}
 
     def test_shipping_missing_buyer_coordinates(self):
         """Scenario 77: Missing buyer coordinates uses province-based fallback."""
@@ -1206,7 +1214,7 @@ class TestShippingCalculation:
         items = [{"sellerId": "s1", "freeShipping": False, "sellerAddress": {"state": "ON"}}]
         buyer = {"state": "ON"}  # No lat/lon
 
-        cost = calculate_shipping_cost(items, buyer)
+        cost, _breakdown = calculate_shipping_cost(items, buyer)
         # Should use province fallback rather than 0 (same province = FALLBACK_SAME_PROVINCE)
         assert cost > 0.0
 
@@ -1214,15 +1222,17 @@ class TestShippingCalculation:
         """Scenario 78: Empty items list returns $0."""
         from services.shipping_service import calculate_shipping_cost
 
-        cost = calculate_shipping_cost([], {"state": "ON", "latitude": 43.7, "longitude": -79.4})
+        cost, breakdown = calculate_shipping_cost([], {"state": "ON", "latitude": 43.7, "longitude": -79.4})
         assert cost == 0.0
+        assert breakdown == {}
 
     def test_shipping_cross_province(self):
         """Scenario 79: Cross-province shipping is more expensive."""
-        from services.shipping_service import _calculate_fallback_shipping
+        from services.shipping_service import _calculate_fallback_shipping_itemized
 
-        same_province = _calculate_fallback_shipping(1, "ON", "ON")
-        cross_province = _calculate_fallback_shipping(1, "ON", "BC")
+        sample_items = [{"productId": "prod_1", "quantity": 1}]
+        same_province, _same_breakdown = _calculate_fallback_shipping_itemized(sample_items, "ON", "ON")
+        cross_province, _cross_breakdown = _calculate_fallback_shipping_itemized(sample_items, "ON", "BC")
 
         assert cross_province > same_province
 
@@ -1731,6 +1741,7 @@ class TestWarehouseManagement:
         # and mock_db.collection(Products).where...
 
         def mock_collection_call(name):
+            """Function mock_collection_call."""
             coll = MagicMock()
             if name == "users":
                 coll.document.return_value.collection.return_value.document.return_value.get.return_value = mock_wh_doc

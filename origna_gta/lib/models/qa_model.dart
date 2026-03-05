@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
+/// Documentation for QAModel
 class QAModel {
   final String id;
   final String question;

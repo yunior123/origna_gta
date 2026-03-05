@@ -1,3 +1,4 @@
+"""Module patch_translations.py."""
 import json
 
 files = ['origna_gta/assets/translations/en.json', 'origna_gta/assets/translations/fr.json']

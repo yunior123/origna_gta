@@ -3,6 +3,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
+/// Documentation for SellerMetrics
 class SellerMetrics {
   final double? avgResponseHours;
   final double? avgShipDays;
@@ -17,6 +18,7 @@ class SellerMetrics {
   });
 }
 
+/// Documentation for ProductDetailState
 class ProductDetailState {
   final int quantity;
   final int currentImageIndex;
@@ -50,6 +52,7 @@ final productDetailViewModelProvider =
   return ProductDetailViewModel(ref);
 });
 
+/// Documentation for ProductDetailViewModel
 class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
   final Ref _ref;
 

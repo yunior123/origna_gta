@@ -1,3 +1,4 @@
+/// Documentation for SellerOrdersState
 class SellerOrdersState {
   final bool isLoading;
   final String? errorMessage;

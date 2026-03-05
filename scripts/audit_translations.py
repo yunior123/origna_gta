@@ -1,12 +1,15 @@
+"""Module audit_translations.py."""
 import json
 import os
 import re
 
 def load_json(path):
+    """Function load_json."""
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 def get_keys(data, parent_key=''):
+    """Function get_keys."""
     keys = set()
     for k, v in data.items():
         current_key = f"{parent_key}.{k}" if parent_key else k
@@ -17,6 +20,7 @@ def get_keys(data, parent_key=''):
     return keys
 
 def compare_translations(en_path, fr_path):
+    """Function compare_translations."""
     print(f"Loading {en_path}...")
     en_data = load_json(en_path)
     print(f"Loading {fr_path}...")
@@ -45,6 +49,7 @@ def compare_translations(en_path, fr_path):
         print("\nKeys match perfectly.")
 
 def find_hardcoded_strings(root_dir):
+    """Function find_hardcoded_strings."""
     print(f"\nScanning {root_dir} for hardcoded strings...")
     # Regex to capture Text('...') or Text("...")
     # This is a simple heuristic.

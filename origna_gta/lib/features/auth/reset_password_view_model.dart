@@ -8,6 +8,7 @@ final resetPasswordViewModelProvider = StateNotifierProvider.autoDispose.family<
   return ResetPasswordViewModel(ref, oobCode);
 });
 
+/// Documentation for ResetPasswordViewModel
 class ResetPasswordViewModel extends StateNotifier<ResetPasswordState> {
   final Ref _ref;
   final String _oobCode;

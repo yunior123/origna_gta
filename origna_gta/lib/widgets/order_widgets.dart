@@ -211,6 +211,7 @@ int getTimelineStep(OrderStatus status) {
 
 // ─── Flutter Widget Previews ─────────────────────────────────────────────────
 
+/// Documentation for BookDownloadButton
 class BookDownloadButton extends ConsumerStatefulWidget {
   final OrderItem item;
   const BookDownloadButton({super.key, required this.item});
@@ -223,6 +224,7 @@ class BookDownloadButton extends ConsumerStatefulWidget {
 // WIDGETS
 // ============================================================================
 
+/// Documentation for BuyerOrderCard
 class BuyerOrderCard extends ConsumerStatefulWidget {
   final Order order;
   final bool isDetailView;
@@ -236,6 +238,7 @@ class BuyerOrderCard extends ConsumerStatefulWidget {
 // DIGITAL ITEM ACTIONS
 // ============================================================================
 
+/// Documentation for DigitalItemActions
 class DigitalItemActions extends ConsumerWidget {
   final OrderItem item;
   const DigitalItemActions({super.key, required this.item});
@@ -276,6 +279,7 @@ class DigitalItemActions extends ConsumerWidget {
   }
 }
 
+/// Documentation for OrderStatusTimeline
 class OrderStatusTimeline extends StatelessWidget {
   static const _steps = [Icons.verified_outlined, Icons.autorenew, Icons.local_shipping, Icons.flight_takeoff, Icons.check_circle];
   static const _stepColors = [
@@ -371,6 +375,7 @@ class OrderStatusTimeline extends StatelessWidget {
   }
 }
 
+/// Documentation for PendingApprovalsBanner
 class PendingApprovalsBanner extends StatelessWidget {
   final int count;
   const PendingApprovalsBanner({super.key, required this.count});
@@ -524,6 +529,7 @@ class SellerPackageTimeline extends StatelessWidget {
   }
 }
 
+/// Documentation for SoftwareDownloadLinks
 class SoftwareDownloadLinks extends ConsumerStatefulWidget {
   final OrderItem item;
   const SoftwareDownloadLinks({super.key, required this.item});
@@ -536,6 +542,7 @@ class SoftwareDownloadLinks extends ConsumerStatefulWidget {
 // STATUS MODELS & HELPERS
 // ============================================================================
 
+/// Documentation for StatusConfig
 class StatusConfig {
   final Color color;
   final IconData icon;

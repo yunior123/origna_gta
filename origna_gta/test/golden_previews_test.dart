@@ -1,6 +1,8 @@
 // GENERATED — flutter test --update-goldens test/golden_previews_test.dart
 // ignore_for_file: unused_import
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -53,10 +55,12 @@ import 'package:origna_gta/previews/widgets/language_selector_preview.dart';
 import 'package:origna_gta/previews/widgets/legal_screen_body_preview.dart';
 import 'package:origna_gta/previews/widgets/loading_preview.dart';
 import 'package:origna_gta/previews/widgets/mascot_preview.dart';
-import 'package:origna_gta/previews/widgets/modern_appbar_preview.dart' hide previewAppBarVariants;
+import 'package:origna_gta/previews/widgets/modern_appbar_preview.dart'
+    hide previewAppBarVariants;
 import 'package:origna_gta/previews/widgets/modern_button_preview.dart';
 import 'package:origna_gta/previews/widgets/modern_card_preview.dart';
-import 'package:origna_gta/previews/widgets/modern_loading_indicator_preview.dart' hide previewLoadingInline;
+import 'package:origna_gta/previews/widgets/modern_loading_indicator_preview.dart'
+    hide previewLoadingInline;
 import 'package:origna_gta/previews/widgets/modern_product_card_preview.dart';
 import 'package:origna_gta/previews/widgets/modern_textfield_preview.dart';
 import 'package:origna_gta/previews/widgets/order_status_preview.dart';
@@ -69,9 +73,44 @@ import 'package:origna_gta/previews/widgets/rating_preview.dart';
 import 'package:origna_gta/previews/widgets/standalone_promo_preview.dart';
 import 'package:origna_gta/previews/widgets/textfields_preview.dart';
 
+bool _goldensRequested() {
+  const requestedByDefine = bool.fromEnvironment('RUN_GOLDENS');
+  final envValue = (Platform.environment['RUN_GOLDENS'] ?? '').toLowerCase();
+  return requestedByDefine ||
+      envValue == '1' ||
+      envValue == 'true' ||
+      envValue == 'yes';
+}
+
+bool _hasGoldenBaselines() {
+  final dir = Directory('test/goldens');
+  if (!dir.existsSync()) {
+    return false;
+  }
+  return dir.listSync().any((entity) => entity is File);
+}
+
 void main() {
+  final runGoldens = _goldensRequested();
+  final hasBaselines = _hasGoldenBaselines();
+  if (!runGoldens && !hasBaselines) {
+    testWidgets('skip goldens when baselines are unavailable', (tester) async {
+      expect(
+        hasBaselines,
+        isFalse,
+        reason:
+            'Set RUN_GOLDENS=true (or --dart-define=RUN_GOLDENS=true) and run '
+            'flutter test --update-goldens test/golden_previews_test.dart to '
+            'generate baselines.',
+      );
+    });
+    return;
+  }
+
   group('Widget Golden Previews', () {
-    testWidgets('previewAddEditAddressScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewAddEditAddressScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewAddEditAddressScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -80,7 +119,9 @@ void main() {
         matchesGoldenFile('goldens/add_edit_address_screen_desktop.png'),
       );
     });
-    testWidgets('previewAddEditAddressScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewAddEditAddressScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewAddEditAddressScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -89,7 +130,9 @@ void main() {
         matchesGoldenFile('goldens/add_edit_address_screen_mobile.png'),
       );
     });
-    testWidgets('previewAddEditAddressScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewAddEditAddressScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewAddEditAddressScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -143,7 +186,9 @@ void main() {
         matchesGoldenFile('goldens/add_product_screen_web.png'),
       );
     });
-    testWidgets('previewAddressManagementScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewAddressManagementScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewAddressManagementScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -152,7 +197,9 @@ void main() {
         matchesGoldenFile('goldens/address_management_screen_desktop.png'),
       );
     });
-    testWidgets('previewAddressManagementScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewAddressManagementScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewAddressManagementScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -161,7 +208,9 @@ void main() {
         matchesGoldenFile('goldens/address_management_screen_mobile.png'),
       );
     });
-    testWidgets('previewAddressManagementScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewAddressManagementScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewAddressManagementScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -170,7 +219,9 @@ void main() {
         matchesGoldenFile('goldens/address_management_screen_tablet.png'),
       );
     });
-    testWidgets('previewAddressManagementScreenWeb', (WidgetTester tester) async {
+    testWidgets('previewAddressManagementScreenWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewAddressManagementScreenWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -566,7 +617,9 @@ void main() {
         matchesGoldenFile('goldens/cart_screen_web.png'),
       );
     });
-    testWidgets('previewChatConversationsScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewChatConversationsScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewChatConversationsScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -575,7 +628,9 @@ void main() {
         matchesGoldenFile('goldens/chat_conversations_screen_desktop.png'),
       );
     });
-    testWidgets('previewChatConversationsScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewChatConversationsScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewChatConversationsScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -584,7 +639,9 @@ void main() {
         matchesGoldenFile('goldens/chat_conversations_screen_mobile.png'),
       );
     });
-    testWidgets('previewChatConversationsScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewChatConversationsScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewChatConversationsScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -593,7 +650,9 @@ void main() {
         matchesGoldenFile('goldens/chat_conversations_screen_tablet.png'),
       );
     });
-    testWidgets('previewChatConversationsScreenWeb', (WidgetTester tester) async {
+    testWidgets('previewChatConversationsScreenWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewChatConversationsScreenWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -737,34 +796,48 @@ void main() {
         matchesGoldenFile('goldens/email_field.png'),
       );
     });
-    testWidgets('previewEmailVerificationRequiredScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewEmailVerificationRequiredScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewEmailVerificationRequiredScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
       await expectLater(
         find.byType(MaterialApp).first,
-        matchesGoldenFile('goldens/email_verification_required_screen_desktop.png'),
+        matchesGoldenFile(
+          'goldens/email_verification_required_screen_desktop.png',
+        ),
       );
     });
-    testWidgets('previewEmailVerificationRequiredScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewEmailVerificationRequiredScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewEmailVerificationRequiredScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
       await expectLater(
         find.byType(MaterialApp).first,
-        matchesGoldenFile('goldens/email_verification_required_screen_mobile.png'),
+        matchesGoldenFile(
+          'goldens/email_verification_required_screen_mobile.png',
+        ),
       );
     });
-    testWidgets('previewEmailVerificationRequiredScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewEmailVerificationRequiredScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewEmailVerificationRequiredScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
       await expectLater(
         find.byType(MaterialApp).first,
-        matchesGoldenFile('goldens/email_verification_required_screen_tablet.png'),
+        matchesGoldenFile(
+          'goldens/email_verification_required_screen_tablet.png',
+        ),
       );
     });
-    testWidgets('previewEmailVerificationRequiredScreenWeb', (WidgetTester tester) async {
+    testWidgets('previewEmailVerificationRequiredScreenWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewEmailVerificationRequiredScreenWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1061,7 +1134,9 @@ void main() {
         matchesGoldenFile('goldens/multiline_field.png'),
       );
     });
-    testWidgets('previewNotificationsScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewNotificationsScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewNotificationsScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1070,7 +1145,9 @@ void main() {
         matchesGoldenFile('goldens/notifications_screen_desktop.png'),
       );
     });
-    testWidgets('previewNotificationsScreenEmptyDesktop', (WidgetTester tester) async {
+    testWidgets('previewNotificationsScreenEmptyDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewNotificationsScreenEmptyDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1079,7 +1156,9 @@ void main() {
         matchesGoldenFile('goldens/notifications_screen_empty_desktop.png'),
       );
     });
-    testWidgets('previewNotificationsScreenEmptyMobile', (WidgetTester tester) async {
+    testWidgets('previewNotificationsScreenEmptyMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewNotificationsScreenEmptyMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1088,7 +1167,9 @@ void main() {
         matchesGoldenFile('goldens/notifications_screen_empty_mobile.png'),
       );
     });
-    testWidgets('previewNotificationsScreenEmptyTablet', (WidgetTester tester) async {
+    testWidgets('previewNotificationsScreenEmptyTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewNotificationsScreenEmptyTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1097,7 +1178,9 @@ void main() {
         matchesGoldenFile('goldens/notifications_screen_empty_tablet.png'),
       );
     });
-    testWidgets('previewNotificationsScreenEmptyWeb', (WidgetTester tester) async {
+    testWidgets('previewNotificationsScreenEmptyWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewNotificationsScreenEmptyWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1106,7 +1189,9 @@ void main() {
         matchesGoldenFile('goldens/notifications_screen_empty_web.png'),
       );
     });
-    testWidgets('previewNotificationsScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewNotificationsScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewNotificationsScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1115,7 +1200,9 @@ void main() {
         matchesGoldenFile('goldens/notifications_screen_mobile.png'),
       );
     });
-    testWidgets('previewNotificationsScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewNotificationsScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewNotificationsScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1178,7 +1265,9 @@ void main() {
         matchesGoldenFile('goldens/order_detail_screen_web.png'),
       );
     });
-    testWidgets('previewOrderSuccessScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewOrderSuccessScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewOrderSuccessScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1295,7 +1384,9 @@ void main() {
         matchesGoldenFile('goldens/password_field.png'),
       );
     });
-    testWidgets('previewPaymentCanceledScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewPaymentCanceledScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewPaymentCanceledScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1304,7 +1395,9 @@ void main() {
         matchesGoldenFile('goldens/payment_canceled_screen_desktop.png'),
       );
     });
-    testWidgets('previewPaymentCanceledScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewPaymentCanceledScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewPaymentCanceledScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1313,7 +1406,9 @@ void main() {
         matchesGoldenFile('goldens/payment_canceled_screen_mobile.png'),
       );
     });
-    testWidgets('previewPaymentCanceledScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewPaymentCanceledScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewPaymentCanceledScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1376,7 +1471,9 @@ void main() {
         matchesGoldenFile('goldens/primary_button_light.png'),
       );
     });
-    testWidgets('previewPrivacyPolicyScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewPrivacyPolicyScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewPrivacyPolicyScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1385,7 +1482,9 @@ void main() {
         matchesGoldenFile('goldens/privacy_policy_screen_desktop.png'),
       );
     });
-    testWidgets('previewPrivacyPolicyScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewPrivacyPolicyScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewPrivacyPolicyScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1394,7 +1493,9 @@ void main() {
         matchesGoldenFile('goldens/privacy_policy_screen_mobile.png'),
       );
     });
-    testWidgets('previewPrivacyPolicyScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewPrivacyPolicyScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewPrivacyPolicyScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1601,7 +1702,9 @@ void main() {
         matchesGoldenFile('goldens/product_card_trending_hot.png'),
       );
     });
-    testWidgets('previewProductCardTrendingRising', (WidgetTester tester) async {
+    testWidgets('previewProductCardTrendingRising', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewProductCardTrendingRising());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1619,7 +1722,9 @@ void main() {
         matchesGoldenFile('goldens/product_card_variants.png'),
       );
     });
-    testWidgets('previewProductDetailScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewProductDetailScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewProductDetailScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1628,7 +1733,9 @@ void main() {
         matchesGoldenFile('goldens/product_detail_screen_desktop.png'),
       );
     });
-    testWidgets('previewProductDetailScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewProductDetailScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewProductDetailScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1637,7 +1744,9 @@ void main() {
         matchesGoldenFile('goldens/product_detail_screen_mobile.png'),
       );
     });
-    testWidgets('previewProductDetailScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewProductDetailScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewProductDetailScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1691,7 +1800,9 @@ void main() {
         matchesGoldenFile('goldens/profile_screen_dark_web.png'),
       );
     });
-    testWidgets('previewProfileScreenLightDesktop', (WidgetTester tester) async {
+    testWidgets('previewProfileScreenLightDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewProfileScreenLightDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1853,7 +1964,9 @@ void main() {
         matchesGoldenFile('goldens/register_screen_web.png'),
       );
     });
-    testWidgets('previewResetPasswordScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewResetPasswordScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewResetPasswordScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1862,7 +1975,9 @@ void main() {
         matchesGoldenFile('goldens/reset_password_screen_desktop.png'),
       );
     });
-    testWidgets('previewResetPasswordScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewResetPasswordScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewResetPasswordScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1871,7 +1986,9 @@ void main() {
         matchesGoldenFile('goldens/reset_password_screen_mobile.png'),
       );
     });
-    testWidgets('previewResetPasswordScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewResetPasswordScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewResetPasswordScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1898,7 +2015,9 @@ void main() {
         matchesGoldenFile('goldens/search_field.png'),
       );
     });
-    testWidgets('previewSellerIntegrationDarkDesktop', (WidgetTester tester) async {
+    testWidgets('previewSellerIntegrationDarkDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerIntegrationDarkDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1907,7 +2026,9 @@ void main() {
         matchesGoldenFile('goldens/seller_integration_dark_desktop.png'),
       );
     });
-    testWidgets('previewSellerIntegrationDarkMobile', (WidgetTester tester) async {
+    testWidgets('previewSellerIntegrationDarkMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerIntegrationDarkMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1916,7 +2037,9 @@ void main() {
         matchesGoldenFile('goldens/seller_integration_dark_mobile.png'),
       );
     });
-    testWidgets('previewSellerIntegrationDarkTablet', (WidgetTester tester) async {
+    testWidgets('previewSellerIntegrationDarkTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerIntegrationDarkTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1934,7 +2057,9 @@ void main() {
         matchesGoldenFile('goldens/seller_integration_dark_web.png'),
       );
     });
-    testWidgets('previewSellerIntegrationLightDesktop', (WidgetTester tester) async {
+    testWidgets('previewSellerIntegrationLightDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerIntegrationLightDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1943,7 +2068,9 @@ void main() {
         matchesGoldenFile('goldens/seller_integration_light_desktop.png'),
       );
     });
-    testWidgets('previewSellerIntegrationLightMobile', (WidgetTester tester) async {
+    testWidgets('previewSellerIntegrationLightMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerIntegrationLightMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1952,7 +2079,9 @@ void main() {
         matchesGoldenFile('goldens/seller_integration_light_mobile.png'),
       );
     });
-    testWidgets('previewSellerIntegrationLightTablet', (WidgetTester tester) async {
+    testWidgets('previewSellerIntegrationLightTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerIntegrationLightTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1961,7 +2090,9 @@ void main() {
         matchesGoldenFile('goldens/seller_integration_light_tablet.png'),
       );
     });
-    testWidgets('previewSellerIntegrationLightWeb', (WidgetTester tester) async {
+    testWidgets('previewSellerIntegrationLightWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerIntegrationLightWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -1970,7 +2101,9 @@ void main() {
         matchesGoldenFile('goldens/seller_integration_light_web.png'),
       );
     });
-    testWidgets('previewSellerOrdersScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewSellerOrdersScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerOrdersScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2006,7 +2139,9 @@ void main() {
         matchesGoldenFile('goldens/seller_orders_screen_web.png'),
       );
     });
-    testWidgets('previewSellerProductsScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewSellerProductsScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerProductsScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2015,7 +2150,9 @@ void main() {
         matchesGoldenFile('goldens/seller_products_screen_desktop.png'),
       );
     });
-    testWidgets('previewSellerProductsScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewSellerProductsScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerProductsScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2024,7 +2161,9 @@ void main() {
         matchesGoldenFile('goldens/seller_products_screen_mobile.png'),
       );
     });
-    testWidgets('previewSellerProductsScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewSellerProductsScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerProductsScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2042,7 +2181,9 @@ void main() {
         matchesGoldenFile('goldens/seller_products_screen_web.png'),
       );
     });
-    testWidgets('previewSellerRegistrationScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewSellerRegistrationScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerRegistrationScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2051,7 +2192,9 @@ void main() {
         matchesGoldenFile('goldens/seller_registration_screen_desktop.png'),
       );
     });
-    testWidgets('previewSellerRegistrationScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewSellerRegistrationScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerRegistrationScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2060,7 +2203,9 @@ void main() {
         matchesGoldenFile('goldens/seller_registration_screen_mobile.png'),
       );
     });
-    testWidgets('previewSellerRegistrationScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewSellerRegistrationScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerRegistrationScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2069,7 +2214,9 @@ void main() {
         matchesGoldenFile('goldens/seller_registration_screen_tablet.png'),
       );
     });
-    testWidgets('previewSellerRegistrationScreenWeb', (WidgetTester tester) async {
+    testWidgets('previewSellerRegistrationScreenWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerRegistrationScreenWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2078,7 +2225,9 @@ void main() {
         matchesGoldenFile('goldens/seller_registration_screen_web.png'),
       );
     });
-    testWidgets('previewSellerSetupCompleteScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewSellerSetupCompleteScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerSetupCompleteScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2087,7 +2236,9 @@ void main() {
         matchesGoldenFile('goldens/seller_setup_complete_screen_desktop.png'),
       );
     });
-    testWidgets('previewSellerSetupCompleteScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewSellerSetupCompleteScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerSetupCompleteScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2096,7 +2247,9 @@ void main() {
         matchesGoldenFile('goldens/seller_setup_complete_screen_mobile.png'),
       );
     });
-    testWidgets('previewSellerSetupCompleteScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewSellerSetupCompleteScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerSetupCompleteScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2105,7 +2258,9 @@ void main() {
         matchesGoldenFile('goldens/seller_setup_complete_screen_tablet.png'),
       );
     });
-    testWidgets('previewSellerSetupCompleteScreenWeb', (WidgetTester tester) async {
+    testWidgets('previewSellerSetupCompleteScreenWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerSetupCompleteScreenWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2114,7 +2269,9 @@ void main() {
         matchesGoldenFile('goldens/seller_setup_complete_screen_web.png'),
       );
     });
-    testWidgets('previewSellerSetupRefreshScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewSellerSetupRefreshScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerSetupRefreshScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2123,7 +2280,9 @@ void main() {
         matchesGoldenFile('goldens/seller_setup_refresh_screen_desktop.png'),
       );
     });
-    testWidgets('previewSellerSetupRefreshScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewSellerSetupRefreshScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerSetupRefreshScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2132,7 +2291,9 @@ void main() {
         matchesGoldenFile('goldens/seller_setup_refresh_screen_mobile.png'),
       );
     });
-    testWidgets('previewSellerSetupRefreshScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewSellerSetupRefreshScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerSetupRefreshScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2141,7 +2302,9 @@ void main() {
         matchesGoldenFile('goldens/seller_setup_refresh_screen_tablet.png'),
       );
     });
-    testWidgets('previewSellerSetupRefreshScreenWeb', (WidgetTester tester) async {
+    testWidgets('previewSellerSetupRefreshScreenWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSellerSetupRefreshScreenWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2150,7 +2313,9 @@ void main() {
         matchesGoldenFile('goldens/seller_setup_refresh_screen_web.png'),
       );
     });
-    testWidgets('previewShippingApprovalScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewShippingApprovalScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewShippingApprovalScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2159,7 +2324,9 @@ void main() {
         matchesGoldenFile('goldens/shipping_approval_screen_desktop.png'),
       );
     });
-    testWidgets('previewShippingApprovalScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewShippingApprovalScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewShippingApprovalScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2168,7 +2335,9 @@ void main() {
         matchesGoldenFile('goldens/shipping_approval_screen_mobile.png'),
       );
     });
-    testWidgets('previewShippingApprovalScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewShippingApprovalScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewShippingApprovalScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2177,7 +2346,9 @@ void main() {
         matchesGoldenFile('goldens/shipping_approval_screen_tablet.png'),
       );
     });
-    testWidgets('previewShippingApprovalScreenWeb', (WidgetTester tester) async {
+    testWidgets('previewShippingApprovalScreenWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewShippingApprovalScreenWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2222,7 +2393,9 @@ void main() {
         matchesGoldenFile('goldens/status_color_reference.png'),
       );
     });
-    testWidgets('previewSubscriptionCancelScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewSubscriptionCancelScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSubscriptionCancelScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2231,7 +2404,9 @@ void main() {
         matchesGoldenFile('goldens/subscription_cancel_screen_desktop.png'),
       );
     });
-    testWidgets('previewSubscriptionCancelScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewSubscriptionCancelScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSubscriptionCancelScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2240,7 +2415,9 @@ void main() {
         matchesGoldenFile('goldens/subscription_cancel_screen_mobile.png'),
       );
     });
-    testWidgets('previewSubscriptionCancelScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewSubscriptionCancelScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSubscriptionCancelScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2249,7 +2426,9 @@ void main() {
         matchesGoldenFile('goldens/subscription_cancel_screen_tablet.png'),
       );
     });
-    testWidgets('previewSubscriptionCancelScreenWeb', (WidgetTester tester) async {
+    testWidgets('previewSubscriptionCancelScreenWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSubscriptionCancelScreenWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2258,7 +2437,9 @@ void main() {
         matchesGoldenFile('goldens/subscription_cancel_screen_web.png'),
       );
     });
-    testWidgets('previewSubscriptionScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewSubscriptionScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSubscriptionScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2294,7 +2475,9 @@ void main() {
         matchesGoldenFile('goldens/subscription_screen_web.png'),
       );
     });
-    testWidgets('previewSubscriptionSuccessScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewSubscriptionSuccessScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSubscriptionSuccessScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2303,7 +2486,9 @@ void main() {
         matchesGoldenFile('goldens/subscription_success_screen_desktop.png'),
       );
     });
-    testWidgets('previewSubscriptionSuccessScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewSubscriptionSuccessScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSubscriptionSuccessScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2312,7 +2497,9 @@ void main() {
         matchesGoldenFile('goldens/subscription_success_screen_mobile.png'),
       );
     });
-    testWidgets('previewSubscriptionSuccessScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewSubscriptionSuccessScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSubscriptionSuccessScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2321,7 +2508,9 @@ void main() {
         matchesGoldenFile('goldens/subscription_success_screen_tablet.png'),
       );
     });
-    testWidgets('previewSubscriptionSuccessScreenWeb', (WidgetTester tester) async {
+    testWidgets('previewSubscriptionSuccessScreenWeb', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewSubscriptionSuccessScreenWeb());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2330,7 +2519,9 @@ void main() {
         matchesGoldenFile('goldens/subscription_success_screen_web.png'),
       );
     });
-    testWidgets('previewTermsOfServiceScreenDesktop', (WidgetTester tester) async {
+    testWidgets('previewTermsOfServiceScreenDesktop', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewTermsOfServiceScreenDesktop());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2339,7 +2530,9 @@ void main() {
         matchesGoldenFile('goldens/terms_of_service_screen_desktop.png'),
       );
     });
-    testWidgets('previewTermsOfServiceScreenMobile', (WidgetTester tester) async {
+    testWidgets('previewTermsOfServiceScreenMobile', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewTermsOfServiceScreenMobile());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
@@ -2348,7 +2541,9 @@ void main() {
         matchesGoldenFile('goldens/terms_of_service_screen_mobile.png'),
       );
     });
-    testWidgets('previewTermsOfServiceScreenTablet', (WidgetTester tester) async {
+    testWidgets('previewTermsOfServiceScreenTablet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(previewTermsOfServiceScreenTablet());
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));

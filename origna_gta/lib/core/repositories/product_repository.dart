@@ -59,6 +59,7 @@ Map<String, dynamic> sanitizeProductForFirestore(Map<String, dynamic> rawData, {
   return data;
 }
 
+/// Documentation for FirebaseProductRepository
 class FirebaseProductRepository implements ProductRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
@@ -508,6 +509,7 @@ class FirebaseProductRepository implements ProductRepository {
   }
 }
 
+/// Documentation for ProductQueryResult
 class ProductQueryResult {
   final List<Product> products;
   final DocumentSnapshot? lastDocument;

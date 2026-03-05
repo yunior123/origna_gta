@@ -55,6 +55,7 @@ List<PolicySection> parseSections(String raw) {
 // REUSABLE SECTION-BASED LEGAL SCREEN BODY
 // ============================================================================
 
+/// Documentation for LegalScreenBody
 class LegalScreenBody extends StatefulWidget {
   final String rawContent;
   final String heroTitle;
@@ -71,6 +72,7 @@ class LegalScreenBody extends StatefulWidget {
 // PARSED SECTION MODEL
 // ============================================================================
 
+/// Documentation for PolicySection
 class PolicySection {
   final int number;
   final String title;

@@ -20,6 +20,7 @@ def _load_env(env: str) -> None:
 
 
 def get_app(env: str) -> firebase_admin.App:
+    """Function get_app."""
     if env not in _apps:
         _load_env(env)
         project_id = ENV_TO_PROJECT.get(env)
@@ -35,10 +36,12 @@ def get_app(env: str) -> firebase_admin.App:
 
 
 def get_firestore(env: str):
+    """Function get_firestore."""
     app = get_app(env)
     return firestore.client(app=app)
 
 
 def get_auth(env: str):
+    """Function get_auth."""
     get_app(env)
     return fb_auth

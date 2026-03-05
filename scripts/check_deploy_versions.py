@@ -45,6 +45,7 @@ def _label(env: str) -> str:
 
 
 def main():
+    """Function main."""
     parser = argparse.ArgumentParser(description="Check deploy version parity across environments")
     parser.add_argument("--strict", action="store_true",
                         help="Also require deployed versions match local source")

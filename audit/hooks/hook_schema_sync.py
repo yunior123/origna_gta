@@ -101,6 +101,7 @@ def _extract_dart_constants(text: str) -> dict[str, str]:
 
 @register_hook
 class SchemaSyncHook(BaseHook):
+    """Class SchemaSyncHook."""
     hook_name = "schema-sync"
     description = "Cross-stack schema sync: Python ↔ Dart ↔ JSON schema"
     emoji = "🔄"
@@ -128,6 +129,7 @@ class SchemaSyncHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a cross-stack consistency auditor for a Flutter + Python Firebase project.
 
 {PROJECT_CONTEXT}

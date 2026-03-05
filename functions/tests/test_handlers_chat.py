@@ -23,53 +23,66 @@ from schema_constants import BusinessRules, Fields, ProductLifecycleStatusValues
 
 
 class TestSanitizeText:
+    """Class TestSanitizeText."""
     def _s(self, text: str) -> str:
         from handlers.chat import _sanitize_text
         return _sanitize_text(text)
 
     def test_strips_html_tags(self):
+        """Function test_strips_html_tags."""
         assert self._s("<b>hello</b>") == "hello"
 
     def test_strips_script_block(self):
+        """Function test_strips_script_block."""
         assert '<script>' not in self._s('<script>alert("xss")</script>')
 
     def test_removes_javascript_scheme(self):
+        """Function test_removes_javascript_scheme."""
         assert "javascript:" not in self._s("Click: javascript:void(0)")
 
     def test_redacts_plain_email(self):
+        """Function test_redacts_plain_email."""
         result = self._s("Contact me at test@example.com please")
         assert "[email removed]" in result
         assert "test@example.com" not in result
 
     def test_redacts_obfuscated_email(self):
+        """Function test_redacts_obfuscated_email."""
         result = self._s("Email me at test (at) example.com")
         assert "test (at) example.com" not in result
 
     def test_redacts_http_url(self):
+        """Function test_redacts_http_url."""
         result = self._s("Check http://example.com for details")
         assert "[link removed]" in result
 
     def test_redacts_https_url(self):
+        """Function test_redacts_https_url."""
         result = self._s("Visit https://evil.com/scam")
         assert "[link removed]" in result
 
     def test_redacts_www_url(self):
+        """Function test_redacts_www_url."""
         result = self._s("Go to www.example.com")
         assert "[link removed]" in result
 
     def test_redacts_10_digit_phone_with_dashes(self):
+        """Function test_redacts_10_digit_phone_with_dashes."""
         result = self._s("Call me at 416-555-1234")
         assert "[phone removed]" in result
 
     def test_strips_zero_width_chars(self):
         # Zero-width space used to bypass redaction filters
+        """Function test_strips_zero_width_chars."""
         result = self._s("test\u200b@\u200bexample.com")
         assert "\u200b" not in result
 
     def test_empty_string_returns_empty(self):
+        """Function test_empty_string_returns_empty."""
         assert self._s("") == ""
 
     def test_clean_message_unchanged(self):
+        """Function test_clean_message_unchanged."""
         msg = "Hello, is this item still available?"
         assert self._s(msg) == msg
 
@@ -80,6 +93,7 @@ class TestSanitizeText:
 
 
 class TestGetOrCreateChat:
+    """Class TestGetOrCreateChat."""
     def _req(self, uid: str = "buyer_123", data: dict | None = None) -> Mock:
         req = Mock()
         req.auth = Mock()
@@ -99,6 +113,7 @@ class TestGetOrCreateChat:
         return doc
 
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.chat import get_or_create_chat
 
@@ -109,6 +124,7 @@ class TestGetOrCreateChat:
         assert exc.value.code == "unauthenticated"
 
     def test_missing_product_id_raises(self):
+        """Function test_missing_product_id_raises."""
         from firebase_functions import https_fn
         from handlers.chat import get_or_create_chat
 
@@ -119,6 +135,7 @@ class TestGetOrCreateChat:
         assert exc.value.code == "invalid-argument"
 
     def test_non_premium_buyer_rejected(self):
+        """Function test_non_premium_buyer_rejected."""
         from firebase_functions import https_fn
         from handlers.chat import get_or_create_chat
 
@@ -131,6 +148,7 @@ class TestGetOrCreateChat:
 
     @patch("handlers.chat._get_db")
     def test_product_not_found_raises(self, mock_get_db):
+        """Function test_product_not_found_raises."""
         from firebase_functions import https_fn
         from handlers.chat import get_or_create_chat
 
@@ -147,6 +165,7 @@ class TestGetOrCreateChat:
 
     @patch("handlers.chat._get_db")
     def test_inactive_product_raises(self, mock_get_db):
+        """Function test_inactive_product_raises."""
         from firebase_functions import https_fn
         from handlers.chat import get_or_create_chat
 
@@ -167,6 +186,7 @@ class TestGetOrCreateChat:
 
     @patch("handlers.chat._get_db")
     def test_self_chat_rejected(self, mock_get_db):
+        """Function test_self_chat_rejected."""
         from firebase_functions import https_fn
         from handlers.chat import get_or_create_chat
 
@@ -182,6 +202,7 @@ class TestGetOrCreateChat:
 
     @patch("handlers.chat._get_db")
     def test_no_delivered_order_raises(self, mock_get_db):
+        """Function test_no_delivered_order_raises."""
         from firebase_functions import https_fn
         from handlers.chat import get_or_create_chat
 
@@ -189,6 +210,7 @@ class TestGetOrCreateChat:
         mock_get_db.return_value = mock_db
 
         def coll(name):
+            """Function coll."""
             c = MagicMock()
             if name == "products":
                 c.document.return_value.get.return_value = self._active_product()
@@ -211,6 +233,7 @@ class TestGetOrCreateChat:
     @patch("handlers.chat._get_db")
     @patch("handlers.chat.get_server_timestamp", return_value="mock_ts")
     def test_creates_new_chat(self, _mock_ts, mock_get_db):
+        """Function test_creates_new_chat."""
         from handlers.chat import get_or_create_chat
 
         mock_db = MagicMock()
@@ -220,6 +243,7 @@ class TestGetOrCreateChat:
         chat_ref.create.return_value = None
 
         def coll(name):
+            """Function coll."""
             c = MagicMock()
             if name == "products":
                 c.document.return_value.get.return_value = self._active_product()
@@ -245,6 +269,7 @@ class TestGetOrCreateChat:
     @patch("handlers.chat._get_db")
     @patch("handlers.chat.get_server_timestamp", return_value="mock_ts")
     def test_returns_existing_on_already_exists_error(self, _mock_ts, mock_get_db):
+        """Function test_returns_existing_on_already_exists_error."""
         from handlers.chat import get_or_create_chat
 
         mock_db = MagicMock()
@@ -254,6 +279,7 @@ class TestGetOrCreateChat:
         chat_ref.create.side_effect = Exception("ALREADY_EXISTS: Document already exists")
 
         def coll(name):
+            """Function coll."""
             c = MagicMock()
             if name == "products":
                 c.document.return_value.get.return_value = self._active_product()
@@ -282,6 +308,7 @@ class TestGetOrCreateChat:
 
 
 class TestSendMessage:
+    """Class TestSendMessage."""
     def _req(self, uid: str = "buyer_123", data: dict | None = None) -> Mock:
         req = Mock()
         req.auth = Mock()
@@ -293,6 +320,7 @@ class TestSendMessage:
         return req
 
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.chat import send_message
 
@@ -303,6 +331,7 @@ class TestSendMessage:
         assert exc.value.code == "unauthenticated"
 
     def test_missing_chat_id_raises(self):
+        """Function test_missing_chat_id_raises."""
         from firebase_functions import https_fn
         from handlers.chat import send_message
 
@@ -312,6 +341,7 @@ class TestSendMessage:
         assert exc.value.code == "invalid-argument"
 
     def test_too_many_images_raises(self):
+        """Function test_too_many_images_raises."""
         from firebase_functions import https_fn
         from handlers.chat import send_message
 
@@ -326,6 +356,7 @@ class TestSendMessage:
         assert "5 images" in exc.value.message
 
     def test_non_cdn_image_rejected(self):
+        """Function test_non_cdn_image_rejected."""
         from firebase_functions import https_fn
         from handlers.chat import send_message
 
@@ -341,6 +372,7 @@ class TestSendMessage:
 
     @patch("handlers.chat._get_db")
     def test_non_participant_rejected(self, mock_get_db):
+        """Function test_non_participant_rejected."""
         from firebase_functions import https_fn
         from handlers.chat import send_message
 
@@ -362,6 +394,7 @@ class TestSendMessage:
 
     @patch("handlers.chat._get_db")
     def test_thread_at_capacity_raises(self, mock_get_db):
+        """Function test_thread_at_capacity_raises."""
         from firebase_functions import https_fn
         from handlers.chat import send_message
 
@@ -380,6 +413,7 @@ class TestSendMessage:
         sender_doc.to_dict.return_value = {Fields.NAME: "Test Buyer"}
 
         def coll(name):
+            """Function coll."""
             c = MagicMock()
             if name == "chats":
                 c.document.return_value.get.return_value = chat_doc
@@ -396,6 +430,7 @@ class TestSendMessage:
 
     @patch("handlers.chat._get_db")
     def test_duplicate_message_within_5s_raises(self, mock_get_db):
+        """Function test_duplicate_message_within_5s_raises."""
         from firebase_functions import https_fn
         from handlers.chat import send_message
 
@@ -416,6 +451,7 @@ class TestSendMessage:
         sender_doc.to_dict.return_value = {Fields.NAME: "Test Buyer"}
 
         def coll(name):
+            """Function coll."""
             c = MagicMock()
             if name == "chats":
                 c.document.return_value.get.return_value = chat_doc
@@ -432,6 +468,7 @@ class TestSendMessage:
 
     @patch("handlers.chat._get_db")
     def test_non_premium_buyer_rejected_in_send(self, mock_get_db):
+        """Function test_non_premium_buyer_rejected_in_send."""
         from firebase_functions import https_fn
         from handlers.chat import send_message
 
@@ -450,6 +487,7 @@ class TestSendMessage:
         sender_doc.to_dict.return_value = {Fields.NAME: "Test Buyer"}
 
         def coll(name):
+            """Function coll."""
             c = MagicMock()
             if name == "chats":
                 c.document.return_value.get.return_value = chat_doc
@@ -471,7 +509,9 @@ class TestSendMessage:
 
 
 class TestMarkMessagesRead:
+    """Class TestMarkMessagesRead."""
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.chat import mark_messages_read
 
@@ -482,6 +522,7 @@ class TestMarkMessagesRead:
         assert exc.value.code == "unauthenticated"
 
     def test_missing_chat_id_raises(self):
+        """Function test_missing_chat_id_raises."""
         from firebase_functions import https_fn
         from handlers.chat import mark_messages_read
 
@@ -495,6 +536,7 @@ class TestMarkMessagesRead:
 
     @patch("handlers.chat._get_db")
     def test_non_participant_access_denied(self, mock_get_db):
+        """Function test_non_participant_access_denied."""
         from firebase_functions import https_fn
         from handlers.chat import mark_messages_read
 
@@ -520,6 +562,7 @@ class TestMarkMessagesRead:
 
     @patch("handlers.chat._get_db")
     def test_resets_buyer_unread_count(self, mock_get_db):
+        """Function test_resets_buyer_unread_count."""
         from handlers.chat import mark_messages_read
 
         mock_db = MagicMock()
@@ -568,7 +611,9 @@ class TestMarkMessagesRead:
 
 
 class TestDeleteMessage:
+    """Class TestDeleteMessage."""
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.chat import delete_message
 
@@ -579,6 +624,7 @@ class TestDeleteMessage:
         assert exc.value.code == "unauthenticated"
 
     def test_missing_args_raises(self):
+        """Function test_missing_args_raises."""
         from firebase_functions import https_fn
         from handlers.chat import delete_message
 
@@ -592,6 +638,7 @@ class TestDeleteMessage:
 
     @patch("handlers.chat._get_db")
     def test_non_sender_non_admin_rejected(self, mock_get_db):
+        """Function test_non_sender_non_admin_rejected."""
         from firebase_functions import https_fn
         from handlers.chat import delete_message
 
@@ -607,6 +654,7 @@ class TestDeleteMessage:
         user_doc.to_dict.return_value = {Fields.ROLES: ["buyer"]}
 
         def coll(name):
+            """Function coll."""
             c = MagicMock()
             if name == "chats":
                 msgs_c = MagicMock()
@@ -630,6 +678,7 @@ class TestDeleteMessage:
     @patch("handlers.chat._get_db")
     @patch("handlers.chat.get_server_timestamp", return_value="mock_ts")
     def test_already_deleted_idempotent(self, _ts, mock_get_db):
+        """Function test_already_deleted_idempotent."""
         from handlers.chat import delete_message
 
         mock_db = MagicMock()
@@ -642,6 +691,7 @@ class TestDeleteMessage:
         msg_ref.get.return_value = msg_doc
 
         def coll(name):
+            """Function coll."""
             c = MagicMock()
             msgs_c = MagicMock()
             msgs_c.document.return_value = msg_ref
@@ -667,7 +717,9 @@ class TestDeleteMessage:
 
 
 class TestReportMessage:
+    """Class TestReportMessage."""
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.chat import report_message
 
@@ -678,6 +730,7 @@ class TestReportMessage:
         assert exc.value.code == "unauthenticated"
 
     def test_missing_args_raises(self):
+        """Function test_missing_args_raises."""
         from firebase_functions import https_fn
         from handlers.chat import report_message
 
@@ -691,6 +744,7 @@ class TestReportMessage:
 
     @patch("handlers.chat._get_db")
     def test_non_participant_rejected(self, mock_get_db):
+        """Function test_non_participant_rejected."""
         from firebase_functions import https_fn
         from handlers.chat import report_message
 
@@ -717,6 +771,7 @@ class TestReportMessage:
     @patch("handlers.chat._get_db")
     @patch("handlers.chat.get_server_timestamp", return_value="mock_ts")
     def test_creates_report_and_returns_report_id(self, _ts, mock_get_db):
+        """Function test_creates_report_and_returns_report_id."""
         from handlers.chat import report_message
 
         mock_db = MagicMock()
@@ -740,6 +795,7 @@ class TestReportMessage:
         report_ref.id = "report_abc"
 
         def coll(name):
+            """Function coll."""
             c = MagicMock()
             if name == "chats":
                 c.document.return_value.get.return_value = chat_doc

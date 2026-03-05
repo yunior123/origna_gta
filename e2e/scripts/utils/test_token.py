@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Module test_token.py."""
 import json
 import base64
 from urllib.request import Request, urlopen
@@ -6,10 +7,12 @@ from urllib.request import Request, urlopen
 AUTH = 'http://localhost:9099'
 
 def post(url, data):
+    """Function post."""
     req = Request(url, json.dumps(data).encode(), {'Content-Type': 'application/json'})
     return json.loads(urlopen(req).read())
 
 def decode_token(token):
+    """Function decode_token."""
     p = token.split('.')[1]
     p += '=' * (4 - len(p) % 4)
     return json.loads(base64.b64decode(p))

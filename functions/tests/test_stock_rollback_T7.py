@@ -52,6 +52,7 @@ def test_stock_reservation_atomic_pattern(mock_stripe_create, mock_get_fs, mock_
     }
 
     def make_doc_ref(doc_id=None):
+        """Function make_doc_ref."""
         mock_ref = MagicMock()
         if doc_id is not None:
             mock_ref.id = doc_id
@@ -65,6 +66,7 @@ def test_stock_reservation_atomic_pattern(mock_stripe_create, mock_get_fs, mock_
 
     # Implement get_all for batch product fetches
     def get_all_impl(refs):
+        """Function get_all_impl."""
         results = []
         for ref in refs:
             doc = ref.get()

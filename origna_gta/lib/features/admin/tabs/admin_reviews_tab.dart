@@ -7,6 +7,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Documentation for AdminReviewsTab
 class AdminReviewsTab extends ConsumerStatefulWidget {
   const AdminReviewsTab({super.key});
 

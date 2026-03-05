@@ -123,18 +123,21 @@ class _HTMLTextExtractor(HTMLParser):
                              "section", "article", "dt", "dd"))
 
     def __init__(self, *, skip_nav: bool = True):
+        """Function __init__."""
         super().__init__()
         self._pieces: list[str] = []
         self._skip_depth: int = 0
         self._skip_nav = skip_nav
 
     def handle_starttag(self, tag, attrs):
+        """Function handle_starttag."""
         if tag in self._SKIP_TAGS:
             self._skip_depth += 1
         elif self._skip_nav and tag in self._NAV_TAGS:
             self._skip_depth += 1
 
     def handle_endtag(self, tag):
+        """Function handle_endtag."""
         if tag in self._SKIP_TAGS:
             self._skip_depth = max(0, self._skip_depth - 1)
         elif self._skip_nav and tag in self._NAV_TAGS:
@@ -143,12 +146,14 @@ class _HTMLTextExtractor(HTMLParser):
             self._pieces.append("\n")
 
     def handle_data(self, data):
+        """Function handle_data."""
         if self._skip_depth == 0:
             txt = data.strip()
             if txt:
                 self._pieces.append(txt + " ")
 
     def get_text(self) -> str:
+        """Function get_text."""
         raw = "".join(self._pieces)
         raw = re.sub(r'\n{3,}', '\n\n', raw)
         raw = re.sub(r'[ \t]+', ' ', raw)
@@ -170,6 +175,7 @@ class _ScopedHTMLExtractor(HTMLParser):
 
     def __init__(self, scope_tag: str = "main",
                  scope_attrs: Optional[dict] = None):
+        """Function __init__."""
         super().__init__()
         self._scope_tag = scope_tag
         self._scope_attrs = scope_attrs or {}
@@ -179,6 +185,7 @@ class _ScopedHTMLExtractor(HTMLParser):
         self._pieces: list[str] = []
 
     def handle_starttag(self, tag, attrs):
+        """Function handle_starttag."""
         attrs_dict = dict(attrs)
         # Enter scope
         if (tag == self._scope_tag and not self._in_scope and
@@ -193,6 +200,7 @@ class _ScopedHTMLExtractor(HTMLParser):
                 self._skip_depth += 1
 
     def handle_endtag(self, tag):
+        """Function handle_endtag."""
         if not self._in_scope:
             return
         if tag == self._scope_tag:
@@ -206,12 +214,14 @@ class _ScopedHTMLExtractor(HTMLParser):
             self._pieces.append("\n")
 
     def handle_data(self, data):
+        """Function handle_data."""
         if self._in_scope and self._skip_depth == 0:
             txt = data.strip()
             if txt:
                 self._pieces.append(txt + " ")
 
     def get_text(self) -> str:
+        """Function get_text."""
         raw = "".join(self._pieces)
         raw = re.sub(r'\n{3,}', '\n\n', raw)
         raw = re.sub(r'[ \t]+', ' ', raw)

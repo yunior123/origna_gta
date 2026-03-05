@@ -19,6 +19,7 @@ final unansweredQaCountProvider = StreamProvider.autoDispose.family<int, String>
   return repo.watchQA(productId).map((list) => list.where((q) => q.answer == null || q.answer!.isEmpty).length);
 });
 
+/// Documentation for QAController
 class QAController extends StateNotifier<AsyncValue<void>> {
   final QARepository _repository;
   final Ref _ref;

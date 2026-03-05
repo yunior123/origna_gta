@@ -22,6 +22,7 @@ from schema_constants import Collections, Fields, SubscriptionStatusValues, User
 
 
 class TestCreateSubscription:
+    """Class TestCreateSubscription."""
     def _req(self, uid: str = "buyer_123") -> Mock:
         req = Mock()
         req.auth = Mock()
@@ -30,6 +31,7 @@ class TestCreateSubscription:
         return req
 
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.subscriptions import create_subscription
 
@@ -41,6 +43,7 @@ class TestCreateSubscription:
 
     @patch("handlers.subscriptions._get_db")
     def test_seller_cannot_subscribe(self, mock_get_db):
+        """Function test_seller_cannot_subscribe."""
         from firebase_functions import https_fn
         from handlers.subscriptions import create_subscription
 
@@ -62,6 +65,7 @@ class TestCreateSubscription:
 
     @patch("handlers.subscriptions._get_db")
     def test_already_active_subscription_raises(self, mock_get_db):
+        """Function test_already_active_subscription_raises."""
         from firebase_functions import https_fn
         from handlers.subscriptions import create_subscription
 
@@ -77,6 +81,7 @@ class TestCreateSubscription:
         sub_doc.to_dict.return_value = {Fields.STATUS: SubscriptionStatusValues.ACTIVE}
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             c = MagicMock()
             if name == Collections.USERS:
                 c.document.return_value.get.return_value = user_doc
@@ -93,6 +98,7 @@ class TestCreateSubscription:
     @patch("handlers.subscriptions._get_db")
     @patch("handlers.subscriptions.get_stripe_premium_price_id", return_value=None)
     def test_no_price_id_raises_internal(self, _mock_price, mock_get_db):
+        """Function test_no_price_id_raises_internal."""
         from firebase_functions import https_fn
         from handlers.subscriptions import create_subscription
 
@@ -107,6 +113,7 @@ class TestCreateSubscription:
         sub_doc.exists = False
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             c = MagicMock()
             if name == Collections.USERS:
                 c.document.return_value.get.return_value = user_doc
@@ -128,6 +135,7 @@ class TestCreateSubscription:
     def test_creates_checkout_session(
         self, mock_stripe, _mock_customer, _mock_init, _mock_price, mock_get_db
     ):
+        """Function test_creates_checkout_session."""
         from handlers.subscriptions import create_subscription
 
         mock_db = MagicMock()
@@ -143,6 +151,7 @@ class TestCreateSubscription:
         sub_doc.exists = False
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             c = MagicMock()
             if name == Collections.USERS:
                 c.document.return_value = user_ref
@@ -169,6 +178,7 @@ class TestCreateSubscription:
 
 
 class TestCancelSubscription:
+    """Class TestCancelSubscription."""
     def _req(self, uid: str = "buyer_123") -> Mock:
         req = Mock()
         req.auth = Mock()
@@ -177,6 +187,7 @@ class TestCancelSubscription:
         return req
 
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.subscriptions import cancel_subscription
 
@@ -188,6 +199,7 @@ class TestCancelSubscription:
 
     @patch("handlers.subscriptions._get_db")
     def test_no_subscription_raises(self, mock_get_db):
+        """Function test_no_subscription_raises."""
         from firebase_functions import https_fn
         from handlers.subscriptions import cancel_subscription
 
@@ -203,6 +215,7 @@ class TestCancelSubscription:
 
     @patch("handlers.subscriptions._get_db")
     def test_already_scheduled_to_cancel_raises(self, mock_get_db):
+        """Function test_already_scheduled_to_cancel_raises."""
         from firebase_functions import https_fn
         from handlers.subscriptions import cancel_subscription
 
@@ -224,6 +237,7 @@ class TestCancelSubscription:
 
     @patch("handlers.subscriptions._get_db")
     def test_non_active_status_raises(self, mock_get_db):
+        """Function test_non_active_status_raises."""
         from firebase_functions import https_fn
         from handlers.subscriptions import cancel_subscription
 
@@ -250,6 +264,7 @@ class TestCancelSubscription:
     def test_cancels_subscription_at_period_end(
         self, _mock_email, mock_stripe, _mock_init, _mock_ts, mock_get_db
     ):
+        """Function test_cancels_subscription_at_period_end."""
         from handlers.subscriptions import cancel_subscription
 
         mock_db = MagicMock()
@@ -282,6 +297,7 @@ class TestCancelSubscription:
 
 
 class TestReactivateSubscription:
+    """Class TestReactivateSubscription."""
     def _req(self, uid: str = "buyer_123") -> Mock:
         req = Mock()
         req.auth = Mock()
@@ -290,6 +306,7 @@ class TestReactivateSubscription:
         return req
 
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.subscriptions import reactivate_subscription
 
@@ -301,6 +318,7 @@ class TestReactivateSubscription:
 
     @patch("handlers.subscriptions._get_db")
     def test_not_scheduled_to_cancel_raises(self, mock_get_db):
+        """Function test_not_scheduled_to_cancel_raises."""
         from firebase_functions import https_fn
         from handlers.subscriptions import reactivate_subscription
 
@@ -320,6 +338,7 @@ class TestReactivateSubscription:
     @patch("handlers.subscriptions.stripe")
     @patch("handlers.subscriptions._sync_subscription")
     def test_reactivates_successfully(self, mock_sync, mock_stripe, _mock_init, mock_get_db):
+        """Function test_reactivates_successfully."""
         from handlers.subscriptions import reactivate_subscription
 
         mock_db = MagicMock()
@@ -347,6 +366,7 @@ class TestReactivateSubscription:
 
 
 class TestGetSubscriptionStatus:
+    """Class TestGetSubscriptionStatus."""
     def _req(self, uid: str = "buyer_123") -> Mock:
         req = Mock()
         req.auth = Mock()
@@ -355,6 +375,7 @@ class TestGetSubscriptionStatus:
         return req
 
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.subscriptions import get_subscription_status
 
@@ -366,6 +387,7 @@ class TestGetSubscriptionStatus:
 
     @patch("handlers.subscriptions._get_db")
     def test_no_subscription_returns_not_premium(self, mock_get_db):
+        """Function test_no_subscription_returns_not_premium."""
         from handlers.subscriptions import get_subscription_status
 
         mock_db = MagicMock()
@@ -381,6 +403,7 @@ class TestGetSubscriptionStatus:
 
     @patch("handlers.subscriptions._get_db")
     def test_active_subscription_returns_is_premium(self, mock_get_db):
+        """Function test_active_subscription_returns_is_premium."""
         from datetime import UTC, datetime
         from handlers.subscriptions import get_subscription_status
 
@@ -405,6 +428,7 @@ class TestGetSubscriptionStatus:
 
     @patch("handlers.subscriptions._get_db")
     def test_cancelled_subscription_returns_not_premium(self, mock_get_db):
+        """Function test_cancelled_subscription_returns_not_premium."""
         from handlers.subscriptions import get_subscription_status
 
         mock_db = MagicMock()
@@ -429,9 +453,12 @@ class TestGetSubscriptionStatus:
 
 
 class TestHandleSubscriptionDeleted:
+    """Tests for subscription.deleted webhook handler."""
+
     @patch("handlers.subscriptions._get_db")
     @patch("handlers.subscriptions._get_firestore")
     def test_clears_premium_on_user(self, mock_get_firestore, mock_get_db):
+        """Function test_clears_premium_on_user."""
         from handlers.subscriptions import handle_subscription_deleted
 
         mock_db = MagicMock()
@@ -443,8 +470,10 @@ class TestHandleSubscriptionDeleted:
         # Simulate @transactional decorator
         txn_ops = {}
         def capture_txn_set(ref, data, **kwargs):
+            """Function capture_txn_set."""
             txn_ops["sub"] = data
         def capture_txn_update(ref, data):
+            """Function capture_txn_update."""
             txn_ops["user"] = data
 
         mock_transaction = MagicMock()
@@ -459,7 +488,9 @@ class TestHandleSubscriptionDeleted:
 
         # @transactional decorator — make it call function immediately
         def fake_transactional(fn):
+            """Function fake_transactional."""
             def wrapper(txn):
+                """Function wrapper."""
                 return fn(txn)
             return wrapper
 

@@ -1,3 +1,4 @@
+"""Module setup_secrets.py."""
 
 import os
 import subprocess
@@ -28,6 +29,7 @@ SECRETS = {
 }
 
 def run_command(cmd, check=True):
+    """Function run_command."""
     print(f"Running: {cmd}")
     try:
         subprocess.run(cmd, shell=True, check=check)
@@ -35,12 +37,14 @@ def run_command(cmd, check=True):
         print(f"Error running command: {e}")
 
 def get_secret_from_env(key):
+    """Function get_secret_from_env."""
     val = SECRETS.get(key)
     if not val:
         print(f"⚠️ Warning: Missing value for {key}")
     return val
 
 def setup_project_secrets(project_id):
+    """Function setup_project_secrets."""
     print(f"\n--- Setting up secrets for {project_id} ---")
     
     # 1. Enable Secret Manager API

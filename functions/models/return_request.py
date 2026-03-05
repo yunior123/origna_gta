@@ -8,6 +8,7 @@ from schema_constants import ReturnStatusValues
 
 
 class ReturnRequest(BaseModel):
+    """Class ReturnRequest."""
     returnId: str = Field(..., description="Auto-generated doc ID")
     orderId: str = Field(..., description="Parent order ID")
     orderItemId: str = Field(..., description="Cart item ID of the item being returned")
@@ -28,6 +29,7 @@ class ReturnRequest(BaseModel):
     @field_validator("returnStatus")
     @classmethod
     def validate_return_status(cls, v: str) -> str:
+        """Function validate_return_status."""
         if v not in ReturnStatusValues.ALL:
             raise ValueError(f"Invalid return status: {v}. Must be one of: {ReturnStatusValues.ALL}")
         return v

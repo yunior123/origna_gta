@@ -7,6 +7,7 @@ from .prompts import STRUCTURED_OUTPUT_INSTRUCTION, PROJECT_CONTEXT
 
 @register_hook
 class SecurityHook(BaseHook):
+    """Class SecurityHook."""
     hook_name = "security"
     description = "API security: Firestore rules, input validation, injection, data exposure"
     emoji = "🛡️"
@@ -27,6 +28,7 @@ class SecurityHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a senior application security engineer performing a DEEP security audit.
 
 {PROJECT_CONTEXT}
@@ -56,6 +58,7 @@ Project files:
 
 @register_hook
 class PerformanceHook(BaseHook):
+    """Class PerformanceHook."""
     hook_name = "performance"
     description = "Performance: N+1 queries, missing indexes, unnecessary reads, scaling"
     emoji = "⚡"
@@ -79,6 +82,7 @@ class PerformanceHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a senior performance engineer auditing a Firebase-based marketplace at scale.
 
 {PROJECT_CONTEXT}
@@ -107,6 +111,7 @@ Project files:
 
 @register_hook
 class StateMgmtHook(BaseHook):
+    """Class StateMgmtHook."""
     hook_name = "state-mgmt"
     description = "State management: Riverpod providers, state consistency, race conditions"
     emoji = "🧠"
@@ -132,6 +137,7 @@ class StateMgmtHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a senior Flutter/Riverpod expert auditing state management.
 
 {PROJECT_CONTEXT}
@@ -161,6 +167,7 @@ Project files:
 
 @register_hook
 class OrdersHook(BaseHook):
+    """Class OrdersHook."""
     hook_name = "orders"
     description = "Order lifecycle: creation, status transitions, shipping, delivery, disputes"
     emoji = "📋"
@@ -184,6 +191,7 @@ class OrdersHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are auditing the ORDER LIFECYCLE of an e-commerce marketplace.
 
 {PROJECT_CONTEXT}
@@ -210,6 +218,7 @@ Project files:
 
 @register_hook
 class ErrorHandlingHook(BaseHook):
+    """Class ErrorHandlingHook."""
     hook_name = "errors"
     description = "Error handling: network errors, retries, graceful degradation, Sentry"
     emoji = "🛡️"
@@ -228,6 +237,7 @@ class ErrorHandlingHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are auditing ERROR HANDLING across the entire stack of an e-commerce marketplace.
 
 {PROJECT_CONTEXT}
@@ -251,6 +261,7 @@ Project files:
 
 @register_hook
 class SellerHook(BaseHook):
+    """Class SellerHook."""
     hook_name = "seller"
     description = "Seller onboarding: Stripe Connect, capabilities, payout, terms"
     emoji = "🏪"
@@ -269,6 +280,7 @@ class SellerHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are auditing SELLER ONBOARDING & MANAGEMENT in an e-commerce marketplace.
 
 {PROJECT_CONTEXT}

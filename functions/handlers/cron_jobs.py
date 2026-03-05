@@ -223,6 +223,7 @@ def _run_auto_capture() -> None:
                 # Add transaction lock to prevent race with cancel (C-8 fix)
                 @get_firestore().transactional
                 def lock_for_auto_capture(transaction, order_ref=order_doc.reference):
+                    """Function lock_for_auto_capture."""
                     fresh = order_ref.get(transaction=transaction)
                     if not fresh.exists or fresh.to_dict().get(Fields.PAYMENT_STATUS) != PaymentStatusValues.AUTHORIZED:
                         return False

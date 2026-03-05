@@ -1,3 +1,4 @@
+"""Module test_notifications_flow.py."""
 import os
 from unittest.mock import MagicMock, patch
 
@@ -14,6 +15,7 @@ os.environ["FUNCTIONS_EMULATOR"] = "true"
 
 @pytest.fixture
 def mock_db():
+    """Function mock_db."""
     with patch("services.push_service._get_db") as mock_get_db:
         db = MagicMock()
         mock_get_db.return_value = db

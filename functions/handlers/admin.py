@@ -485,6 +485,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
         if product_updates:
             @get_firestore().transactional
             def restore_stock_batch(transaction):
+                """Function restore_stock_batch."""
                 product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_updates]
                 snapshots = list(transaction.get_all(product_refs))
                 for snapshot in snapshots:

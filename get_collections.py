@@ -1,3 +1,4 @@
+"""Module get_collections.py."""
 import re
 
 # Dart

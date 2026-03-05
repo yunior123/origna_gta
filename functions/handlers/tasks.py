@@ -91,6 +91,7 @@ def _process_one_stale_order(order_id: str) -> bool:
     # Transactionally update the order to EXPIRED
     @get_firestore().transactional
     def try_expire_order(transaction):
+        """Function try_expire_order."""
         fresh_doc = order_ref.get(transaction=transaction)
         if not fresh_doc.exists:
             return "not_found", False, [], None

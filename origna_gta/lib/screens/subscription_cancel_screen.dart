@@ -5,6 +5,14 @@ import 'package:origna_gta/utils/design_tokens.dart';
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
+/// Screen shown when the user cancels Stripe checkout before completing payment.
+///
+/// Reassures the user that no charge was made and offers two CTAs:
+/// - **Resubscribe** — returns to [AppRoutes.subscription] to retry.
+/// - **Back to Home** — clears the navigation stack and returns to [AppRoutes.home].
+///
+/// Layout is responsive: content is centered and capped at 500 logical pixels
+/// wide so it looks correct on mobile, tablet, and desktop.
 class SubscriptionCancelScreen extends StatelessWidget {
   const SubscriptionCancelScreen({super.key});
 

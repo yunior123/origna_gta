@@ -11,11 +11,14 @@ PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 5005
 
 
 class SPAHandler(http.server.SimpleHTTPRequestHandler):
+    """Class SPAHandler."""
     def __init__(self, *args, **kwargs):
+        """Function __init__."""
         super().__init__(*args, directory=WEB_DIR, **kwargs)
 
     def do_GET(self):
         # Check if the requested path maps to a real file
+        """Function do_GET."""
         path = self.translate_path(self.path)
         if not os.path.exists(path) or (os.path.isdir(path) and not os.path.exists(os.path.join(path, 'index.html'))):
             # SPA fallback: serve index.html for any unmatched route
@@ -24,6 +27,7 @@ class SPAHandler(http.server.SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
         # Suppress noisy logging during tests
+        """Function log_message."""
         pass
 
 

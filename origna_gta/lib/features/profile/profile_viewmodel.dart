@@ -9,6 +9,7 @@ final profileViewModelProvider = StateNotifierProvider.autoDispose<ProfileViewMo
   return ProfileViewModel(ref);
 });
 
+/// Documentation for ProfileViewModel
 class ProfileViewModel extends StateNotifier<ProfileState> {
   final Ref _ref;
 

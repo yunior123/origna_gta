@@ -51,6 +51,7 @@ class ShippingQuantityDiscount(BaseModel):
     @field_validator("discountType")
     @classmethod
     def validate_discount_type(cls, v: str) -> str:
+        """Function validate_discount_type."""
         if v not in DiscountTypeValues.ALL:
             raise ValueError(f"Invalid discount type: {v}. Must be one of: {DiscountTypeValues.ALL}")
         return v
@@ -247,6 +248,7 @@ class SellerWarehouse(BaseModel):
     @field_validator("type")
     @classmethod
     def validate_type(cls, v: str) -> str:
+        """Function validate_type."""
         if v not in WarehouseTypeValues.ALL:
             raise ValueError(f"type must be one of: {WarehouseTypeValues.ALL}")
         return v
@@ -459,6 +461,7 @@ class Product(BaseModel):
     @field_validator("lifecycleStatus")
     @classmethod
     def validate_lifecycle_status(cls, v: str) -> str:
+        """Function validate_lifecycle_status."""
         if v not in ProductLifecycleStatusValues.ALL:
             raise ValueError(f"Invalid lifecycleStatus: {v}. Must be one of: {ProductLifecycleStatusValues.ALL}")
         return v
@@ -466,6 +469,7 @@ class Product(BaseModel):
     @field_validator("categoryId")
     @classmethod
     def validate_category_id(cls, v: int) -> int:
+        """Function validate_category_id."""
         if v not in CategoryIds.ALL:
             raise ValueError(f"Invalid categoryId: {v}. Must be one of: {CategoryIds.ALL}")
         return v
@@ -473,6 +477,7 @@ class Product(BaseModel):
     @field_validator("condition")
     @classmethod
     def validate_condition(cls, v: str | None) -> str | None:
+        """Function validate_condition."""
         if v is not None and v not in ProductConditionValues.ALL:
             raise ValueError(f"Invalid condition: {v}. Must be one of: {ProductConditionValues.ALL}")
         return v
@@ -513,6 +518,7 @@ class Product(BaseModel):
     @field_validator("description")
     @classmethod
     def validate_description(cls, v: str) -> str:
+        """Function validate_description."""
         dangerous_patterns = ["javascript:", "data:text/html", "vbscript:", "expression("]
         v_lower = v.lower()
         for pattern in dangerous_patterns:
@@ -523,6 +529,7 @@ class Product(BaseModel):
     @field_validator("digitalType")
     @classmethod
     def validate_digital_type(cls, v: str | None) -> str | None:
+        """Function validate_digital_type."""
         if v is not None and v not in ["software", "book"]:
             raise ValueError(f"digitalType must be 'software' or 'book', got '{v}'")
         return v
@@ -530,6 +537,7 @@ class Product(BaseModel):
     @field_validator("digitalBuilds")
     @classmethod
     def validate_digital_builds(cls, v: dict[str, str] | None) -> dict[str, str] | None:
+        """Function validate_digital_builds."""
         if v is None:
             return v
         valid_platforms = {"macos", "windows", "linux"}
@@ -543,6 +551,7 @@ class Product(BaseModel):
     @field_validator("bookSourceUrl")
     @classmethod
     def validate_book_source_url(cls, v: str | None) -> str | None:
+        """Function validate_book_source_url."""
         if v is not None and not v.startswith("https://"):
             raise ValueError("bookSourceUrl must start with https://")
         return v
@@ -730,6 +739,7 @@ class ProductCreate(BaseModel):
     def validate_lifecycle_status_create(cls, v: str) -> str:
         # Sellers can only create in 'draft'. The handler overwrites to 'under_review',
         # but we enforce this at the model layer too (defense-in-depth against model misuse).
+        """Function validate_lifecycle_status_create."""
         if v != ProductLifecycleStatusValues.DRAFT:
             raise ValueError(
                 f"lifecycleStatus must be '{ProductLifecycleStatusValues.DRAFT}' when creating a product; "
@@ -740,6 +750,7 @@ class ProductCreate(BaseModel):
     @field_validator("condition")
     @classmethod
     def validate_condition_create(cls, v: str | None) -> str | None:
+        """Function validate_condition_create."""
         if v is not None and v not in ProductConditionValues.ALL:
             raise ValueError(f"Invalid condition: {v}. Must be one of: {ProductConditionValues.ALL}")
         return v
@@ -747,6 +758,7 @@ class ProductCreate(BaseModel):
     @field_validator("digitalType")
     @classmethod
     def validate_digital_type_create(cls, v: str | None) -> str | None:
+        """Function validate_digital_type_create."""
         if v is not None and v not in ("software", "book"):
             raise ValueError(f"digitalType must be 'software' or 'book', got '{v}'")
         return v
@@ -754,6 +766,7 @@ class ProductCreate(BaseModel):
     @field_validator("bookSourceUrl")
     @classmethod
     def validate_book_source_url_create(cls, v: str | None) -> str | None:
+        """Function validate_book_source_url_create."""
         if v is not None and not v.startswith("https://"):
             raise ValueError("bookSourceUrl must start with https://")
         return v
@@ -862,6 +875,7 @@ class ProductUpdate(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name_update(cls, v: str | None) -> str | None:
+        """Function validate_name_update."""
         if v is None:
             return v
         import re

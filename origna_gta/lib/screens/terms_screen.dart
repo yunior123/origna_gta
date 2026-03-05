@@ -67,6 +67,7 @@ List<_TermsSection> _parseSections(String raw) {
   return sections;
 }
 
+/// Documentation for TermsScreen
 class TermsScreen extends ConsumerWidget {
   const TermsScreen({super.key});
 

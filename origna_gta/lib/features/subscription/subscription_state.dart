@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
+/// Documentation for SubscriptionState
 class SubscriptionState {
   final bool isLoading;
   final String? errorMessage;
@@ -31,6 +32,7 @@ class SubscriptionState {
   }
 }
 
+/// Documentation for SubscriptionInfo
 class SubscriptionInfo {
   final String status;
   final bool isPremium;

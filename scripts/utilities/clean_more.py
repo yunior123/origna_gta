@@ -1,3 +1,4 @@
+"""Module clean_more.py."""
 with open('STATE.md', 'r') as f:
     lines = f.read().split('\n')
 

@@ -58,6 +58,7 @@ class TestStockRevalidation:
         mock_seller_doc.to_dict.return_value = {"suspended": False}
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = Mock()
             if name == "orders":
                 # document() should return order_ref which has .get() and .update()
@@ -126,6 +127,7 @@ class TestStockRevalidation:
         mock_seller_doc.to_dict.return_value = {"suspended": True}
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = Mock()
             if name == "orders":
                 coll.document.return_value.get.return_value = mock_order_doc
@@ -180,6 +182,7 @@ class TestStockRevalidation:
         mock_product_doc.exists = False
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = Mock()
             if name == "orders":
                 coll.document.return_value.get.return_value = mock_order_doc
@@ -242,6 +245,7 @@ class TestStockRevalidation:
         mock_seller_doc.to_dict.return_value = {"suspended": False}
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = Mock()
             if name == "orders":
                 # document() should return order_ref which has .get() and .update()

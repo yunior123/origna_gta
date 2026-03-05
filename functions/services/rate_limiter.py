@@ -28,6 +28,7 @@ class RateLimiter:
     """Simple in-memory + Firestore rate limiter"""
 
     def __init__(self, db):
+        """Function __init__."""
         self.db = db
         self.collection = Collections.RATE_LIMITS
 
@@ -62,6 +63,7 @@ class RateLimiter:
             # FIXED: Use transaction to prevent race conditions
             @firestore.transactional
             def check_and_increment(transaction, ref):
+                """Function check_and_increment."""
                 doc = ref.get(transaction=transaction)
 
                 if doc.exists:

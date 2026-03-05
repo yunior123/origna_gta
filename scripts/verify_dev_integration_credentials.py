@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Module verify_dev_integration_credentials.py."""
 
 import argparse
 import json
@@ -81,6 +82,7 @@ def _validate_password(role: str, api_key: str, email: str, password: str) -> bo
 
 
 def main() -> int:
+    """Function main."""
     parser = argparse.ArgumentParser(
         description=(
             "Verify integration TEST_* passwords against DEV Firebase Auth (signInWithPassword). "

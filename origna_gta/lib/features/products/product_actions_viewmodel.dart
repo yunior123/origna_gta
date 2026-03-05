@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/utils/utils.dart';
 
+/// Documentation for ProductActionsState
 class ProductActionsState {
   final bool isLoading;
   final bool isSuccess;
@@ -18,6 +19,7 @@ final productActionsViewModelProvider = StateNotifierProvider.autoDispose<Produc
   return ProductActionsViewModel(ref);
 });
 
+/// Documentation for ProductActionsViewModel
 class ProductActionsViewModel extends StateNotifier<ProductActionsState> {
   final Ref _ref;
 

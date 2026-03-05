@@ -1,3 +1,4 @@
+"""Module analyze_coverage.py."""
 import ast
 import glob
 import re

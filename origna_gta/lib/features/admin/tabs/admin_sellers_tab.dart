@@ -8,6 +8,7 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Documentation for AdminSellersTab
 class AdminSellersTab extends ConsumerWidget {
   const AdminSellersTab({super.key});
 

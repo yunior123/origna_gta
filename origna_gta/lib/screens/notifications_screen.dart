@@ -27,6 +27,7 @@ final _userNotificationsProvider = StreamProvider.autoDispose<List<AppNotificati
       .map((snap) => snap.docs.map(AppNotification.fromDoc).toList());
 });
 
+/// Documentation for NotificationsScreen
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
@@ -72,6 +73,7 @@ class NotificationsScreen extends ConsumerWidget {
   }
 }
 
+/// Documentation for NotificationsScreenLayout
 class NotificationsScreenLayout extends StatelessWidget {
   final AsyncValue<List<AppNotification>> notificationsAsync;
   final String? uid;

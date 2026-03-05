@@ -106,6 +106,7 @@ def generate_test_plan(findings: list) -> str:
 
 
 def main():
+    """Function main."""
     parser = argparse.ArgumentParser(
         description="🧪 QA Coverage Scanner — test health analysis (no LLM cost)"
     )

@@ -13,6 +13,7 @@ import '../core/schema/schema_constants.dart';
 import '../features/chat/chat_provider.dart';
 import '../features/chat/chat_repository.dart';
 
+/// Documentation for ChatScreenArgs
 class ChatScreenArgs {
   final String productId;
   final String productTitle;
@@ -20,6 +21,7 @@ class ChatScreenArgs {
   const ChatScreenArgs({required this.productId, required this.productTitle});
 }
 
+/// Documentation for ChatScreen
 class ChatScreen extends ConsumerStatefulWidget {
   final String productId;
   final String productTitle;

@@ -62,6 +62,7 @@ venv/
 functions/.env
 functions/.env.local
 functions/serviceAccountKey.json
+functions/serviceAccountKey*.json
 functions/stripe.txt
 
 # --- Dependency directories ---

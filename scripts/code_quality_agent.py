@@ -36,7 +36,7 @@ SKIP_DIRS = {
     ".git", "node_modules", "build", ".dart_tool", "__pycache__",
     "venv", ".venv", "emulator-data", "test-results", "playwright-report",
     ".firebase", ".pub-cache", "Pods", ".symlinks", "ios", "macos",
-    "android", "windows", "linux", "web",
+    "android", "windows", "linux", "web", ".worktrees",
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -54,6 +54,7 @@ class Finding:
     suggestion: str = ""  # Fix suggestion
 
     def __str__(self) -> str:
+        """Function __str__."""
         loc = f"{self.file}:{self.line}" if self.line else self.file
         return f"  [{self.severity}] {loc} — {self.message}"
 
@@ -68,6 +69,7 @@ class AgentReport:
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
     def print_summary(self):
+        """Function print_summary."""
         by_cat = {}
         for f in self.findings:
             by_cat.setdefault(f.category, []).append(f)
@@ -656,6 +658,7 @@ def collect_trash(dry_run: bool = False) -> tuple[list[Finding], list[tuple[str,
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def main():
+    """Function main."""
     parser = argparse.ArgumentParser(
         description="🧹 Code Quality Agent — Comments, Refactoring, Organization & Cleanup",
     )

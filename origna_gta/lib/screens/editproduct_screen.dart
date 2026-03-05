@@ -14,6 +14,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import '../../features/products/edit_product_state.dart';
 import '../../features/products/edit_product_viewmodel.dart';
 
+/// Documentation for EditProductScreen
 class EditProductScreen extends ConsumerStatefulWidget {
   final Product product;
 

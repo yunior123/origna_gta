@@ -26,6 +26,7 @@ abstract class CartRepository {
   Stream<List<CartItemModel>> watchCart(String userId);
 }
 
+/// Documentation for FirebaseCartRepository
 class FirebaseCartRepository implements CartRepository {
   static const int maxCartItemQuantity = 99;
   static const int minCartItemQuantity = 1;

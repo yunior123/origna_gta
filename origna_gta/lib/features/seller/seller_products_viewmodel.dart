@@ -36,6 +36,7 @@ final sellerProductsViewModelProvider = StateNotifierProvider.autoDispose<Seller
   return SellerProductsViewModel(ref);
 });
 
+/// Documentation for SellerProductsState
 class SellerProductsState {
   final Set<String> selectedIds;
   final bool isLoading;
@@ -54,6 +55,7 @@ class SellerProductsState {
   }
 }
 
+/// Documentation for SellerProductsViewModel
 class SellerProductsViewModel extends StateNotifier<SellerProductsState> {
   final Ref _ref;
 

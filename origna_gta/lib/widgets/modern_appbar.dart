@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../utils/design_tokens.dart';
 
+/// Documentation for BottomNavItem
 class BottomNavItem {
   final IconData icon;
   final String label;

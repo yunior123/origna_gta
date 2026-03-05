@@ -168,6 +168,7 @@ class TestProductHandlers:
         mock_query.stream.return_value = iter([])  # No pending orders
 
         def collection_side_effect(collection_name):
+            """Function collection_side_effect."""
             mock_collection = Mock()
             if collection_name == "products":
                 mock_collection.document.return_value = mock_product_ref
@@ -365,6 +366,7 @@ class TestOrderHandlers:
 
         # Setup database mock
         def collection_side_effect(coll_name):
+            """Function collection_side_effect."""
             mock_coll = Mock()
             if coll_name == "orders":
                 mock_coll.document.return_value = mock_order_ref
@@ -416,6 +418,7 @@ class TestOrderHandlers:
 
         # Setup database mock
         def collection_side_effect(coll_name):
+            """Function collection_side_effect."""
             mock_coll = Mock()
             if coll_name == "orders":
                 mock_coll.document.return_value = mock_order_ref
@@ -504,6 +507,7 @@ class TestOrderHandlers:
         mock_user_ref.get.return_value = mock_user_doc
 
         def collection_side_effect(coll_name):
+            """Function collection_side_effect."""
             mock_coll = Mock()
             if coll_name == "orders":
                 mock_coll.document.return_value = mock_order_ref
@@ -566,6 +570,7 @@ class TestOrderHandlers:
         mock_product_ref.get.return_value = mock_product_doc
 
         def collection_side_effect(coll_name):
+            """Function collection_side_effect."""
             mock_coll = Mock()
             if coll_name == "orders":
                 mock_coll.document.return_value = mock_order_ref
@@ -707,6 +712,116 @@ class TestOrderHandlers:
         # Firestore txn.update still runs — shipping approval is committed
         mock_txn.update.assert_called()
 
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
+    @patch("handlers.orders.get_db")
+    def test_update_shipping_cost_requires_seller_item_ownership(self, mock_get_db, mock_rl):
+        """Seller without any item in the order cannot update shipping."""
+        from handlers.orders import update_shipping_cost
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        order_data = {
+            "orderId": "order_ship_1",
+            "userId": "buyer_1",
+            "items": [{"productId": "prod_1", "sellerId": "seller_real", "quantity": 1}],
+            "orderStatus": "confirmed",
+            "paymentStatus": "authorized",
+            "shippingCostCents": 500,
+            "sellerShippingCosts": {"seller_real": 500},
+        }
+        mock_order_doc = Mock()
+        mock_order_doc.exists = True
+        mock_order_doc.to_dict.return_value = order_data
+        mock_order_ref = Mock()
+        mock_order_ref.get.return_value = mock_order_doc
+        mock_db.collection.return_value.document.return_value = mock_order_ref
+
+        req = Mock()
+        req.auth = Mock(uid="seller_attacker")
+        req.data = {"orderId": "order_ship_1", "newShippingCost": 7.0, "reason": "carrier surcharge"}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_shipping_cost(req)
+
+        assert exc.value.code == "permission-denied"
+
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
+    @patch("handlers.orders.get_db")
+    def test_update_shipping_cost_captured_records_diff_not_totals(self, mock_get_db, mock_rl):
+        """Captured orders keep charged totals fixed and record shipping/tax deltas."""
+        from handlers.orders import update_shipping_cost
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        order_data = {
+            "orderId": "order_ship_2",
+            "userId": "buyer_1",
+            "items": [{"productId": "prod_1", "sellerId": "seller_1", "quantity": 1}],
+            "orderStatus": "confirmed",
+            "paymentStatus": "captured",
+            "shippingAddress": {"state": "ON"},
+            "shippingCostCents": 500,
+            "sellerShippingCosts": {"seller_1": 500},
+            "taxAmountCents": 100,
+            "totalAmountCents": 1000,
+            "taxes": {"HST": 1.00},
+            "stripePaymentIntentId": "pi_captured_123",
+        }
+        mock_order_doc = Mock()
+        mock_order_doc.exists = True
+        mock_order_doc.to_dict.return_value = order_data
+        mock_order_ref = Mock()
+        mock_order_ref.get.return_value = mock_order_doc
+        mock_db.collection.return_value.document.return_value = mock_order_ref
+
+        req = Mock()
+        req.auth = Mock(uid="seller_1")
+        req.data = {"orderId": "order_ship_2", "newShippingCost": 5.50, "reason": "minor label adjustment"}
+
+        result = update_shipping_cost(req)
+
+        assert result["success"] is True
+        assert result["approvalRequired"] is False
+        # One update flags manual review for captured PI; another applies shipping/tax diffs.
+        update_payloads = [c.args[0] for c in mock_order_ref.update.call_args_list]
+        assert any("shippingDiffCents" in payload for payload in update_payloads)
+        assert any("taxDiffCents" in payload for payload in update_payloads)
+        # Captured orders should not rewrite charged totals.
+        assert all("totalAmountCents" not in payload for payload in update_payloads if "shippingDiffCents" in payload)
+
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
+    @patch("handlers.orders.get_db")
+    def test_update_item_status_all_blocks_seller_marking_delivered(self, mock_get_db, mock_rl):
+        """Seller cannot bulk-mark own items as delivered; buyer confirmation is required."""
+        from handlers.orders import _update_item_status_logic
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        order_data = {
+            "orderId": "order_item_1",
+            "userId": "buyer_1",
+            "items": [
+                {"productId": "prod_1", "sellerId": "seller_1", "status": "shipped"},
+                {"productId": "prod_2", "sellerId": "seller_1", "status": "shipped"},
+            ],
+        }
+        mock_order_doc = Mock()
+        mock_order_doc.exists = True
+        mock_order_doc.to_dict.return_value = order_data
+        mock_order_ref = Mock()
+        mock_order_ref.get.return_value = mock_order_doc
+        mock_db.collection.return_value.document.return_value = mock_order_ref
+
+        data = {"orderId": "order_item_1", "productId": "all", "newStatus": "delivered"}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            _update_item_status_logic("seller_1", data, is_admin=False)
+
+        assert exc.value.code == "permission-denied"
+
 
 class TestOrderEdgeCases:
     """Test complex order scenarios and edge cases"""
@@ -733,6 +848,7 @@ class TestOrderEdgeCases:
 
     @patch("handlers.orders.get_db")
     def test_refund_after_capture_uses_reverse_transfer(self, mock_get_db):
+        """Function test_refund_after_capture_uses_reverse_transfer."""
         pass
 
     def test_order_with_zero_total_free_product(self):
@@ -802,12 +918,14 @@ class TestProductLifecycleStatus:
     """Verify ProductLifecycleStatusValues transitions are well-defined"""
 
     def test_all_states_have_transitions(self):
+        """Function test_all_states_have_transitions."""
         from schema_constants import ProductLifecycleStatusValues
 
         for state in ProductLifecycleStatusValues.ALL:
             assert state in ProductLifecycleStatusValues.VALID_TRANSITIONS
 
     def test_active_is_buyer_visible(self):
+        """Function test_active_is_buyer_visible."""
         from schema_constants import ProductLifecycleStatusValues
 
         assert "active" in ProductLifecycleStatusValues.BUYER_VISIBLE
@@ -824,6 +942,7 @@ class TestAdminApproveProductStatusSync:
     def test_approve_writes_status_active(
         self, mock_get_db, mock_create_response, mock_index, mock_email
     ):
+        """Function test_approve_writes_status_active."""
         from handlers.products import admin_approve_product
 
         product_data = {
@@ -847,6 +966,7 @@ class TestAdminApproveProductStatusSync:
 
         # Wire: users/{admin_id} → user_doc, products/{prod_id} → product_ref
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = Mock()
             if name == "users":
                 coll.document.return_value.get.return_value = mock_user_doc
@@ -877,6 +997,7 @@ class TestAdminRejectProductStatusSync:
     @patch("handlers.products.create_success_response")
     @patch("handlers.products.get_db")
     def test_reject_writes_status_paused(self, mock_get_db, mock_create_response, mock_email, mock_algolia_delete):
+        """Function test_reject_writes_status_paused."""
         from handlers.products import admin_reject_product
 
         product_data = {
@@ -899,6 +1020,7 @@ class TestAdminRejectProductStatusSync:
         mock_get_db.return_value = mock_db
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = Mock()
             if name == "users":
                 coll.document.return_value.get.return_value = mock_user_doc

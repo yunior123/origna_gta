@@ -78,6 +78,7 @@ class PaymentProviderConfig {
 // PAYMENT PROVIDER CONFIGURATION - Extensible for future providers
 // ============================================================================
 
+/// Documentation for SellerRegistrationScreen
 class SellerRegistrationScreen extends ConsumerStatefulWidget {
   const SellerRegistrationScreen({super.key});
 

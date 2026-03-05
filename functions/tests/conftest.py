@@ -25,6 +25,7 @@ class MockHttpsError(Exception):
     """Mock Firebase HttpsError"""
 
     def __init__(self, code, message, details=None):
+        """Function __init__."""
         self.code = code
         self.message = message
         self.details = details
@@ -44,6 +45,7 @@ def decorator_passthrough(*args, **kwargs):
 
     # Case: @decorator(arg=val)
     def decorator(func):
+        """Function decorator."""
         return func
 
     return decorator
@@ -54,6 +56,7 @@ class MockResponse:
     """Mock Firebase Response that behaves like a real response"""
 
     def __init__(self, body, status=200, headers=None, mimetype="text/plain"):
+        """Function __init__."""
         self.status_code = status
         if isinstance(body, bytes):
             self.response = [body]
@@ -164,6 +167,7 @@ def firestore_client(firebase_app):
         mock_client = MagicMock(spec=BaseClient)
 
         def get_all_impl(refs, **kwargs):
+            """Function get_all_impl."""
             return [ref.get() for ref in refs]
 
         mock_client.get_all.side_effect = get_all_impl
@@ -394,6 +398,7 @@ def mock_firestore_client(monkeypatch):
 
     # Implement get_all() for batch product fetches (used by create_checkout_session)
     def get_all_impl(doc_refs):
+        """Function get_all_impl."""
         results = []
         for ref in doc_refs:
             doc = ref.get()
@@ -420,6 +425,7 @@ def mock_firestore_client(monkeypatch):
 
     # Set stripe error classes to valid exception subclasses so except clauses work
     class _MockStripeError(Exception):
+        """Class _MockStripeError."""
         pass
 
     mock_stripe.error = MagicMock()
@@ -849,6 +855,7 @@ def setup_mock_db_for_seller_lookup(mock_db, seller_data=None):
 
     # For transaction.get(doc_ref)
     def transaction_get_side_effect(doc_ref):
+        """Function transaction_get_side_effect."""
         doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)
         if doc_id in seller_data:
             return seller_data[doc_id]
@@ -889,6 +896,7 @@ class FirestoreMockBuilder:
     """
 
     def __init__(self):
+        """Function __init__."""
         self.documents = {}  # Store: {collection_name: {doc_id: doc_data}}
         self.queries = {}  # Store: {query_key: results}
 
@@ -977,6 +985,7 @@ class FirestoreMockBuilder:
         # Create collection() method that returns collection mocks
         def collection_impl(collection_name):
             # Normalize collection_name: accept enums, mock objects with .value, or other objects
+            """Function collection_impl."""
             if hasattr(collection_name, "value"):
                 collection_name = collection_name.value
             elif not isinstance(collection_name, str):
@@ -989,6 +998,7 @@ class FirestoreMockBuilder:
 
             # Create document() method that returns document refs
             def document_impl(doc_id=None):
+                """Function document_impl."""
                 if doc_id is None:
                     doc_id = "auto_generated_id"
                 mock_doc_ref = MagicMock()
@@ -997,6 +1007,7 @@ class FirestoreMockBuilder:
                 # Create get() method that returns document snapshots
                 def get_impl(transaction=None):
                     # Return the stored document if present, else a not-found snapshot
+                    """Function get_impl."""
                     col = collection_name
                     if hasattr(col, "value"):
                         col = col.value
@@ -1014,11 +1025,13 @@ class FirestoreMockBuilder:
 
                 # Create update() and set() methods
                 def update_impl(data):
+                    """Function update_impl."""
                     if collection_name not in builder.documents:
                         builder.documents[collection_name] = {}
                     builder.documents[collection_name][doc_id].update(data)
 
                 def set_impl(data, merge=False):
+                    """Function set_impl."""
                     if collection_name not in builder.documents:
                         builder.documents[collection_name] = {}
                     if merge and doc_id in builder.documents[collection_name]:
@@ -1038,9 +1051,11 @@ class FirestoreMockBuilder:
 
             # Create where() method for queries
             def where_impl(field, operator, value):
+                """Function where_impl."""
                 mock_query = MagicMock()
 
                 def get_impl():
+                    """Function get_impl."""
                     results = []
                     if collection_name in builder.documents:
                         for doc_id, doc_data in builder.documents[collection_name].items():
@@ -1064,6 +1079,7 @@ class FirestoreMockBuilder:
 
             # Create add() method for creating new documents
             def add_impl(data):
+                """Function add_impl."""
                 import uuid
 
                 new_id = str(uuid.uuid4())
@@ -1076,6 +1092,7 @@ class FirestoreMockBuilder:
 
             # Create limit() method
             def limit_impl(count):
+                """Function limit_impl."""
                 mock_query = MagicMock()
                 mock_query.get = MagicMock(return_value=MagicMock(docs=[]))
                 return mock_query
@@ -1088,10 +1105,12 @@ class FirestoreMockBuilder:
 
         # Create transaction() method
         def transaction_impl():
+            """Function transaction_impl."""
             mock_transaction = MagicMock()
 
             def get_impl(doc_ref):
                 # Extract doc_id from reference-like objects (support .id, .path)
+                """Function get_impl."""
                 doc_id = None
                 if hasattr(doc_ref, "id"):
                     doc_id = doc_ref.id
@@ -1120,6 +1139,7 @@ class FirestoreMockBuilder:
                 return mock_doc
 
             def update_impl(doc_ref, data):
+                """Function update_impl."""
                 doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)
                 for col_name in builder.documents:
                     if doc_id in builder.documents[col_name]:
@@ -1127,6 +1147,7 @@ class FirestoreMockBuilder:
                         return
 
             def set_impl(doc_ref, data, merge=False):
+                """Function set_impl."""
                 doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)
                 path = doc_ref.path if hasattr(doc_ref, "path") else ""
                 col_name = path.split("/")[0] if "/" in path else "orders" # Default to orders for checkout
@@ -1154,6 +1175,7 @@ class FirestoreMockBuilder:
         # refs pointing to different collections with the same doc_id (e.g.
         # users/seller_123 vs seller_profiles/seller_123) resolve correctly.
         def get_all_impl(doc_refs):
+            """Function get_all_impl."""
             results = []
             for doc_ref in doc_refs:
                 doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)

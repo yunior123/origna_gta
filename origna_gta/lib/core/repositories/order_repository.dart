@@ -4,6 +4,7 @@ import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart' as constants;
 
+/// Documentation for FirebaseOrderRepository
 class FirebaseOrderRepository implements OrderRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;

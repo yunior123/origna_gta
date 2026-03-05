@@ -183,6 +183,7 @@ SELLERS = [
 
 
 def seed_sellers(db: firestore.Client) -> None:
+    """Function seed_sellers."""
     print("\n── Sellers ────────────────────────────────────────────")
     for s in SELLERS:
         uid = s["uid"]
@@ -815,6 +816,7 @@ PRODUCTS = [
 
 
 def seed_products(db: firestore.Client) -> None:
+    """Function seed_products."""
     print("\n── Products ────────────────────────────────────────────")
     for p in PRODUCTS:
         seller = SELLERS[p["seller_idx"]]
@@ -863,6 +865,7 @@ def seed_products(db: firestore.Client) -> None:
 # REVIEWS
 # ─────────────────────────────────────────────────────────────────────────────
 def seed_reviews(db: firestore.Client) -> None:
+    """Function seed_reviews."""
     print("\n── Reviews ────────────────────────────────────────────")
     active_pids = [p["pid"] for p in PRODUCTS if p.get("lifecycle") == ProductLifecycleStatusValues.ACTIVE and p.get("rating_count", 0) > 0]
     reviews = [
@@ -1012,6 +1015,7 @@ ORDER_SPECS = [
 
 
 def seed_orders(db: firestore.Client) -> None:
+    """Function seed_orders."""
     print("\n── Orders ────────────────────────────────────────────")
     for spec in ORDER_SPECS:
         suffix, prod_idx, qty, o_status, p_status, d_status, days, label = spec
@@ -1056,6 +1060,7 @@ def seed_orders(db: firestore.Client) -> None:
 # RETURN REQUESTS
 # ─────────────────────────────────────────────────────────────────────────────
 def seed_return_requests(db: firestore.Client) -> None:
+    """Function seed_return_requests."""
     print("\n── Return Requests ────────────────────────────────────")
     returns = [
         (f"{PREFIX}return_requested",   f"{PREFIX}o_delivered_1", ReturnStatusValues.REQUESTED, "Item not as described"),
@@ -1095,6 +1100,7 @@ def seed_return_requests(db: firestore.Client) -> None:
 # FAVORITES & CART (for admin)
 # ─────────────────────────────────────────────────────────────────────────────
 def seed_favorites_and_cart(db: firestore.Client) -> None:
+    """Function seed_favorites_and_cart."""
     print("\n── Favorites & Cart (admin) ───────────────────────────")
     fav_pids = [p["pid"] for p in PRODUCTS if p.get("lifecycle") == ProductLifecycleStatusValues.ACTIVE][:15]
     fav_coll = db.collection(Collections.USERS).document(ADMIN_UID).collection(Collections.FAVORITES)
@@ -1131,6 +1137,7 @@ def seed_favorites_and_cart(db: firestore.Client) -> None:
 # COUPONS
 # ─────────────────────────────────────────────────────────────────────────────
 def seed_coupons(db: firestore.Client) -> None:
+    """Function seed_coupons."""
     print("\n── Coupons ────────────────────────────────────────────")
     coupons = [
         {
@@ -1188,6 +1195,7 @@ def seed_coupons(db: firestore.Client) -> None:
 # SELLER METRICS
 # ─────────────────────────────────────────────────────────────────────────────
 def seed_seller_metrics(db: firestore.Client) -> None:
+    """Function seed_seller_metrics."""
     print("\n── Seller Metrics ─────────────────────────────────────")
     for s in SELLERS[:3]:
         uid = s["uid"]
@@ -1216,6 +1224,7 @@ def seed_seller_metrics(db: firestore.Client) -> None:
 # LICENSES (for digital products already purchased)
 # ─────────────────────────────────────────────────────────────────────────────
 def seed_licenses(db: firestore.Client) -> None:
+    """Function seed_licenses."""
     print("\n── Licenses ───────────────────────────────────────────")
     licenses = [
         {
@@ -1269,6 +1278,7 @@ def seed_licenses(db: firestore.Client) -> None:
 # ADMIN USER — ensure doc has all fields
 # ─────────────────────────────────────────────────────────────────────────────
 def ensure_admin_user(db: firestore.Client) -> None:
+    """Function ensure_admin_user."""
     print("\n── Admin User ──────────────────────────────────────────")
     ref = db.collection(Collections.USERS).document(ADMIN_UID)
     doc = ref.get()
@@ -1303,6 +1313,7 @@ def ensure_admin_user(db: firestore.Client) -> None:
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 def main() -> int:
+    """Function main."""
     parser = argparse.ArgumentParser(description="Mega seed dev Firebase for QA")
     parser.add_argument("--project", default="orignagta-dev")
     parser.add_argument("--allow-prod", action="store_true", help="Allow seeding prod (DANGEROUS)")

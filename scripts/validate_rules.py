@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Module validate_rules.py."""
 
 import json
 import subprocess
@@ -9,6 +10,7 @@ ENVIRONMENTS = ['orignagta-dev', 'orignagta-staging', 'orignagta']
 LOCAL_RULES_FILE = 'firestore.rules'
 
 def get_access_token():
+    """Function get_access_token."""
     try:
         result = subprocess.run(
             ['gcloud', 'auth', 'print-access-token'],
@@ -23,6 +25,7 @@ def get_access_token():
         sys.exit(1)
 
 def get_deployed_rules(project_id, access_token):
+    """Function get_deployed_rules."""
     print(f"Fetching rules for {project_id}...")
     
     # 1. Get the latest release for Cloud Firestore
@@ -78,6 +81,7 @@ def normalize_rules(rules_text):
     return '\\n'.join([line.rstrip() for line in rules_text.strip().splitlines()])
 
 def main():
+    """Function main."""
     if not os.path.exists(LOCAL_RULES_FILE):
         print(f"❌ Error: {LOCAL_RULES_FILE} not found.")
         sys.exit(1)

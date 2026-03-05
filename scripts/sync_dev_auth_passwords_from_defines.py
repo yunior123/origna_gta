@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Module sync_dev_auth_passwords_from_defines.py."""
 
 import argparse
 import json
@@ -71,6 +72,7 @@ def _ensure_password(email: str, password: str) -> None:
 
 
 def main() -> int:
+    """Function main."""
     parser = argparse.ArgumentParser(
         description=(
             "Sync DEV Firebase Auth passwords from an integration defines JSON. "

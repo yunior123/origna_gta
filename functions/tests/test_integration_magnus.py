@@ -56,11 +56,12 @@ class TestCreateCheckoutSessionMagnus:
             # Tax/shipping helpers
             with (
                 patch("handlers.payment_stripe.get_tax_rate", return_value=0.13),
-                patch("handlers.payment_stripe.calculate_shipping_cost", return_value=10.00)
+                patch("handlers.payment_stripe.calculate_shipping_cost", return_value=(10.00, {}))
             ):
                 yield firestore_mock_builder, mock_stripe
 
     def test_01_successful_multi_item(self, setup_mocks, base_request):
+        """Function test_01_successful_multi_item."""
         builder, stripe_mock = setup_mocks
         builder.add_user("buyer_123")
         builder.add_seller("s1")
@@ -84,6 +85,7 @@ class TestCreateCheckoutSessionMagnus:
             assert res["success"] is True
 
     def test_02_price_tampering(self, setup_mocks, base_request):
+        """Function test_02_price_tampering."""
         builder, _ = setup_mocks
         builder.add_user("buyer_123")
         builder.add_seller("s1")
@@ -114,6 +116,7 @@ class TestStripeWebhookMagnus:
             yield firestore_mock_builder, mock_construct
 
     def test_01_signature_missing(self, setup_mocks):
+        """Function test_01_signature_missing."""
         builder, _ = setup_mocks
         req = Mock()
         req.method = "POST"
@@ -140,6 +143,7 @@ class TestCapturePaymentMagnus:
             yield firestore_mock_builder, pi_ret, pi_cap, ch_ret
 
     def test_01_successful_capture(self, setup_mocks, base_request):
+        """Function test_01_successful_capture."""
         builder, pi_ret, pi_cap, ch_ret = setup_mocks
         builder.add_order("o1", payment_status="authorized", order_status="shipped")
 
@@ -156,6 +160,7 @@ class TestCapturePaymentMagnus:
             assert res["success"] is True
 
     def test_02_non_admin_rejection(self, setup_mocks, base_request):
+        """Function test_02_non_admin_rejection."""
         base_request.auth.token = {"admin": False}
         base_request.data = {"orderId": "o1"}
         with pytest.raises(https_fn.HttpsError) as exc:

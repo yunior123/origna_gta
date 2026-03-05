@@ -35,6 +35,7 @@ abstract class AuthRepository {
   Stream<UserModel?> watchProfile(String userId);
 }
 
+/// Documentation for FirebaseAuthRepository
 class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;

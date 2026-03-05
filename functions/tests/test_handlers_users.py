@@ -12,9 +12,12 @@ from schema_constants import Collections, Fields
 
 
 class TestBuyerAddressHandlers:
+    """Tests for buyer address handlers."""
+
     @patch("utils.helpers.geocode_address")
     @patch("handlers.users.get_db")
     def test_add_buyer_address_first_is_default(self, mock_get_db, mock_geocode):
+        """Function test_add_buyer_address_first_is_default."""
         from handlers.users import add_buyer_address
 
         mock_geocode.return_value = (
@@ -55,6 +58,7 @@ class TestBuyerAddressHandlers:
         captured_set_args = []
 
         def fake_set(ref, data, **kwargs):
+            """Function fake_set."""
             captured_set_args.append((ref, data))
 
         mock_transaction.set.side_effect = fake_set
@@ -83,6 +87,7 @@ class TestBuyerAddressHandlers:
     @patch("utils.helpers.geocode_address")
     @patch("handlers.users.get_db")
     def test_add_buyer_address_limit_exceeded(self, mock_get_db, mock_geocode):
+        """Function test_add_buyer_address_limit_exceeded."""
         from handlers.users import add_buyer_address
 
         mock_geocode.return_value = (
@@ -127,6 +132,7 @@ class TestBuyerAddressHandlers:
 
     @patch("handlers.users.get_db")
     def test_update_buyer_address_invalid_id(self, mock_get_db):
+        """Function test_update_buyer_address_invalid_id."""
         from handlers.users import update_buyer_address
 
         mock_request = Mock()
@@ -148,6 +154,7 @@ class TestBuyerAddressHandlers:
 
     @patch("handlers.users.get_db")
     def test_delete_buyer_address_promotes_default(self, mock_get_db):
+        """Function test_delete_buyer_address_promotes_default."""
         from handlers.users import delete_buyer_address
 
         mock_db = Mock()
@@ -205,6 +212,7 @@ class TestBuyerAddressHandlers:
 
     @patch("handlers.users.get_db")
     def test_set_default_buyer_address(self, mock_get_db):
+        """Function test_set_default_buyer_address."""
         from handlers.users import set_default_buyer_address
 
         mock_db = Mock()

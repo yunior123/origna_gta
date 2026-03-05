@@ -71,6 +71,8 @@ sequenceDiagram
 
 ## Quick commands
 - Run all tests: scripts/run_all_tests.sh
+- Strict quality gate (100% + real E2E): scripts/run_quality_gate.sh
+- Real browser E2E smoke: scripts/run_real_e2e_smoke.sh
 - Deploy Firestore rules: scripts/deploy_rules.sh
 - Install pre-push hook (deploys rules): scripts/install_git_hooks.sh
 - Firestore indexes: firebase deploy --only firestore:indexes
@@ -224,4 +226,3 @@ firebase deploy
 - Canada-only delivery enforced in Functions (buyer/shipping addresses only; sellers can be worldwide).
 - Stripe Connect Express direct charges, manual capture.
 - Algolia search with Firestore fallback.
-

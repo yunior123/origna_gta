@@ -18,6 +18,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:shimmer/shimmer.dart';
 
+/// Documentation for SellerProductsScreen
 class SellerProductsScreen extends ConsumerWidget {
   const SellerProductsScreen({super.key});
 

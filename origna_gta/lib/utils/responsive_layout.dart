@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+/// Documentation for ResponsiveBreakpoints
 class ResponsiveBreakpoints {
   // Standard breakpoints (matching common device sizes)
   static const double mobile = 320; // 320px (small phones)

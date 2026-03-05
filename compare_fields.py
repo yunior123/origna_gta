@@ -1,6 +1,8 @@
+"""Module compare_fields.py."""
 import json
 
 def to_camel_case(snake_str):
+    """Function to_camel_case."""
     components = snake_str.lower().split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
 

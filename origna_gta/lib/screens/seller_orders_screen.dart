@@ -19,6 +19,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Documentation for SellerOrdersScreen
 class SellerOrdersScreen extends ConsumerWidget {
   const SellerOrdersScreen({super.key});
 

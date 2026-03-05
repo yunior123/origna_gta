@@ -1,7 +1,9 @@
+"""Module compare_schema.py."""
 import re
 import sys
 
 def parse_py_class(filepath, class_name):
+    """Function parse_py_class."""
     with open(filepath, 'r') as f:
         content = f.read()
     
@@ -21,6 +23,7 @@ def parse_py_class(filepath, class_name):
     return variables
 
 def parse_dart_class(filepath, class_name):
+    """Function parse_dart_class."""
     with open(filepath, 'r') as f:
         content = f.read()
     
@@ -43,6 +46,7 @@ py_file = 'functions/schema_constants.py'
 dart_file = 'origna_gta/lib/core/schema/schema_constants.dart'
 
 def to_camel_case(snake_str):
+    """Function to_camel_case."""
     components = snake_str.lower().split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
 

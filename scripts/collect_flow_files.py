@@ -2436,6 +2436,7 @@ FLOW_SPECS: dict[str, list[str]] = {
 
 @dataclass
 class FlowCopyResult:
+    """Class FlowCopyResult."""
     flow_name: str
     copied_files: int
     missing_count: int
@@ -2601,6 +2602,7 @@ def write_manifest(results: list[FlowCopyResult], elapsed_seconds: float) -> Non
 
 
 def main() -> None:
+    """Function main."""
     started = perf_counter()
     # Wipe the entire output folder first so renamed/deleted flows don't linger
     if DESKTOP.exists():

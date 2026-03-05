@@ -8,6 +8,7 @@ library;
 import 'package:origna_gta/models/generated/models.dart' show Product;
 import 'package:origna_gta/models/models.dart' show CartItemDetailModel;
 
+/// Documentation for AppRoutes
 class AppRoutes {
   static const String home = '/';
 

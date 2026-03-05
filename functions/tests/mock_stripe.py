@@ -13,28 +13,38 @@ MOCK_STRIPE_URL = "http://localhost:4242"
 
 
 class MockStripeResponse:
+    """Class MockStripeResponse."""
     def __init__(self, data: Dict[str, Any]):
+        """Function __init__."""
         self._data = data
 
     def __getattr__(self, name):
+        """Function __getattr__."""
         return self._data.get(name)
 
     def __getitem__(self, key):
+        """Function __getitem__."""
         return self._data[key]
 
     def __contains__(self, key):
+        """Function __contains__."""
         return key in self._data
 
     def get(self, key, default=None):
+        """Function get."""
         return self._data.get(key, default)
 
     def __repr__(self):
+        """Function __repr__."""
         return f"MockStripeResponse({self._data})"
 
 
 class MockStripeAccountAPI:
+    """Mock Stripe Account API."""
+
     @staticmethod
     def create(**kwargs):
+        """Function create."""
         try:
             response = requests.post(f"{MOCK_STRIPE_URL}/v1/accounts", json=kwargs)
             response.raise_for_status()
@@ -66,8 +76,11 @@ class MockStripeAccountAPI:
 
 
 class MockStripeAccountLinkAPI:
+    """Mock Stripe Account Link API."""
+
     @staticmethod
     def create(**kwargs):
+        """Function create."""
         try:
             response = requests.post(f"{MOCK_STRIPE_URL}/v1/account_links", json=kwargs)
             response.raise_for_status()
@@ -85,8 +98,11 @@ class MockStripeAccountLinkAPI:
 
 
 class MockStripeCheckoutSessionAPI:
+    """Mock Stripe Checkout Session API."""
+
     @staticmethod
     def create(**kwargs):
+        """Function create."""
         try:
             response = requests.post(f"{MOCK_STRIPE_URL}/v1/checkout/sessions", json=kwargs)
             response.raise_for_status()
@@ -127,6 +143,7 @@ class MockStripeCheckoutSessionAPI:
 
     @staticmethod
     def retrieve(session_id):
+        """Function retrieve."""
         try:
             response = requests.get(f"{MOCK_STRIPE_URL}/v1/checkout/sessions/{session_id}")
             response.raise_for_status()
@@ -152,12 +169,16 @@ class MockStripeCheckoutSessionAPI:
 
 
 class MockStripeCheckoutAPI:
+    """Class MockStripeCheckoutAPI."""
     def __init__(self):
+        """Function __init__."""
         self.Session = MockStripeCheckoutSessionAPI
 
 
 class MockStripeAPI:
+    """Class MockStripeAPI."""
     def __init__(self):
+        """Function __init__."""
         self.Account = MockStripeAccountAPI
         self.AccountLink = MockStripeAccountLinkAPI
         self.Checkout = MockStripeCheckoutAPI()

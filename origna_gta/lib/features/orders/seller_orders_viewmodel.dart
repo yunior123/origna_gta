@@ -8,6 +8,7 @@ final sellerOrdersViewModelProvider = StateNotifierProvider.autoDispose<SellerOr
   return SellerOrdersViewModel(ref);
 });
 
+/// Documentation for SellerOrdersViewModel
 class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
   final Ref _ref;
 

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/utils/utils.dart';
 
+/// Documentation for ShippingApprovalState
 class ShippingApprovalState {
   final bool isLoading;
   final bool isSuccess;
@@ -18,6 +19,7 @@ final shippingApprovalViewModelProvider = StateNotifierProvider.autoDispose<Ship
   return ShippingApprovalViewModel(ref);
 });
 
+/// Documentation for ShippingApprovalViewModel
 class ShippingApprovalViewModel extends StateNotifier<ShippingApprovalState> {
   final Ref _ref;
 

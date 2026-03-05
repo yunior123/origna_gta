@@ -1,3 +1,4 @@
+"""Module shipping.py."""
 import logging
 
 from firebase_functions import https_fn
@@ -29,6 +30,9 @@ def calculate_shipping_cost(req: https_fn.CallableRequest) -> dict:
         cost = _calculate_shipping_cost(items, address, speed=speed)
 
         return {"success": True, "cost": cost}
+    except https_fn.HttpsError:
+        # Preserve explicit validation/permission errors from this handler.
+        raise
     except ValueError as e:
         raise https_fn.HttpsError("invalid-argument", str(e)) from e
     except Exception as e:

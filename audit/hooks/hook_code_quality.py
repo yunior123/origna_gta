@@ -39,6 +39,7 @@ class CodeQualityHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a SENIOR STAFF ENGINEER focusing on Code Quality, Refactoring, and Maintainability.
 
 {PROJECT_CONTEXT}

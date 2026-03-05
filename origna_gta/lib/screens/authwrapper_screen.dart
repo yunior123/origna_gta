@@ -14,6 +14,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 // Splash removal is handled entirely by index.html JS (flutter-first-frame + 5s fallback).
 
+/// Documentation for AuthWrapper
 class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
 

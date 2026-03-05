@@ -10,9 +10,11 @@ import certifi
 PROJECT = "orignagta-dev"
 
 def get_token():
+    """Function get_token."""
     return subprocess.check_output(["gcloud", "auth", "print-access-token"]).decode().strip()
 
 def create_user(uid, email, name, roles, extra_fields=None):
+    """Function create_user."""
     token = get_token()
     url = f"https://firestore.googleapis.com/v1/projects/{PROJECT}/databases/(default)/documents/users/{uid}"
     fields = {

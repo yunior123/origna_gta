@@ -18,6 +18,7 @@ import '../../features/products/add_product_state.dart';
 import '../../features/products/add_product_viewmodel.dart';
 import '../../features/seller/warehouses_viewmodel.dart';
 
+/// Documentation for AddProductScreen
 class AddProductScreen extends ConsumerStatefulWidget {
   const AddProductScreen({super.key});
 

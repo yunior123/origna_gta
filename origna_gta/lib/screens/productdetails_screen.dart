@@ -48,6 +48,7 @@ final _productRatingsProvider = StreamProvider.autoDispose.family<List<Map<Strin
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
+/// Documentation for ProductDetailScreen
 class ProductDetailScreen extends ConsumerWidget {
   final String productId;
   final Map<String, dynamic>? product; // Optional initial data

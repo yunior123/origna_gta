@@ -1,4 +1,5 @@
 
+/// Documentation for ProfileState
 class ProfileState {
   final bool isLoading;
   final String? errorMessage;

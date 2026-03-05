@@ -8,12 +8,14 @@ AUTH = 'http://localhost:9099'
 PROJECT = 'orignagta'
 
 def post_json(url, data, method='POST'):
+    """Function post_json."""
     req = Request(url, json.dumps(data).encode(), {'Content-Type': 'application/json'})
     if method != 'POST':
         req.get_method = lambda: method
     return json.loads(urlopen(req).read())
 
 def decode_jwt(token):
+    """Function decode_jwt."""
     p = token.split('.')[1]
     p += '=' * (4 - len(p) % 4)
     return json.loads(base64.b64decode(p))

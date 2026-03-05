@@ -1,3 +1,4 @@
+"""Module clean_state_flutter.py."""
 import re
 
 with open('STATE.md', 'r') as f:

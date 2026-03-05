@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 
+/// Documentation for EmptyOrdersCard
 class EmptyOrdersCard extends StatelessWidget {
   final String? filterLabel;
   const EmptyOrdersCard({super.key, this.filterLabel});
@@ -40,6 +41,7 @@ class EmptyOrdersCard extends StatelessWidget {
   }
 }
 
+/// Documentation for InfoChip
 class InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -67,6 +69,7 @@ class InfoChip extends StatelessWidget {
 
 enum OrderStatus { confirmed, processing, shipped, delivered, cancelled, refunded, pending }
 
+/// Documentation for OrderSummaryCard
 class OrderSummaryCard extends StatelessWidget {
   final String orderId;
 
@@ -148,6 +151,7 @@ class OrderSummaryCard extends StatelessWidget {
   }
 }
 
+/// Documentation for StatusBadge
 class StatusBadge extends StatelessWidget {
   final OrderStatus status;
 
@@ -183,6 +187,7 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
+/// Documentation for TimelineStep
 class TimelineStep extends StatelessWidget {
   final OrderStatus status;
 

@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../features/subscription/subscription_provider.dart';
 import '../features/subscription/subscription_state.dart';
 
+/// Documentation for SubscriptionScreen
 class SubscriptionScreen extends ConsumerWidget {
   const SubscriptionScreen({super.key});
 

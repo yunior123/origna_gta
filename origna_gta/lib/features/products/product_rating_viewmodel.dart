@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/utils/utils.dart';
 
+/// Documentation for ProductRatingState
 class ProductRatingState {
   final bool isLoading;
   final bool isSuccess;
@@ -22,6 +23,7 @@ final productRatingViewModelProvider = StateNotifierProvider.autoDispose<Product
   return ProductRatingViewModel(ref);
 });
 
+/// Documentation for ProductRatingViewModel
 class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
   final Ref _ref;
   KeepAliveLink? _keepAliveLink;

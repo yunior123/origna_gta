@@ -38,10 +38,12 @@ def register_hook(cls):
 
 
 def get_all_hooks() -> dict[str, type[BaseHook]]:
+    """Function get_all_hooks."""
     return dict(_HOOK_REGISTRY)
 
 
 def get_hook(name: str) -> type[BaseHook]:
+    """Function get_hook."""
     if name not in _HOOK_REGISTRY:
         available = ", ".join(sorted(_HOOK_REGISTRY.keys()))
         raise KeyError(f"Unknown hook '{name}'. Available: {available}")
@@ -62,6 +64,7 @@ class Finding:
     category: str = ""              # e.g. "security", "logic", "performance"
 
     def to_dict(self) -> dict:
+        """Function to_dict."""
         return {
             "severity": self.severity,
             "title": self.title,
@@ -74,6 +77,7 @@ class Finding:
 
     @property
     def severity_rank(self) -> int:
+        """Function severity_rank."""
         return SEVERITY_ORDER.get(self.severity, 99)
 
 
@@ -90,13 +94,16 @@ class HookResult:
 
     @property
     def critical_count(self) -> int:
+        """Function critical_count."""
         return sum(1 for f in self.findings if f.severity == CRITICAL)
 
     @property
     def high_count(self) -> int:
+        """Function high_count."""
         return sum(1 for f in self.findings if f.severity == HIGH)
 
     def to_dict(self) -> dict:
+        """Function to_dict."""
         return {
             "hook_name": self.hook_name,
             "status": self.status,
@@ -138,6 +145,7 @@ class BaseHook(ABC):
     target_files: list[str] = []
 
     def __init__(self, provider: str = "anthropic"):
+        """Function __init__."""
         self.provider = provider
         self._client: anthropic.Anthropic | None = None
 

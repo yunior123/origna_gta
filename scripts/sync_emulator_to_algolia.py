@@ -130,6 +130,7 @@ print(f"\n🚀 Pushing {len(algolia_objects)} products to Algolia index '{INDEX_
 client = SearchClient(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY)
 
 async def push_and_verify():
+    """Function push_and_verify."""
     try:
         resp = await client.save_objects(index_name=INDEX_NAME, objects=algolia_objects)
         print("✅ Upload complete!")

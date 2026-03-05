@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Module validate_storage_rules.py."""
 
 import json
 import subprocess
@@ -9,6 +10,7 @@ ENVIRONMENTS = ['orignagta-dev', 'orignagta-staging', 'orignagta']
 LOCAL_RULES_FILE = 'origna_gta/storage.rules'
 
 def get_access_token():
+    """Function get_access_token."""
     try:
         result = subprocess.run(
             ['gcloud', 'auth', 'print-access-token'],
@@ -23,6 +25,7 @@ def get_access_token():
         sys.exit(1)
 
 def get_deployed_rules(project_id, access_token):
+    """Function get_deployed_rules."""
     print(f"Fetching storage rules for {project_id}...")
     
     # 1. Get the latest release for Firebase Storage
@@ -79,6 +82,7 @@ def normalize_rules(rules_text):
 
 def main():
     # Attempt to locate the storage.rules relative to the repo root
+    """Function main."""
     rules_path = LOCAL_RULES_FILE
     if not os.path.exists(rules_path):
         rules_path = 'storage.rules'

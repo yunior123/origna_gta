@@ -1,3 +1,4 @@
+"""Module seed_dev_db.py."""
 
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
@@ -13,6 +14,7 @@ import google.auth.transport.requests
 import google.oauth2.credentials
 
 def get_access_token():
+    """Function get_access_token."""
     try:
         token = subprocess.check_output(["gcloud", "auth", "print-access-token"]).decode("utf-8").strip()
         return token
@@ -21,6 +23,7 @@ def get_access_token():
         return None
 
 def initialize_firebase():
+    """Function initialize_firebase."""
     access_token = get_access_token()
     if access_token:
         cred = google.oauth2.credentials.Credentials(access_token)
@@ -43,6 +46,7 @@ def initialize_firebase():
         return firestore.client()
 
 def create_test_users(db):
+    """Function create_test_users."""
     print("Creating test users...")
     users = [
         {"email": "seller@test.com", "password": "password123", "role": "seller", "name": "Test Seller", "start_uid": "test-seller-uid"},
@@ -101,6 +105,7 @@ def create_test_users(db):
     return created_uids
 
 def create_test_products(db, seller_uid):
+    """Function create_test_products."""
     print("Creating test products...")
     products = [
         {

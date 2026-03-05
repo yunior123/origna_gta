@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/cart_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:origna_gta/core/repositories/cart_repository.dart';
 import 'package:origna_gta/services/analytics_service.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -91,12 +91,14 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
 // BATCH PRODUCT CACHE — fetches all cart product docs in one whereIn query
 // ============================================================================
 
-/// Provider that returns the current quantity for a specific product in cart
-/// Uses document-level stream to prevent rebuilds when other items change
-final cartItemQuantityProvider = Provider.autoDispose.family<AsyncValue<int>, String>((ref, productId) {
+/// Provider that returns the current quantity for a specific cart item.
+/// Keyed by [cartItemId] (not productId) so duplicate-product entries are tracked independently.
+/// F-004 fix: using productId caused merged quantities when the same product appeared twice.
+final cartItemQuantityProvider = Provider.autoDispose.family<AsyncValue<int>, String>((ref, cartItemId) {
   final itemsAsync = ref.watch(cartItemsProvider);
   return itemsAsync.whenData((items) {
-    return items.where((item) => item.productId == productId).fold<int>(0, (total, item) => total + item.quantity);
+    final matches = items.where((item) => item.cartItemId == cartItemId);
+    return matches.isEmpty ? 0 : matches.first.quantity;
   });
 });
 
@@ -118,6 +120,44 @@ final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((ref) 
 // ============================================================================
 // CART DETAILS PROVIDER (with product info) - BATCH FETCH
 // ============================================================================
+
+/// Validates that all cart items can be shipped to the buyer's default address.
+/// Returns a list of product IDs that are UN-SHIPPABLE to the current destination.
+final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+  final cartItems = await ref.watch(cartWithDetailsProvider.future);
+  if (cartItems.isEmpty) return [];
+
+  final userProfile = await ref.watch(userProfileProvider.future);
+  final destinationState = userProfile?.address?.state;
+
+  // Digital items always shippable.
+  // Physical items: check deliveryOptions. If any option is availableNationwide or matches the state, it's shippable.
+  final unshippable = <String>[];
+
+  for (final item in cartItems) {
+    if (item.isDigital) continue;
+
+    final isLocalOnly = item.isLocalDeliveryOnly || item.isPerishable;
+    final sellerState = item.sellerAddress.state;
+
+    // If local-only and different province, it's un-shippable unless there's a nationwide option
+    bool canShip = false;
+    if (item.deliveryOptions.isEmpty) {
+      // Fallback: if no delivery options defined, assume standard nationwide unless explicitly restricted
+      canShip = !isLocalOnly || (sellerState == destinationState);
+    } else {
+      canShip = item.deliveryOptions.any(
+        (opt) => opt.availableNationwide || (opt.type == DeliveryTypeValues.standard && !isLocalOnly) || (isLocalOnly && sellerState == destinationState),
+      );
+    }
+
+    if (!canShip) {
+      unshippable.add(item.productId);
+    }
+  }
+
+  return unshippable;
+});
 
 /// Cart subtotal - computed from cartWithDetailsProvider
 final cartSubtotalProvider = Provider.autoDispose<double>((ref) {
@@ -187,42 +227,6 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
 // Provider for delivery instructions (stored during cart/checkout flow)
 final deliveryInstructionsProvider = StateProvider.autoDispose<String>((ref) => '');
 
-/// Validates that all cart items can be shipped to the buyer's default address.
-/// Returns a list of product IDs that are UN-SHIPPABLE to the current destination.
-final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>((ref) async {
-  final cartItems = await ref.watch(cartWithDetailsProvider.future);
-  if (cartItems.isEmpty) return [];
-
-  final userProfile = await ref.watch(userProfileProvider.future);
-  final destinationState = userProfile?.address?.state;
-
-  // Digital items always shippable.
-  // Physical items: check deliveryOptions. If any option is availableNationwide or matches the state, it's shippable.
-  final unshippable = <String>[];
-
-  for (final item in cartItems) {
-    if (item.isDigital) continue;
-
-    final isLocalOnly = item.isLocalDeliveryOnly || item.isPerishable;
-    final sellerState = item.sellerAddress.state;
-
-    // If local-only and different province, it's un-shippable unless there's a nationwide option
-    bool canShip = false;
-    if (item.deliveryOptions.isEmpty) {
-      // Fallback: if no delivery options defined, assume standard nationwide unless explicitly restricted
-      canShip = !isLocalOnly || (sellerState == destinationState);
-    } else {
-      canShip = item.deliveryOptions.any((opt) => opt.availableNationwide || (opt.type == DeliveryTypeValues.standard && !isLocalOnly) || (isLocalOnly && sellerState == destinationState));
-    }
-
-    if (!canShip) {
-      unshippable.add(item.productId);
-    }
-  }
-
-  return unshippable;
-});
-
 // ============================================================================
 // SINGLE CART ITEM DETAIL PROVIDER (Family)
 // ============================================================================
@@ -270,6 +274,7 @@ final _cartProductsBatchProvider = FutureProvider.autoDispose<Map<String, Map<St
   return cache;
 });
 
+/// Documentation for CartController
 class CartController {
   final Ref _ref;
 
@@ -278,13 +283,7 @@ class CartController {
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
 
-  Future<bool> addToCart(
-    String productId,
-    int quantity, {
-    String? variantId,
-    String? productName,
-    double? priceCad,
-  }) async {
+  Future<bool> addToCart(String productId, int quantity, {String? variantId, String? productName, double? priceCad}) async {
     final userId = _userId;
     if (userId == null) return false;
 
@@ -302,12 +301,7 @@ class CartController {
 
       await _repository.addToCart(userId, productId, quantity, variantId: variantId);
       if (productName != null && priceCad != null) {
-        unawaited(AnalyticsService.logAddToCart(
-          productId: productId,
-          productName: productName,
-          priceCad: priceCad,
-          quantity: quantity,
-        ));
+        unawaited(AnalyticsService.logAddToCart(productId: productId, productName: productName, priceCad: priceCad, quantity: quantity));
       }
       return true;
     } catch (e, st) {

@@ -1,3 +1,4 @@
+"""Module check_flutter_tests.py."""
 import os
 import glob
 

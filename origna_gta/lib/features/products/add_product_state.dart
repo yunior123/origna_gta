@@ -7,6 +7,7 @@ import 'variant_models.dart';
 /// Sentinel to explicitly clear nullable fields in copyWith.
 const _sentinel = Object();
 
+/// Documentation for AddProductState
 class AddProductState {
   final bool isLoading;
   // PROD-C4: true only during the R2 video upload step inside addProduct()

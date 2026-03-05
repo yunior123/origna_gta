@@ -127,6 +127,7 @@ class TestAdminHandlers:
         mock_target_ref.get.return_value = mock_target_doc
 
         def document_side_effect(doc_id):
+            """Function document_side_effect."""
             if doc_id == "admin_123":
                 return mock_admin_ref
             return mock_target_ref
@@ -270,6 +271,7 @@ class TestAdminHandlers:
         mock_seller_ref.get.return_value = mock_seller_doc
 
         def document_side_effect(doc_id):
+            """Function document_side_effect."""
             if doc_id == "admin_123":
                 return mock_admin_ref
             return mock_seller_ref
@@ -382,6 +384,7 @@ class TestCheckLowStockAlerts:
 
     @pytest.fixture(autouse=True)
     def mock_locks(self):
+        """Function mock_locks."""
         with patch("handlers.cron_jobs.acquire_cron_lock", return_value=True), \
              patch("handlers.cron_jobs.release_cron_lock"):
             yield
@@ -420,6 +423,7 @@ class TestCheckLowStockAlerts:
         mock_seller_doc.to_dict.return_value = {"email": seller_email, "emailConsent": True}
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             coll = Mock()
             if name == "products":
                 coll.where.return_value = mock_products_coll

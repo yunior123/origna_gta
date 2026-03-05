@@ -1,3 +1,4 @@
+"""Module fix_stripe_webhooks.py."""
 
 import os
 import stripe
@@ -81,6 +82,7 @@ def update_secret(project_id, secret_name, secret_value):
         print(f"❌ Failed to update secret in {project_id}: {stderr}")
 
 def main():
+    """Function main."""
     print("🔄 Checking Stripe Webhooks (Test Mode)...")
     
     # 1. List existing webhooks

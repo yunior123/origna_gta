@@ -28,6 +28,7 @@ Uint8List? _compressImageEditIsolate(Uint8List bytes) {
   return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
 }
 
+/// Documentation for EditProductViewModel
 class EditProductViewModel extends StateNotifier<EditProductState> {
   final Ref _ref;
   final models.Product _product;

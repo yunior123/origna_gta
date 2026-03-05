@@ -1,6 +1,8 @@
+"""Module compare_rules.py."""
 import re
 
 def parse_py_class(filepath, class_name):
+    """Function parse_py_class."""
     with open(filepath, 'r') as f:
         content = f.read()
     match = re.search(r'class ' + class_name + r'.*?:(.*?)(?=class \w|\Z)', content, re.DOTALL)

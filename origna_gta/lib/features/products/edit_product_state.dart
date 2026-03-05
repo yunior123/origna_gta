@@ -6,6 +6,7 @@ import 'package:origna_gta/utils/utils.dart';
 /// Sentinel value used to distinguish "not provided" from "explicitly set to null".
 const _sentinel = Object();
 
+/// Documentation for EditProductState
 class EditProductState {
   final bool isLoading;
   final String? errorMessage;

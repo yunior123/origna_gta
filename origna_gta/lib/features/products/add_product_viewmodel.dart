@@ -28,6 +28,7 @@ Uint8List? _compressImageAddIsolate(Uint8List bytes) {
   return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
 }
 
+/// Documentation for AddProductViewModel
 class AddProductViewModel extends StateNotifier<AddProductState> {
   final Ref _ref;
 

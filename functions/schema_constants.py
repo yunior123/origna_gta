@@ -591,6 +591,7 @@ class Fields:
     TAX_CENTS = "taxCents"  # Per-item tax in cents (inside itemTaxes array)
     TAX_RATE = "taxRate"  # Per-item tax rate (inside itemTaxes array)
     SHIPPING_COST_CENTS = "shippingCostCents"
+    ITEM_SHIPPING_CENTS = "itemShippingCents"  # Per-item shipping cost snapshot at checkout
     SELLER_SHIPPING_COSTS = "sellerShippingCosts"  # Map[sellerId → cents] for multi-seller orders
     TOTAL_AMOUNT_CENTS = "totalAmountCents"
     CURRENCY = "currency"
@@ -667,6 +668,8 @@ class Fields:
     QUANTITY = "quantity"
     BUYER_NOTE = "buyerNote"
     CART_ITEM_ID = "cartItemId"
+    SHIPPING_DIFF_CENTS = "shippingDiffCents"   # recorded when PI is already captured (F-002)
+    TAX_DIFF_CENTS = "taxDiffCents"              # recorded when PI is already captured (F-002)
     PRICE_SNAPSHOT = "priceSnapshot"
     TRACKING_NUMBER = "trackingNumber"
     CARRIER = "carrier"
@@ -1970,12 +1973,14 @@ class PlaceholderAddressValues:
 
 
 class DigitalTypeValues:
+    """Class DigitalTypeValues."""
     SOFTWARE = "software"
     BOOK = "book"
     ALL = [SOFTWARE, BOOK]
 
 
 class DigitalPlatformValues:
+    """Class DigitalPlatformValues."""
     MACOS = "macos"
     WINDOWS = "windows"
     LINUX = "linux"
@@ -1983,6 +1988,7 @@ class DigitalPlatformValues:
 
 
 class LicenseStatusValues:
+    """Class LicenseStatusValues."""
     ACTIVE = "active"
     REVOKED = "revoked"
     ALL = [ACTIVE, REVOKED]

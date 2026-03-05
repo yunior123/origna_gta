@@ -26,6 +26,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 
+/// Documentation for HomeScreen
 class HomeScreen extends ConsumerStatefulWidget {
   final UserModel? userModel;
   const HomeScreen({super.key, this.userModel});
@@ -58,7 +59,9 @@ class _AddProductButton extends ConsumerWidget {
     final userCanAccess = isSeller || isAdmin;
 
     if (kDebugMode) {
-      debugPrint('🔍 _AddProductButton.build() → isSeller=$isSeller, isAdmin=$isAdmin, userCanAccess=$userCanAccess');
+      debugPrint(
+        '🔍 _AddProductButton.build() → isSeller=$isSeller, isAdmin=$isAdmin, userCanAccess=$userCanAccess',
+      );
     }
 
     // Show only for sellers/admins to match Firestore rules.
@@ -68,7 +71,8 @@ class _AddProductButton extends ConsumerWidget {
     }
 
     // Check if seller account is fully verified (charges AND payouts enabled)
-    final isVerified = sellerStatus.whenOrNull(data: (status) => status.isComplete) ?? false;
+    final isVerified =
+        sellerStatus.whenOrNull(data: (status) => status.isComplete) ?? false;
 
     // Must match Firestore rules: admin OR verified seller.
     final canAddProducts = isAdmin || isVerified;
@@ -82,11 +86,21 @@ class _AddProductButton extends ConsumerWidget {
       icon: const Icon(Icons.add_box_outlined, color: Colors.white),
       onPressed: () {
         if (isSuspended) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('auth.seller_suspended'.tr()), backgroundColor: DesignTokens.primary));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('auth.seller_suspended'.tr()),
+              backgroundColor: DesignTokens.primary,
+            ),
+          );
           return;
         }
         if (!canAddProducts) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('auth.complete_stripe_verification'.tr()), backgroundColor: DesignTokens.primary));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('auth.complete_stripe_verification'.tr()),
+              backgroundColor: DesignTokens.primary,
+            ),
+          );
           return;
         }
         Navigator.pushNamed(context, AppRoutes.addProduct);
@@ -107,7 +121,8 @@ class _CartBadge extends ConsumerStatefulWidget {
   ConsumerState<_CartBadge> createState() => _CartBadgeState();
 }
 
-class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProviderStateMixin {
+class _CartBadgeState extends ConsumerState<_CartBadge>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _pulseAnimation;
@@ -130,7 +145,10 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
                 child: IconButton(
                   key: const Key('home_cart_button'),
                   tooltip: 'home.shopping_cart'.tr(),
-                  icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                  icon: const Icon(
+                    Icons.shopping_cart_outlined,
+                    color: Colors.white,
+                  ),
                   onPressed: () async {
                     _triggerAnimation();
                     if (user == null) {
@@ -161,13 +179,29 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: DesignTokens.primary, width: 2),
-                        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)],
+                        border: Border.all(
+                          color: DesignTokens.primary,
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: DesignTokens.primary.withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
-                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
                       child: Text(
                         cartCount > 99 ? '99+' : '$cartCount',
-                        style: const TextStyle(color: DesignTokens.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: DesignTokens.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -189,9 +223,18 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.15,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   void _triggerAnimation() {
@@ -206,7 +249,9 @@ class _CategoryChips extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedCategoryId = ref.watch(homeViewModelProvider.select((state) => state.selectedCategoryId));
+    final selectedCategoryId = ref.watch(
+      homeViewModelProvider.select((state) => state.selectedCategoryId),
+    );
     // All breakpoints: horizontal scroll — consistent UI across mobile/tablet/desktop
     return Container(
       height: 38,
@@ -218,20 +263,33 @@ class _CategoryChips extends ConsumerWidget {
         itemBuilder: (context, index) {
           final isAll = index == 0;
           final category = isAll ? null : productCategories[index - 1];
-          final isSelected = isAll ? selectedCategoryId == null : selectedCategoryId == category?.categoryId;
+          final isSelected = isAll
+              ? selectedCategoryId == null
+              : selectedCategoryId == category?.categoryId;
           return _buildChip(context, isAll, category, isSelected);
         },
       ),
     );
   }
 
-  Widget _buildChip(BuildContext context, bool isAll, ProductCategories? category, bool isSelected) {
+  Widget _buildChip(
+    BuildContext context,
+    bool isAll,
+    ProductCategories? category,
+    bool isSelected,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final unselectedBg = isDark ? DesignTokens.darkSurface : DesignTokens.surface;
+    final unselectedBg = isDark
+        ? DesignTokens.darkSurface
+        : DesignTokens.surface;
     final unselectedText = isDark ? Colors.white : DesignTokens.textPrimary;
-    final unselectedBorder = isDark ? DesignTokens.primary.withValues(alpha: 0.25) : DesignTokens.textSecondary.withValues(alpha: 0.3);
+    final unselectedBorder = isDark
+        ? DesignTokens.primary.withValues(alpha: 0.25)
+        : DesignTokens.textSecondary.withValues(alpha: 0.3);
     return Semantics(
-      label: isAll ? 'category-chip-all' : 'category-chip-${category!.categoryId}',
+      label: isAll
+          ? 'category-chip-all'
+          : 'category-chip-${category!.categoryId}',
       child: Padding(
         padding: const EdgeInsets.only(right: 8, bottom: 4),
         child: AnimatedContainer(
@@ -240,29 +298,52 @@ class _CategoryChips extends ConsumerWidget {
           decoration: BoxDecoration(
             gradient: isSelected
                 ? LinearGradient(
-                    colors: [DesignTokens.primary.withValues(alpha: 0.9), DesignTokens.secondary.withValues(alpha: 0.9)],
+                    colors: [
+                      DesignTokens.primary.withValues(alpha: 0.9),
+                      DesignTokens.secondary.withValues(alpha: 0.9),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
                 : null,
             color: !isSelected ? unselectedBg : null,
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            border: Border.all(color: isSelected ? DesignTokens.primary : unselectedBorder, width: 1.5),
-            boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))] : [],
+            border: Border.all(
+              color: isSelected ? DesignTokens.primary : unselectedBorder,
+              width: 1.5,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: DesignTokens.primary.withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: () {
-                homeNotifier.onCategorySelected(isAll ? null : category!.categoryId);
+                homeNotifier.onCategorySelected(
+                  isAll ? null : category!.categoryId,
+                );
               },
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
               splashColor: Colors.white.withValues(alpha: 0.2),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 child: Text(
                   isAll ? 'home.category_all'.tr() : category!.name.tr(),
-                  style: TextStyle(color: isSelected ? Colors.white : unselectedText, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, fontSize: 13),
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : unselectedText,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),
@@ -287,31 +368,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Determine whether the management action row will be shown on product cards
     // so the grid aspect ratio can accommodate the extra row height.
     final userProfile = ref.watch(userProfileProvider).valueOrNull;
-    final canManageProducts = (userProfile?.roles.contains(UserRoles.admin) ?? false) || (userProfile?.roles.contains(UserRoles.seller) ?? false);
+    final canManageProducts =
+        (userProfile?.roles.contains(UserRoles.admin) ?? false) ||
+        (userProfile?.roles.contains(UserRoles.seller) ?? false);
 
     // Choix de la mascotte selon la parité du jour
     final day = DateTime.now().day;
     final showSparky = day % 2 == 0;
-    final mascotController = showSparky ? ref.watch(mascotControllerProvider) : null;
-    final mooseController = !showSparky ? ref.watch(mooseControllerProvider) : null;
+    final mascotController = showSparky
+        ? ref.watch(mascotControllerProvider)
+        : null;
+    final mooseController = !showSparky
+        ? ref.watch(mooseControllerProvider)
+        : null;
 
     return Scaffold(
       appBar: _buildModernAppBar(),
       body: Container(
-        decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
+        decoration: BoxDecoration(
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
+        ),
         child: Stack(
           children: [
             // Main scrollable content — centered with max-width on desktop/web
             Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
+                constraints: const BoxConstraints(
+                  maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+                ),
                 child: RefreshIndicator(
                   color: DesignTokens.primary,
-                  onRefresh: () => ref.read(homeViewModelProvider.notifier).refresh(),
+                  onRefresh: () =>
+                      ref.read(homeViewModelProvider.notifier).refresh(),
                   child: CustomScrollView(
                     controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: ClampingScrollPhysics(),
+                    ),
                     slivers: [
                       // App Purpose Tagline
                       SliverToBoxAdapter(
@@ -322,7 +416,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 13,
-                              color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary,
+                              color: isDark
+                                  ? DesignTokens.textDisabled
+                                  : DesignTokens.textSecondary,
                               fontWeight: FontWeight.w400,
                               height: 1.3,
                             ),
@@ -333,28 +429,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       // Animated Search Bar + autocomplete overlay
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
+                          padding: EdgeInsets.all(
+                            ResponsiveBreakpoints.getSpacing(
+                              context,
+                              SpacingSize.md,
+                            ),
+                          ),
                           child: _buildSearchBarWithOverlay(homeNotifier),
                         ),
                       ),
 
                       // Sort + Price filter row (GAP #1, GAP #2)
-                      SliverToBoxAdapter(child: _SortAndFilterRow(homeNotifier: homeNotifier)),
+                      SliverToBoxAdapter(
+                        child: _SortAndFilterRow(homeNotifier: homeNotifier),
+                      ),
 
                       // Category Chips
-                      SliverToBoxAdapter(child: _CategoryChips(homeNotifier: homeNotifier)),
+                      SliverToBoxAdapter(
+                        child: _CategoryChips(homeNotifier: homeNotifier),
+                      ),
 
                       // Subcategory Chips (shown when a category is selected)
-                      SliverToBoxAdapter(child: _SubcategoryChips(homeNotifier: homeNotifier)),
+                      SliverToBoxAdapter(
+                        child: _SubcategoryChips(homeNotifier: homeNotifier),
+                      ),
 
                       // GAP #6 — Recently Viewed horizontal section
                       const SliverToBoxAdapter(child: _RecentlyViewedSection()),
 
-                      const SliverToBoxAdapter(child: SizedBox(height: DesignTokens.spacing20)),
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: DesignTokens.spacing20),
+                      ),
 
                       // Product Grid
                       _ProductGrid(
-                        cardAspectRatio: _getCardAspectRatio(context, canManageProduct: canManageProducts),
+                        cardAspectRatio: _getCardAspectRatio(
+                          context,
+                          canManageProduct: canManageProducts,
+                        ),
                         fallbackUserModel: widget.userModel,
                       ),
 
@@ -364,10 +476,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       // Footer with legal links
                       SliverToBoxAdapter(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 24,
+                            horizontal: 16,
+                          ),
                           child: Column(
                             children: [
-                              Divider(color: DesignTokens.textSecondary.withValues(alpha: 0.2)),
+                              Divider(
+                                color: DesignTokens.textSecondary.withValues(
+                                  alpha: 0.2,
+                                ),
+                              ),
                               const SizedBox(height: 12),
                               Wrap(
                                 alignment: WrapAlignment.center,
@@ -383,10 +502,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         // On mobile: shows in-app screen
                                         openPrivacyPolicy(context);
                                       },
-                                      child: Text('home.privacy_policy'.tr(), style: TextStyle(color: DesignTokens.primary, fontSize: 13)),
+                                      child: Text(
+                                        'home.privacy_policy'.tr(),
+                                        style: TextStyle(
+                                          color: DesignTokens.primary,
+                                          fontSize: 13,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  Text('|', style: TextStyle(color: DesignTokens.textSecondary.withValues(alpha: 0.4), fontSize: 13)),
+                                  Text(
+                                    '|',
+                                    style: TextStyle(
+                                      color: DesignTokens.textSecondary
+                                          .withValues(alpha: 0.4),
+                                      fontSize: 13,
+                                    ),
+                                  ),
                                   Semantics(
                                     label: 'btn-home-terms-of-service',
                                     button: true,
@@ -397,15 +529,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         // On mobile: shows in-app screen
                                         openTermsOfService(context);
                                       },
-                                      child: Text('home.terms_of_service'.tr(), style: TextStyle(color: DesignTokens.primary, fontSize: 13)),
+                                      child: Text(
+                                        'home.terms_of_service'.tr(),
+                                        style: TextStyle(
+                                          color: DesignTokens.primary,
+                                          fontSize: 13,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'home.copyright'.tr(namedArgs: {'year': DateTime.now().year.toString()}),
-                                style: TextStyle(color: DesignTokens.textSecondary, fontSize: 11),
+                                'home.copyright'.tr(
+                                  namedArgs: {
+                                    'year': DateTime.now().year.toString(),
+                                  },
+                                ),
+                                style: TextStyle(
+                                  color: DesignTokens.textSecondary,
+                                  fontSize: 11,
+                                ),
                               ),
                               const SizedBox(height: 16),
                             ],
@@ -423,8 +568,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 bottom: 12,
                 right: 8,
                 child: showSparky
-                    ? ShopMascot(controller: mascotController!, size: 80, showSpeechBubble: true)
-                    : CanadianMoose(controller: mooseController!, size: 90, showSpeechBubble: true),
+                    ? ShopMascot(
+                        controller: mascotController!,
+                        size: 80,
+                        showSpeechBubble: true,
+                      )
+                    : CanadianMoose(
+                        controller: mooseController!,
+                        size: 90,
+                        showSpeechBubble: true,
+                      ),
               ),
           ],
         ),
@@ -457,19 +610,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Container(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
+            colors: [
+              DesignTokens.gradientStart,
+              DesignTokens.gradientMiddle,
+              DesignTokens.gradientEnd,
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          boxShadow: [BoxShadow(color: DesignTokens.gradientStart.withValues(alpha: 0.5), blurRadius: 20, offset: const Offset(0, 8))],
+          boxShadow: [
+            BoxShadow(
+              color: DesignTokens.gradientStart.withValues(alpha: 0.5),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: SafeArea(
           child: Align(
             alignment: Alignment.center,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: ResponsiveBreakpoints.contentMaxWidth),
+              constraints: const BoxConstraints(
+                maxWidth: ResponsiveBreakpoints.contentMaxWidth,
+              ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -486,10 +654,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                                  borderRadius: BorderRadius.circular(
+                                    DesignTokens.radius16,
+                                  ),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
                                 ),
-                                child: const Icon(Icons.shopping_bag, color: Colors.white, size: 28),
+                                child: const Icon(
+                                  Icons.shopping_bag,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
                               ),
                             );
                           },
@@ -499,20 +676,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           header: true,
                           child: ShaderMask(
                             shaderCallback: (bounds) => LinearGradient(
-                              colors: [Colors.white, Colors.white.withValues(alpha: 0.8)],
+                              colors: [
+                                Colors.white,
+                                Colors.white.withValues(alpha: 0.8),
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ).createShader(bounds),
                             child: const Text(
                               key: Key('home_screen_title'),
                               'Origna GTA',
-                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 24, letterSpacing: 0.5),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                fontSize: 24,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const Row(children: [_SettingsButton(), _AddProductButton(), _CartBadge()]),
+                    const Row(
+                      children: [
+                        _SettingsButton(),
+                        _AddProductButton(),
+                        _CartBadge(),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -526,14 +717,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Search bar wrapped in an overlay-capable column for autocomplete (GAP #7).
   Widget _buildSearchBarWithOverlay(HomeViewModel homeNotifier) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final showOverlay = ref.watch(homeViewModelProvider.select((s) => s.showSearchOverlay));
-    final recentSearches = ref.watch(homeViewModelProvider.select((s) => s.recentSearches));
-    final suggestions = ref.watch(homeViewModelProvider.select((s) => s.searchSuggestions));
+    final showOverlay = ref.watch(
+      homeViewModelProvider.select((s) => s.showSearchOverlay),
+    );
+    final recentSearches = ref.watch(
+      homeViewModelProvider.select((s) => s.recentSearches),
+    );
+    final suggestions = ref.watch(
+      homeViewModelProvider.select((s) => s.searchSuggestions),
+    );
     final query = _searchController.text;
 
     // Decide what to show in the overlay
-    final showRecent = showOverlay && query.isEmpty && recentSearches.isNotEmpty;
-    final showSuggestions = showOverlay && query.length >= 2 && suggestions.isNotEmpty;
+    final showRecent =
+        showOverlay && query.isEmpty && recentSearches.isNotEmpty;
+    final showSuggestions =
+        showOverlay && query.length >= 2 && suggestions.isNotEmpty;
     final overlayVisible = showRecent || showSuggestions;
 
     return Column(
@@ -555,7 +754,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     homeNotifier.onSearchSubmitted(v);
                     _searchFocusNode.unfocus();
                   },
-                  style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary),
+                  style: TextStyle(
+                    color: isDark ? Colors.white : DesignTokens.textPrimary,
+                  ),
                   cursorColor: DesignTokens.primary,
                   decoration: InputDecoration(
                     hintText: 'home.search_products'.tr(),
@@ -569,7 +770,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           label: 'btn-clear-search',
                           button: true,
                           child: IconButton(
-                            icon: Icon(Icons.close_rounded, color: DesignTokens.textSecondary, size: 20),
+                            icon: Icon(
+                              Icons.close_rounded,
+                              color: DesignTokens.textSecondary,
+                              size: 20,
+                            ),
                             tooltip: 'common.clear'.tr(),
                             onPressed: () {
                               _searchController.clear();
@@ -581,16 +786,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     filled: true,
                     fillColor: Colors.transparent,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius12,
+                      ),
+                      borderSide: BorderSide.none,
+                    ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                      borderSide: BorderSide(color: DesignTokens.textSecondary.withValues(alpha: 0.2), width: 1),
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius12,
+                      ),
+                      borderSide: BorderSide(
+                        color: DesignTokens.textSecondary.withValues(
+                          alpha: 0.2,
+                        ),
+                        width: 1,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                      borderSide: BorderSide(color: DesignTokens.primary, width: 2),
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radius12,
+                      ),
+                      borderSide: BorderSide(
+                        color: DesignTokens.primary,
+                        width: 2,
+                      ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),
@@ -606,7 +831,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             suggestions: showSuggestions ? suggestions : [],
             onTap: (value) {
               _searchController.text = value;
-              _searchController.selection = TextSelection.fromPosition(TextPosition(offset: value.length));
+              _searchController.selection = TextSelection.fromPosition(
+                TextPosition(offset: value.length),
+              );
               homeNotifier.onSearchSubmitted(value);
               _searchFocusNode.unfocus();
             },
@@ -619,7 +846,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Get responsive aspect ratio for product cards.
   /// [canManageProduct] = true when the management action row is visible
   /// (seller/admin), which adds ~32–48 dp and requires taller cards.
-  double _getCardAspectRatio(BuildContext context, {bool canManageProduct = false}) {
+  double _getCardAspectRatio(
+    BuildContext context, {
+    bool canManageProduct = false,
+  }) {
     if (canManageProduct) {
       return ResponsiveBreakpoints.getValue(
         context: context,
@@ -647,11 +877,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final position = _scrollController.position;
       if (position.pixels >= position.maxScrollExtent - 300) {
         final state = ref.read(homeViewModelProvider);
-        if (state.products.isNotEmpty && !state.isLoadingMore && state.hasMore) {
+        if (state.products.isNotEmpty &&
+            !state.isLoadingMore &&
+            state.hasMore) {
           _isPaginating = true;
-          ref.read(homeViewModelProvider.notifier).loadProducts().whenComplete(() {
-            _isPaginating = false;
-          });
+          ref.read(homeViewModelProvider.notifier).loadProducts().whenComplete(
+            () {
+              _isPaginating = false;
+            },
+          );
         }
       }
     } catch (_) {
@@ -665,7 +899,9 @@ class _PaginationLoader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLoadingMore = ref.watch(homeViewModelProvider.select((state) => state.isLoadingMore));
+    final isLoadingMore = ref.watch(
+      homeViewModelProvider.select((state) => state.isLoadingMore),
+    );
 
     if (!isLoadingMore) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -684,7 +920,11 @@ class _PaginationLoader extends ConsumerWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ).createShader(bounds),
-              child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
+              child: const ModernLoadingIndicator(
+                strokeWidth: 3,
+                color: Colors.white,
+                centered: false,
+              ),
             ),
           ),
         ),
@@ -697,13 +937,22 @@ class _ProductGrid extends ConsumerWidget {
   final double cardAspectRatio;
   final UserModel? fallbackUserModel;
 
-  const _ProductGrid({required this.cardAspectRatio, required this.fallbackUserModel});
+  const _ProductGrid({
+    required this.cardAspectRatio,
+    required this.fallbackUserModel,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLoading = ref.watch(homeViewModelProvider.select((state) => state.isLoading));
-    final products = ref.watch(homeViewModelProvider.select((state) => state.displayedProducts));
-    final errorMessage = ref.watch(homeViewModelProvider.select((state) => state.errorMessage));
+    final isLoading = ref.watch(
+      homeViewModelProvider.select((state) => state.isLoading),
+    );
+    final products = ref.watch(
+      homeViewModelProvider.select((state) => state.displayedProducts),
+    );
+    final errorMessage = ref.watch(
+      homeViewModelProvider.select((state) => state.errorMessage),
+    );
     final userProfile = ref.watch(userProfileProvider).valueOrNull;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -715,7 +964,8 @@ class _ProductGrid extends ConsumerWidget {
           title: 'home.error_loading_products'.tr(),
           subtitle: errorMessage,
           action: TextButton.icon(
-            onPressed: () => ref.read(homeViewModelProvider.notifier).loadProducts(),
+            onPressed: () =>
+                ref.read(homeViewModelProvider.notifier).loadProducts(),
             icon: const Icon(Icons.refresh),
             label: Text('common.retry'.tr()),
           ),
@@ -746,7 +996,10 @@ class _ProductGrid extends ConsumerWidget {
             mainAxisSpacing: spacing,
             childAspectRatio: cardAspectRatio,
           ),
-          delegate: SliverChildBuilderDelegate((context, index) => _ShimmerCard(isDark: isDark), childCount: columns * 2),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => _ShimmerCard(isDark: isDark),
+            childCount: columns * 2,
+          ),
         ),
       );
     }
@@ -755,7 +1008,8 @@ class _ProductGrid extends ConsumerWidget {
 
     // Build rank map: sort trending products by score desc, assign rank 1–3
     final rankMap = <String, int>{};
-    final trendingProducts = products.where((p) => p.isTrending).toList()..sort((a, b) => b.trendingScore.compareTo(a.trendingScore));
+    final trendingProducts = products.where((p) => p.isTrending).toList()
+      ..sort((a, b) => b.trendingScore.compareTo(a.trendingScore));
     for (var i = 0; i < trendingProducts.length && i < 3; i++) {
       rankMap[trendingProducts[i].productId] = i + 1;
     }
@@ -797,10 +1051,12 @@ class _RecentlyViewedSection extends ConsumerStatefulWidget {
   const _RecentlyViewedSection();
 
   @override
-  ConsumerState<_RecentlyViewedSection> createState() => _RecentlyViewedSectionState();
+  ConsumerState<_RecentlyViewedSection> createState() =>
+      _RecentlyViewedSectionState();
 }
 
-class _RecentlyViewedSectionState extends ConsumerState<_RecentlyViewedSection> {
+class _RecentlyViewedSectionState
+    extends ConsumerState<_RecentlyViewedSection> {
   List<Product> _products = [];
   bool _loaded = false;
 
@@ -817,7 +1073,11 @@ class _RecentlyViewedSectionState extends ConsumerState<_RecentlyViewedSection> 
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Text(
             'home.recently_viewed'.tr(),
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : DesignTokens.textPrimary,
+            ),
           ),
         ),
         SizedBox(
@@ -831,7 +1091,12 @@ class _RecentlyViewedSectionState extends ConsumerState<_RecentlyViewedSection> 
               final product = _products[index];
               return SizedBox(
                 width: 150,
-                child: ProductCard(key: Key('recently_viewed_${product.productId}'), productId: product.productId, product: product, userModel: null),
+                child: ProductCard(
+                  key: Key('recently_viewed_${product.productId}'),
+                  productId: product.productId,
+                  product: product,
+                  userModel: null,
+                ),
               );
             },
           ),
@@ -872,7 +1137,10 @@ class _RecentlyViewedSectionState extends ConsumerState<_RecentlyViewedSection> 
 
       // Keep the same order as the stored IDs
       final productMap = {for (final p in products) p.productId: p};
-      final ordered = ids.where((id) => productMap.containsKey(id)).map((id) => productMap[id]!).toList();
+      final ordered = ids
+          .where((id) => productMap.containsKey(id))
+          .map((id) => productMap[id]!)
+          .toList();
 
       if (mounted) {
         setState(() {
@@ -911,7 +1179,9 @@ class _SearchOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = showRecent ? recentSearches : suggestions;
-    final label = showRecent ? 'home.recent_searches'.tr() : 'home.suggestions'.tr();
+    final label = showRecent
+        ? 'home.recent_searches'.tr()
+        : 'home.suggestions'.tr();
 
     return Material(
       elevation: 4,
@@ -933,7 +1203,12 @@ class _SearchOverlay extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary, letterSpacing: 0.3),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: DesignTokens.textSecondary,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ),
                   if (showRecent)
@@ -944,7 +1219,13 @@ class _SearchOverlay extends StatelessWidget {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: Text('home.clear_recent'.tr(), style: TextStyle(fontSize: 11, color: DesignTokens.primary)),
+                      child: Text(
+                        'home.clear_recent'.tr(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: DesignTokens.primary,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -953,15 +1234,29 @@ class _SearchOverlay extends StatelessWidget {
               InkWell(
                 onTap: () => onTap(item),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   child: Row(
                     children: [
-                      Icon(showRecent ? Icons.history_rounded : Icons.search_rounded, size: 16, color: DesignTokens.textSecondary),
+                      Icon(
+                        showRecent
+                            ? Icons.history_rounded
+                            : Icons.search_rounded,
+                        size: 16,
+                        color: DesignTokens.textSecondary,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           item,
-                          style: TextStyle(fontSize: 13, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? Colors.white
+                                : DesignTokens.textPrimary,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -985,7 +1280,8 @@ class _SettingsButton extends ConsumerStatefulWidget {
   ConsumerState<_SettingsButton> createState() => _SettingsButtonState();
 }
 
-class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTickerProviderStateMixin {
+class _SettingsButtonState extends ConsumerState<_SettingsButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
 
@@ -1010,7 +1306,10 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
                 onPressed: () {
                   _triggerAnimation();
                   if (user == null) {
-                    showLoginPrompt(context, text: "auth.sign_in_settings_required");
+                    showLoginPrompt(
+                      context,
+                      text: "auth.sign_in_settings_required",
+                    );
                     return;
                   }
                   Navigator.pushNamed(context, AppRoutes.profile);
@@ -1032,8 +1331,14 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
-    _rotationAnimation = Tween<double>(begin: 0.0, end: 0.5).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 0.5,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   void _triggerAnimation() {
@@ -1049,9 +1354,14 @@ class _ShimmerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
       baseColor: isDark ? DesignTokens.darkOutline : DesignTokens.outline,
-      highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.outlineVariant,
+      highlightColor: isDark
+          ? DesignTokens.darkSurfaceVariant
+          : DesignTokens.outlineVariant,
       child: Container(
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1060,7 +1370,9 @@ class _ShimmerCard extends StatelessWidget {
               child: Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(DesignTokens.radius16)),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(DesignTokens.radius16),
+                  ),
                 ),
               ),
             ),
@@ -1075,17 +1387,26 @@ class _ShimmerCard extends StatelessWidget {
                     Container(
                       height: 14,
                       width: double.infinity,
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                     Container(
                       height: 14,
                       width: 80,
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                     Container(
                       height: 14,
                       width: 60,
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                   ],
                 ),
@@ -1109,11 +1430,21 @@ class _SortAndFilterRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedSort = ref.watch(homeViewModelProvider.select((s) => s.selectedSort));
-    final hasPriceFilter = ref.watch(homeViewModelProvider.select((s) => s.hasPriceFilter));
-    final minCents = ref.watch(homeViewModelProvider.select((s) => s.minPriceCents));
-    final maxCents = ref.watch(homeViewModelProvider.select((s) => s.maxPriceCents));
-    final canadaOnly = ref.watch(homeViewModelProvider.select((s) => s.canadaOnly));
+    final selectedSort = ref.watch(
+      homeViewModelProvider.select((s) => s.selectedSort),
+    );
+    final hasPriceFilter = ref.watch(
+      homeViewModelProvider.select((s) => s.hasPriceFilter),
+    );
+    final minCents = ref.watch(
+      homeViewModelProvider.select((s) => s.minPriceCents),
+    );
+    final maxCents = ref.watch(
+      homeViewModelProvider.select((s) => s.maxPriceCents),
+    );
+    final canadaOnly = ref.watch(
+      homeViewModelProvider.select((s) => s.canadaOnly),
+    );
 
     final isSortActive = selectedSort != SortOption.relevance;
 
@@ -1129,27 +1460,54 @@ class _SortAndFilterRow extends ConsumerWidget {
               onTap: () => _showSortSheet(context, selectedSort),
               child: AnimatedContainer(
                 duration: DesignTokens.durationFast,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: isSortActive ? DesignTokens.primary.withValues(alpha: 0.12) : DesignTokens.surfaceVariant.withValues(alpha: 0.6),
+                  color: isSortActive
+                      ? DesignTokens.primary.withValues(alpha: 0.12)
+                      : DesignTokens.surfaceVariant.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                  border: Border.all(color: isSortActive ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: isSortActive
+                        ? DesignTokens.primary
+                        : DesignTokens.outline.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.sort_rounded, size: 14, color: isSortActive ? DesignTokens.primary : DesignTokens.textSecondary),
+                    Icon(
+                      Icons.sort_rounded,
+                      size: 14,
+                      color: isSortActive
+                          ? DesignTokens.primary
+                          : DesignTokens.textSecondary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
-                      isSortActive ? _sortLabel(selectedSort) : 'home.sort_by'.tr(),
+                      isSortActive
+                          ? _sortLabel(selectedSort)
+                          : 'home.sort_by'.tr(),
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: isSortActive ? FontWeight.w600 : FontWeight.w400,
-                        color: isSortActive ? DesignTokens.primary : DesignTokens.textSecondary,
+                        fontWeight: isSortActive
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: isSortActive
+                            ? DesignTokens.primary
+                            : DesignTokens.textSecondary,
                       ),
                     ),
                     const SizedBox(width: 2),
-                    Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: isSortActive ? DesignTokens.primary : DesignTokens.textSecondary),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 14,
+                      color: isSortActive
+                          ? DesignTokens.primary
+                          : DesignTokens.textSecondary,
+                    ),
                   ],
                 ),
               ),
@@ -1164,32 +1522,60 @@ class _SortAndFilterRow extends ConsumerWidget {
               onTap: () => _showPriceSheet(context, minCents, maxCents),
               child: AnimatedContainer(
                 duration: DesignTokens.durationFast,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: hasPriceFilter ? DesignTokens.secondary.withValues(alpha: 0.12) : DesignTokens.surfaceVariant.withValues(alpha: 0.6),
+                  color: hasPriceFilter
+                      ? DesignTokens.secondary.withValues(alpha: 0.12)
+                      : DesignTokens.surfaceVariant.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                  border: Border.all(color: hasPriceFilter ? DesignTokens.secondary : DesignTokens.outline.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: hasPriceFilter
+                        ? DesignTokens.secondary
+                        : DesignTokens.outline.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.attach_money_rounded, size: 14, color: hasPriceFilter ? DesignTokens.secondary : DesignTokens.textSecondary),
+                    Icon(
+                      Icons.attach_money_rounded,
+                      size: 14,
+                      color: hasPriceFilter
+                          ? DesignTokens.secondary
+                          : DesignTokens.textSecondary,
+                    ),
                     const SizedBox(width: 2),
                     Text(
                       hasPriceFilter
-                          ? 'home.filter_price_range'.tr(namedArgs: {'min': '\$${(minCents ?? 0) ~/ 100}', 'max': '\$${(maxCents ?? 50000) ~/ 100}'})
+                          ? 'home.filter_price_range'.tr(
+                              namedArgs: {
+                                'min': '\$${(minCents ?? 0) ~/ 100}',
+                                'max': '\$${(maxCents ?? 50000) ~/ 100}',
+                              },
+                            )
                           : 'home.filter_price'.tr(),
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: hasPriceFilter ? FontWeight.w600 : FontWeight.w400,
-                        color: hasPriceFilter ? DesignTokens.secondary : DesignTokens.textSecondary,
+                        fontWeight: hasPriceFilter
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: hasPriceFilter
+                            ? DesignTokens.secondary
+                            : DesignTokens.textSecondary,
                       ),
                     ),
                     if (hasPriceFilter) ...[
                       const SizedBox(width: 4),
                       GestureDetector(
                         onTap: homeNotifier.clearPriceFilter,
-                        child: Icon(Icons.close_rounded, size: 12, color: DesignTokens.secondary),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 12,
+                          color: DesignTokens.secondary,
+                        ),
                       ),
                     ],
                   ],
@@ -1207,11 +1593,20 @@ class _SortAndFilterRow extends ConsumerWidget {
               onTap: homeNotifier.onToggleCanadaOnly,
               child: AnimatedContainer(
                 duration: DesignTokens.durationFast,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: canadaOnly ? DesignTokens.canadaRed.withValues(alpha: 0.12) : DesignTokens.surfaceVariant.withValues(alpha: 0.6),
+                  color: canadaOnly
+                      ? DesignTokens.canadaRed.withValues(alpha: 0.12)
+                      : DesignTokens.surfaceVariant.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                  border: Border.all(color: canadaOnly ? DesignTokens.canadaRed : DesignTokens.outline.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: canadaOnly
+                        ? DesignTokens.canadaRed
+                        : DesignTokens.outline.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1222,8 +1617,12 @@ class _SortAndFilterRow extends ConsumerWidget {
                       'home.canada_only'.tr(),
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: canadaOnly ? FontWeight.w600 : FontWeight.w400,
-                        color: canadaOnly ? DesignTokens.canadaRed : DesignTokens.textSecondary,
+                        fontWeight: canadaOnly
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: canadaOnly
+                            ? DesignTokens.canadaRed
+                            : DesignTokens.textSecondary,
                       ),
                     ),
                   ],
@@ -1247,7 +1646,11 @@ class _SortAndFilterRow extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(DesignTokens.radius16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(DesignTokens.radius16),
+        ),
+      ),
       builder: (_) => StatefulBuilder(
         builder: (ctx, setSheetState) => SafeArea(
           child: Padding(
@@ -1264,7 +1667,10 @@ class _SortAndFilterRow extends ConsumerWidget {
                         'home.filter_price'.tr(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     TextButton(
@@ -1272,7 +1678,13 @@ class _SortAndFilterRow extends ConsumerWidget {
                         Navigator.pop(ctx);
                         homeNotifier.clearPriceFilter();
                       },
-                      child: Text('home.filter_price_any'.tr(), style: TextStyle(color: DesignTokens.primary, fontSize: 13)),
+                      child: Text(
+                        'home.filter_price_any'.tr(),
+                        style: TextStyle(
+                          color: DesignTokens.primary,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1280,12 +1692,27 @@ class _SortAndFilterRow extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('\$${rangeMin.toInt()}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    Text('\$${rangeMax.toInt()}${rangeMax >= sliderMax ? "+" : ""}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text(
+                      '\$${rangeMin.toInt()}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '\$${rangeMax.toInt()}${rangeMax >= sliderMax ? "+" : ""}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 RangeSlider(
-                  values: RangeValues(rangeMin.clamp(sliderMin, sliderMax), rangeMax.clamp(sliderMin, sliderMax)),
+                  values: RangeValues(
+                    rangeMin.clamp(sliderMin, sliderMax),
+                    rangeMax.clamp(sliderMin, sliderMax),
+                  ),
                   min: sliderMin,
                   max: sliderMax,
                   divisions: divisions,
@@ -1305,12 +1732,17 @@ class _SortAndFilterRow extends ConsumerWidget {
                     label: 'btn-price-filter-apply',
                     button: true,
                     child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: DesignTokens.primary),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: DesignTokens.primary,
+                      ),
                       onPressed: () {
                         Navigator.pop(ctx);
                         final minC = (rangeMin * 100).round();
                         final maxC = (rangeMax * 100).round();
-                        homeNotifier.onPriceFilterChanged(minC > 0 ? minC : null, maxC < sliderMax * 100 ? maxC : null);
+                        homeNotifier.onPriceFilterChanged(
+                          minC > 0 ? minC : null,
+                          maxC < sliderMax * 100 ? maxC : null,
+                        );
                       },
                       child: Text('home.filter_apply'.tr()),
                     ),
@@ -1327,7 +1759,11 @@ class _SortAndFilterRow extends ConsumerWidget {
   void _showSortSheet(BuildContext context, SortOption current) {
     showModalBottomSheet<void>(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(DesignTokens.radius16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(DesignTokens.radius16),
+        ),
+      ),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1337,14 +1773,29 @@ class _SortAndFilterRow extends ConsumerWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                child: Text('home.sort_by'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                child: Text(
+                  'home.sort_by'.tr(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               const Divider(height: 1),
               for (final option in SortOption.values)
                 ListTile(
                   dense: true,
-                  title: Text(_sortLabel(option), style: const TextStyle(fontSize: 14)),
-                  trailing: current == option ? Icon(Icons.check_rounded, color: DesignTokens.primary, size: 18) : null,
+                  title: Text(
+                    _sortLabel(option),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  trailing: current == option
+                      ? Icon(
+                          Icons.check_rounded,
+                          color: DesignTokens.primary,
+                          size: 18,
+                        )
+                      : null,
                   onTap: () {
                     Navigator.pop(context);
                     homeNotifier.onSortChanged(option);
@@ -1374,12 +1825,18 @@ class _SubcategoryChips extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedCategoryId = ref.watch(homeViewModelProvider.select((state) => state.selectedCategoryId));
-    final selectedSubcategory = ref.watch(homeViewModelProvider.select((state) => state.selectedSubcategory));
+    final selectedCategoryId = ref.watch(
+      homeViewModelProvider.select((state) => state.selectedCategoryId),
+    );
+    final selectedSubcategory = ref.watch(
+      homeViewModelProvider.select((state) => state.selectedSubcategory),
+    );
 
     if (selectedCategoryId == null) return const SizedBox.shrink();
 
-    final subcategories = SubcategoryConstants.forCategoryId(selectedCategoryId);
+    final subcategories = SubcategoryConstants.forCategoryId(
+      selectedCategoryId,
+    );
     if (subcategories.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -1394,31 +1851,50 @@ class _SubcategoryChips extends ConsumerWidget {
           itemBuilder: (context, index) {
             final isAll = index == 0;
             final subcategory = isAll ? null : subcategories[index - 1];
-            final isSelected = isAll ? selectedSubcategory == null : selectedSubcategory == subcategory;
+            final isSelected = isAll
+                ? selectedSubcategory == null
+                : selectedSubcategory == subcategory;
 
             return Semantics(
-              label: isAll ? 'subcategory-chip-all' : 'subcategory-chip-$subcategory',
+              label: isAll
+                  ? 'subcategory-chip-all'
+                  : 'subcategory-chip-$subcategory',
               child: Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: AnimatedContainer(
                   duration: DesignTokens.durationFast,
                   decoration: BoxDecoration(
-                    color: isSelected ? DesignTokens.secondary.withValues(alpha: 0.15) : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+                    color: isSelected
+                        ? DesignTokens.secondary.withValues(alpha: 0.15)
+                        : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                    border: Border.all(color: isSelected ? DesignTokens.secondary : DesignTokens.outline.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: isSelected
+                          ? DesignTokens.secondary
+                          : DesignTokens.outline.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                      onTap: () => homeNotifier.onSubcategorySelected(isAll ? null : subcategory),
+                      onTap: () => homeNotifier.onSubcategorySelected(
+                        isAll ? null : subcategory,
+                      ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         child: Text(
                           isAll ? 'home.category_all'.tr() : subcategory!,
                           style: TextStyle(
-                            color: isSelected ? DesignTokens.secondary : DesignTokens.textSecondary,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                            color: isSelected
+                                ? DesignTokens.secondary
+                                : DesignTokens.textSecondary,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                             fontSize: 12,
                           ),
                         ),

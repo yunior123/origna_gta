@@ -40,6 +40,7 @@ TEXT_EXTS = {
 
 @dataclass(frozen=True)
 class MissingRef:
+    """Class MissingRef."""
     raw: str
     repo_rel: str
     locations: tuple[tuple[str, int], ...]
@@ -96,6 +97,7 @@ def _scan_file(
 
 
 def find_missing_refs(repo_root: str, *, max_results: int) -> list[MissingRef]:
+    """Function find_missing_refs."""
     tracked = _git_ls_files(repo_root)
 
     # Match ./foo, scripts/foo, e2e/foo, or common repo-root folders.
@@ -126,6 +128,7 @@ def find_missing_refs(repo_root: str, *, max_results: int) -> list[MissingRef]:
 
 
 def main() -> int:
+    """Function main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", default=os.getcwd())
     parser.add_argument("--max", type=int, default=120)

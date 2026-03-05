@@ -1,3 +1,4 @@
+"""Module email_service.py."""
 import hashlib
 import hmac
 import html

@@ -36,6 +36,7 @@ class HookRunner:
         parallel: bool = True,
         max_workers: int = 3,
     ):
+        """Function __init__."""
         self.changed_only = changed_only
         self.staged_only = staged_only
         self.parallel = parallel

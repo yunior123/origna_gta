@@ -19,6 +19,7 @@ from firebase_functions import https_fn
 def _build_get_all(all_docs):
     """Return a get_all() mock that resolves doc refs from all_docs."""
     def get_all_impl(refs):
+        """Function get_all_impl."""
         results = []
         for ref in refs:
             doc_id = ref.id if hasattr(ref, "id") else str(ref)
@@ -359,6 +360,7 @@ class TestCreateCheckoutSession:
         }
 
         def make_doc_ref(doc_id=None):
+            """Function make_doc_ref."""
             if doc_id is None:
                 doc_id = "auto_generated_id"
             mock_doc_ref = MagicMock()
@@ -431,6 +433,7 @@ class TestCreateCheckoutSession:
         }
 
         def make_doc_ref(doc_id=None):
+            """Function make_doc_ref."""
             if doc_id is None:
                 doc_id = "auto_generated_id"
             mock_doc_ref = MagicMock()
@@ -554,6 +557,122 @@ class TestCreateCheckoutSession:
         assert "Price changed" in str(exc.value) or "Price mismatch" in str(exc.value)
 
 
+class TestStockReservationPlan:
+    """Regression tests for duplicate-line stock reservation planning."""
+
+    def test_aggregates_duplicate_product_quantities(self):
+        """Function test_aggregates_duplicate_product_quantities."""
+        from handlers.payment_stripe import _build_stock_reservation_plan
+
+        validated_items = [
+            {"productId": "prod_1", "quantity": 1, "isDigital": False},
+            {"productId": "prod_1", "quantity": 2, "isDigital": False},
+        ]
+        product_data_by_id = {
+            "prod_1": {
+                "name": "Product 1",
+                "stockQuantity": 10,
+                "inventory": {"allowBackorder": False},
+                "hasVariants": False,
+            }
+        }
+
+        plan = _build_stock_reservation_plan(
+            validated_items=validated_items,
+            product_data_by_id=product_data_by_id,
+            inventory_candidates={},
+        )
+
+        assert plan["stock_deduct_by_product"]["prod_1"] == 3
+        assert plan["warehouse_deduct_by_product"] == {}
+        assert plan["item_warehouse_by_index"] == {}
+
+    def test_duplicate_lines_fail_when_combined_quantity_exceeds_stock(self):
+        """Function test_duplicate_lines_fail_when_combined_quantity_exceeds_stock."""
+        from handlers.payment_stripe import _build_stock_reservation_plan
+
+        validated_items = [
+            {"productId": "prod_1", "quantity": 1, "isDigital": False},
+            {"productId": "prod_1", "quantity": 2, "isDigital": False},
+        ]
+        product_data_by_id = {
+            "prod_1": {
+                "name": "Product 1",
+                "stockQuantity": 2,  # enough per single line, not enough combined
+                "inventory": {"allowBackorder": False},
+                "hasVariants": False,
+            }
+        }
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            _build_stock_reservation_plan(
+                validated_items=validated_items,
+                product_data_by_id=product_data_by_id,
+                inventory_candidates={},
+            )
+
+        assert exc.value.code == "resource-exhausted"
+        assert "Insufficient stock" in str(exc.value)
+
+    def test_warehouse_assignment_does_not_overbook_same_location(self):
+        """Function test_warehouse_assignment_does_not_overbook_same_location."""
+        from handlers.payment_stripe import _build_stock_reservation_plan
+
+        validated_items = [
+            {"productId": "prod_1", "quantity": 2, "isDigital": False},
+            {"productId": "prod_1", "quantity": 2, "isDigital": False},
+        ]
+        product_data_by_id = {
+            "prod_1": {
+                "name": "Product 1",
+                "stockQuantity": 10,
+                "inventory": {"allowBackorder": False},
+                "hasVariants": False,
+            }
+        }
+        # Only one warehouse can satisfy one line of qty=2.
+        inventory_candidates = {"prod_1": [("wh_a", 2)]}
+
+        plan = _build_stock_reservation_plan(
+            validated_items=validated_items,
+            product_data_by_id=product_data_by_id,
+            inventory_candidates=inventory_candidates,
+        )
+
+        # First item reserves warehouse stock, second falls back to global stock.
+        assert plan["warehouse_deduct_by_product"]["prod_1"]["wh_a"] == 2
+        assert plan["item_warehouse_by_index"] == {0: "wh_a"}
+        assert plan["stock_deduct_by_product"]["prod_1"] == 4
+
+    def test_variant_stock_decrements_cumulatively_for_duplicate_variant_lines(self):
+        """Function test_variant_stock_decrements_cumulatively_for_duplicate_variant_lines."""
+        from handlers.payment_stripe import _build_stock_reservation_plan
+
+        validated_items = [
+            {"productId": "prod_1", "quantity": 2, "isDigital": False, "variantId": "v1"},
+            {"productId": "prod_1", "quantity": 1, "isDigital": False, "variantId": "v1"},
+        ]
+        product_data_by_id = {
+            "prod_1": {
+                "name": "Variant Product",
+                "stockQuantity": 10,
+                "inventory": {"allowBackorder": False},
+                "hasVariants": True,
+                "variants": [{"variantId": "v1", "stockQuantity": 3}],
+            }
+        }
+
+        plan = _build_stock_reservation_plan(
+            validated_items=validated_items,
+            product_data_by_id=product_data_by_id,
+            inventory_candidates={},
+        )
+
+        variants = plan["variant_state_by_product"]["prod_1"]
+        assert variants[0]["stockQuantity"] == 0
+        assert plan["stock_deduct_by_product"]["prod_1"] == 3
+
+
 class TestStripeWebhook:
     """Test stripe_webhook endpoint"""
 
@@ -570,6 +689,7 @@ class TestStripeWebhook:
         all_docs = {"evt_123": MagicMock(exists=False)}
 
         def make_doc_ref(doc_id=None):
+            """Function make_doc_ref."""
             if doc_id is None:
                 doc_id = "auto_generated_id"
             mock_doc_ref = MagicMock()
@@ -986,6 +1106,7 @@ class TestEdgeCasesAndSecurity:
 
 # Helper functions for validation
 def validate_quantity(quantity):
+    """Function validate_quantity."""
     if quantity <= 0:
         raise ValueError("Quantity must be positive")
     if quantity > 10000:
@@ -994,6 +1115,7 @@ def validate_quantity(quantity):
 
 
 def validate_price(price):
+    """Function validate_price."""
     if price < 0:
         raise ValueError("Price cannot be negative")
     return round(price, 2)
@@ -1142,6 +1264,7 @@ def test_digital_item_status_set_to_delivered_after_license_generation():
 
     # Route .document().get() differently depending on collection name
     def make_collection(name):
+        """Function make_collection."""
         coll = MagicMock()
         if name == "products":
             coll.document.return_value.get.return_value = mock_product
@@ -1228,6 +1351,7 @@ def test_generate_digital_licenses_stores_product_name():
     written_docs = []
 
     def capture_set(doc):
+        """Function capture_set."""
         written_docs.append(doc)
 
     mock_db.collection.return_value.document.return_value.set.side_effect = capture_set

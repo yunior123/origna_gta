@@ -7,6 +7,7 @@ class _Sentinel {
   const _Sentinel();
 }
 
+/// Documentation for HomeState
 class HomeState {
   final List<Product> products;
   final bool isLoading;

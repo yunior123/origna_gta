@@ -1,3 +1,4 @@
+"""Module verify_dev_data.py."""
 
 import firebase_admin
 from firebase_admin import firestore
@@ -10,6 +11,7 @@ load_dotenv("functions/.env")
 PROJECT_ID = "orignagta-dev"
 
 def get_access_token():
+    """Function get_access_token."""
     try:
         return subprocess.check_output(["gcloud", "auth", "print-access-token"]).decode("utf-8").strip()
     except Exception as e:
@@ -17,6 +19,7 @@ def get_access_token():
         return None
 
 def verify_data():
+    """Function verify_data."""
     print(f"🔍 Verifying data in {PROJECT_ID}...")
     token = get_access_token()
     if not token:

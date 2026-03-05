@@ -30,6 +30,7 @@ final sellerRegistrationViewModelProvider = StateNotifierProvider.autoDispose<Se
   return SellerRegistrationViewModel(ref);
 });
 
+/// Documentation for SellerRegistrationViewModel
 class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState> {
   final Ref _ref;
   

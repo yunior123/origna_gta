@@ -20,6 +20,7 @@ void main() {
   );
 }
 
+/// Documentation for MascotPreviewScreen
 class MascotPreviewScreen extends ConsumerStatefulWidget {
   const MascotPreviewScreen({super.key});
 
@@ -202,6 +203,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
   }
 }
 
+/// Documentation for GridPainter
 class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

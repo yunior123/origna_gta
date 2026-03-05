@@ -20,6 +20,7 @@ import '../features/auth/auth_provider.dart';
 import '../features/profile/profile_viewmodel.dart';
 import '../features/subscription/subscription_provider.dart';
 
+/// Documentation for ProfileScreen
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -70,6 +71,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
+/// Documentation for ProfileScreenLayout
 class ProfileScreenLayout extends StatelessWidget {
   final AsyncValue<UserModel?> userProfileAsync;
   final User? currentUser;

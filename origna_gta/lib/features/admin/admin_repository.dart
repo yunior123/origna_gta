@@ -28,6 +28,7 @@ abstract class AdminRepository {
   Stream<List<UserModel>> watchUsers({int limit});
 }
 
+/// Documentation for FirebaseAdminRepository
 class FirebaseAdminRepository implements AdminRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;

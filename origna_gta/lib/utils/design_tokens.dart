@@ -7,6 +7,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+/// Documentation for DesignTokens
 class DesignTokens {
   // Primary Palette (Matched to Ecommerce Splash)
   static const Color primary = Color(0xFF667EEA); // Soft Cornflower Blue

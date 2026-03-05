@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class Environment(Enum):
+    """Class Environment."""
     EMULATOR = "emulator"  # Local development with Firebase emulators
     DEV = "dev"  # Development Firebase project (orignagta-dev)
     STAGING = "staging"  # Staging Firebase project (orignagta-staging)
@@ -118,6 +119,7 @@ UNSUBSCRIBE_URL = CURRENT_ENV.get_unsubscribe_url()
 
 
 class CaptureMethod:
+    """Class CaptureMethod."""
     MANUAL = "manual"
     AUTOMATIC = "automatic"
 
@@ -426,6 +428,7 @@ def get_r2_credentials() -> dict:
 
 
 def get_sentry_dsn() -> str:
+    """Function get_sentry_dsn."""
     if _USE_LOCAL:
         return _load_secret("SENTRY_DSN_BACKEND", required=False)
     return _secrets().get("sentry", "")

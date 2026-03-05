@@ -1,3 +1,4 @@
+"""Module shipping_service.py."""
 import logging
 
 import requests
@@ -252,6 +253,41 @@ def estimate_delivery_date_range(
     }
 
 
+def _distribute_shipping_costs(
+    base_cost: float, additional_rate: float, items: list[dict], weight_surcharge_total: float = 0, speed_multiplier: float = 1.0
+) -> dict[str, float]:
+    """Helper to distribute base + additional + weight costs across items."""
+    breakdown = {}
+    total_qty = sum(item.get(Fields.QUANTITY, 1) for item in items)
+    
+    # We distribute the 'first item' base cost to the first item (first unit)
+    # and the additional cost to all other units.
+    first_item_handled = False
+    
+    # Total weight surcharge is already calculated per-item, but if passed as total we distribution
+    # Actually, in _calculate_tiered_shipping, weight_surcharge is already per-item.
+    
+    for item in items:
+        qty = item.get(Fields.QUANTITY, 1)
+        cart_item_id = item.get(Fields.CART_ITEM_ID) or item.get(Fields.PRODUCT_ID)
+        
+        item_shipping = 0.0
+        if not first_item_handled:
+            # First unit of the first item gets the full base cost
+            item_shipping += base_cost
+            # Remaining units of this item get the additional rate
+            if qty > 1:
+                item_shipping += (qty - 1) * (base_cost * additional_rate)
+            first_item_handled = True
+        else:
+            # All units of subsequent items get the additional rate
+            item_shipping += qty * (base_cost * additional_rate)
+            
+        breakdown[cart_item_id] = item_shipping * speed_multiplier
+        
+    return breakdown
+
+
 def _are_adjacent_provinces(p1: str, p2: str) -> bool:
     """Check if two provinces are adjacent (cached)"""
     return p2 in _ADJACENCY_CACHE.get(p1, set())
@@ -262,67 +298,65 @@ def _are_same_region(p1: str, p2: str) -> bool:
     return any(p1 in region_provinces and p2 in region_provinces for region_provinces in _REGIONS_CACHE.values())
 
 
-def _calculate_tiered_shipping(distance_km: float, seller_items: list[dict], speed: str) -> float:
-    """Hyper-Competitive tiered calculation: Benchmarked against Instacart/DoorDash/PC Express"""
-    base_cost = ShippingTiers.NATIONAL_CEILING
+    return subtotal * multiplier
 
+
+def _calculate_tiered_shipping_itemized(distance_km: float, seller_items: list[dict], speed: str) -> tuple[float, dict[str, float]]:
+    """Itemized version of tiered calculation."""
+    base_cost = ShippingTiers.NATIONAL_CEILING
     for threshold, cost in ShippingTiers.TIERS:
         if distance_km <= threshold:
             base_cost = cost
             break
 
-    # Weight & Volumetric surcharges
-    weight_surcharge = 0
-    total_items = 0
+    multiplier = 1.0
+    if speed == DeliveryTypeValues.EXPRESS:
+        if distance_km <= 15: multiplier = ShippingTiers.EXPRESS_MULTIPLIERS["hyper_local"]
+        elif distance_km <= 50: multiplier = ShippingTiers.EXPRESS_MULTIPLIERS["local"]
+        elif distance_km <= 150: multiplier = ShippingTiers.EXPRESS_MULTIPLIERS["regional"]
+        else: multiplier = ShippingTiers.EXPRESS_MULTIPLIERS["default"]
+    elif speed == DeliveryTypeValues.SAME_DAY:
+        if distance_km <= 15: multiplier = ShippingTiers.SAME_DAY_MULTIPLIERS["hyper_local"]
+        elif distance_km <= 50: multiplier = ShippingTiers.SAME_DAY_MULTIPLIERS["local"]
+        elif distance_km <= 150: multiplier = ShippingTiers.SAME_DAY_MULTIPLIERS["regional"]
+        else: multiplier = ShippingTiers.SAME_DAY_MULTIPLIERS["default"]
+
+    breakdown = {}
+    total_shipping = 0.0
+    first_item_handled = False
+
     for item in seller_items:
         qty = item.get(Fields.QUANTITY, 1)
-        total_items += qty
-
-        # Volumetric: (L * W * H) / 5000
+        cart_item_id = item.get(Fields.CART_ITEM_ID) or item.get(Fields.PRODUCT_ID)
+        
+        # 1. Base/Additional logic
+        if not first_item_handled:
+            item_base = base_cost + (max(0, qty - 1) * (base_cost * ShippingTiers.ADDITIONAL_ITEM_RATE))
+            first_item_handled = True
+        else:
+            item_base = qty * (base_cost * ShippingTiers.ADDITIONAL_ITEM_RATE)
+            
+        # 2. Weight Surcharge (per-item)
         actual_weight = max(item.get(Fields.WEIGHT_KG, ShippingTiers.DEFAULT_WEIGHT_KG), 0)
         length = max(item.get(Fields.LENGTH_CM, ShippingTiers.DEFAULT_DIMENSION_CM), 1)
         width = max(item.get(Fields.WIDTH_CM, ShippingTiers.DEFAULT_DIMENSION_CM), 1)
         height = max(item.get(Fields.HEIGHT_CM, ShippingTiers.DEFAULT_DIMENSION_CM), 1)
         vol_weight = (length * width * height) / ShippingTiers.VOLUMETRIC_DIVISOR
         effective_weight = max(actual_weight, vol_weight)
-
+        
+        weight_surcharge = 0
         if effective_weight > ShippingTiers.WEIGHT_SURCHARGE_THRESHOLD_KG:
-            weight_surcharge += (
-                (effective_weight - ShippingTiers.WEIGHT_SURCHARGE_THRESHOLD_KG)
-                * ShippingTiers.WEIGHT_SURCHARGE_PER_KG
-                * qty
-            )
+            weight_surcharge = (effective_weight - ShippingTiers.WEIGHT_SURCHARGE_THRESHOLD_KG) * ShippingTiers.WEIGHT_SURCHARGE_PER_KG * qty
+            
+        item_total = (item_base + weight_surcharge) * multiplier
+        breakdown[cart_item_id] = item_total
+        total_shipping += item_total
 
-    subtotal = (
-        base_cost + weight_surcharge + ((max(0, total_items - 1)) * (base_cost * ShippingTiers.ADDITIONAL_ITEM_RATE))
-    )
-
-    # Speed multipliers
-    multiplier = 1.0
-    if speed == DeliveryTypeValues.EXPRESS:
-        if distance_km <= 15:
-            multiplier = ShippingTiers.EXPRESS_MULTIPLIERS["hyper_local"]
-        elif distance_km <= 50:
-            multiplier = ShippingTiers.EXPRESS_MULTIPLIERS["local"]
-        elif distance_km <= 150:
-            multiplier = ShippingTiers.EXPRESS_MULTIPLIERS["regional"]
-        else:
-            multiplier = ShippingTiers.EXPRESS_MULTIPLIERS["default"]
-    elif speed == DeliveryTypeValues.SAME_DAY:
-        if distance_km <= 15:
-            multiplier = ShippingTiers.SAME_DAY_MULTIPLIERS["hyper_local"]
-        elif distance_km <= 50:
-            multiplier = ShippingTiers.SAME_DAY_MULTIPLIERS["local"]
-        elif distance_km <= 150:
-            multiplier = ShippingTiers.SAME_DAY_MULTIPLIERS["regional"]
-        else:
-            multiplier = ShippingTiers.SAME_DAY_MULTIPLIERS["default"]
-
-    return subtotal * multiplier
+    return total_shipping, breakdown
 
 
-def _calculate_fallback_shipping(item_count: int, seller_province: str, buyer_province: str) -> float:
-    """Fallback shipping calculation using province matrix"""
+def _calculate_fallback_shipping_itemized(chargeable_items: list[dict], seller_province: str, buyer_province: str, speed: str = DeliveryTypeValues.STANDARD) -> tuple[float, dict[str, float]]:
+    """Fallback shipping calculation using province matrix (itemized)"""
     base_cost = ShippingTiers.NATIONAL_CEILING
 
     if seller_province == buyer_province:
@@ -332,9 +366,29 @@ def _calculate_fallback_shipping(item_count: int, seller_province: str, buyer_pr
     elif _are_same_region(seller_province, buyer_province):
         base_cost = ShippingTiers.FALLBACK_SAME_REGION
 
-    additional_cost = max(0, item_count - 1) * (base_cost * ShippingTiers.ADDITIONAL_ITEM_RATE)
+    multiplier = 1.0
+    if speed == DeliveryTypeValues.EXPRESS:
+        multiplier = ShippingTiers.EXPRESS_MULTIPLIERS["regional"]
 
-    return base_cost + additional_cost
+    breakdown = {}
+    total_fallback = 0.0
+    first_item_handled = False
+    
+    for item in chargeable_items:
+        qty = item.get(Fields.QUANTITY, 1)
+        cart_item_id = item.get(Fields.CART_ITEM_ID) or item.get(Fields.PRODUCT_ID)
+        
+        if not first_item_handled:
+            item_cost = base_cost + (max(0, qty - 1) * (base_cost * ShippingTiers.ADDITIONAL_ITEM_RATE))
+            first_item_handled = True
+        else:
+            item_cost = qty * (base_cost * ShippingTiers.ADDITIONAL_ITEM_RATE)
+            
+        item_total = item_cost * multiplier
+        breakdown[cart_item_id] = item_total
+        total_fallback += item_total
+
+    return total_fallback, breakdown
 
 
 def _best_quantity_discount(discounts: list[dict], quantity: int) -> dict | None:
@@ -429,17 +483,19 @@ def _find_matching_delivery_option(options: list[dict], speed: str) -> dict | No
     return None
 
 
-def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str = DeliveryTypeValues.STANDARD) -> float:
+def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str = DeliveryTypeValues.STANDARD) -> tuple[float, dict[str, float]]:
     """
     Server-side shipping calculation matching frontend logic.
+    Returns (total_cost, item_breakdown_map)
     """
     if not buyer_address or buyer_address.get(Fields.LATITUDE) is None or buyer_address.get(Fields.LONGITUDE) is None:
         logger.warning("⚠️ Buyer address missing coordinates — using province-based fallback")
         # Use province-based fallback instead of free shipping
         if not buyer_address:
-            return ShippingTiers.DEFAULT_MIN_COST
+            return ShippingTiers.DEFAULT_MIN_COST, {}
         buyer_state = buyer_address.get(Fields.STATE, "ON")
         total_fallback = 0.0
+        overall_breakdown = {}
         items_by_seller = {}
         for item in items:
             seller_id = item.get(Fields.SELLER_ID)
@@ -453,11 +509,13 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
                     if chargeable[0].get(Fields.SELLER_ADDRESS)
                     else "ON"
                 )
-                item_count = sum(i.get(Fields.QUANTITY, 1) for i in chargeable)
-                total_fallback += _calculate_fallback_shipping(item_count, seller_state, buyer_state)
-        return total_fallback
+                seller_cost, seller_breakdown = _calculate_fallback_shipping_itemized(chargeable, seller_state, buyer_state, speed=speed)
+                total_fallback += seller_cost
+                overall_breakdown.update(seller_breakdown)
+        return total_fallback, overall_breakdown
 
     total_shipping = 0.0
+    overall_breakdown = {}
     items_by_seller = {}
     for item in items:
         seller_id = item.get(Fields.SELLER_ID)
@@ -502,7 +560,10 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
 
                 weight = float(item.get(Fields.WEIGHT_KG, ShippingTiers.DEFAULT_WEIGHT_KG))
                 estimate = get_international_shipping_estimate(supplier_type, speed=intl_speed, weight_kg=weight)
-                seller_intl_total += estimate["cost"] * int(item.get(Fields.QUANTITY, 1))
+                item_cost = estimate["cost"] * int(item.get(Fields.QUANTITY, 1))
+                
+                seller_intl_total += item_cost
+                overall_breakdown[item.get(Fields.CART_ITEM_ID) or item.get(Fields.PRODUCT_ID)] = item_cost
 
             total_shipping += seller_intl_total
             continue
@@ -517,13 +578,17 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
                 f"Local delivery only: {', '.join(local_names)} cannot be shipped from {seller_state} to {buyer_state}. "
                 f"These products are only available for local delivery within {seller_state}."
             )
+
+        # Perishable surcharge distribution (proportional to item count for now, or just assigned to the first perishable item)
+        perishable_surcharge = 0
         if has_perishable and seller_state != buyer_state:
             logger.warning(f"⚠️ Perishable item across province: {seller_state} -> {buyer_state}")
-            total_shipping += ShippingTiers.PERISHABLE_CROSS_PROVINCE
+            perishable_surcharge = ShippingTiers.PERISHABLE_CROSS_PROVINCE
 
         # Try to find seller fixed price for this speed
         has_seller_fixed_price = False
         seller_fixed_total = 0
+        seller_fixed_breakdown = {}
         for item in chargeable_items:
             options = item.get(Fields.DELIVERY_OPTIONS, [])
             matching_opt = _find_matching_delivery_option(options, speed)
@@ -534,6 +599,7 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
             option_cost = _calculate_delivery_option_cost(matching_opt, item.get(Fields.QUANTITY, 1))
             if option_cost > 0:
                 seller_fixed_total += option_cost
+                seller_fixed_breakdown[item.get(Fields.CART_ITEM_ID) or item.get(Fields.PRODUCT_ID)] = option_cost
                 has_seller_fixed_price = True
             else:
                 has_seller_fixed_price = False  # Cost must be positive to qualify as fixed price
@@ -541,6 +607,7 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
 
         if has_seller_fixed_price:
             total_shipping += seller_fixed_total
+            overall_breakdown.update(seller_fixed_breakdown)
             continue
 
         should_call_geoapify = speed in [DeliveryTypeValues.EXPRESS, DeliveryTypeValues.SAME_DAY] or has_perishable
@@ -565,11 +632,23 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
                             f"Same Day delivery not available: Distance {distance_km:.1f}km exceeds 50km limit."
                         )
 
+                    # Perishable long distance surcharge
                     if has_perishable and distance_km > ShippingTiers.PERISHABLE_DISTANCE_THRESHOLD_KM:
-                        total_shipping += ShippingTiers.PERISHABLE_LONG_DISTANCE
-                        continue
+                        perishable_surcharge = max(perishable_surcharge, ShippingTiers.PERISHABLE_LONG_DISTANCE)
 
-                    total_shipping += _calculate_tiered_shipping(distance_km, chargeable_items, speed)
+                    seller_cost, seller_breakdown = _calculate_tiered_shipping_itemized(distance_km, chargeable_items, speed)
+                    
+                    # Add perishable surcharge to the first perishable item in this seller's list
+                    if perishable_surcharge > 0:
+                        for item in chargeable_items:
+                            if item.get(Fields.IS_PERISHABLE):
+                                cart_id = item.get(Fields.CART_ITEM_ID) or item.get(Fields.PRODUCT_ID)
+                                seller_breakdown[cart_id] = seller_breakdown.get(cart_id, 0) + perishable_surcharge
+                                seller_cost += perishable_surcharge
+                                break
+                                
+                    total_shipping += seller_cost
+                    overall_breakdown.update(seller_breakdown)
                     continue
                 else:
                     logger.error(f"Geoapify error: Status {response.status_code}")
@@ -584,14 +663,20 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
                     raise ValueError("Same Day delivery temporarily unavailable (location check failed).") from e
 
         # Fallback
-        item_count = sum(item.get(Fields.QUANTITY, 1) for item in chargeable_items)
-        fallback_cost = _calculate_fallback_shipping(item_count, seller_state, buyer_state)
+        seller_cost, seller_breakdown = _calculate_fallback_shipping_itemized(chargeable_items, seller_state, buyer_state, speed=speed)
+        
+        # Add perishable surcharge
+        if perishable_surcharge > 0:
+            for item in chargeable_items:
+                if item.get(Fields.IS_PERISHABLE):
+                    cart_id = item.get(Fields.CART_ITEM_ID) or item.get(Fields.PRODUCT_ID)
+                    seller_breakdown[cart_id] = seller_breakdown.get(cart_id, 0) + perishable_surcharge
+                    seller_cost += perishable_surcharge
+                    break
 
-        # SECURITY FIX: Apply markup for Express fallback to prevent undercharging
-        if speed == DeliveryTypeValues.EXPRESS:
-            # Use 'regional' multiplier (1.5x) as a safe default for unverified Express
-            fallback_cost *= ShippingTiers.EXPRESS_MULTIPLIERS["regional"]
+        total_shipping += seller_cost
+        overall_breakdown.update(seller_breakdown)
 
-        total_shipping += fallback_cost
+    return total_shipping, overall_breakdown
 
     return total_shipping
