@@ -1,6 +1,6 @@
 ---
 name: infra-verification
-description: Production readiness verification agent — validates Firestore rules, indexes, Cloud Functions, Stripe webhooks, API keys, and all infrastructure matches between project files and live APIs. Uses gcloud CLI, firebase CLI, and stripe CLI to compare local vs deployed state.
+description: Use when verifying production readiness — checks Firestore rules, indexes, Cloud Functions, Stripe webhooks, and API keys match between project files and live deployed state.
 context: fork
 agent: infra-verifier
 ---

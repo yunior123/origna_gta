@@ -1,6 +1,6 @@
 ---
 name: e2e-debugging
-description: Comprehensive guide for debugging Playwright E2E tests against Firebase Emulators + Stripe CLI. Load before investigating any E2E test failure.
+description: Use when debugging Playwright E2E test failures — flt-semantics timeouts, Flutter web init failures, Firebase assertion errors, test flakiness, or Stripe checkout failures.
 ---
 
 # Skill: E2E Debugging Methodology

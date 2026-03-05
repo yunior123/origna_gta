@@ -1,8 +1,6 @@
 ---
 name: animation-choreography
-description: >
-  Complete animation reference — timing, curves, choreography sequences, and
-  implementation patterns. Use when adding motion to screens or reviewing animation quality.
+description: Use when adding motion to screens, reviewing animation quality, or fixing animation stutter — timing curves, choreography sequences, and implementation patterns.
 ---
 
 # 🎬 Animation Choreography Guide

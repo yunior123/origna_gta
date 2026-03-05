@@ -1,8 +1,6 @@
 ---
 name: design-system-bible
-description: >
-  Complete design system reference for the Origna GTA marketplace.
-  Covers tokens, components, patterns, and implementation rules.
+description: Use when building UI components, implementing new screens, or auditing design consistency — covers DesignTokens, components, layout patterns, and implementation rules for OrignaGTA.
   Use when building or reviewing ANY UI component.
 ---
 

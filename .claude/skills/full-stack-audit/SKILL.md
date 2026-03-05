@@ -1,6 +1,6 @@
 ---
 name: full-stack-audit
-description: Run a comprehensive cross-stack audit like the Kimi K2.5 audit system. Reads ALL frontend-backend file pairs and reports every inconsistency.
+description: Use when checking frontend-backend consistency — Dart field names vs Python fields, enum mismatches, payload vs handler expectations, or cross-stack schema drift.
 context: fork
 agent: cross-stack-auditor
 disable-model-invocation: true

@@ -1,3 +1,8 @@
+---
+name: flutter-performance
+description: Use when diagnosing frame drops, scroll jank, animation stutter, or slow screen transitions in OrignaGTA — covers overlay, DevTools, benchmarking, and OrignaGTA-specific hotspots.
+---
+
 # Flutter Performance Testing Guide
 
 ## Target
