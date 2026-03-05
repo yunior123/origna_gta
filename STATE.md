@@ -1,6 +1,44 @@
 # STATE.md — Session Progress
 
 ---
+## ✅ COMPLETE (2026-03-04) — Product Sourcing Agent + 68 Products Seeded
+
+**68 products written to Firestore `orignagta-dev` as seller `RU9MI8vYFkQCakMrJfG8iGTuc012`**
+
+| Metric | Result |
+|--------|--------|
+| Products written | 68 (0 skipped, 0 errors) |
+| Categories covered | 1-12 (Electronics→Tools) |
+| Pydantic validation | 68/68 PASS |
+| lifecycleStatus | `active` (visible immediately) |
+| stockQuantity | 999 per product (>50 requirement met) |
+| Price range | $22.99–$317.99 CAD |
+| FR translations | All 68 translated via Gemini 3 Pro |
+| Exchange rate | Live USD→CAD 1.3655 |
+| Doc ID prefix | `psrc_` (idempotent re-runs safe) |
+| Algolia sync | Auto-triggered via `on_product_created` |
+
+### Scripts Created
+- `scripts/product_sourcing_agent.py` — Full sourcing pipeline
+- `scripts/upload_r2_helper.py` — R2 upload utility
+- `~/.claude/skills/source-products.md` — `/source-products` Claude Code skill
+- `docs/plans/2026-03-04-product-sourcing-agent.md` — Implementation plan
+- `docs/plans/2026-03-04-product-sourcing-agent-design.md` — Design doc
+
+### Pending Tasks
+1. **Image enhancement (follow-up)**: Run nanobanana on actual supplier images to replace placeholders. Products currently use `placeholder.jpg`. Command: `python scripts/product_sourcing_agent.py --candidates /path/with-images.json` with image_url fields populated.
+2. **Stock cron job (future)**: Add cron job in `functions/handlers/cron_jobs.py` to check CJDropshipping API for stock levels and update `stockQuantity` in Firestore for `psrc_` products. Deferred — requires CJDropshipping API key.
+3. **Re-run with images**: Once nanobanana image processing is tested separately, re-run `/source-products` with proper supplier image URLs for real product photography.
+
+### Usage (future runs)
+```bash
+cd ~/Documents/GitHub/origna_gta
+GOOGLE_APPLICATION_CREDENTIALS=functions/serviceAccountKey-dev.json GCP_PROJECT=orignagta-dev \
+  functions/venv/bin/python scripts/product_sourcing_agent.py \
+  --candidates /tmp/product_candidates.json [--dry-run] [--limit N]
+```
+
+---
 ## ✅ COMPLETE (2026-03-04) — 8-Audit Gemini Full-Codebase Audit + All Fixes
 
 **Tests: 516/516 pass | flutter analyze → No issues**
