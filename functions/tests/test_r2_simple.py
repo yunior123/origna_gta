@@ -3,6 +3,7 @@ import os
 import sys
 
 import boto3
+import pytest
 import requests
 from botocore.config import Config
 
@@ -35,7 +36,7 @@ def test_credentials_directly():
                         env_vars[key.strip()] = val.strip().strip('"').strip("'")
         except Exception as e:
             print(f"Could not read .env: {e}")
-            return
+            pytest.skip("Skipping R2 credential test: .env could not be read")
 
         print(f"Loaded credentials for Account ID: {env_vars.get('R2_ACCOUNT_ID')}")
 
@@ -57,7 +58,7 @@ def test_credentials_directly():
 
     except Exception as e:
         print(f"❌ Direct Credential Test Failed: {e}")
-        return False
+        pytest.skip(f"Skipping R2 credential test: {e}")
 
 
 def test_r2_upload():

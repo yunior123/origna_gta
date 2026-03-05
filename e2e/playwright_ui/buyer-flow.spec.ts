@@ -5,7 +5,8 @@ import {
     checkSemantics,
     ensureLoggedInAsBuyer,
     performSignOut,
-    BTN_SETTINGS,
+    navigateHome,
+    BTN_SETTINGS_LABEL,
     BTN_CART,
 } from './flutter-helpers';
 
@@ -21,6 +22,16 @@ test.describe('PW IT Replica — Buyer Flow', () => {
     test.setTimeout(360_000);
 
     test('Complete Buyer Journey', async ({ page }) => {
+        const homeSettingsBtn = () => page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
+        const openProfile = async () => {
+            await navigateHome(page, TARGET_URL);
+            const settings = homeSettingsBtn();
+            await expect(settings).toBeVisible({ timeout: 20_000 });
+            await settings.click();
+            await expect(page).toHaveURL(/\/profile/i, { timeout: 20_000 });
+            await waitForFlutter(page);
+        };
+
         await requireWebApp(page, TARGET_URL);
         page.setDefaultTimeout(60_000);
 
@@ -31,13 +42,8 @@ test.describe('PW IT Replica — Buyer Flow', () => {
         // B01: Login as buyer (role-agnostic login — does NOT grant elevated roles)
         await ensureLoggedInAsBuyer(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
 
-        const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
-        await expect(settingsBtn).toBeAttached();
-
         // C023/C090/C091: Profile sub-pages
-        await settingsBtn.click();
-        await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
-        await waitForFlutter(page);
+        await openProfile();
 
         // C090: Favorites
         // Wait for semantic tree to fully rebuild (FadeSlideIn at 100ms offset)
@@ -149,9 +155,11 @@ test.describe('PW IT Replica — Buyer Flow', () => {
         }
 
         // C033: Home ready
-        await expect(settingsBtn).toBeAttached();
+        await navigateHome(page, TARGET_URL);
+        await expect(homeSettingsBtn()).toBeVisible({ timeout: 20_000 });
 
         // C080/C099: Sign-out
+        await navigateHome(page, TARGET_URL);
         await performSignOut(page, TARGET_URL);
         // After sign-out the app rebuilds to the unauthenticated home/login state.
         // The URL should reflect a non-authenticated route.

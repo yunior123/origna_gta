@@ -487,7 +487,7 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
 
     for seller_id, seller_items in items_by_seller.items():
         # CRITICAL FIX: Defensive checks to prevent crashes on corrupted data
-        if not seller_items:
+        if not seller_items:  # pragma: no cover - defensive guard; map is built only from appended items
             logger.warning(f"⚠️ Skipping seller {seller_id}: Empty items list")
             continue
 

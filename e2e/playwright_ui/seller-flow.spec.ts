@@ -5,7 +5,8 @@ import {
     checkSemantics,
     ensureLoggedInAsAdmin,
     performSignOut,
-    BTN_SETTINGS,
+    navigateHome,
+    BTN_SETTINGS_LABEL,
     BTN_CART,
     BTN_ADD_PRODUCT,
 } from './flutter-helpers';
@@ -22,6 +23,16 @@ test.describe('PW IT Replica — Seller Flow', () => {
     test.setTimeout(300_000);
 
     test('Complete Seller Journey', async ({ page }) => {
+        const homeSettingsBtn = () => page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
+        const openProfile = async () => {
+            await navigateHome(page, TARGET_URL);
+            const settings = homeSettingsBtn();
+            await expect(settings).toBeVisible({ timeout: 20_000 });
+            await settings.click();
+            await expect(page).toHaveURL(/\/profile/i, { timeout: 20_000 });
+            await waitForFlutter(page);
+        };
+
         await requireWebApp(page, TARGET_URL);
         page.setDefaultTimeout(60_000);
 
@@ -32,8 +43,8 @@ test.describe('PW IT Replica — Seller Flow', () => {
         // C01: Login as seller (returns on home page)
         await ensureLoggedInAsAdmin(page, TARGET_URL, SELLER_EMAIL, SELLER_PASSWORD);
 
-        const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
-        await expect(settingsBtn).toBeAttached();
+        await navigateHome(page, TARGET_URL);
+        await expect(homeSettingsBtn()).toBeVisible({ timeout: 20_000 });
 
         // C034/C035: Add product button visible and navigates to /add-product
         const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
@@ -42,11 +53,10 @@ test.describe('PW IT Replica — Seller Flow', () => {
         await expect(page).toHaveURL(/\/add-product/i, { timeout: 20000 });
         await page.goBack();
         await waitForFlutter(page);
+        await navigateHome(page, TARGET_URL);
 
         // C036-C040: Profile → seller tools
-        await settingsBtn.click();
-        await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
-        await waitForFlutter(page);
+        await openProfile();
 
         // C038: become-seller button must NOT be visible for a seller
         const becomeSellerBtn = page.locator('[aria-label^="menu-become-seller"]').first();
@@ -74,12 +84,14 @@ test.describe('PW IT Replica — Seller Flow', () => {
         // C041/C062: Return to home; buyer-side cart still accessible
         await page.goBack();
         await waitForFlutter(page);
-        await expect(settingsBtn).toBeAttached();
+        await navigateHome(page, TARGET_URL);
+        await expect(homeSettingsBtn()).toBeVisible({ timeout: 20000 });
 
         const cartBtn = page.getByRole('button', { name: BTN_CART }).first();
         await expect(cartBtn).toBeAttached();
 
         // C080/C099: Sign-out
+        await navigateHome(page, TARGET_URL);
         await performSignOut(page, TARGET_URL);
     });
 });

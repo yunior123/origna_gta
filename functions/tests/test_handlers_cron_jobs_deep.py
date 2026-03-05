@@ -1018,3 +1018,136 @@ class TestAdditionalCronCoverage:
         send_abandoned_cart_emails(Mock())
         mock_alert.assert_called_once()
         mock_release.assert_called_once_with("send_abandoned_cart_emails")
+
+
+class TestReturnEscalationCron:
+    @patch("handlers.cron_jobs.release_cron_lock")
+    @patch("handlers.cron_jobs.acquire_cron_lock", return_value=False)
+    def test_escalate_stale_return_requests_skips_when_lock_is_held(self, _mock_lock, mock_release):
+        from handlers.cron_jobs import escalate_stale_return_requests
+
+        escalate_stale_return_requests(Mock())
+        mock_release.assert_not_called()
+
+    @patch("handlers.cron_jobs._alert_cron_failure")
+    @patch("handlers.cron_jobs.release_cron_lock")
+    @patch("handlers.cron_jobs._run_return_escalation", side_effect=RuntimeError("boom"))
+    @patch("handlers.cron_jobs.acquire_cron_lock", return_value=True)
+    def test_escalate_stale_return_requests_alerts_and_releases_on_error(
+        self, _mock_lock, _mock_run, mock_release, mock_alert
+    ):
+        from handlers.cron_jobs import escalate_stale_return_requests
+
+        escalate_stale_return_requests(Mock())
+        mock_alert.assert_called_once()
+        mock_release.assert_called_once_with("escalate_stale_return_requests")
+
+    @patch("services.push_service.send_push_notification")
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_return_escalation_escalates_and_notifies_buyer_and_admins(self, mock_get_db, mock_push):
+        from handlers.cron_jobs import _run_return_escalation
+
+        return_doc = _snapshot(
+            "ret_1",
+            {
+                Fields.ORDER_ID: "ord_12345",
+                Fields.BUYER_ID: "buyer_1",
+            },
+        )
+        stale_query = _query(stream_return=[return_doc])
+        returns_col = Mock()
+        returns_col.where.return_value = stale_query
+
+        admin_doc = _snapshot("admin_1", {})
+        admin_query = _query(stream_return=[admin_doc])
+        users_col = Mock()
+        users_col.where.return_value = admin_query
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.RETURN_REQUESTS: returns_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        _run_return_escalation()
+
+        return_doc.reference.update.assert_called_once()
+        assert mock_push.call_count == 2
+        recipient_ids = [c.args[0] for c in mock_push.call_args_list]
+        assert "buyer_1" in recipient_ids
+        assert "admin_1" in recipient_ids
+
+    @patch("handlers.cron_jobs.sentry_sdk.capture_exception")
+    @patch("services.push_service.send_push_notification")
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_return_escalation_prefetch_and_update_failures_are_handled(
+        self, mock_get_db, mock_push, mock_capture
+    ):
+        from handlers.cron_jobs import _run_return_escalation
+
+        broken_return = _snapshot("ret_2", {Fields.ORDER_ID: "ord_2", Fields.BUYER_ID: "buyer_2"})
+        broken_return.reference.update.side_effect = RuntimeError("update failed")
+        stale_query = _query(stream_return=[broken_return])
+        returns_col = Mock()
+        returns_col.where.return_value = stale_query
+
+        users_col = Mock()
+        users_col.where.side_effect = RuntimeError("admin prefetch failed")
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.RETURN_REQUESTS: returns_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        _run_return_escalation()
+
+        mock_capture.assert_called_once()
+        mock_push.assert_not_called()
+
+    @patch("handlers.cron_jobs.sentry_sdk.capture_exception")
+    @patch("handlers.cron_jobs.get_db")
+    def test_run_return_escalation_handles_query_failure(self, mock_get_db, mock_capture):
+        from handlers.cron_jobs import _run_return_escalation
+
+        stale_query = _query(stream_side_effect=RuntimeError("query failed"))
+        returns_col = Mock()
+        returns_col.where.return_value = stale_query
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.RETURN_REQUESTS: returns_col}[name]
+        mock_get_db.return_value = db
+
+        _run_return_escalation()
+        mock_capture.assert_called_once()
+
+
+class TestStaleOrdersDispatcherEdges:
+    @patch.dict("os.environ", {}, clear=True)
+    def test_dispatch_stale_orders_raises_when_required_env_missing(self):
+        from handlers.cron_jobs import _dispatch_stale_orders
+
+        with patch("handlers.cron_jobs.get_db"):
+            try:
+                _dispatch_stale_orders()
+                assert False, "Expected ValueError for missing env"
+            except ValueError:
+                pass
+
+    @patch.dict(
+        "os.environ",
+        {"STALE_ORDER_WORKER_URL": "https://worker.example.com", "TASK_HANDLER_SA_EMAIL": "tasks@example.iam.gserviceaccount.com"},
+        clear=True,
+    )
+    @patch("handlers.cron_jobs.tasks_v2.CloudTasksClient")
+    @patch("handlers.cron_jobs.get_db")
+    def test_dispatch_stale_orders_returns_when_no_orders(self, mock_get_db, mock_tasks_client_cls):
+        from handlers.cron_jobs import _dispatch_stale_orders
+
+        orders_query = _query(stream_return=[])
+        mock_get_db.return_value.collection.return_value = orders_query
+
+        _dispatch_stale_orders()
+        mock_tasks_client_cls.assert_not_called()

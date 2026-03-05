@@ -13,6 +13,9 @@ set -o pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 BACKEND_THRESHOLD="${BACKEND_THRESHOLD:-100}"
+BACKEND_GATE_MODE="${BACKEND_GATE_MODE:-strict}"
+BACKEND_BASELINE="${BACKEND_BASELINE:-0}"
+BACKEND_MIN_DELTA="${BACKEND_MIN_DELTA:-0}"
 FLUTTER_THRESHOLD="${FLUTTER_THRESHOLD:-100}"
 E2E_SPECS="${E2E_SPECS:-${E2E_SPEC:-playwright_ui/smoke-home-profile.spec.ts,playwright_ui/buyer-flow.spec.ts,playwright_ui/seller-flow.spec.ts,playwright_ui/order-lifecycle.spec.ts}}"
 E2E_CONFIG="${E2E_CONFIG:-playwright.config.dev.ts}"
@@ -33,6 +36,9 @@ Usage: ./scripts/run_quality_gate.sh [options]
 
 Options:
   --backend-threshold N   Backend coverage threshold (default: env BACKEND_THRESHOLD or 100)
+  --backend-gate-mode M   Backend gate mode: strict|incremental (default: env BACKEND_GATE_MODE or strict)
+  --backend-baseline N    Backend baseline coverage % for incremental mode (default: env BACKEND_BASELINE or 0)
+  --backend-min-delta N   Required backend +delta coverage % over baseline in incremental mode (default: env BACKEND_MIN_DELTA or 0)
   --flutter-threshold N   Flutter coverage threshold (default: env FLUTTER_THRESHOLD or 100)
   --flutter-targets CSV   Flutter test targets under origna_gta/ (default: test/unit,test/widget,test/widget_test.dart)
   --run-flutter-goldens   Run Flutter golden test suite (opt-in)
@@ -53,6 +59,18 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --backend-threshold)
       BACKEND_THRESHOLD="$2"
+      shift 2
+      ;;
+    --backend-gate-mode)
+      BACKEND_GATE_MODE="$2"
+      shift 2
+      ;;
+    --backend-baseline)
+      BACKEND_BASELINE="$2"
+      shift 2
+      ;;
+    --backend-min-delta)
+      BACKEND_MIN_DELTA="$2"
       shift 2
       ;;
     --flutter-threshold)
@@ -110,6 +128,14 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+case "$BACKEND_GATE_MODE" in
+  strict|incremental) ;;
+  *)
+    echo "Invalid --backend-gate-mode/BACKEND_GATE_MODE: ${BACKEND_GATE_MODE} (expected strict|incremental)" >&2
+    exit 2
+    ;;
+esac
 
 FAILURES=0
 
@@ -214,8 +240,42 @@ if pct + 1e-9 < threshold:
 PY
 }
 
+check_backend_incremental_threshold() {
+  local baseline="$1"
+  local min_delta="$2"
+  python3 - "$baseline" "$min_delta" <<'PY'
+import sys
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+baseline = float(sys.argv[1])
+min_delta = float(sys.argv[2])
+required = baseline + min_delta
+
+xml_path = Path("coverage.xml")
+if not xml_path.exists():
+    print("coverage.xml not found", file=sys.stderr)
+    raise SystemExit(2)
+
+root = ET.parse(xml_path).getroot()
+line_rate = float(root.attrib.get("line-rate", "0") or "0")
+pct = line_rate * 100.0
+print(
+    f"Backend total line coverage: {pct:.2f}% "
+    f"(incremental mode; baseline={baseline:.2f}%, min_delta={min_delta:.2f}%, required={required:.2f}%)"
+)
+if pct + 1e-9 < required:
+    raise SystemExit(1)
+PY
+}
+
 if [[ "$RUN_BACKEND" == true ]]; then
-  section "Backend Coverage Gate (threshold: ${BACKEND_THRESHOLD}%)"
+  if [[ "$BACKEND_GATE_MODE" == "strict" ]]; then
+    section "Backend Coverage Gate (strict threshold: ${BACKEND_THRESHOLD}%)"
+  else
+    section "Backend Coverage Gate (incremental baseline: ${BACKEND_BASELINE}% + delta: ${BACKEND_MIN_DELTA}%)"
+  fi
+
   pushd "$ROOT_DIR/functions" >/dev/null || exit 1
 
   if ! python3 -c "import pytest_cov" >/dev/null 2>&1; then
@@ -223,23 +283,40 @@ if [[ "$RUN_BACKEND" == true ]]; then
     python3 -m pip install pytest-cov >/dev/null 2>&1 || true
   fi
 
-  set +e
-  pytest tests/ \
-    --cov=handlers \
-    --cov=services \
-    --cov=models \
-    --cov=utils \
-    --cov-report=term-missing \
-    --cov-report=xml:coverage.xml \
-    --cov-fail-under="$BACKEND_THRESHOLD" \
+  PYTEST_CMD=(
+    pytest tests/
+    --cov=handlers
+    --cov=services
+    --cov=models
+    --cov=utils
+    --cov-report=term-missing
+    --cov-report=xml:coverage.xml
     -q
-  STATUS=$?
+  )
+  if [[ "$BACKEND_GATE_MODE" == "strict" ]]; then
+    PYTEST_CMD+=(--cov-fail-under="$BACKEND_THRESHOLD")
+  fi
+
+  set +e
+  "${PYTEST_CMD[@]}"
+  TEST_STATUS=$?
   set -e
 
   backend_gap_report
+
+  BACKEND_GATE_STATUS=0
+  if [[ $TEST_STATUS -ne 0 ]]; then
+    BACKEND_GATE_STATUS=1
+  elif [[ "$BACKEND_GATE_MODE" == "incremental" ]]; then
+    set +e
+    check_backend_incremental_threshold "$BACKEND_BASELINE" "$BACKEND_MIN_DELTA"
+    BACKEND_GATE_STATUS=$?
+    set -e
+  fi
+
   popd >/dev/null || exit 1
 
-  if [[ $STATUS -ne 0 ]]; then
+  if [[ $BACKEND_GATE_STATUS -ne 0 ]]; then
     echo "Backend coverage gate FAILED."
     FAILURES=$((FAILURES + 1))
   else

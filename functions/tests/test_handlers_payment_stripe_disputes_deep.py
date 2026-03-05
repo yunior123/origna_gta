@@ -6,6 +6,7 @@ from firebase_functions import https_fn
 from schema_constants import (
     ApiKeys,
     Collections,
+    DeliveryStatusValues,
     Fields,
     OrderStatusValues,
     PaymentStatusValues,
@@ -837,3 +838,260 @@ class TestRefundAndCaptureDeep:
         order_ref.update.assert_called_once()
         payout_ref.set.assert_called_once()
         payout_ref.update.assert_called_once()
+
+    @patch("time.sleep", return_value=None)
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("utils.helpers.get_charge_id_from_pi", return_value="ch_1")
+    @patch("handlers.payment_stripe.stripe.Transfer.create")
+    @patch("handlers.payment_stripe.stripe.Charge.retrieve")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.capture")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.retrieve")
+    @patch(
+        "handlers.payment_stripe._get_seller_stripe_snapshot",
+        return_value={
+            "seller_1": "acct_snap_1",
+            "seller_2": "acct_2",
+            "seller_4": "acct_4",
+            "seller_5": "acct_err",
+            "seller_6": "acct_6",
+        },
+    )
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe.ensure_stripe_key")
+    @patch("handlers.payment_providers.require_provider_enabled")
+    @patch("handlers.payment_stripe.get_db")
+    def test_capture_payment_impl_authorized_payout_loop_handles_multi_seller_edge_cases(
+        self,
+        mock_get_db,
+        _mock_provider,
+        _mock_ensure,
+        _mock_get_transactional,
+        _mock_snapshot,
+        mock_pi_retrieve,
+        mock_pi_capture,
+        mock_charge_retrieve,
+        mock_transfer_create,
+        _mock_charge_id,
+        _mock_ts,
+        _mock_sleep,
+    ):
+        from handlers.payment_stripe import _capture_payment_impl
+
+        mock_pi_retrieve.return_value = Mock(status=StripeConstants.STATUS_REQUIRES_CAPTURE, amount=6000)
+        mock_pi_capture.return_value = Mock(id="pi_3_test")
+        mock_charge_retrieve.return_value = Mock(dispute=None)
+
+        def transfer_side_effect(**kwargs):
+            if kwargs.get("destination") == "acct_err":
+                raise RuntimeError("transfer failed")
+            return Mock(id=f"tr_{kwargs.get('destination')}")
+
+        mock_transfer_create.side_effect = transfer_side_effect
+
+        items = [
+            {
+                Fields.SELLER_ID: "seller_1",
+                Fields.PRICE: 10.0,
+                Fields.QUANTITY: 1,
+                Fields.STATUS: DeliveryStatusValues.DELIVERED,
+            },
+            {
+                Fields.SELLER_ID: "seller_2",
+                Fields.PRICE: 10.0,
+                Fields.QUANTITY: 1,
+                Fields.STATUS: DeliveryStatusValues.DELIVERED,
+            },
+            {
+                Fields.SELLER_ID: "seller_3",
+                Fields.PRICE: 10.0,
+                Fields.QUANTITY: 1,
+                Fields.STATUS: DeliveryStatusValues.DELIVERED,
+            },
+            {
+                Fields.SELLER_ID: "seller_4",
+                Fields.PRICE: 10.0,
+                Fields.QUANTITY: 1,
+                Fields.STATUS: DeliveryStatusValues.DELIVERED,
+            },
+            {
+                Fields.SELLER_ID: "seller_5",
+                Fields.PRICE: 10.0,
+                Fields.QUANTITY: 1,
+                Fields.STATUS: DeliveryStatusValues.DELIVERED,
+            },
+            {
+                Fields.SELLER_ID: "seller_6",
+                Fields.PRICE: 10.0,
+                Fields.QUANTITY: 1,
+                Fields.STATUS: DeliveryStatusValues.DELIVERED,
+            },
+        ]
+
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(
+            {
+                Fields.USER_ID: "buyer_1",
+                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
+                Fields.ORDER_STATUS: OrderStatusValues.SHIPPED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_3_test",
+                Fields.CAPTURE_ATTEMPTS: 0,
+                Fields.TOTAL_AMOUNT_CENTS: 6000,
+                Fields.SUBTOTAL_CENTS: 6000,
+                Fields.DISCOUNT_AMOUNT_CENTS: 600,
+                Fields.COUPON_SELLER_ID: "seller_1",
+                Fields.PLATFORM_FEE_RATIO: 0.1,
+                Fields.ITEMS: items,
+            },
+            doc_id="order_1",
+        )
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+
+        sec_query = Mock()
+        sec_query.where.return_value = sec_query
+        sec_query.limit.return_value = sec_query
+        sec_query.get.return_value = []
+        security_col = Mock()
+        security_col.where.return_value = sec_query
+
+        users_by_id = {
+            "seller_1": _snap({Fields.SUSPENDED: False}, doc_id="seller_1"),
+            "seller_2": _snap({Fields.SUSPENDED: True}, doc_id="seller_2"),
+            "seller_3": _snap({Fields.SUSPENDED: False}, doc_id="seller_3"),
+            "seller_4": _snap({Fields.SUSPENDED: False}, doc_id="seller_4"),
+            "seller_5": _snap({Fields.SUSPENDED: False}, doc_id="seller_5"),
+            "seller_6": _snap({Fields.SUSPENDED: False}, doc_id="seller_6"),
+        }
+        users_col = Mock()
+        users_col.document.side_effect = lambda uid: Mock(get=Mock(return_value=users_by_id[uid]))
+
+        sp_by_id = {
+            "seller_1": _snap({Fields.STRIPE_ACCOUNT_ID: "acct_live_1", Fields.CHARGES_ENABLED: True}, doc_id="seller_1"),
+            "seller_2": _snap({Fields.STRIPE_ACCOUNT_ID: "acct_2", Fields.CHARGES_ENABLED: True}, doc_id="seller_2"),
+            "seller_3": _snap({Fields.CHARGES_ENABLED: True}, doc_id="seller_3"),
+            "seller_4": _snap({Fields.STRIPE_ACCOUNT_ID: "acct_4", Fields.CHARGES_ENABLED: False}, doc_id="seller_4"),
+            "seller_5": _snap({Fields.STRIPE_ACCOUNT_ID: "acct_err", Fields.CHARGES_ENABLED: True}, doc_id="seller_5"),
+            "seller_6": _snap({Fields.STRIPE_ACCOUNT_ID: "acct_6", Fields.CHARGES_ENABLED: True}, doc_id="seller_6"),
+        }
+        seller_profiles_col = Mock()
+        seller_profiles_col.document.side_effect = lambda uid: Mock(get=Mock(return_value=sp_by_id[uid]))
+
+        current_seller = {"id": None}
+        payout_query = Mock()
+
+        def payout_where(field, _op, value):
+            if field == Fields.SELLER_ID:
+                current_seller["id"] = value
+            return payout_query
+
+        payout_query.where.side_effect = payout_where
+        payout_query.limit.return_value = payout_query
+        payout_query.get.side_effect = lambda: [_snap({}, doc_id="existing")] if current_seller["id"] == "seller_6" else []
+
+        payout_refs = {
+            "order_1_seller_1": Mock(),
+            "order_1_seller_5": Mock(),
+        }
+        payout_refs["order_1_seller_1"].update.side_effect = [Exception("fs1"), Exception("fs2"), Exception("fs3")]
+
+        payouts_col = Mock()
+        payouts_col.where.side_effect = payout_where
+        payouts_col.document.side_effect = lambda doc_id: payout_refs.setdefault(doc_id, Mock())
+
+        db = Mock()
+        db.transaction.return_value = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.SECURITY_ALERTS: security_col,
+            Collections.USERS: users_col,
+            Collections.SELLER_PROFILES: seller_profiles_col,
+            Collections.PAYOUTS: payouts_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        out = _capture_payment_impl(_req("buyer_1", {Fields.ORDER_ID: "order_1"}, token={}))
+
+        assert out[ApiKeys.SUCCESS] is True
+        assert out[ApiKeys.CAPTURED] is True
+        assert out[Fields.PAYOUT_ERRORS] is True
+        assert security_col.add.call_count >= 2
+        assert payout_refs["order_1_seller_1"].set.called
+        assert payout_refs["order_1_seller_1"].update.call_count == 3
+        final_update = order_ref.update.call_args_list[-1].args[0]
+        assert final_update[Fields.PAYMENT_STATUS] == PaymentStatusValues.CAPTURED
+        assert final_update[Fields.REQUIRES_MANUAL_REVIEW] is True
+        assert final_update[Fields.PAYOUT_ERRORS][0][Fields.SELLER_ID] == "seller_5"
+
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("utils.helpers.get_charge_id_from_pi", return_value="ch_1")
+    @patch("handlers.payment_stripe.stripe.Charge.retrieve")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.capture")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.retrieve")
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe.ensure_stripe_key")
+    @patch("handlers.payment_providers.require_provider_enabled")
+    @patch("handlers.payment_stripe.get_db")
+    def test_capture_payment_impl_disputed_charge_rolls_back_status(
+        self,
+        mock_get_db,
+        _mock_provider,
+        _mock_ensure,
+        _mock_get_transactional,
+        mock_pi_retrieve,
+        mock_pi_capture,
+        mock_charge_retrieve,
+        _mock_charge_id,
+        _mock_ts,
+    ):
+        from handlers.payment_stripe import _capture_payment_impl
+
+        mock_pi_retrieve.return_value = Mock(status=StripeConstants.STATUS_REQUIRES_CAPTURE, amount=1000)
+        mock_pi_capture.return_value = Mock(id="pi_3_test_dispute")
+        mock_charge_retrieve.return_value = Mock(dispute="dp_live")
+
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(
+            {
+                Fields.USER_ID: "buyer_1",
+                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
+                Fields.ORDER_STATUS: OrderStatusValues.SHIPPED,
+                Fields.STRIPE_PAYMENT_INTENT_ID: "pi_3_test_dispute",
+                Fields.CAPTURE_ATTEMPTS: 0,
+                Fields.TOTAL_AMOUNT_CENTS: 1000,
+                Fields.ITEMS: [
+                    {
+                        Fields.SELLER_ID: "seller_1",
+                        Fields.PRICE: 10.0,
+                        Fields.QUANTITY: 1,
+                        Fields.STATUS: DeliveryStatusValues.DELIVERED,
+                    }
+                ],
+            },
+            doc_id="order_dispute",
+        )
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+
+        sec_query = Mock()
+        sec_query.where.return_value = sec_query
+        sec_query.limit.return_value = sec_query
+        sec_query.get.return_value = []
+        security_col = Mock()
+        security_col.where.return_value = sec_query
+
+        db = Mock()
+        db.transaction.return_value = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.SECURITY_ALERTS: security_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            _capture_payment_impl(_req("buyer_1", {Fields.ORDER_ID: "order_dispute"}, token={}))
+
+        assert exc.value.code == "failed-precondition"
+        disputed_payload = order_ref.update.call_args_list[0].args[0]
+        rollback_payload = order_ref.update.call_args_list[-1].args[0]
+        assert disputed_payload[Fields.PAYMENT_STATUS] == PaymentStatusValues.DISPUTED
+        assert rollback_payload[Fields.PAYMENT_STATUS] == PaymentStatusValues.AUTHORIZED

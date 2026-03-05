@@ -842,6 +842,53 @@ class TestModerationReviewAndVoting:
 
 
 class TestBulkAndUpdateOperations:
+    def test_bulk_update_products_requires_auth(self):
+        from handlers.products import bulk_update_products
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            bulk_update_products(_req(None, {"productIds": ["p1"], Fields.ACTION: "pause"}))
+        assert exc.value.code == "unauthenticated"
+
+    def test_bulk_update_products_rejects_empty_product_ids(self):
+        from handlers.products import bulk_update_products
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            bulk_update_products(_req("seller_1", {"productIds": [], Fields.ACTION: "pause"}))
+        assert exc.value.code == "invalid-argument"
+
+    def test_bulk_update_products_rejects_invalid_action(self):
+        from handlers.products import bulk_update_products
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            bulk_update_products(_req("seller_1", {"productIds": ["p1"], Fields.ACTION: "bad_action"}))
+        assert exc.value.code == "invalid-argument"
+
+    @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
+    @patch("handlers.products.get_db")
+    def test_bulk_update_products_skips_invalid_and_missing_product_ids(self, mock_get_db, _mock_resp):
+        from handlers.products import bulk_update_products
+
+        p1_ref = Mock(id="p1")
+        p1_snap = _snap({Fields.SELLER_ID: "seller_1", Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE}, doc_id="p1")
+        p1_ref.get.return_value = p1_snap
+
+        products_col = Mock()
+        products_col.document.return_value = p1_ref
+
+        batch = Mock()
+        db = Mock()
+        db.collection.return_value = products_col
+        db.batch.return_value = batch
+        db.get_all.side_effect = lambda refs: [ref.get() for ref in refs]
+        mock_get_db.return_value = db
+
+        req = _req("seller_1", {"productIds": ["p1", " ", 123, "missing"], Fields.ACTION: "pause"})
+        out = bulk_update_products(req)
+
+        assert out["updated"] == 1
+        assert out["skipped"] == 3
+        batch.commit.assert_called_once()
+
     @patch("handlers.products.algolia_partial_update")
     @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
     @patch("handlers.products.get_db")
@@ -962,6 +1009,88 @@ class TestBulkAndUpdateOperations:
         batch.commit.assert_called_once()
         mock_algolia.assert_called_once()
 
+    @patch("handlers.products.get_db")
+    def test_deactivate_supplier_platform_requires_auth(self, mock_get_db):
+        from handlers.products import deactivate_supplier_platform
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            deactivate_supplier_platform(_req(None, {"supplierType": SupplierTypeValues.ALIEXPRESS}))
+        assert "unauth" in str(exc.value.code).lower()
+        mock_get_db.assert_not_called()
+
+    @patch("handlers.products.get_db")
+    def test_deactivate_supplier_platform_requires_existing_admin_user(self, mock_get_db):
+        from handlers.products import deactivate_supplier_platform
+
+        users_col = Mock()
+        users_col.document.return_value.get.return_value = _snap(exists=False)
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.USERS: users_col}[name]
+        mock_get_db.return_value = db
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            deactivate_supplier_platform(_req("u1", {"supplierType": SupplierTypeValues.ALIEXPRESS}))
+        assert "User not found" in str(exc.value)
+
+    @patch("handlers.products.get_db")
+    def test_deactivate_supplier_platform_rejects_non_admin(self, mock_get_db):
+        from handlers.products import deactivate_supplier_platform
+
+        users_col = Mock()
+        users_col.document.return_value.get.return_value = _snap({Fields.ROLES: [UserRoleValues.BUYER]})
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.USERS: users_col}[name]
+        mock_get_db.return_value = db
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            deactivate_supplier_platform(_req("u1", {"supplierType": SupplierTypeValues.ALIEXPRESS}))
+        assert "permission" in str(exc.value.code).lower()
+
+    @patch("handlers.products.get_db")
+    def test_deactivate_supplier_platform_rejects_invalid_supplier_type(self, mock_get_db):
+        from handlers.products import deactivate_supplier_platform
+
+        users_col = Mock()
+        users_col.document.return_value.get.return_value = _snap({Fields.ROLES: [UserRoleValues.ADMIN]})
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.USERS: users_col}[name]
+        mock_get_db.return_value = db
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            deactivate_supplier_platform(_req("admin_1", {"supplierType": "definitely_invalid"}))
+        assert "invalid" in str(exc.value.code).lower()
+
+    @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
+    @patch("handlers.products.get_db")
+    def test_deactivate_supplier_platform_no_matching_products_returns_zero(self, mock_get_db, _mock_resp):
+        from handlers.products import deactivate_supplier_platform
+
+        users_col = Mock()
+        users_col.document.return_value.get.return_value = _snap({Fields.ROLES: [UserRoleValues.ADMIN]})
+
+        prod_query = Mock()
+        prod_query.where.return_value = prod_query
+        prod_query.limit.return_value = prod_query
+        prod_query.stream.return_value = []
+        prod_query.start_after.return_value = prod_query
+
+        products_col = Mock()
+        products_col.where.return_value = prod_query
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.USERS: users_col,
+            Collections.PRODUCTS: products_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        out = deactivate_supplier_platform(_req("admin_1", {"supplierType": SupplierTypeValues.ALIEXPRESS}))
+        assert out == {"updated": 0, "skipped": 0}
+        db.batch.assert_not_called()
+
     @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
     @patch("handlers.products.get_server_timestamp", return_value="ts")
     @patch("handlers.products._get_cached_s3_client")
@@ -1078,6 +1207,105 @@ class TestBulkAndUpdateOperations:
             update_product(req)
         assert exc.value.code == "permission-denied"
 
+    def test_update_product_requires_auth(self):
+        from handlers.products import update_product
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_product(_req(None, {ApiKeys.PRODUCT_ID: "p1", ApiKeys.PRODUCT_DATA: {Fields.NAME: "x"}}))
+        assert exc.value.code == "unauthenticated"
+
+    def test_update_product_requires_product_id_and_payload(self):
+        from handlers.products import update_product
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_product(_req("seller_1", {ApiKeys.PRODUCT_ID: "p1"}))
+        assert exc.value.code == "invalid-argument"
+
+    @patch("handlers.products.get_db")
+    def test_update_product_rejects_missing_product(self, mock_get_db):
+        from handlers.products import update_product
+
+        product_ref = Mock()
+        product_ref.get.return_value = _snap(exists=False)
+        products_col = Mock()
+        products_col.document.return_value = product_ref
+
+        db = Mock()
+        db.collection.return_value = products_col
+        mock_get_db.return_value = db
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_product(_req("seller_1", {ApiKeys.PRODUCT_ID: "p1", ApiKeys.PRODUCT_DATA: {Fields.NAME: "new"}}))
+        assert exc.value.code == "not-found"
+
+    @patch("handlers.products.ProductUpdate", _FakeProductUpdate)
+    @patch("handlers.products.get_db")
+    def test_update_product_rejects_invalid_subcategory_for_category(self, mock_get_db):
+        from handlers.products import update_product
+
+        product_ref = Mock()
+        product_ref.get.return_value = _snap({Fields.SELLER_ID: "seller_1", Fields.CATEGORY_ID: 1})
+        products_col = Mock()
+        products_col.document.return_value = product_ref
+
+        db = Mock()
+        db.collection.return_value = products_col
+        mock_get_db.return_value = db
+
+        req = _req(
+            "seller_1",
+            {
+                ApiKeys.PRODUCT_ID: "p1",
+                ApiKeys.PRODUCT_DATA: {Fields.SUBCATEGORY: "not-a-valid-subcategory"},
+            },
+        )
+        with pytest.raises(https_fn.HttpsError) as exc:
+            update_product(req)
+        assert exc.value.code == "invalid-argument"
+
+    @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
+    @patch("handlers.products.get_server_timestamp", return_value="ts")
+    @patch("handlers.products._get_cached_s3_client")
+    @patch("handlers.products.ProductUpdate", _FakeProductUpdate)
+    @patch("handlers.products.get_db")
+    def test_update_product_replaces_video_and_deletes_old_object(
+        self,
+        mock_get_db,
+        mock_s3,
+        _mock_ts,
+        _mock_resp,
+    ):
+        from handlers.products import CDN_BASE_URL, update_product
+
+        product_ref = Mock()
+        product_ref.get.return_value = _snap(
+            {
+                Fields.SELLER_ID: "seller_1",
+                Fields.CATEGORY_ID: 1,
+                Fields.VIDEO_URL: f"{CDN_BASE_URL}/videos/old.mp4",
+            }
+        )
+        products_col = Mock()
+        products_col.document.return_value = product_ref
+
+        db = Mock()
+        db.collection.return_value = products_col
+        mock_get_db.return_value = db
+
+        req = _req(
+            "seller_1",
+            {
+                ApiKeys.PRODUCT_ID: "p1",
+                ApiKeys.PRODUCT_DATA: {Fields.VIDEO_URL: f"{CDN_BASE_URL}/videos/new.mp4"},
+            },
+        )
+        out = update_product(req)
+        assert out["updated"] is True
+        mock_s3.return_value.delete_object.assert_called_once()
+        delete_kwargs = mock_s3.return_value.delete_object.call_args.kwargs
+        assert delete_kwargs["Key"] == "videos/old.mp4"
+        assert "Bucket" in delete_kwargs
+
 
 class TestPriceHistoryHelpers:
     @patch("handlers.products.get_db")
@@ -1143,4 +1371,11 @@ class TestPriceHistoryHelpers:
         from handlers.products import _fire_price_drop_notifications
 
         _fire_price_drop_notifications("p1", 100.0, 95.0, "Widget")
+        mock_get_db.assert_not_called()
+
+    @patch("handlers.products.get_db")
+    def test_fire_price_drop_notifications_non_positive_start_price_skips(self, mock_get_db):
+        from handlers.products import _fire_price_drop_notifications
+
+        _fire_price_drop_notifications("p1", 0.0, 0.0, "Widget")
         mock_get_db.assert_not_called()

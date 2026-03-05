@@ -462,3 +462,538 @@ class TestStripeConnectEndpointsDeep:
         assert out["success"] is True
         sp_ref.update.assert_called_once()
         user_ref.update.assert_called_once()
+
+
+class TestExecuteSellerPayoutsDeep:
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("handlers.payment_stripe.stripe.Transfer.create")
+    @patch("handlers.payment_stripe._get_seller_stripe_snapshot", return_value={"seller_1": "acct_1"})
+    @patch("handlers.payment_stripe.get_db")
+    def test_execute_seller_payouts_scoped_coupon_and_transfer_failure(
+        self,
+        mock_get_db,
+        _mock_snapshot,
+        mock_transfer_create,
+        _mock_ts,
+    ):
+        from handlers.payment_stripe import _execute_seller_payouts
+
+        def _transfer_side_effect(**kwargs):
+            if kwargs.get("destination") == "acct_3":
+                raise RuntimeError("bank fail")
+            return Mock(id="tr_ok")
+
+        mock_transfer_create.side_effect = _transfer_side_effect
+
+        payout_ref_1 = Mock()
+        payout_ref_1.get.return_value = _snap(exists=False)
+
+        payout_ref_2 = Mock()
+        payout_ref_2.get.return_value = _snap({Fields.STATUS: PayoutStatusValues.COMPLETED}, exists=True)
+
+        payout_ref_3 = Mock()
+        payout_ref_3.get.return_value = _snap({Fields.STATUS: PayoutStatusValues.FAILED}, exists=True)
+
+        payouts_col = Mock()
+        payouts_col.document.side_effect = lambda doc_id: {
+            "order_1_seller_1": payout_ref_1,
+            "order_1_seller_2": payout_ref_2,
+            "order_1_seller_3": payout_ref_3,
+        }[doc_id]
+
+        seller_profiles_col = Mock()
+        seller_profiles_col.document.return_value.get.return_value = _snap(
+            {Fields.STRIPE_ACCOUNT_ID: "acct_3"},
+            doc_id="seller_3",
+        )
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.PAYOUTS: payouts_col,
+            Collections.SELLER_PROFILES: seller_profiles_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        order_data = {
+            Fields.ITEMS: [
+                {Fields.SELLER_ID: "seller_1", Fields.PRICE: 10.0, Fields.QUANTITY: 1},
+                {Fields.SELLER_ID: "seller_2", Fields.PRICE: 10.0, Fields.QUANTITY: 1},
+                {Fields.SELLER_ID: "seller_3", Fields.PRICE: 10.0, Fields.QUANTITY: 1},
+                {Fields.PRICE: 5.0, Fields.QUANTITY: 1},  # no seller id
+            ],
+            Fields.PLATFORM_FEE_RATIO: 0.1,
+            Fields.SUBTOTAL_CENTS: 3000,
+            Fields.DISCOUNT_AMOUNT_CENTS: 500,
+            Fields.COUPON_SELLER_ID: "seller_1",
+        }
+
+        transfer_errors = _execute_seller_payouts("order_1", order_data, charge_id="ch_1")
+
+        # seller_1: scoped discount ratio => 1000 -> 500, fee 10% => net 450
+        payload_1 = payout_ref_1.set.call_args.args[0]
+        assert payload_1[Fields.AMOUNT_CENTS] == 500
+        assert payload_1[Fields.NET_AMOUNT_CENTS] == 450
+        payout_ref_1.update.assert_called_once()
+
+        # seller_2: already completed payout => skipped
+        payout_ref_2.set.assert_not_called()
+        payout_ref_2.update.assert_not_called()
+
+        # seller_3: previously failed payout gets retried, then transfer failure recorded
+        payout_ref_3.set.assert_called_once()
+        payout_ref_3.update.assert_called_once()
+        assert transfer_errors == [("seller_3", "bank fail")]
+
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("handlers.payment_stripe.stripe.Transfer.create")
+    @patch("handlers.payment_stripe.get_db")
+    def test_execute_seller_payouts_without_charge_id_only_writes_pending_records(
+        self,
+        mock_get_db,
+        mock_transfer_create,
+        _mock_ts,
+    ):
+        from handlers.payment_stripe import _execute_seller_payouts
+
+        payout_ref = Mock()
+        payout_ref.get.return_value = _snap(exists=False)
+
+        payouts_col = Mock()
+        payouts_col.document.return_value = payout_ref
+
+        db = Mock()
+        db.collection.return_value = payouts_col
+        mock_get_db.return_value = db
+
+        order_data = {
+            Fields.ITEMS: [{Fields.SELLER_ID: "seller_1", Fields.PRICE: 20.0, Fields.QUANTITY: 1}],
+            Fields.PLATFORM_FEE_RATIO: 0.1,
+            Fields.SUBTOTAL_CENTS: 2000,
+            Fields.DISCOUNT_AMOUNT_CENTS: 500,  # platform-wide coupon: seller payout unchanged
+            Fields.COUPON_SELLER_ID: None,
+        }
+
+        transfer_errors = _execute_seller_payouts("order_no_charge", order_data, charge_id="")
+
+        payload = payout_ref.set.call_args.args[0]
+        assert payload[Fields.AMOUNT_CENTS] == 2000
+        assert payload[Fields.NET_AMOUNT_CENTS] == 1800
+        mock_transfer_create.assert_not_called()
+        assert transfer_errors == []
+
+
+class TestPostPaymentSideEffectsDeep:
+    @patch("services.push_service.send_push_notification")
+    @patch("handlers.payment_stripe._clear_user_cart")
+    @patch("handlers.coupons.redeem_coupon")
+    @patch("handlers.payment_stripe._email_t", side_effect=lambda key, _lang="en": f"{key} {{oid}}")
+    @patch("handlers.payment_stripe.get_seller_notification_email", return_value="<p>seller</p>")
+    @patch("handlers.payment_stripe.get_order_confirmation_email", return_value="<p>buyer</p>")
+    @patch("handlers.payment_stripe.generate_invoice_pdf", return_value=b"%PDF-1.7")
+    @patch("handlers.payment_stripe.send_email")
+    @patch("handlers.payment_stripe.enqueue_email_task")
+    @patch("handlers.payment_stripe._generate_digital_licenses")
+    @patch("handlers.payment_stripe.get_db")
+    def test_run_post_payment_side_effects_happy_path(
+        self,
+        mock_get_db,
+        _mock_generate_licenses,
+        mock_enqueue,
+        mock_send_email,
+        _mock_pdf,
+        _mock_buyer_tpl,
+        _mock_seller_tpl,
+        _mock_t,
+        mock_redeem,
+        mock_clear_cart,
+        mock_push,
+    ):
+        from handlers.payment_stripe import _run_post_payment_side_effects
+
+        order_data = {
+            Fields.USER_ID: "buyer_1",
+            Fields.PREFERRED_LANGUAGE: "en",
+            Fields.ITEMS: [
+                {Fields.SELLER_ID: "seller_1", Fields.NAME: "Item A"},
+                {Fields.SELLER_ID: "seller_2", Fields.NAME: "Fresh Fish", Fields.IS_PERISHABLE: True},
+            ],
+            Fields.COUPON_CODE: "SAVE10",
+            Fields.COUPON_PRERESERVED: False,
+        }
+
+        refreshed_order = dict(order_data)
+        refreshed_doc = _snap(refreshed_order, doc_id="order_1")
+
+        buyer_ref = Mock()
+        buyer_ref.get.return_value = _snap({Fields.EMAIL: "buyer@example.com", Fields.PREFERRED_LANGUAGE: "en"}, doc_id="buyer_1")
+        seller_1_ref = Mock()
+        seller_1_ref.get.return_value = _snap({Fields.EMAIL: "s1@example.com", Fields.PREFERRED_LANGUAGE: "en"}, doc_id="seller_1")
+        seller_2_ref = Mock()
+        seller_2_ref.get.return_value = _snap({Fields.EMAIL: "s2@example.com", Fields.PREFERRED_LANGUAGE: "fr"}, doc_id="seller_2")
+
+        orders_col = Mock()
+        orders_col.document.return_value.get.return_value = refreshed_doc
+
+        users_col = Mock()
+        users_col.document.side_effect = lambda uid: {
+            "buyer_1": buyer_ref,
+            "seller_1": seller_1_ref,
+            "seller_2": seller_2_ref,
+        }[uid]
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        _run_post_payment_side_effects("order_1", order_data)
+
+        mock_send_email.assert_called_once()  # PDF attachment path
+        assert mock_enqueue.call_count >= 3  # seller notifications + perishable email
+        mock_redeem.assert_called_once_with("SAVE10", "buyer_1", order_id="order_1")
+        mock_clear_cart.assert_called_once_with("buyer_1")
+        buyer_ref.update.assert_called_once()
+        assert mock_push.call_count >= 3  # seller push + perishable urgent push
+
+    @patch("services.push_service.send_push_notification", side_effect=RuntimeError("push down"))
+    @patch("handlers.payment_stripe._clear_user_cart", side_effect=RuntimeError("cart down"))
+    @patch("handlers.coupons.redeem_coupon")
+    @patch("handlers.payment_stripe._email_t", side_effect=lambda key, _lang="en": f"{key} {{oid}}")
+    @patch("handlers.payment_stripe.get_seller_notification_email", return_value="<p>seller</p>")
+    @patch("handlers.payment_stripe.get_order_confirmation_email", return_value="<p>buyer</p>")
+    @patch("handlers.payment_stripe.generate_invoice_pdf", side_effect=RuntimeError("pdf failed"))
+    @patch("handlers.payment_stripe.send_email")
+    @patch("handlers.payment_stripe.enqueue_email_task")
+    @patch("handlers.payment_stripe._generate_digital_licenses", side_effect=RuntimeError("license failed"))
+    @patch("handlers.payment_stripe.get_db")
+    def test_run_post_payment_side_effects_tolerates_non_critical_failures(
+        self,
+        mock_get_db,
+        _mock_generate_licenses,
+        mock_enqueue,
+        mock_send_email,
+        _mock_pdf,
+        _mock_buyer_tpl,
+        _mock_seller_tpl,
+        _mock_t,
+        mock_redeem,
+        _mock_clear_cart,
+        _mock_push,
+    ):
+        from handlers.payment_stripe import _run_post_payment_side_effects
+
+        order_data = {
+            Fields.USER_ID: "buyer_2",
+            Fields.CUSTOMER_EMAIL: "buyer2@example.com",
+            Fields.PREFERRED_LANGUAGE: "en",
+            Fields.ITEMS: [{Fields.SELLER_ID: "seller_3", Fields.NAME: "Perishable", Fields.IS_PERISHABLE: True}],
+            Fields.COUPON_CODE: "SAVE5",
+            Fields.COUPON_PRERESERVED: True,
+        }
+
+        refreshed_doc = _snap(order_data, exists=False, doc_id="order_2")
+        orders_col = Mock()
+        orders_col.document.return_value.get.return_value = refreshed_doc
+
+        seller_3_ref = Mock()
+        seller_3_ref.get.return_value = _snap({Fields.EMAIL: "s3@example.com", Fields.PREFERRED_LANGUAGE: "en"}, doc_id="seller_3")
+        buyer_2_ref = Mock()
+        buyer_2_ref.get.return_value = _snap({Fields.EMAIL: "buyer2@example.com"}, doc_id="buyer_2")
+
+        users_col = Mock()
+        users_col.document.side_effect = lambda uid: {
+            "seller_3": seller_3_ref,
+            "buyer_2": buyer_2_ref,
+        }[uid]
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        _run_post_payment_side_effects("order_2", order_data)
+
+        # PDF failure should fall back to queued buyer email.
+        mock_send_email.assert_not_called()
+        assert mock_enqueue.call_count >= 1
+        # Pre-reserved coupon must not be redeemed a second time.
+        mock_redeem.assert_not_called()
+
+
+class TestCheckoutSessionCompletedDeep:
+    def test_checkout_session_completed_defers_when_payment_not_paid(self):
+        from handlers.payment_stripe import process_checkout_session_completed
+
+        out = process_checkout_session_completed(
+            {StripeConstants.OBJECT_ID: "cs_1", StripeConstants.PAYMENT_STATUS: "unpaid"}
+        )
+        assert out is None
+
+    def test_checkout_session_completed_missing_order_id_returns_none(self):
+        from handlers.payment_stripe import process_checkout_session_completed
+
+        out = process_checkout_session_completed(
+            {StripeConstants.PAYMENT_STATUS: StripeConstants.STATUS_PAID, StripeConstants.METADATA: {}}
+        )
+        assert out is None
+
+    @patch("handlers.payment_stripe.get_db")
+    def test_checkout_session_completed_order_not_found_returns_none(self, mock_get_db):
+        from handlers.payment_stripe import process_checkout_session_completed
+
+        orders_col = Mock()
+        orders_col.document.return_value.get.return_value = _snap(exists=False)
+        db = Mock()
+        db.collection.return_value = orders_col
+        mock_get_db.return_value = db
+
+        out = process_checkout_session_completed(
+            {
+                StripeConstants.PAYMENT_STATUS: StripeConstants.STATUS_PAID,
+                StripeConstants.METADATA: {StripeConstants.METADATA_ORDER_ID: "missing"},
+            }
+        )
+        assert out is None
+
+    @patch("handlers.payment_stripe.get_db")
+    def test_checkout_session_completed_non_pending_order_is_skipped(self, mock_get_db):
+        from handlers.payment_stripe import process_checkout_session_completed
+
+        order_data = {
+            Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+            Fields.TOTAL_AMOUNT_CENTS: 1000,
+            Fields.ITEMS: [],
+        }
+        orders_col = Mock()
+        orders_col.document.return_value.get.return_value = _snap(order_data, doc_id="order_skip")
+        db = Mock()
+        db.collection.return_value = orders_col
+        mock_get_db.return_value = db
+
+        out = process_checkout_session_completed(
+            {
+                StripeConstants.PAYMENT_STATUS: StripeConstants.STATUS_PAID,
+                "amount_total": 1000,
+                StripeConstants.METADATA: {StripeConstants.METADATA_ORDER_ID: "order_skip"},
+            }
+        )
+        assert out == "Order order_skip skipped (status: confirmed)"
+
+    @patch("handlers.payment_stripe._restore_stock_and_cancel_order")
+    @patch("handlers.payment_stripe.get_db")
+    def test_checkout_session_completed_amount_mismatch_cancels_order(self, mock_get_db, mock_restore):
+        from handlers.payment_stripe import process_checkout_session_completed
+
+        order_data = {
+            Fields.ORDER_STATUS: OrderStatusValues.PENDING,
+            Fields.TOTAL_AMOUNT_CENTS: 2000,
+            Fields.ITEMS: [],
+        }
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(order_data, doc_id="order_amt")
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+
+        db = Mock()
+        db.collection.return_value = orders_col
+        mock_get_db.return_value = db
+
+        session = {
+            StripeConstants.PAYMENT_STATUS: StripeConstants.STATUS_PAID,
+            "amount_total": 1500,
+            StripeConstants.METADATA: {StripeConstants.METADATA_ORDER_ID: "order_amt"},
+        }
+
+        out = process_checkout_session_completed(session)
+
+        assert out == "Order order_amt cancelled - amount mismatch"
+        mock_restore.assert_called_once()
+
+    @patch("handlers.payment_stripe._restore_stock_and_cancel_order")
+    @patch("handlers.payment_stripe.get_db")
+    def test_checkout_session_completed_address_mismatch_cancels_order(self, mock_get_db, mock_restore):
+        from handlers.payment_stripe import process_checkout_session_completed
+
+        order_data = {
+            Fields.ORDER_STATUS: OrderStatusValues.PENDING,
+            Fields.TOTAL_AMOUNT_CENTS: 2000,
+            Fields.SHIPPING_ADDRESS: {Fields.COUNTRY: "CA", Fields.STATE: "ON", Fields.POSTAL_CODE: "M5V 2T6"},
+            Fields.ITEMS: [],
+        }
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(order_data, doc_id="order_addr")
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+
+        db = Mock()
+        db.collection.return_value = orders_col
+        mock_get_db.return_value = db
+
+        session = {
+            StripeConstants.PAYMENT_STATUS: StripeConstants.STATUS_PAID,
+            "amount_total": 2000,
+            StripeConstants.METADATA: {StripeConstants.METADATA_ORDER_ID: "order_addr"},
+            "shipping_details": {"address": {"country": "CA", "state": "ON", "postal_code": "H2X1Y4"}},
+        }
+
+        out = process_checkout_session_completed(session)
+
+        assert out == "Order order_addr cancelled - address mismatch"
+        mock_restore.assert_called_once()
+
+    @patch("handlers.payment_stripe._restore_stock_and_cancel_order")
+    @patch("handlers.payment_stripe.get_db")
+    def test_checkout_session_completed_country_and_state_mismatch_cancels_order(self, mock_get_db, mock_restore):
+        from handlers.payment_stripe import process_checkout_session_completed
+
+        order_data = {
+            Fields.ORDER_STATUS: OrderStatusValues.PENDING,
+            Fields.TOTAL_AMOUNT_CENTS: 1200,
+            Fields.SHIPPING_ADDRESS: {Fields.COUNTRY: "CA", Fields.STATE: "ON", Fields.POSTAL_CODE: "M5V2T6"},
+            Fields.ITEMS: [],
+        }
+        orders_col = Mock()
+        orders_col.document.return_value.get.return_value = _snap(order_data, doc_id="order_addr2")
+        db = Mock()
+        db.collection.return_value = orders_col
+        mock_get_db.return_value = db
+
+        out = process_checkout_session_completed(
+            {
+                StripeConstants.PAYMENT_STATUS: StripeConstants.STATUS_PAID,
+                "amount_total": 1200,
+                StripeConstants.METADATA: {StripeConstants.METADATA_ORDER_ID: "order_addr2"},
+                "shipping_details": {"address": {"country": "US", "state": "NY", "postal_code": "M5V2T6"}},
+            }
+        )
+        assert out == "Order order_addr2 cancelled - address mismatch"
+        mock_restore.assert_called_once()
+
+    @patch("utils.helpers.get_charge_id_from_pi", return_value=None)
+    @patch("handlers.payment_stripe._run_post_payment_side_effects")
+    @patch("handlers.payment_stripe._execute_seller_payouts")
+    @patch("handlers.payment_stripe.OrderEvent.write")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.retrieve")
+    @patch("handlers.payment_stripe.stripe.Refund.create")
+    @patch("handlers.payment_stripe.ensure_stripe_key")
+    @patch("handlers.payment_stripe._add_stock_restore_to_batch")
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("handlers.payment_stripe.get_db")
+    def test_checkout_session_completed_partial_bad_sellers_refunds_and_continues(
+        self,
+        mock_get_db,
+        _mock_ts,
+        mock_add_restore,
+        _mock_ensure,
+        mock_refund_create,
+        mock_pi_retrieve,
+        _mock_event,
+        mock_exec_payouts,
+        mock_side_effects,
+        _mock_charge_id,
+    ):
+        from handlers.payment_stripe import process_checkout_session_completed
+
+        mock_refund_create.return_value = Mock(id="re_partial")
+        mock_pi_retrieve.return_value = Mock()
+
+        order_data = {
+            Fields.ORDER_STATUS: OrderStatusValues.PENDING,
+            Fields.TOTAL_AMOUNT_CENTS: 3000,
+            Fields.SUBTOTAL_CENTS: 3000,
+            Fields.DISCOUNT_AMOUNT_CENTS: 300,
+            Fields.SHIPPING_ADDRESS: {Fields.COUNTRY: "CA", Fields.STATE: "ON", Fields.POSTAL_CODE: "M5V 2T6"},
+            Fields.ITEMS: [
+                {Fields.PRODUCT_ID: "prod_bad", Fields.SELLER_ID: "seller_bad", Fields.PRICE: 10.0, Fields.QUANTITY: 1},
+                {Fields.PRODUCT_ID: "prod_good", Fields.SELLER_ID: "seller_good", Fields.PRICE: 20.0, Fields.QUANTITY: 1},
+            ],
+        }
+
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(order_data, doc_id="order_partial")
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+
+        products_col = Mock()
+        products_col.document.side_effect = lambda pid: Mock(
+            get=Mock(
+                return_value=_snap(
+                    {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED}
+                    if pid == "prod_bad"
+                    else {Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE},
+                    doc_id=pid,
+                )
+            )
+        )
+
+        users_col = Mock()
+        users_col.document.side_effect = lambda _uid: Mock(get=Mock(return_value=_snap({Fields.SUSPENDED: False})))
+
+        batch = Mock()
+        db = Mock()
+        db.batch.return_value = batch
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.PRODUCTS: products_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        session = {
+            StripeConstants.PAYMENT_STATUS: StripeConstants.STATUS_PAID,
+            "amount_total": 3000,
+            StripeConstants.PAYMENT_INTENT: "pi_partial",
+            StripeConstants.METADATA: {StripeConstants.METADATA_ORDER_ID: "order_partial"},
+            "shipping_details": {"address": {"country": "CA", "state": "ON", "postal_code": "M5V2T6"}},
+        }
+
+        out = process_checkout_session_completed(session)
+
+        assert out == "Order order_partial confirmed"
+        # Discount ratio 0.9 on bad seller item 1000c => 900c partial refund
+        assert mock_refund_create.call_args.kwargs[Fields.AMOUNT] == 900
+        mock_add_restore.assert_called_once()
+        batch.commit.assert_called_once()
+        mock_exec_payouts.assert_not_called()  # no charge_id resolved
+        mock_side_effects.assert_called_once()
+
+
+class TestCartCleanupDeep:
+    @patch("handlers.payment_stripe.get_db")
+    def test_clear_user_cart_uses_paginated_batches(self, mock_get_db):
+        from handlers.payment_stripe import _clear_user_cart
+
+        page_1 = []
+        for _ in range(500):
+            d = Mock()
+            d.reference = Mock()
+            page_1.append(d)
+        doc_last = Mock()
+        doc_last.reference = Mock()
+        page_2 = [doc_last]
+
+        cart_ref = Mock()
+        cart_ref.limit.return_value.stream.side_effect = [page_1, page_2]
+
+        user_ref = Mock()
+        user_ref.collection.return_value = cart_ref
+        users_col = Mock()
+        users_col.document.return_value = user_ref
+
+        batch_1 = Mock()
+        batch_2 = Mock()
+        db = Mock()
+        db.collection.return_value = users_col
+        db.batch.side_effect = [batch_1, batch_2]
+        mock_get_db.return_value = db
+
+        _clear_user_cart("buyer_1")
+
+        assert batch_1.delete.call_count == 500
+        assert batch_2.delete.call_count == 1
+        batch_1.commit.assert_called_once()
+        batch_2.commit.assert_called_once()
