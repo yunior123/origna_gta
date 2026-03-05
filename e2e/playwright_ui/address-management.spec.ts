@@ -17,42 +17,47 @@ test.describe('Address Management — API', () => {
   test.describe.configure({ mode: 'serial' });
 
   let buyerToken: string;
+  let createdAddressId: string | undefined;
+
+  const NEW_ADDRESS = {
+    street: '123 E2E Test St',
+    city: 'Toronto',
+    province: 'ON',
+    postalCode: 'M5V 3A8',
+    country: 'CA',
+    label: 'E2E Home',
+    isDefault: false,
+  };
 
   test.beforeAll(async () => {
     const buyer = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = buyer.idToken;
   });
 
-  test('T01: get_addresses returns array for authenticated buyer', async () => {
-    const result = await callOk('get_addresses', {}, buyerToken);
+  test('T01: add_buyer_address creates a new address', async () => {
+    const result = await callOk('add_buyer_address', NEW_ADDRESS, buyerToken);
     expect(result.success).toBe(true);
-    expect(Array.isArray(result.addresses)).toBe(true);
+    createdAddressId = result.addressId ?? result.address?.addressId ?? result.id;
+    expect(createdAddressId).toBeTruthy();
   });
 
-  test('T02: add_address creates a new address', async () => {
-    const payload = {
-      street: '123 Test St',
-      city: 'Toronto',
-      province: 'ON',
-      postalCode: 'M5V 3A8',
-      country: 'CA',
-      label: 'Test Address E2E',
-      isDefault: false,
-    };
-    const result = await callOk('add_address', payload, buyerToken);
+  test('T02: set_default_buyer_address marks address as default', async () => {
+    if (!createdAddressId) test.skip(true, 'T01 did not create an address');
+    const result = await callOk('set_default_buyer_address', { addressId: createdAddressId }, buyerToken);
     expect(result.success).toBe(true);
-    const addressId: string | undefined = result.addressId ?? result.address?.addressId;
-    expect(addressId).toBeTruthy();
   });
 
-  test('T03: get_addresses after add returns at least one address', async () => {
-    const result = await callOk('get_addresses', {}, buyerToken);
+  test('T03: update_buyer_address updates an existing address', async () => {
+    if (!createdAddressId) test.skip(true, 'T01 did not create an address');
+    const result = await callOk('update_buyer_address', {
+      addressId: createdAddressId,
+      city: 'Mississauga',
+    }, buyerToken);
     expect(result.success).toBe(true);
-    expect(result.addresses.length).toBeGreaterThan(0);
   });
 
-  test('T04: add_address requires auth — unauthenticated call fails', async () => {
-    const err = await callExpectError('add_address', {
+  test('T04: add_buyer_address requires auth — unauthenticated call fails', async () => {
+    const err = await callExpectError('add_buyer_address', {
       street: '1 Hacker Way',
       city: 'Toronto',
       province: 'ON',
@@ -60,6 +65,12 @@ test.describe('Address Management — API', () => {
     }, '');
     expect(err.code).toBeTruthy();
     expect(err.code).not.toBe('unexpected-success');
+  });
+
+  test.afterAll(async () => {
+    if (createdAddressId && buyerToken) {
+      await callOk('delete_buyer_address', { addressId: createdAddressId }, buyerToken).catch(() => {});
+    }
   });
 });
 
