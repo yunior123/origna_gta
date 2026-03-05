@@ -378,10 +378,23 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Admin path: update order-level status directly
     update_data = {Fields.ORDER_STATUS: new_status, Fields.UPDATED_AT: get_server_timestamp()}
 
-    if new_status == OrderStatusValues.SHIPPED and tracking_number:
-        update_data[Fields.TRACKING_NUMBER] = tracking_number
-        update_data[Fields.CARRIER] = carrier or ""
+    if new_status == OrderStatusValues.SHIPPED:
+        # Cascade SHIPPED to all items so item-level status matches order status.
+        # Without this buyers see items as "pending" even after admin marks order SHIPPED.
+        items = order_data.get(Fields.ITEMS, [])
+        now_utc = datetime.now(UTC)
+        for item in items:
+            if item.get(Fields.STATUS) not in (DeliveryStatusValues.DELIVERED, DeliveryStatusValues.REFUNDED):
+                item[Fields.STATUS] = DeliveryStatusValues.SHIPPED
+                item[Fields.SHIPPED_AT] = now_utc
+                if tracking_number:
+                    item[Fields.TRACKING_NUMBER] = tracking_number
+                    item[Fields.CARRIER] = carrier or ""
+        update_data[Fields.ITEMS] = items
         update_data[Fields.SHIPPED_AT] = get_server_timestamp()
+        if tracking_number:
+            update_data[Fields.TRACKING_NUMBER] = tracking_number
+            update_data[Fields.CARRIER] = carrier or ""
 
     # Admin-triggered DELIVERED: capture payment if still authorized
     if is_admin and new_status == OrderStatusValues.DELIVERED:
@@ -611,6 +624,12 @@ def _update_item_status_logic(user_id: str, data: dict, is_admin: bool = None) -
         if all_delivered and curr_os != OrderStatusValues.DELIVERED:
             if fresh_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
                 update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+            else:
+                logger.warning(
+                    "all_delivered=True but paymentStatus=%s — skipping DELIVERED promotion for order %s",
+                    fresh_data.get(Fields.PAYMENT_STATUS),
+                    order_id,
+                )
         elif all_shipped and not all_delivered and curr_os in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING]:
             update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
 
@@ -648,7 +667,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action=RateLimitActions.CANCEL_ORDER, max_requests=5, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action=RateLimitActions.CANCEL_ORDER, max_requests=5, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -714,6 +733,18 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if not is_valid_order_status_transition(current_status, OrderStatusValues.CANCELLED):
         raise https_fn.HttpsError("failed-precondition", f"Cannot cancel order with status: {current_status}")
+
+    # SECURITY FIX (AUDIT): Buyers can only cancel orders in pre-shipment states.
+    # Allowing buyers to cancel in_transit or processing orders lets them steal
+    # physical goods (package already shipped → they get item + refund).
+    # Admins and sellers have broader cancel authority.
+    _BUYER_CANCELLABLE_STATUSES = {OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED}
+    if is_buyer and not is_admin and not is_seller:
+        if current_status not in _BUYER_CANCELLABLE_STATUSES:
+            raise https_fn.HttpsError(
+                "failed-precondition",
+                f"Order cannot be cancelled at this stage. Contact support if there is an issue.",
+            )
 
     # AUDIT FIX (RC1): Use Firestore transaction to atomically check payment_status
     # and set a 'cancelling' lock — prevents race condition with capture_payment
@@ -1022,11 +1053,37 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     item_quantity = item_data[Fields.QUANTITY]
     item_subtotal_cents = item_price_cents * item_quantity
 
+    # SECURITY FIX (AUDIT): Apply coupon discount ratio to item price before calculating refund.
+    # Without this, a buyer who paid 10% of list price (90% coupon) would receive a full-price
+    # refund, draining platform funds and making other items free.
+    order_subtotal_pre_discount = order_data.get(Fields.SUBTOTAL_CENTS, 0)
+    order_discount_cents = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
+    order_discounted_subtotal = max(0, order_subtotal_pre_discount - order_discount_cents)
+    if order_subtotal_pre_discount > 0 and order_discount_cents > 0:
+        discount_ratio = order_discounted_subtotal / order_subtotal_pre_discount
+        item_subtotal_cents = round(item_subtotal_cents * discount_ratio)
+
     # Calculate proportional tax and shipping
     # CRITICAL FIX: Field name is 'subtotalCents' not 'subtotalAmountCents'
-    order_subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 0)
+    order_subtotal_cents = order_discounted_subtotal if order_discount_cents > 0 else order_data.get(Fields.SUBTOTAL_CENTS, 0)
     order_tax_cents = order_data.get(Fields.TAX_AMOUNT_CENTS, 0)
-    order_shipping_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
+    # Multi-seller: use the seller's individual shipping cost if available, else fall back to total.
+    # sellerShippingCosts is a map keyed by sellerId written at checkout time.
+    seller_shipping_map = order_data.get(Fields.SELLER_SHIPPING_COSTS, {})
+    if item_seller_id and item_seller_id in seller_shipping_map:
+        # Use only this seller's shipping amount as the base for proportion calculation
+        seller_shipping_cents = seller_shipping_map[item_seller_id]
+        # Proportional share within this seller's items only
+        seller_item_subtotals = sum(
+            round(it.get(Fields.PRICE, 0) * 100) * it.get(Fields.QUANTITY, 1)
+            for it in order_data.get(Fields.ITEMS, [])
+            if it.get(Fields.SELLER_ID) == item_seller_id and it.get(Fields.STATUS) != DeliveryStatusValues.REFUNDED
+        )
+        order_shipping_base = seller_shipping_cents
+        shipping_subtotal_base = seller_item_subtotals if seller_item_subtotals > 0 else order_subtotal_cents
+    else:
+        order_shipping_base = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
+        shipping_subtotal_base = order_subtotal_cents
 
     # M3: Fail loudly on zero subtotal instead of silently under-refunding
     if order_subtotal_cents <= 0:
@@ -1036,7 +1093,8 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
         )
     proportion = item_subtotal_cents / order_subtotal_cents
     proportional_tax_cents = round(order_tax_cents * proportion)
-    proportional_shipping_cents = round(order_shipping_cents * proportion)
+    shipping_proportion = (item_subtotal_cents / shipping_subtotal_base) if shipping_subtotal_base > 0 else proportion
+    proportional_shipping_cents = round(order_shipping_base * shipping_proportion)
 
     refund_amount_cents = item_subtotal_cents + proportional_tax_cents + proportional_shipping_cents
 
@@ -1344,17 +1402,23 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                     f"Shipping cost has changed (was ${expected_cost_cents / 100:.2f}, now ${actual_new_cost_cents / 100:.2f}). Please review the new cost.",
                 )
 
+            requesting_seller_id = fresh_approval.get(Fields.REQUESTED_BY, "")
             new_shipping_cost_cents = round(fresh_approval.get(Fields.ACTUAL_COST, 0) * 100)
+            # AUDIT FIX: Use per-seller map for multi-seller shipping
+            seller_shipping_map: dict = dict(fresh_data.get(Fields.SELLER_SHIPPING_COSTS) or {})
+            old_seller_cents = seller_shipping_map.get(requesting_seller_id, 0)
+            seller_shipping_map[requesting_seller_id] = new_shipping_cost_cents
+            new_total_shipping_cents = sum(seller_shipping_map.values())
             old_shipping_cost_cents = fresh_data.get(Fields.SHIPPING_COST_CENTS, 0)
 
             # SECURITY: Validate shipping cost bounds
             # For free-shipping orders, use an absolute max cap (e.g. $500 CAD) instead of
             # percentage-of-zero which would always be 0, blocking all valid approvals.
             _ABSOLUTE_MAX_SHIPPING_CENTS = 50000  # $500 CAD hard cap
-            if old_shipping_cost_cents == 0:
+            if old_seller_cents == 0:
                 max_allowed_cents = _ABSOLUTE_MAX_SHIPPING_CENTS
             else:
-                max_allowed_cents = round(old_shipping_cost_cents * (1 + SHIPPING_APPROVAL_THRESHOLD))
+                max_allowed_cents = round(old_seller_cents * (1 + SHIPPING_APPROVAL_THRESHOLD))
             if new_shipping_cost_cents > max_allowed_cents:
                 raise https_fn.HttpsError(
                     "invalid-argument",
@@ -1370,7 +1434,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                     "failed-precondition", "Payment authorization has expired. Order must be re-created."
                 )
 
-            difference_cents = new_shipping_cost_cents - old_shipping_cost_cents
+            difference_cents = new_total_shipping_cents - old_shipping_cost_cents
 
             # AUDIT FIX (C1): Recalculate tax on shipping delta
             # In Canada, GST/HST/PST apply to shipping charges (CRA requirement)
@@ -1406,7 +1470,8 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             new_total_cents = fresh_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) + difference_cents + tax_difference_cents
 
             update_fields = {
-                Fields.SHIPPING_COST_CENTS: new_shipping_cost_cents,
+                Fields.SELLER_SHIPPING_COSTS: seller_shipping_map,
+                Fields.SHIPPING_COST_CENTS: new_total_shipping_cents,
                 Fields.TAX_AMOUNT_CENTS: new_tax_cents,
                 Fields.TOTAL_AMOUNT_CENTS: new_total_cents,
                 f"{Fields.SHIPPING_APPROVAL}.{Fields.STATUS}": ShippingApprovalStatusValues.APPROVED,
@@ -1636,16 +1701,23 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             f"Cannot update shipping cost: payment status is '{order_data.get(Fields.PAYMENT_STATUS)}'",
         )
 
-    original_shipping_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
+    # AUDIT FIX (HIGH): Track per-seller shipping costs to avoid multi-seller overwrite.
+    # Each seller's shipping update only affects their portion; total is the map sum.
+    seller_shipping_map: dict = dict(order_data.get(Fields.SELLER_SHIPPING_COSTS) or {})
+    original_seller_cents = seller_shipping_map.get(user_id, 0)
     new_shipping_cents = round(new_shipping_cost * 100)
+    seller_shipping_map[user_id] = new_shipping_cents
+    new_total_shipping_cents = sum(seller_shipping_map.values())
+    original_shipping_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
 
-    # Check if increase exceeds threshold (20%)
+    # Check if THIS seller's increase exceeds threshold (20%)
+    # Compare against the seller's own previous cost, not the total order shipping cost.
     approval_required = False
-    if original_shipping_cents > 0:
-        increase_ratio = (new_shipping_cents - original_shipping_cents) / original_shipping_cents
+    if original_seller_cents > 0:
+        increase_ratio = (new_shipping_cents - original_seller_cents) / original_seller_cents
         if increase_ratio > SHIPPING_APPROVAL_THRESHOLD:
             approval_required = True
-    elif original_shipping_cents == 0 and new_shipping_cents > 0:
+    elif original_seller_cents == 0 and new_shipping_cents > 0:
         # AUDIT FIX: Free shipping orders — ANY cost addition requires buyer approval
         # Prevents seller from adding arbitrary shipping charges without consent
         approval_required = True
@@ -1657,7 +1729,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.SHIPPING_APPROVAL: {
                     Fields.STATUS: ShippingApprovalStatusValues.PENDING,
                     Fields.ACTUAL_COST: new_shipping_cost,
-                    Fields.ORIGINAL_COST_CENTS: original_shipping_cents,
+                    Fields.ORIGINAL_COST_CENTS: original_seller_cents,
                     Fields.NEW_COST_CENTS: new_shipping_cents,
                     Fields.REASON: reason,
                     Fields.REQUESTED_BY: user_id,
@@ -1673,7 +1745,8 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         # AUDIT FIX (C1): Recalculate taxes when shipping changes (CRA requirement)
         from services.shipping_service import get_tax_rate
 
-        difference_cents = new_shipping_cents - original_shipping_cents
+        # difference_cents: change in TOTAL order shipping (sum of all sellers)
+        difference_cents = new_total_shipping_cents - original_shipping_cents
 
         # Calculate tax on shipping delta
         tax_difference_cents = 0
@@ -1707,8 +1780,9 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         new_total_cents = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) + difference_cents + tax_difference_cents
 
         update_data = {
-            Fields.SHIPPING_COST_CENTS: new_shipping_cents,
-            Fields.ACTUAL_SHIPPING_CENTS: new_shipping_cents,
+            Fields.SELLER_SHIPPING_COSTS: seller_shipping_map,
+            Fields.SHIPPING_COST_CENTS: new_total_shipping_cents,
+            Fields.ACTUAL_SHIPPING_CENTS: new_total_shipping_cents,
             Fields.UPDATED_AT: get_server_timestamp(),
         }
 
@@ -1972,11 +2046,24 @@ def _process_return_refund(order_id: str, product_id: str, return_id: str, buyer
     item_subtotal_cents = item_price_cents * item_quantity
     order_subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 0)
     order_tax_cents = order_data.get(Fields.TAX_AMOUNT_CENTS, 0)
-    order_shipping_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
+    # Multi-seller: use seller-specific shipping if available
+    return_seller_id = item_data.get(Fields.SELLER_ID)
+    seller_shipping_map = order_data.get(Fields.SELLER_SHIPPING_COSTS, {})
+    if return_seller_id and return_seller_id in seller_shipping_map:
+        order_shipping_base = seller_shipping_map[return_seller_id]
+        shipping_subtotal_base = sum(
+            round(it.get(Fields.PRICE, 0) * 100) * it.get(Fields.QUANTITY, 1)
+            for it in order_data.get(Fields.ITEMS, [])
+            if it.get(Fields.SELLER_ID) == return_seller_id and it.get(Fields.STATUS) != DeliveryStatusValues.REFUNDED
+        ) or order_subtotal_cents
+    else:
+        order_shipping_base = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
+        shipping_subtotal_base = order_subtotal_cents
     if order_subtotal_cents > 0:
         proportion = item_subtotal_cents / order_subtotal_cents
         proportional_tax_cents = round(order_tax_cents * proportion)
-        proportional_shipping_cents = round(order_shipping_cents * proportion)
+        shipping_proportion = (item_subtotal_cents / shipping_subtotal_base) if shipping_subtotal_base > 0 else proportion
+        proportional_shipping_cents = round(order_shipping_base * shipping_proportion)
     else:
         proportional_tax_cents = 0
         proportional_shipping_cents = 0

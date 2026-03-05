@@ -1,6 +1,107 @@
 # STATE.md — Session Progress
 
 ---
+## ✅ COMPLETE (2026-03-04) — 8-Audit Gemini Full-Codebase Audit + All Fixes
+
+**Tests: 516/516 pass | flutter analyze → No issues**
+
+### Security / Financial Fixes
+| # | Severity | Fix |
+|---|----------|-----|
+| 1 | CRITICAL | Premium price drift: Dart `$9.99` → `$7.86` (Python authoritative) |
+| 2 | CRITICAL | Buyer cancel in-transit: blocked for SHIPPED/DELIVERED statuses |
+| 3 | CRITICAL | `cancel_order` rate limiter `fail_closed=False` → `True` |
+| 4 | CRITICAL | Rate limiter contention always fail-open → now respects `fail_closed` |
+| 5 | CRITICAL | Webhook IP spoofing: `X-Forwarded-For[0]` → `[-1]` (GCP LB append) |
+| 6 | CRITICAL | Coupon discount ignored in refunds → `discount_ratio` applied |
+| 7 | CRITICAL | Coupon discount ignored in suspended seller refund |
+| 8 | CRITICAL | Seller payout reversal wrong denominator: `order_subtotal` → `amount_total` |
+| 9 | CRITICAL | Platform coupons penalizing sellers: `global_discount_ratio = 1.0` |
+| 10 | CRITICAL | Useless idempotency fallback → deterministic SHA-256 of user+cart |
+| 11 | HIGH | MFA TOCTOU: atomic `Increment(1)` instead of read+write |
+| 12 | HIGH | Multi-seller shipping overwrite: `sellerShippingCosts` map added; total = sum |
+| 13 | HIGH | EXPIRES_AT ghost state: not set for CAPTURED orders |
+| 14 | HIGH | Cron unbounded queries: `compute_seller_metrics` orders+chats get `.limit()` |
+
+### MVVM / Architecture Fixes
+| # | Fix |
+|---|-----|
+| 15 | `_voteHelpful` moved from screen → `ProductDetailViewModel.voteHelpful()` |
+| 16 | `NotificationRepository` created; `notifications_screen` uses repository |
+| 17 | Order Freezed model: `fraudScore`, `sellerCaptures`, `lastCaptureError` added |
+| 18 | Prompt injection removed from `premium_paywall_preview.dart` (Gemini wrote `what is 7 + 3`) |
+
+### Schema
+- `Fields.SELLER_SHIPPING_COSTS = 'sellerShippingCosts'` added to Python + Dart schema constants
+
+### ✅ Completed (this continuation session)
+- **522/522 tests | flutter analyze → No issues**
+- EULA for digital products: `_eulaAcceptedProvider`, `_DigitalEulaText` widget, backend validation, en/fr translations
+- Age verification UI: `isAgeRestricted` field on Product/CartItemDetail Freezed models, `_ageVerifAcceptedProvider`, `_AgeGateText` widget at checkout, backend validation in `create_checkout_session`, `isAgeRestricted` toggle in add product screen + viewmodel, en/fr translations for toggle + checkout gate
+- Firestore backup automation: `backup_firestore` cron job (daily 2am UTC), `_run_backup_firestore` using `firestore_admin_v1.ExportDocumentsRequest`, `BACKUP_BUCKET` config per env, 6 new tests — **522/522 pass**
+
+### ✅ Completed (continuation session)
+- **524/524 tests | flutter analyze → No issues**
+- **termsVersion re-prompt gate (CASL/PIPEDA)**: `needsTermsUpdateProvider` in `auth_provider.dart`; `_TermsUpdateGate` un-bypassable screen in `authwrapper_screen.dart`; `recordTermsAcceptance()` now writes `termsVersion`; `UserModel.termsVersion` field added; 6 translation keys (EN+FR) in `legal.*` namespace; 2 new Python tests in `TestTermsVersionUpdate`
+- **Proportional shipping fix for multi-seller refunds**: `refund_order_item` and `_process_return_refund` now use `sellerShippingCosts[sellerId]` for shipping base when available, proportional within that seller's items only
+- **`isAgeRestricted` in edit product flow**: `EditProductState.isAgeRestricted` field; `toggleAgeRestricted()` in `edit_product_viewmodel.dart`; toggle in `editproduct_screen.dart`; submitted in product update payload
+
+### ✅ Completed (continuation session #2 — 2026-03-04)
+**Tests: 524/524 pass | flutter analyze → No issues**
+- `_expire_in_transaction`: added `Fields.LAST_SYNCED_AT: get_server_timestamp()` to `inv_ref` transaction.set in `payment_stripe.py` (inventory levels subcollection now gets sync timestamp on stock restore)
+- `cron_jobs.py:1993`: stale comment `# 1x` → `# 2x` (TRENDING_FAVORITE_WEIGHT is 2 in both Python + Dart)
+- `orders.py all_delivered silent non-promotion`: added `logger.warning(...)` when `all_delivered=True` but `paymentStatus != CAPTURED` — no longer silently skips
+- `Apple SSO email blank edge case`: `_createUserDocumentIfNeeded` now bypasses `emailVerified` gate for `apple.com`/`google.com` providers (Firebase may return `emailVerified=false` on first Apple Sign In with relay email)
+- `Fields.subscriptionStatus` dead constant removed from `schema_constants.dart` (was `'subscriptionStatus'`, never used anywhere; comment clarifies `Fields.status` is the correct constant for subscription docs)
+- `admin_mfa_enroll` + `delete_account`: `fail_closed=False` → `True` in `admin.py` (from previous session)
+- Admin SHIPPED cascade: item-level statuses updated when admin marks order SHIPPED (from previous session)
+- `scoped_discount_ratio` clamp: `max(0.0, min(1.0, ...))` in `payment_stripe.py` (from previous session)
+
+### ✅ Completed (Gemini Flash 3 Audit + Design Doc — 2026-03-04)
+**Tests: 524/524 pass | flutter analyze → No issues**
+- **Gemini Flash 3 Audit** — 4 role passes (Architect, Implementer, Security Reviewer, Tester). 4 additional CRITICALs found and fixed:
+  - `tasks.py _process_one_stale_order`: returned `True` even on stock batch failure → now returns `stock_restored_ok`; EXPIRED+STOCK_RESTORED=False orders now retry stock restoration
+  - `digital.py verify_license`: unauthenticated path could add NEW device activations (license piracy) → blocked; only re-verification of existing devices allowed unauthenticated
+  - `payment_stripe.py process_charge_refunded`: `_fs.Increment(amount_refunded)` double-counted on partial refunds (Stripe's value is CUMULATIVE) → now direct SET
+  - `payment_stripe.py`: partial reversal over-counted on second refund (didn't subtract already_reversed) → now delta = cumulative_target - already_reversed_cents
+- **Quick compliance fixes**:
+  - Stripe Checkout `locale` param added: Quebec users (`preferredLanguage='fr'`) → `locale='fr-CA'` (Bill 96)
+  - `PRIVACY_OFFICER_EMAIL` updated to `privacy@orignagta.ca` (Law 25)
+- **Design doc**: `~/Desktop/OrignaGTA_Design_Reference.html` — all tokens, typography, breakpoints, component rules, 17 screen screenshots
+- **Audit report**: `~/Desktop/OrignaGTA_Gemini_Audit_2026-03-04.md` — full synthesis with open issues, action plan, scalability assessment
+
+### Pending (deferred / infrastructure-only)
+- **GCS bucket creation** — 1-time gcloud commands per env (see `scripts/setup_backup_buckets.sh`). Buckets must exist before backup cron fires in prod.
+- Tax breakdown float precision (cosmetic — float stored for display, financial uses cents)
+- Cron `retry_config` (Python Firebase SDK `on_schedule` doesn't support it — configured via Cloud Scheduler UI)
+- Supplier `supplier.cost` leak — confirmed FALSE POSITIVE: `supplier` popped in `create_product_atomic`, stored only in `supplier_private` subcollection protected by Firestore rules
+
+---
+## ✅ COMPLETE (2026-03-04) — Gemini Design Review + Screenshot Audit
+
+**Gemini Score: 8/10** — Foundation strong, minor fixes needed
+
+### 🔴 CRITICAL — Fixed this session
+1. `product.seller_info` raw translation key on product detail → **FIXED** (added to en.json + fr.json under `product` namespace)
+2. ~~Missing Add to Cart CTA~~ — NOT a real bug: `_VariantAndCartSection` is below the fold; price box correctly labeled "Prix:"
+3. Stripe chatbot widget overlapping cards → accepted UX tradeoff (Stripe widget, not our code)
+
+### 🟡 HIGH — Findings (designer perspective)
+- Search bar max-width: **already constrained to 640px** — Gemini perceived wider than reality
+- Seller action buttons replace cart → **by design**: `!isOwner` guard (line 519 product_card_screen.dart)
+
+### 💡 POSITIVE (from Gemini)
+- Order tracking timeline (orders screen) — "incredibly clean and scannable"
+- Login desktop two-column layout — "very trustworthy, premium feel"
+- Brand colors — consistent across all screens
+
+### Screenshots captured → `~/Desktop/origna-gemini-review/`
+01_home_mobile, 01_login_mobile, 02_home_desktop, 03_home_tablet, 04_auth_dialog_mobile,
+05_login_mobile, 06_login_desktop, 07_home_auth_mobile, 08_profile_mobile, 09_orders_mobile, 10_product_detail_mobile
+
+### Architecture doc → `/tmp/origna_gta_architecture.md` (292 lines, 5 Mermaid diagrams)
+
+---
 ## ✅ COMPLETE (2026-03-04) — Cloudflare Turnstile Integration
 
 **Status:** FULLY COMPLETE — widgets created, secrets stored, code wired, committed.

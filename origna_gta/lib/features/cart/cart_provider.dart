@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
+import 'package:origna_gta/services/analytics_service.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -275,7 +278,13 @@ class CartController {
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
 
-  Future<bool> addToCart(String productId, int quantity, {String? variantId}) async {
+  Future<bool> addToCart(
+    String productId,
+    int quantity, {
+    String? variantId,
+    String? productName,
+    double? priceCad,
+  }) async {
     final userId = _userId;
     if (userId == null) return false;
 
@@ -292,6 +301,14 @@ class CartController {
       }
 
       await _repository.addToCart(userId, productId, quantity, variantId: variantId);
+      if (productName != null && priceCad != null) {
+        unawaited(AnalyticsService.logAddToCart(
+          productId: productId,
+          productName: productName,
+          priceCad: priceCad,
+          quantity: quantity,
+        ));
+      }
       return true;
     } catch (e, st) {
       Sentry.captureException(e, stackTrace: st);

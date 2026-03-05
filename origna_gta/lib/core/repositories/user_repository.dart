@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart' show CloudFunctionEndpoints;
+import 'package:origna_gta/core/schema/schema_constants.dart' show CloudFunctionEndpoints, Fields, PolicyVersionValues;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:rxdart/rxdart.dart';
@@ -99,7 +99,10 @@ class FirebaseUserRepository implements UserRepository {
   @override
   Future<void> recordTermsAcceptance() async {
     final callable = _functions.httpsCallable('update_user_profile');
-    final response = await callable.call({Fields.termsAcceptedAt: true});
+    final response = await callable.call({
+      Fields.termsAcceptedAt: true,
+      Fields.termsVersion: PolicyVersionValues.defaultVersion,
+    });
     final data = response.data as Map<String, dynamic>;
     if (data['success'] != true) {
       throw Exception(data['error'] ?? 'Failed to record terms acceptance');

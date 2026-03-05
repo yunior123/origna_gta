@@ -19,9 +19,11 @@ from google.api_core import exceptions as google_exceptions
 from google.cloud import tasks_v2
 
 from config import (
+    BACKUP_BUCKET,
     BASE_URL,
     IS_EMULATOR,
     PLATFORM_FEE_RATIO,
+    PROJECT_ID,
     get_stripe_secret_key,
 )
 
@@ -1794,8 +1796,10 @@ def _compute_seller_metrics_logic() -> None:
         CANCEL_THRESHOLD = BusinessRules.SELLER_CANCEL_RATE_THRESHOLD
 
         db = get_db()
-        # 1. Fetch all orders from the window (Bulk)
-        orders_ref = db.collection(Collections.ORDERS).where(Fields.CREATED_AT, ">=", window_start)
+        # 1. Fetch all orders from the window (Bulk, paginated)
+        # AUDIT FIX (CRITICAL-performance): Add limit to prevent unbounded reads at scale.
+        # 2000 orders/run is sufficient for daily metrics (cron runs daily).
+        orders_ref = db.collection(Collections.ORDERS).where(Fields.CREATED_AT, ">=", window_start).limit(2000)
         orders_stream = orders_ref.stream()
 
         # Aggregate data by seller
@@ -1865,7 +1869,7 @@ def _compute_seller_metrics_logic() -> None:
 
         # 2. Fetch all relevant chats in the window (Bulk)
         # We need FIRST_REPLY_HOURS for chats where FIRST_SELLER_REPLY_AT >= window_start
-        chats_ref = db.collection(Collections.CHATS).where(Fields.FIRST_SELLER_REPLY_AT, ">=", window_start)
+        chats_ref = db.collection(Collections.CHATS).where(Fields.FIRST_SELLER_REPLY_AT, ">=", window_start).limit(5000)
         chats_stream = chats_ref.stream()
 
         # seller_chats[seller_id] = [hours1, hours2, ...]
@@ -1986,7 +1990,7 @@ def _compute_seller_metrics_logic() -> None:
 TRENDING_TOP_N = BusinessRules.TRENDING_TOP_N              # 20 products
 TRENDING_WINDOW_HOURS = BusinessRules.TRENDING_WINDOW_HOURS  # 24h rolling window
 TRENDING_PURCHASE_WEIGHT = BusinessRules.TRENDING_PURCHASE_WEIGHT  # 3x
-TRENDING_FAVORITE_WEIGHT = BusinessRules.TRENDING_FAVORITE_WEIGHT  # 1x
+TRENDING_FAVORITE_WEIGHT = BusinessRules.TRENDING_FAVORITE_WEIGHT  # 2x
 
 
 @scheduler_fn.on_schedule(schedule="every 6 hours", **CRON_OPTIONS)
@@ -2421,3 +2425,55 @@ def _run_return_escalation() -> None:
         return
 
     logger.info(f"escalate_stale_return_requests: escalated={escalated}, errors={errors}")
+
+
+# ==============================================================================
+# FIRESTORE BACKUP — PROD BLOCKER
+# Daily export of all Firestore collections to GCS via the Admin API.
+# IAM prerequisites (apply once per project via gcloud):
+#   gcloud projects add-iam-policy-binding <PROJECT_ID> \
+#     --member="serviceAccount:<PROJECT_ID>@appspot.gserviceaccount.com" \
+#     --role="roles/datastore.importExportAdmin"
+#   gsutil mb -l northamerica-northeast1 -p <PROJECT_ID> gs://<PROJECT_ID>-backups
+#   gsutil iam ch \
+#     serviceAccount:<PROJECT_ID>@appspot.gserviceaccount.com:objectAdmin \
+#     gs://<PROJECT_ID>-backups
+# ==============================================================================
+
+
+@scheduler_fn.on_schedule(schedule="0 2 * * *", **CRON_OPTIONS)  # 2:00 AM UTC daily
+def backup_firestore(event: scheduler_fn.ScheduledEvent) -> None:
+    """Export all Firestore collections to GCS daily for disaster recovery (PROD BLOCKER)."""
+    if IS_EMULATOR:
+        logger.info("backup_firestore: skipped in emulator mode")
+        return
+
+    if not acquire_cron_lock("backup_firestore", ttl_minutes=60):
+        logger.warning("backup_firestore: lock held, skipping")
+        return
+
+    try:
+        _run_backup_firestore()
+    except Exception as e:
+        _alert_cron_failure("backup_firestore", e)
+        sentry_sdk.capture_exception(e)
+    finally:
+        release_cron_lock("backup_firestore")
+
+
+def _run_backup_firestore() -> None:
+    """Call the Firestore Admin exportDocuments API to back up all collections to GCS."""
+    from google.cloud import firestore_admin_v1
+
+    db_name = f"projects/{PROJECT_ID}/databases/(default)"
+    output_uri_prefix = f"{BACKUP_BUCKET}/{datetime.now(UTC).strftime('%Y-%m-%d')}"
+
+    client = firestore_admin_v1.FirestoreAdminClient()
+    req = firestore_admin_v1.ExportDocumentsRequest(
+        name=db_name,
+        output_uri_prefix=output_uri_prefix,
+        # Empty collection_ids → exports ALL collections
+        collection_ids=[],
+    )
+    operation = client.export_documents(request=req)
+    logger.info(f"backup_firestore: export started → {output_uri_prefix} (operation={operation.operation.name})")

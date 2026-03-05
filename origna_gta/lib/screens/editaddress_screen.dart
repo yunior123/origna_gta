@@ -190,6 +190,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           const SizedBox(height: DesignTokens.spacing16),
                           DropdownButtonFormField<String>(
                             key: ValueKey(state.selectedProvince),
+                            isExpanded: true,
                             menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                             initialValue: state.selectedProvince,
                             decoration: InputDecoration(
@@ -254,7 +255,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                     const SizedBox(height: DesignTokens.spacing16),
 
                     // Set as default toggle
-                    SwitchListTile.adaptive(
+                    SwitchListTile(
                       value: state.isDefault,
                       onChanged: (v) => viewModel.setDefault(v),
                       title: Text(
@@ -262,7 +263,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                         style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
                       ),
                       activeThumbColor: DesignTokens.primary,
+                      activeTrackColor: DesignTokens.primary.withValues(alpha: 0.5),
                       contentPadding: EdgeInsets.zero,
+                      tileColor: Colors.transparent,
                     ),
 
                     const SizedBox(height: DesignTokens.spacing24),
@@ -273,7 +276,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       child: ModernButton(
                         key: const Key('btn_save_address'),
                         label: state.isLoading ? 'address.saving'.tr() : 'address.save_address'.tr(),
-                        icon: Icons.save_outlined,
+                        imageIcon: 'assets/icons/save_icon.png',
                         isLoading: state.isLoading,
                         onPressed: state.isLoading
                             ? null
@@ -338,9 +341,13 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
           child: Icon(icon, size: 18, color: DesignTokens.primary),
         ),
         const SizedBox(width: 12),
-        Text(
-          title,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+          ),
         ),
       ],
     );

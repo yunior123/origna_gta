@@ -14,6 +14,7 @@ class EditProductState {
   final bool isLocalDeliveryOnly;
   final bool isPerishable;
   final bool isDigital;
+  final bool isAgeRestricted;
   final String? digitalType;
   final String? macosDownloadUrl;
   final String? windowsDownloadUrl;
@@ -54,6 +55,7 @@ class EditProductState {
     this.isLocalDeliveryOnly = false,
     this.isPerishable = false,
     this.isDigital = false,
+    this.isAgeRestricted = false,
     this.digitalType,
     this.macosDownloadUrl,
     this.windowsDownloadUrl,
@@ -93,6 +95,7 @@ class EditProductState {
     bool? isLocalDeliveryOnly,
     bool? isPerishable,
     bool? isDigital,
+    bool? isAgeRestricted,
     Object? digitalType = _sentinel,
     Object? macosDownloadUrl = _sentinel,
     Object? windowsDownloadUrl = _sentinel,
@@ -131,6 +134,7 @@ class EditProductState {
       isLocalDeliveryOnly: isLocalDeliveryOnly ?? this.isLocalDeliveryOnly,
       isPerishable: isPerishable ?? this.isPerishable,
       isDigital: isDigital ?? this.isDigital,
+      isAgeRestricted: isAgeRestricted ?? this.isAgeRestricted,
       digitalType: digitalType == _sentinel ? this.digitalType : digitalType as String?,
       macosDownloadUrl: macosDownloadUrl == _sentinel ? this.macosDownloadUrl : macosDownloadUrl as String?,
       windowsDownloadUrl: windowsDownloadUrl == _sentinel ? this.windowsDownloadUrl : windowsDownloadUrl as String?,

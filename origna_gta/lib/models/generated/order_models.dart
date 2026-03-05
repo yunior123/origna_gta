@@ -225,6 +225,10 @@ abstract class Order with _$Order {
     // Coupon / promo code (N-07)
     String? couponCode,
     @Default(0) int discountAmountCents,
+    // Phase 3.5 fraud / capture tracking (schema sync fix — AUDIT)
+    @Default(0) int fraudScore,
+    Map<String, dynamic>? sellerCaptures,
+    String? lastCaptureError,
   }) = _Order;
 
   factory Order.fromFirestore(DocumentSnapshot doc) {
@@ -405,6 +409,10 @@ abstract class Order with _$Order {
       // Coupon / promo code (N-07)
       couponCode: data[Fields.couponCode] != null ? _safeString(data[Fields.couponCode]) : null,
       discountAmountCents: _safeInt(data[Fields.discountAmountCents]),
+      // Phase 3.5 fraud / capture tracking (schema sync fix)
+      fraudScore: _safeInt(data[Fields.fraudScore]),
+      sellerCaptures: data[Fields.sellerCaptures] != null ? _safeMap(data[Fields.sellerCaptures]) : null,
+      lastCaptureError: data[Fields.lastCaptureError] != null ? _safeString(data[Fields.lastCaptureError]) : null,
     );
   }
 

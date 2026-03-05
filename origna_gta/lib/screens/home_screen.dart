@@ -226,6 +226,12 @@ class _CategoryChips extends ConsumerWidget {
   }
 
   Widget _buildChip(BuildContext context, bool isAll, ProductCategories? category, bool isSelected) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final unselectedBg = isDark ? DesignTokens.darkSurface : DesignTokens.surface;
+    final unselectedText = isDark ? Colors.white : DesignTokens.textPrimary;
+    final unselectedBorder = isDark
+        ? DesignTokens.primary.withValues(alpha: 0.25)
+        : DesignTokens.textSecondary.withValues(alpha: 0.3);
     return Semantics(
       label: isAll ? 'category-chip-all' : 'category-chip-${category!.categoryId}',
       child: Padding(
@@ -241,9 +247,9 @@ class _CategoryChips extends ConsumerWidget {
                     end: Alignment.bottomRight,
                   )
                 : null,
-            color: !isSelected ? DesignTokens.surface : null,
+            color: !isSelected ? unselectedBg : null,
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.textSecondary.withValues(alpha: 0.3), width: 1.5),
+            border: Border.all(color: isSelected ? DesignTokens.primary : unselectedBorder, width: 1.5),
             boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))] : [],
           ),
           child: Material(
@@ -259,7 +265,7 @@ class _CategoryChips extends ConsumerWidget {
                 child: Text(
                   isAll ? 'home.category_all'.tr() : category!.name.tr(),
                   style: TextStyle(
-                    color: isSelected ? Colors.white : DesignTokens.textPrimary,
+                    color: isSelected ? Colors.white : unselectedText,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     fontSize: 13,
                   ),
@@ -928,9 +934,13 @@ class _SearchOverlay extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    label,
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary, letterSpacing: 0.3),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary, letterSpacing: 0.3),
+                    ),
                   ),
                   if (showRecent)
                     TextButton(
@@ -1255,7 +1265,7 @@ class _SortAndFilterRow extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('home.filter_price'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    Flexible(child: Text('home.filter_price'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
                     TextButton(
                       onPressed: () {
                         Navigator.pop(ctx);

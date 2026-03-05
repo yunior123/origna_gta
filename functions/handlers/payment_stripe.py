@@ -43,6 +43,7 @@ from schema_constants import (
     ErrorCodes,
     Fields,
     HeaderKeys,
+    LanguageValues,
     LicenseStatusValues,
     NotificationTypes,
     OrderEventTypes,
@@ -682,6 +683,24 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     items = data.get(Fields.ITEMS, [])
     shipping_address = data.get(Fields.SHIPPING_ADDRESS, {})
 
+    # COMPLIANCE (HIGH): EULA acceptance required for digital products before delivery
+    eula_accepted = data.get(ApiKeys.EULA_ACCEPTED, False)
+    has_digital_items = any(item.get(Fields.IS_DIGITAL, False) for item in items if isinstance(item, dict))
+    if has_digital_items and not eula_accepted:
+        raise https_fn.HttpsError(
+            "failed-precondition",
+            "You must accept the End User License Agreement (EULA) before purchasing digital products.",
+        )
+
+    # COMPLIANCE (HIGH): Age verification required for age-restricted products (Canadian provincial law)
+    age_verification_accepted = data.get(ApiKeys.AGE_VERIFICATION_ACCEPTED, False)
+    has_age_restricted_items = any(item.get(Fields.IS_AGE_RESTRICTED, False) for item in items if isinstance(item, dict))
+    if has_age_restricted_items and not age_verification_accepted:
+        raise https_fn.HttpsError(
+            "failed-precondition",
+            "You must confirm you are 18 or older before purchasing age-restricted products.",
+        )
+
     if not items or not isinstance(items, list):
         raise https_fn.HttpsError("invalid-argument", "No items in cart or invalid items format")
 
@@ -745,6 +764,17 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("invalid-argument", f"Address field '{addr_field}' is too long")
 
     client_idempotency_key = data.get(ApiKeys.IDEMPOTENCY_KEY)
+    # SECURITY FIX (AUDIT): If client omits idempotency key, derive one deterministically
+    # from user_id + sorted product IDs so that retries produce the same key.
+    # A randomly-generated order_id as fallback is useless — it changes every call.
+    if not client_idempotency_key:
+        import hashlib
+        _cart_fingerprint = "|".join(sorted(
+            f"{item.get(Fields.PRODUCT_ID, '')}:{item.get(Fields.QUANTITY, 1)}"
+            for item in items
+        ))
+        _raw = f"checkout:{user_id}:{_cart_fingerprint}"
+        client_idempotency_key = "auto_" + hashlib.sha256(_raw.encode()).hexdigest()[:32]
 
     # --- SERVER-SIDE PRODUCT VALIDATION ---
     # F-01:Authoritative price check. Never trust client-supplied prices.
@@ -1323,12 +1353,19 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 }
             )
 
+        # Bill 96/Law 25: Quebec users must receive French-language checkout by default.
+        # Stripe accepts 'fr-CA' or 'auto' (browser-detected). We use the user's stored
+        # preferredLanguage — 'fr' → 'fr-CA', anything else → 'auto' (let Stripe decide).
+        preferred_lang = user_data.get(Fields.PREFERRED_LANGUAGE, LanguageValues.ENGLISH)
+        stripe_locale = "fr-CA" if preferred_lang == LanguageValues.FRENCH else "auto"
+
         session = stripe.checkout.Session.create(
             line_items=line_items,
             mode=StripeConstants.MODE_PAYMENT,
             # Explicit payment_method_types disables Stripe Link while keeping card/wallets.
             # Apple Pay and Google Pay work transparently via 'card' type in CA.
             payment_method_types=[StripeConstants.PAYMENT_METHOD_CARD],
+            locale=stripe_locale,
             success_url=f"{BASE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{BASE_URL}{AppConfig.CHECKOUT_CANCEL_PATH}",
             client_reference_id=user_id,
@@ -1431,7 +1468,14 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     # SECURITY FIX #1: Rate limiting by IP FIRST (prevent DDoS)
     # Skip rate limiting in emulator mode to avoid Firestore transaction issues
-    client_ip = req.headers.get(HeaderKeys.X_FORWARDED_FOR, req.headers.get(HeaderKeys.X_REAL_IP, "unknown")).split(",")[0].strip()
+    # SECURITY FIX (AUDIT): Use the LAST IP in X-Forwarded-For, not the first.
+    # The first IP is client-provided and trivially spoofable. GCP Load Balancer
+    # appends the true client IP as the last entry — that value is trustworthy.
+    forwarded_for = req.headers.get(HeaderKeys.X_FORWARDED_FOR, "")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[-1].strip()  # Last entry = GCP LB appended, trustworthy
+    else:
+        client_ip = req.headers.get(HeaderKeys.X_REAL_IP, "unknown")
 
     if not IS_EMULATOR:
         allowed, message = get_rate_limiter().check_rate_limit(
@@ -1741,20 +1785,22 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
             for item in items
             if item.get(Fields.SELLER_ID) == coupon_seller_id
         )
-        # scoped_discount_ratio applies only to the coupon seller; others get 1.0
+        # scoped_discount_ratio applies only to the coupon seller; others get 1.0.
+        # Clamp to [0.0, 1.0]: a fixed-amount coupon larger than the seller subtotal
+        # must not produce a negative ratio (which would over-refund or reverse payout).
         scoped_discount_ratio = (
-            (scoped_subtotal_cents - discount_amount_cents) / scoped_subtotal_cents
+            max(0.0, min(1.0, (scoped_subtotal_cents - discount_amount_cents) / scoped_subtotal_cents))
             if scoped_subtotal_cents > 0
             else 1.0
         )
         global_discount_ratio = None  # sentinel: use per-seller logic below
     else:
-        # Platform-wide coupon or no coupon — apply uniformly to all sellers
-        global_discount_ratio = (
-            (actual_subtotal_cents - discount_amount_cents) / actual_subtotal_cents
-            if actual_subtotal_cents > 0
-            else 1.0
-        )
+        # FINANCIAL FIX (AUDIT): Platform-wide coupons should be absorbed by the platform,
+        # NOT deducted from seller payouts. Independent sellers should receive their full
+        # negotiated price regardless of platform marketing discounts.
+        # Set global_discount_ratio = 1.0 (no reduction) for platform-wide coupons.
+        # The platform absorbs the cost via reduced platform fee revenue.
+        global_discount_ratio = 1.0
         scoped_discount_ratio = None  # unused
 
     # Compute per-seller totals (price in dollars × 100 → cents, × quantity)
@@ -2153,8 +2199,17 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
         # Multi-seller order: partial cancel — refund bad sellers' items, keep good items
         bad_items = [i for i in items if i.get(Fields.SELLER_ID) in bad_seller_ids]
+        # SECURITY FIX (AUDIT): Apply coupon discount ratio before calculating refund amount.
+        # Refunding at full price when buyer paid a discounted price over-refunds and drains platform.
+        order_subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 0)
+        order_discount_cents = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
+        _discount_ratio = (
+            (order_subtotal_cents - order_discount_cents) / order_subtotal_cents
+            if order_subtotal_cents > 0 and order_discount_cents > 0
+            else 1.0
+        )
         bad_amount_cents = sum(
-            round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1)
+            round(round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1) * _discount_ratio)
             for item in bad_items
         )
         pi_id_for_partial = session.get(StripeConstants.PAYMENT_INTENT)
@@ -2188,13 +2243,14 @@ def process_checkout_session_completed(session: dict) -> str | None:
     pi_id = session.get(StripeConstants.PAYMENT_INTENT)
 
     # Initialize update data with CAPTURED status (auto-capture mode)
-    # expiresAt stamped here (at Stripe authorization) — 6-day window (24h safety margin before Stripe auto-voids at day 7)
+    # AUDIT FIX: Do NOT set EXPIRES_AT for captured orders — expiry only applies to
+    # AUTHORIZED (manual-capture) payments awaiting capture. Setting it here creates
+    # ghost state that confuses the stale_orders_dispatcher and client UIs.
     update_data = {
         Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
         Fields.STRIPE_PAYMENT_INTENT_ID: pi_id,
         Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
         Fields.CAPTURED_AT: get_server_timestamp(),
-        Fields.EXPIRES_AT: datetime.now(UTC) + timedelta(days=BusinessRules.AUTHORIZATION_EXPIRY_DAYS),
         Fields.UPDATED_AT: get_server_timestamp(),
     }
 
@@ -2649,7 +2705,10 @@ def process_session_expired(session: dict) -> str | None:
                     inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
                     transaction.set(
                         inv_ref,
-                        {Fields.AVAILABLE_QUANTITY: _fs.Increment(qty)},
+                        {
+                            Fields.AVAILABLE_QUANTITY: _fs.Increment(qty),
+                            Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                        },
                         merge=True,
                     )
 
@@ -2893,12 +2952,23 @@ def process_charge_refunded(charge: dict) -> str | None:
                 }
                 # For partial refunds, only reverse proportional amount
                 # but cap at max_reversible to prevent over-reversal
-                order_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, amount_total)
-                if not is_full_refund and order_subtotal > 0:
-                    reversal_amount = round(payout_net * amount_refunded / order_subtotal)
-                    reversal_amount = min(reversal_amount, max_reversible)
-                    if reversal_amount > 0:
-                        reversal_kwargs[Fields.AMOUNT] = reversal_amount
+                # SECURITY FIX (AUDIT): Use amount_total (includes tax+shipping) as denominator.
+                # order_subtotal excludes tax/shipping but amount_refunded can include them.
+                # Using subtotal as denominator causes numerator > denominator → over-reversal
+                # that penalizes sellers for money they never received.
+                # amount_total comes from the charge object and includes tax+shipping — correct denominator
+                order_total_for_ratio = amount_total if amount_total > 0 else order_data.get(Fields.SUBTOTAL_CENTS, 1)
+                if not is_full_refund and order_total_for_ratio > 0:
+                    # Compute cumulative target reversal for this payout based on total refunded,
+                    # then subtract what was already reversed to get the DELTA for this call.
+                    # Using the raw cumulative `amount_refunded` without subtracting `already_reversed`
+                    # would over-reverse on subsequent partial refunds (e.g., $10 then $10 → second
+                    # webhook would reverse $20 cumulative instead of the $10 delta).
+                    cumulative_target = round(payout_net * amount_refunded / order_total_for_ratio)
+                    reversal_delta = cumulative_target - already_reversed_cents
+                    reversal_delta = min(max(reversal_delta, 0), max_reversible)
+                    if reversal_delta > 0:
+                        reversal_kwargs[Fields.AMOUNT] = reversal_delta
                 else:
                     # Full refund: reverse remaining (not already reversed)
                     if already_reversed_cents > 0:
@@ -3022,12 +3092,13 @@ def process_charge_refunded(charge: dict) -> str | None:
                 except Exception as e:
                     logger.error(f"Failed to restore stock for refunded order {order_id}: {e}")
 
-            _fs = get_firestore()
             order_ref.update(
                 {
                     Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED,
                     Fields.TRANSFERS_REVERSED: reversed_count,
-                    Fields.CUMULATIVE_REFUNDED_CENTS: _fs.Increment(amount_refunded),
+                    # SET (not Increment): amount_refunded is already the cumulative total from Stripe.
+                    # Using Increment would double-count on webhook retries or sequential partial refunds.
+                    Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
                     Fields.STOCK_RESTORED: order_data.get(Fields.STOCK_RESTORED, False),
                     Fields.REFUNDED_AT: get_server_timestamp(),
                     Fields.UPDATED_AT: get_server_timestamp(),
@@ -3035,12 +3106,12 @@ def process_charge_refunded(charge: dict) -> str | None:
             )
             return f"Order {order_id} fully refunded, reversed {reversed_count} transfers"
         else:
-            _fs = get_firestore()
             order_ref.update(
                 {
                     Fields.PAYMENT_STATUS: PaymentStatusValues.PARTIALLY_REFUNDED,
                     Fields.PARTIAL_REFUND_AMOUNT_CENTS: amount_refunded,
-                    Fields.CUMULATIVE_REFUNDED_CENTS: _fs.Increment(amount_refunded),
+                    # SET (not Increment): amount_refunded is the cumulative total from Stripe.
+                    Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
                     Fields.TRANSFERS_REVERSED: reversed_count,
                     Fields.REFUNDED_AT: get_server_timestamp(),
                     Fields.UPDATED_AT: get_server_timestamp(),

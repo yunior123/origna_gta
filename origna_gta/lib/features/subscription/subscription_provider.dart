@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/services/analytics_service.dart';
 
 import 'subscription_state.dart';
 
@@ -40,6 +43,7 @@ class SubscriptionViewModel extends StateNotifier<SubscriptionState> {
           .httpsCallable(CloudFunctionEndpoints.createSubscription)
           .call<Map<String, dynamic>>();
       final url = result.data['checkoutUrl'] as String?;
+      unawaited(AnalyticsService.logSubscriptionStarted(priceCad: BusinessRules.premiumSubscriptionPriceCad));
       state = state.copyWith(isLoading: false, checkoutUrl: url);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
@@ -51,6 +55,7 @@ class SubscriptionViewModel extends StateNotifier<SubscriptionState> {
     try {
       final functions = _ref.read(firebaseFunctionsProvider);
       await functions.httpsCallable(CloudFunctionEndpoints.cancelSubscription).call();
+      unawaited(AnalyticsService.logSubscriptionCancelled());
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));

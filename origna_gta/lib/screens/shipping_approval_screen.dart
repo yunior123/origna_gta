@@ -160,22 +160,26 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
-                      child: Text(
-                        'Order #${order.orderId.substring(0, 8).toUpperCase()}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
+                        child: Text(
+                          'Order #${order.orderId.substring(0, 8).toUpperCase()}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      DateFormat('MMM dd, yyyy').format(order.createdAt),
-                      style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Text(
+                        DateFormat('MMM dd, yyyy').format(order.createdAt),
+                        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -222,9 +226,13 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                     children: [
                       Icon(Icons.local_shipping, size: 22, color: DesignTokens.primary),
                       const SizedBox(width: 12),
-                      Text(
-                        'seller.shipping_cost_update'.tr(),
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: DesignTokens.primary),
+                      Flexible(
+                        child: Text(
+                          'seller.shipping_cost_update'.tr(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: DesignTokens.primary),
+                        ),
                       ),
                     ],
                   ),
@@ -321,33 +329,41 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'seller.original_total'.tr(),
-                      style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '\$${originalTotal.toStringAsFixed(2)}',
-                      style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary, decoration: TextDecoration.lineThrough, fontWeight: FontWeight.w600),
-                    ),
-                  ],
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'seller.original_total'.tr(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '\$${originalTotal.toStringAsFixed(2)}',
+                        style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary, decoration: TextDecoration.lineThrough, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'seller.new_total'.tr(),
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '\$${pendingTotal.toStringAsFixed(2)}',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: DesignTokens.primary),
-                    ),
-                  ],
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'seller.new_total'.tr(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '\$${pendingTotal.toStringAsFixed(2)}',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: DesignTokens.primary),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

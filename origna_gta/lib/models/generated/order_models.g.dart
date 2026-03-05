@@ -109,6 +109,9 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   deliveryInstructions: json['deliveryInstructions'] as String?,
   couponCode: json['couponCode'] as String?,
   discountAmountCents: (json['discountAmountCents'] as num?)?.toInt() ?? 0,
+  fraudScore: (json['fraudScore'] as num?)?.toInt() ?? 0,
+  sellerCaptures: json['sellerCaptures'] as Map<String, dynamic>?,
+  lastCaptureError: json['lastCaptureError'] as String?,
 );
 
 Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
@@ -166,6 +169,9 @@ Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
   'deliveryInstructions': instance.deliveryInstructions,
   'couponCode': instance.couponCode,
   'discountAmountCents': instance.discountAmountCents,
+  'fraudScore': instance.fraudScore,
+  'sellerCaptures': instance.sellerCaptures,
+  'lastCaptureError': instance.lastCaptureError,
 };
 
 const _$OrderStatusEnumMap = {

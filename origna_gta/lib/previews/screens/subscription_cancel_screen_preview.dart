@@ -15,3 +15,16 @@ Widget previewSubscriptionCancelScreenDesktop() => previewDesktop(child: const S
 
 @Preview(name: 'Cancel Subscription — Web', group: 'Screens — Premium Flow', size: Size(1440, 900))
 Widget previewSubscriptionCancelScreenWeb() => previewWeb(child: const SubscriptionCancelScreen());
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Cancel Subscription Light — Mobile', group: 'Screens — Premium Flow', size: Size(390, 844))
+Widget previewSubscriptionCancelLightMobile() => previewMobile(theme: previewLightTheme, child: const SubscriptionCancelScreen());
+
+@Preview(name: 'Cancel Subscription Light — Tablet', group: 'Screens — Premium Flow', size: Size(768, 1024))
+Widget previewSubscriptionCancelLightTablet() => previewTablet(theme: previewLightTheme, child: const SubscriptionCancelScreen());
+
+@Preview(name: 'Cancel Subscription Light — Desktop', group: 'Screens — Premium Flow', size: Size(1280, 800))
+Widget previewSubscriptionCancelLightDesktop() => previewDesktop(theme: previewLightTheme, child: const SubscriptionCancelScreen());
+
+@Preview(name: 'Cancel Subscription Light — Web', group: 'Screens — Premium Flow', size: Size(1440, 900))
+Widget previewSubscriptionCancelLightWeb() => previewWeb(theme: previewLightTheme, child: const SubscriptionCancelScreen());

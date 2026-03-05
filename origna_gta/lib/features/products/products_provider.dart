@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/services/analytics_service.dart';
 
 // ============================================================================
 // FILTER STATE PROVIDERS
@@ -126,10 +128,16 @@ class FavoritesController {
   }
 
   /// Toggle favorite status
-  Future<void> toggleFavorite(String productId) async {
+  Future<void> toggleFavorite(String productId, {String? productName, double? priceCad}) async {
     final userId = _userId;
     if (userId == null) return;
+    final wasFavorited = isFavorite(productId);
     await _repository.toggleFavorite(userId, productId);
+    if (productName != null && priceCad != null && !wasFavorited) {
+      unawaited(AnalyticsService.logAddToWishlist(productId: productId, productName: productName, priceCad: priceCad));
+    } else if (productName != null && wasFavorited) {
+      unawaited(AnalyticsService.logRemoveFromWishlist(productId: productId, productName: productName));
+    }
   }
 }
 

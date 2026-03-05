@@ -15,3 +15,16 @@ Widget previewAuthWrapperScreenDesktop() => previewDesktop(child: previewScope(c
 
 @Preview(name: 'Auth Wrapper — Web', group: 'Auth Screens', size: Size(1440, 900))
 Widget previewAuthWrapperScreenWeb() => previewWeb(child: previewScope(child: AuthWrapper()));
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Auth Wrapper Light — Mobile', group: 'Auth Screens', size: Size(390, 844))
+Widget previewAuthWrapperLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: AuthWrapper()));
+
+@Preview(name: 'Auth Wrapper Light — Tablet', group: 'Auth Screens', size: Size(768, 1024))
+Widget previewAuthWrapperLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: AuthWrapper()));
+
+@Preview(name: 'Auth Wrapper Light — Desktop', group: 'Auth Screens', size: Size(1280, 800))
+Widget previewAuthWrapperLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: AuthWrapper()));
+
+@Preview(name: 'Auth Wrapper Light — Web', group: 'Auth Screens', size: Size(1440, 900))
+Widget previewAuthWrapperLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: AuthWrapper()));

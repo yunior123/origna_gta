@@ -85,6 +85,7 @@ dependencies:
   video_player: ^2.11.0
   chewie: ^1.13.0
   cross_file: ^0.3.5+2
+  fake_cloud_firestore: ^4.0.1
 
 
 dev_dependencies:
@@ -94,7 +95,6 @@ dev_dependencies:
     sdk: flutter
   mockito: ^5.4.4
   build_runner: ^2.4.13
-  fake_cloud_firestore: ^4.0.1
   
   # Code generation for freezed and json_serializable
   freezed: ^3.2.5
@@ -130,6 +130,7 @@ flutter:
     - images/1.png
     - images/33.png
     - assets/translations/
+    - assets/icons/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

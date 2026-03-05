@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_functions/cloud_functions.dart';
@@ -8,6 +9,7 @@ import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/services/analytics_service.dart';
 import 'package:origna_gta/utils/circuit_breaker.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -193,6 +195,12 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         hasInternationalItems: hasIntl,
       );
 
+      unawaited(AnalyticsService.logAddShippingInfo(
+        valueCad: subtotal,
+        shippingCostCad: cost,
+        shippingTier: state.deliverySpeed.name,
+      ));
+
       // Recalculate taxes — GST/HST applies to shipping costs in Canada
       calculateTaxes(subtotal, shippingCost: cost);
     } on CircuitBreakerOpenException catch (_) {
@@ -267,7 +275,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   /// Start Stripe checkout with idempotency
-  Future<CheckoutResult> startCheckout({required List<CartItemDetailModel> items, required UserModel user, required double subtotal}) async {
+  Future<CheckoutResult> startCheckout({required List<CartItemDetailModel> items, required UserModel user, required double subtotal, bool eulaAccepted = false, bool ageVerificationAccepted = false}) async {
     if (items.isEmpty) {
       return CheckoutError(message: 'checkout.errors.cart_empty'.tr());
     }
@@ -304,6 +312,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
 
     state = state.copyWith(isProcessing: true, clearCheckoutError: true);
+    unawaited(AnalyticsService.logBeginCheckout(valueCad: subtotal, itemCount: items.length));
 
     try {
       // F-108: Biometric Guard for high-value transactions (> $100 CAD)
@@ -376,6 +385,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         if (state.couponCode != null) Fields.couponCode: state.couponCode,
         // Idempotency key — prevents duplicate orders on double-tap / network retry
         ApiKeys.idempotencyKey: idempotencyKey,
+        // EULA acceptance for digital products (compliance requirement)
+        if (items.any((i) => i.isDigital)) ApiKeys.eulaAccepted: eulaAccepted,
+        // Age gate confirmation for age-restricted products (Canadian provincial law)
+        if (items.any((i) => i.isAgeRestricted)) ApiKeys.ageVerificationAccepted: ageVerificationAccepted,
       };
 
       // Use circuit breaker for Stripe checkout calls

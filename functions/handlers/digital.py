@@ -88,6 +88,12 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str, call
                 "downloadUrls": safe_builds,
             }
 
+    # SECURITY FIX: Unauthenticated callers (verify_license path) may only RE-VERIFY
+    # existing device IDs, never register a new one. License key sharing would otherwise
+    # grant free activations up to the device_limit without any ownership check.
+    if not caller_uid:
+        raise ValueError("auth_required_for_new_device")
+
     # Check device limit
     device_limit = lic.get(Fields.DEVICE_LIMIT)
     if device_limit is not None and len(activations) >= device_limit:

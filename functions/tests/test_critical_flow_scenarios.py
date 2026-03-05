@@ -639,10 +639,11 @@ class TestPaymentCapture:
 class TestOrderCancellation:
     """Tests order cancellation edge cases."""
 
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
     @patch("handlers.orders.get_db")
     @patch("handlers.orders.get_server_timestamp")
     @patch("handlers.orders.get_firestore")
-    def test_cancel_restores_stock_idempotent(self, mock_fs, mock_ts, mock_db):
+    def test_cancel_restores_stock_idempotent(self, mock_fs, mock_ts, mock_db, mock_rl):
         """Scenario 50: Stock restoration is idempotent (stockRestored flag)."""
         from handlers.orders import cancel_order
 
@@ -672,10 +673,11 @@ class TestOrderCancellation:
         # Stock restore should NOT have been called (already restored)
         # The products collection should not have been accessed for updates
 
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
     @patch("handlers.orders.get_db")
     @patch("handlers.orders.get_server_timestamp")
     @patch("handlers.orders.get_firestore")
-    def test_cancel_delivered_order_blocked(self, mock_fs, mock_ts, mock_db):
+    def test_cancel_delivered_order_blocked(self, mock_fs, mock_ts, mock_db, mock_rl):
         """Scenario 51: Delivered orders cannot be cancelled."""
         from firebase_functions.https_fn import HttpsError
 
@@ -701,10 +703,11 @@ class TestOrderCancellation:
             cancel_order(req)
         assert exc_info.value.code == "failed-precondition"
 
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
     @patch("handlers.orders.get_db")
     @patch("handlers.orders.get_server_timestamp")
     @patch("handlers.orders.get_firestore")
-    def test_cancel_shipped_order_blocked(self, mock_fs, mock_ts, mock_db):
+    def test_cancel_shipped_order_blocked(self, mock_fs, mock_ts, mock_db, mock_rl):
         """Scenario 52: Shipped orders cannot be cancelled."""
         from firebase_functions.https_fn import HttpsError
 
@@ -743,10 +746,11 @@ class TestOrderCancellation:
             cancel_order(req)
         assert exc_info.value.code == "unauthenticated"
 
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
     @patch("handlers.orders.get_db")
     @patch("handlers.orders.get_server_timestamp")
     @patch("handlers.orders.get_firestore")
-    def test_cancel_unauthorized_user_blocked(self, mock_fs, mock_ts, mock_db):
+    def test_cancel_unauthorized_user_blocked(self, mock_fs, mock_ts, mock_db, mock_rl):
         """Scenario 54: Random user cannot cancel someone else's order."""
         from firebase_functions.https_fn import HttpsError
 

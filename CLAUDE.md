@@ -1,5 +1,11 @@
 # CLAUDE.md
 
+## 📥 AUTO-LOADED CONTEXT
+@~/.claude/LEARNED.md
+@docs/REPO_MAP.md
+@docs/AGENT_GUIDE.md
+@STATE.md
+
 ## 🚀 WORKFLOW LIFECYCLE (GSD FUNNEL)
 Operate using a strict **Research → Strategy → Execution → Verification** funnel.
 

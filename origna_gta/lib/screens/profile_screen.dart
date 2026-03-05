@@ -1266,9 +1266,13 @@ class _ProfileCompletionBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'profile.completion'.tr(),
-              style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.4),
+            Flexible(
+              child: Text(
+                'profile.completion'.tr(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.4),
+              ),
             ),
             Text(
               '$pctInt%',

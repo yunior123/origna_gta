@@ -73,6 +73,22 @@ class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
   void setImageIndex(int index) => state = state.copyWith(currentImageIndex: index);
 
   /// Fetches seller metrics from Firestore and stores in state.
+  /// Submits a helpful/not-helpful vote for a product review.
+  /// MVVM FIX (AUDIT): Moved from UI layer to ViewModel.
+  Future<void> voteHelpful(String ratingId, String productId, bool helpful) async {
+    try {
+      final functions = _ref.read(firebaseFunctionsProvider);
+      await functions.httpsCallable(CloudFunctionEndpoints.voteReviewHelpful).call({
+        Fields.ratingId: ratingId,
+        Fields.productId: productId,
+        'helpful': helpful,
+      });
+    } catch (e, st) {
+      AppError.log(e, stackTrace: st, context: 'voteHelpful');
+      rethrow;
+    }
+  }
+
   /// Silently no-ops if [sellerId] is empty or data is missing.
   Future<void> fetchSellerMetrics(String sellerId) async {
     if (sellerId.isEmpty) return;

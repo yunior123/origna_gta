@@ -15,3 +15,16 @@ Widget previewTermsScreenDesktop() => previewDesktop(child: previewScope(child: 
 
 @Preview(name: 'Specific Legal Terms — Web', group: 'Screens — Legal', size: Size(1440, 900))
 Widget previewTermsScreenWeb() => previewWeb(child: previewScope(child: TermsScreen()));
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Specific Legal Terms Light — Mobile', group: 'Screens — Legal', size: Size(390, 844))
+Widget previewTermsScreenLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: TermsScreen()));
+
+@Preview(name: 'Specific Legal Terms Light — Tablet', group: 'Screens — Legal', size: Size(768, 1024))
+Widget previewTermsScreenLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: TermsScreen()));
+
+@Preview(name: 'Specific Legal Terms Light — Desktop', group: 'Screens — Legal', size: Size(1280, 800))
+Widget previewTermsScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: TermsScreen()));
+
+@Preview(name: 'Specific Legal Terms Light — Web', group: 'Screens — Legal', size: Size(1440, 900))
+Widget previewTermsScreenLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: TermsScreen()));

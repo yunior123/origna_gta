@@ -317,11 +317,12 @@ class TestOrderHandlers:
         for current, next_status in valid_transitions:
             assert is_valid_transition(current, next_status), f"{current} → {next_status} should be valid"
 
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
     @patch("handlers.orders.create_success_response")
     @patch("handlers.orders.stripe")
     @patch("handlers.orders.get_db")
     @patch("firebase_admin.firestore.transactional", lambda fn: fn)
-    def test_cancel_order_refunds_and_restores_stock(self, mock_get_db, mock_stripe, mock_create_response):
+    def test_cancel_order_refunds_and_restores_stock(self, mock_get_db, mock_stripe, mock_create_response, mock_rl):
         """Test order cancellation refunds payment and restores inventory"""
         from handlers.orders import cancel_order
 
@@ -385,8 +386,9 @@ class TestOrderHandlers:
 
         assert result["success"] is True
 
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
     @patch("handlers.orders.get_db")
-    def test_cancel_delivered_order_rejected(self, mock_get_db):
+    def test_cancel_delivered_order_rejected(self, mock_get_db, mock_rl):
         """Test cannot cancel order that is already delivered"""
         from handlers.orders import cancel_order
 
@@ -470,8 +472,9 @@ class TestOrderHandlers:
     # AUDIT FIX TESTS: C2 — Multi-seller cancel restriction
     # =========================================================================
 
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
     @patch("handlers.orders.get_db")
-    def test_seller_cannot_cancel_multi_seller_order(self, mock_get_db):
+    def test_seller_cannot_cancel_multi_seller_order(self, mock_get_db, mock_rl):
         """C2: Seller with items in a multi-seller order cannot cancel the entire order"""
         from handlers.orders import cancel_order
 
@@ -520,11 +523,12 @@ class TestOrderHandlers:
         assert exc.value.code == "permission-denied"
         assert "multi-seller" in str(exc.value.message).lower()
 
+    @patch("services.rate_limiter.RateLimiter", return_value=MagicMock(check_rate_limit=MagicMock(return_value=(True, "OK"))))
     @patch("handlers.orders.create_success_response")
     @patch("handlers.orders.stripe")
     @patch("handlers.orders.get_db")
     @patch("firebase_admin.firestore.transactional", lambda fn: fn)
-    def test_seller_can_cancel_single_seller_order(self, mock_get_db, mock_stripe, mock_create_response):
+    def test_seller_can_cancel_single_seller_order(self, mock_get_db, mock_stripe, mock_create_response, mock_rl):
         """C2: Seller who owns ALL items CAN cancel the order"""
         from handlers.orders import cancel_order
 

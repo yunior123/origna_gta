@@ -19,3 +19,16 @@ Widget previewProductAddImagesDesktop() => previewDesktop(child: _productAddImag
 
 @Preview(name: 'Product Add Images — Web', group: 'Product Screens', size: Size(1440, 900))
 Widget previewProductAddImagesWeb() => previewWeb(child: _productAddImagesContent());
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Product Add Images Light — Mobile', group: 'Product Screens', size: Size(390, 844))
+Widget previewProductAddImagesLightMobile() => previewMobile(theme: previewLightTheme, child: _productAddImagesContent());
+
+@Preview(name: 'Product Add Images Light — Tablet', group: 'Product Screens', size: Size(768, 1024))
+Widget previewProductAddImagesLightTablet() => previewTablet(theme: previewLightTheme, child: _productAddImagesContent());
+
+@Preview(name: 'Product Add Images Light — Desktop', group: 'Product Screens', size: Size(1280, 800))
+Widget previewProductAddImagesLightDesktop() => previewDesktop(theme: previewLightTheme, child: _productAddImagesContent());
+
+@Preview(name: 'Product Add Images Light — Web', group: 'Product Screens', size: Size(1440, 900))
+Widget previewProductAddImagesLightWeb() => previewWeb(theme: previewLightTheme, child: _productAddImagesContent());

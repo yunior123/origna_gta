@@ -403,6 +403,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         infoTitle: 'product.perishable_info_title'.tr(),
                                         infoBody: 'product.perishable_info_body'.tr(),
                                       ),
+                                      const SizedBox(height: 12),
+                                      _buildGlassToggle(
+                                        key: const Key('addproduct_age_restricted_toggle'),
+                                        label: 'product.age_restricted_item'.tr(),
+                                        icon: Icons.no_adult_content_rounded,
+                                        value: state.isAgeRestricted,
+                                        onChanged: viewModel.toggleAgeRestricted,
+                                        infoTitle: 'product.age_restricted_info_title'.tr(),
+                                        infoBody: 'product.age_restricted_info_body'.tr(),
+                                      ),
                                       const SizedBox(height: 16),
                                       _buildDeliveryTierCard(
                                         key: const Key('addproduct_standard_delivery_card'),
@@ -1160,7 +1170,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ),
         if (state.digitalType == DigitalTypeValues.software) ...[
           const SizedBox(height: 16),
-          Text('product.download_links'.tr(), style: Theme.of(context).textTheme.titleSmall),
+          Text('product.download_links'.tr(), style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary)),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'product.mac_os_label'.tr(),
@@ -1190,7 +1200,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[
           const SizedBox(height: 16),
-          Text('product.book_download_url'.tr(), style: Theme.of(context).textTheme.titleSmall),
+          Text('product.book_download_url'.tr(), style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary)),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'product.download_source_url_label'.tr(),

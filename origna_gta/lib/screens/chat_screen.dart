@@ -91,7 +91,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       const SizedBox(height: 16),
                       Text(
                         'chat.own_product_title'.tr(),
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(color: isDark ? Colors.white : DesignTokens.textPrimary),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),

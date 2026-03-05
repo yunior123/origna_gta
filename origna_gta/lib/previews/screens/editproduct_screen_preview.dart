@@ -32,3 +32,16 @@ Widget previewEditProductScreenDesktop() => previewDesktop(child: _editProductCo
 
 @Preview(name: 'Edit Product — Web', group: 'Screens', size: Size(1440, 900))
 Widget previewEditProductScreenWeb() => previewWeb(child: _editProductContent());
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Edit Product Light — Mobile', group: 'Screens', size: Size(390, 844))
+Widget previewEditProductScreenLightMobile() => previewMobile(theme: previewLightTheme, child: _editProductContent());
+
+@Preview(name: 'Edit Product Light — Tablet', group: 'Screens', size: Size(768, 1024))
+Widget previewEditProductScreenLightTablet() => previewTablet(theme: previewLightTheme, child: _editProductContent());
+
+@Preview(name: 'Edit Product Light — Desktop', group: 'Screens', size: Size(1280, 800))
+Widget previewEditProductScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: _editProductContent());
+
+@Preview(name: 'Edit Product Light — Web', group: 'Screens', size: Size(1440, 900))
+Widget previewEditProductScreenLightWeb() => previewWeb(theme: previewLightTheme, child: _editProductContent());

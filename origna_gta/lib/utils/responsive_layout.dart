@@ -17,18 +17,23 @@ class ResponsiveBreakpoints {
   static const double sidebarWidth = 280; // sidebar for desktop layouts
 
   // Product card aspect ratios (width ÷ height). Lower value = taller card.
-  // Trending products have an extra view-count row that needs ~14 dp more height,
-  // hence the conservative ratios on smaller breakpoints.
-  static const double cardAspectMobile = 0.82;
-  static const double cardAspectMobilePlus = 0.87;
-  static const double cardAspectTablet = 0.95;
-  static const double cardAspectDesktop = 1.0;
+  // Content area (Expanded flex:4) must fit: 2-line title + optional trending
+  // view-count row (~14dp) + rating row + price + delivery chip (~14dp).
+  // Calculated per breakpoint to eliminate BOTTOM OVERFLOW at all column counts:
+  //   mobile 2-col ~170px wide → height ≥ 230px → 0.74
+  //   mobilePlus 2-col ~220px wide → height ≥ 278px → 0.79
+  //   tablet 3-col ~235px wide → height ≥ 294px → 0.80
+  //   desktop 6-col ~220px wide → height ≥ 297px → 0.74
+  static const double cardAspectMobile = 0.74;
+  static const double cardAspectMobilePlus = 0.79;
+  static const double cardAspectTablet = 0.80;
+  static const double cardAspectDesktop = 0.74;
 
   // Aspect ratios for seller/admin cards — management action row adds ~48 dp.
-  static const double cardAspectMobileManage = 0.75;
-  static const double cardAspectMobilePlusManage = 0.80;
-  static const double cardAspectTabletManage = 0.85;
-  static const double cardAspectDesktopManage = 0.90;
+  static const double cardAspectMobileManage = 0.65;
+  static const double cardAspectMobilePlusManage = 0.70;
+  static const double cardAspectTabletManage = 0.70;
+  static const double cardAspectDesktopManage = 0.65;
 
   /// Maximum height for dropdown/popup menus — 40 % of the viewport height.
   /// Using a viewport fraction avoids magic pixel values and adapts across

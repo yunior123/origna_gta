@@ -19,3 +19,16 @@ Widget previewProductAddVideoDesktop() => previewDesktop(child: _productAddVideo
 
 @Preview(name: 'Product Add Video — Web', group: 'Product Screens', size: Size(1440, 900))
 Widget previewProductAddVideoWeb() => previewWeb(child: _productAddVideoContent());
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Product Add Video Light — Mobile', group: 'Product Screens', size: Size(390, 844))
+Widget previewProductAddVideoLightMobile() => previewMobile(theme: previewLightTheme, child: _productAddVideoContent());
+
+@Preview(name: 'Product Add Video Light — Tablet', group: 'Product Screens', size: Size(768, 1024))
+Widget previewProductAddVideoLightTablet() => previewTablet(theme: previewLightTheme, child: _productAddVideoContent());
+
+@Preview(name: 'Product Add Video Light — Desktop', group: 'Product Screens', size: Size(1280, 800))
+Widget previewProductAddVideoLightDesktop() => previewDesktop(theme: previewLightTheme, child: _productAddVideoContent());
+
+@Preview(name: 'Product Add Video Light — Web', group: 'Product Screens', size: Size(1440, 900))
+Widget previewProductAddVideoLightWeb() => previewWeb(theme: previewLightTheme, child: _productAddVideoContent());

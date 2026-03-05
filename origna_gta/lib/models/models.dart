@@ -178,6 +178,7 @@ class CartItemDetailModel {
   final int minimumOrderQuantity;
   final bool freeShipping;
   final bool isDigital;
+  final bool isAgeRestricted;
   final String? buyerNote;
   final bool isSmallSupplier;
   final String? variantId;
@@ -212,6 +213,7 @@ class CartItemDetailModel {
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
     this.isDigital = false,
+    this.isAgeRestricted = false,
     this.buyerNote,
     this.isSmallSupplier = false,
     this.variantId,
@@ -255,6 +257,7 @@ class CartItemDetailModel {
       minimumOrderQuantity: (map[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
       freeShipping: map[Fields.freeShipping] ?? false,
       isDigital: map[Fields.isDigital] ?? false,
+      isAgeRestricted: map[Fields.isAgeRestricted] ?? false,
       buyerNote: map[Fields.buyerNote] as String?,
       isSmallSupplier: map[Fields.isSmallSupplier] ?? false,
       variantId: map[Fields.variantId] as String?,
@@ -293,6 +296,7 @@ class CartItemDetailModel {
       Fields.minimumOrderQuantity: minimumOrderQuantity,
       Fields.freeShipping: freeShipping,
       Fields.isDigital: isDigital,
+      Fields.isAgeRestricted: isAgeRestricted,
       if (buyerNote != null) Fields.buyerNote: buyerNote,
       Fields.isSmallSupplier: isSmallSupplier,
       if (variantId != null) Fields.variantId: variantId,
@@ -522,6 +526,7 @@ class OrderModel {
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
         isDigital: map[Fields.isDigital] ?? false,
+        isAgeRestricted: map[Fields.isAgeRestricted] ?? false,
       );
     }).toList();
 
@@ -593,6 +598,7 @@ class OrderModel {
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
         isDigital: map[Fields.isDigital] ?? false,
+        isAgeRestricted: map[Fields.isAgeRestricted] ?? false,
       );
     }).toList();
 
@@ -731,6 +737,7 @@ class ProductModel {
   final bool freeShipping;
   final Timestamp? deletedAt;
   final bool isDigital; // True if product is digital (no shipping required)
+  final bool isAgeRestricted; // True if buyer must confirm age 18+ before purchasing
   final String? digitalType; // 'software' | 'book'
   final Map<String, String>? digitalBuilds; // platform -> download URL (software only)
   final String? approvalRejectionReason;
@@ -763,6 +770,7 @@ class ProductModel {
     this.freeShipping = false,
     this.deletedAt,
     this.isDigital = false,
+    this.isAgeRestricted = false,
     this.digitalType,
     this.digitalBuilds,
     this.approvalRejectionReason,
@@ -807,6 +815,7 @@ class ProductModel {
       keywords: _parseStringList(map[Fields.keywords]),
       stockQuantity: _parseInt(map[Fields.stockQuantity]),
       isDigital: map[Fields.isDigital] as bool? ?? false,
+      isAgeRestricted: map[Fields.isAgeRestricted] as bool? ?? false,
       digitalType: map[Fields.digitalType]?.toString(),
       digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
       approvalRejectionReason: map[Fields.approvalRejectionReason]?.toString(),
@@ -859,6 +868,7 @@ class ProductModel {
       Fields.minimumOrderQuantity: minimumOrderQuantity,
       Fields.freeShipping: freeShipping,
       Fields.isDigital: isDigital,
+      Fields.isAgeRestricted: isAgeRestricted,
       Fields.lifecycleStatus: lifecycleStatus,
       if (deletedAt != null) Fields.deletedAt: deletedAt,
     };
@@ -993,6 +1003,8 @@ class UserModel {
   final bool notifyNewProducts;
   final bool notifyTrending;
   final bool mfaEnabled;
+  /// Version of ToS the user last accepted (e.g. '1.0'). Null = accepted before versioning was added.
+  final String? termsVersion;
 
   UserModel({
     required this.uid,
@@ -1026,6 +1038,7 @@ class UserModel {
     this.notifyNewProducts = false,
     this.notifyTrending = false,
     this.mfaEnabled = false,
+    this.termsVersion,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -1063,6 +1076,7 @@ class UserModel {
       notifyNewProducts: map[Fields.notifyNewProducts] ?? false,
       notifyTrending: map[Fields.notifyTrending] ?? false,
       mfaEnabled: map[Fields.mfaEnabled] ?? false,
+      termsVersion: map[Fields.termsVersion] as String?,
     );
   }
 
@@ -1109,6 +1123,7 @@ class UserModel {
     bool? notifyNewProducts,
     bool? notifyTrending,
     bool? mfaEnabled,
+    String? termsVersion,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -1142,6 +1157,7 @@ class UserModel {
       notifyNewProducts: notifyNewProducts ?? this.notifyNewProducts,
       notifyTrending: notifyTrending ?? this.notifyTrending,
       mfaEnabled: mfaEnabled ?? this.mfaEnabled,
+      termsVersion: termsVersion ?? this.termsVersion,
     );
   }
 

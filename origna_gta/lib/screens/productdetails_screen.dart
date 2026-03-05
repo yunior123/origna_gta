@@ -1882,12 +1882,8 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     setState(() => _votingHelpful = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final functions = ref.read(firebaseFunctionsProvider);
-      await functions.httpsCallable(CloudFunctionEndpoints.voteReviewHelpful).call({
-        Fields.ratingId: ratingId,
-        Fields.productId: widget.productId,
-        'helpful': helpful,
-      });
+      // MVVM FIX (AUDIT): Delegated to ViewModel — UI no longer calls Firebase directly.
+      await ref.read(productDetailViewModelProvider.notifier).voteHelpful(ratingId, widget.productId, helpful);
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(

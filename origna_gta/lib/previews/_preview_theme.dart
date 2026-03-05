@@ -94,27 +94,29 @@ _FrameType _frameTypeOf(PreviewBreakpoint bp) => switch (bp) {
 
 /// Overlays device chrome on top of content within the viewport bounds.
 class _DeviceFrameOverlay extends StatelessWidget {
-  const _DeviceFrameOverlay({required this.breakpoint, required this.child});
+  const _DeviceFrameOverlay({required this.breakpoint, required this.child, this.isDark = true});
 
   final PreviewBreakpoint breakpoint;
   final Widget child;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     return switch (_frameTypeOf(breakpoint)) {
-      _FrameType.phone => _PhoneOverlay(width: breakpoint.width, height: breakpoint.height, child: child),
-      _FrameType.tablet => _TabletOverlay(width: breakpoint.width, height: breakpoint.height, child: child),
-      _FrameType.browser => _BrowserOverlay(width: breakpoint.width, height: breakpoint.height, child: child),
+      _FrameType.phone => _PhoneOverlay(width: breakpoint.width, height: breakpoint.height, isDark: isDark, child: child),
+      _FrameType.tablet => _TabletOverlay(width: breakpoint.width, height: breakpoint.height, isDark: isDark, child: child),
+      _FrameType.browser => _BrowserOverlay(width: breakpoint.width, height: breakpoint.height, isDark: isDark, child: child),
     };
   }
 }
 
 /// Phone chrome overlay: notch pill at top, home indicator at bottom, rounded corners.
 class _PhoneOverlay extends StatelessWidget {
-  const _PhoneOverlay({required this.width, required this.height, required this.child});
+  const _PhoneOverlay({required this.width, required this.height, required this.child, this.isDark = true});
   final double width;
   final double height;
   final Widget child;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +133,7 @@ class _PhoneOverlay extends StatelessWidget {
           // Phone chrome overlays
           CustomPaint(
             size: Size(width, height),
-            painter: _PhoneChromePainter(width: width, height: height),
+            painter: _PhoneChromePainter(width: width, height: height, isDark: isDark),
           ),
         ],
       ),
@@ -140,23 +142,24 @@ class _PhoneOverlay extends StatelessWidget {
 }
 
 class _PhoneChromePainter extends CustomPainter {
-  const _PhoneChromePainter({required this.width, required this.height});
+  _PhoneChromePainter({required this.width, required this.height, this.isDark = true});
   final double width;
   final double height;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
     final borderPaint = Paint()
-      ..color = const Color(0xFF3A3A5C)
+      ..color = isDark ? const Color(0xFF3A3A5C) : const Color(0xFFCCCCDD)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
-    final notchPaint = Paint()..color = const Color(0xFF0A0A1A);
+    final notchPaint = Paint()..color = isDark ? const Color(0xFF0A0A1A) : const Color(0xFFDDDDE8);
     final homeBarPaint = Paint()
-      ..color = Colors.white.withAlpha(100)
+      ..color = isDark ? Colors.white.withAlpha(100) : Colors.black.withAlpha(40)
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round;
     final shadowPaint = Paint()
-      ..color = Colors.black.withAlpha(60)
+      ..color = isDark ? Colors.black.withAlpha(60) : Colors.black.withAlpha(18)
       ..style = PaintingStyle.fill;
 
     // Rounded corner clip border
@@ -198,15 +201,16 @@ class _PhoneChromePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
+  bool shouldRepaint(covariant CustomPainter old) => true;
 }
 
 /// Tablet chrome overlay: camera dot at top, rounded corners, thin border.
 class _TabletOverlay extends StatelessWidget {
-  const _TabletOverlay({required this.width, required this.height, required this.child});
+  const _TabletOverlay({required this.width, required this.height, required this.child, this.isDark = true});
   final double width;
   final double height;
   final Widget child;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +225,7 @@ class _TabletOverlay extends StatelessWidget {
           ),
           CustomPaint(
             size: Size(width, height),
-            painter: _TabletChromePainter(width: width, height: height),
+            painter: _TabletChromePainter(width: width, height: height, isDark: isDark),
           ),
         ],
       ),
@@ -230,17 +234,18 @@ class _TabletOverlay extends StatelessWidget {
 }
 
 class _TabletChromePainter extends CustomPainter {
-  const _TabletChromePainter({required this.width, required this.height});
+  _TabletChromePainter({required this.width, required this.height, this.isDark = true});
   final double width;
   final double height;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
     final borderPaint = Paint()
-      ..color = const Color(0xFF3A3A5C)
+      ..color = isDark ? const Color(0xFF3A3A5C) : const Color(0xFFCCCCDD)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
-    final cameraPaint = Paint()..color = const Color(0xFF1A1A3A);
+    final cameraPaint = Paint()..color = isDark ? const Color(0xFF2A2A4A) : const Color(0xFF707080);
 
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, width, height), const Radius.circular(16)),
@@ -251,16 +256,17 @@ class _TabletChromePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
+  bool shouldRepaint(covariant CustomPainter old) => true;
 }
 
 /// Browser chrome overlay: opaque top bar with dots + URL, content area is below.
 /// Content is rendered at height - chromeH to leave room for the chrome bar.
 class _BrowserOverlay extends StatelessWidget {
-  const _BrowserOverlay({required this.width, required this.height, required this.child});
+  const _BrowserOverlay({required this.width, required this.height, required this.child, this.isDark = true});
   final double width;
   final double height;
   final Widget child;
+  final bool isDark;
 
   static const double _chromeH = 44.0;
 
@@ -274,7 +280,7 @@ class _BrowserOverlay extends StatelessWidget {
         child: Column(
           children: [
             // Browser chrome bar (opaque)
-            _BrowserChromeBar(width: width, height: _chromeH),
+            _BrowserChromeBar(width: width, height: _chromeH, isDark: isDark),
             // Page content fills the rest
             Expanded(child: child),
           ],
@@ -285,16 +291,17 @@ class _BrowserOverlay extends StatelessWidget {
 }
 
 class _BrowserChromeBar extends StatelessWidget {
-  const _BrowserChromeBar({required this.width, required this.height});
+  const _BrowserChromeBar({required this.width, required this.height, this.isDark = true});
   final double width;
   final double height;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: width,
       height: height,
-      color: const Color(0xFF2A2A40),
+      color: isDark ? const Color(0xFF2A2A40) : const Color(0xFFF0F0F5),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
@@ -308,11 +315,11 @@ class _BrowserChromeBar extends StatelessWidget {
             child: Container(
               height: 22,
               decoration: BoxDecoration(
-                color: Colors.black26,
+                color: isDark ? Colors.black26 : Colors.black.withAlpha(15),
                 borderRadius: BorderRadius.circular(4),
               ),
               alignment: Alignment.center,
-              child: const Text('orignagta.ca', style: TextStyle(color: Colors.white54, fontSize: 10)),
+              child: Text('orignagta.ca', style: TextStyle(color: isDark ? Colors.white54 : Colors.black45, fontSize: 10)),
             ),
           ),
         ],
@@ -350,7 +357,7 @@ class _CheckerboardPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 // ============================================================================
@@ -396,7 +403,7 @@ Widget _singleViewport({
     data: effectiveTheme,
     child: MediaQuery(
       data: MediaQueryData(size: Size(bp.width, contentH)),
-      child: Scaffold(backgroundColor: DesignTokens.darkBackground, body: child),
+      child: Scaffold(backgroundColor: effectiveTheme.scaffoldBackgroundColor, body: child),
     ),
   );
 
@@ -404,7 +411,7 @@ Widget _singleViewport({
     locale: locale,
     theme: effectiveTheme,
     size: Size(bp.width, bp.height),
-    child: _DeviceFrameOverlay(breakpoint: bp, child: content),
+    child: _DeviceFrameOverlay(breakpoint: bp, isDark: effectiveTheme.brightness == Brightness.dark, child: content),
   );
 }
 
@@ -466,11 +473,11 @@ Widget _buildFrame(PreviewBreakpoint bp, ThemeData theme, Widget content) {
     data: theme,
     child: MediaQuery(
       data: MediaQueryData(size: Size(bp.width, contentH)),
-      child: Scaffold(backgroundColor: DesignTokens.darkBackground, body: content),
+      child: Scaffold(backgroundColor: theme.scaffoldBackgroundColor, body: content),
     ),
   );
 
-  return _DeviceFrameOverlay(breakpoint: bp, child: contentWidget);
+  return _DeviceFrameOverlay(breakpoint: bp, isDark: theme.brightness == Brightness.dark, child: contentWidget);
 }
 
 // ============================================================================

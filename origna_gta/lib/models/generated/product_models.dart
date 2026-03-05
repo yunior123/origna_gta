@@ -135,6 +135,8 @@ abstract class Product with _$Product {
     @Default(false) bool freeShipping,
     // Digital product flag
     @Default(false) bool isDigital,
+    // Age restriction flag — requires buyer age confirmation at checkout
+    @Default(false) bool isAgeRestricted,
     String? digitalType,
     String? slug,
     Map<String, String>? digitalBuilds,

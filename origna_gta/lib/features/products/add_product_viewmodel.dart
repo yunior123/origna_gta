@@ -366,6 +366,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         deliveryOptions: sanitizedDeliveryOptions,
         isPerishable: state.isDigital ? false : state.isPerishable,
         isDigital: state.isDigital,
+        isAgeRestricted: state.isAgeRestricted,
         digitalType: state.isDigital && state.digitalType != null ? state.digitalType : null,
         digitalBuilds: state.isDigital && state.digitalType == DigitalTypeValues.software
             ? {
@@ -613,6 +614,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
+
+  void toggleAgeRestricted(bool value) => state = state.copyWith(isAgeRestricted: value);
 
   void toggleWarehouseSelection(String warehouseId) {
     final current = List<String>.from(state.selectedWarehouseIds);

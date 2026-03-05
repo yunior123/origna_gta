@@ -427,9 +427,13 @@ class CartItemScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  initialNote == null ? 'cart.item_note_add'.tr() : 'cart.item_note_edit'.tr(),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                Flexible(
+                  child: Text(
+                    initialNote == null ? 'cart.item_note_add'.tr() : 'cart.item_note_edit'.tr(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
                 ),
                 IconButton(icon: const Icon(Icons.close_rounded), tooltip: 'common.close'.tr(), onPressed: () => Navigator.pop(context)),
               ],

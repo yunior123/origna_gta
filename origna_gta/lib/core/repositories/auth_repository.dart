@@ -351,8 +351,13 @@ class FirebaseAuthRepository implements AuthRepository {
     if (!docSnapshot.exists) {
       // F-82/F-90: Only call the profile creation function if the email is verified
       // to avoid 'failed-precondition' errors for unverified users.
-      // Bypass in emulator mode.
-      if (!user.emailVerified && !EnvConfig().isEmulator) {
+      // Bypass in emulator mode AND for SSO providers (Apple/Google verify email ownership
+      // server-side; Firebase may return emailVerified=false on first Apple Sign In with
+      // "Hide My Email" relay before the auth token is refreshed).
+      final isSsoProvider = user.providerData.any(
+        (p) => p.providerId == 'apple.com' || p.providerId == 'google.com',
+      );
+      if (!user.emailVerified && !EnvConfig().isEmulator && !isSsoProvider) {
         // [F-88] Save name to pending_profiles so it's not lost when they eventually verify
         if ((name != null && name.isNotEmpty) || initialMarketingOptIn != null) {
           try {

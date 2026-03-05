@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/services/analytics_service.dart';
 
 import 'login_state.dart';
 
@@ -59,6 +62,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
     try {
       await repository.signInWithApple();
+      unawaited(AnalyticsService.logLogin(method: 'apple'));
       state = state.copyWith(isLoading: false, isSuccess: true);
     } on FirebaseAuthException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
@@ -104,8 +108,10 @@ class LoginViewModel extends StateNotifier<LoginState> {
         await repository.signInWithEmail(email, password);
         // [F-82] Allow sign-in even if not verified, but show a warning or hint in UI if needed.
         // The business logic elsewhere (checkout) will block actions requiring verification.
+        unawaited(AnalyticsService.logLogin(method: 'email'));
       } else {
         await repository.registerWithEmail(email, password, name ?? 'User', marketingOptIn: marketingOptIn);
+        unawaited(AnalyticsService.logSignUp(method: 'email'));
 
         // [F-80] Stay signed in after registration so profile is created immediately
         state = state.copyWith(
@@ -149,6 +155,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
 
     try {
       await repository.signInWithGoogle();
+      unawaited(AnalyticsService.logLogin(method: 'google'));
       state = state.copyWith(isLoading: false, isSuccess: true);
     } on FirebaseAuthException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));

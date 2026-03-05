@@ -272,66 +272,73 @@ class LoginScreenLayout extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      ModernButton(
-                        key: const Key('login_submit_button'),
-                        semanticsLabel: 'login_submit_button',
-                        label: isLogin ? 'auth.sign_in'.tr() : 'auth.create_account'.tr(),
-                        isLoading: isLoading,
-                        isPrimary: true,
-                        onPressed: onAuthSubmit,
-                      ),
-                      const SizedBox(height: 16),
-                      if (isLogin) ...[
-                        Semantics(
-                          label: 'btn-forgot-password',
-                          button: true,
-                          child: TextButton(
-                            key: const Key('login_forgot_password_button'),
-                            onPressed: onForgotPassword,
-                            child: Text(
-                              'auth.forgot_password'.tr(),
-                              style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 14),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16),
+                        child: Column(
+                          children: [
+                            ModernButton(
+                              key: const Key('login_submit_button'),
+                              semanticsLabel: 'login_submit_button',
+                              label: isLogin ? 'auth.sign_in'.tr() : 'auth.create_account'.tr(),
+                              isLoading: isLoading,
+                              isPrimary: true,
+                              onPressed: onAuthSubmit,
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                      ],
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: DesignTokens.outlineVariant, thickness: 0.8)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing12),
-                            child: Text(
-                              'auth.or_continue_with'.tr(),
-                              style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                            const SizedBox(height: 16),
+                            if (isLogin) ...[
+                              Semantics(
+                                label: 'btn-forgot-password',
+                                button: true,
+                                child: TextButton(
+                                  key: const Key('login_forgot_password_button'),
+                                  onPressed: onForgotPassword,
+                                  child: Text(
+                                    'auth.forgot_password'.tr(),
+                                    style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 14),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                            ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: DesignTokens.outlineVariant, thickness: 0.8)),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing12),
+                                  child: Text(
+                                    'auth.or_continue_with'.tr(),
+                                    style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                                Expanded(child: Divider(color: DesignTokens.outlineVariant, thickness: 0.8)),
+                              ],
                             ),
-                          ),
-                          Expanded(child: Divider(color: DesignTokens.outlineVariant, thickness: 0.8)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _GoogleSignInButton(
-                        key: const Key('login_google_button'),
-                        label: isLogin ? 'auth.google_sign_in'.tr() : 'auth.sign_up_with_google'.tr(),
-                        isLoading: isLoading,
-                        onPressed: isLoading ? null : onGoogleSignIn,
-                      ),
-                      if (!kIsWeb && (Theme.of(context).platform == TargetPlatform.iOS || Theme.of(context).platform == TargetPlatform.macOS)) ...[
-                        const SizedBox(height: 12),
-                        Semantics(
-                          label: 'login_apple_button',
-                          button: true,
-                          child: SignInWithAppleButton(
-                            key: const Key('login_apple_button'),
-                            text: isLogin ? 'auth.apple_sign_in'.tr() : 'auth.sign_up_with_apple'.tr(),
-                            style: isDark ? SignInWithAppleButtonStyle.white : SignInWithAppleButtonStyle.black,
-                            height: 52,
-                            borderRadius: const BorderRadius.all(Radius.circular(DesignTokens.radius16)),
-                            onPressed: isLoading ? () {} : onAppleSignIn,
-                          ),
+                            const SizedBox(height: 16),
+                            _GoogleSignInButton(
+                              key: const Key('login_google_button'),
+                              label: isLogin ? 'auth.google_sign_in'.tr() : 'auth.sign_up_with_google'.tr(),
+                              isLoading: isLoading,
+                              onPressed: isLoading ? null : onGoogleSignIn,
+                            ),
+                            if (!kIsWeb && (Theme.of(context).platform == TargetPlatform.iOS || Theme.of(context).platform == TargetPlatform.macOS)) ...[
+                              const SizedBox(height: 12),
+                              Semantics(
+                                label: 'login_apple_button',
+                                button: true,
+                                child: SignInWithAppleButton(
+                                  key: const Key('login_apple_button'),
+                                  text: isLogin ? 'auth.apple_sign_in'.tr() : 'auth.sign_up_with_apple'.tr(),
+                                  style: isDark ? SignInWithAppleButtonStyle.white : SignInWithAppleButtonStyle.black,
+                                  height: 52,
+                                  borderRadius: const BorderRadius.all(Radius.circular(DesignTokens.radius16)),
+                                  onPressed: isLoading ? () {} : onAppleSignIn,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                      ],
+                      ),
                       const SizedBox(height: 20),
                       Semantics(
                         label: 'btn-toggle-auth-mode',

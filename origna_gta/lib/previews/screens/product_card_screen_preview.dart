@@ -42,3 +42,16 @@ Widget previewProductCardScreenDesktop() => previewDesktop(child: _productCardCo
 
 @Preview(name: 'Product Card Component — Web', group: 'Components', size: Size(1440, 900))
 Widget previewProductCardScreenWeb() => previewWeb(child: _productCardContent());
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Product Card Component Light — Mobile', group: 'Components', size: Size(390, 844))
+Widget previewProductCardScreenLightMobile() => previewMobile(theme: previewLightTheme, child: _productCardContent());
+
+@Preview(name: 'Product Card Component Light — Tablet', group: 'Components', size: Size(768, 1024))
+Widget previewProductCardScreenLightTablet() => previewTablet(theme: previewLightTheme, child: _productCardContent());
+
+@Preview(name: 'Product Card Component Light — Desktop', group: 'Components', size: Size(1280, 800))
+Widget previewProductCardScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: _productCardContent());
+
+@Preview(name: 'Product Card Component Light — Web', group: 'Components', size: Size(1440, 900))
+Widget previewProductCardScreenLightWeb() => previewWeb(theme: previewLightTheme, child: _productCardContent());

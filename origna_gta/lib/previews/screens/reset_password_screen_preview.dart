@@ -18,3 +18,16 @@ Widget previewResetPasswordScreenDesktop() => previewDesktop(child: _resetPasswo
 
 @Preview(name: 'Reset Password — Web', group: 'Auth Screens', size: Size(1440, 900))
 Widget previewResetPasswordScreenWeb() => previewWeb(child: _resetPasswordContent());
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Reset Password Light — Mobile', group: 'Auth Screens', size: Size(390, 844))
+Widget previewResetPasswordScreenLightMobile() => previewMobile(theme: previewLightTheme, child: _resetPasswordContent());
+
+@Preview(name: 'Reset Password Light — Tablet', group: 'Auth Screens', size: Size(768, 1024))
+Widget previewResetPasswordScreenLightTablet() => previewTablet(theme: previewLightTheme, child: _resetPasswordContent());
+
+@Preview(name: 'Reset Password Light — Desktop', group: 'Auth Screens', size: Size(1280, 800))
+Widget previewResetPasswordScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: _resetPasswordContent());
+
+@Preview(name: 'Reset Password Light — Web', group: 'Auth Screens', size: Size(1440, 900))
+Widget previewResetPasswordScreenLightWeb() => previewWeb(theme: previewLightTheme, child: _resetPasswordContent());

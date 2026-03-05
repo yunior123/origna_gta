@@ -47,7 +47,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 children: [
                   const Icon(Icons.check_circle_outline, color: DesignTokens.success, size: 80),
                   const SizedBox(height: DesignTokens.spacing24),
-                  Text('auth.reset_success_title'.tr(), style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
+                  Text(
+                    'auth.reset_success_title'.tr(),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: isDark ? Colors.white : DesignTokens.textPrimary),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: DesignTokens.spacing16),
                   Text(
                     'auth.reset_success_desc'.tr(),
@@ -84,7 +88,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 children: [
                   Text(
                     'auth.create_new_password'.tr(),
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : DesignTokens.textPrimary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   if (state.userEmail != null) ...[

@@ -498,7 +498,8 @@ class SubscriptionScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('subscription.status_label'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+              Flexible(child: Text('subscription.status_label'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13))),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
@@ -514,7 +515,8 @@ class SubscriptionScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('subscription.renews_label'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+                Flexible(child: Text('subscription.renews_label'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13))),
+                const SizedBox(width: 8),
                 Text(
                   _formatDate(info.currentPeriodEnd),
                   style: TextStyle(color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary, fontWeight: FontWeight.w500, fontSize: 13),

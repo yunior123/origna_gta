@@ -407,6 +407,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       contentPadding: EdgeInsets.zero,
                       onChanged: viewModel.togglePerishable,
                     ),
+                    SwitchListTile(
+                      key: const Key('editproduct_age_restricted_toggle'),
+                      title: Text('product.age_restricted_item'.tr()),
+                      value: state.isAgeRestricted,
+                      activeTrackColor: DesignTokens.primary,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: viewModel.toggleAgeRestricted,
+                    ),
                     if (!state.isLocalDeliveryOnly) ...[
                       const SizedBox(height: 12),
                       Row(
@@ -1010,7 +1018,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           const SizedBox(height: 16),
           Text(
             'product.download_links'.tr(),
-            style: Theme.of(context).textTheme.titleSmall,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary,
+            ),
           ),
           const SizedBox(height: 4),
           _editUrlField(

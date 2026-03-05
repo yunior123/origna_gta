@@ -15,3 +15,16 @@ Widget previewMainScreenDesktop() => previewDesktop(child: previewScope(child: M
 
 @Preview(name: 'Main Screen — Web', group: 'Home Screens', size: Size(1440, 900))
 Widget previewMainScreenWeb() => previewWeb(child: previewScope(child: MainScreen()));
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Main Screen Light — Mobile', group: 'Home Screens', size: Size(390, 844))
+Widget previewMainScreenLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: MainScreen()));
+
+@Preview(name: 'Main Screen Light — Tablet', group: 'Home Screens', size: Size(768, 1024))
+Widget previewMainScreenLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: MainScreen()));
+
+@Preview(name: 'Main Screen Light — Desktop', group: 'Home Screens', size: Size(1280, 800))
+Widget previewMainScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: MainScreen()));
+
+@Preview(name: 'Main Screen Light — Web', group: 'Home Screens', size: Size(1440, 900))
+Widget previewMainScreenLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: MainScreen()));

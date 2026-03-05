@@ -42,6 +42,40 @@ Widget _profileLightContent() => previewScope(
   ),
 );
 
+// Logged-out state — no user profile
+Widget _profileLoggedOut() => previewScope(
+  child: ProfileScreenLayout(
+    userProfileAsync: const AsyncValue.data(null),
+    currentUser: null,
+    isExportLoading: false,
+    themeMode: ThemeMode.dark,
+    isPremium: false,
+    onSignIn: () {},
+    onSignOut: () {},
+    onDeleteAccountRequested: () {},
+    onExportData: () {},
+    onThemeChange: (_) {},
+    onLanguageChange: (_) {},
+  ),
+);
+
+// Loading state
+Widget _profileLoading() => previewScope(
+  child: ProfileScreenLayout(
+    userProfileAsync: const AsyncValue.loading(),
+    currentUser: null,
+    isExportLoading: false,
+    themeMode: ThemeMode.dark,
+    isPremium: false,
+    onSignIn: () {},
+    onSignOut: () {},
+    onDeleteAccountRequested: () {},
+    onExportData: () {},
+    onThemeChange: (_) {},
+    onLanguageChange: (_) {},
+  ),
+);
+
 @Preview(name: 'Profile Dark — Mobile', group: 'ProfileScreen', size: Size(390, 844))
 Widget previewProfileScreenDarkMobile() => previewMobile(theme: previewDarkTheme, child: _profileDarkContent());
 
@@ -65,3 +99,29 @@ Widget previewProfileScreenLightDesktop() => previewDesktop(theme: previewLightT
 
 @Preview(name: 'Profile Light — Web', group: 'ProfileScreen', size: Size(1440, 900))
 Widget previewProfileScreenLightWeb() => previewWeb(theme: previewLightTheme, child: _profileLightContent());
+
+// ── Logged-Out State ──────────────────────────────────────────────────────────
+@Preview(name: 'Profile Logged-Out Dark — Mobile', group: 'ProfileScreen', size: Size(390, 844))
+Widget previewProfileLoggedOutMobile() => previewMobile(theme: previewDarkTheme, child: _profileLoggedOut());
+
+@Preview(name: 'Profile Logged-Out Dark — Tablet', group: 'ProfileScreen', size: Size(768, 1024))
+Widget previewProfileLoggedOutTablet() => previewTablet(theme: previewDarkTheme, child: _profileLoggedOut());
+
+@Preview(name: 'Profile Logged-Out Dark — Desktop', group: 'ProfileScreen', size: Size(1280, 800))
+Widget previewProfileLoggedOutDesktop() => previewDesktop(theme: previewDarkTheme, child: _profileLoggedOut());
+
+@Preview(name: 'Profile Logged-Out Dark — Web', group: 'ProfileScreen', size: Size(1440, 900))
+Widget previewProfileLoggedOutWeb() => previewWeb(theme: previewDarkTheme, child: _profileLoggedOut());
+
+@Preview(name: 'Profile Logged-Out Light — Mobile', group: 'ProfileScreen', size: Size(390, 844))
+Widget previewProfileLoggedOutLightMobile() => previewMobile(theme: previewLightTheme, child: _profileLoggedOut());
+
+@Preview(name: 'Profile Logged-Out Light — Desktop', group: 'ProfileScreen', size: Size(1280, 800))
+Widget previewProfileLoggedOutLightDesktop() => previewDesktop(theme: previewLightTheme, child: _profileLoggedOut());
+
+// ── Loading State ─────────────────────────────────────────────────────────────
+@Preview(name: 'Profile Loading Dark — Mobile', group: 'ProfileScreen', size: Size(390, 844))
+Widget previewProfileLoadingMobile() => previewMobile(theme: previewDarkTheme, child: _profileLoading());
+
+@Preview(name: 'Profile Loading Dark — Desktop', group: 'ProfileScreen', size: Size(1280, 800))
+Widget previewProfileLoadingDesktop() => previewDesktop(theme: previewDarkTheme, child: _profileLoading());

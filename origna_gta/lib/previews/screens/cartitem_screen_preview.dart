@@ -31,3 +31,16 @@ Widget previewCartItemScreenDesktop() => previewDesktop(child: _cartItemContent(
 
 @Preview(name: 'Cart Item — Web', group: 'Cart Screens', size: Size(1440, 900))
 Widget previewCartItemScreenWeb() => previewWeb(child: _cartItemContent());
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Cart Item Light — Mobile', group: 'Cart Screens', size: Size(390, 844))
+Widget previewCartItemScreenLightMobile() => previewMobile(theme: previewLightTheme, child: _cartItemContent());
+
+@Preview(name: 'Cart Item Light — Tablet', group: 'Cart Screens', size: Size(768, 1024))
+Widget previewCartItemScreenLightTablet() => previewTablet(theme: previewLightTheme, child: _cartItemContent());
+
+@Preview(name: 'Cart Item Light — Desktop', group: 'Cart Screens', size: Size(1280, 800))
+Widget previewCartItemScreenLightDesktop() => previewDesktop(theme: previewLightTheme, child: _cartItemContent());
+
+@Preview(name: 'Cart Item Light — Web', group: 'Cart Screens', size: Size(1440, 900))
+Widget previewCartItemScreenLightWeb() => previewWeb(theme: previewLightTheme, child: _cartItemContent());

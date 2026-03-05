@@ -590,3 +590,86 @@ class TestCheckLowStockAlerts:
         ]
         for literal in forbidden_literals:
             assert literal not in source, f"Magic string {literal} found in cron_jobs.py — use Fields constant instead"
+
+
+class TestBackupFirestore:
+    """Tests for the daily Firestore backup cron job."""
+
+    @patch("handlers.cron_jobs.IS_EMULATOR", True)
+    def test_skips_in_emulator_mode(self):
+        """No export call when running in emulator — bucket may not exist."""
+        from handlers.cron_jobs import backup_firestore
+
+        mock_event = Mock()
+        # Should return immediately without error
+        backup_firestore(mock_event)
+
+    @patch("handlers.cron_jobs.release_cron_lock")
+    @patch("handlers.cron_jobs.acquire_cron_lock", return_value=False)
+    @patch("handlers.cron_jobs.IS_EMULATOR", False)
+    def test_skips_when_lock_held(self, mock_acquire, mock_release):
+        """If another instance holds the lock, skip without exporting."""
+        from handlers.cron_jobs import backup_firestore
+
+        backup_firestore(Mock())
+
+        mock_acquire.assert_called_once_with("backup_firestore", ttl_minutes=60)
+        mock_release.assert_not_called()
+
+    @patch("handlers.cron_jobs.release_cron_lock")
+    @patch("handlers.cron_jobs.acquire_cron_lock", return_value=True)
+    @patch("handlers.cron_jobs._run_backup_firestore")
+    @patch("handlers.cron_jobs.IS_EMULATOR", False)
+    def test_calls_run_backup_when_lock_acquired(self, mock_run, mock_acquire, mock_release):
+        """Happy path: lock acquired → _run_backup_firestore called → lock released."""
+        from handlers.cron_jobs import backup_firestore
+
+        backup_firestore(Mock())
+
+        mock_run.assert_called_once()
+        mock_release.assert_called_once_with("backup_firestore")
+
+    @patch("handlers.cron_jobs.release_cron_lock")
+    @patch("handlers.cron_jobs.acquire_cron_lock", return_value=True)
+    @patch("handlers.cron_jobs._run_backup_firestore", side_effect=RuntimeError("GCS bucket not found"))
+    @patch("handlers.cron_jobs.IS_EMULATOR", False)
+    def test_alerts_on_export_error(self, mock_run, mock_acquire, mock_release):
+        """If export fails, Sentry captures exception and lock is still released."""
+        from handlers.cron_jobs import backup_firestore
+
+        with patch("handlers.cron_jobs.sentry_sdk") as mock_sentry:
+            # Should not raise — error is caught and reported
+            backup_firestore(Mock())
+
+        assert mock_sentry.capture_exception.called, "Sentry should capture backup failure"
+        mock_release.assert_called_once_with("backup_firestore")
+
+    @patch("google.cloud.firestore_admin_v1.FirestoreAdminClient")
+    @patch("handlers.cron_jobs.PROJECT_ID", "orignagta")
+    @patch("handlers.cron_jobs.BACKUP_BUCKET", "gs://orignagta-backups")
+    def test_run_backup_calls_export_api(self, mock_admin_cls):
+        """_run_backup_firestore calls exportDocuments with correct db name and output prefix."""
+        from handlers.cron_jobs import _run_backup_firestore
+
+        mock_client = MagicMock()
+        mock_admin_cls.return_value = mock_client
+        mock_op = MagicMock()
+        mock_op.operation.name = "projects/orignagta/databases/(default)/operations/test-op"
+        mock_client.export_documents.return_value = mock_op
+
+        _run_backup_firestore()
+
+        mock_client.export_documents.assert_called_once()
+        call_args = mock_client.export_documents.call_args
+        req = call_args.kwargs.get("request") or call_args.args[0]
+        assert req.name == "projects/orignagta/databases/(default)"
+        assert req.output_uri_prefix.startswith("gs://orignagta-backups/")
+        assert req.collection_ids == []  # all collections
+
+    def test_backup_bucket_per_environment(self):
+        """BACKUP_BUCKET resolves to correct GCS bucket for each environment."""
+        from config import _BACKUP_BUCKETS
+
+        assert _BACKUP_BUCKETS["orignagta"] == "gs://orignagta-backups"
+        assert _BACKUP_BUCKETS["orignagta-staging"] == "gs://orignagta-staging-backups"
+        assert _BACKUP_BUCKETS["orignagta-dev"] == "gs://orignagta-dev-backups"

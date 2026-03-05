@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/notification_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -47,13 +48,8 @@ class NotificationsScreen extends ConsumerWidget {
   Future<void> _markAll(BuildContext context, String? uid, WidgetRef ref) async {
     if (uid == null) return;
     try {
-      final firestore = ref.read(firestoreProvider);
-      final snap = await firestore.collection(Collections.users).doc(uid).collection(Collections.notifications).where(Fields.isRead, isEqualTo: false).get();
-      final batch = firestore.batch();
-      for (final doc in snap.docs) {
-        batch.update(doc.reference, {Fields.isRead: true});
-      }
-      await batch.commit();
+      // MVVM FIX (AUDIT): Delegated to NotificationRepository — UI no longer builds Firestore queries.
+      await ref.read(notificationRepositoryProvider).markAllRead(uid);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('notifications.all_marked_read'.tr()), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating),
@@ -71,9 +67,8 @@ class NotificationsScreen extends ConsumerWidget {
 
   Future<void> _markRead(AppNotification notification, String? uid, WidgetRef ref) async {
     if (notification.isRead || uid == null) return;
-    await ref.read(firestoreProvider).collection(Collections.users).doc(uid).collection(Collections.notifications).doc(notification.id).update({
-      Fields.isRead: true,
-    });
+    // MVVM FIX (AUDIT): Delegated to NotificationRepository.
+    await ref.read(notificationRepositoryProvider).markRead(uid, notification.id);
   }
 }
 

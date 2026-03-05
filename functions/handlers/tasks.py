@@ -102,6 +102,10 @@ def _process_one_stale_order(order_id: str) -> bool:
             return f"locked_by_capture:{fresh_payment_status}", False, [], None
 
         if current_status not in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED]:
+            # Allow retry of stock restoration for already-expired orders whose batch failed.
+            # On a failed stock-restore run, the order is EXPIRED but STOCK_RESTORED=False.
+            if current_status == OrderStatusValues.EXPIRED and not fresh_data.get(Fields.STOCK_RESTORED, False):
+                return "expired_needs_stock", False, fresh_data.get(Fields.ITEMS, []), fresh_data.get(Fields.PAYMENT_STATUS)
             return f"invalid_status:{current_status}", False, [], None
 
         stock_already_restored = fresh_data.get(Fields.STOCK_RESTORED, False)
@@ -122,7 +126,7 @@ def _process_one_stale_order(order_id: str) -> bool:
 
     try:
         expire_result, stock_already_restored, fresh_items, prev_payment_status = try_expire_order(get_db().transaction())
-        if expire_result != "locked":
+        if expire_result not in ("locked", "expired_needs_stock"):
             logger.info(f"Order {order_id} cannot be expired: {expire_result}")
             return True # Not an error, just skipping. Acknowledge task.
     except (google_exceptions.GoogleAPICallError, google_exceptions.RetryError) as e:
@@ -131,8 +135,8 @@ def _process_one_stale_order(order_id: str) -> bool:
 
     # If the logic above passed, we have a lock and can proceed.
 
-    # Cancel Stripe authorization if it existed
-    if prev_payment_status == PaymentStatusValues.AUTHORIZED:
+    # Cancel Stripe authorization if it existed (skip if this is a stock-restore retry)
+    if expire_result != "expired_needs_stock" and prev_payment_status == PaymentStatusValues.AUTHORIZED:
         pi_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
         if pi_id:
             try:
@@ -189,4 +193,6 @@ def _process_one_stale_order(order_id: str) -> bool:
         except Exception as email_err:
             logger.warning(f"Failed to send authorization expired email for order {order_id}: {email_err}")
 
-    return True
+    # Return False if stock restoration failed — Cloud Tasks will retry.
+    # All other outcomes (success, already-restored, email errors) return True.
+    return stock_restored_ok

@@ -712,14 +712,19 @@ class _CartTotalDisplay extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'checkout.estimated_total'.tr(),
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white : DesignTokens.textPrimary,
+                          Flexible(
+                            child: Text(
+                              'checkout.estimated_total'.tr(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : DesignTokens.textPrimary,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Text(
                             NumberFormat.currency(locale: 'en_CA', symbol: 'CAD \$').format(estimatedTotal),
                             style: const TextStyle(

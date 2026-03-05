@@ -254,3 +254,64 @@ class TestBuyerAddressHandlers:
         refs_and_vals = {call[0][0]: call[0][1] for call in calls}
         assert refs_and_vals.get(mock_doc_1.reference) == {Fields.IS_DEFAULT: True}
         assert refs_and_vals.get(mock_doc_2.reference) == {Fields.IS_DEFAULT: False}
+
+
+class TestTermsVersionUpdate:
+    """Tests for termsVersion field written on update_user_profile terms acceptance."""
+
+    @patch("handlers.users.get_db")
+    def test_update_user_profile_writes_terms_version(self, mock_get_db):
+        """When termsAcceptedAt=True, update_user_profile writes the canonical termsVersion."""
+        from handlers.users import update_user_profile
+        from schema_constants import Fields, PolicyVersionValues
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        mock_user_ref = Mock()
+        mock_users_col = Mock()
+        mock_users_col.document.return_value = mock_user_ref
+        mock_db.collection.return_value = mock_users_col
+
+        mock_request = Mock()
+        mock_request.auth = Mock(uid="user_abc", token={"email": "a@b.com", "email_verified": True})
+        mock_request.data = {Fields.TERMS_ACCEPTED_AT: True}
+
+        with patch("services.rate_limiter.RateLimiter") as mock_rl_cls:
+            mock_rl = Mock()
+            mock_rl.check_rate_limit.return_value = (True, "ok")
+            mock_rl_cls.return_value = mock_rl
+            result = update_user_profile(mock_request)
+
+        assert result["success"] is True
+        call_args = mock_user_ref.update.call_args[0][0]
+        assert Fields.TERMS_VERSION in call_args
+        assert call_args[Fields.TERMS_VERSION] == PolicyVersionValues.DEFAULT
+
+    @patch("handlers.users.get_db")
+    def test_update_user_profile_no_terms_version_without_flag(self, mock_get_db):
+        """When termsAcceptedAt is not sent, termsVersion should NOT be written."""
+        from handlers.users import update_user_profile
+        from schema_constants import Fields
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        mock_user_ref = Mock()
+        mock_users_col = Mock()
+        mock_users_col.document.return_value = mock_user_ref
+        mock_db.collection.return_value = mock_users_col
+
+        mock_request = Mock()
+        mock_request.auth = Mock(uid="user_abc", token={"email": "a@b.com", "email_verified": True})
+        mock_request.data = {Fields.NAME: "New Name"}
+
+        with patch("services.rate_limiter.RateLimiter") as mock_rl_cls:
+            mock_rl = Mock()
+            mock_rl.check_rate_limit.return_value = (True, "ok")
+            mock_rl_cls.return_value = mock_rl
+            result = update_user_profile(mock_request)
+
+        assert result["success"] is True
+        call_args = mock_user_ref.update.call_args[0][0]
+        assert Fields.TERMS_VERSION not in call_args

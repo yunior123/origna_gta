@@ -15,3 +15,16 @@ Widget previewSellerProductsScreenDesktop() => previewDesktop(child: previewScop
 
 @Preview(name: 'Seller Inventory — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
 Widget previewSellerProductsScreenWeb() => previewWeb(child: previewScope(child: SellerProductsScreen()));
+
+// ── Light ────────────────────────────────────────────────────────────────────
+@Preview(name: 'Seller Inventory Light — Mobile', group: 'Screens — Seller Management', size: Size(390, 844))
+Widget previewSellerProductsLightMobile() => previewMobile(theme: previewLightTheme, child: previewScope(child: SellerProductsScreen()));
+
+@Preview(name: 'Seller Inventory Light — Tablet', group: 'Screens — Seller Management', size: Size(768, 1024))
+Widget previewSellerProductsLightTablet() => previewTablet(theme: previewLightTheme, child: previewScope(child: SellerProductsScreen()));
+
+@Preview(name: 'Seller Inventory Light — Desktop', group: 'Screens — Seller Management', size: Size(1280, 800))
+Widget previewSellerProductsLightDesktop() => previewDesktop(theme: previewLightTheme, child: previewScope(child: SellerProductsScreen()));
+
+@Preview(name: 'Seller Inventory Light — Web', group: 'Screens — Seller Management', size: Size(1440, 900))
+Widget previewSellerProductsLightWeb() => previewWeb(theme: previewLightTheme, child: previewScope(child: SellerProductsScreen()));

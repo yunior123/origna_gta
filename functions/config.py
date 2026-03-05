@@ -137,6 +137,19 @@ AUTO_CONFIRM_DAYS = BusinessRules.AUTO_CONFIRM_DAYS
 SHIPPING_APPROVAL_THRESHOLD = BusinessRules.SHIPPING_APPROVAL_THRESHOLD
 
 # ============================================================================
+# FIRESTORE BACKUP — GCS bucket per environment (daily export via Admin API)
+# Bucket naming: <project_id>-backups (e.g. orignagta-backups for prod)
+# IAM needed: Cloud Functions SA → roles/datastore.importExportAdmin + roles/storage.objectAdmin
+# ============================================================================
+
+_BACKUP_BUCKETS: dict[str, str] = {
+    "orignagta-dev": "gs://orignagta-dev-backups",
+    "orignagta-staging": "gs://orignagta-staging-backups",
+    "orignagta": "gs://orignagta-backups",
+}
+BACKUP_BUCKET: str = _BACKUP_BUCKETS.get(PROJECT_ID, f"gs://{PROJECT_ID}-backups")
+
+# ============================================================================
 # R2 STORAGE CONFIGURATION - REAL service, environment-aware paths
 # R2 is always real (not emulated). We use folder prefixes to separate data.
 # ============================================================================

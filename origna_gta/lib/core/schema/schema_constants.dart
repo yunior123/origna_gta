@@ -62,6 +62,8 @@ abstract final class AlgoliaActionValues {
 abstract final class ApiKeys {
   // === REQUEST PARAMS (sent to Cloud Functions) ===
   static const turnstileToken = 'turnstileToken'; // Cloudflare Turnstile challenge token (web-only)
+  static const eulaAccepted = 'eulaAccepted'; // Digital product EULA acceptance flag
+  static const ageVerificationAccepted = 'ageVerificationAccepted'; // Buyer age-gate confirmation for age-restricted items
   static const add = 'add';
   static const remove = 'remove';
   static const reason = 'reason';
@@ -181,6 +183,8 @@ abstract final class BusinessRules {
   static const minCheckoutTotalCents = 100; // $1.00 minimum to cover Stripe's $0.30 fixed fee
   static const maxCouponDiscountRatio = 0.95; // Max 95% off via automated coupons
   static const maxAdminCouponDiscountPercent = 90; // Admin-created coupons capped at 90%
+  static const premiumSubscriptionPriceCad = 7.86; // Monthly premium membership fee in CAD
+  static const premiumSubscriptionPriceCents = 786; // Monthly premium membership fee in cents
 
   /// Tax rates by province
   static const taxRates = {
@@ -691,6 +695,7 @@ abstract final class Fields {
   static const approvalRejectionReason = 'approvalRejectionReason';
   static const lifecycleStatus = 'lifecycleStatus';
   static const isDigital = 'isDigital';
+  static const isAgeRestricted = 'isAgeRestricted'; // Product requires buyer age 18+ confirmation
   // Digital product extended fields
   static const digitalType = 'digitalType';
   static const slug = 'slug';
@@ -760,6 +765,7 @@ abstract final class Fields {
   static const taxes = 'taxes';
   static const taxAmountCents = 'taxAmountCents';
   static const shippingCostCents = 'shippingCostCents';
+  static const sellerShippingCosts = 'sellerShippingCosts'; // Map<sellerId, cents> for multi-seller orders
   static const shippingCostDeltaCents = 'shippingCostDeltaCents';
   static const totalAmountCents = 'totalAmountCents';
   static const currency = 'currency';
@@ -872,7 +878,7 @@ abstract final class Fields {
   static const purchaseCount = 'purchaseCount';
 
   // === SUBSCRIPTION DOCUMENT FIELDS ===
-  static const subscriptionStatus = 'subscriptionStatus';
+  // Note: subscription.status uses the generic Fields.status constant ('status')
   static const currentPeriodStart = 'currentPeriodStart';
   static const currentPeriodEnd = 'currentPeriodEnd';
   static const cancelAtPeriodEnd = 'cancelAtPeriodEnd';
