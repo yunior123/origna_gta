@@ -847,7 +847,6 @@ class Fields:
 
     # === REVIEW/RATING FIELDS ===
     COMMENT = "comment"
-    SUBSCRIPTION_STATUS = "subscriptionStatus"
     PRODUCT_IDS = "productIds"
 
 
