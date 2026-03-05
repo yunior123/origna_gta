@@ -209,7 +209,7 @@ class _CategoryChips extends ConsumerWidget {
     final selectedCategoryId = ref.watch(homeViewModelProvider.select((state) => state.selectedCategoryId));
     // All breakpoints: horizontal scroll — consistent UI across mobile/tablet/desktop
     return Container(
-      height: 52,
+      height: 38,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: ListView.builder(
         physics: const ClampingScrollPhysics(),
@@ -229,9 +229,7 @@ class _CategoryChips extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final unselectedBg = isDark ? DesignTokens.darkSurface : DesignTokens.surface;
     final unselectedText = isDark ? Colors.white : DesignTokens.textPrimary;
-    final unselectedBorder = isDark
-        ? DesignTokens.primary.withValues(alpha: 0.25)
-        : DesignTokens.textSecondary.withValues(alpha: 0.3);
+    final unselectedBorder = isDark ? DesignTokens.primary.withValues(alpha: 0.25) : DesignTokens.textSecondary.withValues(alpha: 0.3);
     return Semantics(
       label: isAll ? 'category-chip-all' : 'category-chip-${category!.categoryId}',
       child: Padding(
@@ -261,14 +259,10 @@ class _CategoryChips extends ConsumerWidget {
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
               splashColor: Colors.white.withValues(alpha: 0.2),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: Text(
                   isAll ? 'home.category_all'.tr() : category!.name.tr(),
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : unselectedText,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: isSelected ? Colors.white : unselectedText, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, fontSize: 13),
                 ),
               ),
             ),
@@ -1124,7 +1118,7 @@ class _SortAndFilterRow extends ConsumerWidget {
     final isSortActive = selectedSort != SortOption.relevance;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Row(
         children: [
           // Sort chip (GAP #1)
@@ -1265,7 +1259,14 @@ class _SortAndFilterRow extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Flexible(child: Text('home.filter_price'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                    Flexible(
+                      child: Text(
+                        'home.filter_price'.tr(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
                     TextButton(
                       onPressed: () {
                         Navigator.pop(ctx);
