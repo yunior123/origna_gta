@@ -271,8 +271,11 @@ def compare_class_pair(
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    """Validate schema sync between Python and Dart schema_constants files.
+
+    Returns 0 on success, 1 if any sync issues are found.
+    """
     # Verify files exist
-    """Function main."""
     if not PYTHON_FILE.exists():
         print(f"ERROR: Python file not found: {PYTHON_FILE}")
         return 1

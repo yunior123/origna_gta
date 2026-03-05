@@ -1,6 +1,27 @@
 # STATE.md — Session Progress
 
 ---
+## 📱 Android & iOS Readiness Assessment (2026-03-05)
+
+**Overall Status**: 🔴 **Android needs significant setup** | 🟡 **iOS is mostly ready (needs signing)**
+
+### 🔴 Android Gaps (Action Required before Release)
+*   [x] **Firebase Configuration**: Downloaded `android/app/google-services.json` using Firebase CLI.
+*   [x] **Missing Permissions**: Added `INTERNET`, `CAMERA`, and `READ_EXTERNAL_STORAGE` / `READ_MEDIA_IMAGES` to `AndroidManifest.xml`.
+*   [x] **Launcher Icon Configuration**: Uncommented Android icon section in `flutter_launcher_icons.yaml` and generated icons.
+*   [x] **Release Signing Missing**: Generated `upload-keystore.jks` and configured `build.gradle.kts` with `key.properties`.
+*   [x] **No Deep Linking**: Added intent filters for App Links and `orignagta://` scheme to `AndroidManifest.xml`. (both custom scheme `orignagta://` and web domain).
+
+### 🟡 iOS Status (Ready for Xcode Signing)
+✅ **Firebase Configured**: `GoogleService-Info.plist` is present and valid.
+✅ **Push Notifications Wiired**: `AppDelegate.swift` properly initializes Firebase and forwards APNs tokens.
+✅ **Permissions Documented**: `Info.plist` has correct strings for Camera, Photo Library, Face ID, and Local Network.
+✅ **Deep Linking Configured**: `Info.plist` contains the `orignagta` URL scheme.
+✅ **Launcher Icon Configured**: `flutter_launcher_icons.yaml` handles iOS correctly (`remove_alpha_ios: true`).
+✅ **Podfile**: Clean iOS 15.0+ deployment target.
+❌ **Code Signing Needed**: Requires opening `ios/Runner.xcworkspace` in Xcode to set the Development Team, Bundle ID (`ca.orignagta.app`), and Provisioning Profile.
+
+---
 ## ✅ COMPLETE (2026-03-04) — Product Sourcing Agent + 68 Products Seeded
 
 **68 products written to Firestore `orignagta-dev` as seller `RU9MI8vYFkQCakMrJfG8iGTuc012`**

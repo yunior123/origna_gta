@@ -253,40 +253,6 @@ def estimate_delivery_date_range(
     }
 
 
-def _distribute_shipping_costs(
-    base_cost: float, additional_rate: float, items: list[dict], weight_surcharge_total: float = 0, speed_multiplier: float = 1.0
-) -> dict[str, float]:
-    """Helper to distribute base + additional + weight costs across items."""
-    breakdown = {}
-    total_qty = sum(item.get(Fields.QUANTITY, 1) for item in items)
-    
-    # We distribute the 'first item' base cost to the first item (first unit)
-    # and the additional cost to all other units.
-    first_item_handled = False
-    
-    # Total weight surcharge is already calculated per-item, but if passed as total we distribution
-    # Actually, in _calculate_tiered_shipping, weight_surcharge is already per-item.
-    
-    for item in items:
-        qty = item.get(Fields.QUANTITY, 1)
-        cart_item_id = item.get(Fields.CART_ITEM_ID) or item.get(Fields.PRODUCT_ID)
-        
-        item_shipping = 0.0
-        if not first_item_handled:
-            # First unit of the first item gets the full base cost
-            item_shipping += base_cost
-            # Remaining units of this item get the additional rate
-            if qty > 1:
-                item_shipping += (qty - 1) * (base_cost * additional_rate)
-            first_item_handled = True
-        else:
-            # All units of subsequent items get the additional rate
-            item_shipping += qty * (base_cost * additional_rate)
-            
-        breakdown[cart_item_id] = item_shipping * speed_multiplier
-        
-    return breakdown
-
 
 def _are_adjacent_provinces(p1: str, p2: str) -> bool:
     """Check if two provinces are adjacent (cached)"""
@@ -296,9 +262,6 @@ def _are_adjacent_provinces(p1: str, p2: str) -> bool:
 def _are_same_region(p1: str, p2: str) -> bool:
     """Check if two provinces are in the same region (cached)"""
     return any(p1 in region_provinces and p2 in region_provinces for region_provinces in _REGIONS_CACHE.values())
-
-
-    return subtotal * multiplier
 
 
 def _calculate_tiered_shipping_itemized(distance_km: float, seller_items: list[dict], speed: str) -> tuple[float, dict[str, float]]:
@@ -677,6 +640,5 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
         total_shipping += seller_cost
         overall_breakdown.update(seller_breakdown)
 
-    return total_shipping, overall_breakdown
 
-    return total_shipping
+    return total_shipping, overall_breakdown

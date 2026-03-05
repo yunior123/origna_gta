@@ -85,7 +85,7 @@ class TestAdminHandlers:
         assert exc.value.code in ["permission-denied", "failed-precondition"]
         assert "mfa" in str(exc.value).lower()
 
-    @patch("firebase_admin.auth.set_custom_user_claims")
+    @patch("handlers.admin.auth.set_custom_user_claims")
     @patch("services.rate_limiter.RateLimiter")
     @patch("handlers.admin.create_success_response")
     @patch("handlers.admin.get_db")

@@ -81,8 +81,11 @@ def normalize_rules(rules_text):
     return '\n'.join([line.rstrip() for line in rules_text.strip().splitlines()])
 
 def main():
+    """Compare local Firebase Storage rules against each deployed environment.
+
+    Exits with code 1 if any environment is out of sync.
+    """
     # Attempt to locate the storage.rules relative to the repo root
-    """Function main."""
     rules_path = LOCAL_RULES_FILE
     if not os.path.exists(rules_path):
         rules_path = 'storage.rules'
