@@ -782,6 +782,7 @@ abstract final class Fields {
   static const taxes = 'taxes';
   static const taxAmountCents = 'taxAmountCents';
   static const shippingCostCents = 'shippingCostCents';
+  static const itemShippingCents = 'itemShippingCents';
   static const sellerShippingCosts = 'sellerShippingCosts'; // Map<sellerId, cents> for multi-seller orders
   static const shippingCostDeltaCents = 'shippingCostDeltaCents';
   static const totalAmountCents = 'totalAmountCents';
