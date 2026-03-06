@@ -177,7 +177,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 500),
-                  child: Padding(
+                  child: SingleChildScrollView(
                     padding: const EdgeInsets.all(DesignTokens.spacing24),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
