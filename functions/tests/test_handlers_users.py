@@ -12,13 +12,27 @@ from schema_constants import Collections, Fields
 
 
 class TestBuyerAddressHandlers:
+    @patch("utils.helpers.geocode_address")
     @patch("handlers.users.get_db")
-    def test_add_buyer_address_first_is_default(self, mock_get_db):
+    def test_add_buyer_address_first_is_default(self, mock_get_db, mock_geocode_address):
         from handlers.users import add_buyer_address
 
         # Mock DB
         mock_db = Mock()
         mock_get_db.return_value = mock_db
+        mock_geocode_address.return_value = (
+            True,
+            "",
+            {
+                "street": "123 Main St",
+                "city": "Toronto",
+                "state": "ON",
+                "postalCode": "M5V 2H1",
+                "country": "Canada",
+                Fields.LATITUDE: 43.6532,
+                Fields.LONGITUDE: -79.3832,
+            },
+        )
 
         mock_new_ref = Mock()
         mock_new_ref.id = "address_123"
@@ -72,12 +86,26 @@ class TestBuyerAddressHandlers:
         added_data = mock_transaction.set.call_args[0][1]
         assert added_data[Fields.IS_DEFAULT] is True
 
+    @patch("utils.helpers.geocode_address")
     @patch("handlers.users.get_db")
-    def test_add_buyer_address_limit_exceeded(self, mock_get_db):
+    def test_add_buyer_address_limit_exceeded(self, mock_get_db, mock_geocode_address):
         from handlers.users import add_buyer_address
 
         mock_db = Mock()
         mock_get_db.return_value = mock_db
+        mock_geocode_address.return_value = (
+            True,
+            "",
+            {
+                "street": "123 Main St",
+                "city": "Toronto",
+                "state": "ON",
+                "postalCode": "M5V 2H1",
+                "country": "Canada",
+                Fields.LATITUDE: 43.6532,
+                Fields.LONGITUDE: -79.3832,
+            },
+        )
 
         mock_user_doc_snap = Mock()
         mock_user_doc_snap.to_dict.return_value = {"addressCount": 10}  # at limit
@@ -108,6 +136,30 @@ class TestBuyerAddressHandlers:
 
         assert exc.value.code == "resource-exhausted"
         assert "10 addresses" in str(exc.value.message)
+
+    @patch("utils.helpers.geocode_address")
+    @patch("handlers.users.get_db")
+    def test_add_buyer_address_geocode_failure_surfaces_error(self, mock_get_db, mock_geocode_address):
+        from handlers.users import add_buyer_address
+
+        mock_get_db.return_value = Mock()
+        mock_geocode_address.return_value = (False, "Address verification timed out — please try again", {})
+
+        mock_request = Mock()
+        mock_request.auth = Mock(uid="buyer_123")
+        mock_request.data = {
+            "street": "123 Main St",
+            "city": "Toronto",
+            "state": "ON",
+            "postalCode": "M5V 2H1",
+            "country": "Canada",
+        }
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            add_buyer_address(mock_request)
+
+        assert exc.value.code == "invalid-argument"
+        assert "timed out" in str(exc.value.message)
 
     @patch("handlers.users.get_db")
     def test_update_buyer_address_invalid_id(self, mock_get_db):
