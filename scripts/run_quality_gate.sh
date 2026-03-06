@@ -35,6 +35,13 @@ PLAYWRIGHT_COVERAGE_TARGETS="${PLAYWRIGHT_COVERAGE_TARGETS:-playwright_ui/covera
 PLAYWRIGHT_COVERAGE_INCLUDE="${PLAYWRIGHT_COVERAGE_INCLUDE:-playwright_ui/coverage_gate.ts}"
 RUN_FLUTTER_GOLDENS="${RUN_FLUTTER_GOLDENS:-false}"
 FLUTTER_GOLDEN_TEST_PATH="${FLUTTER_GOLDEN_TEST_PATH:-test/golden_previews_test.dart}"
+BACKEND_TIMEOUT_SECONDS="${BACKEND_TIMEOUT_SECONDS:-0}"
+FLUTTER_TEST_TIMEOUT_SECONDS="${FLUTTER_TEST_TIMEOUT_SECONDS:-0}"
+FLUTTER_COVERAGE_TIMEOUT_SECONDS="${FLUTTER_COVERAGE_TIMEOUT_SECONDS:-0}"
+FLUTTER_INTEGRATION_TIMEOUT_SECONDS="${FLUTTER_INTEGRATION_TIMEOUT_SECONDS:-0}"
+FLUTTER_GOLDEN_TIMEOUT_SECONDS="${FLUTTER_GOLDEN_TIMEOUT_SECONDS:-0}"
+E2E_SPEC_TIMEOUT_SECONDS="${E2E_SPEC_TIMEOUT_SECONDS:-0}"
+PLAYWRIGHT_COVERAGE_TIMEOUT_SECONDS="${PLAYWRIGHT_COVERAGE_TIMEOUT_SECONDS:-0}"
 
 RUN_BACKEND=true
 RUN_FLUTTER=true
@@ -225,6 +232,33 @@ section() {
   echo "============================================================"
   echo "$1"
   echo "============================================================"
+}
+
+run_with_optional_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  if [[ "$timeout_seconds" =~ ^[0-9]+$ ]] && [[ "$timeout_seconds" -gt 0 ]]; then
+    python3 - "$timeout_seconds" "$@" <<'PY'
+import subprocess
+import sys
+
+timeout_seconds = int(sys.argv[1])
+cmd = sys.argv[2:]
+
+try:
+    result = subprocess.run(cmd, timeout=timeout_seconds)
+    raise SystemExit(result.returncode)
+except subprocess.TimeoutExpired:
+    print(
+        f"Command timed out after {timeout_seconds}s: {' '.join(cmd)}",
+        file=sys.stderr,
+    )
+    raise SystemExit(124)
+PY
+  else
+    "$@"
+  fi
 }
 
 backend_gap_report() {
@@ -512,7 +546,7 @@ if [[ "$RUN_BACKEND" == true ]]; then
   fi
 
   set +e
-  "${PYTEST_CMD[@]}"
+  run_with_optional_timeout "$BACKEND_TIMEOUT_SECONDS" "${PYTEST_CMD[@]}"
   TEST_STATUS=$?
   set -e
 
@@ -561,7 +595,7 @@ if [[ "$RUN_FLUTTER" == true ]]; then
   else
     echo "Running Flutter tests: ${FLUTTER_TARGETS[*]}"
     set +e
-    flutter test "${FLUTTER_TARGETS[@]}"
+    run_with_optional_timeout "$FLUTTER_TEST_TIMEOUT_SECONDS" flutter test "${FLUTTER_TARGETS[@]}"
     TEST_STATUS=$?
     set -e
 
@@ -590,7 +624,7 @@ if [[ "$RUN_FLUTTER" == true ]]; then
   else
     echo "Running Flutter coverage targets: ${FLUTTER_COV_TARGETS[*]}"
     set +e
-    flutter test "${FLUTTER_COV_TARGETS[@]}" --coverage --coverage-path=coverage_unit.info
+    run_with_optional_timeout "$FLUTTER_COVERAGE_TIMEOUT_SECONDS" flutter test "${FLUTTER_COV_TARGETS[@]}" --coverage --coverage-path=coverage_unit.info
     COV_STATUS=$?
     set -e
 
@@ -641,7 +675,7 @@ if [[ "$RUN_FLUTTER" == true ]]; then
       fi
 
       set +e
-      "${INTEGRATION_CMD[@]}"
+      run_with_optional_timeout "$FLUTTER_INTEGRATION_TIMEOUT_SECONDS" "${INTEGRATION_CMD[@]}"
       INT_COV_STATUS=$?
       set -e
 
@@ -671,7 +705,7 @@ if [[ "$RUN_FLUTTER" == true ]]; then
       FAILURES=$((FAILURES + 1))
     else
       set +e
-      flutter test "$FLUTTER_GOLDEN_TEST_PATH" --dart-define=RUN_GOLDENS=true
+      run_with_optional_timeout "$FLUTTER_GOLDEN_TIMEOUT_SECONDS" flutter test "$FLUTTER_GOLDEN_TEST_PATH" --dart-define=RUN_GOLDENS=true
       GOLDEN_STATUS=$?
       set -e
       if [[ $GOLDEN_STATUS -ne 0 ]]; then
@@ -719,7 +753,7 @@ if [[ "$RUN_E2E" == true ]]; then
           E2E_CMD+=(--fail-on-flaky-tests)
         fi
         set +e
-        "${E2E_CMD[@]}"
+        run_with_optional_timeout "$E2E_SPEC_TIMEOUT_SECONDS" "${E2E_CMD[@]}"
         E2E_STATUS=$?
         set -e
         if [[ $E2E_STATUS -ne 0 ]]; then
@@ -786,7 +820,7 @@ if [[ "$RUN_E2E" == true ]]; then
 
           echo "Running Playwright coverage targets: ${PW_COV_TARGETS[*]}"
           set +e
-          "${PW_COV_CMD[@]}"
+          run_with_optional_timeout "$PLAYWRIGHT_COVERAGE_TIMEOUT_SECONDS" "${PW_COV_CMD[@]}"
           PW_COV_STATUS=$?
           set -e
 
