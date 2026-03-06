@@ -53,6 +53,7 @@ SEVERITY_EMOJI = {
 
 
 def main():
+    """Function main."""
     parser = argparse.ArgumentParser(
         description="🏗️ Infrastructure Verification — CLI-based (no LLM cost)"
     )

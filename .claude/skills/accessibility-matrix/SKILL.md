@@ -1,8 +1,6 @@
 ---
 name: accessibility-matrix
-description: >
-  Complete accessibility (a11y) reference — WCAG 2.1 AA compliance, Flutter Semantics,
-  contrast ratios, focus management, and screen reader testing guide.
+description: Use when implementing, auditing, or reviewing accessibility — WCAG 2.1 AA compliance, Flutter Semantics labels, contrast ratios, focus management, or screen reader testing.
   Use when building, reviewing, or auditing ANY UI component.
 ---
 

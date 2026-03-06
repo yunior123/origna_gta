@@ -1,3 +1,4 @@
+"""Module smart_audit.py."""
 
 import json
 import os
@@ -5,10 +6,12 @@ import re
 import difflib
 
 def load_json(path):
+    """Function load_json."""
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 def flatten_json(data, parent_key=''):
+    """Function flatten_json."""
     items = {}
     for k, v in data.items():
         current_key = f"{parent_key}.{k}" if parent_key else k
@@ -19,6 +22,7 @@ def flatten_json(data, parent_key=''):
     return items
 
 def find_best_match(text, translation_map):
+    """Function find_best_match."""
     text_lower = text.lower().strip().rstrip(':')
     
     # Exact match
@@ -38,6 +42,7 @@ def find_best_match(text, translation_map):
     return None, 0.0
 
 def scan_file(filepath, translation_map):
+    """Function scan_file."""
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
     
@@ -108,6 +113,7 @@ def scan_file(filepath, translation_map):
     return sorted(unique_findings.values(), key=lambda x: x['line'])
 
 def main():
+    """Function main."""
     en_path = 'origna_gta/assets/translations/en.json'
     lib_dir = 'origna_gta/lib'
     

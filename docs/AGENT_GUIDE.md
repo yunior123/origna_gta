@@ -1,36 +1,108 @@
 # 🤖 Agent & Subagent Guide
 
+## 🧠 Auto-Context (Loaded Every Session)
+Claude Code automatically loads on session start via CLAUDE.md `@import` directives:
+- `~/.claude/LEARNED.md` — Yunior's persistent learned facts
+- `docs/REPO_MAP.md` — Full file/module index
+- `docs/AGENT_GUIDE.md` — This file
+- `STATE.md` — Current session progress
+
+**Autolearn is active:** Any new architectural decisions, bug patterns, or workflow rules
+should be written to `~/.claude/projects/.../memory/MEMORY.md` to persist across sessions.
+
+---
+
 ## When to Use Subagents (ALWAYS for auditing)
 Use subagents to keep the main context clean. They run in separate context windows and return only summaries.
+**8GB RAM rule:** Max 5 agents in parallel for local Mac work. Cloud Functions run on Google's servers — no limit there.
 
-| Task | Agent | Invocation |
-|------|-------|------------|
-| Before ANY code change | `logic-auditor` | "Use the logic-auditor to verify [workflow] before I change it" |
-| After changing frontend ↔ backend | `cross-stack-auditor` | "Use the cross-stack-auditor to verify checkout flow" |
-| After changing payment code | `payment-auditor` | "Use the payment-auditor to audit the payment pipeline" |
-| After changing schema/models | `schema-sync-checker` | "Use the schema-sync-checker to verify schema sync" |
-| After changing order status logic | `order-lifecycle-auditor` | "Use the order-lifecycle-auditor to trace state transitions" |
+| Task | Agent type | Invocation |
+|------|-----------|------------|
+| Before ANY code change | `Explore` (quick) | Agent tool: "Explore how [workflow] works before I change it" |
+| Audit workflow | `general-purpose` | Agent tool: "Audit the checkout flow for bugs and security issues" |
+| After changing frontend ↔ backend | `feature-dev:code-reviewer` | Agent tool: "Review cross-stack alignment for checkout" |
+| After changing payment code | `feature-dev:code-reviewer` | Agent tool: "Review payment flow changes for security" |
+| After changing schema/models | `general-purpose` | Agent tool: "Check schema sync across Python/Dart/JSON" |
+| After changing order status logic | `feature-dev:code-explorer` | Agent tool: "Trace order state transitions from [file]" |
+| Architecture decisions | `Plan` | Agent tool: "Plan how to implement [feature]" |
+| Bulk file scanning | Gemini CLI | `gemini -m gemini-3-pro-preview --yolo -p "scan all files in..."` |
 
 ## Best Practices (from Anthropic docs)
 1. **Isolate high-volume reads** — Subagents read 10-15 files without cluttering main context
-2. **Chain agents** — First audit with `logic-auditor`, then fix bugs, then re-audit to verify
-3. **Run parallel research** — "Use subagents to investigate auth, payments, and orders in parallel"
-4. **Always delegate investigation** — "Use a subagent to investigate how [feature] works"
-5. **Resume subagents** — If an audit was interrupted, say "Continue that audit" to resume with full context
-6. **Agents have persistent memory** — They remember patterns, bugs, and architectural decisions across sessions
-7. **Foreground for interactive work, background for auditing** — Run audits in background with Ctrl+B
+2. **Chain agents** — First explore with `Explore`, then fix, then verify with `feature-dev:code-reviewer`
+3. **Parallel research (max 5 agents)** — "Use subagents to investigate auth, payments, and orders in parallel"
+4. **Foreground vs background** — Use foreground when you need results before proceeding; background (run_in_background=true) for audits while continuing work
+5. **Resume subagents** — Pass agent ID from previous invocation to resume with full context
+6. **Delegate investigation** — "Use a subagent to investigate how [feature] works" (preserves main context)
+7. **Gemini for bulk work** — Large codebase scans, translation drafts, boilerplate. Always review before applying.
+8. **Always verify agent fixes** — After agents complete, run `pytest` (backend) or `flutter analyze` (frontend). Trust but verify.
 
 ## Mandatory Agent Usage Rules
-- **RULE: Before editing 3+ files → run `logic-auditor` on that workflow FIRST**
-- **RULE: After editing payment files → run `payment-auditor` IMMEDIATELY**
-- **RULE: After editing schema_constants → run `schema-sync-checker` IMMEDIATELY**
-- **RULE: After editing order handler → run `order-lifecycle-auditor` IMMEDIATELY**
+- **RULE: Before editing 3+ files → run `Explore` agent on that workflow FIRST**
+- **RULE: After editing payment files → run `feature-dev:code-reviewer` IMMEDIATELY**
+- **RULE: After editing schema_constants → run schema sync check agent IMMEDIATELY**
+- **RULE: After editing order handler → run `feature-dev:code-explorer` to trace state IMMEDIATELY**
 - **RULE: Audit results with 0 CRITICAL findings → proceed. Any CRITICAL → fix before committing**
+- **RULE: After any agent completes → run verification (flutter analyze / pytest) before accepting fixes**
 
 ## Slash Commands for Auditing
 - `/audit-workflow [name]` — Run full logic audit on a workflow
 - `/check-schema-sync` — Verify all 6 schema layers are in sync
 - `/cross-stack-check` — Compare all frontend ↔ backend file pairs
+
+---
+
+## 🤖 AI Delegation System (Token Saving)
+
+Use the `delegate` shell command to offload tasks to external AI tools.
+All run under Yunior's existing subscriptions — **zero extra cost**.
+
+```bash
+delegate gemini      "explain this service architecture..."
+delegate grok        "what's the best approach for real-time inventory..."
+delegate copilot     "how do I fix this Dart null-safety error..."
+delegate antigravity "review this payment handler for bugs..."
+
+# From file (for long prompts)
+delegate gemini --file /tmp/task.txt
+
+# From stdin
+cat functions/handlers/orders.py | delegate gemini "find all race conditions"
+```
+
+| Model | When to Use | Speed |
+|-------|------------|-------|
+| **codex** | OpenAI Codex (gpt-5.3-codex), code tasks, reasoning | ~5-15s |
+| **copilot** | Git/code suggestions, shell commands, quick answers | ~5-10s |
+| **gemini** | Bulk analysis, doc gen, translation drafts, boilerplate | ~30-60s |
+| **grok** | Latest AI reasoning, real-time info, second opinion | ~30-60s |
+| **antigravity** | Code review, Gemini 3.1 + Sonnet 4.6, IDE context | ~30-60s |
+
+### Setup Status
+- ✅ **Codex** — ready (gpt-5.3-codex, yuniorrodriguezo460@gmail.com)
+- ✅ **Copilot** — ready (`gh copilot` v0.0.418)
+- ✅ **Gemini** — ready (19 cookies from viral-video-pipeline)
+- ✅ **Antigravity** — ready (CASCADE agent + file-based I/O via AppleScript)
+- ⚠️ **Grok** — needs one-time setup: `bash ~/.claude/ai_delegates/setup_grok_cookies.sh`
+
+### Files
+```
+~/.claude/ai_delegates/
+  ai_chat.py            — main hub (gemini/grok/copilot/antigravity)
+  delegate              — shell wrapper (in PATH)
+  antigravity_chat.py   — Antigravity HTTP + AppleScript
+  setup_cookies.py      — cookie extractor
+  setup_grok_cookies.sh — Grok interactive login (run once)
+  cookies/
+    gemini_cookies.json — 19 session cookies
+    grok_cookies.json   — empty until setup_grok_cookies.sh run
+```
+
+### Rules
+- **Use for bulk/secondary tasks** — don't delegate security-critical decisions
+- **Always review Gemini/Grok output** — treat as junior dev, not ground truth
+- **Copilot is synchronous** — blocks the Bash call until complete; fine for quick queries
+- **Antigravity requires the app to be running** — check it's open before delegating
 
 ---
 

@@ -417,7 +417,7 @@ export async function buildCheckoutPayload(
       price: product.price,
       quantity,
       sellerId: product.sellerId,
-      imageUrls: product.imageUrls || ['https://picsum.photos/400'],
+      imageUrls: product.imageUrls || [`https://picsum.photos/seed/${product.id ?? 'default'}/400/400`],
       isDigital: product.isDigital || false,
     }],
     subtotalCents: Math.round(product.price * quantity * 100),
@@ -458,7 +458,7 @@ export async function buildMultiSellerPayload(
       price: product.price,
       quantity,
       sellerId: product.sellerId,
-      imageUrls: product.imageUrls || ['https://picsum.photos/400'],
+      imageUrls: product.imageUrls || [`https://picsum.photos/seed/${product.id ?? 'default'}/400/400`],
       isDigital: product.isDigital || false,
     });
     subtotal += product.price * quantity;
@@ -1074,7 +1074,10 @@ export async function createDummyProduct(
     lifecycleStatus: 'active',
     stockQuantity: 100,
     categoryId: 1,
-    imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+    imageUrls: [
+      `https://picsum.photos/seed/${prefix}a/400/400`,
+      `https://picsum.photos/seed/${prefix}b/400/400`,
+    ],
     keywords: ['dummy', prefix],
     sellerAddress: customAddress || {
       street: '100 University Ave',
@@ -1208,7 +1211,7 @@ export async function ensureOosProduct(): Promise<void> {
       lifecycleStatus: 'active',
       stockQuantity: 0,
       categoryId: 1,
-      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+      imageUrls: ['https://picsum.photos/seed/oos-test-e2e/400/400'],
       keywords: ['oos', 'test', 'e2e'],
       hasVariants: false,
       variants: [],

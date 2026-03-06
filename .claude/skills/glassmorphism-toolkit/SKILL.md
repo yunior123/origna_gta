@@ -1,8 +1,6 @@
 ---
 name: glassmorphism-toolkit
-description: >
-  Complete glassmorphism reference — when to use glass effects, component catalog,
-  performance tips, and implementation patterns. Use when adding frosted glass UI elements.
+description: Use when adding frosted glass UI elements, reviewing glass effect performance, or auditing glassmorphism consistency — component catalog, GPU tips, implementation patterns.
 ---
 
 # 🪟 Glassmorphism Toolkit

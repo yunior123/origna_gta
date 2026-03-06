@@ -1,6 +1,7 @@
 // seller_registration_state.dart
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
+/// Documentation for SellerRegistrationState
 class SellerRegistrationState {
   final bool isLoading;
   final String? error;

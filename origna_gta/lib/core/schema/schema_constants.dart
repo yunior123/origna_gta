@@ -56,11 +56,21 @@ abstract final class AlgoliaActionValues {
 // ENUM VALUES - Valid values for enum fields
 // =============================================================================
 
+/// Algolia replica index suffixes for sort options.
+/// Appended to the base index name: `<base>_price_asc`, `<base>_price_desc`.
+abstract final class AlgoliaReplicaSuffixes {
+  static const priceAsc = '_price_asc';
+  static const priceDesc = '_price_desc';
+}
+
 /// Cloud Function API parameter and response keys.
 /// These are NOT Firestore fields — they are the contract between
 /// Flutter and Cloud Functions (request params + response keys).
 abstract final class ApiKeys {
   // === REQUEST PARAMS (sent to Cloud Functions) ===
+  static const turnstileToken = 'turnstileToken'; // Cloudflare Turnstile challenge token (web-only)
+  static const eulaAccepted = 'eulaAccepted'; // Digital product EULA acceptance flag
+  static const ageVerificationAccepted = 'ageVerificationAccepted'; // Buyer age-gate confirmation for age-restricted items
   static const add = 'add';
   static const remove = 'remove';
   static const reason = 'reason';
@@ -180,6 +190,8 @@ abstract final class BusinessRules {
   static const minCheckoutTotalCents = 100; // $1.00 minimum to cover Stripe's $0.30 fixed fee
   static const maxCouponDiscountRatio = 0.95; // Max 95% off via automated coupons
   static const maxAdminCouponDiscountPercent = 90; // Admin-created coupons capped at 90%
+  static const premiumSubscriptionPriceCad = 7.86; // Monthly premium membership fee in CAD
+  static const premiumSubscriptionPriceCents = 786; // Monthly premium membership fee in cents
 
   /// Tax rates by province
   static const taxRates = {
@@ -337,6 +349,12 @@ abstract final class CloudFunctionEndpoints {
   // === USER PROFILE ENDPOINTS ===
   static const updateNotificationPreferences = 'update_notification_preferences';
   static const cleanupFcmToken = 'cleanup_fcm_token'; // T-3: FCM token cleanup on logout
+  static const updateUserProfile = 'update_user_profile'; // F-006: centralized endpoint name
+  // === ADDRESS MANAGEMENT ENDPOINTS (F-006) ===
+  static const addBuyerAddress = 'add_buyer_address';
+  static const deleteBuyerAddress = 'delete_buyer_address';
+  static const updateBuyerAddress = 'update_buyer_address';
+  static const setDefaultBuyerAddress = 'set_default_buyer_address';
 
   // === SELLER ENDPOINTS ===
   static const createStripeLoginLink = 'create_stripe_login_link';
@@ -547,7 +565,7 @@ abstract final class EmailConfig {
 
   /// Privacy Officer contact — REQUIRED by Quebec Law 25
   /// NOTE: Using support@ until dedicated privacy@ mailbox is provisioned
-  static const privacyOfficerEmail = 'support@orignaventures.ca';
+  static const privacyOfficerEmail = 'privacy@orignagta.ca';
   static const privacyOfficerName = 'Yunior Rodriguez Osorio';
 }
 
@@ -566,6 +584,10 @@ abstract final class ErrorCodeValues {
 abstract final class ExternalUrls {
   static const stripeDashboard = 'https://dashboard.stripe.com/express';
 }
+
+// =============================================================================
+// BUSINESS CONSTANTS
+// =============================================================================
 
 /// Firestore document field names.
 ///
@@ -690,6 +712,7 @@ abstract final class Fields {
   static const approvalRejectionReason = 'approvalRejectionReason';
   static const lifecycleStatus = 'lifecycleStatus';
   static const isDigital = 'isDigital';
+  static const isAgeRestricted = 'isAgeRestricted'; // Product requires buyer age 18+ confirmation
   // Digital product extended fields
   static const digitalType = 'digitalType';
   static const slug = 'slug';
@@ -759,6 +782,7 @@ abstract final class Fields {
   static const taxes = 'taxes';
   static const taxAmountCents = 'taxAmountCents';
   static const shippingCostCents = 'shippingCostCents';
+  static const sellerShippingCosts = 'sellerShippingCosts'; // Map<sellerId, cents> for multi-seller orders
   static const shippingCostDeltaCents = 'shippingCostDeltaCents';
   static const totalAmountCents = 'totalAmountCents';
   static const currency = 'currency';
@@ -871,7 +895,7 @@ abstract final class Fields {
   static const purchaseCount = 'purchaseCount';
 
   // === SUBSCRIPTION DOCUMENT FIELDS ===
-  static const subscriptionStatus = 'subscriptionStatus';
+  // Note: subscription.status uses the generic Fields.status constant ('status')
   static const currentPeriodStart = 'currentPeriodStart';
   static const currentPeriodEnd = 'currentPeriodEnd';
   static const cancelAtPeriodEnd = 'cancelAtPeriodEnd';
@@ -905,6 +929,8 @@ abstract final class Fields {
   // === CART / ORDER ITEM NOTE ===
   static const buyerNote = 'buyerNote';
   static const cartItemId = 'cartItemId';
+  static const shippingDiffCents = 'shippingDiffCents'; // recorded when PI is already captured (F-002)
+  static const taxDiffCents = 'taxDiffCents'; // recorded when PI is already captured (F-002)
   static const priceSnapshot = 'priceSnapshot';
 
   // === FIELDS missing from Dart (present in Python) ===
@@ -1177,7 +1203,7 @@ abstract final class Fields {
 }
 
 // =============================================================================
-// BUSINESS CONSTANTS
+// CATEGORY IDS
 // =============================================================================
 
 /// Filter sentinel values — special values used in query filters to mean "no filter"
@@ -1185,10 +1211,6 @@ abstract final class FilterValues {
   /// Special filter value meaning "show all items regardless of status"
   static const all = 'all';
 }
-
-// =============================================================================
-// CATEGORY IDS
-// =============================================================================
 
 /// Geographic constants
 abstract final class GeoValues {
@@ -1207,6 +1229,15 @@ abstract final class LicenseStatusValues {
   static const revoked = 'revoked';
   static const all = [active, revoked];
   LicenseStatusValues._();
+}
+
+/// SharedPreferences keys for client-side persistence.
+abstract final class LocalStorageKeys {
+  /// JSON-encoded `List<String>` of recent product IDs (max 10). Written by product detail screen.
+  static const recentlyViewed = 'recently_viewed';
+
+  /// JSON-encoded `List<String>` of recent search queries (max 5).
+  static const recentSearches = 'recent_searches';
 }
 
 // =============================================================================
@@ -1231,7 +1262,20 @@ abstract final class NotificationTypes {
   static const messageReport = 'message_report'; // F-121: Flagged chat message
   static const perishableOrderUrgent = 'perishable_order_urgent'; // GAP-13: Urgent perishable order alert to seller
 
-  static const all = {orderStatus, orderUpdate, newMessage, promo, system, account, returnRequest, returnStatus, backInStock, refundIssued, messageReport, perishableOrderUrgent};
+  static const all = {
+    orderStatus,
+    orderUpdate,
+    newMessage,
+    promo,
+    system,
+    account,
+    returnRequest,
+    returnStatus,
+    backInStock,
+    refundIssued,
+    messageReport,
+    perishableOrderUrgent,
+  };
 }
 
 // =============================================================================
@@ -1458,6 +1502,61 @@ abstract final class ProvinceCodeValues {
   };
 }
 
+/// Action identifiers for rate limiting to prevent magic strings.
+abstract final class RateLimitActions {
+  static const verifyCart = 'verify_cart_prices';
+  static const createCheckout = 'create_checkout';
+  static const stripeWebhook = 'stripe_webhook';
+  static const unsubscribe = 'unsubscribe_email';
+  static const exportData = 'export_data';
+  static const mfaEnroll = 'mfa_enroll';
+  static const mfaVerify = 'mfa_verify';
+  static const mfaDisable = 'mfa_disable';
+  static const mfaBackupVerify = 'mfa_backup_verify';
+  static const createConnectAccount = 'create_connect_account';
+  static const createAccountLink = 'create_account_link';
+  static const getConnectStatus = 'get_connect_account_status';
+  static const capturePayment = 'capture_payment';
+  static const updateUserRoles = 'update_user_roles';
+  static const suspendSeller = 'suspend_seller';
+  static const unsuspendSeller = 'unsuspend_seller';
+  static const adminUpdateStock = 'admin_update_stock';
+  static const deleteAccount = 'delete_account';
+  static const updateOrderStatus = 'update_order_status';
+  static const updateItemStatus = 'update_item_status';
+  static const cancelOrder = 'cancel_order';
+  static const refundOrderItem = 'refund_order_item';
+  static const approveShippingCost = 'approve_shipping_cost';
+  static const updateShippingCost = 'update_shipping_cost';
+  static const createReturnRequest = 'create_return_request';
+  static const approveReturnRequest = 'approve_return_request';
+  static const rejectReturnRequest = 'reject_return_request';
+  static const escalateReturnRequest = 'escalate_return_request';
+  static const uploadImages = 'upload_images';
+  static const uploadVideo = 'upload_video';
+  static const deleteProduct = 'delete_product';
+  static const submitRating = 'submit_rating';
+  static const createProduct = 'create_product';
+  static const configureAlgolia = 'configure_algolia';
+  static const getProducts = 'get_products';
+  static const getSellerProducts = 'get_seller_products';
+  static const getProductRatings = 'get_product_ratings';
+  static const askProductQuestion = 'ask_product_question';
+  static const answerProductQuestion = 'answer_product_question';
+  static const answerReview = 'answer_review';
+  static const createUserProfile = 'create_user_profile';
+  static const updateTaxExemption = 'update_tax_exemption';
+  static const applyCoupon = 'apply_coupon';
+  static const activateLicense = 'activate_license';
+  static const verifyLicense = 'verify_license';
+  static const verifyLicenseIp = 'verify_license_ip';
+  static const getPaymentProviders = 'get_payment_providers';
+  static const updatePaymentProvider = 'update_payment_provider';
+  static const getProviderStatus = 'get_provider_status';
+  static const subscribeStockNotification = 'subscribe_stock_notification';
+  static const unsubscribeStockNotification = 'unsubscribe_stock_notification';
+}
+
 abstract final class RefundReasonValues {
   static const returnApproved = 'Return approved';
   static const outOfStock = 'item_out_of_stock';
@@ -1553,6 +1652,22 @@ abstract final class ShippingSourceValues {
   static const internationalSupplier = 'international_supplier';
   static const internationalGeneric = 'international_generic';
   static const domestic = 'domestic';
+}
+
+/// Sort options for product listings.
+/// Each maps to a specific Algolia index replica or sort parameter.
+enum SortOption {
+  /// Default relevance ranking — uses the main Algolia index (no replica).
+  relevance,
+
+  /// Price ascending — maps to Algolia replica `<index>_price_asc`.
+  priceLowToHigh,
+
+  /// Price descending — maps to Algolia replica `<index>_price_desc`.
+  priceHighToLow,
+
+  /// Newest first — sorts by [Fields.createdAt] descending.
+  newest,
 }
 
 /// Stripe API specific constants to avoid magic strings
@@ -1675,6 +1790,10 @@ abstract final class SubcategoryConstants {
   }
 }
 
+// =============================================================================
+// N-11: SUBCATEGORIES — Maps categoryId to list of subcategory names
+// =============================================================================
+
 /// Stripe subscription status values
 abstract final class SubscriptionStatusValues {
   static const active = 'active';
@@ -1781,10 +1900,6 @@ abstract final class TransactionSentinel {
   static const refunded = 'refunded';
 }
 
-// =============================================================================
-// N-11: SUBCATEGORIES — Maps categoryId to list of subcategory names
-// =============================================================================
-
 /// User-facing UI messages
 abstract final class UIMessages {
   static const sessionExpired = 'Session expired due to inactivity. Please login again.';
@@ -1800,6 +1915,10 @@ abstract final class UserRoleValues {
   static const all = {admin, seller, buyer};
 }
 
+// =============================================================================
+// SORT OPTIONS — Product listing sort modes (GAP #1)
+// =============================================================================
+
 abstract final class WarehouseTypeValues {
   static const warehouse = 'warehouse';
   static const personal = 'personal';
@@ -1807,11 +1926,19 @@ abstract final class WarehouseTypeValues {
   static const all = {warehouse, personal};
 }
 
+// =============================================================================
+// LOCAL STORAGE KEYS — SharedPreferences keys (GAP #6, GAP #7)
+// =============================================================================
+
 abstract final class WebhookResponseStatus {
   static const processed = 'processed';
   static const ignored = 'ignored';
   static const error = 'error';
 }
+
+// =============================================================================
+// ALGOLIA INDEX REPLICAS — Index names for sort replicas (GAP #1)
+// =============================================================================
 
 /// Valid values for webhook processing status
 abstract final class WebhookStatusValues {
@@ -1820,103 +1947,4 @@ abstract final class WebhookStatusValues {
   static const failed = 'failed';
 
   static const all = {processing, completed, failed};
-}
-
-/// Action identifiers for rate limiting to prevent magic strings.
-abstract final class RateLimitActions {
-  static const verifyCart = 'verify_cart_prices';
-  static const createCheckout = 'create_checkout';
-  static const stripeWebhook = 'stripe_webhook';
-  static const unsubscribe = 'unsubscribe_email';
-  static const exportData = 'export_data';
-  static const mfaEnroll = 'mfa_enroll';
-  static const mfaVerify = 'mfa_verify';
-  static const mfaDisable = 'mfa_disable';
-  static const mfaBackupVerify = 'mfa_backup_verify';
-  static const createConnectAccount = 'create_connect_account';
-  static const createAccountLink = 'create_account_link';
-  static const getConnectStatus = 'get_connect_account_status';
-  static const capturePayment = 'capture_payment';
-  static const updateUserRoles = 'update_user_roles';
-  static const suspendSeller = 'suspend_seller';
-  static const unsuspendSeller = 'unsuspend_seller';
-  static const adminUpdateStock = 'admin_update_stock';
-  static const deleteAccount = 'delete_account';
-  static const updateOrderStatus = 'update_order_status';
-  static const updateItemStatus = 'update_item_status';
-  static const cancelOrder = 'cancel_order';
-  static const refundOrderItem = 'refund_order_item';
-  static const approveShippingCost = 'approve_shipping_cost';
-  static const updateShippingCost = 'update_shipping_cost';
-  static const createReturnRequest = 'create_return_request';
-  static const approveReturnRequest = 'approve_return_request';
-  static const rejectReturnRequest = 'reject_return_request';
-  static const escalateReturnRequest = 'escalate_return_request';
-  static const uploadImages = 'upload_images';
-  static const uploadVideo = 'upload_video';
-  static const deleteProduct = 'delete_product';
-  static const submitRating = 'submit_rating';
-  static const createProduct = 'create_product';
-  static const configureAlgolia = 'configure_algolia';
-  static const getProducts = 'get_products';
-  static const getSellerProducts = 'get_seller_products';
-  static const getProductRatings = 'get_product_ratings';
-  static const askProductQuestion = 'ask_product_question';
-  static const answerProductQuestion = 'answer_product_question';
-  static const answerReview = 'answer_review';
-  static const createUserProfile = 'create_user_profile';
-  static const updateTaxExemption = 'update_tax_exemption';
-  static const applyCoupon = 'apply_coupon';
-  static const activateLicense = 'activate_license';
-  static const verifyLicense = 'verify_license';
-  static const verifyLicenseIp = 'verify_license_ip';
-  static const getPaymentProviders = 'get_payment_providers';
-  static const updatePaymentProvider = 'update_payment_provider';
-  static const getProviderStatus = 'get_provider_status';
-  static const subscribeStockNotification = 'subscribe_stock_notification';
-  static const unsubscribeStockNotification = 'unsubscribe_stock_notification';
-}
-
-// =============================================================================
-// SORT OPTIONS — Product listing sort modes (GAP #1)
-// =============================================================================
-
-/// Sort options for product listings.
-/// Each maps to a specific Algolia index replica or sort parameter.
-enum SortOption {
-  /// Default relevance ranking — uses the main Algolia index (no replica).
-  relevance,
-
-  /// Price ascending — maps to Algolia replica `<index>_price_asc`.
-  priceLowToHigh,
-
-  /// Price descending — maps to Algolia replica `<index>_price_desc`.
-  priceHighToLow,
-
-  /// Newest first — sorts by [Fields.createdAt] descending.
-  newest,
-}
-
-// =============================================================================
-// LOCAL STORAGE KEYS — SharedPreferences keys (GAP #6, GAP #7)
-// =============================================================================
-
-/// SharedPreferences keys for client-side persistence.
-abstract final class LocalStorageKeys {
-  /// JSON-encoded `List<String>` of recent product IDs (max 10). Written by product detail screen.
-  static const recentlyViewed = 'recently_viewed';
-
-  /// JSON-encoded `List<String>` of recent search queries (max 5).
-  static const recentSearches = 'recent_searches';
-}
-
-// =============================================================================
-// ALGOLIA INDEX REPLICAS — Index names for sort replicas (GAP #1)
-// =============================================================================
-
-/// Algolia replica index suffixes for sort options.
-/// Appended to the base index name: `<base>_price_asc`, `<base>_price_desc`.
-abstract final class AlgoliaReplicaSuffixes {
-  static const priceAsc = '_price_asc';
-  static const priceDesc = '_price_desc';
 }

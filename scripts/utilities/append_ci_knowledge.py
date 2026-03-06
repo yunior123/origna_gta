@@ -1,3 +1,4 @@
+"""Module append_ci_knowledge.py."""
 with open('.claude/LEARNED.md', 'a', encoding='utf-8') as f:
     f.write("""
 ## CI & Pre-Push Hook Learnings (Feb 2026)

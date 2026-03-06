@@ -15,6 +15,7 @@ final homeViewModelProvider = StateNotifierProvider.autoDispose<HomeViewModel, H
   return HomeViewModel(ref);
 });
 
+/// Documentation for HomeViewModel
 class HomeViewModel extends StateNotifier<HomeState> {
   final Ref _ref;
   Timer? _debounce;

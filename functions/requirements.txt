@@ -74,4 +74,3 @@ email-validator==2.2.0
 
 # Error monitoring
 sentry-sdk[flask]==2.22.0
-google-cloud-tasks

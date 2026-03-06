@@ -1,3 +1,4 @@
+"""Module delete_dev_products.py."""
 import firebase_admin
 from firebase_admin import firestore
 import subprocess
@@ -17,6 +18,7 @@ def get_access_token():
         return None
 
 def delete_all_products():
+    """Function delete_all_products."""
     print(f"xx Deleting all products in {PROJECT_ID}...")
     token = get_access_token()
     if not token:

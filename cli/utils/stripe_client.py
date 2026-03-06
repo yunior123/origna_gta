@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 
 def get_stripe(env: str) -> stripe.StripeClient:
+    """Function get_stripe."""
     env_file = os.path.join(os.path.dirname(__file__), f"../.env.{env}")
     if os.path.exists(env_file):
         load_dotenv(env_file, override=True)

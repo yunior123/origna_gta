@@ -1,6 +1,7 @@
 // Sentinel object: distinguishes "not provided" from explicit null in copyWith calls.
 const _omit = Object();
 
+/// Documentation for LoginState
 class LoginState {
   final bool isLoading;
   final bool isLogin;

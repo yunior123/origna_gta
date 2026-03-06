@@ -1,3 +1,4 @@
+"""Module verify_functions_sync.py."""
 import os
 import subprocess
 import sys
@@ -65,6 +66,7 @@ def get_deployed_functions(project_id):
         return None
 
 def verify_sync():
+    """Function verify_sync."""
     local_funcs = get_local_functions()
     if not local_funcs:
         print("❌ Could not find any local functions in functions/main.py")

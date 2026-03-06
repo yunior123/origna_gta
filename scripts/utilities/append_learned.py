@@ -1,3 +1,4 @@
+"""Module append_learned.py."""
 with open('.claude/LEARNED.md', 'a', encoding='utf-8') as f:
     f.write("""
 ---

@@ -1,35 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-/// A single product variant option (e.g. Size with values [S, M, L]).
 @immutable
-class VariantOption {
-  final String name;
-  final List<String> values;
-
-  const VariantOption({required this.name, required this.values});
-
-  factory VariantOption.fromMap(Map<String, dynamic> map) {
-    return VariantOption(
-      name: map['name'] as String,
-      values: (map['values'] as List).cast<String>(),
-    );
-  }
-
-  Map<String, dynamic> toMap() => {'name': name, 'values': values};
-
-  VariantOption copyWith({String? name, List<String>? values}) {
-    return VariantOption(name: name ?? this.name, values: values ?? this.values);
-  }
-
-  @override
-  bool operator ==(Object other) => other is VariantOption && other.name == name && listEquals(other.values, values);
-
-  @override
-  int get hashCode => Object.hash(name, Object.hashAll(values));
-}
-
 /// A single product variant combination (e.g. Size=M + Color=Red).
-@immutable
 class ProductVariantEntry {
   static const _sentinel = Object();
 
@@ -40,17 +12,7 @@ class ProductVariantEntry {
   final String? sku;
   final bool isActive;
 
-  const ProductVariantEntry({
-    this.variantId = '',
-    required this.optionValues,
-    this.priceCents,
-    this.stockQuantity = 0,
-    this.sku,
-    this.isActive = true,
-  });
-
-  /// Price in dollars for display purposes.
-  double? get priceDollars => priceCents != null ? priceCents! / 100.0 : null;
+  const ProductVariantEntry({this.variantId = '', required this.optionValues, this.priceCents, this.stockQuantity = 0, this.sku, this.isActive = true});
 
   factory ProductVariantEntry.fromMap(Map<String, dynamic> map) {
     // Support both old 'price' (float) and new 'priceCents' (int)
@@ -70,14 +32,21 @@ class ProductVariantEntry {
     );
   }
 
-  Map<String, dynamic> toMap() => {
-        'variantId': variantId,
-        'optionValues': optionValues,
-        'priceCents': priceCents,
-        'stockQuantity': stockQuantity,
-        'sku': sku,
-        'isActive': isActive,
-      };
+  @override
+  int get hashCode => Object.hash(variantId, Object.hashAll(optionValues.entries.map((e) => '${e.key}=${e.value}')), priceCents, stockQuantity, sku, isActive);
+
+  /// Price in dollars for display purposes.
+  double? get priceDollars => priceCents != null ? priceCents! / 100.0 : null;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ProductVariantEntry &&
+      other.variantId == variantId &&
+      mapEquals(other.optionValues, optionValues) &&
+      other.priceCents == priceCents &&
+      other.stockQuantity == stockQuantity &&
+      other.sku == sku &&
+      other.isActive == isActive;
 
   ProductVariantEntry copyWith({
     String? variantId,
@@ -97,16 +66,37 @@ class ProductVariantEntry {
     );
   }
 
-  @override
-  bool operator ==(Object other) =>
-      other is ProductVariantEntry &&
-      other.variantId == variantId &&
-      mapEquals(other.optionValues, optionValues) &&
-      other.priceCents == priceCents &&
-      other.stockQuantity == stockQuantity &&
-      other.sku == sku &&
-      other.isActive == isActive;
+  Map<String, dynamic> toMap() => {
+    'variantId': variantId,
+    'optionValues': optionValues,
+    'priceCents': priceCents,
+    'stockQuantity': stockQuantity,
+    'sku': sku,
+    'isActive': isActive,
+  };
+}
+
+@immutable
+/// A single product variant option (e.g. Size with values [S, M, L]).
+class VariantOption {
+  final String name;
+  final List<String> values;
+
+  const VariantOption({required this.name, required this.values});
+
+  factory VariantOption.fromMap(Map<String, dynamic> map) {
+    return VariantOption(name: map['name'] as String, values: (map['values'] as List).cast<String>());
+  }
 
   @override
-  int get hashCode => Object.hash(variantId, Object.hashAll(optionValues.entries.map((e) => '${e.key}=${e.value}')), priceCents, stockQuantity, sku, isActive);
+  int get hashCode => Object.hash(name, Object.hashAll(values));
+
+  @override
+  bool operator ==(Object other) => other is VariantOption && other.name == name && listEquals(other.values, values);
+
+  VariantOption copyWith({String? name, List<String>? values}) {
+    return VariantOption(name: name ?? this.name, values: values ?? this.values);
+  }
+
+  Map<String, dynamic> toMap() => {'name': name, 'values': values};
 }

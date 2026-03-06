@@ -1,6 +1,6 @@
 ---
 name: audit-workflow
-description: Audit a specific workflow by reading ALL related files as indexed chunks. This is the core RAG-indexed approach — like the Kimi audit system but for Claude Code.
+description: Use when auditing any workflow (checkout, orders, auth, payment, schema) by reading all related files as indexed chunks. Run before editing 3+ files in a workflow.
 context: fork
 agent: logic-auditor
 disable-model-invocation: true

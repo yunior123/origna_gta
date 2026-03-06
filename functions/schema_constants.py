@@ -140,10 +140,8 @@ class EmailConfig:
     UNSUBSCRIBE_URL_DEV = "https://orignagta-dev.web.app/unsubscribe"
     UNSUBSCRIBE_URL_EMULATOR = "http://localhost:5005/unsubscribe"
     # Privacy Officer contact — REQUIRED by Quebec Law 25 (since Sept 2022)
-    # TODO[Law25-H1]: Replace with a dedicated privacy@orignaventures.ca mailbox before launch.
-    # CASL / PIPEDA require the privacy officer to be reachable via a distinct address.
-    # Until the mailbox is provisioned, support@ is acceptable but must be updated at launch.
-    PRIVACY_OFFICER_EMAIL = "support@orignaventures.ca"
+    # Law 25 (Quebec) + PIPEDA: dedicated privacy mailbox required for the Privacy Officer.
+    PRIVACY_OFFICER_EMAIL = "privacy@orignagta.ca"
     PRIVACY_OFFICER_NAME = "Yunior Rodriguez Osorio"
 
 
@@ -442,6 +440,7 @@ class Fields:
     APPROVAL_REJECTION_REASON = "approvalRejectionReason"
     LIFECYCLE_STATUS = "lifecycleStatus"
     IS_DIGITAL = "isDigital"
+    IS_AGE_RESTRICTED = "isAgeRestricted"  # Product requires buyer to confirm age 18+
     # Digital product extended fields
     DIGITAL_TYPE = "digitalType"
     SLUG = "slug"
@@ -592,6 +591,8 @@ class Fields:
     TAX_CENTS = "taxCents"  # Per-item tax in cents (inside itemTaxes array)
     TAX_RATE = "taxRate"  # Per-item tax rate (inside itemTaxes array)
     SHIPPING_COST_CENTS = "shippingCostCents"
+    ITEM_SHIPPING_CENTS = "itemShippingCents"  # Per-item shipping cost snapshot at checkout
+    SELLER_SHIPPING_COSTS = "sellerShippingCosts"  # Map[sellerId → cents] for multi-seller orders
     TOTAL_AMOUNT_CENTS = "totalAmountCents"
     CURRENCY = "currency"
     ORDER_STATUS = "orderStatus"
@@ -667,6 +668,8 @@ class Fields:
     QUANTITY = "quantity"
     BUYER_NOTE = "buyerNote"
     CART_ITEM_ID = "cartItemId"
+    SHIPPING_DIFF_CENTS = "shippingDiffCents"   # recorded when PI is already captured (F-002)
+    TAX_DIFF_CENTS = "taxDiffCents"              # recorded when PI is already captured (F-002)
     PRICE_SNAPSHOT = "priceSnapshot"
     TRACKING_NUMBER = "trackingNumber"
     CARRIER = "carrier"
@@ -847,7 +850,6 @@ class Fields:
 
     # === REVIEW/RATING FIELDS ===
     COMMENT = "comment"
-    SUBSCRIPTION_STATUS = "subscriptionStatus"
     PRODUCT_IDS = "productIds"
 
 
@@ -1854,6 +1856,9 @@ class ApiKeys:
     """
 
     # === REQUEST PARAMS (sent to Cloud Functions) ===
+    TURNSTILE_TOKEN = "turnstileToken"  # Cloudflare Turnstile challenge token (web-only)
+    EULA_ACCEPTED = "eulaAccepted"  # Digital product EULA acceptance (sent with checkout for digital items)
+    AGE_VERIFICATION_ACCEPTED = "ageVerificationAccepted"  # Buyer age-gate confirmation (sent when cart has age-restricted items)
     ADD = "add"
     REMOVE = "remove"
     REASON = "reason"
@@ -1968,12 +1973,14 @@ class PlaceholderAddressValues:
 
 
 class DigitalTypeValues:
+    """Class DigitalTypeValues."""
     SOFTWARE = "software"
     BOOK = "book"
     ALL = [SOFTWARE, BOOK]
 
 
 class DigitalPlatformValues:
+    """Class DigitalPlatformValues."""
     MACOS = "macos"
     WINDOWS = "windows"
     LINUX = "linux"
@@ -1981,6 +1988,7 @@ class DigitalPlatformValues:
 
 
 class LicenseStatusValues:
+    """Class LicenseStatusValues."""
     ACTIVE = "active"
     REVOKED = "revoked"
     ALL = [ACTIVE, REVOKED]

@@ -19,7 +19,9 @@ from services import shipping_service
 
 
 class TestSameDayDelivery(unittest.TestCase):
+    """Class TestSameDayDelivery."""
     def setUp(self):
+        """Function setUp."""
         self.seller_address = {
             Fields.LATITUDE: 43.6532,  # Toronto
             Fields.LONGITUDE: -79.3832,

@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/notification_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -26,6 +27,7 @@ final _userNotificationsProvider = StreamProvider.autoDispose<List<AppNotificati
       .map((snap) => snap.docs.map(AppNotification.fromDoc).toList());
 });
 
+/// Documentation for NotificationsScreen
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
@@ -47,13 +49,8 @@ class NotificationsScreen extends ConsumerWidget {
   Future<void> _markAll(BuildContext context, String? uid, WidgetRef ref) async {
     if (uid == null) return;
     try {
-      final firestore = ref.read(firestoreProvider);
-      final snap = await firestore.collection(Collections.users).doc(uid).collection(Collections.notifications).where(Fields.isRead, isEqualTo: false).get();
-      final batch = firestore.batch();
-      for (final doc in snap.docs) {
-        batch.update(doc.reference, {Fields.isRead: true});
-      }
-      await batch.commit();
+      // MVVM FIX (AUDIT): Delegated to NotificationRepository — UI no longer builds Firestore queries.
+      await ref.read(notificationRepositoryProvider).markAllRead(uid);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('notifications.all_marked_read'.tr()), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating),
@@ -71,12 +68,12 @@ class NotificationsScreen extends ConsumerWidget {
 
   Future<void> _markRead(AppNotification notification, String? uid, WidgetRef ref) async {
     if (notification.isRead || uid == null) return;
-    await ref.read(firestoreProvider).collection(Collections.users).doc(uid).collection(Collections.notifications).doc(notification.id).update({
-      Fields.isRead: true,
-    });
+    // MVVM FIX (AUDIT): Delegated to NotificationRepository.
+    await ref.read(notificationRepositoryProvider).markRead(uid, notification.id);
   }
 }
 
+/// Documentation for NotificationsScreenLayout
 class NotificationsScreenLayout extends StatelessWidget {
   final AsyncValue<List<AppNotification>> notificationsAsync;
   final String? uid;
@@ -110,7 +107,7 @@ class NotificationsScreenLayout extends StatelessWidget {
             icon: Icons.error_outline_rounded,
             title: 'common.error_loading'.tr(),
             subtitle: AppError.getMessage(e),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isPrimary: false, onPressed: onRefresh),
+            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isOutlined: true, onPressed: onRefresh),
           ),
           data: (notifications) {
             if (notifications.isEmpty) {
@@ -320,7 +317,7 @@ class _NotificationTile extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(_relativeTime(notification.createdAt), style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+                        Text(_relativeTime(notification.createdAt), style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
                       ],
                     ),
                     if (notification.body.isNotEmpty) ...[
@@ -382,7 +379,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(top: 16, bottom: 8),
       child: Text(
         label,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.5),
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DesignTokens.textSecondary, letterSpacing: 0.5),
       ),
     );
   }

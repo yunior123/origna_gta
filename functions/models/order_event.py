@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class OrderEvent(BaseModel):
+    """Class OrderEvent."""
     eventType: str = Field(..., description="One of OrderEventTypes.*")
     fromStatus: str | None = Field(default=None)
     toStatus: str | None = Field(default=None)
@@ -17,6 +18,7 @@ class OrderEvent(BaseModel):
     @staticmethod
     def write(db_or_batch, order_id: str, event_type: str, actor: str, actor_type: str,
               from_status: str | None = None, to_status: str | None = None, metadata: dict | None = None) -> None:
+        """Function write."""
         from firebase_admin import firestore as fs
         from schema_constants import Collections
 

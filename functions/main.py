@@ -60,8 +60,11 @@ try:
     import firebase_functions.scheduler_fn as _sched_fn_module
 
     class _DatetimeWithIsoFallback(_datetime_module.datetime):
+        """datetime subclass with ISO fallback for microsecond scheduler timestamps."""
+
         @classmethod
         def strptime(cls, date_string, fmt):
+            """Function strptime."""
             try:
                 return super().strptime(date_string, fmt)
             except ValueError:

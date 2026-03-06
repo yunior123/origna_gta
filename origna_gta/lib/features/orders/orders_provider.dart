@@ -51,6 +51,7 @@ final sellerOrdersProvider = StreamProvider.autoDispose<List<models.Order>>((ref
   return ref.watch(orderRepositoryProvider).watchSellerOrders(userId);
 });
 
+/// Documentation for OrderError
 class OrderError extends OrderResult {
   final String message;
   final String? code;
@@ -63,6 +64,7 @@ class OrderError extends OrderResult {
 
 sealed class OrderResult {}
 
+/// Documentation for OrderSuccess
 class OrderSuccess extends OrderResult {
   final String message;
   OrderSuccess({required this.message});

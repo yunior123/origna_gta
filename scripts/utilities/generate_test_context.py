@@ -1,3 +1,4 @@
+"""Module generate_test_context.py."""
 import os
 import glob
 import re
@@ -38,9 +39,11 @@ STATIC_FILES = [
 
 def get_words(text):
     # Extract identifiers (camelCase, snake_case, ClassNames)
+    """Function get_words."""
     return set(re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', text))
 
 def score_file(test_words, filepath):
+    """Function score_file."""
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -56,6 +59,7 @@ def score_file(test_words, filepath):
     return score, content
 
 def generate_contexts():
+    """Function generate_contexts."""
     out_dir = os.path.join(os.path.expanduser("~"), "Desktop", "test_contexts")
     os.makedirs(out_dir, exist_ok=True)
     

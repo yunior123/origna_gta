@@ -1,3 +1,4 @@
+"""Module test_shipping_security.py."""
 import os
 import sys
 import unittest
@@ -24,7 +25,9 @@ mock_secret_manager = MagicMock()
 
 # Decorator passthrough
 def pass_through_decorator(*args, **kwargs):
+    """Function pass_through_decorator."""
     def decorator(f):
+        """Function decorator."""
         return f
 
     return decorator
@@ -38,7 +41,9 @@ mock_firebase_admin.firestore.transactional = lambda f: f
 
 
 class MockHttpsError(Exception):
+    """Class MockHttpsError."""
     def __init__(self, code, message, details=None):
+        """Function __init__."""
         self.code = code
         self.message = message
         self.details = details
@@ -77,8 +82,10 @@ with patch.dict(sys.modules, module_mocks):
 
 
 class TestPaymentSecurity(unittest.TestCase):
+    """Class TestPaymentSecurity."""
     def setUp(self):
         # Configure Firebase Admin mock properly
+        """Function setUp."""
         main.firebase_admin = mock_firebase_admin
         mock_firebase_admin.initialize_app = MagicMock()
         mock_firebase_admin._apps = {}
@@ -120,8 +127,10 @@ class TestPaymentSecurity(unittest.TestCase):
         }
 
         def mock_collection(name):
+            """Function mock_collection."""
             mock_coll = MagicMock()
             def mock_document(doc_id=None):
+                """Function mock_document."""
                 mock_doc_ref = MagicMock()
                 mock_doc_ref.id = doc_id or "default_id"
                 if name == "users":
@@ -168,6 +177,7 @@ class TestPaymentSecurity(unittest.TestCase):
         self.patcher_rate_limiter.start()
 
     def tearDown(self):
+        """Function tearDown."""
         self.patcher_db.stop()
         self.patcher_rate_limiter.stop()
 
@@ -239,10 +249,12 @@ class TestPaymentSecurity(unittest.TestCase):
         original_side_effect = self.mock_db.collection.side_effect
 
         def custom_mock_collection(name):
+            """Function custom_mock_collection."""
             if name == "products":
                 mock_coll = MagicMock()
 
                 def make_product_ref(doc_id=None):
+                    """Function make_product_ref."""
                     mock_doc_ref = MagicMock()
                     mock_doc_ref.id = doc_id or "prod_1"
                     mock_doc_ref.get.return_value = mock_product
@@ -290,10 +302,11 @@ class TestPaymentSecurity(unittest.TestCase):
             "longitude": -79.0,
         }
 
-        cost = calculate_shipping_cost(items, buyer_addr)
+        cost, breakdown = calculate_shipping_cost(items, buyer_addr)
 
         # Fallback same province = 12.99
         self.assertEqual(cost, 12.99)
+        self.assertIsInstance(breakdown, dict)
 
     def test_free_shipping_items_are_ignored(self):
         """
@@ -311,8 +324,9 @@ class TestPaymentSecurity(unittest.TestCase):
             "longitude": -79.0,
         }
 
-        cost = calculate_shipping_cost(items, buyer_addr)
+        cost, breakdown = calculate_shipping_cost(items, buyer_addr)
         self.assertEqual(cost, 0.0)
+        self.assertEqual(breakdown, {})
 
     def test_multi_seller_fixed_price_shipping(self):
         """
@@ -343,9 +357,10 @@ class TestPaymentSecurity(unittest.TestCase):
             "longitude": -79.0,
         }
 
-        cost = calculate_shipping_cost(items, buyer_addr, speed="express")
+        cost, breakdown = calculate_shipping_cost(items, buyer_addr, speed="express")
         # Seller s1: 2 * 4.0 = 8.0, Seller s2: 1 * 7.5 = 7.5
         self.assertEqual(cost, 15.5)
+        self.assertIsInstance(breakdown, dict)
 
     def test_mixed_delivery_options_fallback(self):
         """
@@ -372,8 +387,9 @@ class TestPaymentSecurity(unittest.TestCase):
         }
 
         # For seller s1: fixed price 5.0, seller s2: fallback same province 12.99
-        cost = calculate_shipping_cost(items, buyer_addr, speed="standard")
+        cost, breakdown = calculate_shipping_cost(items, buyer_addr, speed="standard")
         self.assertAlmostEqual(cost, 17.99, places=2)
+        self.assertIsInstance(breakdown, dict)
 
     def test_checkout_rejects_abusive_quantity(self):
         """
@@ -418,6 +434,7 @@ class TestPaymentSecurity(unittest.TestCase):
 
         original_side_effect = self.mock_db.collection.side_effect
         def custom_mock_collection(name):
+            """Function custom_mock_collection."""
             if name == "products":
                 mock_coll = MagicMock()
                 mock_doc_ref = MagicMock()

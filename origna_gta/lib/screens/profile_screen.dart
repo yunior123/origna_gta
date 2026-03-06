@@ -20,6 +20,7 @@ import '../features/auth/auth_provider.dart';
 import '../features/profile/profile_viewmodel.dart';
 import '../features/subscription/subscription_provider.dart';
 
+/// Documentation for ProfileScreen
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -70,6 +71,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
+/// Documentation for ProfileScreenLayout
 class ProfileScreenLayout extends StatelessWidget {
   final AsyncValue<UserModel?> userProfileAsync;
   final User? currentUser;
@@ -608,7 +610,7 @@ class ProfileScreenLayout extends StatelessWidget {
                                 decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                                 child: Text(
                                   'subscription.status_active'.tr(),
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: DesignTokens.success),
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: DesignTokens.success),
                                 ),
                               ),
                             ],
@@ -1266,9 +1268,13 @@ class _ProfileCompletionBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'profile.completion'.tr(),
-              style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4),
+            Flexible(
+              child: Text(
+                'profile.completion'.tr(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.4),
+              ),
             ),
             Text(
               '$pctInt%',

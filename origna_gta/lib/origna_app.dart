@@ -582,6 +582,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   );
 }
 
+/// Documentation for OrignaApp
 class OrignaApp extends ConsumerStatefulWidget {
   const OrignaApp({super.key});
 

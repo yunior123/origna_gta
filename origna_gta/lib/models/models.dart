@@ -26,6 +26,7 @@ Timestamp _parseTimestamp(dynamic value) {
   return Timestamp.now();
 }
 
+/// Documentation for Address
 class Address {
   final String street;
   final String apartment; // Unit, Suite, Apt #
@@ -139,6 +140,7 @@ class Address {
   }
 }
 
+/// Documentation for AddressDetails
 class AddressDetails {
   final String street;
   final String city;
@@ -150,6 +152,7 @@ class AddressDetails {
   AddressDetails({required this.street, required this.city, required this.state, required this.postalCode, required this.latitude, required this.longitude});
 }
 
+/// Documentation for CartItemDetailModel
 class CartItemDetailModel {
   final String productId;
   final String name;
@@ -178,6 +181,7 @@ class CartItemDetailModel {
   final int minimumOrderQuantity;
   final bool freeShipping;
   final bool isDigital;
+  final bool isAgeRestricted;
   final String? buyerNote;
   final bool isSmallSupplier;
   final String? variantId;
@@ -212,6 +216,7 @@ class CartItemDetailModel {
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
     this.isDigital = false,
+    this.isAgeRestricted = false,
     this.buyerNote,
     this.isSmallSupplier = false,
     this.variantId,
@@ -255,6 +260,7 @@ class CartItemDetailModel {
       minimumOrderQuantity: (map[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
       freeShipping: map[Fields.freeShipping] ?? false,
       isDigital: map[Fields.isDigital] ?? false,
+      isAgeRestricted: map[Fields.isAgeRestricted] ?? false,
       buyerNote: map[Fields.buyerNote] as String?,
       isSmallSupplier: map[Fields.isSmallSupplier] ?? false,
       variantId: map[Fields.variantId] as String?,
@@ -293,6 +299,7 @@ class CartItemDetailModel {
       Fields.minimumOrderQuantity: minimumOrderQuantity,
       Fields.freeShipping: freeShipping,
       Fields.isDigital: isDigital,
+      Fields.isAgeRestricted: isAgeRestricted,
       if (buyerNote != null) Fields.buyerNote: buyerNote,
       Fields.isSmallSupplier: isSmallSupplier,
       if (variantId != null) Fields.variantId: variantId,
@@ -302,6 +309,7 @@ class CartItemDetailModel {
   }
 }
 
+/// Documentation for CartItemModel
 class CartItemModel {
   final String cartItemId; // Auto-generated Firestore doc ID
   final int quantity;
@@ -357,6 +365,7 @@ class CartItemModel {
   }
 }
 
+/// Documentation for CartModel
 class CartModel {
   final String cartItemId; // Auto-generated Firestore doc ID
   final String productId;
@@ -416,6 +425,7 @@ class CartModel {
   }
 }
 
+/// Documentation for FavoriteItem
 class FavoriteItem {
   final String productId;
   final DateTime dateFavorited;
@@ -432,6 +442,7 @@ class FavoriteItem {
   }
 }
 
+/// Documentation for ImageModel
 class ImageModel {
   final String url;
   final Uint8List bytes;
@@ -439,6 +450,7 @@ class ImageModel {
   ImageModel({required this.url, required this.bytes});
 }
 
+/// Documentation for OrderModel
 class OrderModel {
   final String orderId;
   final String userId;
@@ -522,6 +534,7 @@ class OrderModel {
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
         isDigital: map[Fields.isDigital] ?? false,
+        isAgeRestricted: map[Fields.isAgeRestricted] ?? false,
       );
     }).toList();
 
@@ -593,6 +606,7 @@ class OrderModel {
         trackingNumber: map[Fields.trackingNumber],
         confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
         isDigital: map[Fields.isDigital] ?? false,
+        isAgeRestricted: map[Fields.isAgeRestricted] ?? false,
       );
     }).toList();
 
@@ -694,6 +708,7 @@ class OrderModel {
   }
 }
 
+/// Documentation for ProductCategories
 class ProductCategories {
   final int categoryId;
   final String name;
@@ -702,6 +717,7 @@ class ProductCategories {
   ProductCategories({required this.categoryId, required this.name, required this.icon});
 }
 
+/// Documentation for ProductModel
 class ProductModel {
   final String id;
   final String name;
@@ -731,6 +747,7 @@ class ProductModel {
   final bool freeShipping;
   final Timestamp? deletedAt;
   final bool isDigital; // True if product is digital (no shipping required)
+  final bool isAgeRestricted; // True if buyer must confirm age 18+ before purchasing
   final String? digitalType; // 'software' | 'book'
   final Map<String, String>? digitalBuilds; // platform -> download URL (software only)
   final String? approvalRejectionReason;
@@ -763,6 +780,7 @@ class ProductModel {
     this.freeShipping = false,
     this.deletedAt,
     this.isDigital = false,
+    this.isAgeRestricted = false,
     this.digitalType,
     this.digitalBuilds,
     this.approvalRejectionReason,
@@ -807,6 +825,7 @@ class ProductModel {
       keywords: _parseStringList(map[Fields.keywords]),
       stockQuantity: _parseInt(map[Fields.stockQuantity]),
       isDigital: map[Fields.isDigital] as bool? ?? false,
+      isAgeRestricted: map[Fields.isAgeRestricted] as bool? ?? false,
       digitalType: map[Fields.digitalType]?.toString(),
       digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
       approvalRejectionReason: map[Fields.approvalRejectionReason]?.toString(),
@@ -859,6 +878,7 @@ class ProductModel {
       Fields.minimumOrderQuantity: minimumOrderQuantity,
       Fields.freeShipping: freeShipping,
       Fields.isDigital: isDigital,
+      Fields.isAgeRestricted: isAgeRestricted,
       Fields.lifecycleStatus: lifecycleStatus,
       if (deletedAt != null) Fields.deletedAt: deletedAt,
     };
@@ -958,6 +978,7 @@ class SellerPayout {
   }
 }
 
+/// Documentation for UserModel
 class UserModel {
   final String uid;
   final String email;
@@ -993,6 +1014,8 @@ class UserModel {
   final bool notifyNewProducts;
   final bool notifyTrending;
   final bool mfaEnabled;
+  /// Version of ToS the user last accepted (e.g. '1.0'). Null = accepted before versioning was added.
+  final String? termsVersion;
 
   UserModel({
     required this.uid,
@@ -1026,6 +1049,7 @@ class UserModel {
     this.notifyNewProducts = false,
     this.notifyTrending = false,
     this.mfaEnabled = false,
+    this.termsVersion,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -1063,6 +1087,7 @@ class UserModel {
       notifyNewProducts: map[Fields.notifyNewProducts] ?? false,
       notifyTrending: map[Fields.notifyTrending] ?? false,
       mfaEnabled: map[Fields.mfaEnabled] ?? false,
+      termsVersion: map[Fields.termsVersion] as String?,
     );
   }
 
@@ -1109,6 +1134,7 @@ class UserModel {
     bool? notifyNewProducts,
     bool? notifyTrending,
     bool? mfaEnabled,
+    String? termsVersion,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -1142,6 +1168,7 @@ class UserModel {
       notifyNewProducts: notifyNewProducts ?? this.notifyNewProducts,
       notifyTrending: notifyTrending ?? this.notifyTrending,
       mfaEnabled: mfaEnabled ?? this.mfaEnabled,
+      termsVersion: termsVersion ?? this.termsVersion,
     );
   }
 

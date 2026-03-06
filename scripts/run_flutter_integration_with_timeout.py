@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Module run_flutter_integration_with_timeout.py."""
 
 import argparse
 import subprocess
@@ -7,6 +8,7 @@ from pathlib import Path
 
 
 def main() -> int:
+    """Function main."""
     parser = argparse.ArgumentParser(description="Run Flutter integration tests with timeout.")
     parser.add_argument(
         "--timeout",

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Documentation for MascotController
 class MascotController extends ChangeNotifier {
   Offset _lookTarget = Offset.zero;
   bool _isJumping = false;
@@ -35,6 +36,7 @@ class MascotController extends ChangeNotifier {
   }
 }
 
+/// Documentation for MascotPainter
 class MascotPainter extends CustomPainter {
   final double idleValue;
   final double jumpValue;
@@ -250,6 +252,7 @@ class MascotPainter extends CustomPainter {
   }
 }
 
+/// Documentation for MascotTips
 class MascotTips {
   static const List<String> _emojis = ['🛍️', '💳', '🚚', '⭐', '🔍', '🏷️', '💬', '🍁'];
   static const List<String> _keys = [
@@ -269,6 +272,7 @@ class MascotTips {
   }
 }
 
+/// Documentation for ShopMascot
 class ShopMascot extends StatefulWidget {
   final MascotController controller;
   final double size;

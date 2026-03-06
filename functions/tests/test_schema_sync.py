@@ -383,6 +383,7 @@ if __name__ == "__main__":
 
 
 def test_digital_product_constants_exist():
+    """Function test_digital_product_constants_exist."""
     from schema_constants import Collections, Fields
 
     assert hasattr(Fields, "DIGITAL_TYPE")
@@ -403,6 +404,7 @@ def test_digital_product_constants_exist():
 
 
 def test_digital_type_values_exist():
+    """Function test_digital_type_values_exist."""
     from schema_constants import DigitalPlatformValues, DigitalTypeValues
 
     assert DigitalTypeValues.SOFTWARE == "software"

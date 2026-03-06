@@ -78,6 +78,7 @@ class PaymentProviderConfig {
 // PAYMENT PROVIDER CONFIGURATION - Extensible for future providers
 // ============================================================================
 
+/// Documentation for SellerRegistrationScreen
 class SellerRegistrationScreen extends ConsumerStatefulWidget {
   const SellerRegistrationScreen({super.key});
 
@@ -429,9 +430,13 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             children: [
               Icon(config.icon, size: 18, color: config.primaryColor),
               const SizedBox(width: 8),
-              Text(
-                'seller.payout_timing'.tr(namedArgs: {'timing': config.payoutTiming}),
-                style: TextStyle(fontWeight: FontWeight.w600, color: config.primaryColor),
+              Flexible(
+                child: Text(
+                  'seller.payout_timing'.tr(namedArgs: {'timing': config.payoutTiming}),
+                  style: TextStyle(fontWeight: FontWeight.w600, color: config.primaryColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),

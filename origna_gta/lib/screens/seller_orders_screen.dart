@@ -19,6 +19,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Documentation for SellerOrdersScreen
 class SellerOrdersScreen extends ConsumerWidget {
   const SellerOrdersScreen({super.key});
 
@@ -110,7 +111,7 @@ class SellerOrdersScreen extends ConsumerWidget {
             icon: Icons.error_outline_rounded,
             title: 'seller.something_wrong'.tr(),
             subtitle: AppError.getMessage(error),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, onPressed: () => ref.invalidate(sellerOrdersProvider), isPrimary: false),
+            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, onPressed: () => ref.invalidate(sellerOrdersProvider), isOutlined: true),
           ),
           data: (orders) {
             if (orders.isEmpty) {
@@ -661,6 +662,7 @@ class _SellerOrderCard extends ConsumerWidget {
             children: [
               // Carrier dropdown
               DropdownButtonFormField<String>(
+                menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                 initialValue: selectedCarrier,
                 decoration: InputDecoration(
                   labelText: 'seller.carrier_label'.tr(),
@@ -794,6 +796,7 @@ class _SellerOrderCard extends ConsumerWidget {
               const SizedBox(height: 14),
               // Carrier dropdown
               DropdownButtonFormField<String>(
+                menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                 initialValue: selectedCarrier,
                 decoration: InputDecoration(
                   labelText: 'seller.carrier_label'.tr(),

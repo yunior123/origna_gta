@@ -33,7 +33,7 @@ class _CheckoutStepper extends StatelessWidget {
     ];
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      height: 52,
+      height: 64,
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkSurface : Colors.white,
         boxShadow: [
@@ -73,8 +73,8 @@ class _CheckoutStepper extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 22,
-                height: 22,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isCompleted
@@ -88,23 +88,23 @@ class _CheckoutStepper extends StatelessWidget {
                 ),
                 child: Center(
                   child: isCompleted
-                      ? const Icon(Icons.check_rounded, size: 12, color: Colors.white)
+                      ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
                       : Text(
                           '${stepIndex + 1}',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                             color: isCurrent ? Colors.white : DesignTokens.primary.withValues(alpha: 0.5),
                           ),
                         ),
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 steps[stepIndex],
                 style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
+                  fontSize: 11,
+                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
                   color: isCurrent ? DesignTokens.primary : DesignTokens.textSecondary,
                 ),
               ),
@@ -122,6 +122,19 @@ final _termsAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
 /// Tracks whether the user has interacted with the terms checkbox — gates error state
 final _termsInteractedProvider = StateProvider.autoDispose<bool>((ref) => false);
 
+/// Provider for digital product EULA acceptance — required when cart contains digital items
+final _eulaAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
+
+/// Tracks whether user has interacted with the EULA checkbox — gates error display
+final _eulaInteractedProvider = StateProvider.autoDispose<bool>((ref) => false);
+
+/// Provider for age verification acceptance — required when cart contains age-restricted items
+final _ageVerifAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
+
+/// Tracks whether user has interacted with the age gate checkbox — gates error display
+final _ageVerifInteractedProvider = StateProvider.autoDispose<bool>((ref) => false);
+
+/// Documentation for CheckoutScreen
 class CheckoutScreen extends ConsumerStatefulWidget {
   final List<CartItemDetailModel> items;
   final double total;
@@ -149,15 +162,19 @@ class _AddressSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [DesignTokens.primary, DesignTokens.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: Text(
-                'checkout.delivery_address_title'.tr(),
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white),
+            Flexible(
+              child: ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [DesignTokens.primary, DesignTokens.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ).createShader(bounds),
+                child: Text(
+                  'checkout.delivery_address_title'.tr(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white),
+                ),
               ),
             ),
             Semantics(
@@ -247,7 +264,11 @@ class _CheckoutButton extends ConsumerWidget {
     final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
     final shippingError = ref.watch(checkoutStateProvider.select((state) => state.shippingError));
     final termsAccepted = ref.watch(_termsAcceptedProvider);
-    final isDisabled = isProcessing || isCalculating || shippingError != null || !termsAccepted;
+    final eulaAccepted = ref.watch(_eulaAcceptedProvider);
+    final ageVerifAccepted = ref.watch(_ageVerifAcceptedProvider);
+    final hasDigitalItems = items.any((item) => item.isDigital);
+    final hasAgeRestrictedItems = items.any((item) => item.isAgeRestricted);
+    final isDisabled = isProcessing || isCalculating || shippingError != null || !termsAccepted || (hasDigitalItems && !eulaAccepted) || (hasAgeRestrictedItems && !ageVerifAccepted);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
@@ -330,7 +351,9 @@ class _CheckoutButton extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(checkoutStateProvider.notifier);
 
-    final result = await notifier.startCheckout(items: items, user: userModel, subtotal: subtotal);
+    final eulaAccepted = ref.read(_eulaAcceptedProvider);
+    final ageVerificationAccepted = ref.read(_ageVerifAcceptedProvider);
+    final result = await notifier.startCheckout(items: items, user: userModel, subtotal: subtotal, eulaAccepted: eulaAccepted, ageVerificationAccepted: ageVerificationAccepted);
     if (!context.mounted) return;
 
     switch (result) {
@@ -428,6 +451,8 @@ class _CheckoutContent extends ConsumerWidget {
               ),
               const _BuyerProtectionBanner(),
               _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: digitalTotal),
+              const _DigitalEulaText(),
+              if (items.any((item) => item.isAgeRestricted)) const _AgeGateText(),
               _TermsText(),
               const SizedBox(height: 16),
               _SecurityInfo(),
@@ -489,6 +514,8 @@ class _CheckoutContent extends ConsumerWidget {
     final bottomActions = <Widget>[
       const _BuyerProtectionBanner(),
       _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: totalWithTax),
+      if (items.any((item) => item.isDigital)) const _DigitalEulaText(),
+      if (items.any((item) => item.isAgeRestricted)) const _AgeGateText(),
       _TermsText(),
       const SizedBox(height: 16),
       _SecurityInfo(),
@@ -578,7 +605,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     return Scaffold(
       key: const Key('checkout_screen_root'),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight + 44),
+        preferredSize: const Size.fromHeight(kToolbarHeight + 64),
         child: Column(
           children: [
             AppBarFactory.simple(title: 'checkout.checkout'.tr()),
@@ -682,7 +709,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('checkout.delivery_speed_title'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Flexible(child: Text('checkout.delivery_speed_title'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
               const SizedBox(
                 width: 20,
                 height: 20,
@@ -797,7 +824,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                       decoration: BoxDecoration(color: DesignTokens.success, borderRadius: BorderRadius.circular(4)),
                                       child: Text(
                                         'checkout.local'.tr(),
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                                       ),
                                     ),
                                   ],
@@ -981,7 +1008,8 @@ class _OrderSummary extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('cart.subtotal'.tr(), style: TextStyle(fontSize: 16)),
+                  Flexible(child: Text('cart.subtotal'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16))),
+                  const SizedBox(width: 8),
                   Text('\$${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16)),
                 ],
               ),
@@ -994,7 +1022,8 @@ class _OrderSummary extends ConsumerWidget {
                 key: const Key('checkout_shipping_section'),
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('checkout.estimated_shipping'.tr(), style: const TextStyle(color: DesignTokens.textSecondary)),
+                  Flexible(child: Text('checkout.estimated_shipping'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: DesignTokens.textSecondary))),
+                  const SizedBox(width: 8),
                   if (isCalculating)
                     const ModernLoadingIndicator.small()
                   else if (shippingError != null)
@@ -1047,7 +1076,8 @@ class _OrderSummary extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('checkout.estimated_total'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Flexible(child: Text('checkout.estimated_total'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+                  const SizedBox(width: 8),
                   Builder(builder: (context) {
                     final discountCents = ref.watch(checkoutStateProvider.select((s) => s.couponDiscountCents));
                     final discount = discountCents / 100.0;
@@ -1111,13 +1141,16 @@ class _OrderSummary extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.local_offer_rounded, size: 14, color: DesignTokens.success),
-              const SizedBox(width: 4),
-              Text('checkout.coupon_applied_label'.tr(namedArgs: {'code': couponCode}), style: const TextStyle(fontSize: 14, color: DesignTokens.success)),
-            ],
+          Flexible(
+            child: Row(
+              children: [
+                const Icon(Icons.local_offer_rounded, size: 14, color: DesignTokens.success),
+                const SizedBox(width: 4),
+                Flexible(child: Text('checkout.coupon_applied_label'.tr(namedArgs: {'code': couponCode}), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: DesignTokens.success))),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Text('-\$${(discountCents / 100.0).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: DesignTokens.success, fontWeight: FontWeight.w600)),
         ],
       ),
@@ -1135,20 +1168,27 @@ class _OrderSummary extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(
-                isPremium ? Icons.star_rounded : Icons.info_outline_rounded,
-                size: 14,
-                color: isPremium ? DesignTokens.secondary : DesignTokens.textSecondary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'checkout.service_fee_label'.tr(namedArgs: {'rate': BusinessRules.platformFeePercent.toStringAsFixed(1)}),
-                style: TextStyle(fontSize: 14, color: isPremium ? DesignTokens.textSecondary : DesignTokens.textSecondary),
-              ),
-            ],
+          Flexible(
+            child: Row(
+              children: [
+                Icon(
+                  isPremium ? Icons.star_rounded : Icons.info_outline_rounded,
+                  size: 14,
+                  color: isPremium ? DesignTokens.secondary : DesignTokens.textSecondary,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'checkout.service_fee_label'.tr(namedArgs: {'rate': BusinessRules.platformFeePercent.toStringAsFixed(1)}),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 14, color: isPremium ? DesignTokens.textSecondary : DesignTokens.textSecondary),
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           if (isPremium)
             Row(
               children: [
@@ -1192,10 +1232,15 @@ class _OrderSummary extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'checkout.tax_estimate_label'.tr(namedArgs: {'name': taxName, 'rate': (rate * 100).toStringAsFixed(2)}),
-              style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+            Flexible(
+              child: Text(
+                'checkout.tax_estimate_label'.tr(namedArgs: {'name': taxName, 'rate': (rate * 100).toStringAsFixed(2)}),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+              ),
             ),
+            const SizedBox(width: 8),
             Text('\$${taxAmount.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary)),
           ],
         ),
@@ -1339,7 +1384,7 @@ class _PaymentProviderSection extends StatelessWidget {
                 border: Border.all(color: DesignTokens.outline),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary)),
+              child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary)),
             );
           }).toList(),
         ),
@@ -1662,7 +1707,8 @@ class _OrderReviewSheet extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('checkout.estimated_total'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Flexible(child: Text('checkout.estimated_total'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                      const SizedBox(width: 8),
                       Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: DesignTokens.primary)),
                     ],
                   ),
@@ -1711,13 +1757,16 @@ class _OrderReviewSheet extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.local_offer_rounded, size: 14, color: DesignTokens.success),
-              const SizedBox(width: 4),
-              Text(code != null ? 'checkout.coupon_applied_label'.tr(namedArgs: {'code': code}) : 'checkout.coupon_applied_generic'.tr(), style: const TextStyle(fontSize: 14, color: DesignTokens.success)),
-            ],
+          Flexible(
+            child: Row(
+              children: [
+                const Icon(Icons.local_offer_rounded, size: 14, color: DesignTokens.success),
+                const SizedBox(width: 4),
+                Flexible(child: Text(code != null ? 'checkout.coupon_applied_label'.tr(namedArgs: {'code': code}) : 'checkout.coupon_applied_generic'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: DesignTokens.success))),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Text('-\$${discount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, color: DesignTokens.success, fontWeight: FontWeight.w600)),
         ],
       ),
@@ -1833,6 +1882,116 @@ class _TermsText extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// EULA checkbox shown when digital products (software, ebooks, etc.) are in the cart.
+/// Canadian consumer law requires explicit license acceptance before digital delivery.
+class _DigitalEulaText extends ConsumerWidget {
+  const _DigitalEulaText();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eulaAccepted = ref.watch(_eulaAcceptedProvider);
+    final hasInteracted = ref.watch(_eulaInteractedProvider);
+    final showError = hasInteracted && !eulaAccepted;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: DesignTokens.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: showError ? DesignTokens.error : DesignTokens.outlineVariant, width: 1),
+        ),
+        child: Row(
+          key: const Key('checkout_digital_eula'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 20,
+              width: 20,
+              child: Semantics(
+                label: 'chk-eula-accepted',
+                checked: eulaAccepted,
+                child: Checkbox(
+                  key: const Key('checkout_eula_checkbox'),
+                  value: eulaAccepted,
+                  onChanged: (value) {
+                    ref.read(_eulaInteractedProvider.notifier).state = true;
+                    ref.read(_eulaAcceptedProvider.notifier).state = value ?? false;
+                  },
+                  side: BorderSide(color: showError ? DesignTokens.error : DesignTokens.textDisabled),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'checkout.digital_eula_agree'.tr(),
+                style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary, height: 1.4),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Age gate widget — shown when cart contains age-restricted items.
+/// Canadian law (CRTC / provincial liquor/tobacco acts) requires age confirmation before purchase.
+class _AgeGateText extends ConsumerWidget {
+  const _AgeGateText();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ageVerifAccepted = ref.watch(_ageVerifAcceptedProvider);
+    final hasInteracted = ref.watch(_ageVerifInteractedProvider);
+    final showError = hasInteracted && !ageVerifAccepted;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: DesignTokens.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: showError ? DesignTokens.error : DesignTokens.outlineVariant, width: 1),
+        ),
+        child: Row(
+          key: const Key('checkout_age_gate'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 20,
+              width: 20,
+              child: Semantics(
+                label: 'chk-age-gate-accepted',
+                checked: ageVerifAccepted,
+                child: Checkbox(
+                  key: const Key('checkout_age_gate_checkbox'),
+                  value: ageVerifAccepted,
+                  onChanged: (value) {
+                    ref.read(_ageVerifInteractedProvider.notifier).state = true;
+                    ref.read(_ageVerifAcceptedProvider.notifier).state = value ?? false;
+                  },
+                  side: BorderSide(color: showError ? DesignTokens.error : DesignTokens.textDisabled),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'checkout.age_gate_agree'.tr(),
+                style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary, height: 1.4),
               ),
             ),
           ],

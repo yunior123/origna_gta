@@ -6,6 +6,7 @@ FIRESTORE = "http://localhost:8080/v1/projects/orignagta/databases/(default)/doc
 HEADERS = {"Authorization": "Bearer owner", "Content-Type": "application/json"}
 
 def rest_to_native(v):
+    """Function rest_to_native."""
     if "stringValue" in v: return v["stringValue"]
     if "integerValue" in v: return int(v["integerValue"])
     if "doubleValue" in v: return float(v["doubleValue"])

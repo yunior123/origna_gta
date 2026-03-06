@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/screens/home_screen.dart';
 
+/// Documentation for MainScreen
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 

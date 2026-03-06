@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/services/notification_service.dart';
+import 'package:origna_gta/services/turnstile_service.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -34,6 +35,7 @@ abstract class AuthRepository {
   Stream<UserModel?> watchProfile(String userId);
 }
 
+/// Documentation for FirebaseAuthRepository
 class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
@@ -350,8 +352,13 @@ class FirebaseAuthRepository implements AuthRepository {
     if (!docSnapshot.exists) {
       // F-82/F-90: Only call the profile creation function if the email is verified
       // to avoid 'failed-precondition' errors for unverified users.
-      // Bypass in emulator mode.
-      if (!user.emailVerified && !EnvConfig().isEmulator) {
+      // Bypass in emulator mode AND for SSO providers (Apple/Google verify email ownership
+      // server-side; Firebase may return emailVerified=false on first Apple Sign In with
+      // "Hide My Email" relay before the auth token is refreshed).
+      final isSsoProvider = user.providerData.any(
+        (p) => p.providerId == 'apple.com' || p.providerId == 'google.com',
+      );
+      if (!user.emailVerified && !EnvConfig().isEmulator && !isSsoProvider) {
         // [F-88] Save name to pending_profiles so it's not lost when they eventually verify
         if ((name != null && name.isNotEmpty) || initialMarketingOptIn != null) {
           try {
@@ -402,11 +409,15 @@ class FirebaseAuthRepository implements AuthRepository {
       if (isGoogle) consentMethod = ConsentMethodValues.googleOauth;
       if (isApple) consentMethod = ConsentMethodValues.appleOauth;
 
+      // Web: attach Turnstile bot-protection token; mobile uses App Check.
+      final turnstileToken = await TurnstileService.getToken();
+
       await callable.call<Map<String, dynamic>>({
         Fields.name: savedName ?? user.displayName ?? 'User',
         Fields.preferredLanguage: _deviceLanguage(),
         Fields.marketingOptIn: marketingOptIn,
         Fields.consentMethod: consentMethod,
+        ApiKeys.turnstileToken: ?turnstileToken,
       });
     }
     // If doc already exists, roles are managed server-side by the CF — no direct write here.

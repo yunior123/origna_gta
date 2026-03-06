@@ -33,6 +33,7 @@ def _select_non_test_flows() -> dict[str, list[str]]:
 
 
 def main() -> None:
+    """Function main."""
     output_dir = Path(
         os.getenv(
             "ORIGNA_SIMPLIFIED_OUTPUT_DIR",

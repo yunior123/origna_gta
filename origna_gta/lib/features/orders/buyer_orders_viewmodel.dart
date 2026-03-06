@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/utils/utils.dart';
 
+/// Documentation for BuyerOrdersState
 class BuyerOrdersState {
   final bool isLoading;
   final bool isSuccess;
@@ -25,6 +26,7 @@ final buyerOrdersViewModelProvider = StateNotifierProvider.autoDispose<BuyerOrde
   return BuyerOrdersViewModel(ref);
 });
 
+/// Documentation for BuyerOrdersViewModel
 class BuyerOrdersViewModel extends StateNotifier<BuyerOrdersState> {
   final Ref _ref;
 

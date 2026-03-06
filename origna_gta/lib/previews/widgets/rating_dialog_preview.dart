@@ -20,3 +20,21 @@ Widget previewRatingDialogVariants() => previewScope(
     children: [RatingDialog(orderId: 'preview-order-123', productId: 'preview-product-456', productName: 'Handmade Canadian Maple Syrup')],
   ),
 );
+
+@Preview(name: 'Rating Dialog Light — Premium', group: 'RatingDialog')
+Widget previewRatingDialogPremiumLight() => previewScope(
+  extraOverrides: [subscriptionStreamProvider.overrideWith((_) => Stream.value(const SubscriptionInfo(status: 'active', isPremium: true)))],
+  child: previewGrid(
+    theme: previewLightTheme,
+    children: [RatingDialog(orderId: 'preview-order-456', productId: 'preview-product-789', productName: 'Artisan Quebec Cheese Board')],
+  ),
+);
+
+@Preview(name: 'Rating Dialog Light — Variants', group: 'RatingDialog')
+Widget previewRatingDialogVariantsLight() => previewScope(
+  extraOverrides: [subscriptionStreamProvider.overrideWith((_) => Stream.value(const SubscriptionInfo(status: 'inactive', isPremium: false)))],
+  child: previewGrid(
+    theme: previewLightTheme,
+    children: [RatingDialog(orderId: 'preview-order-123', productId: 'preview-product-456', productName: 'Handmade Canadian Maple Syrup')],
+  ),
+);

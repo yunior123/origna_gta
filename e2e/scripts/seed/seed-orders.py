@@ -64,6 +64,7 @@ def nv():
     return {"nullValue": None}
 
 def make_address(street, city, state, postal, country="Canada", phone="5141234567", lat=45.5, lng=-73.6):
+    """Function make_address."""
     return mv({
         "street": sv(street),
         "apartment": sv(""),
@@ -82,6 +83,7 @@ def make_item(product_id, name, price, qty, seller_uid, seller_city, seller_prov
               seller_country="Canada", images=None, delivery_status="pending", tracking=None, 
               carrier=None, free_shipping=False, is_digital=False):
     # Use picsum.photos for reliable CORS-friendly images
+    """Function make_item."""
     default_images = [f"https://picsum.photos/seed/{product_id}/400/400"]
     fields = {
         "productId": sv(product_id),

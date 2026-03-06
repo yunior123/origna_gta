@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart' show CloudFunctionEndpoints;
+import 'package:origna_gta/core/schema/schema_constants.dart' show CloudFunctionEndpoints, Fields, PolicyVersionValues;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:rxdart/rxdart.dart';
 
+/// Documentation for FirebaseUserRepository
 class FirebaseUserRepository implements UserRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
@@ -13,7 +14,7 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Future<String> addBuyerAddress(Address address) async {
-    final callable = _functions.httpsCallable('add_buyer_address');
+    final callable = _functions.httpsCallable(CloudFunctionEndpoints.addBuyerAddress);
     final response = await callable.call(address.toMap());
     final data = response.data as Map<String, dynamic>;
     if (data['success'] != true) {
@@ -24,7 +25,7 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Future<void> deleteBuyerAddress(String addressId) async {
-    final callable = _functions.httpsCallable('delete_buyer_address');
+    final callable = _functions.httpsCallable(CloudFunctionEndpoints.deleteBuyerAddress);
     final response = await callable.call({'addressId': addressId});
     final data = response.data as Map<String, dynamic>;
     if (data['success'] != true) {
@@ -46,9 +47,22 @@ class FirebaseUserRepository implements UserRepository {
     return UserModel.fromMap(doc.data()!);
   }
 
+  /// Records that the user accepted the terms of service.
+  /// Backend sets the server-side timestamp — client only sends a flag.
+  /// Fire-and-forget: do not await unless you need confirmation.
+  @override
+  Future<void> recordTermsAcceptance() async {
+    final callable = _functions.httpsCallable(CloudFunctionEndpoints.updateUserProfile);
+    final response = await callable.call({Fields.termsAcceptedAt: true, Fields.termsVersion: PolicyVersionValues.defaultVersion});
+    final data = response.data as Map<String, dynamic>;
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Failed to record terms acceptance');
+    }
+  }
+
   @override
   Future<void> setDefaultBuyerAddress(String addressId) async {
-    final callable = _functions.httpsCallable('set_default_buyer_address');
+    final callable = _functions.httpsCallable(CloudFunctionEndpoints.setDefaultBuyerAddress);
     final response = await callable.call({'addressId': addressId});
     final data = response.data as Map<String, dynamic>;
     if (data['success'] != true) {
@@ -58,7 +72,7 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Future<void> updateBuyerAddress(String addressId, Address address) async {
-    final callable = _functions.httpsCallable('update_buyer_address');
+    final callable = _functions.httpsCallable(CloudFunctionEndpoints.updateBuyerAddress);
     final Map<String, dynamic> payload = address.toMap();
     payload['addressId'] = addressId;
     final response = await callable.call(payload);
@@ -85,24 +99,11 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Future<void> updatePreferredLanguage(String userId, String lang) async {
-    final callable = _functions.httpsCallable('update_user_profile');
+    final callable = _functions.httpsCallable(CloudFunctionEndpoints.updateUserProfile);
     final response = await callable.call({Fields.preferredLanguage: lang});
     final data = response.data as Map<String, dynamic>;
     if (data['success'] != true) {
       throw Exception(data['error'] ?? 'Failed to update language preference');
-    }
-  }
-
-  /// Records that the user accepted the terms of service.
-  /// Backend sets the server-side timestamp — client only sends a flag.
-  /// Fire-and-forget: do not await unless you need confirmation.
-  @override
-  Future<void> recordTermsAcceptance() async {
-    final callable = _functions.httpsCallable('update_user_profile');
-    final response = await callable.call({Fields.termsAcceptedAt: true});
-    final data = response.data as Map<String, dynamic>;
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Failed to record terms acceptance');
     }
   }
 
@@ -125,8 +126,7 @@ class FirebaseUserRepository implements UserRepository {
     return Rx.combineLatest2(
       _firestore.collection(Collections.users).doc(userId).snapshots(),
       _firestore.collection(Collections.sellerProfiles).doc(userId).snapshots(),
-      (DocumentSnapshot userDoc, DocumentSnapshot spDoc) =>
-          _parseSellerStatus(userDoc.data() as Map<String, dynamic>?, spDoc.data() as Map<String, dynamic>?),
+      (DocumentSnapshot userDoc, DocumentSnapshot spDoc) => _parseSellerStatus(userDoc.data() as Map<String, dynamic>?, spDoc.data() as Map<String, dynamic>?),
     );
   }
 
@@ -148,6 +148,7 @@ class FirebaseUserRepository implements UserRepository {
   }
 }
 
+/// Documentation for SellerAccountStatus
 class SellerAccountStatus {
   final bool isSeller;
   final bool chargesEnabled;

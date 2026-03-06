@@ -236,6 +236,7 @@ def _seed_order(db: firestore.Client, *, user_uid: str, user_email: str, product
 
 
 def main() -> int:
+    """Function main."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--admin-email",

@@ -54,6 +54,7 @@ class TestPriceManipulationScenarios:
         }
 
         def make_doc_ref(doc_id=None):
+            """Function make_doc_ref."""
             if doc_id is None:
                 doc_id = "auto_gen_id"
             mock_ref = Mock()
@@ -130,6 +131,7 @@ class TestPriceManipulationScenarios:
         }
 
         def make_doc_ref(doc_id=None):
+            """Function make_doc_ref."""
             if doc_id is None:
                 doc_id = "auto_gen_id"
             mock_ref = Mock()
@@ -237,6 +239,7 @@ class TestRaceConditionScenarios:
         calls = []
 
         def mock_update(updates):
+            """Function mock_update."""
             calls.append(updates)
 
         mock_order.reference.update = mock_update
@@ -323,6 +326,7 @@ class TestAuthSecurityScenarios:
         }
 
         def make_doc_ref(doc_id=None):
+            """Function make_doc_ref."""
             if doc_id is None:
                 doc_id = "auto_gen_id"
             mock_ref = Mock()

@@ -12,7 +12,8 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
-
+nanobanana-output/
+test/goldens/
 # IntelliJ related
 *.iml
 *.ipr
@@ -47,3 +48,8 @@ app.*.map.json
 
 # Patrol generated bundle
 patrol_test/test_bundle.dart
+
+# Android signing / Firebase
+android/key.properties
+android/*.jks
+android/app/google-services.json

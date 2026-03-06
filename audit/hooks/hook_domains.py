@@ -9,6 +9,7 @@ from .prompts import STRUCTURED_OUTPUT_INSTRUCTION, PROJECT_CONTEXT
 
 @register_hook
 class PaymentHook(BaseHook):
+    """Class PaymentHook."""
     hook_name = "payment"
     description = "Payment system: Stripe Connect, checkout, webhooks, capture, refunds"
     emoji = "💳"
@@ -29,6 +30,7 @@ class PaymentHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a senior payment security engineer performing a DEEP audit of a payment system.
 
 {PROJECT_CONTEXT}
@@ -59,6 +61,7 @@ Project files:
 
 @register_hook
 class AuthHook(BaseHook):
+    """Class AuthHook."""
     hook_name = "auth"
     description = "Auth & security: login, sessions, roles, MFA, rate limiting, Firestore rules"
     emoji = "🔐"
@@ -87,6 +90,7 @@ class AuthHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a senior security engineer auditing the AUTHENTICATION & AUTHORIZATION system.
 
 {PROJECT_CONTEXT}
@@ -117,6 +121,7 @@ Project files:
 
 @register_hook
 class ProductHook(BaseHook):
+    """Class ProductHook."""
     hook_name = "product"
     description = "Product lifecycle: creation, validation, cart, stock, Algolia sync"
     emoji = "📦"
@@ -143,6 +148,7 @@ class ProductHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a senior engineer auditing the PRODUCT LIFECYCLE of an e-commerce marketplace.
 
 {PROJECT_CONTEXT}

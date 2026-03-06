@@ -12,6 +12,7 @@ class ModernButton extends StatefulWidget {
   final bool isPrimary;
   final bool isOutlined;
   final IconData? icon;
+  final String? imageIcon;
   final double width;
   final double height;
   final bool fullWidth;
@@ -26,6 +27,7 @@ class ModernButton extends StatefulWidget {
     this.isPrimary = true,
     this.isOutlined = false,
     this.icon,
+    this.imageIcon,
     this.width = double.infinity,
     this.height = 52,
     this.fullWidth = true,
@@ -98,7 +100,10 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (widget.icon != null) ...[
+                                if (widget.imageIcon != null) ...[
+                                  Image.asset(widget.imageIcon!, width: 20, height: 20),
+                                  const SizedBox(width: DesignTokens.spacing8),
+                                ] else if (widget.icon != null) ...[
                                   Icon(widget.icon, color: widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary, size: 18),
                                   const SizedBox(width: DesignTokens.spacing8),
                                 ],

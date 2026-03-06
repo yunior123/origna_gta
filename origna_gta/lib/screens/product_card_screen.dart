@@ -15,6 +15,7 @@ import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:shimmer/shimmer.dart';
 
+/// Documentation for ProductCard
 class ProductCard extends ConsumerStatefulWidget {
   final String productId;
   final Product product;

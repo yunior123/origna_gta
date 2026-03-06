@@ -14,6 +14,7 @@ import time
 
 
 class MockStripeHandler(BaseHTTPRequestHandler):
+    """Class MockStripeHandler."""
     def do_POST(self):
         """Handle POST requests to mock Stripe endpoints"""
         parsed_path = urlparse(self.path)

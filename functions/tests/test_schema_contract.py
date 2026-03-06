@@ -42,6 +42,7 @@ def all_schema_fields(schema: dict) -> set[str]:
     fields = set()
 
     def extract_fields(obj, prefix: str = ""):
+        """Function extract_fields."""
         if isinstance(obj, dict):
             if "fields" in obj and isinstance(obj["fields"], dict):
                 for field_name in obj["fields"]:
@@ -139,6 +140,7 @@ class TestSchemaConsistency:
         violations = []
 
         def check_fields(fields: dict, collection: str):
+            """Function check_fields."""
             for field_name, field_def in fields.items():
                 if field_name in exceptions:
                     continue

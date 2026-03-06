@@ -35,6 +35,7 @@ NC = "\033[0m"
 
 
 def main():
+    """Function main."""
     parser = argparse.ArgumentParser(description="Record deploy versions to Firestore")
     parser.add_argument("--env", required=True, choices=list(ENVIRONMENTS.keys()),
                         help="Target environment: dev, staging, or prod")

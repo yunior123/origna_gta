@@ -13,6 +13,7 @@ final stockNotificationNotifierProvider = StateNotifierProvider.autoDispose
   (ref, args) => StockNotificationNotifier(ref, args.productId, args.variantKey),
 );
 
+/// Documentation for StockNotificationNotifier
 class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
   final Ref _ref;
   final String productId;

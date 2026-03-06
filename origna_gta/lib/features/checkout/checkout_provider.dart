@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_functions/cloud_functions.dart';
@@ -8,6 +9,7 @@ import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/services/analytics_service.dart';
 import 'package:origna_gta/utils/circuit_breaker.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -52,6 +54,7 @@ final _stripeCircuitBreaker = CircuitBreakerRegistry.get('stripe_checkout', conf
 // CHECKOUT NOTIFIER
 // ============================================================================
 
+/// Documentation for CheckoutNotifier
 class CheckoutNotifier extends StateNotifier<CheckoutState> {
   /// Max distance for local delivery option
   static const double _localDeliveryRadiusKm = BusinessRules.localDeliveryRadiusKm;
@@ -165,15 +168,18 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
       // Build delivery item checks from cart items
       final itemChecks = items
-          .map((item) => DeliveryItemCheck(
-                estimatedShipDays: item.estimatedShipDays,
-                isPerishable: item.isPerishable,
-                isLocalOnly: item.isLocalDeliveryOnly,
-                isInternational: item.madeInCountry != null &&
-                    item.madeInCountry!.isNotEmpty &&
-                    item.madeInCountry != CountryValues.canada &&
-                    item.madeInCountry != CountryValues.canadaCode,
-              ))
+          .map(
+            (item) => DeliveryItemCheck(
+              estimatedShipDays: item.estimatedShipDays,
+              isPerishable: item.isPerishable,
+              isLocalOnly: item.isLocalDeliveryOnly,
+              isInternational:
+                  item.madeInCountry != null &&
+                  item.madeInCountry!.isNotEmpty &&
+                  item.madeInCountry != CountryValues.canada &&
+                  item.madeInCountry != CountryValues.canadaCode,
+            ),
+          )
           .toList();
 
       // Determine available delivery speeds
@@ -188,10 +194,14 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         sellerNames: sellerNames,
         isLocalDelivery: isLocal,
         availableDeliverySpeeds: availableSpeeds,
-        deliverySpeed: availableSpeeds.contains(state.deliverySpeed) ? state.deliverySpeed : (availableSpeeds.isNotEmpty ? availableSpeeds.first : DeliverySpeed.standard),
+        deliverySpeed: availableSpeeds.contains(state.deliverySpeed)
+            ? state.deliverySpeed
+            : (availableSpeeds.isNotEmpty ? availableSpeeds.first : DeliverySpeed.standard),
         isCalculatingShipping: false,
         hasInternationalItems: hasIntl,
       );
+
+      unawaited(AnalyticsService.logAddShippingInfo(valueCad: subtotal, shippingCostCad: cost, shippingTier: state.deliverySpeed.name));
 
       // Recalculate taxes — GST/HST applies to shipping costs in Canada
       calculateTaxes(subtotal, shippingCost: cost);
@@ -248,7 +258,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   void setDeliverySpeed(DeliverySpeed speed) {
     if (state.availableDeliverySpeeds.contains(speed)) {
       state = state.copyWith(deliverySpeed: speed);
-      
+
       // F-74: Recalculate shipping whenever speed changes to update international costs
       _ref.read(cartWithDetailsProvider).whenData((items) {
         calculateShipping(items);
@@ -267,7 +277,13 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   /// Start Stripe checkout with idempotency
-  Future<CheckoutResult> startCheckout({required List<CartItemDetailModel> items, required UserModel user, required double subtotal}) async {
+  Future<CheckoutResult> startCheckout({
+    required List<CartItemDetailModel> items,
+    required UserModel user,
+    required double subtotal,
+    bool eulaAccepted = false,
+    bool ageVerificationAccepted = false,
+  }) async {
     if (items.isEmpty) {
       return CheckoutError(message: 'checkout.errors.cart_empty'.tr());
     }
@@ -304,6 +320,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
 
     state = state.copyWith(isProcessing: true, clearCheckoutError: true);
+    unawaited(AnalyticsService.logBeginCheckout(valueCad: subtotal, itemCount: items.length));
 
     try {
       // F-108: Biometric Guard for high-value transactions (> $100 CAD)
@@ -376,7 +393,41 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         if (state.couponCode != null) Fields.couponCode: state.couponCode,
         // Idempotency key — prevents duplicate orders on double-tap / network retry
         ApiKeys.idempotencyKey: idempotencyKey,
+        // EULA acceptance for digital products (compliance requirement)
+        if (items.any((i) => i.isDigital)) ApiKeys.eulaAccepted: eulaAccepted,
+        // Age gate confirmation for age-restricted products (Canadian provincial law)
+        if (items.any((i) => i.isAgeRestricted)) ApiKeys.ageVerificationAccepted: ageVerificationAccepted,
       };
+
+      // F-007: Verify cart prices before hitting Stripe — detect stale prices and stock changes early.
+      // Fail-open: if this call itself errors (network blip), we proceed to checkout and let the backend
+      // catch any drift server-side. We never block checkout on a non-critical pre-flight.
+      try {
+        final functions = _ref.read(firebaseFunctionsProvider);
+        final verifyResult = await functions.httpsCallable(CloudFunctionEndpoints.verifyCartPrices).call({
+          Fields.items: items.map((item) => {Fields.productId: item.productId, Fields.price: item.price, Fields.quantity: item.quantity}).toList(),
+        });
+        final verifyData = (verifyResult.data as Map<Object?, Object?>).cast<String, dynamic>();
+        if (verifyData[ApiKeys.hasChanges] == true) {
+          state = state.copyWith(isProcessing: false);
+          final priceChanges = verifyData[ApiKeys.priceChanges] as List? ?? [];
+          final stockChanges = verifyData[ApiKeys.stockChanges] as List? ?? [];
+          final removedProducts = verifyData[ApiKeys.removedProducts] as List? ?? [];
+          // Build a human-readable summary of what changed
+          final reasons = <String>[
+            if (priceChanges.isNotEmpty) 'checkout.errors.price_changed'.tr(namedArgs: {'count': priceChanges.length.toString()}),
+            if (stockChanges.isNotEmpty) 'checkout.errors.stock_changed'.tr(namedArgs: {'count': stockChanges.length.toString()}),
+            if (removedProducts.isNotEmpty) 'checkout.errors.items_removed'.tr(namedArgs: {'count': removedProducts.length.toString()}),
+          ];
+          return CheckoutError(message: reasons.isEmpty ? 'checkout.errors.cart_changed'.tr() : reasons.join(' '), code: 'price-drift');
+        }
+      } on FirebaseFunctionsException catch (e) {
+        // Non-critical — log and proceed. Backend will catch any drift server-side.
+        AppError.log(e, stackTrace: null, context: 'checkout_verifyCartPrices');
+      } catch (e, st) {
+        // Fail-open on unexpected errors too
+        AppError.log(e, stackTrace: st, context: 'checkout_verifyCartPrices');
+      }
 
       // Use circuit breaker for Stripe checkout calls
       final result = await _stripeCircuitBreaker.execute(() => _orderRepository.createCheckoutSession(orderData));

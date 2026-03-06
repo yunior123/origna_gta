@@ -22,12 +22,12 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
-
 /// Parse an OrderItem from a Firestore map without relying on generated fromJson
 OrderItem _parseOrderItem(dynamic raw) {
   final map = _safeMap(raw);
   return OrderItem(
     productId: _safeString(map[Fields.productId]),
+    cartItemId: map[Fields.cartItemId] as String?, // F-001/F-003: canonical cart item ID
     name: _safeString(map[Fields.name]),
     description: _safeString(map[Fields.description]),
     price: _safeDouble(map[Fields.price]),
@@ -225,6 +225,10 @@ abstract class Order with _$Order {
     // Coupon / promo code (N-07)
     String? couponCode,
     @Default(0) int discountAmountCents,
+    // Phase 3.5 fraud / capture tracking (schema sync fix — AUDIT)
+    @Default(0) int fraudScore,
+    Map<String, dynamic>? sellerCaptures,
+    String? lastCaptureError,
   }) = _Order;
 
   factory Order.fromFirestore(DocumentSnapshot doc) {
@@ -395,9 +399,7 @@ abstract class Order with _$Order {
       payoutErrors: _safeStringList(data[Fields.payoutErrors]),
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
       // Parse tax fields
-      itemTaxes: (data[Fields.itemTaxes] as List<dynamic>?)
-          ?.map((e) => _safeMap(e))
-          .toList() ?? [],
+      itemTaxes: (data[Fields.itemTaxes] as List<dynamic>?)?.map((e) => _safeMap(e)).toList() ?? [],
       taxExempt: _safeBool(data[Fields.taxExempt]),
       taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
       // Delivery instructions from buyer
@@ -405,6 +407,10 @@ abstract class Order with _$Order {
       // Coupon / promo code (N-07)
       couponCode: data[Fields.couponCode] != null ? _safeString(data[Fields.couponCode]) : null,
       discountAmountCents: _safeInt(data[Fields.discountAmountCents]),
+      // Phase 3.5 fraud / capture tracking (schema sync fix)
+      fraudScore: _safeInt(data[Fields.fraudScore]),
+      sellerCaptures: data[Fields.sellerCaptures] != null ? _safeMap(data[Fields.sellerCaptures]) : null,
+      lastCaptureError: data[Fields.lastCaptureError] != null ? _safeString(data[Fields.lastCaptureError]) : null,
     );
   }
 
@@ -465,6 +471,7 @@ abstract class OrderCreate with _$OrderCreate {
 abstract class OrderItem with _$OrderItem {
   const factory OrderItem({
     required String productId,
+    String? cartItemId, // F-001/F-003: canonical cart item ID — survives duplicate-productId carts
     required String name,
     required String description,
     required double price,
@@ -511,7 +518,8 @@ abstract class OrderItem with _$OrderItem {
     String? taxCode,
     String? buyerNote, // ADDED
     String? fulfillmentWarehouseId, // TASK 02: warehouse from which this item was fulfilled
-  }) = _OrderItem;  factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
+  }) = _OrderItem;
+  factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
 
   const OrderItem._();
 

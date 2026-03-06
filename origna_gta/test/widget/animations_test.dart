@@ -7,11 +7,7 @@ void main() {
     testWidgets('renders child widget', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: FadeSlideIn(
-              child: Text('Test Content'),
-            ),
-          ),
+          home: Scaffold(body: FadeSlideIn(child: Text('Test Content'))),
         ),
       );
 
@@ -21,11 +17,7 @@ void main() {
     testWidgets('applies fade and slide transitions', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: FadeSlideIn(
-              child: Text('Animated'),
-            ),
-          ),
+          home: Scaffold(body: FadeSlideIn(child: Text('Animated'))),
         ),
       );
 
@@ -33,20 +25,14 @@ void main() {
       expect(find.byType(FadeSlideIn), findsOneWidget);
 
       // FadeSlideIn wraps child in SlideTransition
-      expect(find.descendant(
-        of: find.byType(FadeSlideIn),
-        matching: find.byType(SlideTransition),
-      ), findsOneWidget);
+      expect(find.descendant(of: find.byType(FadeSlideIn), matching: find.byType(SlideTransition)), findsOneWidget);
     });
 
     testWidgets('animation completes after duration', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: FadeSlideIn(
-              duration: Duration(milliseconds: 400),
-              child: Text('Slow Animation'),
-            ),
+            body: FadeSlideIn(duration: Duration(milliseconds: 400), child: Text('Slow Animation')),
           ),
         ),
       );
@@ -54,7 +40,7 @@ void main() {
       // Complete the animation
       await tester.pumpAndSettle();
 
-      // Widget should still be rendered
+      // Rendering still active
       expect(find.text('Slow Animation'), findsOneWidget);
     });
 
@@ -62,15 +48,12 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: FadeSlideIn(
-              delay: Duration(milliseconds: 200),
-              child: Text('Delayed'),
-            ),
+            body: FadeSlideIn(delay: Duration(milliseconds: 200), child: Text('Delayed')),
           ),
         ),
       );
 
-      // Widget renders immediately
+      // It renders immediately
       expect(find.text('Delayed'), findsOneWidget);
 
       // Pump past the delay
@@ -79,7 +62,7 @@ void main() {
       // Complete animation
       await tester.pumpAndSettle();
 
-      // Widget should still be there
+      // It should still be there
       expect(find.text('Delayed'), findsOneWidget);
     });
   });
@@ -88,15 +71,7 @@ void main() {
     testWidgets('renders all children', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: StaggeredList(
-              children: [
-                Text('Item 1'),
-                Text('Item 2'),
-                Text('Item 3'),
-              ],
-            ),
-          ),
+          home: Scaffold(body: StaggeredList(children: [Text('Item 1'), Text('Item 2'), Text('Item 3')])),
         ),
       );
 
@@ -113,10 +88,7 @@ void main() {
           home: Scaffold(
             body: StaggeredList(
               staggerDelay: Duration.zero, // No delay for testing
-              children: [
-                Text('A'),
-                Text('B'),
-              ],
+              children: [Text('A'), Text('B')],
             ),
           ),
         ),
@@ -132,12 +104,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: StaggeredList(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Test'),
-              ],
-            ),
+            body: StaggeredList(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Test')]),
           ),
         ),
       );
@@ -146,10 +113,7 @@ void main() {
       final staggeredList = find.byType(StaggeredList);
       expect(staggeredList, findsOneWidget);
 
-      final column = find.descendant(
-        of: staggeredList,
-        matching: find.byType(Column),
-      );
+      final column = find.descendant(of: staggeredList, matching: find.byType(Column));
       expect(column, findsOneWidget);
     });
   });
@@ -159,10 +123,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: AnimatedEmptyState(
-              icon: Icons.shopping_cart,
-              title: 'Your cart is empty',
-            ),
+            body: AnimatedEmptyState(icon: Icons.shopping_cart, title: 'Your cart is empty'),
           ),
         ),
       );
@@ -177,11 +138,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: AnimatedEmptyState(
-              icon: Icons.inventory,
-              title: 'No products',
-              subtitle: 'Add some products to get started',
-            ),
+            body: AnimatedEmptyState(icon: Icons.inventory, title: 'No products', subtitle: 'Add some products to get started'),
           ),
         ),
       );
@@ -196,10 +153,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: AnimatedEmptyState(
-              icon: Icons.error,
-              title: 'Error occurred',
-            ),
+            body: AnimatedEmptyState(icon: Icons.error, title: 'Error occurred'),
           ),
         ),
       );
@@ -217,10 +171,7 @@ void main() {
             body: AnimatedEmptyState(
               icon: Icons.search,
               title: 'No results',
-              action: ElevatedButton(
-                onPressed: () {},
-                child: const Text('Try Again'),
-              ),
+              action: ElevatedButton(onPressed: () {}, child: const Text('Try Again')),
             ),
           ),
         ),
@@ -236,10 +187,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: AnimatedEmptyState(
-              icon: Icons.info,
-              title: 'Information',
-            ),
+            body: AnimatedEmptyState(icon: Icons.info, title: 'Information'),
           ),
         ),
       );
@@ -247,10 +195,7 @@ void main() {
       expect(find.byType(AnimatedEmptyState), findsOneWidget);
 
       // AnimatedEmptyState should contain ScaleTransition
-      expect(find.descendant(
-        of: find.byType(AnimatedEmptyState),
-        matching: find.byType(ScaleTransition),
-      ), findsOneWidget);
+      expect(find.descendant(of: find.byType(AnimatedEmptyState), matching: find.byType(ScaleTransition)), findsOneWidget);
     });
   });
 
@@ -259,13 +204,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ScaleBounce(
-              child: Container(
-                width: 100,
-                height: 100,
-                color: Colors.blue,
-              ),
-            ),
+            body: ScaleBounce(child: Container(width: 100, height: 100, color: Colors.blue)),
           ),
         ),
       );
@@ -278,23 +217,13 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: Center(
-              child: ScaleBounce(
-                scaleDown: 0.9,
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  color: Colors.red,
-                ),
-              ),
+              child: ScaleBounce(scaleDown: 0.9, child: Container(width: 100, height: 100, color: Colors.red)),
             ),
           ),
         ),
       );
 
-      expect(find.descendant(
-        of: find.byType(ScaleBounce),
-        matching: find.byType(ScaleTransition),
-      ), findsOneWidget);
+      expect(find.descendant(of: find.byType(ScaleBounce), matching: find.byType(ScaleTransition)), findsOneWidget);
     });
 
     testWidgets('calls onTap callback when tapped', (tester) async {
@@ -306,11 +235,7 @@ void main() {
             body: Center(
               child: ScaleBounce(
                 onTap: () => tapped = true,
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  color: Colors.green,
-                ),
+                child: Container(width: 100, height: 100, color: Colors.green),
               ),
             ),
           ),
@@ -328,22 +253,13 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: Center(
-              child: ScaleBounce(
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  color: Colors.purple,
-                ),
-              ),
+              child: ScaleBounce(child: Container(width: 100, height: 100, color: Colors.purple)),
             ),
           ),
         ),
       );
 
-      expect(find.descendant(
-        of: find.byType(ScaleBounce),
-        matching: find.byType(GestureDetector),
-      ), findsOneWidget);
+      expect(find.descendant(of: find.byType(ScaleBounce), matching: find.byType(GestureDetector)), findsOneWidget);
     });
   });
 }

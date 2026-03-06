@@ -1,9 +1,11 @@
+"""Module optimize_secrets.py."""
 import subprocess
 import json
 
 PROJECTS = ["orignagta-dev", "orignagta-staging", "orignagta"]
 
 def run_command(cmd, capture_output=True):
+    """Function run_command."""
     try:
         result = subprocess.run(cmd, shell=True, capture_output=capture_output, text=True, check=True)
         return result.stdout.strip()
@@ -12,6 +14,7 @@ def run_command(cmd, capture_output=True):
         return None
 
 def get_secrets(project):
+    """Function get_secrets."""
     print(f"Listing secrets for {project}...")
     output = run_command(f"gcloud secrets list --project {project} --format=json")
     if not output:
@@ -19,21 +22,25 @@ def get_secrets(project):
     return json.loads(output)
 
 def get_versions(project, secret_name):
+    """Function get_versions."""
     output = run_command(f"gcloud secrets versions list {secret_name} --project {project} --format=json")
     if not output:
         return []
     return json.loads(output)
 
 def disable_version(project, secret_name, version):
+    """Function disable_version."""
     print(f"Disabling version {version} of {secret_name} in {project}...")
     run_command(f"gcloud secrets versions disable {version} --secret={secret_name} --project={project}")
 
 def delete_secret(project, secret_name):
+    """Function delete_secret."""
     print(f"DELETING secret {secret_name} in {project}...")
     # Using --quiet to avoid interactive confirmation
     run_command(f"gcloud secrets delete {secret_name} --project={project} --quiet")
 
 def optimize_project(project):
+    """Function optimize_project."""
     print(f"\n=== Optimizing Project: {project} ===")
     secrets = get_secrets(project)
     

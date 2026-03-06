@@ -1,5 +1,6 @@
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
+/// Documentation for AddressState
 class AddressState {
   final bool isLoading;
   final String? selectedProvince;

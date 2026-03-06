@@ -7,6 +7,10 @@ import 'package:origna_gta/utils/design_tokens.dart';
 Widget previewEnvBanners() =>
     previewGrid(children: [_bannerCard('BETA', DesignTokens.info), _bannerCard('DEV', DesignTokens.warning), _bannerCard('STAGING', DesignTokens.secondary)]);
 
+@Preview(name: 'Env Banners Light', group: 'EnvPreviewBanner')
+Widget previewEnvBannersLight() =>
+    previewGrid(theme: previewLightTheme, children: [_bannerCard('BETA', DesignTokens.info), _bannerCard('DEV', DesignTokens.warning), _bannerCard('STAGING', DesignTokens.secondary)]);
+
 Widget _bannerCard(String label, Color color) => Container(
   height: 100,
   decoration: BoxDecoration(border: Border.all(color: DesignTokens.darkOutline)),

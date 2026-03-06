@@ -782,6 +782,7 @@ def submit_product_rating_atomic(req: https_fn.CallableRequest) -> dict[str, Any
     @get_firestore().transactional
     def update_rating_txn(transaction):
         # Duplicate check by order (prevents double-click)
+        """Function update_rating_txn."""
         existing_order = list(get_db().collection(Collections.PRODUCT_RATINGS).where(Fields.ORDER_ID, "==", order_id).limit(1).stream(transaction=transaction))
         if existing_order:
             _txn_error["err"] = https_fn.HttpsError("already-exists", "Already rated")
@@ -972,6 +973,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     def update_rating_transaction(transaction):
         # FIX C-2: Dual duplicate guard — by order (prevents double-click) AND by user+product
         # (prevents rating inflation when a user buys the same product in multiple orders).
+        """Function update_rating_transaction."""
         existing_order = list(
             get_db()
             .collection(Collections.PRODUCT_RATINGS)
@@ -3193,6 +3195,7 @@ def admin_update_warehouse_commission(req: https_fn.CallableRequest) -> dict[str
     @get_firestore().transactional
     def update_commission_txn(transaction):
         # Update warehouse doc
+        """Function update_commission_txn."""
         transaction.update(wh_ref, {
             Fields.COMMISSION_RATE_BPS: new_rate_bps,
             Fields.UPDATED_AT: get_server_timestamp(),
@@ -4044,6 +4047,7 @@ def toggle_favorite(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     @get_firestore().transactional
     def toggle_fav_txn(transaction):
+        """Function toggle_fav_txn."""
         fav_snap = fav_ref.get(transaction=transaction)
         p_snap = product_ref.get(transaction=transaction)
 
@@ -4397,6 +4401,7 @@ def admin_delete_product_question(req: https_fn.CallableRequest) -> dict[str, An
     @get_firestore().transactional
     def delete_question_txn(transaction):
         # 1. Audit log
+        """Function delete_question_txn."""
         audit_ref = get_db().collection("admin_audit_log").document()
         transaction.set(audit_ref, {
             "action": "delete_product_question",
@@ -4454,6 +4459,7 @@ def admin_delete_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]
 
     @get_firestore().transactional
     def delete_rating_txn(transaction):
+        """Function delete_rating_txn."""
         p_snap = product_ref.get(transaction=transaction)
         if not p_snap.exists:
             # Still delete the rating even if product is gone

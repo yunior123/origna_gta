@@ -10,6 +10,7 @@ from .prompts import STRUCTURED_OUTPUT_INSTRUCTION, PROJECT_CONTEXT
 
 @register_hook
 class TaxHook(BaseHook):
+    """Class TaxHook."""
     hook_name = "tax"
     description = "Tax compliance: GST/HST/PST/QST rates, Stripe Tax, exemptions, CRA compliance"
     emoji = "🧾"
@@ -47,6 +48,7 @@ class TaxHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a senior tax compliance engineer auditing the CANADIAN TAX SYSTEM of a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 {PROJECT_CONTEXT}

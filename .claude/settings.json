@@ -8,6 +8,11 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-production.sh",
             "statusMessage": "Checking production safety..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-secrets-files.sh",
+            "statusMessage": "Checking secrets file guard..."
           }
         ]
       }
@@ -16,6 +21,11 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/flutter-analyze-dart.sh",
+            "statusMessage": "Running flutter analyze on edited file..."
+          },
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/validate-schema-sync.sh",

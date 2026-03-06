@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -479,10 +478,10 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
   Future<void> _checkVerification() async {
     setState(() => _isChecking = true);
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = ref.read(currentUserProvider);
       if (user != null) {
         await user.reload();
-        final freshUser = FirebaseAuth.instance.currentUser;
+        final freshUser = ref.read(firebaseAuthProvider).currentUser;
         if (freshUser != null && freshUser.emailVerified) {
           await ref.read(authRepositoryProvider).ensureUserDocumentExists();
           if (mounted) {

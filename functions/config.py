@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class Environment(Enum):
+    """Class Environment."""
     EMULATOR = "emulator"  # Local development with Firebase emulators
     DEV = "dev"  # Development Firebase project (orignagta-dev)
     STAGING = "staging"  # Staging Firebase project (orignagta-staging)
@@ -118,6 +119,7 @@ UNSUBSCRIBE_URL = CURRENT_ENV.get_unsubscribe_url()
 
 
 class CaptureMethod:
+    """Class CaptureMethod."""
     MANUAL = "manual"
     AUTOMATIC = "automatic"
 
@@ -135,6 +137,19 @@ PREMIUM_MONTHLY_PRICE_CAD = BusinessRules.PREMIUM_MONTHLY_PRICE_CAD
 PREMIUM_MONTHLY_PRICE_CENTS = BusinessRules.PREMIUM_MONTHLY_PRICE_CENTS
 AUTO_CONFIRM_DAYS = BusinessRules.AUTO_CONFIRM_DAYS
 SHIPPING_APPROVAL_THRESHOLD = BusinessRules.SHIPPING_APPROVAL_THRESHOLD
+
+# ============================================================================
+# FIRESTORE BACKUP — GCS bucket per environment (daily export via Admin API)
+# Bucket naming: <project_id>-backups (e.g. orignagta-backups for prod)
+# IAM needed: Cloud Functions SA → roles/datastore.importExportAdmin + roles/storage.objectAdmin
+# ============================================================================
+
+_BACKUP_BUCKETS: dict[str, str] = {
+    "orignagta-dev": "gs://orignagta-dev-backups",
+    "orignagta-staging": "gs://orignagta-staging-backups",
+    "orignagta": "gs://orignagta-backups",
+}
+BACKUP_BUCKET: str = _BACKUP_BUCKETS.get(PROJECT_ID, f"gs://{PROJECT_ID}-backups")
 
 # ============================================================================
 # R2 STORAGE CONFIGURATION - REAL service, environment-aware paths
@@ -413,6 +428,7 @@ def get_r2_credentials() -> dict:
 
 
 def get_sentry_dsn() -> str:
+    """Function get_sentry_dsn."""
     if _USE_LOCAL:
         return _load_secret("SENTRY_DSN_BACKEND", required=False)
     return _secrets().get("sentry", "")

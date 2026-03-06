@@ -9,6 +9,7 @@ final qaRepositoryProvider = Provider<QARepository>((ref) {
   return FirebaseQARepository(ref.watch(firestoreProvider), ref.watch(firebaseFunctionsProvider));
 });
 
+/// Documentation for FirebaseQARepository
 class FirebaseQARepository implements QARepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;

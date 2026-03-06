@@ -24,6 +24,7 @@ Future<void> showRatingDialog({
   );
 }
 
+/// Documentation for RatingDialog
 class RatingDialog extends ConsumerStatefulWidget {
   final String orderId;
   final String productId;

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../utils/design_tokens.dart';
 
@@ -141,7 +142,11 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                     child: CachedNetworkImage(
                                       imageUrl: widget.imageUrl,
                                       fit: BoxFit.cover,
-                                      placeholder: (context, url) => const SizedBox.shrink(),
+                                      placeholder: (context, url) => Shimmer.fromColors(
+                                        baseColor: DesignTokens.outlineVariant,
+                                        highlightColor: DesignTokens.surface,
+                                        child: Container(color: Colors.white),
+                                      ),
                                       errorWidget: (context, url, error) => Center(
                                         child: Container(
                                           width: 52,

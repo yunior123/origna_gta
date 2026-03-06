@@ -1,6 +1,6 @@
 ---
 name: adversarial-logic-architect
-description: Mastermind logic for predicting and mitigating malicious behavior, race conditions, and system-wide edge cases (Magnus Carlsen approach).
+description: Use when designing or reviewing security-critical features, anticipating malicious user behavior, race conditions, or system-wide edge cases in OrignaGTA.
 ---
 
 # Adversarial Logic Architect Skill

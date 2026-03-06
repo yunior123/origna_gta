@@ -47,6 +47,10 @@ class OrderItem(BaseModel):
     )
 
     productId: str = Field(..., min_length=1)
+    cartItemId: str | None = Field(
+        default=None,
+        description="Canonical cart item ID — opaque key that survives duplicate-productId carts (F-001/F-003)",
+    )
     name: str = Field(..., min_length=1, max_length=120)
     description: str = Field(default="", max_length=4000)
     price: float = Field(..., gt=0)
@@ -78,6 +82,7 @@ class OrderItem(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
+        """Function validate_status."""
         if v not in DeliveryStatusValues.ALL:
             raise ValueError(f"Invalid status: {v}. Must be one of: {DeliveryStatusValues.ALL}")
         return v
@@ -85,6 +90,7 @@ class OrderItem(BaseModel):
     @field_validator("carrier")
     @classmethod
     def validate_carrier(cls, v: str | None) -> str | None:
+        """Function validate_carrier."""
         if v is not None and v not in CarrierValues.ALL:
             raise ValueError(f"carrier must be one of {CarrierValues.ALL}")
         return v
@@ -202,6 +208,7 @@ class SellerPayout(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
+        """Function validate_status."""
         if v not in PayoutStatusValues.ALL:
             raise ValueError(f"Invalid payout status: {v}. Must be one of: {PayoutStatusValues.ALL}")
         return v
@@ -323,6 +330,7 @@ class Order(BaseModel):
     @field_validator("currency")
     @classmethod
     def validate_currency(cls, v: str) -> str:
+        """Function validate_currency."""
         if v.lower() not in BusinessRules.SUPPORTED_SELLING_CURRENCIES:
             raise ValueError(f"Only {BusinessRules.SUPPORTED_SELLING_CURRENCIES} currencies supported")
         return v.lower()
@@ -330,6 +338,7 @@ class Order(BaseModel):
     @field_validator("payoutStatus")
     @classmethod
     def validate_payout_status(cls, v: str) -> str:
+        """Function validate_payout_status."""
         if v not in PayoutStatusValues.ALL:
             raise ValueError(f"Invalid payout status: {v}")
         return v

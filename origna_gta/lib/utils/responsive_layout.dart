@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+/// Documentation for ResponsiveBreakpoints
 class ResponsiveBreakpoints {
   // Standard breakpoints (matching common device sizes)
   static const double mobile = 320; // 320px (small phones)
@@ -15,6 +16,32 @@ class ResponsiveBreakpoints {
   static const double desktopXl = 1440; // 1440px (wide/ultrawide displays)
   static const double contentMaxWidth = 1200; // max content width on web/desktop
   static const double sidebarWidth = 280; // sidebar for desktop layouts
+
+  // Product card aspect ratios (width ÷ height). Lower value = taller card.
+  // Content area (Expanded flex:4) must fit: 2-line title + optional trending
+  // view-count row + rating row + price + delivery chip.
+  // Ratios sized for worst case (all optional rows visible: trending + delivery).
+  // Empirically verified via Gemini visual audit 2026-03-04 — 20dp safety margin:
+  //   mobile 2-col ~165px wide → height ≥ 266px → 0.62
+  //   mobilePlus 2-col ~215px wide → height ≥ 320px → 0.67
+  //   tablet 3-col ~235px wide → height ≥ 336px → 0.70
+  //   desktop 6-col ~224px wide → height ≥ 361px → 0.62
+  static const double cardAspectMobile = 0.62;
+  static const double cardAspectMobilePlus = 0.67;
+  static const double cardAspectTablet = 0.70;
+  static const double cardAspectDesktop = 0.62;
+
+  // Aspect ratios for seller/admin cards — management action row adds ~32–48 dp.
+  static const double cardAspectMobileManage = 0.53;
+  static const double cardAspectMobilePlusManage = 0.58;
+  static const double cardAspectTabletManage = 0.60;
+  static const double cardAspectDesktopManage = 0.53;
+
+  /// Maximum height for dropdown/popup menus — 40 % of the viewport height.
+  /// Using a viewport fraction avoids magic pixel values and adapts across
+  /// screen sizes (phones, tablets, desktops) automatically.
+  static double dropdownMaxHeight(BuildContext context) =>
+      MediaQuery.sizeOf(context).height * 0.40;
 
   /// Get font scale factor for responsive text
   static double getFontScale(BuildContext context) {

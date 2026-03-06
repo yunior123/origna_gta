@@ -1,6 +1,6 @@
 ---
 name: flutter-semantics-playwright
-description: Flutter Web Semantics architecture for Playwright E2E testing. Load before writing or debugging any Playwright E2E test, or modifying Semantics labels.
+description: Use when writing or debugging Playwright E2E tests, or modifying Flutter Semantics labels — covers flt-semantics DOM structure, aria-label vs text selectors, and selector patterns.
 ---
 
 # Flutter Web Semantics → Playwright E2E Testing

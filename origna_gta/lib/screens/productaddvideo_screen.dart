@@ -9,6 +9,7 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:video_player/video_player.dart';
 
+/// Documentation for ProductAddVideo
 class ProductAddVideo extends StatefulWidget {
   final XFile? videoFile;
   final String? existingVideoUrl; // For edit screen

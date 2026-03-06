@@ -30,6 +30,7 @@ EMULATOR_BASE_URL = f"http://127.0.0.1:5001/{PROJECT_ID}/{REGION}"
 
 
 class Colors:
+    """Class Colors."""
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"
     OKCYAN = "\033[96m"
@@ -42,10 +43,12 @@ class Colors:
 
 
 def print_header(text):
+    """Function print_header."""
     print(f"\n{Colors.HEADER}{Colors.BOLD}=== {text} ==={Colors.ENDC}")
 
 
 def print_result(name, method, url, status, passed, duration_ms, error=None):
+    """Function print_result."""
     icon = "✅" if passed else "❌"
     color = Colors.OKGREEN if passed else Colors.FAIL
     print(f"{icon} {color}{method} {name}{Colors.ENDC}")
@@ -56,6 +59,7 @@ def print_result(name, method, url, status, passed, duration_ms, error=None):
 
 
 def run_test(test_case, base_url):
+    """Function run_test."""
     url = test_case.get("absolute_url") or f"{base_url}/{test_case['endpoint']}"
     method = test_case.get("method", "POST")
     headers = test_case.get("headers", {"Content-Type": "application/json"})
@@ -96,6 +100,7 @@ def run_test(test_case, base_url):
 
 
 def main():
+    """Function main."""
     use_emulator = "--emulator" in sys.argv
     base_url = EMULATOR_BASE_URL if use_emulator else DEFAULT_BASE_URL
 

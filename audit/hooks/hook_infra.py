@@ -697,6 +697,7 @@ class InfraHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a senior DevOps/SRE engineer verifying PRODUCTION READINESS for a March 2026 launch.
 
 {PROJECT_CONTEXT}

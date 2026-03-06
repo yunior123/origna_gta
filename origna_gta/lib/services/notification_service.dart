@@ -24,6 +24,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('Background FCM message received: ${message.messageId}');
 }
 
+/// Documentation for NotificationService
 class NotificationService {
   static final NotificationService instance = NotificationService._internal();
 

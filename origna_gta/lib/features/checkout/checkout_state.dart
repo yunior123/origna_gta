@@ -9,6 +9,7 @@ import 'package:origna_gta/utils/utils.dart';
 
 sealed class CheckoutResult {}
 
+/// Documentation for CheckoutSuccess
 class CheckoutSuccess extends CheckoutResult {
   final String checkoutUrl;
   final String orderId;
@@ -17,6 +18,7 @@ class CheckoutSuccess extends CheckoutResult {
   CheckoutSuccess({required this.checkoutUrl, required this.orderId, required this.sessionId});
 }
 
+/// Documentation for CheckoutError
 class CheckoutError extends CheckoutResult {
   final String message;
   final String? code;
@@ -24,6 +26,7 @@ class CheckoutError extends CheckoutResult {
   CheckoutError({required this.message, this.code});
 }
 
+/// Documentation for CheckoutAlreadyProcessed
 class CheckoutAlreadyProcessed extends CheckoutResult {
   final String existingOrderId;
 
@@ -35,6 +38,7 @@ class CheckoutAlreadyProcessed extends CheckoutResult {
 // ============================================================================
 
 @immutable
+/// Documentation for CheckoutState
 class CheckoutState {
   final Address? address;
   final double baseShippingCost; // Base shipping before delivery speed surcharge

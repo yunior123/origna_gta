@@ -1,3 +1,4 @@
+"""Module test_tax_audit.py."""
 import os
 import sys
 import unittest
@@ -16,7 +17,9 @@ mock_stripe = MagicMock()
 
 # Decorator passthrough
 def pass_through_decorator(*args, **kwargs):
+    """Function pass_through_decorator."""
     def decorator(f):
+        """Function decorator."""
         return f
 
     return decorator
@@ -30,7 +33,9 @@ mock_firebase_admin.firestore.transactional = lambda f: f
 
 
 class MockHttpsError(Exception):
+    """Class MockHttpsError."""
     def __init__(self, code, message, details=None):
+        """Function __init__."""
         self.code = code
         self.message = message
         self.details = details
@@ -65,8 +70,10 @@ with patch.dict(sys.modules, module_mocks):
 
 
 class TestTaxAudit(unittest.TestCase):
+    """Class TestTaxAudit."""
     def setUp(self):
         # CRITICAL: Reset module-level globals before each test
+        """Function setUp."""
         payment_stripe._db = None
         payment_stripe._rate_limiter = None
         payment_stripe._firestore = None
@@ -87,7 +94,7 @@ class TestTaxAudit(unittest.TestCase):
         self.patcher_rate_limiter = patch.object(
             payment_stripe, "get_rate_limiter", return_value=self.mock_rate_limiter
         )
-        self.patcher_shipping = patch.object(main, "calculate_shipping_cost", return_value=0.0)
+        self.patcher_shipping = patch.object(main, "calculate_shipping_cost", return_value=(0.0, {}))
 
         self.patcher_db.start()
         self.patcher_rate_limiter.start()
@@ -109,6 +116,7 @@ class TestTaxAudit(unittest.TestCase):
         self.mock_db.get_all = MagicMock(side_effect=_get_all_impl)
 
     def tearDown(self):
+        """Function tearDown."""
         self.patcher_db.stop()
         self.patcher_rate_limiter.stop()
         self.patcher_shipping.stop()
@@ -185,9 +193,11 @@ class TestTaxAudit(unittest.TestCase):
 
         # Setup mock db to return different docs based on collection/document
         def mock_collection(name):
+            """Function mock_collection."""
             mock_coll = MagicMock()
 
             def mock_document(doc_id=None):
+                """Function mock_document."""
                 mock_doc_ref = MagicMock()
                 mock_doc_ref.id = doc_id or "order_123"
                 if name == "users":
@@ -298,9 +308,11 @@ class TestTaxAudit(unittest.TestCase):
 
         # Setup mock db to return different docs based on collection/document
         def mock_collection(name):
+            """Function mock_collection."""
             mock_coll = MagicMock()
 
             def mock_document(doc_id=None):
+                """Function mock_document."""
                 mock_doc_ref = MagicMock()
                 mock_doc_ref.id = doc_id or "order_123"
                 if name == "users":

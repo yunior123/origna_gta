@@ -10,6 +10,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Documentation for AdminSecurityTab
 class AdminSecurityTab extends ConsumerStatefulWidget {
   const AdminSecurityTab({super.key});
 

@@ -11,6 +11,7 @@ import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+/// Documentation for OrderSuccessScreen
 class OrderSuccessScreen extends StatefulWidget {
   final String orderId;
   final double valueCad;

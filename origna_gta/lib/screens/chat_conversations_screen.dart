@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/chat/chat_provider.dart';
 import 'package:origna_gta/features/chat/chat_repository.dart';
@@ -14,6 +14,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 
+/// Documentation for ChatConversationsScreen
 class ChatConversationsScreen extends ConsumerWidget {
   const ChatConversationsScreen({super.key});
 
@@ -68,7 +69,7 @@ class _ChatInboxBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final threadsAsync = ref.watch(myAllChatsProvider);
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final uid = ref.watch(userIdProvider) ?? '';
 
     return threadsAsync.when(
       loading: () => const Center(child: ModernLoadingIndicator()),

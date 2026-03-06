@@ -1,3 +1,4 @@
+"""Module cleanup_db.py."""
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os

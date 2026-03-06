@@ -352,6 +352,7 @@ class ShippingQuantityDiscount {
   };
 }
 
+/// Documentation for SellerDeliveryOption
 class SellerDeliveryOption {
   final String type; // pickup | standard | express | same_day | custom
   final String description;

@@ -8,6 +8,7 @@ import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:shimmer/shimmer.dart';
 
+/// Documentation for CartItemScreen
 class CartItemScreen extends StatelessWidget {
   final String productId;
   final String cartItemId;
@@ -26,7 +27,7 @@ class CartItemScreen extends StatelessWidget {
     final buyerNote = item[Fields.buyerNote] as String?;
 
     return Dismissible(
-      key: ValueKey('dismiss_$productId'),
+      key: ValueKey('dismiss_$cartItemId'),
       direction: DismissDirection.endToStart,
       onDismissed: (_) => onRemove(),
       confirmDismiss: (_) async {
@@ -105,7 +106,7 @@ class CartItemScreen extends StatelessWidget {
                       // Price display wrapped in Consumer - only this rebuilds when quantity changes
                       Consumer(
                         builder: (context, ref, _) {
-                          final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
+                          final quantityAsync = ref.watch(cartItemQuantityProvider(cartItemId));
                           final quantity = quantityAsync.valueOrNull ?? 1;
                           final totalPrice = unitPrice * quantity;
                           return ShaderMask(
@@ -120,7 +121,7 @@ class CartItemScreen extends StatelessWidget {
                       // Unit price hint when qty > 1
                       Consumer(
                         builder: (context, ref, _) {
-                          final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
+                          final quantityAsync = ref.watch(cartItemQuantityProvider(cartItemId));
                           final quantity = quantityAsync.valueOrNull ?? 1;
                           if (quantity <= 1) return const SizedBox.shrink();
                           return Padding(
@@ -140,7 +141,7 @@ class CartItemScreen extends StatelessWidget {
                   children: [
                     Consumer(
                       builder: (context, ref, _) {
-                        final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
+                        final quantityAsync = ref.watch(cartItemQuantityProvider(cartItemId));
                         final quantity = quantityAsync.valueOrNull ?? 0;
                         final cartController = ref.read(cartControllerProvider);
 
@@ -156,7 +157,7 @@ class CartItemScreen extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               _QuantityButton(
-                                key: Key('cart_qty_minus_$productId'),
+                                key: Key('cart_qty_minus_$cartItemId'),
                                 icon: Icons.remove_rounded,
                                 onPressed: quantity > 1 ? () => cartController.updateQuantity(cartItemId, quantity - 1) : null,
                                 isDark: isDark,
@@ -175,7 +176,7 @@ class CartItemScreen extends StatelessWidget {
                                 ),
                               ),
                               _QuantityButton(
-                                key: Key('cart_qty_plus_$productId'),
+                                key: Key('cart_qty_plus_$cartItemId'),
                                 icon: Icons.add_rounded,
                                 onPressed: () async {
                                   // AUDIT FIX (H6): Show feedback if stock limit reached
@@ -427,9 +428,13 @@ class CartItemScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  initialNote == null ? 'cart.item_note_add'.tr() : 'cart.item_note_edit'.tr(),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                Flexible(
+                  child: Text(
+                    initialNote == null ? 'cart.item_note_add'.tr() : 'cart.item_note_edit'.tr(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
                 ),
                 IconButton(icon: const Icon(Icons.close_rounded), tooltip: 'common.close'.tr(), onPressed: () => Navigator.pop(context)),
               ],

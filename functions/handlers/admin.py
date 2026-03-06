@@ -485,6 +485,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
         if product_updates:
             @get_firestore().transactional
             def restore_stock_batch(transaction):
+                """Function restore_stock_batch."""
                 product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_updates]
                 snapshots = list(transaction.get_all(product_refs))
                 for snapshot in snapshots:
@@ -809,7 +810,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action=RateLimitActions.MFA_ENROLL, max_requests=3, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.MFA_ENROLL, max_requests=3, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)
@@ -949,15 +950,19 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
         time.sleep(min_response_time - elapsed)
 
     if not code_valid:
-        attempt_update = {Fields.MFA_FAILED_ATTEMPTS: mfa_attempts + 1}
-        if mfa_attempts + 1 >= BusinessRules.MFA_MAX_ATTEMPTS:
-            # Lock out after max failures
-            attempt_update[Fields.MFA_LOCKOUT_UNTIL] = datetime.now(UTC) + timedelta(
-                minutes=BusinessRules.MFA_LOCKOUT_MINUTES
-            )
-            attempt_update[Fields.MFA_FAILED_ATTEMPTS] = 0
+        # AUDIT FIX (TOCTOU): Use atomic Increment to avoid race condition where
+        # concurrent bad attempts both read the same counter value and both write
+        # mfa_attempts+1, effectively halving the lockout enforcement.
+        security_ref.update({Fields.MFA_FAILED_ATTEMPTS: get_firestore().Increment(1)})
+        # Re-read to get the post-increment value for lockout decision
+        fresh_security = security_ref.get().to_dict() or {}
+        new_attempt_count = fresh_security.get(Fields.MFA_FAILED_ATTEMPTS, 1)
+        if new_attempt_count >= BusinessRules.MFA_MAX_ATTEMPTS:
+            security_ref.update({
+                Fields.MFA_LOCKOUT_UNTIL: datetime.now(UTC) + timedelta(minutes=BusinessRules.MFA_LOCKOUT_MINUTES),
+                Fields.MFA_FAILED_ATTEMPTS: 0,
+            })
             logger.info(f"SECURITY: MFA lockout triggered for user {user_id}")
-        security_ref.update(attempt_update)
         raise https_fn.HttpsError("unauthenticated", "Invalid MFA code")
 
     # Reset failed attempts on success
@@ -1214,7 +1219,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action=RateLimitActions.DELETE_ACCOUNT, max_requests=1, window_minutes=1, fail_closed=False
+        identifier=user_id, action=RateLimitActions.DELETE_ACCOUNT, max_requests=1, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError("resource-exhausted", msg)

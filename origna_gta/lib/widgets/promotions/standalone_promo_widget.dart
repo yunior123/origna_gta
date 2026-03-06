@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Documentation for StandalonePromoWidget
 class StandalonePromoWidget extends StatelessWidget {
   final String title;
   final String subtitle;

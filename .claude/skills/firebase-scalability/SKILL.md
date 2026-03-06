@@ -1,6 +1,6 @@
 ---
 name: firebase-scalability
-description: Guidelines for building Firestore-backed apps at 100M+ users scale. Specializes in NoSQL modeling, indexing, and security rules.
+description: Use when designing Firestore schema, writing security rules, optimizing queries, or reviewing data architecture for scale — NoSQL modeling, indexing, and rules patterns.
 ---
 
 # Firebase Scalability Skill

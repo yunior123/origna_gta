@@ -45,14 +45,17 @@ errors: list[str] = []
 
 
 def warn(msg: str) -> None:
+    """Function warn."""
     warnings.append(msg)
 
 
 def error(msg: str) -> None:
+    """Function error."""
     errors.append(msg)
 
 
 def read_file(path: Path) -> str:
+    """Function read_file."""
     if not path.exists():
         error(f"File not found: {path}")
         return ""
@@ -276,6 +279,7 @@ def check_env_var_references() -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    """Function main."""
     print("=" * 70)
     print("  Algolia Configuration Consistency Validator")
     print("=" * 70)

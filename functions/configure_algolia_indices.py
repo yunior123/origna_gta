@@ -1,3 +1,4 @@
+"""Module configure_algolia_indices.py."""
 import os
 import ssl
 import sys
@@ -11,6 +12,7 @@ original_init = aiohttp.TCPConnector.__init__
 
 
 def new_init(self, *args, **kwargs):
+    """Function new_init."""
     kwargs["ssl"] = False
     original_init(self, *args, **kwargs)
 

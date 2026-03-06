@@ -48,6 +48,7 @@ final _productRatingsProvider = StreamProvider.autoDispose.family<List<Map<Strin
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
+/// Documentation for ProductDetailScreen
 class ProductDetailScreen extends ConsumerWidget {
   final String productId;
   final Map<String, dynamic>? product; // Optional initial data
@@ -244,6 +245,8 @@ class ProductDetailScreen extends ConsumerWidget {
                     child: Text(
                       product.name,
                       key: const Key('product_detail_name'),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
                     ),
                   ),
@@ -1880,12 +1883,8 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     setState(() => _votingHelpful = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final functions = ref.read(firebaseFunctionsProvider);
-      await functions.httpsCallable(CloudFunctionEndpoints.voteReviewHelpful).call({
-        Fields.ratingId: ratingId,
-        Fields.productId: widget.productId,
-        'helpful': helpful,
-      });
+      // MVVM FIX (AUDIT): Delegated to ViewModel — UI no longer calls Firebase directly.
+      await ref.read(productDetailViewModelProvider.notifier).voteHelpful(ratingId, widget.productId, helpful);
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(

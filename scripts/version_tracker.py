@@ -47,6 +47,7 @@ def _sha256_dir(dirpath: str, extensions: tuple = (".py",), exclude_dirs: tuple 
 
 
 def get_git_sha() -> str:
+    """Function get_git_sha."""
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
@@ -90,6 +91,7 @@ def _ssl_ctx():
 
 
 def get_access_token() -> str:
+    """Function get_access_token."""
     try:
         result = subprocess.run(
             ["gcloud", "auth", "print-access-token"],

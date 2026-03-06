@@ -28,6 +28,7 @@ class RateLimiter:
     """Simple in-memory + Firestore rate limiter"""
 
     def __init__(self, db):
+        """Function __init__."""
         self.db = db
         self.collection = Collections.RATE_LIMITS
 
@@ -62,6 +63,7 @@ class RateLimiter:
             # FIXED: Use transaction to prevent race conditions
             @firestore.transactional
             def check_and_increment(transaction, ref):
+                """Function check_and_increment."""
                 doc = ref.get(transaction=transaction)
 
                 if doc.exists:
@@ -110,7 +112,15 @@ class RateLimiter:
                 "failed to commit transaction",  # Firestore "Failed to commit transaction in N attempts."
             ))
             if is_contention:
-                logger.warning(f"⚠️ Rate limiter contention (fail-open): {e}")
+                # SECURITY FIX (AUDIT): Contention must respect fail_closed.
+                # Attackers can artificially induce contention to bypass rate limits
+                # (send 50 concurrent requests → all read 0 → bypass lockout).
+                # For fail_closed=True endpoints (auth, payments, cancellations),
+                # contention must block the request, not allow it through.
+                if fail_closed:
+                    logger.warning(f"⚠️ Rate limiter contention (fail-CLOSED — security endpoint): {e}")
+                    return False, "Rate limiter unavailable - request blocked for security"
+                logger.warning(f"⚠️ Rate limiter contention (fail-open — non-critical): {e}")
                 return True, "OK"
 
             logger.warning(f"⚠️ Rate limiter error: {e}")

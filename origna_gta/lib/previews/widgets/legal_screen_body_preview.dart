@@ -25,3 +25,18 @@ Widget previewLegalVariants() => previewGrid(
     SizedBox(height: 700, child: const LegalScreenBody(heroTitle: 'Terms of Service', heroBadge: 'TERMS', heroBadgeIcon: Icons.gavel_outlined, rawContent: _kTermsMock)),
   ],
 );
+
+@Preview(name: 'Legal Content Light — Responsive', group: 'LegalScreenBody')
+Widget previewLegalResponsiveLight() => previewResponsiveBreakpoints(
+  theme: previewLightTheme,
+  builder: (bp) => const LegalScreenBody(heroTitle: 'Privacy Policy', heroBadge: 'PRIVACY', heroBadgeIcon: Icons.shield_outlined, rawContent: _kPrivacyMock),
+);
+
+@Preview(name: 'Legal Content Light — Variants', group: 'LegalScreenBody')
+Widget previewLegalVariantsLight() => previewGrid(
+  theme: previewLightTheme,
+  children: [
+    SizedBox(height: 700, child: const LegalScreenBody(heroTitle: 'Privacy Policy', heroBadge: 'PRIVACY', heroBadgeIcon: Icons.shield_outlined, rawContent: _kPrivacyMock)),
+    SizedBox(height: 700, child: const LegalScreenBody(heroTitle: 'Terms of Service', heroBadge: 'TERMS', heroBadgeIcon: Icons.gavel_outlined, rawContent: _kTermsMock)),
+  ],
+);

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Documentation for CanadianMoose
 class CanadianMoose extends StatefulWidget {
   final MooseController controller;
   final double size;
@@ -17,6 +18,7 @@ class CanadianMoose extends StatefulWidget {
   State<CanadianMoose> createState() => _CanadianMooseState();
 }
 
+/// Documentation for MooseController
 class MooseController extends ChangeNotifier {
   Offset _lookTarget = Offset.zero;
   bool _isJumping = false;
@@ -48,6 +50,7 @@ class MooseController extends ChangeNotifier {
   }
 }
 
+/// Documentation for MoosePainter
 class MoosePainter extends CustomPainter {
   final double idleValue;
   final double jumpValue;
@@ -273,6 +276,7 @@ class MoosePainter extends CustomPainter {
   }
 }
 
+/// Documentation for MooseTips
 class MooseTips {
   static List<String> get _tips => [
     'mascot.moose_tip_local_support'.tr(),

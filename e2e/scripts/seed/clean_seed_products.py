@@ -22,13 +22,27 @@ def delete_all_products():
         count += 1
     print(f"   Deleted {count} products")
 
-def sv(val): return {"stringValue": str(val)}
-def iv(val): return {"integerValue": str(int(val))}
-def fv(val): return {"doubleValue": float(val)}
-def bv(val): return {"booleanValue": bool(val)}
-def av(items): return {"arrayValue": {"values": items}}
-def nv(): return {"nullValue": None}
-def mv(fields): return {"mapValue": {"fields": fields}}
+def sv(val):
+    """Function sv."""
+    return {"stringValue": str(val)}
+def iv(val):
+    """Function iv."""
+    return {"integerValue": str(int(val))}
+def fv(val):
+    """Function fv."""
+    return {"doubleValue": float(val)}
+def bv(val):
+    """Function bv."""
+    return {"booleanValue": bool(val)}
+def av(items):
+    """Function av."""
+    return {"arrayValue": {"values": items}}
+def nv():
+    """Function nv."""
+    return {"nullValue": None}
+def mv(fields):
+    """Function mv."""
+    return {"mapValue": {"fields": fields}}
 
 def ts(dt=None):
     """Timestamp value — MUST use timestampValue for proper Firestore ordering."""
@@ -37,6 +51,7 @@ def ts(dt=None):
     return {"timestampValue": dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"}
 
 def build_address(street, city, province, postal_code, lat, lng):
+    """Function build_address."""
     return mv({
         "street": sv(street),
         "apartment": sv(""),
@@ -52,6 +67,7 @@ def build_address(street, city, province, postal_code, lat, lng):
     })
 
 def build_delivery_options(free_shipping=False):
+    """Function build_delivery_options."""
     return av([
         mv({
             "type": sv("standard"),
@@ -141,11 +157,13 @@ PRODUCTS = [
 ]
 
 def create_product(doc_id, fields):
+    """Function create_product."""
     url = f"{FIRESTORE}/products/{doc_id}"
     r = requests.patch(url, json={"fields": fields}, headers=HEADERS)
     return r.status_code in (200, 201)
 
 def ensure_seller(uid, email):
+    """Function ensure_seller."""
     url = f"{FIRESTORE}/users/{uid}"
     fields = {
         "uid": sv(uid),
@@ -163,6 +181,7 @@ def ensure_seller(uid, email):
     requests.patch(url, json={"fields": fields}, headers=HEADERS)
 
 def main():
+    """Function main."""
     total = len(PRODUCTS)
     print("=" * 60)
     print(f"🧹 CLEAN SEED — Delete all & re-seed {total} products")

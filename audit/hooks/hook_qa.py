@@ -358,6 +358,7 @@ class QAHook(BaseHook):
     ]
 
     def get_prompt(self) -> str:
+        """Function get_prompt."""
         return f"""You are a SENIOR QA ENGINEER with 15+ years experience in test automation.
 You are the ONLY QA resource for this project — the team cannot afford hiring engineers.
 Your job: ensure this app is production-ready for March 2026 launch.

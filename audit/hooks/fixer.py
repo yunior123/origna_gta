@@ -49,6 +49,7 @@ class AutoFixReport:
     duration_seconds: float = 0.0
 
     def print_summary(self):
+        """Function print_summary."""
         print(f"\n{'─'*60}")
         print("🔧 AUTO-FIX SUMMARY")
         print(f"{'─'*60}")
@@ -91,6 +92,7 @@ class AutoFixer:
         validate: bool = True,
         provider: str = "claude",
     ):
+        """Function __init__."""
         self.min_severity = min_severity
         self.dry_run = dry_run
         self.validate = validate

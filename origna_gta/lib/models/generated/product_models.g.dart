@@ -72,6 +72,7 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
   isDigital: json['isDigital'] as bool? ?? false,
+  isAgeRestricted: json['isAgeRestricted'] as bool? ?? false,
   digitalType: json['digitalType'] as String?,
   slug: json['slug'] as String?,
   digitalBuilds: (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
@@ -164,6 +165,7 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'minimumOrderQuantity': instance.minimumOrderQuantity,
   'freeShipping': instance.freeShipping,
   'isDigital': instance.isDigital,
+  'isAgeRestricted': instance.isAgeRestricted,
   'digitalType': instance.digitalType,
   'slug': instance.slug,
   'digitalBuilds': instance.digitalBuilds,

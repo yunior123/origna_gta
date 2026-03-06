@@ -6,6 +6,7 @@ import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/screens/productaddvideo_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -13,6 +14,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import '../../features/products/edit_product_state.dart';
 import '../../features/products/edit_product_viewmodel.dart';
 
+/// Documentation for EditProductScreen
 class EditProductScreen extends ConsumerStatefulWidget {
   final Product product;
 
@@ -365,6 +367,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   ],
                   DropdownButtonFormField<String>(
                     key: const Key('product_edit_category_dropdown'),
+                    menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                     initialValue: _categoryController.text.isNotEmpty
                         ? _categoryController.text
                         : null,
@@ -404,6 +407,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       activeTrackColor: DesignTokens.primary,
                       contentPadding: EdgeInsets.zero,
                       onChanged: viewModel.togglePerishable,
+                    ),
+                    SwitchListTile(
+                      key: const Key('editproduct_age_restricted_toggle'),
+                      title: Text('product.age_restricted_item'.tr()),
+                      value: state.isAgeRestricted,
+                      activeTrackColor: DesignTokens.primary,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: viewModel.toggleAgeRestricted,
                     ),
                     if (!state.isLocalDeliveryOnly) ...[
                       const SizedBox(height: 12),
@@ -540,6 +551,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
+                          menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
                           initialValue: state.selectedProvince,
                           decoration: InputDecoration(
                             labelText: 'product.province'.tr(),
@@ -1007,7 +1019,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           const SizedBox(height: 16),
           Text(
             'product.download_links'.tr(),
-            style: Theme.of(context).textTheme.titleSmall,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary,
+            ),
           ),
           const SizedBox(height: 4),
           _editUrlField(

@@ -27,7 +27,7 @@ const BTN_SIGN_IN = /sign\s*in|se\s*connecter|connexion/i;
 const BTN_CART = /cart|shopping|panier/i;
 const BTN_ADD_PRODUCT = /add\s*product|ajouter/i;
 
-export { BTN_SETTINGS, BTN_SIGN_IN, BTN_CART, BTN_ADD_PRODUCT };
+export { BTN_SETTINGS, BTN_SETTINGS_LABEL, BTN_SIGN_IN, BTN_CART, BTN_ADD_PRODUCT };
 
 // ─── SERVICE WORKER CLEANUP ────────────────────────────────────────
 

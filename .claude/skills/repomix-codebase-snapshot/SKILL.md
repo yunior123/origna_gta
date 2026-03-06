@@ -1,6 +1,6 @@
 ---
 name: repomix-codebase-snapshot
-description: How to use Repomix snapshots for comprehensive codebase analysis.
+description: Use when needing a full codebase snapshot for bulk AI analysis — generates a Repomix XML bundle of the entire OrignaGTA repo for passing to Gemini or Claude.ai.
 ---
 
 # Repomix Codebase Snapshot Skill

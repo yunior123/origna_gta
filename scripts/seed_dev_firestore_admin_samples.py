@@ -81,6 +81,7 @@ def _get_user_doc_by_email(db: firestore.Client, users_coll: str, email_field: s
 
 
 def main() -> int:
+    """Function main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", default="orignagta-dev", help="Firebase/GCP project id")
     parser.add_argument("--admin-email", default="yr62813@gmail.com", help="Admin test account email")
@@ -245,8 +246,7 @@ def main() -> int:
         return 0
 
     # Create deterministic order IDs so reruns stay idempotent.
-    # Use different createdAt timestamps by writing now() into a non-canonical field if needed;
-    # for UI purposes, Firestore SERVER_TIMESTAMP is enough.
+    # Firestore server timestamp is enough for UI purposes.
     order_ids = [
         f"seed_{args.project}_admin_order_1",
         f"seed_{args.project}_admin_order_2",

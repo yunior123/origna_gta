@@ -79,6 +79,7 @@ def _sanitize_text(text: str) -> str:
 
     # Redact phone numbers (10-15 digits with separators)
     def redact_phone(match):
+        """Function redact_phone."""
         raw = match.group(0)
         digits = re.sub(r'\D', '', raw)
         if 10 <= len(digits) <= 15:

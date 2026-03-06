@@ -18,6 +18,7 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:shimmer/shimmer.dart';
 
+/// Documentation for SellerProductsScreen
 class SellerProductsScreen extends ConsumerWidget {
   const SellerProductsScreen({super.key});
 
@@ -73,7 +74,7 @@ class SellerProductsScreen extends ConsumerWidget {
             icon: Icons.error_outline_rounded,
             title: tr('seller.something_wrong'),
             subtitle: AppError.getMessage(e),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, onPressed: () => ref.invalidate(sellerProductsProvider), isPrimary: false),
+            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, onPressed: () => ref.invalidate(sellerProductsProvider), isOutlined: true),
           ),
           data: (products) {
             if (products.isEmpty) {
@@ -82,6 +83,11 @@ class SellerProductsScreen extends ConsumerWidget {
                 title: tr('seller.no_products_yet'),
                 subtitle: tr('seller.add_first_product'),
                 showMascot: true,
+                action: ModernButton(
+                  label: tr('seller.add_product'),
+                  icon: Icons.add_box_outlined,
+                  onPressed: () => Navigator.pushNamed(context, AppRoutes.addProduct),
+                ),
               );
             }
 

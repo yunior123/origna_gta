@@ -18,6 +18,7 @@ import '../../features/products/add_product_state.dart';
 import '../../features/products/add_product_viewmodel.dart';
 import '../../features/seller/warehouses_viewmodel.dart';
 
+/// Documentation for AddProductScreen
 class AddProductScreen extends ConsumerStatefulWidget {
   const AddProductScreen({super.key});
 
@@ -288,32 +289,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       'product.compare_at_price_info_body'.tr(),
                                     ),
                                     const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _buildGlassTextField(
-                                            controller: _minOrderController,
-                                            label: 'product.min_order_qty'.tr(),
-                                            icon: Icons.format_list_numbered_rounded,
-                                            keyboardType: TextInputType.number,
-                                            validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
-                                            onChanged: (v) => viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
-                                          ),
-                                        ),
-                                        if (!state.isDigital)
-                                          Expanded(
-                                            child: _buildGlassToggle(
-                                              key: const Key('addproduct_free_shipping_toggle'),
-                                              label: 'product.free_shipping'.tr(),
-                                              icon: Icons.local_shipping_rounded,
-                                              value: state.freeShipping,
-                                              onChanged: viewModel.toggleFreeShipping,
-                                              infoTitle: 'product.free_shipping'.tr(),
-                                              infoBody: 'product.free_shipping_info_body'.tr(),
-                                            ),
-                                          ),
-                                      ],
+                                    _buildGlassTextField(
+                                      controller: _minOrderController,
+                                      label: 'product.min_order_qty'.tr(),
+                                      icon: Icons.format_list_numbered_rounded,
+                                      keyboardType: TextInputType.number,
+                                      validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
+                                      onChanged: (v) => viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
                                     ),
+                                    if (!state.isDigital) ...[
+                                      const SizedBox(height: 12),
+                                      _buildGlassToggle(
+                                        key: const Key('addproduct_free_shipping_toggle'),
+                                        label: 'product.free_shipping'.tr(),
+                                        icon: Icons.local_shipping_rounded,
+                                        value: state.freeShipping,
+                                        onChanged: viewModel.toggleFreeShipping,
+                                        infoTitle: 'product.free_shipping'.tr(),
+                                        infoBody: 'product.free_shipping_info_body'.tr(),
+                                      ),
+                                    ],
                                     const SizedBox(height: 16),
                                     _buildCategorySelector(viewModel, state),
                                     const SizedBox(height: 12),
@@ -408,6 +403,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         onChanged: viewModel.togglePerishable,
                                         infoTitle: 'product.perishable_info_title'.tr(),
                                         infoBody: 'product.perishable_info_body'.tr(),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _buildGlassToggle(
+                                        key: const Key('addproduct_age_restricted_toggle'),
+                                        label: 'product.age_restricted_item'.tr(),
+                                        icon: Icons.no_adult_content_rounded,
+                                        value: state.isAgeRestricted,
+                                        onChanged: viewModel.toggleAgeRestricted,
+                                        infoTitle: 'product.age_restricted_info_title'.tr(),
+                                        infoBody: 'product.age_restricted_info_body'.tr(),
                                       ),
                                       const SizedBox(height: 16),
                                       _buildDeliveryTierCard(
@@ -863,6 +868,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   Widget _buildCategorySelector(AddProductViewModel viewModel, AddProductState state) {
     return DropdownButtonFormField<String>(
       key: const Key('addproduct_category_selector'),
+      menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
       initialValue: state.selectedCategoryId,
       decoration: InputDecoration(
         labelText: 'product.category'.tr(),
@@ -1165,7 +1171,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ),
         if (state.digitalType == DigitalTypeValues.software) ...[
           const SizedBox(height: 16),
-          Text('product.download_links'.tr(), style: Theme.of(context).textTheme.titleSmall),
+          Text('product.download_links'.tr(), style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary)),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'product.mac_os_label'.tr(),
@@ -1195,7 +1201,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[
           const SizedBox(height: 16),
-          Text('product.book_download_url'.tr(), style: Theme.of(context).textTheme.titleSmall),
+          Text('product.book_download_url'.tr(), style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary)),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'product.download_source_url_label'.tr(),
@@ -1301,6 +1307,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }) {
     return DropdownButtonFormField<String>(
       key: key,
+      menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
       initialValue: value,
       decoration: InputDecoration(
         labelText: label,
@@ -1754,6 +1761,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     if (subcategories.isEmpty) return const SizedBox.shrink();
     return DropdownButtonFormField<String>(
       key: Key('addproduct_subcategory_$catId'),
+      menuMaxHeight: ResponsiveBreakpoints.dropdownMaxHeight(context),
       initialValue: state.selectedSubcategory,
       decoration: InputDecoration(
         labelText: 'product.subcategory_optional'.tr(),

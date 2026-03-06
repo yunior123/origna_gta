@@ -536,6 +536,7 @@ PRODUCTS = [
 # =============================================================================
 
 def main():
+    """Function main."""
     print("=" * 60)
     print("🍁 OrignaGTA — Seed 20 Mockup Products")
     print("=" * 60)

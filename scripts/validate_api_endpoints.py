@@ -212,12 +212,14 @@ def health_check_function(base_url: str, func_name: str, timeout: float = 10.0) 
 
 
 def print_section(title: str) -> None:
+    """Function print_section."""
     print(f"\n{'=' * 70}")
     print(f"  {title}")
     print(f"{'=' * 70}")
 
 
 def main() -> int:
+    """Function main."""
     parser = argparse.ArgumentParser(description="Validate OrignaGTA API endpoints")
     parser.add_argument(
         "--env",

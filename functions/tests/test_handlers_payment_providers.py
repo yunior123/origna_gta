@@ -23,14 +23,18 @@ from schema_constants import Collections, Fields, UserRoleValues
 
 
 class TestIsProviderEnabled:
+    """Tests for is_provider_enabled utility."""
+
     @patch("handlers.payment_providers.get_db")
     def test_unknown_provider_returns_false(self, _mock_db):
+        """Function test_unknown_provider_returns_false."""
         from handlers.payment_providers import is_provider_enabled
 
         assert is_provider_enabled("paypal") is False
 
     @patch("handlers.payment_providers.get_db")
     def test_stripe_enabled_by_default_when_no_config_doc(self, mock_get_db):
+        """Function test_stripe_enabled_by_default_when_no_config_doc."""
         from handlers.payment_providers import is_provider_enabled
 
         mock_db = MagicMock()
@@ -44,6 +48,7 @@ class TestIsProviderEnabled:
 
     @patch("handlers.payment_providers.get_db")
     def test_reads_enabled_from_config_doc(self, mock_get_db):
+        """Function test_reads_enabled_from_config_doc."""
         from handlers.payment_providers import is_provider_enabled
 
         mock_db = MagicMock()
@@ -70,8 +75,11 @@ class TestIsProviderEnabled:
 
 
 class TestGetEnabledProviders:
+    """Tests for get_enabled_providers utility."""
+
     @patch("handlers.payment_providers.get_db")
     def test_returns_stripe_by_default_when_no_config(self, mock_get_db):
+        """Function test_returns_stripe_by_default_when_no_config."""
         from handlers.payment_providers import get_enabled_providers
 
         mock_db = MagicMock()
@@ -85,6 +93,7 @@ class TestGetEnabledProviders:
 
     @patch("handlers.payment_providers.get_db")
     def test_returns_empty_when_all_disabled_in_config(self, mock_get_db):
+        """Function test_returns_empty_when_all_disabled_in_config."""
         from handlers.payment_providers import get_enabled_providers
 
         mock_db = MagicMock()
@@ -99,6 +108,7 @@ class TestGetEnabledProviders:
 
     @patch("handlers.payment_providers.get_db")
     def test_firestore_error_returns_stripe_fallback(self, mock_get_db):
+        """Function test_firestore_error_returns_stripe_fallback."""
         from handlers.payment_providers import get_enabled_providers
 
         mock_get_db.side_effect = Exception("Firestore unavailable")
@@ -112,8 +122,11 @@ class TestGetEnabledProviders:
 
 
 class TestRequireProviderEnabled:
+    """Tests for require_provider_enabled utility."""
+
     @patch("handlers.payment_providers.is_provider_enabled", return_value=False)
     def test_disabled_provider_raises_failed_precondition(self, _mock):
+        """Function test_disabled_provider_raises_failed_precondition."""
         from firebase_functions import https_fn
         from handlers.payment_providers import require_provider_enabled
 
@@ -124,6 +137,7 @@ class TestRequireProviderEnabled:
 
     @patch("handlers.payment_providers.is_provider_enabled", return_value=True)
     def test_enabled_provider_does_not_raise(self, _mock):
+        """Function test_enabled_provider_does_not_raise."""
         from handlers.payment_providers import require_provider_enabled
 
         require_provider_enabled("stripe")  # Should not raise
@@ -135,6 +149,7 @@ class TestRequireProviderEnabled:
 
 
 class TestGetPaymentProviders:
+    """Class TestGetPaymentProviders."""
     def _admin_req(self, uid: str = "admin_123") -> Mock:
         req = Mock()
         req.auth = Mock()
@@ -144,6 +159,7 @@ class TestGetPaymentProviders:
 
     @patch("handlers.payment_providers.get_db")
     def test_non_admin_rejected(self, mock_get_db):
+        """Function test_non_admin_rejected."""
         from firebase_functions import https_fn
         from handlers.payment_providers import get_payment_providers
 
@@ -165,6 +181,7 @@ class TestGetPaymentProviders:
     def test_returns_provider_configs_for_admin(
         self, _mock_enabled, _mock_configured, mock_get_db
     ):
+        """Function test_returns_provider_configs_for_admin."""
         from handlers.payment_providers import get_payment_providers
 
         mock_db = MagicMock()
@@ -181,6 +198,7 @@ class TestGetPaymentProviders:
         config_doc.exists = False
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             c = MagicMock()
             if name == Collections.USERS:
                 c.document.return_value.get.return_value = admin_doc
@@ -210,6 +228,7 @@ class TestGetPaymentProviders:
 
 
 class TestUpdatePaymentProvider:
+    """Class TestUpdatePaymentProvider."""
     def _admin_req(self, data: dict | None = None) -> Mock:
         req = Mock()
         req.auth = Mock()
@@ -219,6 +238,7 @@ class TestUpdatePaymentProvider:
 
     @patch("handlers.payment_providers.get_db")
     def test_non_admin_rejected(self, mock_get_db):
+        """Function test_non_admin_rejected."""
         from firebase_functions import https_fn
         from handlers.payment_providers import update_payment_provider
 
@@ -235,6 +255,7 @@ class TestUpdatePaymentProvider:
 
     @patch("handlers.payment_providers.get_db")
     def test_admin_without_mfa_rejected(self, mock_get_db):
+        """Function test_admin_without_mfa_rejected."""
         from datetime import UTC, datetime, timedelta
         from firebase_functions import https_fn
         from handlers.payment_providers import update_payment_provider
@@ -265,6 +286,7 @@ class TestUpdatePaymentProvider:
 
     @patch("handlers.payment_providers.get_db")
     def test_invalid_provider_raises(self, mock_get_db):
+        """Function test_invalid_provider_raises."""
         from datetime import UTC, datetime, timedelta
         from firebase_functions import https_fn
         from handlers.payment_providers import update_payment_provider
@@ -295,6 +317,7 @@ class TestUpdatePaymentProvider:
     @patch("handlers.payment_providers.get_db")
     @patch("handlers.payment_providers.get_enabled_providers", return_value=["stripe"])
     def test_cannot_disable_last_provider(self, _mock_providers, mock_get_db):
+        """Function test_cannot_disable_last_provider."""
         from datetime import UTC, datetime, timedelta
         from firebase_functions import https_fn
         from handlers.payment_providers import update_payment_provider
@@ -326,6 +349,7 @@ class TestUpdatePaymentProvider:
     @patch("handlers.payment_providers.get_db")
     @patch("handlers.payment_providers.get_enabled_providers", return_value=["stripe", "paypal"])
     def test_cannot_disable_with_active_authorized_orders(self, _mock_providers, mock_get_db):
+        """Function test_cannot_disable_with_active_authorized_orders."""
         from datetime import UTC, datetime, timedelta
         from firebase_functions import https_fn
         from handlers.payment_providers import update_payment_provider
@@ -345,6 +369,7 @@ class TestUpdatePaymentProvider:
         active_order = Mock()
 
         def collection_side_effect(name):
+            """Function collection_side_effect."""
             c = MagicMock()
             if name == Collections.USERS:
                 c.document.return_value.get.return_value = admin_doc
@@ -376,7 +401,9 @@ class TestUpdatePaymentProvider:
 
 
 class TestGetProviderStatus:
+    """Class TestGetProviderStatus."""
     def test_unauthenticated_raises(self):
+        """Function test_unauthenticated_raises."""
         from firebase_functions import https_fn
         from handlers.payment_providers import get_provider_status
 
@@ -392,6 +419,7 @@ class TestGetProviderStatus:
     def test_returns_stripe_status_for_authenticated_user(
         self, _mock_configured, _mock_enabled, mock_get_db
     ):
+        """Function test_returns_stripe_status_for_authenticated_user."""
         from handlers.payment_providers import get_provider_status
 
         mock_db = MagicMock()
@@ -416,6 +444,7 @@ class TestGetProviderStatus:
 
     @patch("handlers.payment_providers.get_db")
     def test_rate_limited_raises(self, mock_get_db):
+        """Function test_rate_limited_raises."""
         from firebase_functions import https_fn
         from handlers.payment_providers import get_provider_status
 

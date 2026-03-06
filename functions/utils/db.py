@@ -1,3 +1,4 @@
+"""Module db.py."""
 from typing import Any
 
 from google.cloud.firestore import Client

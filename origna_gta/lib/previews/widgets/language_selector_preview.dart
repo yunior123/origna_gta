@@ -12,3 +12,14 @@ Widget previewLanguageVariants() => previewScope(
     ],
   ),
 );
+
+@Preview(name: 'Language Selector Light — Variants', group: 'LanguageSelector')
+Widget previewLanguageVariantsLight() => previewScope(
+  child: previewGrid(
+    theme: previewLightTheme,
+    children: const [
+      Padding(padding: EdgeInsets.all(16), child: LanguageSelector()),
+      Padding(padding: EdgeInsets.all(16), child: LanguageSelector(compact: true)),
+    ],
+  ),
+);

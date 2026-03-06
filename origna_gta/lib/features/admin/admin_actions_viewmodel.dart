@@ -8,6 +8,7 @@ final adminActionsViewModelProvider = StateNotifierProvider.autoDispose<AdminAct
   return AdminActionsViewModel(ref);
 });
 
+/// Documentation for AdminActionsState
 class AdminActionsState {
   final bool isLoading;
   final bool isSuccess;
@@ -20,6 +21,7 @@ class AdminActionsState {
   }
 }
 
+/// Documentation for AdminActionsViewModel
 class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
   final Ref _ref;
 

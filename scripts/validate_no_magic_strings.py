@@ -86,6 +86,7 @@ SKIP_PATH_SEGMENTS: tuple[str, ...] = (
 
 @dataclass
 class Finding:
+    """Class Finding."""
     file: str
     line_num: int
     line_text: str
@@ -153,7 +154,7 @@ def is_excluded_line(line: str, is_python: bool) -> bool:
     if is_python and re.match(r'^\s*logger\.\w+\(', stripped):
         return True
 
-    # print() calls (often debug)
+    # Print calls for debugging
     if stripped.startswith("print("):
         return True
 
@@ -426,6 +427,7 @@ def get_changed_files(ci_mode: bool) -> list[str]:
 
 
 def main() -> int:
+    """Function main."""
     parser = argparse.ArgumentParser(description="Detect magic strings in staged files")
     parser.add_argument("--ci", action="store_true", help="CI mode: check all changed files vs HEAD")
     parser.add_argument("--all", action="store_true", help="Check all .py/.dart files (not just changed)")

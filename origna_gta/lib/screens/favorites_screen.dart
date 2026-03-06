@@ -13,6 +13,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
+/// Documentation for FavoritesScreen
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
 
@@ -67,7 +68,7 @@ class FavoritesScreen extends ConsumerWidget {
             icon: Icons.error_outline_rounded,
             title: 'favorites.unable_to_load'.tr(),
             subtitle: AppError.getMessage(error),
-            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isPrimary: false, onPressed: () => ref.invalidate(favoritedProductsProvider)),
+            action: ModernButton(label: 'common.retry'.tr(), icon: Icons.refresh, isOutlined: true, onPressed: () => ref.invalidate(favoritedProductsProvider)),
           ),
           data: (products) {
             if (products.isEmpty) {
@@ -132,7 +133,7 @@ class FavoritesScreen extends ConsumerWidget {
                               return FadeSlideIn(
                                 delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
                                 child: Opacity(
-                                  opacity: isUnavailable ? 0.45 : 1.0,
+                                  opacity: isUnavailable ? 0.60 : 1.0,
                                   child: ProductCard(productId: product.productId, product: product, userModel: userModel),
                                 ),
                               );
@@ -156,10 +157,12 @@ class FavoritesScreen extends ConsumerWidget {
 
   double _getCardAspectRatio(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    // Lower ratio = taller cards (prevents vertical overflow)
-    if (width < 360) return 0.65;
-    if (width < 600) return 0.70;
-    if (width < 900) return 0.75;
-    return 0.80;
+    // Lower ratio = taller cards (prevents vertical overflow).
+    // Synced with ResponsiveBreakpoints.cardAspect* — sized for worst case
+    // (trending row + delivery chip visible simultaneously).
+    if (width < 360) return 0.58;
+    if (width < 600) return 0.62;
+    if (width < 900) return 0.67;
+    return 0.70;
   }
 }

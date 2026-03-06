@@ -1,7 +1,9 @@
+"""Module compare_competition.py."""
 from test_shipping import _calculate_tiered_shipping, create_item
 
 
 def print_comparison(name, distance, speed, weight, items_qty, competition):
+    """Function print_comparison."""
     items = [create_item(weight=weight, qty=items_qty)]
     our_price = _calculate_tiered_shipping(distance, items, speed)
 

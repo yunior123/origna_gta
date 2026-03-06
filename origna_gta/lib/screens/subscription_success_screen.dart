@@ -12,20 +12,38 @@ import '../features/subscription/subscription_provider.dart';
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
 
+/// Screen displayed after the user completes a Stripe premium subscription checkout.
+///
+/// Guards itself behind a Firestore `isPremium` check so the success UI only
+/// appears once the webhook has fired and the subscription document is updated.
+/// A 30-second timeout shows a manual-refresh fallback if activation is delayed.
+///
+/// Layout is responsive: content is centered and capped at 500 logical pixels
+/// wide so it looks correct on mobile, tablet, and desktop.
 class SubscriptionSuccessScreen extends ConsumerStatefulWidget {
   const SubscriptionSuccessScreen({super.key});
 
   @override
-  ConsumerState<SubscriptionSuccessScreen> createState() => _SubscriptionSuccessScreenState();
+  ConsumerState<SubscriptionSuccessScreen> createState() =>
+      _SubscriptionSuccessScreenState();
 }
 
+/// A single row in the premium benefits list shown on the success screen.
+///
+/// Renders a rounded icon container on the left, a bold [title] with a
+/// checkmark, and a secondary [subtitle] description on the right.
 class _BenefitRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
   final bool isDark;
 
-  const _BenefitRow({required this.icon, required this.title, required this.subtitle, required this.isDark});
+  const _BenefitRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +55,10 @@ class _BenefitRow extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: DesignTokens.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Icon(icon, color: DesignTokens.primary, size: 20),
           ),
           const SizedBox(width: 14),
@@ -49,14 +70,28 @@ class _BenefitRow extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: isDark ? Colors.white : DesignTokens.textPrimary,
+                      ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(Icons.check_circle_rounded, color: DesignTokens.success, size: 16),
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: DesignTokens.success,
+                      size: 16,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: DesignTokens.textSecondary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -66,7 +101,9 @@ class _BenefitRow extends StatelessWidget {
   }
 }
 
-class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class _SubscriptionSuccessScreenState
+    extends ConsumerState<SubscriptionSuccessScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _pulseController;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _glowAnimation;
@@ -93,7 +130,9 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [DesignTokens.surfaceSubtle, Colors.white],
+                colors: isDark
+                    ? [DesignTokens.darkBackground, DesignTokens.darkSurface]
+                    : [DesignTokens.surfaceSubtle, Colors.white],
               ),
             ),
             child: Center(
@@ -106,20 +145,39 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
                       if (!_timedOut) ...[
                         const ModernLoadingIndicator(),
                         const SizedBox(height: 24),
-                        Text('subscription.activating_membership'.tr(), style: const TextStyle(fontSize: 16, color: DesignTokens.textSecondary)),
+                        Text(
+                          'subscription.activating_membership'.tr(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: DesignTokens.textSecondary,
+                          ),
+                        ),
                       ] else ...[
-                        const Icon(Icons.timer_off_outlined, size: 64, color: DesignTokens.warning),
+                        const Icon(
+                          Icons.timer_off_outlined,
+                          size: 64,
+                          color: DesignTokens.warning,
+                        ),
                         const SizedBox(height: 24),
                         Text(
                           'subscription.activation_delayed_title'.tr(),
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? Colors.white
+                                : DesignTokens.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           'subscription.activation_delayed_desc'.tr(),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: DesignTokens.textSecondary,
+                          ),
                         ),
                         const SizedBox(height: 32),
                         ModernButton(
@@ -135,7 +193,11 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
                         ),
                         const SizedBox(height: 12),
                         TextButton(
-                          onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                          onPressed: () =>
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                AppRoutes.home,
+                                (route) => false,
+                              ),
                           child: Text('common.back_to_home'.tr()),
                         ),
                       ],
@@ -157,7 +219,9 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [DesignTokens.surfaceSubtle, Colors.white],
+              colors: isDark
+                  ? [DesignTokens.darkBackground, DesignTokens.darkSurface]
+                  : [DesignTokens.surfaceSubtle, Colors.white],
             ),
           ),
           child: SafeArea(
@@ -165,112 +229,143 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
               slivers: [
                 SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Spacer(),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 500),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                          vertical: 24,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Spacer(),
 
-                        // Animated premium badge
-                        AnimatedBuilder(
-                          animation: _pulseController,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _scaleAnimation.value,
-                              child: Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: const LinearGradient(
-                                    colors: [DesignTokens.primary, DesignTokens.secondary],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: DesignTokens.primary.withValues(alpha: _glowAnimation.value),
-                                      blurRadius: 32,
-                                      spreadRadius: 4,
-                                      offset: const Offset(0, 8),
+                            // Animated premium badge
+                            AnimatedBuilder(
+                              animation: _pulseController,
+                              builder: (context, child) {
+                                return Transform.scale(
+                                  scale: _scaleAnimation.value,
+                                  child: Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          DesignTokens.primary,
+                                          DesignTokens.secondary,
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: DesignTokens.primary
+                                              .withValues(
+                                                alpha: _glowAnimation.value,
+                                              ),
+                                          blurRadius: 32,
+                                          spreadRadius: 4,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                                child: const Icon(Icons.workspace_premium, color: Colors.white, size: 50),
+                                    child: const Icon(
+                                      Icons.workspace_premium,
+                                      color: Colors.white,
+                                      size: 50,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            Text(
+                              'subscription.welcome_to_premium'.tr(),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: isDark
+                                    ? Colors.white
+                                    : DesignTokens.textPrimary,
+                                letterSpacing: -0.5,
                               ),
-                            );
-                          },
-                        ),
+                            ),
 
-                        const SizedBox(height: 32),
+                            const SizedBox(height: 12),
 
-                        Text(
-                          'subscription.welcome_to_premium'.tr(),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: isDark ? Colors.white : DesignTokens.textPrimary,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
+                            Text(
+                              'subscription.subscription_active_desc'.tr(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: DesignTokens.textSecondary,
+                                height: 1.5,
+                              ),
+                            ),
 
-                        const SizedBox(height: 12),
+                            const SizedBox(height: 40),
 
-                        Text(
-                          'subscription.subscription_active_desc'.tr(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
-                        ),
+                            _BenefitRow(
+                              icon: Icons.percent_rounded,
+                              title: 'subscription.no_platform_fee'.tr(),
+                              subtitle: 'subscription.no_platform_fee_desc'
+                                  .tr(),
+                              isDark: isDark,
+                            ),
+                            _BenefitRow(
+                              icon: Icons.chat_bubble_outline_rounded,
+                              title: 'subscription.chat_with_sellers'.tr(),
+                              subtitle: 'subscription.chat_with_sellers_desc'
+                                  .tr(),
+                              isDark: isDark,
+                            ),
+                            _BenefitRow(
+                              icon: Icons.question_answer_outlined,
+                              title: 'subscription.ask_questions'.tr(),
+                              subtitle: 'subscription.ask_questions_desc'.tr(),
+                              isDark: isDark,
+                            ),
+                            _BenefitRow(
+                              icon: Icons.photo_camera_outlined,
+                              title: 'subscription.photo_reviews'.tr(),
+                              subtitle: 'subscription.photo_reviews_desc'.tr(),
+                              isDark: isDark,
+                            ),
+                            _BenefitRow(
+                              icon: Icons.notifications_active_outlined,
+                              title: 'subscription.smart_notifications'.tr(),
+                              subtitle: 'subscription.smart_notifications_desc'
+                                  .tr(),
+                              isDark: isDark,
+                            ),
 
-                        const SizedBox(height: 40),
+                            const Spacer(),
 
-                        _BenefitRow(
-                          icon: Icons.percent_rounded,
-                          title: 'subscription.no_platform_fee'.tr(),
-                          subtitle: 'subscription.no_platform_fee_desc'.tr(),
-                          isDark: isDark,
-                        ),
-                        _BenefitRow(
-                          icon: Icons.chat_bubble_outline_rounded,
-                          title: 'subscription.chat_with_sellers'.tr(),
-                          subtitle: 'subscription.chat_with_sellers_desc'.tr(),
-                          isDark: isDark,
-                        ),
-                        _BenefitRow(
-                          icon: Icons.question_answer_outlined,
-                          title: 'subscription.ask_questions'.tr(),
-                          subtitle: 'subscription.ask_questions_desc'.tr(),
-                          isDark: isDark,
-                        ),
-                        _BenefitRow(
-                          icon: Icons.photo_camera_outlined,
-                          title: 'subscription.photo_reviews'.tr(),
-                          subtitle: 'subscription.photo_reviews_desc'.tr(),
-                          isDark: isDark,
-                        ),
-                        _BenefitRow(
-                          icon: Icons.notifications_active_outlined,
-                          title: 'subscription.smart_notifications'.tr(),
-                          subtitle: 'subscription.smart_notifications_desc'.tr(),
-                          isDark: isDark,
-                        ),
+                            Semantics(
+                              button: true,
+                              label: 'btn-start-shopping',
+                              child: ModernButton(
+                                label: 'subscription.start_shopping'.tr(),
+                                onPressed: () => Navigator.of(context)
+                                    .pushNamedAndRemoveUntil(
+                                      AppRoutes.home,
+                                      (route) => false,
+                                    ),
+                                icon: Icons.shopping_bag_outlined,
+                              ),
+                            ),
 
-                        const Spacer(),
-
-                        Semantics(
-                          button: true,
-                          label: 'btn-start-shopping',
-                          child: ModernButton(
-                            label: 'subscription.start_shopping'.tr(),
-                            onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
-                            icon: Icons.shopping_bag_outlined,
-                          ),
+                            const SizedBox(height: 16),
+                          ],
                         ),
-
-                        const SizedBox(height: 16),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -310,9 +405,16 @@ class _SubscriptionSuccessScreenState extends ConsumerState<SubscriptionSuccessS
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
-    _glowAnimation = Tween<double>(begin: 0.25, end: 0.55).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    _glowAnimation = Tween<double>(begin: 0.25, end: 0.55).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
     _startTimeout();
   }
 

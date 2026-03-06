@@ -43,6 +43,7 @@ from schema_constants import (
     ErrorCodes,
     Fields,
     HeaderKeys,
+    LanguageValues,
     LicenseStatusValues,
     NotificationTypes,
     OrderEventTypes,
@@ -209,6 +210,7 @@ def _rollback_checkout(validated_items: list, order_ref, coupon_code: str | None
         @get_transactional()
         def rollback_stock(transaction):
             # Phase 1: Read ALL product snapshots first
+            """Function rollback_stock."""
             refs_and_snapshots = []
             for item in validated_items:
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
@@ -615,6 +617,107 @@ def _coupon_min_order_met(coupon_data: dict, actual_subtotal_cents: int) -> bool
     return actual_subtotal_cents >= int(min_order_cents)
 
 
+def _build_stock_reservation_plan(
+    validated_items: list[dict[str, Any]],
+    product_data_by_id: dict[str, dict[str, Any]],
+    inventory_candidates: dict[str, list[tuple[str, int]]],
+) -> dict[str, Any]:
+    """
+    Build a deterministic stock reservation plan for checkout.
+
+    This avoids duplicate-line under-reservation by aggregating decrements per
+    product and simulating warehouse consumption in-memory before write phase.
+    """
+    stock_deduct_by_product: dict[str, int] = {}
+    warehouse_deduct_by_product: dict[str, dict[str, int]] = {}
+    item_warehouse_by_index: dict[int, str] = {}
+    variant_state_by_product: dict[str, list[dict[str, Any]]] = {}
+
+    remaining_stock_by_product: dict[str, int] = {}
+    allow_backorder_by_product: dict[str, bool] = {}
+    remaining_inventory_by_product: dict[str, dict[str, int]] = {}
+
+    for product_id, product_data in product_data_by_id.items():
+        remaining_stock_by_product[product_id] = int(product_data.get(Fields.STOCK_QUANTITY, 0) or 0)
+        allow_backorder_by_product[product_id] = bool(
+            (product_data.get(Fields.INVENTORY, {}) or {}).get(Fields.ALLOW_BACKORDER, False)
+        )
+        variants = product_data.get(Fields.VARIANTS, [])
+        if isinstance(variants, list):
+            variant_state_by_product[product_id] = [dict(v) for v in variants if isinstance(v, dict)]
+        else:
+            variant_state_by_product[product_id] = []
+        remaining_inventory_by_product[product_id] = {
+            wh_id: int(avail or 0) for wh_id, avail in inventory_candidates.get(product_id, [])
+        }
+
+    for item_index, item in enumerate(validated_items):
+        product_id = item[Fields.PRODUCT_ID]
+        product_data = product_data_by_id.get(product_id)
+        if not product_data:
+            raise https_fn.HttpsError("not-found", f"Product {product_id} not found")
+
+        qty = int(item.get(Fields.QUANTITY, 0) or 0)
+        if qty <= 0:
+            raise https_fn.HttpsError("invalid-argument", f"Invalid quantity for product {product_id}")
+
+        variant_id = item.get(Fields.VARIANT_ID)
+        if product_data.get(Fields.HAS_VARIANTS, False) and not variant_id:
+            raise https_fn.HttpsError(
+                "invalid-argument",
+                f"Product {product_data.get(Fields.NAME, product_id)} has variants — selection required",
+            )
+
+        if item.get(Fields.IS_DIGITAL, False):
+            continue
+
+        allow_backorder = allow_backorder_by_product.get(product_id, False)
+
+        item_wh_id = None
+        wh_remaining = remaining_inventory_by_product.get(product_id, {})
+        if wh_remaining:
+            for wh_id, available in sorted(wh_remaining.items(), key=lambda kv: kv[1], reverse=True):
+                if available >= qty:
+                    item_wh_id = wh_id
+                    wh_remaining[wh_id] = available - qty
+                    break
+
+        if item_wh_id is None and not allow_backorder:
+            remaining_stock = remaining_stock_by_product.get(product_id, 0)
+            if remaining_stock < qty:
+                raise https_fn.HttpsError(
+                    "resource-exhausted",
+                    f"Insufficient stock for {product_data.get(Fields.NAME, product_id)}",
+                )
+
+        remaining_stock_by_product[product_id] = remaining_stock_by_product.get(product_id, 0) - qty
+        stock_deduct_by_product[product_id] = stock_deduct_by_product.get(product_id, 0) + qty
+
+        if item_wh_id:
+            by_wh = warehouse_deduct_by_product.setdefault(product_id, {})
+            by_wh[item_wh_id] = by_wh.get(item_wh_id, 0) + qty
+            item_warehouse_by_index[item_index] = item_wh_id
+
+        if variant_id:
+            variants = variant_state_by_product.get(product_id, [])
+            variant_idx = next((idx for idx, v in enumerate(variants) if v.get(Fields.VARIANT_ID) == variant_id), None)
+            if variant_idx is not None:
+                variant_stock = int(variants[variant_idx].get(Fields.STOCK_QUANTITY, 0) or 0)
+                if not allow_backorder and variant_stock < qty:
+                    raise https_fn.HttpsError(
+                        "resource-exhausted",
+                        f"Insufficient stock for {product_data.get(Fields.NAME, product_id)} variant",
+                    )
+                variants[variant_idx][Fields.STOCK_QUANTITY] = variant_stock - qty
+
+    return {
+        "stock_deduct_by_product": stock_deduct_by_product,
+        "warehouse_deduct_by_product": warehouse_deduct_by_product,
+        "item_warehouse_by_index": item_warehouse_by_index,
+        "variant_state_by_product": variant_state_by_product,
+    }
+
+
 
 
 @https_fn.on_call(**PAYMENT_OPTIONS)
@@ -647,6 +750,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
+    # Honor admin provider toggles before creating any order/session state.
+    from handlers.payment_providers import PaymentProvider, require_provider_enabled
+
+    require_provider_enabled(PaymentProvider.STRIPE)
     ensure_stripe_key()
 
     # Check email verification (skip in emulator mode - tokens may not carry email_verified)
@@ -681,6 +788,24 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # === EARLY VALIDATION (BEFORE DB HITS) ===
     items = data.get(Fields.ITEMS, [])
     shipping_address = data.get(Fields.SHIPPING_ADDRESS, {})
+
+    # COMPLIANCE (HIGH): EULA acceptance required for digital products before delivery
+    eula_accepted = data.get(ApiKeys.EULA_ACCEPTED, False)
+    has_digital_items = any(item.get(Fields.IS_DIGITAL, False) for item in items if isinstance(item, dict))
+    if has_digital_items and not eula_accepted:
+        raise https_fn.HttpsError(
+            "failed-precondition",
+            "You must accept the End User License Agreement (EULA) before purchasing digital products.",
+        )
+
+    # COMPLIANCE (HIGH): Age verification required for age-restricted products (Canadian provincial law)
+    age_verification_accepted = data.get(ApiKeys.AGE_VERIFICATION_ACCEPTED, False)
+    has_age_restricted_items = any(item.get(Fields.IS_AGE_RESTRICTED, False) for item in items if isinstance(item, dict))
+    if has_age_restricted_items and not age_verification_accepted:
+        raise https_fn.HttpsError(
+            "failed-precondition",
+            "You must confirm you are 18 or older before purchasing age-restricted products.",
+        )
 
     if not items or not isinstance(items, list):
         raise https_fn.HttpsError("invalid-argument", "No items in cart or invalid items format")
@@ -745,6 +870,16 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("invalid-argument", f"Address field '{addr_field}' is too long")
 
     client_idempotency_key = data.get(ApiKeys.IDEMPOTENCY_KEY)
+    # Derive a deterministic key to prevent retries from changing the idempotency token.
+    # A randomly-generated order id as fallback is useless — it changes every call.
+    if not client_idempotency_key:
+        import hashlib
+        _cart_fingerprint = "|".join(sorted(
+            f"{item.get(Fields.PRODUCT_ID, '')}:{item.get(Fields.QUANTITY, 1)}"
+            for item in items
+        ))
+        _raw = f"checkout:{user_id}:{_cart_fingerprint}"
+        client_idempotency_key = "auto_" + hashlib.sha256(_raw.encode()).hexdigest()[:32]
 
     # --- SERVER-SIDE PRODUCT VALIDATION ---
     # F-01:Authoritative price check. Never trust client-supplied prices.
@@ -939,14 +1074,25 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         try:
             physical_items = [i for i in validated_items if not i.get(Fields.IS_DIGITAL, False)]
-            shipping_cost_dollars = calculate_shipping_cost(physical_items, shipping_address, speed=delivery_speed)
+            shipping_cost_dollars, shipping_breakdown_dollars = calculate_shipping_cost(
+                physical_items, shipping_address, speed=delivery_speed
+            )
             shipping_cost_cents = round(shipping_cost_dollars * 100)
+
+            # Map breakdown to validated_items (before zeroing for threshold to keep record)
+            for v_item in validated_items:
+                item_key = v_item.get(Fields.CART_ITEM_ID) or v_item.get(Fields.PRODUCT_ID)
+                v_item[Fields.ITEM_SHIPPING_CENTS] = round(shipping_breakdown_dollars.get(item_key, 0) * 100)
 
             # CRITICAL-C12: Backend Free Shipping Threshold Enforcement
             if discounted_subtotal_cents >= BusinessRules.FREE_SHIPPING_THRESHOLD_CENTS:
                 shipping_cost_cents = 0
+                for v_item in validated_items:
+                    v_item[Fields.ITEM_SHIPPING_CENTS] = 0
             elif _check_premium_from_sub(user_id):
                 shipping_cost_cents = 0
+                for v_item in validated_items:
+                    v_item[Fields.ITEM_SHIPPING_CENTS] = 0
         except ValueError as e:
             raise https_fn.HttpsError("invalid-argument", str(e)) from e
         except Exception as e:
@@ -1101,19 +1247,25 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     @get_transactional()
     def checkout_atomic_transaction(transaction):
         # 1. READ PHASE
-        product_refs_tx = []
-        product_snapshots_tx = []
-        inv_refs_per_product_tx = {}
-        inv_snaps_per_product_tx = {}
-        for item in validated_items:
-            p_id = item[Fields.PRODUCT_ID]
-            p_ref = get_db().collection(Collections.PRODUCTS).document(p_id)
-            product_refs_tx.append(p_ref)
-            product_snapshots_tx.append(p_ref.get(transaction=transaction))
-            if p_id not in inv_refs_per_product_tx:
-                candidates = inventory_candidates.get(p_id, [])
-                inv_refs_per_product_tx[p_id] = [p_ref.collection(Collections.INVENTORY_LEVELS).document(wh_id) for wh_id, _ in candidates]
-                inv_snaps_per_product_tx[p_id] = [ref.get(transaction=transaction) for ref in inv_refs_per_product_tx[p_id]]
+        """Function checkout_atomic_transaction."""
+        product_ids_tx = list({item[Fields.PRODUCT_ID] for item in validated_items})
+        product_refs_tx = {
+            p_id: get_db().collection(Collections.PRODUCTS).document(p_id)
+            for p_id in product_ids_tx
+        }
+        product_snapshots_tx = {
+            p_id: p_ref.get(transaction=transaction) for p_id, p_ref in product_refs_tx.items()
+        }
+        inv_ref_by_product_wh_tx: dict[str, dict[str, Any]] = {}
+        for p_id in product_ids_tx:
+            candidates = inventory_candidates.get(p_id, [])
+            p_ref = product_refs_tx[p_id]
+            inv_ref_by_product_wh_tx[p_id] = {
+                wh_id: p_ref.collection(Collections.INVENTORY_LEVELS).document(wh_id)
+                for wh_id, _ in candidates
+            }
+            for inv_ref in inv_ref_by_product_wh_tx[p_id].values():
+                inv_ref.get(transaction=transaction)
 
         coupon_ref = None
         coupon_use_ref = None
@@ -1128,39 +1280,17 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         seller_profile_snaps = {sid: get_db().collection(Collections.SELLER_PROFILES).document(sid).get(transaction=transaction) for sid in sellers}
 
         # 2. VALIDATION PHASE
-        updates_tx = []
-        inv_level_writes_tx = []
-        for i, item in enumerate(validated_items):
-            snapshot = product_snapshots_tx[i]
+        product_data_by_id_tx = {}
+        for p_id, snapshot in product_snapshots_tx.items():
             if not snapshot.exists:
-                raise https_fn.HttpsError('not-found', f'Product {item[Fields.PRODUCT_ID]} not found')
-            p_data_tx = snapshot.to_dict() or {}
-            current_stock = p_data_tx.get(Fields.STOCK_QUANTITY, 0)
-            allow_backorder = p_data_tx.get(Fields.INVENTORY, {}).get(Fields.ALLOW_BACKORDER, False)
-            if p_data_tx.get(Fields.HAS_VARIANTS, False) and not item.get(Fields.VARIANT_ID):
-                raise https_fn.HttpsError('invalid-argument', f'Product {p_data_tx[Fields.NAME]} has variants — selection required')
+                raise https_fn.HttpsError('not-found', f'Product {p_id} not found')
+            product_data_by_id_tx[p_id] = snapshot.to_dict() or {}
 
-            item_wh_id = None
-            if not item.get(Fields.IS_DIGITAL, False):
-                snaps = inv_snaps_per_product_tx[item[Fields.PRODUCT_ID]]
-                for idx, snap in enumerate(snaps):
-                    if snap.exists and snap.to_dict().get(Fields.AVAILABLE_QUANTITY, 0) >= item[Fields.QUANTITY]:
-                        item_wh_id = inventory_candidates[item[Fields.PRODUCT_ID]][idx][0]
-                        break
-
-            if not item_wh_id and not item.get(Fields.IS_DIGITAL, False) and not allow_backorder and current_stock < item[Fields.QUANTITY]:
-                 raise https_fn.HttpsError('resource-exhausted', f'Insufficient stock for {p_data_tx[Fields.NAME]}')
-
-            wh_patches = {}
-            wh_inv_writes = []
-            if item_wh_id:
-                wh_patches[f'{Fields.WAREHOUSE_STOCK}.{item_wh_id}'] = get_firestore().Increment(-item[Fields.QUANTITY])
-                idx = next(idx for idx, (wid, _) in enumerate(inventory_candidates[item[Fields.PRODUCT_ID]]) if wid == item_wh_id)
-                new_avail = inv_snaps_per_product_tx[item[Fields.PRODUCT_ID]][idx].to_dict().get(Fields.AVAILABLE_QUANTITY, 0) - item[Fields.QUANTITY]
-                wh_inv_writes.append((inv_refs_per_product_tx[item[Fields.PRODUCT_ID]][idx], new_avail))
-
-            updates_tx.append((product_refs_tx[i], current_stock - item[Fields.QUANTITY], wh_patches, item_wh_id))
-            inv_level_writes_tx.append(wh_inv_writes)
+        reservation_plan = _build_stock_reservation_plan(
+            validated_items=validated_items,
+            product_data_by_id=product_data_by_id_tx,
+            inventory_candidates=inventory_candidates,
+        )
 
         if coupon_snap:
             if not coupon_snap.exists:
@@ -1183,26 +1313,35 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         _stripe_snapshot_ref[0] = seller_account_snapshot if seller_account_snapshot else None
 
         # 3. WRITE PHASE
-        for i, (ref, n_stock, wh_patches, item_wh_id) in enumerate(updates_tx):
-            # Digital products have no physical stock — skip all stock decrement writes
-            if validated_items[i].get(Fields.IS_DIGITAL, False):
-                if item_wh_id:
-                    order_data[Fields.ITEMS][i][Fields.FULFILLMENT_WAREHOUSE_ID] = item_wh_id
+        stock_deduct_by_product = reservation_plan["stock_deduct_by_product"]
+        warehouse_deduct_by_product = reservation_plan["warehouse_deduct_by_product"]
+        item_warehouse_by_index = reservation_plan["item_warehouse_by_index"]
+        variant_state_by_product = reservation_plan["variant_state_by_product"]
+
+        for p_id, deduct_qty in stock_deduct_by_product.items():
+            if deduct_qty <= 0:
                 continue
-            patch = {Fields.STOCK_QUANTITY: n_stock}
-            patch.update(wh_patches)
-            variant_id = validated_items[i].get(Fields.VARIANT_ID)
-            if variant_id:
-                v_list = list(product_snapshots_tx[i].to_dict().get(Fields.VARIANTS, []))
-                v_idx = next((idx for idx, v in enumerate(v_list) if v.get(Fields.VARIANT_ID) == variant_id), None)
-                if v_idx is not None:
-                    v_list[v_idx][Fields.STOCK_QUANTITY] -= validated_items[i][Fields.QUANTITY]
-                    patch[Fields.VARIANTS] = v_list
-            transaction.update(ref, patch)
-            for inv_ref, n_avail in inv_level_writes_tx[i]:
-                transaction.set(inv_ref, {Fields.AVAILABLE_QUANTITY: n_avail, Fields.LAST_SYNCED_AT: get_server_timestamp()}, merge=True)
-            if item_wh_id:
-                order_data[Fields.ITEMS][i][Fields.FULFILLMENT_WAREHOUSE_ID] = item_wh_id
+            patch = {Fields.STOCK_QUANTITY: get_firestore().Increment(-deduct_qty)}
+            for wh_id, wh_deduct in warehouse_deduct_by_product.get(p_id, {}).items():
+                patch[f'{Fields.WAREHOUSE_STOCK}.{wh_id}'] = get_firestore().Increment(-wh_deduct)
+            if product_data_by_id_tx.get(p_id, {}).get(Fields.HAS_VARIANTS, False):
+                patch[Fields.VARIANTS] = variant_state_by_product.get(p_id, [])
+            transaction.update(product_refs_tx[p_id], patch)
+
+            for wh_id, wh_deduct in warehouse_deduct_by_product.get(p_id, {}).items():
+                inv_ref = inv_ref_by_product_wh_tx.get(p_id, {}).get(wh_id)
+                if inv_ref:
+                    transaction.set(
+                        inv_ref,
+                        {
+                            Fields.AVAILABLE_QUANTITY: get_firestore().Increment(-wh_deduct),
+                            Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                        },
+                        merge=True,
+                    )
+
+        for item_idx, wh_id in item_warehouse_by_index.items():
+            order_data[Fields.ITEMS][item_idx][Fields.FULFILLMENT_WAREHOUSE_ID] = wh_id
 
         if coupon_ref:
             transaction.update(coupon_ref, {Fields.USED_COUNT: get_firestore().Increment(1)})
@@ -1323,12 +1462,19 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 }
             )
 
+        # Bill 96/Law 25: Quebec users must receive French-language checkout by default.
+        # Stripe accepts 'fr-CA' or 'auto' (browser-detected). We use the user's stored
+        # preferredLanguage — 'fr' → 'fr-CA', anything else → 'auto' (let Stripe decide).
+        preferred_lang = user_data.get(Fields.PREFERRED_LANGUAGE, LanguageValues.ENGLISH)
+        stripe_locale = "fr-CA" if preferred_lang == LanguageValues.FRENCH else "auto"
+
         session = stripe.checkout.Session.create(
             line_items=line_items,
             mode=StripeConstants.MODE_PAYMENT,
             # Explicit payment_method_types disables Stripe Link while keeping card/wallets.
             # Apple Pay and Google Pay work transparently via 'card' type in CA.
             payment_method_types=[StripeConstants.PAYMENT_METHOD_CARD],
+            locale=stripe_locale,
             success_url=f"{BASE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{BASE_URL}{AppConfig.CHECKOUT_CANCEL_PATH}",
             client_reference_id=user_id,
@@ -1431,7 +1577,14 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     # SECURITY FIX #1: Rate limiting by IP FIRST (prevent DDoS)
     # Skip rate limiting in emulator mode to avoid Firestore transaction issues
-    client_ip = req.headers.get(HeaderKeys.X_FORWARDED_FOR, req.headers.get(HeaderKeys.X_REAL_IP, "unknown")).split(",")[0].strip()
+    # SECURITY FIX (AUDIT): Use the LAST IP in X-Forwarded-For, not the first.
+    # The first IP is client-provided and trivially spoofable. GCP Load Balancer
+    # appends the true client IP as the last entry — that value is trustworthy.
+    forwarded_for = req.headers.get(HeaderKeys.X_FORWARDED_FOR, "")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[-1].strip()  # Last entry = GCP LB appended, trustworthy
+    else:
+        client_ip = req.headers.get(HeaderKeys.X_REAL_IP, "unknown")
 
     if not IS_EMULATOR:
         allowed, message = get_rate_limiter().check_rate_limit(
@@ -1741,20 +1894,22 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
             for item in items
             if item.get(Fields.SELLER_ID) == coupon_seller_id
         )
-        # scoped_discount_ratio applies only to the coupon seller; others get 1.0
+        # scoped_discount_ratio applies only to the coupon seller; others get 1.0.
+        # Clamp to [0.0, 1.0]: a fixed-amount coupon larger than the seller subtotal
+        # must not produce a negative ratio (which would over-refund or reverse payout).
         scoped_discount_ratio = (
-            (scoped_subtotal_cents - discount_amount_cents) / scoped_subtotal_cents
+            max(0.0, min(1.0, (scoped_subtotal_cents - discount_amount_cents) / scoped_subtotal_cents))
             if scoped_subtotal_cents > 0
             else 1.0
         )
         global_discount_ratio = None  # sentinel: use per-seller logic below
     else:
-        # Platform-wide coupon or no coupon — apply uniformly to all sellers
-        global_discount_ratio = (
-            (actual_subtotal_cents - discount_amount_cents) / actual_subtotal_cents
-            if actual_subtotal_cents > 0
-            else 1.0
-        )
+        # FINANCIAL FIX (AUDIT): Platform-wide coupons should be absorbed by the platform,
+        # NOT deducted from seller payouts. Independent sellers should receive their full
+        # negotiated price regardless of platform marketing discounts.
+        # Set global_discount_ratio = 1.0 (no reduction) for platform-wide coupons.
+        # The platform absorbs the cost via reduced platform fee revenue.
+        global_discount_ratio = 1.0
         scoped_discount_ratio = None  # unused
 
     # Compute per-seller totals (price in dollars × 100 → cents, × quantity)
@@ -1779,8 +1934,7 @@ def _execute_seller_payouts(order_id: str, order_data: dict, charge_id: str) -> 
         else:
             # Other sellers are unaffected by a scoped coupon
             adjusted_amount_cents = amount_cents
-        # PLATFORM_FEE_RATIO = 2.5%; uses the rate frozen at checkout to prevent config changes
-        # from retroactively affecting in-flight orders.
+        # Prevent config updates from retroactively changing fees.
         platform_fee_cents = round(adjusted_amount_cents * stored_fee_rate)  # already in cents
         net_amount_cents = adjusted_amount_cents - platform_fee_cents  # already in cents
 
@@ -2153,8 +2307,17 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
         # Multi-seller order: partial cancel — refund bad sellers' items, keep good items
         bad_items = [i for i in items if i.get(Fields.SELLER_ID) in bad_seller_ids]
+        # SECURITY FIX (AUDIT): Apply coupon discount ratio before calculating refund amount.
+        # Refunding at full price when buyer paid a discounted price over-refunds and drains platform.
+        order_subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 0)
+        order_discount_cents = order_data.get(Fields.DISCOUNT_AMOUNT_CENTS, 0)
+        _discount_ratio = (
+            (order_subtotal_cents - order_discount_cents) / order_subtotal_cents
+            if order_subtotal_cents > 0 and order_discount_cents > 0
+            else 1.0
+        )
         bad_amount_cents = sum(
-            round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1)
+            round(round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1) * _discount_ratio)
             for item in bad_items
         )
         pi_id_for_partial = session.get(StripeConstants.PAYMENT_INTENT)
@@ -2188,13 +2351,14 @@ def process_checkout_session_completed(session: dict) -> str | None:
     pi_id = session.get(StripeConstants.PAYMENT_INTENT)
 
     # Initialize update data with CAPTURED status (auto-capture mode)
-    # expiresAt stamped here (at Stripe authorization) — 6-day window (24h safety margin before Stripe auto-voids at day 7)
+    # AUDIT FIX: Do NOT set EXPIRES_AT for captured orders — expiry only applies to
+    # AUTHORIZED (manual-capture) payments awaiting capture. Setting it here creates
+    # ghost state that confuses the stale_orders_dispatcher and client UIs.
     update_data = {
         Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
         Fields.STRIPE_PAYMENT_INTENT_ID: pi_id,
         Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
         Fields.CAPTURED_AT: get_server_timestamp(),
-        Fields.EXPIRES_AT: datetime.now(UTC) + timedelta(days=BusinessRules.AUTHORIZATION_EXPIRY_DAYS),
         Fields.UPDATED_AT: get_server_timestamp(),
     }
 
@@ -2649,7 +2813,10 @@ def process_session_expired(session: dict) -> str | None:
                     inv_ref = product_ref.collection(Collections.INVENTORY_LEVELS).document(fulfillment_wh)
                     transaction.set(
                         inv_ref,
-                        {Fields.AVAILABLE_QUANTITY: _fs.Increment(qty)},
+                        {
+                            Fields.AVAILABLE_QUANTITY: _fs.Increment(qty),
+                            Fields.LAST_SYNCED_AT: get_server_timestamp(),
+                        },
                         merge=True,
                     )
 
@@ -2893,12 +3060,23 @@ def process_charge_refunded(charge: dict) -> str | None:
                 }
                 # For partial refunds, only reverse proportional amount
                 # but cap at max_reversible to prevent over-reversal
-                order_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, amount_total)
-                if not is_full_refund and order_subtotal > 0:
-                    reversal_amount = round(payout_net * amount_refunded / order_subtotal)
-                    reversal_amount = min(reversal_amount, max_reversible)
-                    if reversal_amount > 0:
-                        reversal_kwargs[Fields.AMOUNT] = reversal_amount
+                # SECURITY FIX (AUDIT): Use amount_total (includes tax+shipping) as denominator.
+                # order_subtotal excludes tax/shipping but amount_refunded can include them.
+                # Using subtotal as denominator causes numerator > denominator → over-reversal
+                # that penalizes sellers for money they never received.
+                # amount_total comes from the charge object and includes tax+shipping — correct denominator
+                order_total_for_ratio = amount_total if amount_total > 0 else order_data.get(Fields.SUBTOTAL_CENTS, 1)
+                if not is_full_refund and order_total_for_ratio > 0:
+                    # Compute cumulative target reversal for this payout based on total refunded,
+                    # then subtract what was already reversed to get the DELTA for this call.
+                    # Using the raw cumulative `amount_refunded` without subtracting `already_reversed`
+                    # would over-reverse on subsequent partial refunds (e.g., $10 then $10 → second
+                    # webhook would reverse $20 cumulative instead of the $10 delta).
+                    cumulative_target = round(payout_net * amount_refunded / order_total_for_ratio)
+                    reversal_delta = cumulative_target - already_reversed_cents
+                    reversal_delta = min(max(reversal_delta, 0), max_reversible)
+                    if reversal_delta > 0:
+                        reversal_kwargs[Fields.AMOUNT] = reversal_delta
                 else:
                     # Full refund: reverse remaining (not already reversed)
                     if already_reversed_cents > 0:
@@ -3022,12 +3200,13 @@ def process_charge_refunded(charge: dict) -> str | None:
                 except Exception as e:
                     logger.error(f"Failed to restore stock for refunded order {order_id}: {e}")
 
-            _fs = get_firestore()
             order_ref.update(
                 {
                     Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED,
                     Fields.TRANSFERS_REVERSED: reversed_count,
-                    Fields.CUMULATIVE_REFUNDED_CENTS: _fs.Increment(amount_refunded),
+                    # SET (not Increment): amount_refunded is already the cumulative total from Stripe.
+                    # Using Increment would double-count on webhook retries or sequential partial refunds.
+                    Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
                     Fields.STOCK_RESTORED: order_data.get(Fields.STOCK_RESTORED, False),
                     Fields.REFUNDED_AT: get_server_timestamp(),
                     Fields.UPDATED_AT: get_server_timestamp(),
@@ -3035,12 +3214,12 @@ def process_charge_refunded(charge: dict) -> str | None:
             )
             return f"Order {order_id} fully refunded, reversed {reversed_count} transfers"
         else:
-            _fs = get_firestore()
             order_ref.update(
                 {
                     Fields.PAYMENT_STATUS: PaymentStatusValues.PARTIALLY_REFUNDED,
                     Fields.PARTIAL_REFUND_AMOUNT_CENTS: amount_refunded,
-                    Fields.CUMULATIVE_REFUNDED_CENTS: _fs.Increment(amount_refunded),
+                    # SET (not Increment): amount_refunded is the cumulative total from Stripe.
+                    Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
                     Fields.TRANSFERS_REVERSED: reversed_count,
                     Fields.REFUNDED_AT: get_server_timestamp(),
                     Fields.UPDATED_AT: get_server_timestamp(),
@@ -4218,6 +4397,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
     # This prevents two concurrent capture_payment calls from both proceeding.
     @get_transactional()
     def lock_for_capture(transaction):
+        """Function lock_for_capture."""
         fresh_doc = order_ref.get(transaction=transaction)
         if not fresh_doc.exists:
             raise https_fn.HttpsError("not-found", "Order not found")

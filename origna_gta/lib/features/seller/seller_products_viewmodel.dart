@@ -19,13 +19,24 @@ final sellerProductsProvider = StreamProvider.autoDispose<List<Product>>((ref) {
       .orderBy(Fields.createdAt, descending: true)
       .limit(BusinessRules.sellerProductsPageSize)
       .snapshots()
-      .map((snap) => snap.docs.map((d) => Product.fromFirestore(d)).toList());
+      .map((snap) => snap.docs
+          .map((d) {
+            try {
+              return Product.fromFirestore(d);
+            } catch (e) {
+              AppError.log(e, context: 'sellerProductsProvider: skipping malformed doc ${d.id}');
+              return null;
+            }
+          })
+          .whereType<Product>()
+          .toList());
 });
 
 final sellerProductsViewModelProvider = StateNotifierProvider.autoDispose<SellerProductsViewModel, SellerProductsState>((ref) {
   return SellerProductsViewModel(ref);
 });
 
+/// Documentation for SellerProductsState
 class SellerProductsState {
   final Set<String> selectedIds;
   final bool isLoading;
@@ -44,6 +55,7 @@ class SellerProductsState {
   }
 }
 
+/// Documentation for SellerProductsViewModel
 class SellerProductsViewModel extends StateNotifier<SellerProductsState> {
   final Ref _ref;
 

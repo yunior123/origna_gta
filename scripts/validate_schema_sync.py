@@ -76,6 +76,7 @@ CRITICAL_PAIRS: list[tuple[str, str]] = [
 
 
 class ConstantEntry(NamedTuple):
+    """Class ConstantEntry."""
     name: str  # UPPER_SNAKE or camelCase constant name
     value: str  # The string literal value
 
@@ -270,6 +271,10 @@ def compare_class_pair(
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    """Validate schema sync between Python and Dart schema_constants files.
+
+    Returns 0 on success, 1 if any sync issues are found.
+    """
     # Verify files exist
     if not PYTHON_FILE.exists():
         print(f"ERROR: Python file not found: {PYTHON_FILE}")

@@ -97,6 +97,7 @@ def send_to_all(subject: str, html_content: str, tag: str):
 
 
 def main():
+    """Function main."""
     print("=" * 60)
     print("📧 Sending ALL email samples via Mailjet")
     print(f"   Recipients: {', '.join(RECIPIENTS)}")

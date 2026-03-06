@@ -28,6 +28,7 @@ Uint8List? _compressImageEditIsolate(Uint8List bytes) {
   return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
 }
 
+/// Documentation for EditProductViewModel
 class EditProductViewModel extends StateNotifier<EditProductState> {
   final Ref _ref;
   final models.Product _product;
@@ -39,6 +40,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           isLocalDeliveryOnly: _product.isLocalDeliveryOnly,
           isPerishable: _product.isPerishable,
           isDigital: _product.isDigital,
+          isAgeRestricted: _product.isAgeRestricted,
           digitalType: _product.digitalType,
           macosDownloadUrl: _product.digitalBuilds?[DigitalPlatformValues.macos],
           windowsDownloadUrl: _product.digitalBuilds?[DigitalPlatformValues.windows],
@@ -158,6 +160,8 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   void toggleLocalDelivery(bool value) => state = state.copyWith(isLocalDeliveryOnly: value);
 
   void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
+
+  void toggleAgeRestricted(bool value) => state = state.copyWith(isAgeRestricted: value);
 
   void toggleSoldOut(bool value) => state = state.copyWith(isSoldOut: value);
 
@@ -344,6 +348,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         isLocalDeliveryOnly: state.isDigital ? false : state.isLocalDeliveryOnly,
         estimatedShipDays: state.isDigital ? 0 : shipDays,
         isPerishable: state.isDigital ? false : state.isPerishable,
+        isAgeRestricted: state.isDigital ? false : state.isAgeRestricted,
         deliveryOptions: sanitizedDeliveryOptions,
         isDigital: state.isDigital,
         digitalType: state.isDigital ? state.digitalType : null,

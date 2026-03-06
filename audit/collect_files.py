@@ -1,3 +1,4 @@
+"""Module collect_files.py."""
 from pathlib import Path
 
 ALLOWED_EXTENSIONS = {
@@ -19,6 +20,7 @@ EXCLUDE_FILES = {
 
 
 def collect_project_files(root="."):
+    """Function collect_project_files."""
     files = []
     for path in Path(root).rglob("*"):
         if any(part in EXCLUDE_DIRS for part in path.parts):

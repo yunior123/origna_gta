@@ -13,6 +13,7 @@ import '../core/schema/schema_constants.dart';
 import '../features/chat/chat_provider.dart';
 import '../features/chat/chat_repository.dart';
 
+/// Documentation for ChatScreenArgs
 class ChatScreenArgs {
   final String productId;
   final String productTitle;
@@ -20,6 +21,7 @@ class ChatScreenArgs {
   const ChatScreenArgs({required this.productId, required this.productTitle});
 }
 
+/// Documentation for ChatScreen
 class ChatScreen extends ConsumerStatefulWidget {
   final String productId;
   final String productTitle;
@@ -91,7 +93,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       const SizedBox(height: 16),
                       Text(
                         'chat.own_product_title'.tr(),
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(color: isDark ? Colors.white : DesignTokens.textPrimary),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),

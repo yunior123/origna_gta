@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Module validate_indexes.py."""
 
 import json
 import subprocess
@@ -9,6 +10,7 @@ ENVIRONMENTS = ['orignagta-dev', 'orignagta-staging', 'orignagta']
 LOCAL_INDEXES_FILE = 'firestore.indexes.json'
 
 def get_deployed_indexes(project_id):
+    """Function get_deployed_indexes."""
     print(f"Fetching indexes for {project_id}...")
     try:
         # firebase firestore:indexes outputs JSON to stdout
@@ -47,6 +49,7 @@ def normalize_local_index(index):
     return normalize_index(index)
 
 def main():
+    """Function main."""
     if not os.path.exists(LOCAL_INDEXES_FILE):
         print(f"❌ Error: {LOCAL_INDEXES_FILE} not found.")
         sys.exit(1)

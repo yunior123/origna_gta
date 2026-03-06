@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/services/analytics_service.dart';
 
 // ============================================================================
 // FILTER STATE PROVIDERS
@@ -111,6 +113,7 @@ final searchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 /// Currently selected category ID (null = all categories)
 final selectedCategoryProvider = StateProvider.autoDispose<int?>((ref) => null);
 
+/// Documentation for FavoritesController
 class FavoritesController {
   final Ref _ref;
 
@@ -126,10 +129,16 @@ class FavoritesController {
   }
 
   /// Toggle favorite status
-  Future<void> toggleFavorite(String productId) async {
+  Future<void> toggleFavorite(String productId, {String? productName, double? priceCad}) async {
     final userId = _userId;
     if (userId == null) return;
+    final wasFavorited = isFavorite(productId);
     await _repository.toggleFavorite(userId, productId);
+    if (productName != null && priceCad != null && !wasFavorited) {
+      unawaited(AnalyticsService.logAddToWishlist(productId: productId, productName: productName, priceCad: priceCad));
+    } else if (productName != null && wasFavorited) {
+      unawaited(AnalyticsService.logRemoveFromWishlist(productId: productId, productName: productName));
+    }
   }
 }
 

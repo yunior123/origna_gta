@@ -224,6 +224,7 @@ def compare_values(python_values: dict[str, str], dart_values: dict[str, str]) -
 
 
 def main():
+    """Function main."""
     parser = argparse.ArgumentParser(description='Sync schema between Python and Dart')
     parser.add_argument('--check', action='store_true', 
                        help='Check if schemas match without writing')

@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
+/// Documentation for ChatMessage
 class ChatMessage {
   final String id;
   final String senderId;
@@ -41,6 +42,7 @@ class ChatMessage {
   }
 }
 
+/// Documentation for ChatThread
 class ChatThread {
   final String chatId;
   final String productId;
@@ -84,6 +86,7 @@ class ChatThread {
   }
 }
 
+/// Documentation for ChatRepository
 class ChatRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;

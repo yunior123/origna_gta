@@ -1,7 +1,9 @@
+"""Module test_r2_simple.py."""
 import os
 import sys
 
 import boto3
+import pytest
 import requests
 from botocore.config import Config
 
@@ -10,6 +12,7 @@ from config import R2Config  # noqa: E402
 
 
 def test_credentials_directly():
+    """Function test_credentials_directly."""
     print("\n--- Testing Credentials Directly ---")
     try:
         # Load env vars roughly (or rely on them being set by the shell if source was used)
@@ -33,7 +36,7 @@ def test_credentials_directly():
                         env_vars[key.strip()] = val.strip().strip('"').strip("'")
         except Exception as e:
             print(f"Could not read .env: {e}")
-            return
+            pytest.skip("Skipping R2 credential test: .env could not be read")
 
         print(f"Loaded credentials for Account ID: {env_vars.get('R2_ACCOUNT_ID')}")
 
@@ -55,13 +58,14 @@ def test_credentials_directly():
 
     except Exception as e:
         print(f"❌ Direct Credential Test Failed: {e}")
-        return False
+        pytest.skip(f"Skipping R2 credential test: {e}")
 
 
 def test_r2_upload():
     # URL of the local emulator function
     # Project ID is usually in .firebaserc or assumed from context.
     # The grepped logs showed "orignagta/us-central1"
+    """Function test_r2_upload."""
     function_url = "http://127.0.0.1:5001/orignagta/us-central1/get_r2_presigned_url"
 
     print(f"Testing R2 Presigned URL generation at: {function_url}")

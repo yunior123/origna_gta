@@ -73,6 +73,8 @@ sequenceDiagram
 - Run all tests: scripts/run_all_tests.sh
 - Run strict quality gate locally in safe mode: ./scripts/run_quality_gate.sh
 - Force full local strict gate (not recommended on 8GB RAM): ./scripts/run_quality_gate.sh --allow-local-heavy --backend-gate-mode strict
+- Strict quality gate (100% + real E2E): scripts/run_quality_gate.sh
+- Real browser E2E smoke: scripts/run_real_e2e_smoke.sh
 - Deploy Firestore rules: scripts/deploy_rules.sh
 - Install pre-push hook (safe local checks by default): scripts/install_git_hooks.sh
 - Firestore indexes: firebase deploy --only firestore:indexes

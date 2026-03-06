@@ -71,6 +71,7 @@ def prepare_audit(flow_name: str):
     return True
 
 def main():
+    """Function main."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     
     non_test_flows = {name: files for name, files in base.FLOWS.items() if not name.startswith("test_")}

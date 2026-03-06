@@ -1,3 +1,4 @@
+"""Module create_stripe_webhooks.py."""
 
 import os
 import subprocess
@@ -30,6 +31,7 @@ PROJECTS = {
 }
 
 def upload_secret(project_id, secret_name, secret_value):
+    """Function upload_secret."""
     print(f"   Uploading {secret_name} to {project_id}...")
     try:
         # Enable Secret Manager API (idempotent)
@@ -63,6 +65,7 @@ def upload_secret(project_id, secret_name, secret_value):
         print(f"   ❌ Exception setting {secret_name}: {e}")
 
 def main():
+    """Function main."""
     print("🚀 Starting Stripe Webhook Setup...")
     
     # helper to find existing webhook

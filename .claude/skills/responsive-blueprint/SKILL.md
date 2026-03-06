@@ -1,8 +1,6 @@
 ---
 name: responsive-blueprint
-description: >
-  Complete responsive design guide with breakpoints, grid system, adaptive patterns,
-  and implementation techniques. Use when building or reviewing responsive layouts.
+description: Use when building or reviewing responsive layouts — breakpoints, grid system, adaptive patterns, and ResponsiveBreakpoints implementation techniques for OrignaGTA.
 ---
 
 # 📱 Responsive Blueprint
