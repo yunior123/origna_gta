@@ -16,3 +16,8 @@ __pycache__/
 .pytest_cache/
 
 visual_audit/
+
+# Test output and coverage
+coverage.xml
+.coverage
+failed_tests.txt

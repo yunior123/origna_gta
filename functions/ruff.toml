@@ -31,7 +31,7 @@ exclude = [
 # Diagnostic scripts need sys.path manipulation before project imports
 "scripts/diagnostics/**/*.py" = ["E402"]
 # Algolia config script: sys.path manipulation requires deferred imports
-"configure_algolia_indices.py" = ["E402"]
+"scripts/configure_algolia_indices.py" = ["E402"]
 
 [lint.isort]
 known-first-party = ["handlers", "models", "config", "schema_constants", "utils"]
