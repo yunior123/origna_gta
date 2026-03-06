@@ -441,8 +441,10 @@ class TestCreateProductAtomicDeep:
     @patch("handlers.products._get_cached_s3_client")
     @patch("handlers.products.RateLimiter")
     @patch("handlers.products.get_db")
+    @patch("utils.helpers.geocode_address", return_value=(True, "", {"lat": 43.6532, "lng": -79.3832}))
     def test_create_product_atomic_firestore_write_failure_cleans_r2_objects(
         self,
+        mock_geocode,
         mock_get_db,
         mock_rl_cls,
         mock_get_s3,
