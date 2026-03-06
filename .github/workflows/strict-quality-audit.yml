@@ -11,10 +11,14 @@ on:
         description: "Flutter coverage threshold (%)"
         required: false
         default: "100"
-      e2e_spec:
-        description: "Playwright spec path under e2e/"
+      flutter_integration_threshold:
+        description: "Flutter integration coverage threshold (%)"
         required: false
-        default: "playwright_ui/smoke-home-profile.spec.ts"
+        default: "100"
+      e2e_specs:
+        description: "Comma-separated Playwright spec paths under e2e/"
+        required: false
+        default: "playwright_ui/smoke-home-profile.spec.ts,playwright_ui/buyer-flow.spec.ts,playwright_ui/seller-flow.spec.ts,playwright_ui/order-lifecycle.spec.ts"
       e2e_config:
         description: "Playwright config filename under e2e/"
         required: false
@@ -51,6 +55,12 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Install Linux desktop test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake libgtk-3-dev libstdc++-12-dev ninja-build pkg-config xvfb
+          flutter config --enable-linux-desktop
+
       - name: Install backend dependencies
         run: pip install -r functions/requirements.txt -r functions/requirements-dev.txt
 
@@ -67,17 +77,23 @@ jobs:
         env:
           INPUT_BACKEND_THRESHOLD: ${{ github.event.inputs.backend_threshold }}
           INPUT_FLUTTER_THRESHOLD: ${{ github.event.inputs.flutter_threshold }}
-          INPUT_E2E_SPEC: ${{ github.event.inputs.e2e_spec }}
+          INPUT_FLUTTER_INTEGRATION_THRESHOLD: ${{ github.event.inputs.flutter_integration_threshold }}
+          INPUT_E2E_SPECS: ${{ github.event.inputs.e2e_specs }}
           INPUT_E2E_CONFIG: ${{ github.event.inputs.e2e_config }}
         run: |
           BACKEND_THRESHOLD="${INPUT_BACKEND_THRESHOLD:-100}"
           FLUTTER_THRESHOLD="${INPUT_FLUTTER_THRESHOLD:-100}"
-          E2E_SPEC="${INPUT_E2E_SPEC:-playwright_ui/smoke-home-profile.spec.ts}"
+          FLUTTER_INTEGRATION_THRESHOLD="${INPUT_FLUTTER_INTEGRATION_THRESHOLD:-100}"
+          E2E_SPECS="${INPUT_E2E_SPECS:-playwright_ui/smoke-home-profile.spec.ts,playwright_ui/buyer-flow.spec.ts,playwright_ui/seller-flow.spec.ts,playwright_ui/order-lifecycle.spec.ts}"
           E2E_CONFIG="${INPUT_E2E_CONFIG:-playwright.config.dev.ts}"
 
           BACKEND_THRESHOLD="$BACKEND_THRESHOLD" \
           FLUTTER_THRESHOLD="$FLUTTER_THRESHOLD" \
-          E2E_SPEC="$E2E_SPEC" \
+          RUN_FLUTTER_INTEGRATION_COVERAGE="true" \
+          FLUTTER_INTEGRATION_THRESHOLD="$FLUTTER_INTEGRATION_THRESHOLD" \
+          FLUTTER_INTEGRATION_DEVICE="linux" \
+          FLUTTER_INTEGRATION_USE_XVFB="true" \
+          E2E_SPECS="$E2E_SPECS" \
           E2E_CONFIG="$E2E_CONFIG" \
           E2E_PROJECT="chromium" \
           E2E_WORKERS="1" \
@@ -92,5 +108,7 @@ jobs:
           path: |
             functions/coverage.xml
             origna_gta/coverage_unit.info
+            origna_gta/coverage_integration.info
+            e2e/coverage-playwright/lcov.info
             e2e/playwright-report
             e2e/test-results

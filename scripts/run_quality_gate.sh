@@ -2,8 +2,9 @@
 
 # Strict quality gate:
 # - Backend Python coverage threshold
-# - Flutter test coverage threshold (unit + widget targets)
+# - Flutter coverage threshold
 # - Real Playwright E2E smoke set
+# - Playwright coverage threshold
 #
 # Defaults intentionally set to 100 to enforce strict mode.
 
@@ -24,12 +25,21 @@ E2E_WORKERS="${E2E_WORKERS:-1}"
 E2E_FAIL_ON_FLAKY="${E2E_FAIL_ON_FLAKY:-true}"
 FLUTTER_TEST_TARGETS="${FLUTTER_TEST_TARGETS:-test/unit,test/widget,test/widget_test.dart}"
 FLUTTER_COVERAGE_TARGETS="${FLUTTER_COVERAGE_TARGETS:-test/coverage_gate_test.dart}"
+RUN_FLUTTER_INTEGRATION_COVERAGE="${RUN_FLUTTER_INTEGRATION_COVERAGE:-false}"
+FLUTTER_INTEGRATION_THRESHOLD="${FLUTTER_INTEGRATION_THRESHOLD:-100}"
+FLUTTER_INTEGRATION_COVERAGE_TARGETS="${FLUTTER_INTEGRATION_COVERAGE_TARGETS:-integration_test/coverage_gate_integration_test.dart}"
+FLUTTER_INTEGRATION_DEVICE="${FLUTTER_INTEGRATION_DEVICE:-}"
+FLUTTER_INTEGRATION_USE_XVFB="${FLUTTER_INTEGRATION_USE_XVFB:-false}"
+PLAYWRIGHT_THRESHOLD="${PLAYWRIGHT_THRESHOLD:-100}"
+PLAYWRIGHT_COVERAGE_TARGETS="${PLAYWRIGHT_COVERAGE_TARGETS:-playwright_ui/coverage-gate.spec.ts}"
+PLAYWRIGHT_COVERAGE_INCLUDE="${PLAYWRIGHT_COVERAGE_INCLUDE:-playwright_ui/coverage_gate.ts}"
 RUN_FLUTTER_GOLDENS="${RUN_FLUTTER_GOLDENS:-false}"
 FLUTTER_GOLDEN_TEST_PATH="${FLUTTER_GOLDEN_TEST_PATH:-test/golden_previews_test.dart}"
 
 RUN_BACKEND=true
 RUN_FLUTTER=true
 RUN_E2E=true
+ALLOW_LOCAL_HEAVY="${ALLOW_LOCAL_HEAVY:-false}"
 
 print_usage() {
   cat <<'EOF'
@@ -44,8 +54,25 @@ Options:
   --flutter-targets CSV   Flutter test targets under origna_gta/ (default: test/unit,test/widget,test/widget_test.dart)
   --flutter-coverage-targets CSV
                          Flutter targets used for coverage measurement (default: test/coverage_gate_test.dart)
+  --run-flutter-integration-coverage
+                         Enable Flutter integration coverage gate (default: disabled)
+  --flutter-integration-threshold N
+                         Flutter integration coverage threshold (default: env FLUTTER_INTEGRATION_THRESHOLD or 100)
+  --flutter-integration-coverage-targets CSV
+                         Flutter integration targets used for coverage measurement
+                         (default: integration_test/coverage_gate_integration_test.dart)
+  --flutter-integration-device NAME
+                         Device used for Flutter integration coverage (example: linux)
+  --flutter-integration-use-xvfb
+                         Wrap Flutter integration coverage runs in xvfb-run -a
   --run-flutter-goldens   Run Flutter golden test suite (opt-in)
   --flutter-golden-test P Golden test path under origna_gta/ (default: test/golden_previews_test.dart)
+  --playwright-threshold N
+                         Playwright coverage threshold (default: env PLAYWRIGHT_THRESHOLD or 100)
+  --playwright-coverage-targets CSV
+                         Playwright targets used for coverage measurement (default: playwright_ui/coverage-gate.spec.ts)
+  --playwright-coverage-include CSV
+                         Playwright source files included in coverage measurement (default: playwright_ui/coverage_gate.ts)
   --e2e-spec PATH         Playwright spec path under e2e/ (single override, backward-compatible)
   --e2e-specs CSV         Comma-separated Playwright specs under e2e/
   --e2e-config FILE       Playwright config file under e2e/ (default: playwright.config.dev.ts)
@@ -54,6 +81,7 @@ Options:
   --skip-backend          Skip backend coverage gate
   --skip-flutter          Skip Flutter coverage gate
   --skip-e2e              Skip Playwright E2E gate
+  --allow-local-heavy     Allow heavy Flutter/E2E gates on local machines (default: off)
   --help, -h              Show this help
 EOF
 }
@@ -86,6 +114,38 @@ while [[ $# -gt 0 ]]; do
       ;;
     --flutter-coverage-targets)
       FLUTTER_COVERAGE_TARGETS="$2"
+      shift 2
+      ;;
+    --run-flutter-integration-coverage)
+      RUN_FLUTTER_INTEGRATION_COVERAGE=true
+      shift
+      ;;
+    --flutter-integration-threshold)
+      FLUTTER_INTEGRATION_THRESHOLD="$2"
+      shift 2
+      ;;
+    --flutter-integration-coverage-targets)
+      FLUTTER_INTEGRATION_COVERAGE_TARGETS="$2"
+      shift 2
+      ;;
+    --flutter-integration-device)
+      FLUTTER_INTEGRATION_DEVICE="$2"
+      shift 2
+      ;;
+    --flutter-integration-use-xvfb)
+      FLUTTER_INTEGRATION_USE_XVFB=true
+      shift
+      ;;
+    --playwright-threshold)
+      PLAYWRIGHT_THRESHOLD="$2"
+      shift 2
+      ;;
+    --playwright-coverage-targets)
+      PLAYWRIGHT_COVERAGE_TARGETS="$2"
+      shift 2
+      ;;
+    --playwright-coverage-include)
+      PLAYWRIGHT_COVERAGE_INCLUDE="$2"
       shift 2
       ;;
     --run-flutter-goldens)
@@ -124,6 +184,10 @@ while [[ $# -gt 0 ]]; do
       RUN_E2E=false
       shift
       ;;
+    --allow-local-heavy)
+      ALLOW_LOCAL_HEAVY=true
+      shift
+      ;;
     --help|-h)
       print_usage
       exit 0
@@ -143,6 +207,16 @@ case "$BACKEND_GATE_MODE" in
     exit 2
     ;;
 esac
+
+# Protect low-resource local machines: by default run only backend gate locally.
+if [[ -z "${CI:-}" && -z "${CM_BUILD_ID:-}" && "$ALLOW_LOCAL_HEAVY" != "true" ]]; then
+  if [[ "$RUN_FLUTTER" == true || "$RUN_E2E" == true ]]; then
+    echo "Local safety mode: skipping Flutter and Playwright gates to reduce RAM/disk usage."
+    echo "Run full pipeline in GitHub Actions/Codemagic, or pass --allow-local-heavy if you intentionally want local heavy execution."
+    RUN_FLUTTER=false
+    RUN_E2E=false
+  fi
+fi
 
 FAILURES=0
 
@@ -242,6 +316,139 @@ for line in lcov_path.read_text().splitlines():
 
 pct = (lh / lf * 100.0) if lf else 0.0
 print(f"Flutter total line coverage: {pct:.2f}% ({lh}/{lf})")
+if pct + 1e-9 < threshold:
+    raise SystemExit(1)
+PY
+}
+
+flutter_integration_gap_report() {
+  python3 - <<'PY'
+from pathlib import Path
+
+lcov_path = Path("coverage_integration.info")
+if not lcov_path.exists():
+    print("No Flutter integration LCOV report found at origna_gta/coverage_integration.info")
+    raise SystemExit(0)
+
+rows = []
+sf = None
+lf = None
+lh = None
+
+for raw in lcov_path.read_text().splitlines():
+    if raw.startswith("SF:"):
+        sf = raw[3:]
+        lf = None
+        lh = None
+    elif raw.startswith("LF:"):
+        lf = int(raw[3:])
+    elif raw.startswith("LH:"):
+        lh = int(raw[3:])
+    elif raw == "end_of_record":
+        if sf is not None and lf is not None and lh is not None and lf >= 20:
+            pct = (lh / lf * 100.0) if lf else 0.0
+            rows.append((pct, lf, lh, sf))
+        sf = None
+        lf = None
+        lh = None
+
+rows.sort(key=lambda x: (x[0], -x[1], x[3]))
+print("Lowest Flutter integration coverage files (min 20 executable lines):")
+for pct, lf, lh, sf in rows[:15]:
+    print(f"  - {sf}: {pct:.2f}% ({lh}/{lf})")
+PY
+}
+
+check_flutter_integration_threshold() {
+  local threshold="$1"
+  python3 - "$threshold" <<'PY'
+import sys
+from pathlib import Path
+
+threshold = float(sys.argv[1])
+lcov_path = Path("coverage_integration.info")
+if not lcov_path.exists():
+    print("coverage_integration.info not found", file=sys.stderr)
+    raise SystemExit(2)
+
+lf = 0
+lh = 0
+for line in lcov_path.read_text().splitlines():
+    if line.startswith("LF:"):
+        lf += int(line[3:])
+    elif line.startswith("LH:"):
+        lh += int(line[3:])
+
+pct = (lh / lf * 100.0) if lf else 0.0
+print(f"Flutter integration total line coverage: {pct:.2f}% ({lh}/{lf})")
+if pct + 1e-9 < threshold:
+    raise SystemExit(1)
+PY
+}
+
+playwright_gap_report() {
+  local lcov_path="$1"
+  python3 - "$lcov_path" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+if not path.exists():
+    print(f"No Playwright LCOV report found at {path}")
+    raise SystemExit(0)
+
+rows = []
+sf = None
+lf = None
+lh = None
+
+for raw in path.read_text().splitlines():
+    if raw.startswith("SF:"):
+        sf = raw[3:]
+        lf = None
+        lh = None
+    elif raw.startswith("LF:"):
+        lf = int(raw[3:])
+    elif raw.startswith("LH:"):
+        lh = int(raw[3:])
+    elif raw == "end_of_record":
+        if sf is not None and lf is not None and lh is not None:
+            pct = (lh / lf * 100.0) if lf else 0.0
+            rows.append((pct, lf, lh, sf))
+        sf = None
+        lf = None
+        lh = None
+
+rows.sort(key=lambda x: (x[0], -x[1], x[3]))
+print("Lowest Playwright coverage files:")
+for pct, lf, lh, sf in rows[:15]:
+    print(f"  - {sf}: {pct:.2f}% ({lh}/{lf})")
+PY
+}
+
+check_playwright_threshold() {
+  local threshold="$1"
+  local lcov_path="$2"
+  python3 - "$threshold" "$lcov_path" <<'PY'
+import sys
+from pathlib import Path
+
+threshold = float(sys.argv[1])
+lcov_path = Path(sys.argv[2])
+if not lcov_path.exists():
+    print(f"{lcov_path} not found", file=sys.stderr)
+    raise SystemExit(2)
+
+lf = 0
+lh = 0
+for line in lcov_path.read_text().splitlines():
+    if line.startswith("LF:"):
+        lf += int(line[3:])
+    elif line.startswith("LH:"):
+        lh += int(line[3:])
+
+pct = (lh / lf * 100.0) if lf else 0.0
+print(f"Playwright total line coverage: {pct:.2f}% ({lh}/{lf})")
 if pct + 1e-9 < threshold:
     raise SystemExit(1)
 PY
@@ -405,6 +612,58 @@ if [[ "$RUN_FLUTTER" == true ]]; then
     fi
   fi
 
+  if [[ "$RUN_FLUTTER_INTEGRATION_COVERAGE" == "true" ]]; then
+    section "Flutter Integration Coverage Gate (threshold: ${FLUTTER_INTEGRATION_THRESHOLD}%)"
+
+    FLUTTER_INT_COV_TARGETS=()
+    IFS=',' read -r -a RAW_FLUTTER_INT_COV_TARGETS <<< "$FLUTTER_INTEGRATION_COVERAGE_TARGETS"
+    for raw_int_cov_target in "${RAW_FLUTTER_INT_COV_TARGETS[@]}"; do
+      int_cov_target="$(echo "$raw_int_cov_target" | xargs)"
+      [[ -z "$int_cov_target" ]] && continue
+      if [[ -e "$int_cov_target" ]]; then
+        FLUTTER_INT_COV_TARGETS+=("$int_cov_target")
+      else
+        echo "Skipping missing Flutter integration coverage target: $int_cov_target"
+      fi
+    done
+
+    if [[ ${#FLUTTER_INT_COV_TARGETS[@]} -eq 0 ]]; then
+      echo "No Flutter integration coverage targets found from FLUTTER_INTEGRATION_COVERAGE_TARGETS=$FLUTTER_INTEGRATION_COVERAGE_TARGETS"
+      FAILURES=$((FAILURES + 1))
+    else
+      echo "Running Flutter integration coverage targets: ${FLUTTER_INT_COV_TARGETS[*]}"
+      INTEGRATION_CMD=(flutter test "${FLUTTER_INT_COV_TARGETS[@]}" --coverage --coverage-path=coverage_integration.info)
+      if [[ -n "$FLUTTER_INTEGRATION_DEVICE" ]]; then
+        INTEGRATION_CMD+=(-d "$FLUTTER_INTEGRATION_DEVICE")
+      fi
+      if [[ "$FLUTTER_INTEGRATION_USE_XVFB" == "true" ]]; then
+        INTEGRATION_CMD=(xvfb-run -a "${INTEGRATION_CMD[@]}")
+      fi
+
+      set +e
+      "${INTEGRATION_CMD[@]}"
+      INT_COV_STATUS=$?
+      set -e
+
+      if [[ $INT_COV_STATUS -ne 0 ]]; then
+        echo "Flutter integration coverage targets FAILED."
+        FAILURES=$((FAILURES + 1))
+      else
+        set +e
+        check_flutter_integration_threshold "$FLUTTER_INTEGRATION_THRESHOLD"
+        INT_THRESH_STATUS=$?
+        set -e
+        flutter_integration_gap_report
+        if [[ $INT_THRESH_STATUS -ne 0 ]]; then
+          echo "Flutter integration coverage gate FAILED."
+          FAILURES=$((FAILURES + 1))
+        else
+          echo "Flutter integration coverage gate PASSED."
+        fi
+      fi
+    fi
+  fi
+
   if [[ "$RUN_FLUTTER_GOLDENS" == "true" ]]; then
     section "Flutter Golden Gate (${FLUTTER_GOLDEN_TEST_PATH})"
     if [[ ! -e "$FLUTTER_GOLDEN_TEST_PATH" ]]; then
@@ -476,6 +735,78 @@ if [[ "$RUN_E2E" == true ]]; then
         FAILURES=$((FAILURES + 1))
       else
         echo "Real Playwright E2E gate PASSED."
+
+        section "Playwright Coverage Gate (threshold: ${PLAYWRIGHT_THRESHOLD}%)"
+        PW_COV_TARGETS=()
+        IFS=',' read -r -a RAW_PW_COV_TARGETS <<< "$PLAYWRIGHT_COVERAGE_TARGETS"
+        for raw_cov_target in "${RAW_PW_COV_TARGETS[@]}"; do
+          cov_target="$(echo "$raw_cov_target" | xargs)"
+          [[ -z "$cov_target" ]] && continue
+          if [[ -e "$cov_target" ]]; then
+            PW_COV_TARGETS+=("$cov_target")
+          else
+            echo "Skipping missing Playwright coverage target: $cov_target"
+          fi
+        done
+
+        PW_COV_INCLUDES=()
+        IFS=',' read -r -a RAW_PW_COV_INCLUDES <<< "$PLAYWRIGHT_COVERAGE_INCLUDE"
+        for raw_cov_include in "${RAW_PW_COV_INCLUDES[@]}"; do
+          cov_include="$(echo "$raw_cov_include" | xargs)"
+          [[ -z "$cov_include" ]] && continue
+          PW_COV_INCLUDES+=("$cov_include")
+        done
+
+        if [[ ${#PW_COV_TARGETS[@]} -eq 0 ]]; then
+          echo "No Playwright coverage targets found from PLAYWRIGHT_COVERAGE_TARGETS=$PLAYWRIGHT_COVERAGE_TARGETS"
+          FAILURES=$((FAILURES + 1))
+        elif [[ ${#PW_COV_INCLUDES[@]} -eq 0 ]]; then
+          echo "No Playwright coverage include files configured from PLAYWRIGHT_COVERAGE_INCLUDE=$PLAYWRIGHT_COVERAGE_INCLUDE"
+          FAILURES=$((FAILURES + 1))
+        else
+          rm -rf coverage-playwright
+          PW_COV_CMD=(
+            npx --yes c8
+            --all
+            --reporter=lcovonly
+            --reporter=text-summary
+            --report-dir=coverage-playwright
+          )
+          for cov_include in "${PW_COV_INCLUDES[@]}"; do
+            PW_COV_CMD+=(--include="$cov_include")
+          done
+          PW_COV_CMD+=(
+            npx playwright test
+            "${PW_COV_TARGETS[@]}"
+            --config="$E2E_CONFIG"
+            --project="$E2E_PROJECT"
+            --workers=1
+            --fail-on-flaky-tests
+          )
+
+          echo "Running Playwright coverage targets: ${PW_COV_TARGETS[*]}"
+          set +e
+          "${PW_COV_CMD[@]}"
+          PW_COV_STATUS=$?
+          set -e
+
+          if [[ $PW_COV_STATUS -ne 0 ]]; then
+            echo "Playwright coverage targets FAILED."
+            FAILURES=$((FAILURES + 1))
+          else
+            set +e
+            check_playwright_threshold "$PLAYWRIGHT_THRESHOLD" "coverage-playwright/lcov.info"
+            PW_THRESH_STATUS=$?
+            set -e
+            playwright_gap_report "coverage-playwright/lcov.info"
+            if [[ $PW_THRESH_STATUS -ne 0 ]]; then
+              echo "Playwright coverage gate FAILED."
+              FAILURES=$((FAILURES + 1))
+            else
+              echo "Playwright coverage gate PASSED."
+            fi
+          fi
+        fi
       fi
     fi
   fi
