@@ -14,7 +14,7 @@ class AdminActionsState {
   final bool isSuccess;
   final String? errorMessage;
 
-  AdminActionsState({this.isLoading = false, this.isSuccess = false, this.errorMessage});
+  const AdminActionsState({this.isLoading = false, this.isSuccess = false, this.errorMessage});
 
   AdminActionsState copyWith({bool? isLoading, bool? isSuccess, String? errorMessage}) {
     return AdminActionsState(isLoading: isLoading ?? this.isLoading, isSuccess: isSuccess ?? this.isSuccess, errorMessage: errorMessage);

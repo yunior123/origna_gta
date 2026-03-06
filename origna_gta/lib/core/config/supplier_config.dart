@@ -11,6 +11,7 @@
 // - Sellers can be from any country — no geographic restriction on sellers
 // - Products are always priced and sold in CAD to Canadian buyers
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 
@@ -476,10 +477,10 @@ List<DropdownMenuItem<String>> getSupplierDropdownItems() {
             children: [
               Icon(e.value.icon, size: 18, color: e.value.color),
               const SizedBox(width: 8),
-              Flexible(child: Text(e.value.displayName, overflow: TextOverflow.ellipsis)),
+              Flexible(child: Text(e.value.translatedDisplayName, overflow: TextOverflow.ellipsis)),
               if (e.value.country.isNotEmpty) ...[
                 const SizedBox(width: 4),
-                Text('(${e.value.country})', style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+                Text('(${e.value.translatedCountry})', style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
               ],
             ],
           ),
@@ -491,14 +492,14 @@ List<DropdownMenuItem<String>> getSupplierDropdownItems() {
 /// Get supplier region for display
 String? getSupplierRegion(String? supplierId) {
   final config = getSupplierConfig(supplierId);
-  return config.isCustom ? null : '${config.country} (${config.region})';
+  return config.isCustom ? null : '${config.translatedCountry} (${config.translatedRegion})';
 }
 
 /// Get suppliers grouped by region for organized display
 Map<String, List<SupplierPlatformConfig>> getSuppliersByRegion() {
   final grouped = <String, List<SupplierPlatformConfig>>{};
   for (final platform in supplierPlatforms.values) {
-    grouped.putIfAbsent(platform.region, () => []).add(platform);
+    grouped.putIfAbsent(platform.translatedRegion, () => []).add(platform);
   }
   return grouped;
 }
@@ -543,4 +544,10 @@ class SupplierPlatformConfig {
 
   /// Whether this is a custom/user-defined supplier
   bool get isCustom => id == 'custom' || id == 'other';
+
+  /// Translation helpers
+  String get translatedDisplayName => 'supplier.$id.display_name'.tr();
+  String get translatedRegion => 'supplier.$id.region'.tr();
+  String get translatedCountry => 'supplier.$id.country'.tr();
+  String get translatedDescription => 'supplier.$id.description'.tr();
 }

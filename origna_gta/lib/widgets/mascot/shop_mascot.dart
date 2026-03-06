@@ -315,6 +315,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
   late AnimationController _breathingController;
   Timer? _blinkTimer;
   Timer? _tipTimer;
+  Timer? _initialBubbleTimer;
   int _currentTipIndex = 0;
   bool _isBubbleVisible = false;
 
@@ -387,6 +388,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
   void dispose() {
     _blinkTimer?.cancel();
     _tipTimer?.cancel();
+    _initialBubbleTimer?.cancel();
     _idleController.dispose();
     _jumpController.dispose();
     _blinkController.dispose();
@@ -407,7 +409,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
     _breathingController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
 
     if (widget.showSpeechBubble) {
-      Future.delayed(const Duration(seconds: 2), () {
+      _initialBubbleTimer = Timer(const Duration(seconds: 2), () {
         if (mounted && widget.showSpeechBubble) {
           setState(() => _isBubbleVisible = true);
           _bubbleController.forward();

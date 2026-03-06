@@ -1962,12 +1962,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  config.displayName,
+                  config.translatedDisplayName,
                   style: TextStyle(fontWeight: FontWeight.w700, color: config.color, fontSize: 13),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${config.region} · ${deliveryRange.minDays}-${deliveryRange.maxDays} days · ${config.country}',
+                  '${config.translatedRegion} · ${deliveryRange.minDays}-${deliveryRange.maxDays} days · ${config.translatedCountry}',
                   style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
                 ),
               ],

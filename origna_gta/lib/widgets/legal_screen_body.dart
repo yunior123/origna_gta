@@ -160,10 +160,10 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
           ),
           child: Stack(
             children: [
-              ExcludeSemantics(
-                child: Positioned(
-                  top: -40,
-                  right: -30,
+              Positioned(
+                top: -40,
+                right: -30,
+                child: ExcludeSemantics(
                   child: Container(
                     width: 160,
                     height: 160,
@@ -171,10 +171,10 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                   ),
                 ),
               ),
-              ExcludeSemantics(
-                child: Positioned(
-                  bottom: 20,
-                  left: -50,
+              Positioned(
+                bottom: 20,
+                left: -50,
+                child: ExcludeSemantics(
                   child: Container(
                     width: 120,
                     height: 120,

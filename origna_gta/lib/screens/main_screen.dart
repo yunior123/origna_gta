@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -13,6 +14,7 @@ class MainScreen extends ConsumerStatefulWidget {
 
 class _MainScreenState extends ConsumerState<MainScreen> {
   bool _timedOut = false;
+  Timer? _timeoutTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -40,11 +42,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     // Safety timeout: if user profile takes more than 3 seconds, show home anyway
     // This prevents infinite loading if Firestore is slow or unresponsive
-    Future.delayed(const Duration(seconds: 3), () {
+    _timeoutTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         final userProfileAsync = ref.read(userProfileProvider);
         if (userProfileAsync.isLoading) {

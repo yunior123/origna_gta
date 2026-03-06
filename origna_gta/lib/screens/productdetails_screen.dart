@@ -953,12 +953,15 @@ class _DeliveryInfoRow extends StatelessWidget {
         Icon(icon, size: 18, color: isWarning ? DesignTokens.warning : (isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
         const SizedBox(width: 10),
         Text('$label: ', style: TextStyle(fontSize: 14, color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isWarning ? DesignTokens.warning : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isWarning ? DesignTokens.warning : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -983,13 +986,16 @@ class _DigitalProductInfo extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+        Row(
             children: [
               const Icon(Icons.download_outlined, size: 16, color: DesignTokens.digital),
               const SizedBox(width: 6),
-              Text(
-                product.digitalType == DigitalTypeValues.software ? 'product.desktop_software'.tr() : 'product.digital_book'.tr(),
-                style: const TextStyle(fontWeight: FontWeight.bold, color: DesignTokens.digital),
+              Expanded(
+                child: Text(
+                  product.digitalType == DigitalTypeValues.software ? 'product.desktop_software'.tr() : 'product.digital_book'.tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: DesignTokens.digital),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),

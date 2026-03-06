@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -272,6 +273,7 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
   late final AnimationController _controller;
   late final Animation<double> _opacity;
   late final Animation<Offset> _slide;
+  Timer? _animationTimer;
 
   @override
   void initState() {
@@ -288,13 +290,14 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-    Future.delayed(Duration(milliseconds: delayMs), () {
+    _animationTimer = Timer(Duration(milliseconds: delayMs), () {
       if (mounted) _controller.forward();
     });
   }
 
   @override
   void dispose() {
+    _animationTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

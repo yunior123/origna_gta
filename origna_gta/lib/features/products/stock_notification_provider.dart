@@ -33,12 +33,13 @@ class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
   /// real state even if the user subscribed in a previous session.
   Future<void> init() async {
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final uid = _ref.read(userIdProvider);
       if (uid == null) {
         state = const AsyncValue.data(false);
         return;
       }
-      var query = FirebaseFirestore.instance
+      var query = _ref
+          .read(firestoreProvider)
           .collection(Collections.stockNotifications)
           .where(Fields.userId, isEqualTo: uid)
           .where(Fields.productId, isEqualTo: productId);
@@ -59,7 +60,7 @@ class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
   Future<void> subscribe() async {
     state = const AsyncValue.loading();
     try {
-      final functions = FirebaseFunctions.instance;
+      final functions = _ref.read(firebaseFunctionsProvider);
       final payload = {Fields.productId: productId};
       if (variantKey != null) payload[Fields.variantKey] = variantKey!;
       await functions
@@ -74,7 +75,7 @@ class StockNotificationNotifier extends StateNotifier<AsyncValue<bool>> {
   Future<void> unsubscribe() async {
     state = const AsyncValue.loading();
     try {
-      final functions = FirebaseFunctions.instance;
+      final functions = _ref.read(firebaseFunctionsProvider);
       final payload = {Fields.productId: productId};
       if (variantKey != null) payload[Fields.variantKey] = variantKey!;
       await functions

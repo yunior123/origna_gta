@@ -12,7 +12,7 @@ class ProductRatingState {
   final String? errorMessage;
   final String? reviewText;
 
-  ProductRatingState({this.isLoading = false, this.isSuccess = false, this.errorMessage, this.reviewText});
+  const ProductRatingState({this.isLoading = false, this.isSuccess = false, this.errorMessage, this.reviewText});
 
   ProductRatingState copyWith({bool? isLoading, bool? isSuccess, String? errorMessage, String? reviewText}) {
     return ProductRatingState(isLoading: isLoading ?? this.isLoading, isSuccess: isSuccess ?? this.isSuccess, errorMessage: errorMessage, reviewText: reviewText ?? this.reviewText);

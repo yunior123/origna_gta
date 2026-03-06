@@ -25,7 +25,7 @@ class ProductDetailState {
   final SellerMetrics? sellerMetrics;
   final bool sellerMetricsLoading;
 
-  ProductDetailState({
+  const ProductDetailState({
     this.quantity = 1,
     this.currentImageIndex = 0,
     this.sellerMetrics,

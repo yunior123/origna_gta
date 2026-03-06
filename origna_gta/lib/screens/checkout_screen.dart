@@ -605,7 +605,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     return Scaffold(
       key: const Key('checkout_screen_root'),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight + 64),
+        preferredSize: const Size.fromHeight(140),
         child: Column(
           children: [
             AppBarFactory.simple(title: 'checkout.checkout'.tr()),
@@ -810,7 +810,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                               Row(
                                 children: [
                                   Text(
-                                    speed.displayName,
+                                    speed.translatedName,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 16,
@@ -831,7 +831,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              Text(speed.estimatedTime, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                              Text(speed.translatedTime, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
                               if (!isAvailable && speed == DeliverySpeed.sameDay)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 4),
@@ -877,7 +877,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        Text(speed.displayName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(speed.translatedName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         if (speed == DeliverySpeed.sameDay) ...[
                           const SizedBox(width: 8),
                           Container(
@@ -892,7 +892,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text(speed.estimatedTime, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                    Text(speed.translatedTime, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
                     if (speed == DeliverySpeed.sameDay)
                       Text(
                         'checkout.available_local_50km'.tr(),

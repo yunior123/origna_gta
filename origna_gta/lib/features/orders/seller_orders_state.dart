@@ -4,7 +4,7 @@ class SellerOrdersState {
   final String? errorMessage;
   final bool isSuccess;
 
-  SellerOrdersState({
+  const SellerOrdersState({
     this.isLoading = false,
     this.errorMessage,
     this.isSuccess = false,

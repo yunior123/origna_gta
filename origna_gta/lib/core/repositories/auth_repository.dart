@@ -43,6 +43,10 @@ class FirebaseAuthRepository implements AuthRepository {
 
   FirebaseAuthRepository(this._auth, this._firestore, this._functions);
 
+  /// For testing purposes only: override Turnstile token generation
+  @visibleForTesting
+  Future<String?> Function()? turnstileOverride;
+
   @override
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
@@ -410,14 +414,14 @@ class FirebaseAuthRepository implements AuthRepository {
       if (isApple) consentMethod = ConsentMethodValues.appleOauth;
 
       // Web: attach Turnstile bot-protection token; mobile uses App Check.
-      final turnstileToken = await TurnstileService.getToken();
+      final turnstileToken = await (turnstileOverride?.call() ?? TurnstileService.getToken());
 
       await callable.call<Map<String, dynamic>>({
         Fields.name: savedName ?? user.displayName ?? 'User',
         Fields.preferredLanguage: _deviceLanguage(),
         Fields.marketingOptIn: marketingOptIn,
         Fields.consentMethod: consentMethod,
-        ApiKeys.turnstileToken: ?turnstileToken,
+        ApiKeys.turnstileToken: turnstileToken,
       });
     }
     // If doc already exists, roles are managed server-side by the CF — no direct write here.

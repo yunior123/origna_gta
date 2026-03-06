@@ -81,6 +81,10 @@ enum DeliverySpeed {
 
   const DeliverySpeed(this.value, this.displayName, this.estimatedTime, this.baseSurcharge);
 
+  /// Translation helpers
+  String get translatedName => 'checkout.delivery_speed.$value.name'.tr();
+  String get translatedTime => 'checkout.delivery_speed.$value.time'.tr();
+
   /// Get delivery date estimate
   DateTime getEstimatedDeliveryDate() {
     final now = DateTime.now();

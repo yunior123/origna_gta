@@ -97,7 +97,7 @@ class ChatRepository {
   Future<String> getOrCreateChat(String productId) async {
     final result = await _functions
         .httpsCallable(CloudFunctionEndpoints.getOrCreateChat)
-        .call<Map<String, dynamic>>({Fields.productId: productId});
+        .call({Fields.productId: productId});
     return result.data[Fields.chatId] as String;
   }
 
@@ -196,7 +196,7 @@ class ChatRepository {
   Future<void> sendMessage(String chatId, String text) async {
     await _functions
         .httpsCallable(CloudFunctionEndpoints.sendMessage)
-        .call<Map<String, dynamic>>({
+        .call({
       Fields.chatId: chatId,
       Fields.messageText: text.trim(),
     });

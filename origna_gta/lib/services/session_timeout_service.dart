@@ -21,9 +21,17 @@ class SessionTimeoutService {
   // BOOT-H2: Track which user started the timer to prevent signing out a different user
   String? _watchedUserId;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  FirebaseAuth? _authOverride;
+  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
+  
   factory SessionTimeoutService() => _instance;
   SessionTimeoutService._internal();
+
+  /// For testing purposes only: set a mock FirebaseAuth instance
+  @visibleForTesting
+  void setAuth(FirebaseAuth auth) {
+    _authOverride = auth;
+  }
 
   /// Get remaining time before timeout
   Duration getRemainingTime() {

@@ -1,14 +1,16 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:origna_gta/utils/env_config.dart';
 
 /// Wraps FirebaseAnalytics with environment guards.
 /// All events are no-ops in emulator and dev environments to keep production data clean.
 /// Covers the full GA4 e-commerce funnel + auth + marketplace-specific events.
 class AnalyticsService {
-  static final _analytics = FirebaseAnalytics.instance;
+  static FirebaseAnalytics get _analytics => FirebaseAnalytics.instance;
 
   // BOOT-M3: also disable in staging to avoid polluting production data
-  static bool get _isEnabled => !envConfig.isEmulator && !envConfig.isDev && !envConfig.isStaging;
+  // Also disable in debug mode to avoid errors when Firebase is not initialized
+  static bool get _isEnabled => !kDebugMode && !envConfig.isEmulator && !envConfig.isDev && !envConfig.isStaging;
 
   // ── Auth ────────────────────────────────────────────────────────────────────
 

@@ -351,7 +351,7 @@ class _WarehouseCard extends StatelessWidget {
                     child: Row(children: [
                       const Icon(Icons.star_outline, size: 18),
                       const SizedBox(width: 8),
-                      Text('common.set_as_default'.tr()),
+                      Expanded(child: Text('common.set_as_default'.tr())),
                     ]),
                   ),
                 PopupMenuItem(
@@ -359,7 +359,7 @@ class _WarehouseCard extends StatelessWidget {
                   child: Row(children: [
                     const Icon(Icons.edit_outlined, size: 18),
                     const SizedBox(width: 8),
-                    Text('common.edit'.tr()),
+                    Expanded(child: Text('common.edit'.tr())),
                   ]),
                 ),
                 PopupMenuItem(
@@ -367,7 +367,7 @@ class _WarehouseCard extends StatelessWidget {
                   child: Row(children: [
                     Icon(Icons.delete_outline, size: 18, color: DesignTokens.error),
                     const SizedBox(width: 8),
-                    Text('common.delete'.tr(), style: TextStyle(color: DesignTokens.error)),
+                    Expanded(child: Text('common.delete'.tr(), style: TextStyle(color: DesignTokens.error))),
                   ]),
                 ),
               ],
@@ -523,7 +523,9 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
               // Location type selector
               Text('seller.location_type'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
               const SizedBox(height: 8),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   _TypeChip(
                     label: 'seller.type_warehouse'.tr(),
@@ -531,7 +533,6 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                     selected: _selectedType == WarehouseTypeValues.warehouse,
                     onTap: () => setState(() => _selectedType = WarehouseTypeValues.warehouse),
                   ),
-                  const SizedBox(width: 8),
                   _TypeChip(
                     label: 'seller.type_personal'.tr(),
                     icon: Icons.home_outlined,

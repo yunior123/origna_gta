@@ -8,7 +8,7 @@ class SellerRegistrationState {
   final String? successMessage;
   final String paymentProvider;
 
-  SellerRegistrationState({this.isLoading = false, this.error, this.successMessage, this.paymentProvider = PaymentProviderValues.stripe});
+  const SellerRegistrationState({this.isLoading = false, this.error, this.successMessage, this.paymentProvider = PaymentProviderValues.stripe});
 
   SellerRegistrationState copyWith({
     bool? isLoading,
