@@ -78,6 +78,8 @@ e2e/e2e/test_output*.txt
 origna_gta/build/
 origna_gta/.dart_tool/
 origna_gta/test-results/
+origna_gta/.gradle-home/
+origna_gta/nanobanana-output/
 
 # --- Test results (root) ---
 test-results/
@@ -85,6 +87,7 @@ test-results/
 # --- Audit output & cache ---
 audit/output/
 audit/.doc_cache/
+functions/visual_audit/
 
 # --- Backup / temporary files ---
 *.bak
