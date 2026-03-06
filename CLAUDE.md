@@ -42,7 +42,7 @@ Operate using a strict **Research → Strategy → Execution → Verification** 
 11. **NO MAGIC STRINGS:** Use constants from `schema_constants`.
 12. **SIDE EFFECTS:** Changing one line → update EVERY file impacted (Tests, Rules, Indexes, Schema, Playwright).
 13. **TESTING:** Every new feature or bug fix MUST include tests.
-14. **TYPING:** Strict typing is mandatory.
+15. **SINGLE BRANCH POLICY:** ONLY the `main` branch is allowed in this project. Do not create, use, or merge other branches. Work directly on `main` to avoid parallel history conflicts and complex merge resolutions.
 
 ---
 
