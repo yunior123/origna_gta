@@ -55,7 +55,7 @@ fi
 # 5. Deploy Firebase functions
 echo -e "\n${YELLOW}[5/6] Deploying Firebase functions...${NC}"
 cd "$REPO_ROOT"
-if firebase deploy --only functions; then
+if firebase deploy --only functions --force; then
     echo -e "${GREEN}✓ Firebase functions deployed${NC}"
 else
     echo -e "${RED}✗ Firebase functions deployment failed${NC}"

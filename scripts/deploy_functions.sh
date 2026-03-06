@@ -17,7 +17,7 @@ for PROJECT in orignagta-dev orignagta-staging orignagta; do
   [[ "$PROJECT" == "orignagta" ]] && ENV_NAME="prod"
   echo ""
   echo "→ [$ENV_NAME] $PROJECT"
-  firebase deploy --only functions --project "$PROJECT"
+  firebase deploy --only functions --project "$PROJECT" --force
 done
 
 echo ""

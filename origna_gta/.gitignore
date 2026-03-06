@@ -49,6 +49,12 @@ app.*.map.json
 # Patrol generated bundle
 patrol_test/test_bundle.dart
 
+# Analysis and Coverage outputs
+*.info
+*.txt
+!dart_fields.txt
+!dart_values.txt
+
 # Android signing / Firebase
 android/key.properties
 android/*.jks
