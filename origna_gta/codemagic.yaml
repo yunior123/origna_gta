@@ -1,4 +1,59 @@
 workflows:
+  quality-gate-remote:
+    name: Full Quality Gate (Remote)
+    max_build_duration: 180
+    instance_type: mac_mini_m2
+    environment:
+      flutter: default
+      xcode: latest
+      cocoapods: default
+      vars:
+        E2E_WORKERS: "1"
+        E2E_FAIL_ON_FLAKY: "true"
+    scripts:
+      - name: Flutter dependencies
+        script: |
+          flutter pub get
+      - name: E2E dependencies
+        script: |
+          cd "$CM_BUILD_DIR/../e2e"
+          npm ci
+          npx playwright install chromium
+      - name: Backend dependencies
+        script: |
+          cd "$CM_BUILD_DIR/../functions"
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install pytest pytest-cov
+      - name: Run strict quality gate (remote)
+        script: |
+          cd "$CM_BUILD_DIR/.."
+          flutter config --enable-macos-desktop
+          RUN_FLUTTER_INTEGRATION_COVERAGE="true" \
+          FLUTTER_INTEGRATION_DEVICE="macos" \
+          ./scripts/run_quality_gate.sh --backend-gate-mode strict
+      - name: Collect quality artifacts
+        script: |
+          mkdir -p "$CM_BUILD_DIR/build/remote-quality"
+          if [ -f "$CM_BUILD_DIR/../functions/coverage.xml" ]; then
+            cp "$CM_BUILD_DIR/../functions/coverage.xml" "$CM_BUILD_DIR/build/remote-quality/backend-coverage.xml"
+          fi
+          if [ -f "$CM_BUILD_DIR/coverage_unit.info" ]; then
+            cp "$CM_BUILD_DIR/coverage_unit.info" "$CM_BUILD_DIR/build/remote-quality/flutter-coverage.info"
+          fi
+          if [ -f "$CM_BUILD_DIR/coverage_integration.info" ]; then
+            cp "$CM_BUILD_DIR/coverage_integration.info" "$CM_BUILD_DIR/build/remote-quality/flutter-integration-coverage.info"
+          fi
+          if [ -f "$CM_BUILD_DIR/../e2e/coverage-playwright/lcov.info" ]; then
+            cp "$CM_BUILD_DIR/../e2e/coverage-playwright/lcov.info" "$CM_BUILD_DIR/build/remote-quality/playwright-coverage.info"
+          fi
+          if [ -d "$CM_BUILD_DIR/../e2e/playwright-report" ]; then
+            rm -rf "$CM_BUILD_DIR/build/remote-quality/playwright-report"
+            cp -R "$CM_BUILD_DIR/../e2e/playwright-report" "$CM_BUILD_DIR/build/remote-quality/playwright-report"
+          fi
+    artifacts:
+      - build/remote-quality/**
+
   android-release:
     name: Android Release (Play Store)
     max_build_duration: 120
@@ -24,7 +79,7 @@ workflows:
           EOF
       - name: Get Flutter packages
         script: |
-          flutter pb get
+          flutter pub get
       - name: Build Android App Bundle (AAB)
         script: |
           flutter build appbundle --release \
