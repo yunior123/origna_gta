@@ -348,6 +348,18 @@ python3 scripts/collect_flow_files.py
 | `version_tracker.py` | Tracks repository versions. |
 | `write_index_html.py` | Writes the index HTML file. |
 
+### Utilities — `scripts/utilities/`
+| Script | Purpose |
+|--------|---------|
+| `analyze_coverage.py` | Analyzes code coverage output. |
+| `check_flutter_tests.py` | Checks Flutter tests validity. |
+| `compare_fields.py` / `compare_rules.py` / `compare_schema.py` | Compares schema constants across stacks. |
+| `get_collections.py` | Helper for extracting collection names. |
+| `parse_dart.py` / `fix_parse.py` | Scripts for parsing/fixing Dart code. |
+| `test_extraction.py` | Extracts tests for analysis. |
+| `test_uri.dart` | Scratch script for URI testing. |
+| `smart_audit.py`, `restore_validation.py`, etc. | Assorted codebase maintenance utilities. |
+
 ---
 
 ## 🔍 Audit System — `audit/`

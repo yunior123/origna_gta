@@ -1,0 +1,67 @@
+{"users": [
+{
+  "localId": "RU9MI8vYFkQCakMrJfG8iGTuc012",
+  "email": "yr62813@gmail.com",
+  "emailVerified": true,
+  "passwordHash": "REDACTED_SECRET",
+  "salt": "PCLXAfePd3EiQw==",
+  "displayName": "Test Seller",
+  "lastSignedInAt": "1772059869824",
+  "createdAt": "1771088441035",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "eVxwL5SfEATPnw1zhWYaUdGx8MD2",
+  "email": "yuniorrodriguezo4601@yahoo.com",
+  "emailVerified": true,
+  "passwordHash": "REDACTED_SECRET",
+  "salt": "tXGC6/Bx/8esiA==",
+  "displayName": "Test Buyer",
+  "lastSignedInAt": "1772059869938",
+  "createdAt": "1771088435308",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "smy7bq6BXfeTuXKSTZJoOQ9a6K42",
+  "email": "yuniorrodriguezo460@gmail.com",
+  "emailVerified": true,
+  "passwordHash": "REDACTED_SECRET",
+  "salt": "W67mXRcmdLy6WA==",
+  "displayName": "Yunior Buyer",
+  "lastSignedInAt": "1772059870036",
+  "createdAt": "1771424820227",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "test-admin-uid",
+  "email": "yr62813@gmail.com",
+  "emailVerified": true,
+  "passwordHash": "password",
+  "salt": "",
+  "createdAt": "1772064155708",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "test-buyer-uid",
+  "email": "yuniorrodriguezo460@gmail.com",
+  "emailVerified": true,
+  "passwordHash": "password",
+  "salt": "",
+  "createdAt": "1772064155707",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "test-seller-uid",
+  "email": "seller1@test.origna.ca",
+  "emailVerified": true,
+  "passwordHash": "password",
+  "salt": "",
+  "createdAt": "1772064155706",
+  "disabled": false,
+  "providerUserInfo": []
+}]}
