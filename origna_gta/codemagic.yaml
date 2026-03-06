@@ -25,6 +25,15 @@ workflows:
           python3 -m pip install --upgrade pip
           python3 -m pip install -r requirements.txt
           python3 -m pip install pytest pytest-cov
+      - name: Run random Flutter integration flows (Crash check)
+        script: |
+          cd "$CM_BUILD_DIR/.."
+          flutter config --enable-macos-desktop
+          FLOWS=($(ls origna_gta/integration_test/flows/*_test.dart))
+          # Shuffle and pick 1 random flow to stay well within free limits
+          RANDOM_FLOW=$(shuf -e "${FLOWS[@]}" | head -n 1)
+          echo "Running random integration flow: $RANDOM_FLOW"
+          cd origna_gta && flutter test -d macos "$RANDOM_FLOW"
       - name: Run strict quality gate (remote)
         script: |
           cd "$CM_BUILD_DIR/.."

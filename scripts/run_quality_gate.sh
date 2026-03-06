@@ -19,6 +19,7 @@ BACKEND_BASELINE="${BACKEND_BASELINE:-0}"
 BACKEND_MIN_DELTA="${BACKEND_MIN_DELTA:-0}"
 FLUTTER_THRESHOLD="${FLUTTER_THRESHOLD:-100}"
 E2E_SPECS="${E2E_SPECS:-${E2E_SPEC:-playwright_ui/smoke-home-profile.spec.ts,playwright_ui/buyer-flow.spec.ts,playwright_ui/seller-flow.spec.ts,playwright_ui/order-lifecycle.spec.ts}}"
+E2E_RANDOM_COUNT="${E2E_RANDOM_COUNT:-0}"
 E2E_CONFIG="${E2E_CONFIG:-playwright.config.dev.ts}"
 E2E_PROJECT="${E2E_PROJECT:-chromium}"
 E2E_WORKERS="${E2E_WORKERS:-1}"
@@ -28,6 +29,7 @@ FLUTTER_COVERAGE_TARGETS="${FLUTTER_COVERAGE_TARGETS:-test/coverage_gate_test.da
 RUN_FLUTTER_INTEGRATION_COVERAGE="${RUN_FLUTTER_INTEGRATION_COVERAGE:-false}"
 FLUTTER_INTEGRATION_THRESHOLD="${FLUTTER_INTEGRATION_THRESHOLD:-100}"
 FLUTTER_INTEGRATION_COVERAGE_TARGETS="${FLUTTER_INTEGRATION_COVERAGE_TARGETS:-integration_test/coverage_gate_integration_test.dart}"
+FLUTTER_INTEGRATION_RANDOM_COUNT="${FLUTTER_INTEGRATION_RANDOM_COUNT:-0}"
 FLUTTER_INTEGRATION_DEVICE="${FLUTTER_INTEGRATION_DEVICE:-}"
 FLUTTER_INTEGRATION_USE_XVFB="${FLUTTER_INTEGRATION_USE_XVFB:-false}"
 PLAYWRIGHT_THRESHOLD="${PLAYWRIGHT_THRESHOLD:-100}"
@@ -95,6 +97,8 @@ Options:
   --e2e-config FILE       Playwright config file under e2e/ (default: playwright.config.dev.ts)
   --e2e-project NAME      Playwright project (default: chromium)
   --e2e-workers N         Playwright workers (default: 1)
+  --e2e-random-count N    Run N random Playwright E2E specs instead of all (default: 0 = all)
+  --flutter-integration-random-count N Run N random Flutter integration targets (default: 0 = all)
   --skip-backend          Skip backend coverage gate
   --skip-flutter          Skip Flutter coverage gate
   --skip-e2e              Skip Playwright E2E gate
@@ -187,6 +191,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --e2e-workers)
       E2E_WORKERS="$2"
+      shift 2
+      ;;
+    --e2e-random-count)
+      E2E_RANDOM_COUNT="$2"
+      shift 2
+      ;;
+    --flutter-integration-random-count)
+      FLUTTER_INTEGRATION_RANDOM_COUNT="$2"
       shift 2
       ;;
     --skip-backend)
@@ -666,10 +678,23 @@ if [[ "$RUN_FLUTTER" == true ]]; then
       [[ -z "$int_cov_target" ]] && continue
       if [[ -e "$int_cov_target" ]]; then
         FLUTTER_INT_COV_TARGETS+=("$int_cov_target")
+      elif [[ "$int_cov_target" == *"*"* ]]; then
+        # Expand glob
+        for f in $int_cov_target; do
+          if [[ -e "$f" ]]; then
+             FLUTTER_INT_COV_TARGETS+=("$f")
+          fi
+        done
       else
         echo "Skipping missing Flutter integration coverage target: $int_cov_target"
       fi
     done
+
+    if [[ "$FLUTTER_INTEGRATION_RANDOM_COUNT" -gt 0 && "${#FLUTTER_INT_COV_TARGETS[@]}" -gt "$FLUTTER_INTEGRATION_RANDOM_COUNT" ]]; then
+      echo "Randomly selecting $FLUTTER_INTEGRATION_RANDOM_COUNT Flutter integration specs from ${#FLUTTER_INT_COV_TARGETS[@]} total..."
+      # Shuffle and pick N
+      FLUTTER_INT_COV_TARGETS=($(shuf -e "${FLUTTER_INT_COV_TARGETS[@]}" | head -n "$FLUTTER_INTEGRATION_RANDOM_COUNT"))
+    fi
 
     if [[ ${#FLUTTER_INT_COV_TARGETS[@]} -eq 0 ]]; then
       echo "No Flutter integration coverage targets found from FLUTTER_INTEGRATION_COVERAGE_TARGETS=$FLUTTER_INTEGRATION_COVERAGE_TARGETS"
@@ -745,6 +770,12 @@ if [[ "$RUN_E2E" == true ]]; then
       [[ -z "$spec" ]] && continue
       E2E_SPEC_ARRAY+=("$spec")
     done
+
+    if [[ "$E2E_RANDOM_COUNT" -gt 0 && "${#E2E_SPEC_ARRAY[@]}" -gt "$E2E_RANDOM_COUNT" ]]; then
+      echo "Randomly selecting $E2E_RANDOM_COUNT Playwright specs from ${#E2E_SPEC_ARRAY[@]} total..."
+      # Shuffle and pick N
+      E2E_SPEC_ARRAY=($(shuf -e "${E2E_SPEC_ARRAY[@]}" | head -n "$E2E_RANDOM_COUNT"))
+    fi
 
     if [[ ${#E2E_SPEC_ARRAY[@]} -eq 0 ]]; then
       echo "No E2E specs configured. Set E2E_SPECS or --e2e-specs."

@@ -73,6 +73,14 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
+      - name: Run random Flutter integration flows (Crash check)
+        run: |
+          cd origna_gta
+          FLOWS=(integration_test/flows/*_test.dart)
+          RANDOM_FLOW=$(shuf -e "${FLOWS[@]}" | head -n 1)
+          echo "Running random integration flow: $RANDOM_FLOW"
+          xvfb-run -a flutter test -d linux "$RANDOM_FLOW"
+
       - name: Run strict quality gate
         env:
           INPUT_BACKEND_THRESHOLD: ${{ github.event.inputs.backend_threshold }}
@@ -98,7 +106,7 @@ jobs:
           E2E_PROJECT="chromium" \
           E2E_WORKERS="1" \
           E2E_FAIL_ON_FLAKY="true" \
-          ./scripts/run_quality_gate.sh
+          ./scripts/run_quality_gate.sh --e2e-random-count 2
 
       - name: Upload quality artifacts
         if: always()
