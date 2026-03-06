@@ -194,6 +194,21 @@ Source complet des champs : docs/database_schema.json
 3. Tests: `../scripts/run_all_tests.sh`
 4. Firestore indexes: `firebase deploy --only firestore:indexes`
 
+## Testing
+- Fast local unit/widget path:
+  - `flutter test`
+- Dedicated unit coverage target:
+  - `flutter test test/coverage_gate_test.dart --coverage --coverage-path=coverage_unit.info`
+- Dedicated integration coverage target:
+  - `flutter test integration_test/coverage_gate_integration_test.dart`
+- Full strict gate:
+  - `../scripts/run_quality_gate.sh`
+- Heavy Flutter integration coverage is enforced remotely by:
+  - GitHub Actions `Strict Quality Audit` on Linux desktop
+  - Codemagic `quality-gate-remote` on macOS
+- Local heavy gates are opt-in via:
+  - `../scripts/run_quality_gate.sh --allow-local-heavy --backend-gate-mode strict`
+
 ## Stripe Connect (direct charges)
 - Manual capture authorization
 - Capture after shipment/receipt confirmation
@@ -207,11 +222,10 @@ Source complet des champs : docs/database_schema.json
 
 Use any future expiry, any CVC, any postal code.
 
-## Future hardening
-- Validate multi-seller shipping math with mixed delivery options.
-- Add full checkout E2E tests.
+## Current hardening focus
+- Keep checkout/order/payment flows green in the remote strict audit.
+- Expand integration/device tests around user-visible flows instead of adding logic to widgets.
 - Expand threat-model tests for cart/checkout abuse.
-
 
 
 

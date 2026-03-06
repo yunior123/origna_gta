@@ -21,10 +21,11 @@ python3 scripts/collect_flow_files.py
 - `pressSequentially()` always — `fill()` never works in Flutter Web
 - NEVER search by translated display text — it's not in the DOM
 
-**Playwright test files:** `e2e/playwright_ui/*.spec.ts` (27 specs)  
+**Playwright test files:** `e2e/playwright_ui/*.spec.ts`  
 **Shared helpers:** `e2e/playwright_ui/api-helpers.ts`, `flutter-helpers.ts`  
 **Selector map:** `origna_flows/SEMANTICS.md`  
 **User journeys:** `origna_flows/FLOWS.md`
+**Strict gate:** `.github/workflows/strict-quality-audit.yml` → `scripts/run_quality_gate.sh`
 
 ---
 

@@ -71,6 +71,8 @@ sequenceDiagram
 
 ## Quick commands
 - Run all tests: scripts/run_all_tests.sh
+- Run strict quality gate locally in safe mode: ./scripts/run_quality_gate.sh
+- Force full local strict gate (not recommended on 8GB RAM): ./scripts/run_quality_gate.sh --allow-local-heavy --backend-gate-mode strict
 - Deploy Firestore rules: scripts/deploy_rules.sh
 - Install pre-push hook (deploys rules): scripts/install_git_hooks.sh
 - Firestore indexes: firebase deploy --only firestore:indexes
@@ -79,22 +81,28 @@ sequenceDiagram
 - Functions tests: (cd functions) pytest
 - Configure Algolia index: Call `configure_algolia` Cloud Function (admin only)
 
-## Flutter integration tests (web)
+## Flutter integration tests
 ```bash
-# 1) Start ChromeDriver in a separate terminal
-chromedriver --port=4444
-
-# 2) Run the integration suite (no emulators)
+# Lightweight local command
 cd origna_gta
-flutter drive --driver=test_driver/integration_test.dart \
-  --target=integration_test/all_tests.dart \
-  -d chrome \
-  --dart-define=ENVIRONMENT=dev \
-  --dart-define=USE_EMULATORS=false
+flutter test integration_test/coverage_gate_integration_test.dart
 ```
 
+- The enforced 100% integration coverage gate runs remotely in GitHub Actions on Linux desktop and in Codemagic on macOS.
+- Local heavy integration/device runs are intentionally not the default because this repository targets an 8GB developer machine.
+
+## Quality gates and CI
+- GitHub Actions workflow: `.github/workflows/strict-quality-audit.yml`
+  - Enforces backend coverage at 100%
+  - Enforces Flutter unit coverage at 100%
+  - Enforces Flutter integration coverage at 100%
+  - Runs the real Playwright buyer/seller/order flows
+  - Enforces Playwright coverage at 100%
+- Codemagic workflow: `origna_gta/codemagic.yaml` → `quality-gate-remote`
+- Local `./scripts/run_quality_gate.sh` defaults to backend-only safe mode unless `--allow-local-heavy` is set.
+
 ## CI / E2E
-- GitHub Actions runs backend + Flutter tests and a stable Playwright suite.
+- GitHub Actions runs backend + Flutter tests and the strict real-flow Playwright suite remotely.
 - Local E2E stack:
   - Start: `./scripts/start-e2e-services.sh`
   - Run: `(cd e2e && E2E_WORKERS=2 ./run-e2e-tests.sh flutter)`
@@ -106,7 +114,7 @@ flutter drive --driver=test_driver/integration_test.dart \
   - `E2E_PROJECT` can force a single browser project (e.g. `chromium`).
 - Screenshots auto-saved to `~/Desktop/origna-screenshots/<env>/` after each run.
 
-### E2E Spec Files — `e2e/playwright_ui/` (27 specs)
+### Key real-flow specs — `e2e/playwright_ui/`
 
 | Spec | Coverage |
 |------|----------|
@@ -124,7 +132,7 @@ flutter drive --driver=test_driver/integration_test.dart \
 | `seller-product-management.spec.ts` | Edit/pause/archive products |
 | `seller-registration.spec.ts` | Stripe Connect onboarding |
 | `warehouse-multi-location.spec.ts` | Warehouse CRUD |
-| `digital-products-e2e.spec.ts` | Buy digital + license |
+| `digital-product-e2e.spec.ts` | Buy digital + license |
 | `premium-subscription.spec.ts` | Subscribe + paywall + cancel |
 | `favorites.spec.ts` | Toggle + list favorites |
 | `profile-management.spec.ts` | Profile + address CRUD |
@@ -135,8 +143,14 @@ flutter drive --driver=test_driver/integration_test.dart \
 | `admin-security.spec.ts` | Role enforcement |
 | `edge-cases-security.spec.ts` | Self-purchase, price tamper, race |
 | `rate-limiting.spec.ts` | Rate limit enforcement |
-| `new-coverage-e2e.spec.ts` | Subscription + stock notifications |
+| `new-coverage-e2e.spec.ts` | Additional subscription + stock notification coverage |
 | `smoke-home-profile.spec.ts` | App smoke tests |
+
+Coverage-specific gate files:
+- `origna_gta/test/coverage_gate_test.dart`
+- `origna_gta/integration_test/coverage_gate_integration_test.dart`
+- `e2e/playwright_ui/coverage-gate.spec.ts`
+- `e2e/playwright_ui/coverage_gate.ts`
 
 ## origna_flows/ — AI Flow Context Bundles
 
@@ -224,4 +238,3 @@ firebase deploy
 - Canada-only delivery enforced in Functions (buyer/shipping addresses only; sellers can be worldwide).
 - Stripe Connect Express direct charges, manual capture.
 - Algolia search with Firestore fallback.
-

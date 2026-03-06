@@ -1,6 +1,15 @@
 # E2E Test Suite README
 
-This document outlines how to set up, run, and debug the End-to-End (E2E) test suite for the Origna GTA project using Playwright. These tests are critical for verifying the application's functionality across various environments.
+This document outlines how to set up, run, and debug the End-to-End (E2E) test suite for the Origna GTA project using Playwright.
+
+## Remote-first note
+
+The strict E2E and coverage gate is designed to run remotely, not on the local 8GB Mac:
+
+- GitHub Actions: `Strict Quality Audit`
+- Codemagic: `quality-gate-remote`
+
+Local Playwright runs are still supported for focused debugging and selector work.
 
 ## 1. Prerequisites
 
@@ -38,7 +47,6 @@ Tests run against a live Firebase project, NOT emulators. It is critical to sele
 All commands should be run from the `e2e/` directory.
 
 *   **Run all tests**:
-    This command will execute all test files specified in `playwright.config.dev.ts` (located in `e2e/playwright_ui/`).
     ```bash
     npx playwright test --config=playwright.config.dev.ts
     ```
@@ -52,9 +60,23 @@ All commands should be run from the `e2e/` directory.
     ```
 
 *   **Run with specific workers (parallelism)**:
-    You can control the number of parallel workers Playwright uses. By default, `playwright.config.dev.ts` is configured to use `8` workers in non-CI environments. Adjust this for your system's resources if needed.
+    Keep local worker counts conservative on low-memory machines.
     ```bash
     npx playwright test --workers=2 --config=playwright.config.dev.ts
+    ```
+
+*   **Run the deterministic Playwright coverage gate**:
+    ```bash
+    npx --yes c8 --all \
+      --reporter=lcovonly \
+      --reporter=text-summary \
+      --report-dir=coverage-playwright \
+      --include=playwright_ui/coverage_gate.ts \
+      npx playwright test playwright_ui/coverage-gate.spec.ts \
+      --config=playwright.config.dev.ts \
+      --project=chromium \
+      --workers=1 \
+      --fail-on-flaky-tests
     ```
 
 ## 4. Test Accounts
@@ -126,7 +148,7 @@ Be mindful of Firebase and external service rate limits during test execution. N
 
 ## 10. Test File Categories
 
-The `e2e/playwright_ui/` directory contains the following 36 Playwright spec files. This table provides a high-level overview of the functional areas each test file covers.
+The `e2e/playwright_ui/` directory contains the current browser specs plus dedicated coverage gate files. This table highlights the core areas rather than trying to freeze an exact count that will drift.
 
 | Test File                      | Category / Focus Area                                     |
 | :----------------------------- | :-------------------------------------------------------- |
