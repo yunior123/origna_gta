@@ -27,6 +27,9 @@
 - **Remote Codemagic workflow:** `origna_gta/codemagic.yaml` → `quality-gate-remote`
 - **Default local behavior:** backend-only safe mode
 - **Force local heavy mode:** `./scripts/run_quality_gate.sh --allow-local-heavy --backend-gate-mode strict`
+- **Installed git pre-push hook:** lightweight local checks by default
+- **Force heavy local pre-push:** `ALLOW_LOCAL_HEAVY_PRE_PUSH=1 git push`
+- **Force deploy from pre-push hook:** `RUN_PRE_PUSH_DEPLOY=1 git push`
 - **Remote enforced thresholds:**
   - Backend coverage: `100`
   - Flutter unit coverage: `100`

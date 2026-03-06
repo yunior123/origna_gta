@@ -74,7 +74,7 @@ sequenceDiagram
 - Run strict quality gate locally in safe mode: ./scripts/run_quality_gate.sh
 - Force full local strict gate (not recommended on 8GB RAM): ./scripts/run_quality_gate.sh --allow-local-heavy --backend-gate-mode strict
 - Deploy Firestore rules: scripts/deploy_rules.sh
-- Install pre-push hook (deploys rules): scripts/install_git_hooks.sh
+- Install pre-push hook (safe local checks by default): scripts/install_git_hooks.sh
 - Firestore indexes: firebase deploy --only firestore:indexes
 - Flutter analyze: (cd origna_gta) flutter analyze
 - Flutter tests: (cd origna_gta) flutter test
@@ -100,6 +100,10 @@ flutter test integration_test/coverage_gate_integration_test.dart
   - Enforces Playwright coverage at 100%
 - Codemagic workflow: `origna_gta/codemagic.yaml` → `quality-gate-remote`
 - Local `./scripts/run_quality_gate.sh` defaults to backend-only safe mode unless `--allow-local-heavy` is set.
+- Installed pre-push hook defaults to lightweight local checks only.
+  - Force heavy local pre-push validation: `ALLOW_LOCAL_HEAVY_PRE_PUSH=1 git push`
+  - Force local deploy from the hook: `RUN_PRE_PUSH_DEPLOY=1 git push`
+  - Default expectation: use GitHub Actions / Codemagic for heavy gates and deploy verification.
 
 ## CI / E2E
 - GitHub Actions runs backend + Flutter tests and the strict real-flow Playwright suite remotely.

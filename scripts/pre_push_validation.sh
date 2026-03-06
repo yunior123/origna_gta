@@ -9,16 +9,34 @@ echo "============================================"
 echo "  Pre-Push Validation Suite"
 echo "============================================"
 
-# 0a. Flutter unit/widget tests — run FIRST while RAM is fresh (before heavy builds)
-echo ""
-echo "--- [0a] Flutter Tests (pre-build, RAM-fresh) ---"
-cd origna_gta
-if ! flutter test --reporter compact --concurrency=4; then
-    echo "❌ ERROR: Flutter tests failed."
-    exit 1
+ALLOW_LOCAL_HEAVY_PRE_PUSH="${ALLOW_LOCAL_HEAVY_PRE_PUSH:-0}"
+
+if [ "$ALLOW_LOCAL_HEAVY_PRE_PUSH" = "1" ]; then
+    echo ""
+    echo "Heavy local pre-push validation enabled (ALLOW_LOCAL_HEAVY_PRE_PUSH=1)."
+else
+    echo ""
+    echo "Heavy local pre-push validation skipped by default."
+    echo "Remote strict validation runs in GitHub Actions/Codemagic."
+    echo "Set ALLOW_LOCAL_HEAVY_PRE_PUSH=1 to force local Flutter builds/tests and Playwright."
 fi
-cd "$REPO_ROOT"
-echo "✅ Flutter tests passed."
+
+# 0a. Flutter unit/widget tests — run FIRST while RAM is fresh (before heavy builds)
+if [ "$ALLOW_LOCAL_HEAVY_PRE_PUSH" = "1" ]; then
+    echo ""
+    echo "--- [0a] Flutter Tests (pre-build, RAM-fresh) ---"
+    cd origna_gta
+    if ! flutter test --reporter compact --concurrency=2; then
+        echo "❌ ERROR: Flutter tests failed."
+        exit 1
+    fi
+    cd "$REPO_ROOT"
+    echo "✅ Flutter tests passed."
+else
+    echo ""
+    echo "--- [0a] Flutter Tests (pre-build, RAM-fresh) ---"
+    echo "⏭️  Skipped locally. Remote strict gate enforces Flutter coverage/tests."
+fi
 
 # 0b. Python backend tests — run before builds too
 echo ""
@@ -35,40 +53,44 @@ echo "✅ Backend tests passed."
 # 0. Validate Flutter builds for all 3 environments
 echo ""
 echo "--- [0/10] Multi-Env Build Validation ---"
-BUILD_DIR="$REPO_ROOT/origna_gta/build/web"
-cd "$REPO_ROOT/origna_gta"
+if [ "$ALLOW_LOCAL_HEAVY_PRE_PUSH" = "1" ]; then
+    BUILD_DIR="$REPO_ROOT/origna_gta/build/web"
+    cd "$REPO_ROOT/origna_gta"
 
-echo "  Building DEV..."
-flutter build web --debug --dart-define=ENVIRONMENT=dev --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Flutter DEV build failed."
-    exit 1
-fi
-echo "  ✅ DEV build OK"
+    echo "  Building DEV..."
+    flutter build web --debug --dart-define=ENVIRONMENT=dev --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Flutter DEV build failed."
+        exit 1
+    fi
+    echo "  ✅ DEV build OK"
 
-echo "  Building STAGING..."
-flutter build web --profile --dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Flutter STAGING build failed."
-    exit 1
-fi
-echo "  ✅ STAGING build OK"
+    echo "  Building STAGING..."
+    flutter build web --profile --dart-define=ENVIRONMENT=staging --dart-define=FORCE_SEMANTICS=true > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Flutter STAGING build failed."
+        exit 1
+    fi
+    echo "  ✅ STAGING build OK"
 
-echo "  Building PROD..."
-flutter build web --release --dart-define=ENVIRONMENT=production > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Flutter PROD build failed."
-    exit 1
-fi
-# Guardrail: prod build must NOT contain FORCE_SEMANTICS
-if grep -q "FORCE_SEMANTICS" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
-    echo "❌ ERROR: FORCE_SEMANTICS found in PROD build — dev/staging artifacts leaked into release!"
-    exit 1
-fi
-echo "  ✅ PROD build OK (no dev/staging artifacts)"
+    echo "  Building PROD..."
+    flutter build web --release --dart-define=ENVIRONMENT=production > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Flutter PROD build failed."
+        exit 1
+    fi
+    # Guardrail: prod build must NOT contain FORCE_SEMANTICS
+    if grep -q "FORCE_SEMANTICS" "$BUILD_DIR/main.dart.js" 2>/dev/null; then
+        echo "❌ ERROR: FORCE_SEMANTICS found in PROD build — dev/staging artifacts leaked into release!"
+        exit 1
+    fi
+    echo "  ✅ PROD build OK (no dev/staging artifacts)"
 
-cd "$REPO_ROOT"
-echo "✅ All 3 environment builds validated."
+    cd "$REPO_ROOT"
+    echo "✅ All 3 environment builds validated."
+else
+    echo "⏭️  Skipped locally. Remote CI/Codemagic own multi-env Flutter validation."
+fi
 
 # 1. Check for credential leaks
 echo ""
@@ -133,13 +155,17 @@ python3 scripts/check_deploy_versions.py
 # 10. Playwright E2E tests against dev
 echo ""
 echo "--- [10/10] Playwright E2E Tests (dev) ---"
-cd e2e
-if ! npx playwright test --config=playwright.config.dev.ts --retries=1 --workers=4; then
-    echo "❌ ERROR: Playwright E2E tests failed on dev."
-    exit 1
+if [ "$ALLOW_LOCAL_HEAVY_PRE_PUSH" = "1" ]; then
+    cd e2e
+    if ! npx playwright test --config=playwright.config.dev.ts --retries=1 --workers=2; then
+        echo "❌ ERROR: Playwright E2E tests failed on dev."
+        exit 1
+    fi
+    cd "$REPO_ROOT"
+    echo "✅ Playwright E2E tests passed."
+else
+    echo "⏭️  Skipped locally. Remote strict gate enforces Playwright flows and coverage."
 fi
-cd "$REPO_ROOT"
-echo "✅ Playwright E2E tests passed."
 
 echo ""
 echo "============================================"
