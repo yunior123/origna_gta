@@ -23,13 +23,67 @@ test.describe('PW IT Replica — Buyer Flow', () => {
 
     test('Complete Buyer Journey', async ({ page }) => {
         const homeSettingsBtn = () => page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
+        const isProfileUrl = () => /\/profile/i.test(page.url());
+
+        const ensureOnProfile = async () => {
+            if (isProfileUrl()) {
+                await waitForFlutter(page);
+                return;
+            }
+
+            // Nested navigator back stacks can leave us on a non-profile route;
+            // try in-screen back before re-opening profile from home.
+            const backBtn = page.locator('[aria-label^="btn-back"]').first();
+            if (await backBtn.isVisible().catch(() => false)) {
+                await backBtn.click();
+                await waitForFlutter(page);
+            }
+
+            if (!isProfileUrl()) {
+                await navigateHome(page, TARGET_URL);
+                const settings = homeSettingsBtn();
+                await expect(settings).toBeVisible({ timeout: 30_000 });
+                await settings.click();
+
+                const reachedProfile = await page
+                    .waitForURL(/\/profile/i, { timeout: 20_000 })
+                    .then(() => true)
+                    .catch(() => false);
+                if (!reachedProfile) {
+                    // Flutter semantics can rebind right after auth/nav transitions.
+                    await page.waitForTimeout(1_000);
+                    await settings.click().catch(() => {});
+                    await page.waitForURL(/\/profile/i, { timeout: 20_000 }).catch(() => {});
+                }
+            }
+
+            await expect(page).toHaveURL(/\/profile/i, { timeout: 20_000 });
+            await waitForFlutter(page);
+        };
+
         const openProfile = async () => {
             await navigateHome(page, TARGET_URL);
             const settings = homeSettingsBtn();
             await expect(settings).toBeVisible({ timeout: 20_000 });
-            await settings.click();
-            await expect(page).toHaveURL(/\/profile/i, { timeout: 20_000 });
-            await waitForFlutter(page);
+
+            // Single click can be dropped during Flutter semantic-tree rebuilds;
+            // retry once, then invoke deterministic fallback recovery.
+            let reachedProfile = false;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                await settings.click().catch(() => {});
+                reachedProfile = await page
+                    .waitForURL(/\/profile/i, { timeout: 12_000 })
+                    .then(() => true)
+                    .catch(() => false);
+                if (reachedProfile) break;
+                await page.waitForTimeout(800);
+            }
+
+            if (!reachedProfile) {
+                await ensureOnProfile();
+            } else {
+                await waitForFlutter(page);
+            }
         };
 
         await requireWebApp(page, TARGET_URL);
@@ -98,7 +152,7 @@ test.describe('PW IT Replica — Buyer Flow', () => {
             }
 
             await page.goBack(); // back to profile
-            await waitForFlutter(page);
+            await ensureOnProfile();
         }
 
         // C024: My Orders
@@ -107,7 +161,7 @@ test.describe('PW IT Replica — Buyer Flow', () => {
             await menuOrders.click();
             await expect(page).toHaveURL(/\/orders/i, { timeout: 20000 });
             await page.goBack();
-            await waitForFlutter(page);
+            await ensureOnProfile();
         }
 
         // Return to home (use goBack, not page.goto which kills auth)

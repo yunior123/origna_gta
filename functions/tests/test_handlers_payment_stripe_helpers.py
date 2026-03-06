@@ -645,3 +645,46 @@ class TestPaymentStripeHelpers:
         _rollback_checkout(validated_items=[], order_ref=order_ref, coupon_code="SAVE10", user_id="buyer_1")
 
         mock_logger.error.assert_called_once()
+
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("handlers.payment_stripe.get_firestore")
+    @patch("handlers.payment_stripe.get_db")
+    def test_rollback_checkout_coupon_missing_inside_transaction_returns_early(
+        self,
+        mock_get_db,
+        mock_get_firestore,
+        _mock_ts,
+        _mock_get_transactional,
+    ):
+        from handlers.payment_stripe import _rollback_checkout
+
+        fs = Mock()
+        fs.transactional = lambda fn: fn
+        mock_get_firestore.return_value = fs
+
+        stock_txn = Mock()
+        coupon_txn = Mock()
+        db = Mock()
+        db.transaction.side_effect = [stock_txn, coupon_txn]
+        mock_get_db.return_value = db
+
+        coupons_col = Mock()
+        coupon_ref = Mock()
+        coupon_ref.get.return_value = _doc("SAVE10", exists=False)
+        coupon_use_ref = Mock()
+        coupon_use_ref.get.return_value = _doc("buyer_1", {"useCount": 1}, exists=True)
+        coupon_ref.collection.return_value.document.return_value = coupon_use_ref
+        coupons_col.document.return_value = coupon_ref
+
+        db.collection.side_effect = lambda name: {
+            Collections.PRODUCTS: Mock(),
+            Collections.COUPONS: coupons_col,
+        }[name]
+
+        order_ref = Mock()
+        _rollback_checkout(validated_items=[], order_ref=order_ref, coupon_code="SAVE10", user_id="buyer_1")
+
+        coupon_txn.update.assert_not_called()
+        coupon_txn.delete.assert_not_called()
+        order_ref.update.assert_called_once()

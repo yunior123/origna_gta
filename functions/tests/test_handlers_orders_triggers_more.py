@@ -343,6 +343,314 @@ class TestOrderStatusChangedMore:
         mock_enqueue.assert_called_once()
         mock_push.assert_called_once()
 
+    @patch("handlers.orders.send_push_notification")
+    @patch("handlers.orders.enqueue_email_task")
+    @patch("handlers.orders.get_order_processing_email", return_value="<p>processing</p>")
+    @patch("handlers.orders._email_t", side_effect=lambda key, _lang="en": f"{key} {{oid}}")
+    @patch("handlers.orders.get_db")
+    def test_processing_branch_and_stock_cleanup_error_path(
+        self,
+        mock_get_db,
+        _mock_t,
+        _mock_tpl,
+        mock_enqueue,
+        mock_push,
+    ):
+        from handlers.orders import on_order_status_changed
+
+        db, tx = _prepare_db_for_order_status("order_proc")
+
+        stock_query = Mock()
+        stock_query.where.return_value = stock_query
+        stock_query.stream.side_effect = RuntimeError("subs down")
+        stock_col = Mock()
+        stock_col.where.return_value = stock_query
+
+        base_collection = db.collection.side_effect
+
+        def _collection(name):
+            if name == Collections.STOCK_NOTIFICATIONS:
+                return stock_col
+            return base_collection(name)
+
+        db.collection.side_effect = _collection
+        mock_get_db.return_value = db
+
+        before = {
+            Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        }
+        after = {
+            Fields.ORDER_STATUS: OrderStatusValues.PROCESSING,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+            Fields.USER_ID: "buyer_1",
+            Fields.CUSTOMER_EMAIL: "buyer@example.com",
+            Fields.PREFERRED_LANGUAGE: "en",
+            Fields.ITEMS: [{Fields.PRODUCT_ID: "p1", Fields.VARIANT_KEY: "", Fields.SELLER_ID: "seller_1"}],
+        }
+
+        evt = _order_event("order_proc", before, after)
+        with patch("google.cloud.firestore_v1.transaction.transactional", side_effect=lambda f: f):
+            on_order_status_changed(evt)
+
+        tx.update.assert_called_once()
+        mock_enqueue.assert_called_once()
+        mock_push.assert_called_once()
+
+    @patch("handlers.orders.send_push_notification")
+    @patch("handlers.orders.enqueue_email_task")
+    @patch("handlers.orders.get_order_in_transit_email", return_value="<p>in-transit</p>")
+    @patch("handlers.orders._email_t", side_effect=lambda key, _lang="en": f"{key} {{oid}}")
+    @patch("handlers.orders.get_db")
+    def test_in_transit_branch_sends_email_and_push(
+        self,
+        mock_get_db,
+        _mock_t,
+        _mock_tpl,
+        mock_enqueue,
+        mock_push,
+    ):
+        from handlers.orders import on_order_status_changed
+
+        db, tx = _prepare_db_for_order_status("order_transit")
+        mock_get_db.return_value = db
+
+        before = {
+            Fields.ORDER_STATUS: OrderStatusValues.SHIPPED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        }
+        after = {
+            Fields.ORDER_STATUS: OrderStatusValues.IN_TRANSIT,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+            Fields.USER_ID: "buyer_1",
+            Fields.CUSTOMER_EMAIL: "buyer@example.com",
+            Fields.PREFERRED_LANGUAGE: "en",
+            Fields.ITEMS: [],
+        }
+
+        evt = _order_event("order_transit", before, after)
+        with patch("google.cloud.firestore_v1.transaction.transactional", side_effect=lambda f: f):
+            on_order_status_changed(evt)
+
+        tx.update.assert_called_once()
+        mock_enqueue.assert_called_once()
+        mock_push.assert_called_once()
+
+    @patch("handlers.orders.send_push_notification")
+    @patch("handlers.orders.enqueue_email_task")
+    @patch("handlers.orders.get_order_delivered_email", return_value="<p>delivered</p>")
+    @patch("handlers.orders._email_t", side_effect=lambda key, _lang="en": f"{key} {{oid}}")
+    @patch("handlers.orders.get_db")
+    def test_delivered_unconfirmed_branch_requests_buyer_confirmation(
+        self,
+        mock_get_db,
+        _mock_t,
+        _mock_tpl,
+        mock_enqueue,
+        mock_push,
+    ):
+        from handlers.orders import on_order_status_changed
+
+        db, tx = _prepare_db_for_order_status("order_deliv_req")
+        mock_get_db.return_value = db
+
+        before = {
+            Fields.ORDER_STATUS: OrderStatusValues.SHIPPED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        }
+        after = {
+            Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+            Fields.USER_ID: "buyer_1",
+            Fields.CUSTOMER_EMAIL: "buyer@example.com",
+            Fields.PREFERRED_LANGUAGE: "en",
+            Fields.CONFIRMED_BY_CLIENT: False,
+            Fields.AUTO_CONFIRMED: False,
+            Fields.ITEMS: [{Fields.SELLER_ID: "seller_1"}],
+        }
+
+        evt = _order_event("order_deliv_req", before, after)
+        with patch("google.cloud.firestore_v1.transaction.transactional", side_effect=lambda f: f):
+            on_order_status_changed(evt)
+
+        tx.update.assert_called_once()
+        assert mock_enqueue.call_count >= 2
+        assert mock_push.call_count >= 2
+
+    @patch("handlers.orders.send_push_notification")
+    @patch("handlers.orders.enqueue_email_task")
+    @patch("handlers.orders.get_order_cancelled_email", return_value="<p>cancelled</p>")
+    @patch("handlers.orders._email_t", side_effect=lambda key, _lang="en": f"{key} {{oid}}")
+    @patch("handlers.orders.get_db")
+    def test_cancelled_branch_sends_email_and_push(
+        self,
+        mock_get_db,
+        _mock_t,
+        _mock_tpl,
+        mock_enqueue,
+        mock_push,
+    ):
+        from handlers.orders import on_order_status_changed
+
+        db, tx = _prepare_db_for_order_status("order_cancel")
+        mock_get_db.return_value = db
+
+        before = {
+            Fields.ORDER_STATUS: OrderStatusValues.PROCESSING,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        }
+        after = {
+            Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+            Fields.USER_ID: "buyer_1",
+            Fields.CUSTOMER_EMAIL: "buyer@example.com",
+            Fields.PREFERRED_LANGUAGE: "en",
+            Fields.CANCELLATION_REASON: "Seller out of stock",
+            Fields.ITEMS: [],
+        }
+
+        evt = _order_event("order_cancel", before, after)
+        with patch("google.cloud.firestore_v1.transaction.transactional", side_effect=lambda f: f):
+            on_order_status_changed(evt)
+
+        tx.update.assert_called_once()
+        mock_enqueue.assert_called_once()
+        mock_push.assert_called_once()
+
+    @patch("handlers.orders.send_push_notification")
+    @patch("handlers.orders.enqueue_email_task")
+    @patch("handlers.orders.get_db")
+    def test_buyer_email_fetch_error_skips_notification(self, mock_get_db, mock_enqueue, mock_push):
+        from handlers.orders import on_order_status_changed
+
+        tx = Mock()
+        order_ref = Mock()
+        order_ref.get.return_value = _snap({Fields.NOTIFICATIONS_SENT: []}, doc_id="order_no_email")
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+
+        users_col = Mock()
+        users_col.document.return_value.get.side_effect = RuntimeError("user read failed")
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.USERS: users_col,
+            Collections.STOCK_NOTIFICATIONS: Mock(),
+        }[name]
+        db.transaction.return_value = tx
+        mock_get_db.return_value = db
+
+        before = {
+            Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        }
+        after = {
+            Fields.ORDER_STATUS: OrderStatusValues.PROCESSING,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+            Fields.USER_ID: "buyer_1",
+            Fields.PREFERRED_LANGUAGE: "en",
+            Fields.ITEMS: [],
+        }
+
+        evt = _order_event("order_no_email", before, after)
+        with patch("google.cloud.firestore_v1.transaction.transactional", side_effect=lambda f: f):
+            on_order_status_changed(evt)
+
+        tx.update.assert_called_once()
+        mock_enqueue.assert_not_called()
+        mock_push.assert_not_called()
+
+    @patch("handlers.orders.logger.error")
+    @patch("handlers.orders.get_order_processing_email", side_effect=RuntimeError("template fail"))
+    @patch("handlers.orders.get_db")
+    def test_order_status_changed_outer_exception_is_logged(self, mock_get_db, _mock_tpl, mock_log_error):
+        from handlers.orders import on_order_status_changed
+
+        db, _tx = _prepare_db_for_order_status("order_fail")
+        mock_get_db.return_value = db
+
+        before = {
+            Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        }
+        after = {
+            Fields.ORDER_STATUS: OrderStatusValues.PROCESSING,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+            Fields.USER_ID: "buyer_1",
+            Fields.CUSTOMER_EMAIL: "buyer@example.com",
+            Fields.PREFERRED_LANGUAGE: "en",
+            Fields.ITEMS: [],
+        }
+
+        evt = _order_event("order_fail", before, after)
+        with patch("google.cloud.firestore_v1.transaction.transactional", side_effect=lambda f: f):
+            on_order_status_changed(evt)
+
+        assert mock_log_error.called
+
+    @patch("handlers.orders.get_seller_notification_email", return_value="<p>seller</p>")
+    @patch("handlers.orders.get_order_confirmation_email", return_value="<p>buyer</p>")
+    @patch("handlers.orders._email_t", side_effect=lambda key, _lang="en": f"{key} {{oid}}")
+    @patch("handlers.orders.send_push_notification")
+    @patch("handlers.orders.enqueue_email_task")
+    @patch("handlers.orders.get_db")
+    def test_confirmed_branch_seller_and_perishable_error_paths(
+        self,
+        mock_get_db,
+        mock_enqueue,
+        mock_push,
+        _mock_t,
+        _mock_buyer_tpl,
+        _mock_seller_tpl,
+    ):
+        from handlers.orders import on_order_status_changed
+
+        def _push_side_effect(_uid, title, *_args, **_kwargs):
+            if title == "New Order!":
+                raise RuntimeError("seller push failed")
+            if title == "URGENT: Perishable Order":
+                raise RuntimeError("perishable push failed")
+            return None
+
+        def _enqueue_side_effect(*_args, **kwargs):
+            if str(kwargs.get("subject", "")).startswith("sub.perishable_urgent"):
+                raise RuntimeError("perishable email failed")
+            return None
+
+        mock_push.side_effect = _push_side_effect
+        mock_enqueue.side_effect = _enqueue_side_effect
+
+        db, tx = _prepare_db_for_order_status("order_conf_err")
+        mock_get_db.return_value = db
+
+        before = {
+            Fields.ORDER_STATUS: OrderStatusValues.PENDING,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        }
+        after = {
+            Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+            Fields.USER_ID: "buyer_1",
+            Fields.CUSTOMER_EMAIL: "buyer@example.com",
+            Fields.PREFERRED_LANGUAGE: "en",
+            Fields.ITEMS: [
+                {
+                    Fields.SELLER_ID: "seller_1",
+                    Fields.PRODUCT_ID: "prod_1",
+                    Fields.VARIANT_KEY: "",
+                    Fields.IS_PERISHABLE: True,
+                    Fields.NAME: "Milk",
+                }
+            ],
+        }
+
+        evt = _order_event("order_conf_err", before, after)
+        with patch("google.cloud.firestore_v1.transaction.transactional", side_effect=lambda f: f):
+            on_order_status_changed(evt)
+
+        tx.update.assert_called_once()
+
 
 class TestReturnEmailAndStatusChangedMore:
     @patch("handlers.orders.enqueue_email_task")

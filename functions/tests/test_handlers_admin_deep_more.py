@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pyotp
 import pytest
+import stripe
 from firebase_functions import https_fn
 
 from schema_constants import (
@@ -1146,6 +1147,58 @@ class TestAdminMoreBranches:
         assert exc.value.code == "unauthenticated"
         assert sec_ref.update.call_count >= 2
 
+    @patch("handlers.admin.create_success_response", side_effect=lambda payload: {"success": True, **payload})
+    @patch("handlers.admin.get_delete_field", return_value="__DELETE__")
+    @patch("handlers.admin.get_server_timestamp", return_value="ts")
+    @patch("handlers.admin.time.sleep")
+    @patch("handlers.admin.get_db")
+    def test_admin_mfa_verify_success_persists_temp_backup_codes(
+        self,
+        mock_get_db,
+        _mock_sleep,
+        _mock_ts,
+        _mock_delete,
+        _mock_resp,
+    ):
+        from handlers.admin import admin_mfa_verify
+        from utils.crypto_utils import encrypt_mfa_secret
+
+        secret = pyotp.random_base32()
+        db = Mock()
+        mock_get_db.return_value = db
+
+        user_ref = Mock()
+        user_ref.get.return_value = _snap({}, exists=True)
+
+        sec_ref = Mock()
+        sec_ref.get.return_value = _snap(
+            {
+                Fields.MFA_SECRET_TEMP: encrypt_mfa_secret(secret, associated_data="admin_1"),
+                Fields.MFA_BACKUP_CODES_TEMP: ["h1", "h2"],
+                Fields.MFA_BACKUP_CODES_SALT: "salt123",
+                Fields.MFA_FAILED_ATTEMPTS: 0,
+            },
+            exists=True,
+        )
+
+        users_coll = Mock()
+        users_coll.document.return_value = user_ref
+        sec_coll = Mock()
+        sec_coll.document.return_value = sec_ref
+        db.collection.side_effect = lambda name: {
+            Collections.USERS: users_coll,
+            Collections.USER_SECURITY: sec_coll,
+        }[name]
+
+        with patch("handlers.admin.pyotp.TOTP.verify", return_value=True):
+            out = admin_mfa_verify(_req(uid="admin_1", data={ApiKeys.CODE: "123456"}))
+
+        assert out["success"] is True
+        set_payload = sec_ref.set.call_args.args[0]
+        assert set_payload[Fields.MFA_BACKUP_CODES] == ["h1", "h2"]
+        assert set_payload[Fields.MFA_BACKUP_CODES_TEMP] == "__DELETE__"
+        assert set_payload[Fields.MFA_BACKUP_CODES_SALT] == "salt123"
+
     @patch("handlers.admin.get_db")
     @patch("handlers.admin.RateLimiter")
     def test_admin_mfa_disable_invalid_code_rejected(self, mock_rl_cls, mock_get_db):
@@ -1375,3 +1428,21 @@ class TestAdminMoreBranches:
         with pytest.raises(https_fn.HttpsError) as missing_stripe:
             create_stripe_login_link(_req(uid="seller_1"))
         assert missing_stripe.value.code == "failed-precondition"
+
+    @patch("handlers.admin.stripe.Account.create_login_link", side_effect=stripe.StripeError("stripe down"))
+    @patch("handlers.admin.stripe.api_key", "STRIPE_SECRET_KEY_REDACTED")
+    @patch("handlers.admin.get_db")
+    def test_create_stripe_login_link_stripe_error_maps_to_internal(self, mock_get_db, _mock_login):
+        from handlers.admin import create_stripe_login_link
+
+        db = Mock()
+        sp_ref = Mock()
+        sp_ref.get.return_value = _snap({Fields.STRIPE_ACCOUNT_ID: "acct_123"}, exists=True)
+        sp_coll = Mock()
+        sp_coll.document.return_value = sp_ref
+        db.collection.side_effect = lambda name: {Collections.SELLER_PROFILES: sp_coll}[name]
+        mock_get_db.return_value = db
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            create_stripe_login_link(_req(uid="seller_1"))
+        assert exc.value.code == "internal"

@@ -220,6 +220,94 @@ class TestOrderTriggerPathsDeep:
         mock_push.assert_called_once()
         mock_enqueue.assert_called_once()
 
+    @patch("handlers.orders.get_db")
+    def test_on_order_item_shipped_skips_when_order_status_transitions_to_shipped(self, mock_get_db):
+        from handlers.orders import on_order_item_shipped
+
+        before = {
+            Fields.ORDER_STATUS: OrderStatusValues.PROCESSING,
+            Fields.ITEMS: [{Fields.CART_ITEM_ID: "ci_1", Fields.STATUS: DeliveryStatusValues.PENDING}],
+        }
+        after = {
+            Fields.ORDER_STATUS: OrderStatusValues.SHIPPED,
+            Fields.DELIVERY_SPEED: "standard",
+            Fields.ITEMS: [{Fields.CART_ITEM_ID: "ci_1", Fields.STATUS: DeliveryStatusValues.SHIPPED}],
+        }
+        event = Mock()
+        event.params = {"orderId": "order_ship_skip"}
+        event.data = Mock()
+        event.data.before.to_dict.return_value = before
+        event.data.after.to_dict.return_value = after
+
+        on_order_item_shipped(event)
+        mock_get_db.assert_not_called()
+
+    @patch("handlers.orders.send_push_notification")
+    @patch("services.email_task.enqueue_email_task")
+    @patch("handlers.orders.get_order_item_shipped_email", return_value="<p>shipped</p>")
+    @patch("handlers.orders.get_db")
+    def test_on_order_item_shipped_duplicate_claim_returns_early(
+        self,
+        mock_get_db,
+        _mock_tpl,
+        mock_enqueue,
+        mock_push,
+    ):
+        from handlers.orders import on_order_item_shipped
+
+        claim_ref = Mock()
+        claim_ref.create.side_effect = RuntimeError("duplicate")
+        webhooks_col = Mock()
+        webhooks_col.document.return_value = claim_ref
+
+        users_col = Mock()
+        users_col.document.return_value.get.return_value = _snap({Fields.PREFERRED_LANGUAGE: "en"})
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.WEBHOOK_EVENTS: webhooks_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        before = {
+            Fields.ORDER_STATUS: OrderStatusValues.PROCESSING,
+            Fields.ITEMS: [{Fields.CART_ITEM_ID: "ci_1", Fields.STATUS: DeliveryStatusValues.PENDING}],
+        }
+        after = {
+            Fields.ORDER_STATUS: OrderStatusValues.PROCESSING,
+            Fields.USER_ID: "buyer_1",
+            Fields.CUSTOMER_EMAIL: "buyer@example.com",
+            Fields.ITEMS: [{Fields.CART_ITEM_ID: "ci_1", Fields.STATUS: DeliveryStatusValues.SHIPPED}],
+        }
+        event = Mock()
+        event.params = {"orderId": "order_dup"}
+        event.data = Mock()
+        event.data.before.to_dict.return_value = before
+        event.data.after.to_dict.return_value = after
+
+        on_order_item_shipped(event)
+        mock_push.assert_not_called()
+        mock_enqueue.assert_not_called()
+
+    @patch("handlers.orders.get_db")
+    def test_on_order_item_shipped_requires_cart_item_ids(self, mock_get_db):
+        from handlers.orders import on_order_item_shipped
+
+        db = Mock()
+        mock_get_db.return_value = db
+
+        before = {Fields.ORDER_STATUS: OrderStatusValues.PROCESSING, Fields.ITEMS: [{}]}
+        after = {Fields.ORDER_STATUS: OrderStatusValues.PROCESSING, Fields.ITEMS: [{}]}
+        event = Mock()
+        event.params = {"orderId": "order_bad_item"}
+        event.data = Mock()
+        event.data.before.to_dict.return_value = before
+        event.data.after.to_dict.return_value = after
+
+        with pytest.raises(ValueError):
+            on_order_item_shipped(event)
+
     @patch("handlers.orders.send_push_notification")
     @patch("services.email_task.enqueue_email_task")
     @patch("handlers.orders.get_order_item_delivered_email", return_value="<p>delivered</p>")
@@ -265,6 +353,71 @@ class TestOrderTriggerPathsDeep:
         claim_ref.create.assert_called_once()
         mock_push.assert_called_once()
         mock_enqueue.assert_called_once()
+
+    @patch("handlers.orders.send_push_notification")
+    @patch("services.email_task.enqueue_email_task")
+    @patch("handlers.orders.get_order_item_delivered_email", return_value="<p>delivered</p>")
+    @patch("handlers.orders.get_db")
+    def test_on_order_item_delivered_duplicate_claim_is_ignored(
+        self,
+        mock_get_db,
+        _mock_tpl,
+        mock_enqueue,
+        mock_push,
+    ):
+        from handlers.orders import on_order_item_delivered
+
+        claim_ref = Mock()
+        claim_ref.create.side_effect = RuntimeError("duplicate")
+        webhooks_col = Mock()
+        webhooks_col.document.return_value = claim_ref
+
+        users_col = Mock()
+        users_col.document.return_value.get.return_value = _snap({Fields.PREFERRED_LANGUAGE: "en"})
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.WEBHOOK_EVENTS: webhooks_col,
+            Collections.USERS: users_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        before = {Fields.ITEMS: [{Fields.CART_ITEM_ID: "ci_1", Fields.STATUS: DeliveryStatusValues.SHIPPED}]}
+        after = {
+            Fields.USER_ID: "buyer_1",
+            Fields.ITEMS: [{Fields.CART_ITEM_ID: "ci_1", Fields.STATUS: DeliveryStatusValues.DELIVERED}],
+        }
+        event = Mock()
+        event.params = {"orderId": "order_dup_delivered"}
+        event.data = Mock()
+        event.data.before.to_dict.return_value = before
+        event.data.after.to_dict.return_value = after
+
+        on_order_item_delivered(event)
+        mock_push.assert_not_called()
+        mock_enqueue.assert_not_called()
+
+    @patch("handlers.orders.get_db")
+    def test_on_order_item_delivered_returns_when_user_id_missing(self, mock_get_db):
+        from handlers.orders import on_order_item_delivered
+
+        claim_ref = Mock()
+        webhooks_col = Mock()
+        webhooks_col.document.return_value = claim_ref
+        db = Mock()
+        db.collection.return_value = webhooks_col
+        mock_get_db.return_value = db
+
+        before = {Fields.ITEMS: [{Fields.CART_ITEM_ID: "ci_1", Fields.STATUS: DeliveryStatusValues.SHIPPED}]}
+        after = {Fields.ITEMS: [{Fields.CART_ITEM_ID: "ci_1", Fields.STATUS: DeliveryStatusValues.DELIVERED}]}
+        event = Mock()
+        event.params = {"orderId": "order_no_user"}
+        event.data = Mock()
+        event.data.before.to_dict.return_value = before
+        event.data.after.to_dict.return_value = after
+
+        on_order_item_delivered(event)
+        claim_ref.create.assert_not_called()
 
     @patch("handlers.orders._send_return_email")
     @patch("handlers.orders.send_push_notification")

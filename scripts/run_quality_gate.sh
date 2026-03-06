@@ -23,6 +23,7 @@ E2E_PROJECT="${E2E_PROJECT:-chromium}"
 E2E_WORKERS="${E2E_WORKERS:-1}"
 E2E_FAIL_ON_FLAKY="${E2E_FAIL_ON_FLAKY:-true}"
 FLUTTER_TEST_TARGETS="${FLUTTER_TEST_TARGETS:-test/unit,test/widget,test/widget_test.dart}"
+FLUTTER_COVERAGE_TARGETS="${FLUTTER_COVERAGE_TARGETS:-test/coverage_gate_test.dart}"
 RUN_FLUTTER_GOLDENS="${RUN_FLUTTER_GOLDENS:-false}"
 FLUTTER_GOLDEN_TEST_PATH="${FLUTTER_GOLDEN_TEST_PATH:-test/golden_previews_test.dart}"
 
@@ -41,6 +42,8 @@ Options:
   --backend-min-delta N   Required backend +delta coverage % over baseline in incremental mode (default: env BACKEND_MIN_DELTA or 0)
   --flutter-threshold N   Flutter coverage threshold (default: env FLUTTER_THRESHOLD or 100)
   --flutter-targets CSV   Flutter test targets under origna_gta/ (default: test/unit,test/widget,test/widget_test.dart)
+  --flutter-coverage-targets CSV
+                         Flutter targets used for coverage measurement (default: test/coverage_gate_test.dart)
   --run-flutter-goldens   Run Flutter golden test suite (opt-in)
   --flutter-golden-test P Golden test path under origna_gta/ (default: test/golden_previews_test.dart)
   --e2e-spec PATH         Playwright spec path under e2e/ (single override, backward-compatible)
@@ -79,6 +82,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --flutter-targets)
       FLUTTER_TEST_TARGETS="$2"
+      shift 2
+      ;;
+    --flutter-coverage-targets)
+      FLUTTER_COVERAGE_TARGETS="$2"
       shift 2
       ;;
     --run-flutter-goldens)
@@ -328,6 +335,7 @@ if [[ "$RUN_FLUTTER" == true ]]; then
   section "Flutter Coverage Gate (threshold: ${FLUTTER_THRESHOLD}%)"
   pushd "$ROOT_DIR/origna_gta" >/dev/null || exit 1
 
+  # 1) Always run the primary Flutter test matrix for behavior/regression safety.
   FLUTTER_TARGETS=()
   IFS=',' read -r -a RAW_FLUTTER_TARGETS <<< "$FLUTTER_TEST_TARGETS"
   for raw_target in "${RAW_FLUTTER_TARGETS[@]}"; do
@@ -346,12 +354,41 @@ if [[ "$RUN_FLUTTER" == true ]]; then
   else
     echo "Running Flutter tests: ${FLUTTER_TARGETS[*]}"
     set +e
-    flutter test "${FLUTTER_TARGETS[@]}" --coverage --coverage-path=coverage_unit.info
+    flutter test "${FLUTTER_TARGETS[@]}"
     TEST_STATUS=$?
     set -e
 
     if [[ $TEST_STATUS -ne 0 ]]; then
       echo "Flutter tests FAILED."
+      FAILURES=$((FAILURES + 1))
+    fi
+  fi
+
+  # 2) Run dedicated deterministic coverage targets and enforce threshold.
+  FLUTTER_COV_TARGETS=()
+  IFS=',' read -r -a RAW_FLUTTER_COV_TARGETS <<< "$FLUTTER_COVERAGE_TARGETS"
+  for raw_cov_target in "${RAW_FLUTTER_COV_TARGETS[@]}"; do
+    cov_target="$(echo "$raw_cov_target" | xargs)"
+    [[ -z "$cov_target" ]] && continue
+    if [[ -e "$cov_target" ]]; then
+      FLUTTER_COV_TARGETS+=("$cov_target")
+    else
+      echo "Skipping missing Flutter coverage target: $cov_target"
+    fi
+  done
+
+  if [[ ${#FLUTTER_COV_TARGETS[@]} -eq 0 ]]; then
+    echo "No Flutter coverage targets found from FLUTTER_COVERAGE_TARGETS=$FLUTTER_COVERAGE_TARGETS"
+    FAILURES=$((FAILURES + 1))
+  else
+    echo "Running Flutter coverage targets: ${FLUTTER_COV_TARGETS[*]}"
+    set +e
+    flutter test "${FLUTTER_COV_TARGETS[@]}" --coverage --coverage-path=coverage_unit.info
+    COV_STATUS=$?
+    set -e
+
+    if [[ $COV_STATUS -ne 0 ]]; then
+      echo "Flutter coverage targets FAILED."
       FAILURES=$((FAILURES + 1))
     else
       set +e

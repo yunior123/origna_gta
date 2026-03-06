@@ -443,3 +443,225 @@ class TestWarehouseEndpointsDeep:
         _clear_default_warehouse("seller_1", exclude_id="wh_2")
         w1.reference.update.assert_called_once_with({"isDefault": False})
         w2.reference.update.assert_not_called()
+
+
+class TestWarehouseGuardBranchesMore:
+    @patch("handlers.products._geocode_warehouse_address", side_effect=RuntimeError("geocode down"))
+    @patch("handlers.products._validate_warehouse_address")
+    @patch("handlers.products.get_db")
+    def test_create_warehouse_guards_and_internal_error(self, mock_get_db, _mock_validate, _mock_geocode):
+        from handlers.products import create_warehouse
+
+        with pytest.raises(https_fn.HttpsError) as unauth:
+            create_warehouse(_req(None, {}))
+        assert unauth.value.code == "unauthenticated"
+
+        with pytest.raises(https_fn.HttpsError) as bad_label:
+            create_warehouse(
+                _req(
+                    "seller_1",
+                    {
+                        "label": "",
+                        "type": WarehouseTypeValues.WAREHOUSE,
+                        "address": {Fields.STATE: "ON", Fields.POSTAL_CODE: "M5V2T6", Fields.COUNTRY: "Canada"},
+                    },
+                )
+            )
+        assert bad_label.value.code == "invalid-argument"
+
+        with pytest.raises(https_fn.HttpsError) as bad_type:
+            create_warehouse(
+                _req(
+                    "seller_1",
+                    {
+                        "label": "WH",
+                        "type": "bad",
+                        "address": {Fields.STATE: "ON", Fields.POSTAL_CODE: "M5V2T6", Fields.COUNTRY: "Canada"},
+                    },
+                )
+            )
+        assert bad_type.value.code == "invalid-argument"
+
+        with pytest.raises(https_fn.HttpsError) as bad_addr:
+            create_warehouse(_req("seller_1", {"label": "WH", "type": WarehouseTypeValues.WAREHOUSE, "address": "bad"}))
+        assert bad_addr.value.code == "invalid-argument"
+
+        db = Mock()
+        db.collection.return_value.document.return_value.collection.return_value.document.return_value = Mock(id="wh_new")
+        db.transaction.return_value = Mock()
+        mock_get_db.return_value = db
+        with pytest.raises(https_fn.HttpsError) as internal:
+            create_warehouse(
+                _req(
+                    "seller_1",
+                    {
+                        "label": "WH",
+                        "type": WarehouseTypeValues.WAREHOUSE,
+                        "address": {Fields.STATE: "ON", Fields.POSTAL_CODE: "M5V2T6", Fields.COUNTRY: "Canada"},
+                    },
+                )
+            )
+        assert internal.value.code == "internal"
+
+    @patch("handlers.products._geocode_warehouse_address", side_effect=RuntimeError("geocode down"))
+    @patch("handlers.products._validate_warehouse_address")
+    @patch("handlers.products.get_db")
+    def test_update_warehouse_guards_and_internal_error(self, mock_get_db, _mock_validate, _mock_geocode):
+        from handlers.products import update_warehouse
+
+        with pytest.raises(https_fn.HttpsError) as unauth:
+            update_warehouse(_req(None, {}))
+        assert unauth.value.code == "unauthenticated"
+
+        with pytest.raises(https_fn.HttpsError) as missing_id:
+            update_warehouse(_req("seller_1", {}))
+        assert missing_id.value.code == "invalid-argument"
+
+        wh_ref = Mock()
+        wh_ref.get.return_value = _snap(exists=False)
+        wh_col = Mock()
+        wh_col.document.return_value = wh_ref
+        users_col = Mock()
+        users_col.document.return_value.collection.return_value = wh_col
+        db = Mock()
+        db.collection.side_effect = lambda name: {Collections.USERS: users_col, Collections.PRODUCTS: Mock()}[name]
+        mock_get_db.return_value = db
+
+        with pytest.raises(https_fn.HttpsError) as not_found:
+            update_warehouse(_req("seller_1", {"warehouseId": "wh_1", "label": "New"}))
+        assert not_found.value.code == "not-found"
+
+        wh_ref.get.return_value = _snap({"label": "Old"}, exists=True)
+        with pytest.raises(https_fn.HttpsError) as bad_label:
+            update_warehouse(_req("seller_1", {"warehouseId": "wh_1", "label": ""}))
+        assert bad_label.value.code == "invalid-argument"
+
+        with pytest.raises(https_fn.HttpsError) as bad_type:
+            update_warehouse(_req("seller_1", {"warehouseId": "wh_1", "type": "bad"}))
+        assert bad_type.value.code == "invalid-argument"
+
+        with pytest.raises(https_fn.HttpsError) as bad_addr:
+            update_warehouse(_req("seller_1", {"warehouseId": "wh_1", "address": "bad"}))
+        assert bad_addr.value.code == "invalid-argument"
+
+        with pytest.raises(https_fn.HttpsError) as no_fields:
+            update_warehouse(_req("seller_1", {"warehouseId": "wh_1"}))
+        assert no_fields.value.code == "invalid-argument"
+
+        with pytest.raises(https_fn.HttpsError) as internal:
+            update_warehouse(
+                _req(
+                    "seller_1",
+                    {
+                        "warehouseId": "wh_1",
+                        "address": {Fields.STATE: "ON", Fields.POSTAL_CODE: "M5V2T6", Fields.COUNTRY: "Canada"},
+                    },
+                )
+            )
+        assert internal.value.code == "internal"
+
+    @patch("handlers.products._derive_ship_from_fields", return_value={})
+    @patch("handlers.products.get_db")
+    def test_delete_warehouse_stock_and_order_guards(self, mock_get_db, _mock_ship_from):
+        from handlers.products import delete_warehouse
+
+        wh_snap = _snap({Fields.IS_DEFAULT: False}, exists=True)
+        wh_ref = Mock()
+        wh_ref.get.return_value = wh_snap
+
+        wh_col = Mock()
+        wh_col.document.return_value = wh_ref
+        seller_ref = Mock()
+        seller_ref.collection.return_value = wh_col
+        users_col = Mock()
+        users_col.document.return_value = seller_ref
+
+        pdoc = _snap({Fields.WAREHOUSE_IDS: ["wh_1"], Fields.WAREHOUSE_STOCK: {}, Fields.NAME: "P"}, doc_id="prod_1")
+        products_query = Mock()
+        products_query.where.return_value = products_query
+        products_query.limit.return_value = products_query
+        products_query.get.side_effect = [[], []]
+        products_query.stream.return_value = [pdoc]
+
+        inv_doc = _snap({Fields.AVAILABLE_QUANTITY: 2}, exists=True)
+        p_ref = Mock()
+        p_ref.collection.return_value.document.return_value.get.return_value = inv_doc
+        products_col = Mock()
+        products_col.where.return_value = products_query
+        products_col.document.return_value = p_ref
+
+        orders_query = Mock()
+        orders_query.where.return_value = orders_query
+        orders_query.limit.return_value = orders_query
+        orders_query.get.return_value = []
+        orders_col = Mock()
+        orders_col.where.return_value = orders_query
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.USERS: users_col,
+            Collections.PRODUCTS: products_col,
+            Collections.ORDERS: orders_col,
+        }[name]
+        mock_get_db.return_value = db
+
+        with pytest.raises(https_fn.HttpsError) as stock_guard:
+            delete_warehouse(_req("seller_1", {"warehouseId": "wh_1"}))
+        assert stock_guard.value.code == "failed-precondition"
+
+        p_ref.collection.return_value.document.return_value.get.return_value = _snap({Fields.AVAILABLE_QUANTITY: 0}, exists=True)
+        products_query.stream.return_value = []
+        orders_query.get.return_value = [_snap({Fields.ITEMS: [{Fields.FULFILLMENT_WAREHOUSE_ID: "wh_1"}]}, doc_id="ord_1")]
+        with pytest.raises(https_fn.HttpsError) as order_guard:
+            delete_warehouse(_req("seller_1", {"warehouseId": "wh_1"}))
+        assert order_guard.value.code == "failed-precondition"
+
+    @patch("handlers.products.create_success_response", side_effect=lambda payload: payload)
+    @patch("handlers.products._derive_ship_from_fields", return_value={})
+    @patch("handlers.products.get_db")
+    def test_delete_warehouse_promotes_other_default(self, mock_get_db, _mock_ship_from, _mock_resp):
+        from handlers.products import delete_warehouse
+
+        wh_snap = _snap({Fields.IS_DEFAULT: True}, exists=True)
+        wh_ref = Mock()
+        wh_ref.get.return_value = wh_snap
+
+        other_wh = _snap({Fields.IS_DEFAULT: False}, exists=True, doc_id="wh_2")
+        wh_col = Mock()
+        wh_col.document.return_value = wh_ref
+        wh_col.where.return_value.limit.return_value.stream.return_value = [other_wh]
+
+        seller_ref = Mock()
+        seller_ref.collection.return_value = wh_col
+        users_col = Mock()
+        users_col.document.return_value = seller_ref
+
+        products_query = Mock()
+        products_query.where.return_value = products_query
+        products_query.limit.return_value = products_query
+        products_query.get.side_effect = [[], []]
+        products_query.stream.return_value = []
+        products_col = Mock()
+        products_col.where.return_value = products_query
+        products_col.document.return_value = Mock()
+
+        orders_query = Mock()
+        orders_query.where.return_value = orders_query
+        orders_query.limit.return_value = orders_query
+        orders_query.get.return_value = []
+        orders_col = Mock()
+        orders_col.where.return_value = orders_query
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.USERS: users_col,
+            Collections.PRODUCTS: products_col,
+            Collections.ORDERS: orders_col,
+        }[name]
+        db.batch.return_value = Mock()
+        mock_get_db.return_value = db
+
+        out = delete_warehouse(_req("seller_1", {"warehouseId": "wh_1"}))
+        assert out["warehouseId"] == "wh_1"
+        other_wh.reference.update.assert_called_once_with({Fields.IS_DEFAULT: True})
+        wh_ref.delete.assert_called_once()

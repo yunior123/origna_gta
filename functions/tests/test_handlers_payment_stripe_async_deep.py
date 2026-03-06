@@ -529,3 +529,158 @@ class TestRestoreStockAndCancelOrderDeep:
         mock_pi_cancel.assert_not_called()
         security_col.add.assert_not_called()
         order_ref.update.assert_called_once()
+
+    @patch("utils.helpers.get_charge_id_from_pi", side_effect=RuntimeError("charge parse failed"))
+    @patch("handlers.payment_stripe._run_post_payment_side_effects")
+    @patch("handlers.payment_stripe._execute_seller_payouts")
+    @patch("handlers.payment_stripe.OrderEvent.write")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.retrieve", return_value=Mock())
+    @patch("handlers.payment_stripe.ensure_stripe_key")
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("handlers.payment_stripe.get_db")
+    def test_async_payment_succeeded_pi_lookup_failure_is_non_fatal(
+        self,
+        mock_get_db,
+        _mock_ts,
+        _mock_ensure,
+        _mock_pi,
+        _mock_event,
+        mock_payouts,
+        mock_side_effects,
+        _mock_charge,
+    ):
+        from handlers.payment_stripe import process_async_payment_succeeded
+
+        order_data = {
+            Fields.PAYMENT_STATUS: PaymentStatusValues.AWAITING_PAYMENT,
+            Fields.ORDER_STATUS: OrderStatusValues.PENDING,
+            Fields.TOTAL_AMOUNT_CENTS: 1000,
+            Fields.ITEMS: [{Fields.PRODUCT_ID: "prod_1", Fields.SELLER_ID: "seller_1"}],
+            Fields.USER_ID: "buyer_1",
+        }
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(order_data, doc_id="order_async_pi_err")
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+
+        db = Mock()
+        db.collection.side_effect = lambda name: {
+            Collections.ORDERS: orders_col,
+            Collections.PRODUCTS: Mock(document=Mock(side_effect=lambda pid: Mock(id=pid))),
+            Collections.USERS: Mock(document=Mock(side_effect=lambda uid: Mock(id=uid))),
+        }[name]
+        db.get_all.side_effect = [
+            [_snap({Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE}, doc_id="prod_1")],
+            [_snap({Fields.SUSPENDED: False}, doc_id="seller_1")],
+        ]
+        mock_get_db.return_value = db
+
+        out = process_async_payment_succeeded(
+            {
+                StripeConstants.METADATA: {StripeConstants.METADATA_ORDER_ID: "order_async_pi_err"},
+                StripeConstants.PAYMENT_INTENT: "pi_async_err",
+                "amount_total": 1000,
+            }
+        )
+
+        assert out == "Order order_async_pi_err payment captured"
+        mock_payouts.assert_not_called()
+        mock_side_effects.assert_called_once()
+
+    @patch("handlers.payment_stripe.get_firestore")
+    @patch("handlers.payment_stripe.get_db")
+    def test_add_stock_restore_to_transaction_skips_digital_items(self, mock_get_db, mock_get_fs):
+        from handlers.payment_stripe import _add_stock_restore_to_transaction
+
+        mock_get_fs.return_value.Increment.side_effect = lambda n: ("inc", n)
+        mock_get_db.return_value = Mock()
+        tx = Mock()
+        _add_stock_restore_to_transaction(
+            tx,
+            {
+                Fields.ITEMS: [
+                    {Fields.PRODUCT_ID: "d_1", Fields.QUANTITY: 1, Fields.IS_DIGITAL: True},
+                ]
+            },
+        )
+        tx.update.assert_not_called()
+        tx.set.assert_not_called()
+
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe._add_stock_restore_to_transaction")
+    @patch("handlers.payment_stripe.get_db")
+    def test_restore_and_cancel_order_transaction_order_missing_returns(
+        self,
+        mock_get_db,
+        mock_restore_tx,
+        _mock_get_transactional,
+    ):
+        from handlers.payment_stripe import _restore_stock_and_cancel_order
+
+        order_ref = Mock()
+        order_ref.get.return_value = _snap(exists=False, doc_id="o_missing")
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+        db = Mock()
+        db.transaction.return_value = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col, Collections.SECURITY_ALERTS: Mock()}[name]
+        mock_get_db.return_value = db
+
+        _restore_stock_and_cancel_order("o_missing", {}, "missing")
+        mock_restore_tx.assert_not_called()
+
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe._add_stock_restore_to_transaction")
+    @patch("handlers.payment_stripe.get_db")
+    def test_restore_and_cancel_order_transaction_skips_when_stock_already_restored(
+        self,
+        mock_get_db,
+        mock_restore_tx,
+        _mock_get_transactional,
+    ):
+        from handlers.payment_stripe import _restore_stock_and_cancel_order
+
+        order_ref = Mock()
+        order_ref.get.return_value = _snap({Fields.STOCK_RESTORED: True}, doc_id="o_restored")
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+        db = Mock()
+        db.transaction.return_value = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col, Collections.SECURITY_ALERTS: Mock()}[name]
+        mock_get_db.return_value = db
+
+        _restore_stock_and_cancel_order("o_restored", {}, "already restored")
+        mock_restore_tx.assert_not_called()
+
+    @patch("handlers.payment_stripe.get_transactional", return_value=lambda fn: fn)
+    @patch("handlers.payment_stripe._add_stock_restore_to_transaction")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.cancel")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.retrieve")
+    @patch("handlers.payment_stripe.ensure_stripe_key")
+    @patch("handlers.payment_stripe.get_server_timestamp", return_value="ts")
+    @patch("handlers.payment_stripe.get_db")
+    def test_restore_and_cancel_order_cancels_requires_payment_method_status(
+        self,
+        mock_get_db,
+        _mock_ts,
+        _mock_ensure,
+        mock_pi_retrieve,
+        mock_pi_cancel,
+        _mock_restore_tx,
+        _mock_get_transactional,
+    ):
+        from handlers.payment_stripe import _restore_stock_and_cancel_order
+
+        mock_pi_retrieve.return_value = Mock(status="requires_payment_method")
+
+        order_ref = Mock()
+        order_ref.get.return_value = _snap({Fields.STOCK_RESTORED: False}, doc_id="o_req_pm")
+        orders_col = Mock()
+        orders_col.document.return_value = order_ref
+        db = Mock()
+        db.transaction.return_value = Mock()
+        db.collection.side_effect = lambda name: {Collections.ORDERS: orders_col, Collections.SECURITY_ALERTS: Mock()}[name]
+        mock_get_db.return_value = db
+
+        _restore_stock_and_cancel_order("o_req_pm", {Fields.STRIPE_PAYMENT_INTENT_ID: "pi_req_pm"}, "invalidated")
+        mock_pi_cancel.assert_called_once()

@@ -187,6 +187,218 @@ class TestStockNotificationHelpers:
         assert sub.reference.update.call_args_list[0] == call({Fields.NOTIFIED_AT: "ts"})
         assert sub.reference.update.call_args_list[-1] == call({Fields.NOTIFIED_AT: None})
 
+    @patch("handlers.products.get_db")
+    def test_fire_back_in_stock_notifications_early_return_non_variant_branches(self, mock_get_db):
+        from handlers.products import _fire_back_in_stock_notifications
+
+        # before_stock > 0 branch
+        _fire_back_in_stock_notifications(
+            "p1",
+            {
+                Fields.HAS_VARIANTS: False,
+                Fields.STOCK_QUANTITY: 1,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+            {
+                Fields.HAS_VARIANTS: False,
+                Fields.STOCK_QUANTITY: 2,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+        )
+
+        # inactive lifecycle branch
+        _fire_back_in_stock_notifications(
+            "p1",
+            {
+                Fields.HAS_VARIANTS: False,
+                Fields.STOCK_QUANTITY: 0,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+            {
+                Fields.HAS_VARIANTS: False,
+                Fields.STOCK_QUANTITY: 2,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+            },
+        )
+
+        mock_get_db.assert_not_called()
+
+    @patch("handlers.products.get_db")
+    def test_fire_back_in_stock_notifications_variant_early_return_branches(self, mock_get_db):
+        from handlers.products import _fire_back_in_stock_notifications
+
+        # No restocked variant keys branch
+        _fire_back_in_stock_notifications(
+            "p1",
+            {
+                Fields.HAS_VARIANTS: True,
+                Fields.VARIANTS: [{Fields.VARIANT_ID: "v1", Fields.STOCK_QUANTITY: 1}],
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+            {
+                Fields.HAS_VARIANTS: True,
+                Fields.VARIANTS: [{Fields.VARIANT_ID: "v1", Fields.STOCK_QUANTITY: 1}],
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+        )
+
+        # Inactive lifecycle branch
+        _fire_back_in_stock_notifications(
+            "p1",
+            {
+                Fields.HAS_VARIANTS: True,
+                Fields.VARIANTS: [{Fields.VARIANT_ID: "v1", Fields.STOCK_QUANTITY: 0}],
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+            {
+                Fields.HAS_VARIANTS: True,
+                Fields.VARIANTS: [{Fields.VARIANT_ID: "v1", Fields.STOCK_QUANTITY: 2}],
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.PAUSED,
+            },
+        )
+
+        mock_get_db.assert_not_called()
+
+    @patch("handlers.products.get_db")
+    @patch("handlers.products.get_server_timestamp", return_value="ts")
+    @patch("services.email_task.enqueue_email_task", side_effect=RuntimeError("send fail"))
+    def test_fire_back_in_stock_notifications_variant_rollback_failure_logs(
+        self,
+        _mock_enqueue,
+        _mock_ts,
+        mock_get_db,
+    ):
+        from handlers.products import _fire_back_in_stock_notifications
+
+        sub = _snap({Fields.EMAIL: "a@b.com", Fields.USER_ID: "u1"}, doc_id="s1")
+        sub.reference.update.side_effect = [None, RuntimeError("rollback fail")]
+
+        q = Mock()
+        q.where.return_value = q
+        q.limit.return_value = q
+        q.start_after.return_value = q
+        q.stream.side_effect = [[sub], []]
+
+        stock_col = Mock()
+        stock_col.where.return_value = q
+
+        db = Mock()
+        db.collection.return_value = stock_col
+        mock_get_db.return_value = db
+
+        _fire_back_in_stock_notifications(
+            "p1",
+            {
+                Fields.HAS_VARIANTS: True,
+                Fields.VARIANTS: [{Fields.VARIANT_ID: "v1", Fields.STOCK_QUANTITY: 0}],
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+            {
+                Fields.HAS_VARIANTS: True,
+                Fields.NAME: "Widget",
+                Fields.VARIANTS: [{Fields.VARIANT_ID: "v1", Fields.STOCK_QUANTITY: 3}],
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+        )
+
+        assert sub.reference.update.call_args_list[0] == call({Fields.NOTIFIED_AT: "ts"})
+        # rollback attempt also happened
+        assert len(sub.reference.update.call_args_list) == 2
+
+    @patch("handlers.products.get_db")
+    @patch("handlers.products.get_server_timestamp", return_value="ts")
+    @patch("services.push_service.send_push_notifications_batch")
+    @patch("services.email_task.enqueue_email_task")
+    def test_fire_back_in_stock_notifications_non_variant_success_and_missing_email(
+        self,
+        mock_enqueue,
+        mock_push_batch,
+        _mock_ts,
+        mock_get_db,
+    ):
+        from handlers.products import _fire_back_in_stock_notifications
+
+        sub_missing_email = _snap({Fields.USER_ID: "u_skip"}, doc_id="s_skip")
+        sub_ok = _snap({Fields.EMAIL: "ok@ex.com", Fields.USER_ID: "u1"}, doc_id="s_ok")
+
+        q = Mock()
+        q.where.return_value = q
+        q.limit.return_value = q
+        q.start_after.return_value = q
+        q.stream.side_effect = [[sub_missing_email, sub_ok], []]
+
+        stock_col = Mock()
+        stock_col.where.return_value = q
+
+        db = Mock()
+        db.collection.return_value = stock_col
+        mock_get_db.return_value = db
+
+        _fire_back_in_stock_notifications(
+            "p1",
+            {
+                Fields.HAS_VARIANTS: False,
+                Fields.STOCK_QUANTITY: 0,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+            {
+                Fields.HAS_VARIANTS: False,
+                Fields.NAME: "Widget",
+                Fields.STOCK_QUANTITY: 2,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+        )
+
+        sub_ok.reference.update.assert_any_call({Fields.NOTIFIED_AT: "ts"})
+        sub_ok.reference.delete.assert_called_once()
+        mock_enqueue.assert_called_once()
+        mock_push_batch.assert_called_once()
+
+    @patch("handlers.products.get_db")
+    @patch("handlers.products.get_server_timestamp", return_value="ts")
+    @patch("services.email_task.enqueue_email_task", side_effect=RuntimeError("send fail"))
+    def test_fire_back_in_stock_notifications_non_variant_rollback_failure_logs(
+        self,
+        _mock_enqueue,
+        _mock_ts,
+        mock_get_db,
+    ):
+        from handlers.products import _fire_back_in_stock_notifications
+
+        sub = _snap({Fields.EMAIL: "a@b.com", Fields.USER_ID: "u1"}, doc_id="s1")
+        sub.reference.update.side_effect = [None, RuntimeError("rollback fail")]
+
+        q = Mock()
+        q.where.return_value = q
+        q.limit.return_value = q
+        q.start_after.return_value = q
+        q.stream.side_effect = [[sub], []]
+
+        stock_col = Mock()
+        stock_col.where.return_value = q
+
+        db = Mock()
+        db.collection.return_value = stock_col
+        mock_get_db.return_value = db
+
+        _fire_back_in_stock_notifications(
+            "p1",
+            {
+                Fields.HAS_VARIANTS: False,
+                Fields.STOCK_QUANTITY: 0,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+            {
+                Fields.HAS_VARIANTS: False,
+                Fields.NAME: "Widget",
+                Fields.STOCK_QUANTITY: 2,
+                Fields.LIFECYCLE_STATUS: ProductLifecycleStatusValues.ACTIVE,
+            },
+        )
+
+        assert sub.reference.update.call_args_list[0] == call({Fields.NOTIFIED_AT: "ts"})
+        assert len(sub.reference.update.call_args_list) == 2
+
 
 class TestStockSubscriptionEndpoints:
     @patch("handlers.products.RateLimiter")
