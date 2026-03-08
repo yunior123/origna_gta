@@ -1,4 +1,5 @@
 import 'dart:ui';
+
 import 'package:easy_localization/easy_localization.dart';
 
 class MockAssetLoader extends AssetLoader {
@@ -11,9 +12,10 @@ class MockAssetLoader extends AssetLoader {
         "go_shopping": "Go Shopping",
         "retry": "Retry",
         "remove": "Remove",
+        "add": "Add",
+        "save": "Save",
         "delivery_instructions": "Delivery Instructions",
         "understood": "Understood",
-        "save": "Save",
         "add_to_cart_semantics": "Add {name} to cart",
         "back": "Back",
         "close": "Close",
@@ -29,7 +31,7 @@ class MockAssetLoader extends AssetLoader {
         "download": "Download",
         "copy": "Copy",
         "close_button": "Close",
-        "loading": "Loading..."
+        "loading": "Loading...",
       },
       "auth": {
         "welcome_back_subtitle": "Welcome back",
@@ -59,6 +61,8 @@ class MockAssetLoader extends AssetLoader {
         "already_have_account": "Already have an account? ",
         "sign_up": "Sign up",
         "sign_in_required": "Sign in required",
+        "please_sign_in": "Please sign in",
+        "need_account_access": "Please sign in to access your account",
         "feature_1": "Feature 1",
         "feature_2": "Feature 2",
         "feature_3": "Feature 3",
@@ -66,11 +70,9 @@ class MockAssetLoader extends AssetLoader {
         "validation": {
           "password_min_8": "Password must be at least 8 characters",
           "password_weak": "Weak password",
-          "email_invalid_validation": "Please enter a valid email address"
+          "email_invalid_validation": "Please enter a valid email address",
         },
-        "errors": {
-          "registration_success": "Registration successful! Verification email sent to {email}."
-        },
+        "errors": {"registration_success": "Registration successful! Verification email sent to {email}."},
         "reset_password": "Reset Password",
         "reset_password_desc": "Enter email to reset",
         "reset_password_success": "Email sent",
@@ -78,11 +80,9 @@ class MockAssetLoader extends AssetLoader {
         "reset_link_invalid": "Link invalid",
         "reset_password_title": "Reset",
         "create_new_password": "New Password",
-        "go_to_login": "Go to Login"
+        "go_to_login": "Go to Login",
       },
-      "app": {
-        "tagline": "Test Tagline"
-      },
+      "app": {"tagline": "Test Tagline"},
       "product": {
         "a11y_regular": "Regular product",
         "a11y_on_sale": "Sale product",
@@ -91,7 +91,7 @@ class MockAssetLoader extends AssetLoader {
         "ships_from_worldwide": "Ships from {count} locations",
         "trending_hot": "HOT",
         "trending_rising": "RISING",
-        "out_of_stock_label": "Out of Stock",
+        "out_of_stock_label": "OUT OF STOCK",
         "not_found": "Not found",
         "not_found_desc": "Product not found",
         "watch_video": "Watch video",
@@ -103,10 +103,7 @@ class MockAssetLoader extends AssetLoader {
         "description": "Description",
         "seller_info": "Seller info",
         "trust_ships_ca": "Ships from Canada",
-        "details": {
-          "delivery_information": "Delivery Info",
-          "international_disclaimer": "Intl disclaimer"
-        },
+        "details": {"delivery_information": "Delivery Info", "international_disclaimer": "Intl disclaimer"},
         "ships_from": "Ships from",
         "tracking": "Tracking",
         "tracking_available": "Available",
@@ -323,7 +320,7 @@ class MockAssetLoader extends AssetLoader {
         "invalid_postal": "Invalid postal code",
         "product_video": "Product Video",
         "digital_product": "Digital Product",
-        "local_delivery_only": "Local delivery only"
+        "local_delivery_only": "Local delivery only",
       },
       "home": {
         "tagline": "Marketplace",
@@ -339,7 +336,7 @@ class MockAssetLoader extends AssetLoader {
         "shopping_cart": "Cart",
         "category_all": "All",
         "no_products_found": "No products found",
-        "try_adjusting": "Try adjusting filters"
+        "try_adjusting": "Try adjusting filters",
       },
       "cart": {
         "your_cart": "Your Cart",
@@ -368,7 +365,7 @@ class MockAssetLoader extends AssetLoader {
         "free_shipping_progress": "${"{"}amount} more for free shipping",
         "free_shipping_threshold": "Threshold reached",
         "item_note_label": "Note",
-        "view_cart": "View Cart"
+        "view_cart": "View Cart",
       },
       "checkout": {
         "checkout": "Checkout",
@@ -405,7 +402,7 @@ class MockAssetLoader extends AssetLoader {
           "express": {"name": "Express", "time": "1-2 business days"},
           "same_day": {"name": "Same Day", "time": "Delivered today"},
           "international": {"name": "International Standard", "time": "15-30 business days"},
-          "international_express": {"name": "International Express", "time": "7-15 business days"}
+          "international_express": {"name": "International Express", "time": "7-15 business days"},
         },
         "errors": {
           "payment_failed": "Payment failed",
@@ -427,8 +424,8 @@ class MockAssetLoader extends AssetLoader {
           "cart_changed": "Cart changed",
           "items_removed": "Items removed",
           "price_changed": "Price changed",
-          "stock_changed": "Stock changed"
-        }
+          "stock_changed": "Stock changed",
+        },
       },
       "supplier": {
         "aliexpress": {"display_name": "AliExpress", "region": "Asia", "country": "China", "description": "Global retail marketplace"},
@@ -438,7 +435,12 @@ class MockAssetLoader extends AssetLoader {
         "temu": {"display_name": "Temu", "region": "Asia", "country": "China", "description": "Fast shipping marketplace"},
         "made_in_china": {"display_name": "Made-in-China", "region": "Asia", "country": "China", "description": "B2B sourcing platform"},
         "global_sources": {"display_name": "Global Sources", "region": "Asia", "country": "China/Hong Kong", "description": "Asia-based B2B platform"},
-        "cjdropshipping": {"display_name": "CJ Dropshipping", "region": "Global", "country": "China (warehouses worldwide)", "description": "Dropshipping & fulfillment service"},
+        "cjdropshipping": {
+          "display_name": "CJ Dropshipping",
+          "region": "Global",
+          "country": "China (warehouses worldwide)",
+          "description": "Dropshipping & fulfillment service",
+        },
         "spocket": {"display_name": "Spocket", "region": "US/EU", "country": "USA/Europe", "description": "US/EU dropshipping suppliers"},
         "printful": {"display_name": "Printful", "region": "Global", "country": "USA/EU/Mexico", "description": "Print-on-demand fulfillment"},
         "printify": {"display_name": "Printify", "region": "Global", "country": "Various", "description": "Print-on-demand platform"},
@@ -456,7 +458,7 @@ class MockAssetLoader extends AssetLoader {
         "local": {"display_name": "Local Canadian Supplier", "region": "Canada", "country": "Canada", "description": "Canadian-based supplier"},
         "etsy_wholesale": {"display_name": "Etsy Wholesale", "region": "Global", "country": "Various", "description": "Handmade & vintage items"},
         "custom": {"display_name": "Custom Supplier", "region": "Custom", "country": "Specify", "description": "Add your own supplier details"},
-        "other": {"display_name": "Other", "region": "Various", "country": "Various", "description": "Other supplier not listed"}
+        "other": {"display_name": "Other", "region": "Various", "country": "Various", "description": "Other supplier not listed"},
       },
       "profile": {
         "settings": "Settings",
@@ -470,7 +472,6 @@ class MockAssetLoader extends AssetLoader {
         "manage_sales": "Manage your sales",
         "seller_dashboard": "Seller Dashboard",
         "manage_products_account": "Manage products",
-        "become_seller": "Become a Seller",
         "start_selling": "Start selling today",
         "admin_panel": "Admin Panel",
         "platform_management": "Platform management",
@@ -503,7 +504,7 @@ class MockAssetLoader extends AssetLoader {
         "completion": "Profile Completion",
         "your_saved_products": "Your saved products",
         "addresses": "Addresses",
-        "language_updated": "Language updated"
+        "language_updated": "Language updated",
       },
       "chat": {
         "inbox_title": "Messages",
@@ -512,13 +513,13 @@ class MockAssetLoader extends AssetLoader {
         "no_conversations_desc": "Start a conversation",
         "type_message": "Type a message",
         "send": "Send",
-        "error_loading": "Error loading"
+        "error_loading": "Error loading",
       },
       "favorites": {
         "my_favorites": "Favorites",
         "loading_favorites": "Loading favorites...",
         "empty_favorites": "No favorites",
-        "empty_favorites_desc": "You have no favorites yet"
+        "empty_favorites_desc": "You have no favorites yet",
       },
       "subscription": {
         "premium_label": "Premium",
@@ -556,7 +557,7 @@ class MockAssetLoader extends AssetLoader {
         "activating_membership": "Activating...",
         "checkout_cancelled": "Cancelled",
         "no_charge_message": "No charge was made",
-        "back_to_home": "Back to Home"
+        "back_to_home": "Back to Home",
       },
       "categories": {
         "electronics": "Electronics",
@@ -579,7 +580,7 @@ class MockAssetLoader extends AssetLoader {
         "pet_supplies": "Pets",
         "groceries": "Groceries",
         "art_collectibles": "Art",
-        "digital_products": "Digital"
+        "digital_products": "Digital",
       },
       "mascot": {
         "tip_browse": "Browse products",
@@ -590,7 +591,7 @@ class MockAssetLoader extends AssetLoader {
         "tip_filter": "Filter by price",
         "tip_questions": "Ask questions",
         "tip_canadian": "Support Canadian sellers",
-        "get_help": "Help"
+        "get_help": "Help",
       },
       "rating": {
         "title": "Rating",
@@ -611,29 +612,12 @@ class MockAssetLoader extends AssetLoader {
         "tap_to_rate": "Tap to rate",
         "thank_you": "Thank you!",
         "error_submitting": "Error submitting",
-        "invalid_range": "Invalid range"
+        "invalid_range": "Invalid range",
       },
-      "nav": {
-        "home": "Home",
-        "search": "Search",
-        "cart": "Cart",
-        "favorites": "Favorites",
-        "profile": "Profile"
-      },
-      "language": {
-        "en": "English",
-        "fr": "Français",
-        "select_language": "Select Language"
-      },
-      "accessibility": {
-        "close_dialog": "Close dialog",
-        "back_button": "Go back"
-      },
-      "errors": {
-        "generic_error": "Error",
-        "service_unavailable": "Unavailable",
-        "something_went_wrong": "Something went wrong"
-      },
+      "nav": {"home": "Home", "search": "Search", "cart": "Cart", "favorites": "Favorites", "profile": "Profile"},
+      "language": {"en": "English", "fr": "Français", "select_language": "Select Language"},
+      "accessibility": {"close_dialog": "Close dialog", "back_button": "Go back"},
+      "errors": {"generic_error": "Error", "service_unavailable": "Unavailable", "something_went_wrong": "Something went wrong"},
       "qa": {
         "title": "Q&A",
         "asked_on": "Asked on {date}",
@@ -649,7 +633,7 @@ class MockAssetLoader extends AssetLoader {
         "submit_question": "Submit question",
         "question_submitted": "Question submitted",
         "sign_in_to_ask": "Sign in to ask",
-        "no_questions": "No questions"
+        "no_questions": "No questions",
       },
       "seller": {
         "manage_orders": "Manage Orders",
@@ -677,12 +661,7 @@ class MockAssetLoader extends AssetLoader {
         "refunded_prefix": "Refunded:",
         "mark_shipped": "Mark Shipped",
         "edit_tracking": "Edit Tracking",
-        "status": {
-          "pending": "Pending",
-          "shipped": "Shipped",
-          "delivered": "Delivered",
-          "refunded": "Refunded"
-        },
+        "status": {"pending": "Pending", "shipped": "Shipped", "delivered": "Delivered", "refunded": "Refunded"},
         "carrier_label": "Carrier",
         "carrier_note_label": "Carrier Note",
         "tracking_number": "Tracking Number",
@@ -707,11 +686,9 @@ class MockAssetLoader extends AssetLoader {
         "approvals_appear_here": "Approvals appear here",
         "login_required_title": "Login Required",
         "login_required_subtitle": "Sign in to manage your business",
-        "add_product": "Add Product"
+        "add_product": "Add Product",
       },
-      "seller_integration": {
-        "title": "Integration"
-      },
+      "seller_integration": {"title": "Integration"},
       "orders": {
         "my_orders": "My Orders",
         "no_orders": "No orders yet",
@@ -724,7 +701,6 @@ class MockAssetLoader extends AssetLoader {
           "shipped": "Shipped",
           "shipped_desc": "Order shipped",
           "delivered": "Delivered",
-          "delivered_desc": "Order delivered",
           "refunded": "Refunded",
           "refunded_desc": "Order refunded",
           "cancelled": "Cancelled",
@@ -738,7 +714,7 @@ class MockAssetLoader extends AssetLoader {
           "expired": "Expired",
           "expired_desc": "Order expired",
           "partially_refunded": "Partially Refunded",
-          "partially_refunded_desc": "Partially refunded"
+          "partially_refunded_desc": "Partially refunded",
         },
         "license_key": "License Key",
         "license_key_copied": "Copied",
@@ -748,7 +724,7 @@ class MockAssetLoader extends AssetLoader {
         "shipping_to": "Shipping to",
         "delivery_instructions": "Delivery Instructions",
         "est_delivery": "Est. delivery: {date}",
-        "order_id_prefix": "Order ID: ",
+        "order_id_prefix": "Order ID: {id}",
         "qty_prefix": "Qty: {count}",
         "confirming": "Confirming...",
         "confirm_receipt": "Confirm Receipt",
@@ -783,13 +759,9 @@ class MockAssetLoader extends AssetLoader {
         "seller_package": "Seller Package",
         "items_count": "{count} items",
         "buy_again_action": "Buy Again",
-        "not_found": "Order not found"
+        "not_found": "Order not found",
       },
-      "notifications": {
-        "title": "Notifications",
-        "no_notifications": "No notifications",
-        "no_notifications_desc": "You have no notifications yet"
-      },
+      "notifications": {"title": "Notifications", "no_notifications": "No notifications", "no_notifications_desc": "You have no notifications yet"},
       "address": {
         "management_title": "Address Management",
         "add_new": "Add New Address",
@@ -820,12 +792,9 @@ class MockAssetLoader extends AssetLoader {
         "phone": "Phone",
         "save_address": "Save Address",
         "addresses": "Addresses",
-        "set_as_default": "Set as Default"
+        "set_as_default": "Set as Default",
       },
-      "terms": {
-        "title": "Terms & Conditions",
-        "last_updated": "Last updated: {date}"
-      },
+      "terms": {"title": "Terms & Conditions", "last_updated": "Last updated: {date}"},
       "legal": {
         "loading_terms": "Loading...",
         "legal_agreement": "Legal Agreement",
@@ -835,8 +804,38 @@ class MockAssetLoader extends AssetLoader {
         "privacy_policy_content": "1. Introduction\nContent here.",
         "privacy_policy_hero": "Privacy Policy",
         "your_privacy_matters": "Your privacy matters",
-        "back": "Back"
-      }
+        "back": "Back",
+      },
+      "admin": {
+        "title": "Admin Panel",
+        "sellers_tab": "Sellers",
+        "users_tab": "Users",
+        "orders_tab": "Orders",
+        "products_tab": "Products",
+        "payments_tab": "Payments",
+        "security_tab": "Security",
+        "reviews_tab": "Reviews",
+        "loading_panel": "Loading admin panel...",
+        "access_denied": "Access Denied",
+        "privileges_required": "Admin privileges required",
+        "go_home": "Go Home",
+        "quick_stats": "Quick Stats",
+        "payments": {
+          "title": "Payments",
+          "description": "Manage payment providers",
+          "warning_at_least_one": "At least one provider must be enabled",
+          "stripe_name": "Stripe",
+          "stripe_desc": "Accept credit cards",
+          "enabled_providers": "Enabled Providers",
+          "stripe_feature_1": "Feature 1",
+          "stripe_feature_2": "Feature 2",
+          "stripe_feature_3": "Feature 3",
+          "stripe_feature_4": "Feature 4",
+          "not_configured": "Not Configured",
+          "accepting": "Accepting",
+          "not_accepting": "Not Accepting",
+        },
+      },
     };
   }
 }

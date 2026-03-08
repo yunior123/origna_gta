@@ -29,12 +29,12 @@ class NotificationService {
   static final NotificationService instance = NotificationService._internal();
 
   /// Global key to show foreground notification SnackBars without BuildContext.
-  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  static GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   /// FIX-5 (HIGH): Global navigator key enabling headless deep-link routing when
   /// the user taps a push notification while the app is backgrounded or terminated.
   /// Must be wired to MaterialApp.navigatorKey in origna_app.dart.
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   bool _initialized = false;
   bool _isInitializing = false;
 
@@ -47,13 +47,41 @@ class NotificationService {
   @visibleForTesting
   FirebaseMessaging? messagingOverride;
 
+  @visibleForTesting
+  Stream<RemoteMessage>? onMessageOverride;
+
+  @visibleForTesting
+  Stream<RemoteMessage>? onMessageOpenedAppOverride;
+
   factory NotificationService() => instance;
 
   NotificationService._internal();
 
   @visibleForTesting
+  void resetForTesting() {
+    _initialized = false;
+    _isInitializing = false;
+    _tokenSubscription?.cancel();
+    _authSubscription?.close();
+    _container = null;
+    messagingOverride = null;
+    onMessageOverride = null;
+    onMessageOpenedAppOverride = null;
+  }
+
+  @visibleForTesting
   set testContainerOverride(ProviderContainer container) {
     _container = container;
+  }
+
+  @visibleForTesting
+  set testNavigatorKey(GlobalKey<NavigatorState> key) {
+    navigatorKey = key;
+  }
+
+  @visibleForTesting
+  set testScaffoldMessengerKey(GlobalKey<ScaffoldMessengerState> key) {
+    scaffoldMessengerKey = key;
   }
 
   FirebaseMessaging get _messaging => messagingOverride ?? FirebaseMessaging.instance;
@@ -84,10 +112,10 @@ class NotificationService {
 
   /// Initialize the notification service. Should be called only once
   /// in the app lifecycle (typically in OrignaApp's initState).
-  Future<void> initialize(WidgetRef ref) async {
+  Future<void> initialize(WidgetRef? ref) async {
     // Skip if on web (FCM requires VAPID key setup on Web, keeping this mobile-only)
     if (kIsWeb) {
-      ref.read(notificationPermissionProvider.notifier).setGranted(false);
+      ref?.read(notificationPermissionProvider.notifier).setGranted(false);
       _initialized = true; // B3: explicitly handle web to prevent hanging
       return;
     }
@@ -97,7 +125,9 @@ class NotificationService {
     _isInitializing = true;
 
     try {
-      _container = ProviderScope.containerOf(ref.context);
+      if (ref != null) {
+        _container = ProviderScope.containerOf(ref.context);
+      }
 
       final messaging = _messaging;
 
@@ -120,7 +150,7 @@ class NotificationService {
       final granted = settings.authorizationStatus == AuthorizationStatus.authorized || settings.authorizationStatus == AuthorizationStatus.provisional;
 
       // Update permission state before any downstream token-save calls
-      ref.read(notificationPermissionProvider.notifier).setGranted(granted);
+      ref?.read(notificationPermissionProvider.notifier).setGranted(granted);
 
       if (granted) {
         debugPrint('User granted permission: ${settings.authorizationStatus}');
@@ -168,36 +198,39 @@ class NotificationService {
       // Background handler is registered in main.dart before runApp — not here.
 
       // FIX-5 (HIGH): Handle notification tap when app is in the BACKGROUND.
-      FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+      (onMessageOpenedAppOverride ?? FirebaseMessaging.onMessageOpenedApp).listen(handleNotificationTap);
 
       // FIX-5 (HIGH): Handle notification tap when app was TERMINATED.
       messaging.getInitialMessage().then((RemoteMessage? message) {
         if (message != null) {
-          Future.delayed(const Duration(milliseconds: 300), () => _handleNotificationTap(message));
+          Future.delayed(const Duration(milliseconds: 300), () => handleNotificationTap(message));
         }
       });
 
       // Foreground messages handler — show SnackBar for real-time order updates
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('Foreground FCM: ${message.messageId}');
-        final notification = message.notification;
-        if (notification != null) {
-          scaffoldMessengerKey.currentState?.showSnackBar(
-            SnackBar(
-              content: Text('${notification.title ?? ''}: ${notification.body ?? ''}'),
-              duration: const Duration(seconds: 4),
-              // HIGH-5: Add action to SnackBar
-              action: SnackBarAction(label: 'common.view'.tr(), onPressed: () => _handleNotificationTap(message)),
-            ),
-          );
-        }
-      });
+      (onMessageOverride ?? FirebaseMessaging.onMessage).listen(handleForegroundMessage);
 
       _initialized = true; // HIGH-4: Set as initialized only after successful setup
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'NotificationService.initialize');
     } finally {
       _isInitializing = false;
+    }
+  }
+
+  /// Foreground message handler — show SnackBar for real-time order updates
+  void handleForegroundMessage(RemoteMessage message) {
+    debugPrint('Foreground FCM: ${message.messageId}');
+    final notification = message.notification;
+    if (notification != null) {
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text('${notification.title ?? ''}: ${notification.body ?? ''}'),
+          duration: const Duration(seconds: 4),
+          // HIGH-5: Add action to SnackBar
+          action: SnackBarAction(label: 'common.view'.tr(), onPressed: () => handleNotificationTap(message)),
+        ),
+      );
     }
   }
 
@@ -237,7 +270,7 @@ class NotificationService {
   ///   type == "order_update"   → navigate to /orders (item-level shipped)
   ///   type == "back_in_stock"  → navigate to /product-details with productId
   ///   (default)                → no-op; app opens to its last state
-  void _handleNotificationTap(RemoteMessage message) {
+  void handleNotificationTap(RemoteMessage message) {
     final data = message.data;
     final type = data['type'] as String?;
 

@@ -300,7 +300,11 @@ class AlgoliaProductRepository implements ProductRepository {
     query = query.limit(pageSize + 1);
 
     if (kDebugMode) {
-      debugPrint('[AlgoliaProductRepository] Firestore Project ID: ${_firestore.app.options.projectId}');
+      String projectId = 'unknown';
+      try {
+        projectId = _firestore.app.options.projectId;
+      } catch (_) {}
+      debugPrint('[AlgoliaProductRepository] Firestore Project ID: $projectId');
       debugPrint('[AlgoliaProductRepository] Querying products collection...');
     }
 

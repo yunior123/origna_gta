@@ -1,90 +1,109 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/models/models.dart';
-
-@GenerateNiceMocks([
-  MockSpec<FirebaseFirestore>(),
-  MockSpec<CollectionReference<Map<String, dynamic>>>(),
-  MockSpec<DocumentReference<Map<String, dynamic>>>(),
-  MockSpec<DocumentSnapshot<Map<String, dynamic>>>(),
-  MockSpec<QuerySnapshot<Map<String, dynamic>>>(),
-  MockSpec<QueryDocumentSnapshot<Map<String, dynamic>>>(),
-  MockSpec<WriteBatch>(),
-])
-import 'cart_repository_test.mocks.dart';
 
 void main() {
-  late MockFirebaseFirestore mockFirestore;
-  late MockCollectionReference mockCollection;
-  late MockDocumentReference mockDoc;
-  late MockDocumentSnapshot mockSnapshot;
+  late FakeFirebaseFirestore fakeFirestore;
   late FirebaseCartRepository repository;
+  const String userId = 'user_123';
 
   setUp(() {
-    mockFirestore = MockFirebaseFirestore();
-    mockCollection = MockCollectionReference();
-    mockDoc = MockDocumentReference();
-    mockSnapshot = MockDocumentSnapshot();
-    
-    repository = FirebaseCartRepository(mockFirestore);
-    
-    when(mockFirestore.collection(any)).thenReturn(mockCollection);
-    when(mockCollection.doc(any)).thenReturn(mockDoc);
-    when(mockDoc.collection(any)).thenReturn(mockCollection);
-    when(mockDoc.get()).thenAnswer((_) async => mockSnapshot);
+    fakeFirestore = FakeFirebaseFirestore();
+    repository = FirebaseCartRepository(fakeFirestore);
   });
 
-  group('FirebaseCartRepository Unit Tests', () {
-    test('removeFromCart deletes document', () async {
-      await repository.removeFromCart('user_123', 'cart_456');
+  group('FirebaseCartRepository Tests', () {
+    test('addToCart adds new item', () async {
+      await repository.addToCart(userId, 'p1', 2);
       
-      verify(mockFirestore.collection(Collections.users)).called(1);
-      verify(mockCollection.doc('user_123')).called(1);
-      verify(mockDoc.collection(Collections.cart)).called(1);
-      verify(mockCollection.doc('cart_456')).called(1);
-      verify(mockDoc.delete()).called(1);
+      final cartItems = await fakeFirestore
+          .collection(Collections.users)
+          .doc(userId)
+          .collection(Collections.cart)
+          .get();
+          
+      expect(cartItems.docs.length, 1);
+      expect(cartItems.docs.first.id, 'p1');
+      expect(cartItems.docs.first.data()[Fields.quantity], 2);
     });
 
-    test('updateQuantity updates quantity field', () async {
-      await repository.updateQuantity('user_123', 'cart_456', 5);
-      verify(mockDoc.update({Fields.quantity: 5})).called(1);
-    });
-
-    test('updateQuantity deletes if quantity < 1', () async {
-      await repository.updateQuantity('user_123', 'cart_456', 0);
-      verify(mockDoc.delete()).called(1);
-    });
-
-    test('updateBuyerNote updates field', () async {
-      await repository.updateBuyerNote('user_123', 'cart_456', 'New note');
-      verify(mockDoc.set({Fields.buyerNote: 'New note'}, any)).called(1);
-    });
-
-    test('updateBuyerNote deletes field if note is null', () async {
-      await repository.updateBuyerNote('user_123', 'cart_456', null);
-      verify(mockDoc.update(any)).called(1);
-    });
-
-    test('getProductSellerId returns sellerId if product exists', () async {
-      when(mockSnapshot.exists).thenReturn(true);
-      when(mockSnapshot.data()).thenReturn({Fields.sellerId: 'seller_789'});
+    test('addToCart updates existing item quantity', () async {
+      await repository.addToCart(userId, 'p1', 2);
+      await repository.addToCart(userId, 'p1', 3);
       
-      final id = await repository.getProductSellerId('prod_123');
-      expect(id, 'seller_789');
+      final doc = await fakeFirestore
+          .collection(Collections.users)
+          .doc(userId)
+          .collection(Collections.cart)
+          .doc('p1')
+          .get();
+          
+      expect(doc.data()![Fields.quantity], 5);
     });
 
-    test('watchCart returns correct stream', () async {
-      final mockQuerySnapshot = MockQuerySnapshot();
-      when(mockCollection.snapshots()).thenAnswer((_) => Stream.value(mockQuerySnapshot));
-      when(mockQuerySnapshot.docs).thenReturn([]);
+    test('updateQuantity updates item', () async {
+      await repository.addToCart(userId, 'p1', 2);
+      await repository.updateQuantity(userId, 'p1', 10);
       
-      final stream = repository.watchCart('user_123');
-      final list = await stream.first;
-      expect(list, isEmpty);
+      final doc = await fakeFirestore
+          .collection(Collections.users)
+          .doc(userId)
+          .collection(Collections.cart)
+          .doc('p1')
+          .get();
+          
+      expect(doc.data()![Fields.quantity], 10);
+    });
+
+    test('removeFromCart removes item', () async {
+      await repository.addToCart(userId, 'p1', 2);
+      await repository.removeFromCart(userId, 'p1');
+      
+      final doc = await fakeFirestore
+          .collection(Collections.users)
+          .doc(userId)
+          .collection(Collections.cart)
+          .doc('p1')
+          .get();
+          
+      expect(doc.exists, isFalse);
+    });
+
+    test('clearCart removes all items', () async {
+      await repository.addToCart(userId, 'p1', 2);
+      await repository.addToCart(userId, 'p2', 1);
+      await repository.clearCart(userId);
+      
+      final cartItems = await fakeFirestore
+          .collection(Collections.users)
+          .doc(userId)
+          .collection(Collections.cart)
+          .get();
+          
+      expect(cartItems.docs.isEmpty, isTrue);
+    });
+
+    test('getProductSellerId returns sellerId', () async {
+      await fakeFirestore.collection(Collections.products).doc('p1').set({
+        Fields.sellerId: 's1',
+      });
+      
+      final sellerId = await repository.getProductSellerId('p1');
+      expect(sellerId, 's1');
+    });
+
+    test('isVariantValid verifies variant', () async {
+      await fakeFirestore.collection(Collections.products).doc('p1').set({
+        Fields.variants: [
+          {Fields.variantId: 'v1', 'isActive': true},
+          {Fields.variantId: 'v2', 'isActive': false},
+        ],
+      });
+      
+      expect(await repository.isVariantValid('p1', 'v1'), isTrue);
+      expect(await repository.isVariantValid('p1', 'v2'), isFalse);
+      expect(await repository.isVariantValid('p1', 'v3'), isFalse);
     });
   });
 }

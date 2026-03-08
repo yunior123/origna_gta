@@ -18,6 +18,7 @@ import 'package:firebase_auth_platform_interface/firebase_auth_platform_interfac
 import 'package:firebase_core/firebase_core.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i10;
+import 'package:origna_gta/utils/env_config.dart' as _i12;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -2495,6 +2496,175 @@ class MockDocumentSnapshot extends _i1.Mock
   @override
   dynamic operator [](Object? field) => super.noSuchMethod(
     Invocation.method(#[], [field]),
+    returnValueForMissingStub: null,
+  );
+}
+
+/// A class which mocks [UserInfo].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockUserInfo extends _i1.Mock implements _i3.UserInfo {
+  @override
+  String get providerId =>
+      (super.noSuchMethod(
+            Invocation.getter(#providerId),
+            returnValue: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#providerId),
+            ),
+            returnValueForMissingStub: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#providerId),
+            ),
+          )
+          as String);
+}
+
+/// A class which mocks [EnvConfig].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockEnvConfig extends _i1.Mock implements _i12.EnvConfig {
+  @override
+  _i12.AppEnvironment get environment =>
+      (super.noSuchMethod(
+            Invocation.getter(#environment),
+            returnValue: _i12.AppEnvironment.emulator,
+            returnValueForMissingStub: _i12.AppEnvironment.emulator,
+          )
+          as _i12.AppEnvironment);
+
+  @override
+  bool get isEmulator =>
+      (super.noSuchMethod(
+            Invocation.getter(#isEmulator),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get isDev =>
+      (super.noSuchMethod(
+            Invocation.getter(#isDev),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get isStaging =>
+      (super.noSuchMethod(
+            Invocation.getter(#isStaging),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get isProduction =>
+      (super.noSuchMethod(
+            Invocation.getter(#isProduction),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  String get baseUrl =>
+      (super.noSuchMethod(
+            Invocation.getter(#baseUrl),
+            returnValue: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#baseUrl),
+            ),
+            returnValueForMissingStub: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#baseUrl),
+            ),
+          )
+          as String);
+
+  @override
+  bool get isTest =>
+      (super.noSuchMethod(
+            Invocation.getter(#isTest),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get shouldUseEmulators =>
+      (super.noSuchMethod(
+            Invocation.getter(#shouldUseEmulators),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  String get r2ProductsFolder =>
+      (super.noSuchMethod(
+            Invocation.getter(#r2ProductsFolder),
+            returnValue: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#r2ProductsFolder),
+            ),
+            returnValueForMissingStub: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#r2ProductsFolder),
+            ),
+          )
+          as String);
+
+  @override
+  String get r2UsersFolder =>
+      (super.noSuchMethod(
+            Invocation.getter(#r2UsersFolder),
+            returnValue: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#r2UsersFolder),
+            ),
+            returnValueForMissingStub: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#r2UsersFolder),
+            ),
+          )
+          as String);
+
+  @override
+  String get algoliaIndexName =>
+      (super.noSuchMethod(
+            Invocation.getter(#algoliaIndexName),
+            returnValue: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#algoliaIndexName),
+            ),
+            returnValueForMissingStub: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#algoliaIndexName),
+            ),
+          )
+          as String);
+
+  @override
+  String get displayName =>
+      (super.noSuchMethod(
+            Invocation.getter(#displayName),
+            returnValue: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#displayName),
+            ),
+            returnValueForMissingStub: _i10.dummyValue<String>(
+              this,
+              Invocation.getter(#displayName),
+            ),
+          )
+          as String);
+
+  @override
+  void printInfo() => super.noSuchMethod(
+    Invocation.method(#printInfo, []),
     returnValueForMissingStub: null,
   );
 }

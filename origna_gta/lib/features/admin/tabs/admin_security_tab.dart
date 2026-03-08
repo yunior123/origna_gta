@@ -79,26 +79,32 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _mfaEnabled ? DesignTokens.success.withValues(alpha: 0.12) : DesignTokens.outlineVariant.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _mfaEnabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                            size: 14,
-                            color: _mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _mfaEnabled ? 'admin.security.mfa_enabled'.tr() : 'admin.security.mfa_disabled'.tr(),
-                            style: TextStyle(color: _mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary, fontWeight: FontWeight.w700, fontSize: 11),
-                          ),
-                        ],
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _mfaEnabled ? DesignTokens.success.withValues(alpha: 0.12) : DesignTokens.outlineVariant.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _mfaEnabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                              size: 14,
+                              color: _mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                _mfaEnabled ? 'admin.security.mfa_enabled'.tr() : 'admin.security.mfa_disabled'.tr(),
+                                style: TextStyle(color: _mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary, fontWeight: FontWeight.w700, fontSize: 11),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],

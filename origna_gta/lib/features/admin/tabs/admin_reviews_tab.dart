@@ -37,22 +37,26 @@ class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
           ),
           child: Row(
             children: [
-              FilterChip(
-                key: const Key('admin_reviews_filter_flagged'),
-                label: Text('admin.reviews.flagged'.tr()),
-                selected: _flaggedOnly,
-                onSelected: (v) => setState(() => _flaggedOnly = v),
-                selectedColor: DesignTokens.error.withValues(alpha: 0.15),
-                checkmarkColor: DesignTokens.error,
+              Flexible(
+                child: FilterChip(
+                  key: const Key('admin_reviews_filter_flagged'),
+                  label: Text('admin.reviews.flagged'.tr(), overflow: TextOverflow.ellipsis),
+                  selected: _flaggedOnly,
+                  onSelected: (v) => setState(() => _flaggedOnly = v),
+                  selectedColor: DesignTokens.error.withValues(alpha: 0.15),
+                  checkmarkColor: DesignTokens.error,
+                ),
               ),
               const SizedBox(width: 8),
-              FilterChip(
-                key: const Key('admin_reviews_filter_photos'),
-                label: Text('admin.reviews.has_photos'.tr()),
-                selected: _hasPhotosOnly,
-                onSelected: (v) => setState(() => _hasPhotosOnly = v),
-                selectedColor: DesignTokens.primary.withValues(alpha: 0.12),
-                checkmarkColor: DesignTokens.primary,
+              Flexible(
+                child: FilterChip(
+                  key: const Key('admin_reviews_filter_photos'),
+                  label: Text('admin.reviews.has_photos'.tr(), overflow: TextOverflow.ellipsis),
+                  selected: _hasPhotosOnly,
+                  onSelected: (v) => setState(() => _hasPhotosOnly = v),
+                  selectedColor: DesignTokens.primary.withValues(alpha: 0.12),
+                  checkmarkColor: DesignTokens.primary,
+                ),
               ),
             ],
           ),

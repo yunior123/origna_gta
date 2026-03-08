@@ -40,12 +40,16 @@ class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
-
-  FirebaseAuthRepository(this._auth, this._firestore, this._functions);
+  final bool _isWeb;
+  final EnvConfig _envConfig;
 
   /// For testing purposes only: override Turnstile token generation
   @visibleForTesting
   Future<String?> Function()? turnstileOverride;
+
+  FirebaseAuthRepository(this._auth, this._firestore, this._functions, {bool? isWeb, EnvConfig? envConfig})
+    : _isWeb = isWeb ?? kIsWeb,
+      _envConfig = envConfig ?? EnvConfig();
 
   @override
   Future<void> deleteAccount() async {
@@ -88,7 +92,7 @@ class FirebaseAuthRepository implements AuthRepository {
     if (user == null) return false;
 
     // Bypass in emulator mode — emulator Auth doesn't persist emailVerified
-    if (EnvConfig().isEmulator) {
+    if (_envConfig.isEmulator) {
       if (kDebugMode) debugPrint('🔧 EMULATOR: Bypassing email verification for ${user.email}');
       return true;
     }
@@ -259,7 +263,7 @@ class FirebaseAuthRepository implements AuthRepository {
     googleProvider.addScope('profile');
 
     final UserCredential userCredential;
-    if (kIsWeb) {
+    if (_isWeb) {
       userCredential = await _auth.signInWithPopup(googleProvider);
     } else {
       userCredential = await _auth.signInWithProvider(googleProvider);
@@ -302,7 +306,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
       // If email is not verified, the user won't have a Firestore doc yet - that's expected
       // Don't sign them out; they need to verify their email first
-      if (freshUser != null && !freshUser.emailVerified && !EnvConfig().isEmulator) {
+      if (freshUser != null && !freshUser.emailVerified && !_envConfig.isEmulator) {
         if (kDebugMode) {
           debugPrint('ℹ️ User ${freshUser.email} email not verified - skipping Firestore profile check');
         }
@@ -359,19 +363,15 @@ class FirebaseAuthRepository implements AuthRepository {
       // Bypass in emulator mode AND for SSO providers (Apple/Google verify email ownership
       // server-side; Firebase may return emailVerified=false on first Apple Sign In with
       // "Hide My Email" relay before the auth token is refreshed).
-      final isSsoProvider = user.providerData.any(
-        (p) => p.providerId == 'apple.com' || p.providerId == 'google.com',
-      );
-      if (!user.emailVerified && !EnvConfig().isEmulator && !isSsoProvider) {
+      final isSsoProvider = user.providerData.any((p) => p.providerId == 'apple.com' || p.providerId == 'google.com');
+      if (!user.emailVerified && !_envConfig.isEmulator && !isSsoProvider) {
         // [F-88] Save name to pending_profiles so it's not lost when they eventually verify
         if ((name != null && name.isNotEmpty) || initialMarketingOptIn != null) {
           try {
-            final Map<String, dynamic> dataToSave = {
-              Fields.updatedAt: FieldValue.serverTimestamp(),
-            };
+            final Map<String, dynamic> dataToSave = {Fields.updatedAt: FieldValue.serverTimestamp()};
             if (name != null) dataToSave[Fields.name] = name;
             if (initialMarketingOptIn != null) dataToSave[Fields.marketingOptIn] = initialMarketingOptIn;
-            
+
             await _firestore.collection(Collections.pendingProfiles).doc(user.uid).set(dataToSave, SetOptions(merge: true));
             if (kDebugMode) debugPrint('✅ Saved unverified user data to pending_profiles for ${user.email}');
           } catch (e) {
@@ -382,10 +382,10 @@ class FirebaseAuthRepository implements AuthRepository {
       }
 
       final callable = _functions.httpsCallable(CloudFunctionEndpoints.createUserProfile);
-      
+
       String? savedName = name;
       bool marketingOptIn = initialMarketingOptIn ?? false;
-      
+
       // F-88: Attempt to recover name from pending_profiles if not provided
       try {
         final pendingDoc = await _firestore.collection(Collections.pendingProfiles).doc(user.uid).get();

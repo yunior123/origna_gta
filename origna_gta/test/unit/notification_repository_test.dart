@@ -1,69 +1,53 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 import 'package:origna_gta/core/repositories/notification_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
-@GenerateNiceMocks([
-  MockSpec<FirebaseFirestore>(),
-  MockSpec<CollectionReference<Map<String, dynamic>>>(),
-  MockSpec<DocumentReference<Map<String, dynamic>>>(),
-  MockSpec<Query<Map<String, dynamic>>>(),
-  MockSpec<QuerySnapshot<Map<String, dynamic>>>(),
-  MockSpec<QueryDocumentSnapshot<Map<String, dynamic>>>(),
-  MockSpec<WriteBatch>(),
-])
-import 'notification_repository_test.mocks.dart';
-
 void main() {
-  late MockFirebaseFirestore mockFirestore;
-  late MockCollectionReference mockCollection;
-  late MockDocumentReference mockDoc;
-  late MockQuery mockQuery;
-  late MockQuerySnapshot mockSnapshots;
+  late FakeFirebaseFirestore fakeFirestore;
   late NotificationRepository repository;
+  const String userId = 'user_123';
 
   setUp(() {
-    mockFirestore = MockFirebaseFirestore();
-    mockCollection = MockCollectionReference();
-    mockDoc = MockDocumentReference();
-    mockQuery = MockQuery();
-    mockSnapshots = MockQuerySnapshot();
-    
-    repository = NotificationRepository(mockFirestore);
-    
-    when(mockFirestore.collection(any)).thenReturn(mockCollection);
-    when(mockCollection.doc(any)).thenReturn(mockDoc);
-    when(mockDoc.collection(any)).thenReturn(mockCollection);
-    when(mockCollection.where(any, isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockQuery);
-    when(mockQuery.get()).thenAnswer((_) async => mockSnapshots);
+    fakeFirestore = FakeFirebaseFirestore();
+    repository = NotificationRepository(fakeFirestore);
   });
 
-  group('NotificationRepository Unit Tests', () {
-    test('markRead updates Firestore document', () async {
-      await repository.markRead('user_123', 'notif_456');
+  group('NotificationRepository Tests', () {
+    test('markRead updates a single notification', () async {
+      final notifRef = fakeFirestore
+          .collection(Collections.users)
+          .doc(userId)
+          .collection(Collections.notifications)
+          .doc('n1');
+          
+      await notifRef.set({Fields.isRead: false});
       
-      verify(mockFirestore.collection(Collections.users)).called(1);
-      verify(mockCollection.doc('user_123')).called(1);
-      verify(mockDoc.collection(Collections.notifications)).called(1);
-      verify(mockCollection.doc('notif_456')).called(1);
-      verify(mockDoc.update({Fields.isRead: true})).called(1);
+      await repository.markRead(userId, 'n1');
+      
+      final doc = await notifRef.get();
+      expect(doc.data()![Fields.isRead], isTrue);
     });
 
-    test('markAllRead commits batch update', () async {
-      final mockBatch = MockWriteBatch();
-      final mockDoc1 = MockQueryDocumentSnapshot();
-      final mockRef1 = MockDocumentReference();
+    test('markAllRead updates all unread notifications', () async {
+      final colRef = fakeFirestore
+          .collection(Collections.users)
+          .doc(userId)
+          .collection(Collections.notifications);
+          
+      await colRef.doc('n1').set({Fields.isRead: false});
+      await colRef.doc('n2').set({Fields.isRead: false});
+      await colRef.doc('n3').set({Fields.isRead: true});
       
-      when(mockFirestore.batch()).thenReturn(mockBatch);
-      when(mockSnapshots.docs).thenReturn([mockDoc1]);
-      when(mockDoc1.reference).thenReturn(mockRef1);
+      await repository.markAllRead(userId);
       
-      await repository.markAllRead('user_123');
+      final n1 = await colRef.doc('n1').get();
+      final n2 = await colRef.doc('n2').get();
+      final n3 = await colRef.doc('n3').get();
       
-      verify(mockBatch.update(mockRef1, {Fields.isRead: true})).called(1);
-      verify(mockBatch.commit()).called(1);
+      expect(n1.data()![Fields.isRead], isTrue);
+      expect(n2.data()![Fields.isRead], isTrue);
+      expect(n3.data()![Fields.isRead], isTrue);
     });
   });
 }

@@ -9,15 +9,17 @@ import 'flows/add_product_flow_test.dart' as add_product;
 import 'flows/buyer_flow_test.dart' as buyer;
 import 'flows/seller_flow_test.dart' as seller;
 import 'flows/admin_flow_test.dart' as admin;
+import 'flows/edge_navigation_test.dart' as edge;
 
 /// G00 — All Integration Flows
 ///
-/// Aggregator that runs all 5 flow test suites:
+/// Aggregator that runs all 6 flow test suites:
 /// - Smoke (Home + Profile)
 /// - Add Product (Product creation flows)
 /// - Buyer (Browse, cart, checkout)
 /// - Seller (Seller tools, seller orders)
 /// - Admin (Admin panel, privileged menu)
+/// - Edge (Deep links, error states, misc)
 ///
 /// Run individually:
 /// ```bash
@@ -26,6 +28,7 @@ import 'flows/admin_flow_test.dart' as admin;
 /// flutter drive --target=integration_test/flows/buyer_flow_test.dart
 /// flutter drive --target=integration_test/flows/seller_flow_test.dart
 /// flutter drive --target=integration_test/flows/admin_flow_test.dart
+/// flutter drive --target=integration_test/flows/edge_navigation_test.dart
 /// ```
 ///
 /// Run all:
@@ -65,7 +68,7 @@ void main() {
     );
   }
 
-  // Select ONE test to run (0-4)
+  // Select ONE test to run (0-5)
   // - Default: random selection
   // - Override: --dart-define=INTEGRATION_TEST_INDEX=2 (for example)
   const forcedIndex = int.fromEnvironment(
@@ -73,9 +76,9 @@ void main() {
     defaultValue: -1,
   );
 
-  final selectedTest = (forcedIndex >= 0 && forcedIndex < 5)
+  final selectedTest = (forcedIndex >= 0 && forcedIndex < 6)
       ? forcedIndex
-      : Random().nextInt(5);
+      : Random().nextInt(6);
 
   final testNames = [
     'Smoke Test (Home + Profile)',
@@ -83,6 +86,7 @@ void main() {
     'Buyer Flow',
     'Seller Flow',
     'Admin Flow',
+    'Edge Navigation Flow',
   ];
 
   debugPrint('');
@@ -96,22 +100,35 @@ void main() {
   debugPrint('');
 
   group('G00 — All Integration Flows', () {
-    switch (selectedTest) {
-      case 0:
-        smoke.main();
-        break;
-      case 1:
-        add_product.main();
-        break;
-      case 2:
-        buyer.main();
-        break;
-      case 3:
-        seller.main();
-        break;
-      case 4:
-        admin.main();
-        break;
+    if (forcedIndex >= 0 && forcedIndex < 6) {
+      switch (forcedIndex) {
+        case 0:
+          smoke.main();
+          break;
+        case 1:
+          add_product.main();
+          break;
+        case 2:
+          buyer.main();
+          break;
+        case 3:
+          seller.main();
+          break;
+        case 4:
+          admin.main();
+          break;
+        case 5:
+          edge.main();
+          break;
+      }
+    } else {
+      // Run ALL
+      smoke.main();
+      add_product.main();
+      buyer.main();
+      seller.main();
+      admin.main();
+      edge.main();
     }
   });
 }

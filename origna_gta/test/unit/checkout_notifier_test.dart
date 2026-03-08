@@ -4,7 +4,6 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
-import 'package:origna_gta/features/checkout/checkout_state.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';

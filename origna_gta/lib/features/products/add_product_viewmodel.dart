@@ -6,7 +6,6 @@ import 'package:image/image.dart' as img;
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
-import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 import 'add_product_state.dart';
@@ -81,7 +80,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     // Bug #27: Prevent double-submit
     if (state.isLoading) return;
 
-    final isDevOrTestRun = EnvConfig().isDev || EnvConfig().isEmulator;
+    final config = _ref.read(envConfigProvider);
+    final isDevOrTestRun = config.isDev || config.isEmulator;
 
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'product.please_enter_name'.tr());
@@ -420,7 +420,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'AddProductViewModel.addProduct');
       final msg = AppError.getMessage(e, 'product.add_product_failed'.tr());
-      
+
       // PROD-H2: Detect SKU already exists error from backend
       if (msg.toLowerCase().contains('sku') && (msg.toLowerCase().contains('exists') || msg.toLowerCase().contains('déjà'))) {
         state = state.copyWith(isLoading: false, skuError: 'product.sku_already_exists'.tr(), errorMessage: null);
@@ -462,8 +462,13 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(showSuggestions: false, addressSuggestions: []);
       return;
     }
-    final suggestions = await _ref.read(locationRepositoryProvider).getAddressSuggestions(value);
-    state = state.copyWith(addressSuggestions: suggestions, showSuggestions: suggestions.isNotEmpty);
+    try {
+      final suggestions = await _ref.read(locationRepositoryProvider).getAddressSuggestions(value);
+      state = state.copyWith(addressSuggestions: suggestions, showSuggestions: suggestions.isNotEmpty);
+    } catch (e, st) {
+      AppError.log(e, stackTrace: st, context: 'AddProductViewModel.onStreetChanged');
+      state = state.copyWith(addressSuggestions: [], showSuggestions: false, errorMessage: 'product.location_error'.tr());
+    }
   }
 
   void removeImage(int index) => state = state.copyWith(imageModels: List<ImageModel>.from(state.imageModels)..removeAt(index));
@@ -558,6 +563,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
 
+  void toggleAgeRestricted(bool value) => state = state.copyWith(isAgeRestricted: value);
+
   /// Toggles digital product mode, resetting delivery and perishable fields accordingly.
   ///
   /// [value] When true, delivery options are cleared and free shipping is forced on.
@@ -615,8 +622,6 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
-
-  void toggleAgeRestricted(bool value) => state = state.copyWith(isAgeRestricted: value);
 
   void toggleWarehouseSelection(String warehouseId) {
     final current = List<String>.from(state.selectedWarehouseIds);

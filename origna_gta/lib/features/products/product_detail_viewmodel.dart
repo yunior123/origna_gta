@@ -24,12 +24,16 @@ class ProductDetailState {
   final int currentImageIndex;
   final SellerMetrics? sellerMetrics;
   final bool sellerMetricsLoading;
+  final Map<String, String> selectedOptions;
+  final String? selectedVariantId;
 
   const ProductDetailState({
     this.quantity = 1,
     this.currentImageIndex = 0,
     this.sellerMetrics,
     this.sellerMetricsLoading = false,
+    this.selectedOptions = const {},
+    this.selectedVariantId,
   });
 
   ProductDetailState copyWith({
@@ -37,12 +41,16 @@ class ProductDetailState {
     int? currentImageIndex,
     SellerMetrics? sellerMetrics,
     bool? sellerMetricsLoading,
+    Map<String, String>? selectedOptions,
+    String? selectedVariantId,
   }) {
     return ProductDetailState(
       quantity: quantity ?? this.quantity,
       currentImageIndex: currentImageIndex ?? this.currentImageIndex,
       sellerMetrics: sellerMetrics ?? this.sellerMetrics,
       sellerMetricsLoading: sellerMetricsLoading ?? this.sellerMetricsLoading,
+      selectedOptions: selectedOptions ?? this.selectedOptions,
+      selectedVariantId: selectedVariantId ?? this.selectedVariantId,
     );
   }
 }
@@ -74,6 +82,16 @@ class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
 
   /// Updates the active carousel image index for the product detail gallery.
   void setImageIndex(int index) => state = state.copyWith(currentImageIndex: index);
+
+  /// Sets a selected option (e.g. Size=M) and optionally updates the variant ID.
+  void setSelectedOption(String optionName, String value, {String? variantId}) {
+    final updatedOptions = Map<String, String>.from(state.selectedOptions);
+    updatedOptions[optionName] = value;
+    state = state.copyWith(selectedOptions: updatedOptions, selectedVariantId: variantId);
+  }
+
+  /// Manually sets the selected variant ID.
+  void setSelectedVariantId(String? variantId) => state = state.copyWith(selectedVariantId: variantId);
 
   /// Fetches seller metrics from Firestore and stores in state.
   /// Submits a helpful/not-helpful vote for a product review.

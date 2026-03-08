@@ -8,10 +8,14 @@ abstract class LocationRepository {
 /// Calls the `get_address_suggestions` Cloud Function which proxies Geoapify
 /// server-side, keeping the API key out of the client bundle.
 class GeoapifyLocationRepository implements LocationRepository {
+  final FirebaseFunctions _functions;
+
+  GeoapifyLocationRepository({FirebaseFunctions? functions}) : _functions = functions ?? FirebaseFunctions.instance;
+
   @override
   Future<List<Map<String, dynamic>>> getAddressSuggestions(String query) async {
     try {
-      final result = await FirebaseFunctions.instance
+      final result = await _functions
           .httpsCallable(CloudFunctionEndpoints.getAddressSuggestions)
           .call<Map>({'query': query, 'limit': 5});
       final features = (result.data['features'] as List?) ?? [];

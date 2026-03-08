@@ -206,7 +206,7 @@ class ChatRepository {
   Future<void> deleteMessage(String chatId, String messageId) async {
     await _functions
         .httpsCallable(CloudFunctionEndpoints.deleteMessage)
-        .call<Map<String, dynamic>>({
+        .call({
       Fields.chatId: chatId,
       Fields.messageId: messageId,
     });

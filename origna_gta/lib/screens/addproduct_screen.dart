@@ -2617,10 +2617,7 @@ class _AddVariantOptionButton extends StatelessWidget {
           ],
         ),
       ),
-    ).then((_) {
-      nameCtrl.dispose();
-      valuesCtrl.dispose();
-    });
+    );
   }
 }
 

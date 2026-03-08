@@ -269,8 +269,9 @@ double calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sell
 
 /// Check if current user's email is verified. Returns true if verified or in emulator mode.
 /// Shows dialog and returns false if not verified.
-Future<bool> checkEmailVerifiedOrPrompt(BuildContext context) async {
-  final user = FirebaseAuth.instance.currentUser;
+Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, {FirebaseAuth? auth}) async {
+  final firebaseAuth = auth ?? FirebaseAuth.instance;
+  final user = firebaseAuth.currentUser;
   if (user == null) return false;
 
   // BOOT-H1: emulator bypass is intentional for local dev only.
@@ -289,9 +290,10 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context) async {
     if (!EnvConfig().isEmulator && context.mounted) {
       showEmailVerificationDialog(
         context,
+        auth: firebaseAuth,
         onResend: () async {
           try {
-            await FirebaseAuth.instance.currentUser?.sendEmailVerification();
+            await firebaseAuth.currentUser?.sendEmailVerification();
           } catch (_) {}
         },
       );
@@ -299,7 +301,7 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context) async {
     }
     return true; // emulator: treat as verified
   }
-  final freshUser = FirebaseAuth.instance.currentUser;
+  final freshUser = firebaseAuth.currentUser;
   if (freshUser != null && freshUser.emailVerified) {
     return true;
   }
@@ -307,6 +309,7 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context) async {
   if (context.mounted) {
     showEmailVerificationDialog(
       context,
+      auth: firebaseAuth,
       onResend: () async {
         try {
           await freshUser?.sendEmailVerification();
@@ -449,8 +452,9 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
 /// Show a dialog prompting the user to verify their email before proceeding.
 /// [onResend] optional callback to resend verification email.
 /// Returns true if user dismissed, false if they tapped resend.
-void showEmailVerificationDialog(BuildContext context, {VoidCallback? onResend}) {
-  final user = FirebaseAuth.instance.currentUser;
+void showEmailVerificationDialog(BuildContext context, {FirebaseAuth? auth, VoidCallback? onResend}) {
+  final firebaseAuth = auth ?? FirebaseAuth.instance;
+  final user = firebaseAuth.currentUser;
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(

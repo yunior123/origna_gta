@@ -767,9 +767,11 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   void initState() {
     super.initState();
 
-    // Initialize Push Notifications
+    // Initialize Push Notifications after first frame to avoid ProviderScope.containerOf error in initState
     if (!kIsWeb) {
-      NotificationService.instance.initialize(ref);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        NotificationService.instance.initialize(ref);
+      });
     }
 
     // Listen for incoming deep links (Universal Links / URL schemes on iOS)

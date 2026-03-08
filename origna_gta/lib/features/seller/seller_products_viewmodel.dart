@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -13,7 +12,8 @@ final sellerProductsProvider = StreamProvider.autoDispose<List<Product>>((ref) {
 
   // FAV-M2: cap live stream to BusinessRules.sellerProductsPageSize (200).
   // Sellers with >200 products should use the paginated export flow — pagination planned.
-  return FirebaseFirestore.instance
+  return ref
+      .watch(firestoreProvider)
       .collection(Collections.products)
       .where(Fields.sellerId, isEqualTo: userId)
       .orderBy(Fields.createdAt, descending: true)

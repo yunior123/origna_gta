@@ -59,10 +59,18 @@ class ProductDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final productAsync = ref.watch(productByIdProvider(productId));
     final viewModel = ref.read(productDetailViewModelProvider.notifier);
+    final state = ref.watch(productDetailViewModelProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final product = productAsync.valueOrNull;
-    final isOutOfStock = (product?.stockQuantity ?? 1) <= 0;
+    final selectedVariantId = state.selectedVariantId;
+    final matchedVariant = product?.hasVariants == true && selectedVariantId != null
+        ? product!.variants.where((v) => v.variantId == selectedVariantId).firstOrNull
+        : null;
+
+    final displayPrice = matchedVariant != null ? (matchedVariant.priceCents ?? 0) / 100.0 : (product?.price ?? 0.0);
+    final isOutOfStock = (matchedVariant?.stockQuantity ?? (product?.stockQuantity ?? 1)) <= 0;
+
     final profileSnapshot = ref.watch(userProfileProvider).valueOrNull;
     final canManage = product != null && (profileSnapshot?.uid == product.sellerId || profileSnapshot?.roles.contains(UserRoles.admin) == true);
 
@@ -315,19 +323,19 @@ class ProductDetailScreen extends ConsumerWidget {
                                 style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
                               ),
                             Text(
-                              '\$${product.price.toStringAsFixed(2)}',
+                              '\$${displayPrice.toStringAsFixed(2)}',
                               key: const Key('product_detail_price'),
                               style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white),
                             ),
                           ],
                         ),
                       ),
-                      if (product.compareAtPrice != null && product.compareAtPrice! > product.price)
+                      if (product.compareAtPrice != null && product.compareAtPrice! > displayPrice)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
                           child: Text(
-                            '-${((1 - product.price / product.compareAtPrice!) * 100).round()}%',
+                            '-${((1 - displayPrice / product.compareAtPrice!) * 100).round()}%',
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                           ),
                         ),
@@ -722,12 +730,12 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
               return;
             }
             if (context.mounted) {
-              final verified = await checkEmailVerifiedOrPrompt(context);
+              final verified = await checkEmailVerifiedOrPrompt(context, auth: ref.read(firebaseAuthProvider));
               if (!verified) return;
             }
             if (!context.mounted) return;
             final messenger = ScaffoldMessenger.of(context);
-            final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity);
+            final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity, variantId: widget.variantKey);
 
             if (success) {
               HapticFeedback.mediumImpact();
@@ -761,14 +769,14 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
       return;
     }
     if (context.mounted) {
-      final verified = await checkEmailVerifiedOrPrompt(context);
+      final verified = await checkEmailVerifiedOrPrompt(context, auth: ref.read(firebaseAuthProvider));
       if (!verified) return;
     }
     if (!context.mounted) return;
 
     setState(() => _isBuyingNow = true);
     try {
-      final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity);
+      final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity, variantId: widget.variantKey);
       if (!success || !context.mounted) return;
 
       final cartDetails = await ref.read(cartWithDetailsProvider.future);
@@ -2254,71 +2262,53 @@ class _TrustBadges extends ConsumerWidget {
 // VARIANT SELECTOR + CART SECTION (N-09)
 // ============================================================================
 
-class _VariantAndCartSection extends StatefulWidget {
+class _VariantAndCartSection extends ConsumerWidget {
   final Product product;
   final ProductDetailViewModel viewModel;
 
   const _VariantAndCartSection({required this.product, required this.viewModel});
 
   @override
-  State<_VariantAndCartSection> createState() => _VariantAndCartSectionState();
-}
-
-class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
-  /// Selected option per option type name. e.g. {"Size": "M", "Color": "Red"}
-  Map<String, String> _selectedOptions = {};
-
-  bool get _allOptionsSelected {
-    if (_variantOptions.isEmpty) return true;
-    return _variantOptions.every((opt) {
-      final name = opt['name'] as String? ?? '';
-      return _selectedOptions.containsKey(name);
-    });
-  }
-
-  int get _effectiveStock {
-    if (!widget.product.hasVariants) return widget.product.stockQuantity;
-    final matched = _matchedVariant;
-    if (matched == null) return 0;
-    return (matched[Fields.stockQuantity] as num?)?.toInt() ?? 0;
-  }
-
-  /// Find the variant that matches currently selected options.
-  Map<String, dynamic>? get _matchedVariant {
-    if (_variants.isEmpty || _selectedOptions.isEmpty) return null;
-    for (final v in _variants) {
-      bool match = true;
-      for (final entry in _selectedOptions.entries) {
-        final optName = entry.key.toLowerCase();
-        final optVal = entry.value;
-        // Variant stores options as lowercase keys
-        if (v[optName] != optVal) {
-          match = false;
-          break;
-        }
-      }
-      if (match) return v;
-    }
-    return null;
-  }
-
-  List<Map<String, dynamic>> get _variantOptions => (widget.product.variantOptions).whereType<Map<String, dynamic>>().toList();
-
-  List<Map<String, dynamic>> get _variants => (widget.product.variants).whereType<Map<String, dynamic>>().toList();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(productDetailViewModelProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasVariants = widget.product.hasVariants && _variantOptions.isNotEmpty;
+    final hasVariants = product.hasVariants && product.variantOptions.isNotEmpty;
+
+    final selectedOptions = state.selectedOptions;
+    final selectedVariantId = state.selectedVariantId;
+
+    bool allOptionsSelected() {
+      if (!hasVariants) return true;
+      return product.variantOptions.every((opt) => selectedOptions.containsKey(opt.name));
+    }
+
+    ProductVariant? matchedVariant() {
+      if (!hasVariants || selectedOptions.isEmpty) return null;
+      for (final v in product.variants) {
+        bool match = true;
+        for (final entry in selectedOptions.entries) {
+          final optName = entry.key.toLowerCase();
+          final optVal = entry.value;
+          if (v.optionValues[optName] != optVal && v.optionValues[entry.key] != optVal) {
+            match = false;
+            break;
+          }
+        }
+        if (match) return v;
+      }
+      return null;
+    }
+
+    final effectiveStock = product.hasVariants ? (matchedVariant()?.stockQuantity ?? 0) : product.stockQuantity;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (hasVariants) ...[
-          ..._variantOptions.map((opt) {
-            final optName = opt['name'] as String? ?? '';
-            final values = (opt['values'] as List?)?.whereType<String>().toList() ?? <String>[];
-            final selected = _selectedOptions[optName];
+          ...product.variantOptions.map((opt) {
+            final optName = opt.name;
+            final values = opt.values;
+            final selected = selectedOptions[optName];
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Column(
@@ -2335,7 +2325,27 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
                     children: values.map((val) {
                       final isSelected = selected == val;
                       return GestureDetector(
-                        onTap: () => setState(() => _selectedOptions = {..._selectedOptions, optName: val}),
+                        onTap: () {
+                          final newOptions = {...selectedOptions, optName: val};
+                          String? newVariantId;
+                          // Find matched variant for the new selection
+                          for (final v in product.variants) {
+                            bool match = true;
+                            for (final entry in newOptions.entries) {
+                              final name = entry.key.toLowerCase();
+                              final value = entry.value;
+                              if (v.optionValues[name] != value && v.optionValues[entry.key] != value) {
+                                match = false;
+                                break;
+                              }
+                            }
+                            if (match) {
+                              newVariantId = v.variantId;
+                              break;
+                            }
+                          }
+                          viewModel.setSelectedOption(optName, val, variantId: newVariantId);
+                        },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -2363,7 +2373,7 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
               ),
             );
           }),
-          if (!_allOptionsSelected)
+          if (!allOptionsSelected())
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(
@@ -2372,7 +2382,7 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
               ),
             ),
         ],
-        if (_effectiveStock > 0 && _effectiveStock <= 10)
+        if (effectiveStock > 0 && effectiveStock <= 10)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
@@ -2381,20 +2391,20 @@ class _VariantAndCartSectionState extends State<_VariantAndCartSection> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'product.low_stock'.tr(namedArgs: {'count': _effectiveStock.toString()}),
+                    'product.low_stock'.tr(namedArgs: {'count': effectiveStock.toString()}),
                     style: TextStyle(fontSize: 13, color: DesignTokens.warning, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
             ),
           ),
-        _QuantitySelector(viewModel: widget.viewModel),
+        _QuantitySelector(viewModel: viewModel),
         const SizedBox(height: 24),
         _AddToCartButton(
-          productId: widget.product.productId,
-          sellerId: widget.product.sellerId,
-          stockQuantity: _effectiveStock,
-          variantKey: _matchedVariant?['variantId'] as String?,
+          productId: product.productId,
+          sellerId: product.sellerId,
+          stockQuantity: effectiveStock,
+          variantKey: selectedVariantId,
         ),
       ],
     );

@@ -13,9 +13,7 @@ import 'package:origna_gta/services/conf_services.dart';
 /// Shared sanitization for product data before writing to Firestore.
 /// Used by both [FirebaseProductRepository] and [AlgoliaProductRepository].
 Map<String, dynamic> sanitizeProductForFirestore(Map<String, dynamic> rawData, {bool ensureDateCreated = false}) {
-  final encoded = jsonEncode(rawData);
-  final decoded = jsonDecode(encoded);
-  final data = (decoded as Map).cast<String, dynamic>();
+  final data = Map<String, dynamic>.from(rawData);
 
   // productId is derived from document id; avoid storing a client-controlled field.
   data.remove(Fields.productId);
@@ -63,8 +61,12 @@ Map<String, dynamic> sanitizeProductForFirestore(Map<String, dynamic> rawData, {
 class FirebaseProductRepository implements ProductRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
+  final http.Client _httpClient;
+  final ConfigService _configService;
 
-  FirebaseProductRepository(this._firestore, this._functions);
+  FirebaseProductRepository(this._firestore, this._functions, {http.Client? httpClient, ConfigService? configService})
+    : _httpClient = httpClient ?? http.Client(),
+      _configService = configService ?? ConfigService();
 
   @override
   /// Creates a product atomically via Cloud Function, uploading images to R2 storage.
@@ -237,9 +239,11 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query) async {
-    final String apiKey = ConfigService().geoapifyKey;
+    final String apiKey = _configService.geoapifyKey;
     final encodedQuery = Uri.encodeQueryComponent(query);
-    final response = await http.get(Uri.parse('https://api.geoapify.com/v1/geocode/autocomplete?text=$encodedQuery&filter=countrycode:ca&apiKey=$apiKey'));
+    final response = await _httpClient.get(
+      Uri.parse('https://api.geoapify.com/v1/geocode/autocomplete?text=$encodedQuery&filter=countrycode:ca&apiKey=$apiKey'),
+    );
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       return List<Map<String, dynamic>>.from(data['features'] ?? []);
@@ -310,10 +314,7 @@ class FirebaseProductRepository implements ProductRepository {
     final List<Map<String, dynamic>> imagesPayload = [];
     if (reviewImages != null) {
       for (final bytes in reviewImages) {
-        imagesPayload.add({
-          'contentType': 'image/jpeg',
-          'data': base64Encode(bytes),
-        });
+        imagesPayload.add({'contentType': 'image/jpeg', 'data': base64Encode(bytes)});
       }
     }
 
@@ -332,10 +333,9 @@ class FirebaseProductRepository implements ProductRepository {
   /// Toggles a product in the user's favorites list via Cloud Function.
   /// This ensures that favoriteCount on the product document is updated atomically.
   Future<void> toggleFavorite(String userId, String productId) async {
-    await _functions.httpsCallable(CloudFunctionEndpoints.toggleFavorite).call({
-      Fields.productId: productId,
-    });
+    await _functions.httpsCallable(CloudFunctionEndpoints.toggleFavorite).call({Fields.productId: productId});
   }
+
   @override
   Future<void> updateProduct(String productId, Map<String, dynamic> data) async {
     // F-90: Use Cloud Function for updates to ensure server-side validation.
@@ -383,7 +383,9 @@ class FirebaseProductRepository implements ProductRepository {
 
     if (urlInfo == null) throw Exception('product.video_upload_failed'.tr());
 
-    final response = await http.put(Uri.parse(urlInfo['uploadUrl']!), body: bytes, headers: {"Content-Type": contentType}).timeout(const Duration(minutes: 5));
+    final response = await _httpClient
+        .put(Uri.parse(urlInfo['uploadUrl']!), body: bytes, headers: {"Content-Type": contentType})
+        .timeout(const Duration(minutes: 5));
 
     if (response.statusCode == 200) {
       return urlInfo['publicUrl'];
@@ -405,7 +407,7 @@ class FirebaseProductRepository implements ProductRepository {
       final i = entry.key;
       final urlInfo = entry.value;
       try {
-        final response = await http
+        final response = await _httpClient
             .put(Uri.parse(urlInfo['uploadUrl'] as String), body: images[i], headers: {'Content-Type': 'image/jpeg'})
             .timeout(const Duration(seconds: 30));
         if (response.statusCode == 200) return urlInfo['publicUrl'] as String;
@@ -462,7 +464,7 @@ class FirebaseProductRepository implements ProductRepository {
 
         if (urlInfo == null) throw Exception('Could not get upload URL');
 
-        final response = await http
+        final response = await _httpClient
             .put(Uri.parse(urlInfo['uploadUrl']!), body: bytes, headers: {"Content-Type": mimeType})
             .timeout(const Duration(seconds: 30));
 

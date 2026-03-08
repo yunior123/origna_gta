@@ -742,7 +742,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('checkout.delivery_speed_title'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Flexible(child: Text('checkout.delivery_speed_title'.tr(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
             IconButton(
               onPressed: () => _showDeliveryInfo(context),
               icon: const Icon(Icons.info_outline, size: 20),
@@ -809,12 +809,16 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                             children: [
                               Row(
                                 children: [
-                                  Text(
-                                    speed.translatedName,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16,
-                                      color: isAvailable ? DesignTokens.textPrimary : DesignTokens.textSecondary,
+                                  Flexible(
+                                    child: Text(
+                                      speed.translatedName,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                        color: isAvailable ? DesignTokens.textPrimary : DesignTokens.textSecondary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   if (speed == DeliverySpeed.sameDay) ...[
@@ -1305,6 +1309,7 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
           children: [
             Expanded(
               child: TextField(
+                key: const Key('checkout_coupon_field'),
                 controller: _controller,
                 enabled: !applied && !isLoading && !isProcessing,
                 textCapitalization: TextCapitalization.characters,
@@ -1615,15 +1620,19 @@ class _OrderReviewSheet extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
               child: Row(
                 children: [
-                  ShaderMask(
-                    shaderCallback: (bounds) => LinearGradient(
-                      colors: [DesignTokens.primary, DesignTokens.secondary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds),
-                    child: Text(
-                      'checkout.order_review_title'.tr(),
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white),
+                  Flexible(
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [DesignTokens.primary, DesignTokens.secondary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
+                      child: Text(
+                        'checkout.order_review_title'.tr(),
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ],

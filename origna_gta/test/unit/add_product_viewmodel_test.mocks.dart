@@ -4,15 +4,18 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i3;
+import 'dart:convert' as _i11;
 import 'dart:typed_data' as _i5;
 
 import 'package:cloud_firestore/cloud_firestore.dart' as _i7;
 import 'package:cross_file/cross_file.dart' as _i9;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:origna_gta/core/repositories/location_repository.dart' as _i10;
 import 'package:origna_gta/core/repositories/product_repository.dart' as _i2;
 import 'package:origna_gta/core/schema/schema_constants.dart' as _i8;
 import 'package:origna_gta/models/generated/models.dart' as _i4;
+import 'package:origna_gta/utils/env_config.dart' as _i12;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -32,6 +35,11 @@ import 'package:origna_gta/models/generated/models.dart' as _i4;
 class _FakeProductQueryResult_0 extends _i1.SmartFake
     implements _i2.ProductQueryResult {
   _FakeProductQueryResult_0(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeDateTime_1 extends _i1.SmartFake implements DateTime {
+  _FakeDateTime_1(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -351,4 +359,274 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
             returnValueForMissingStub: _i3.Stream<int>.empty(),
           )
           as _i3.Stream<int>);
+}
+
+/// A class which mocks [LocationRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockLocationRepository extends _i1.Mock
+    implements _i10.LocationRepository {
+  @override
+  _i3.Future<List<Map<String, dynamic>>> getAddressSuggestions(String? query) =>
+      (super.noSuchMethod(
+            Invocation.method(#getAddressSuggestions, [query]),
+            returnValue: _i3.Future<List<Map<String, dynamic>>>.value(
+              <Map<String, dynamic>>[],
+            ),
+            returnValueForMissingStub:
+                _i3.Future<List<Map<String, dynamic>>>.value(
+                  <Map<String, dynamic>>[],
+                ),
+          )
+          as _i3.Future<List<Map<String, dynamic>>>);
+}
+
+/// A class which mocks [XFile].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockXFile extends _i1.Mock implements _i9.XFile {
+  @override
+  String get path =>
+      (super.noSuchMethod(
+            Invocation.getter(#path),
+            returnValue: _i6.dummyValue<String>(this, Invocation.getter(#path)),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#path),
+            ),
+          )
+          as String);
+
+  @override
+  String get name =>
+      (super.noSuchMethod(
+            Invocation.getter(#name),
+            returnValue: _i6.dummyValue<String>(this, Invocation.getter(#name)),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#name),
+            ),
+          )
+          as String);
+
+  @override
+  _i3.Future<void> saveTo(String? path) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveTo, [path]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<int> length() =>
+      (super.noSuchMethod(
+            Invocation.method(#length, []),
+            returnValue: _i3.Future<int>.value(0),
+            returnValueForMissingStub: _i3.Future<int>.value(0),
+          )
+          as _i3.Future<int>);
+
+  @override
+  _i3.Future<String> readAsString({
+    _i11.Encoding? encoding = const _i11.Utf8Codec(),
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#readAsString, [], {#encoding: encoding}),
+            returnValue: _i3.Future<String>.value(
+              _i6.dummyValue<String>(
+                this,
+                Invocation.method(#readAsString, [], {#encoding: encoding}),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<String>.value(
+              _i6.dummyValue<String>(
+                this,
+                Invocation.method(#readAsString, [], {#encoding: encoding}),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<_i5.Uint8List> readAsBytes() =>
+      (super.noSuchMethod(
+            Invocation.method(#readAsBytes, []),
+            returnValue: _i3.Future<_i5.Uint8List>.value(_i5.Uint8List(0)),
+            returnValueForMissingStub: _i3.Future<_i5.Uint8List>.value(
+              _i5.Uint8List(0),
+            ),
+          )
+          as _i3.Future<_i5.Uint8List>);
+
+  @override
+  _i3.Stream<_i5.Uint8List> openRead([int? start, int? end]) =>
+      (super.noSuchMethod(
+            Invocation.method(#openRead, [start, end]),
+            returnValue: _i3.Stream<_i5.Uint8List>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i5.Uint8List>.empty(),
+          )
+          as _i3.Stream<_i5.Uint8List>);
+
+  @override
+  _i3.Future<DateTime> lastModified() =>
+      (super.noSuchMethod(
+            Invocation.method(#lastModified, []),
+            returnValue: _i3.Future<DateTime>.value(
+              _FakeDateTime_1(this, Invocation.method(#lastModified, [])),
+            ),
+            returnValueForMissingStub: _i3.Future<DateTime>.value(
+              _FakeDateTime_1(this, Invocation.method(#lastModified, [])),
+            ),
+          )
+          as _i3.Future<DateTime>);
+}
+
+/// A class which mocks [EnvConfig].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockEnvConfig extends _i1.Mock implements _i12.EnvConfig {
+  @override
+  _i12.AppEnvironment get environment =>
+      (super.noSuchMethod(
+            Invocation.getter(#environment),
+            returnValue: _i12.AppEnvironment.emulator,
+            returnValueForMissingStub: _i12.AppEnvironment.emulator,
+          )
+          as _i12.AppEnvironment);
+
+  @override
+  bool get isEmulator =>
+      (super.noSuchMethod(
+            Invocation.getter(#isEmulator),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get isDev =>
+      (super.noSuchMethod(
+            Invocation.getter(#isDev),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get isStaging =>
+      (super.noSuchMethod(
+            Invocation.getter(#isStaging),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get isProduction =>
+      (super.noSuchMethod(
+            Invocation.getter(#isProduction),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  String get baseUrl =>
+      (super.noSuchMethod(
+            Invocation.getter(#baseUrl),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#baseUrl),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#baseUrl),
+            ),
+          )
+          as String);
+
+  @override
+  bool get isTest =>
+      (super.noSuchMethod(
+            Invocation.getter(#isTest),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  bool get shouldUseEmulators =>
+      (super.noSuchMethod(
+            Invocation.getter(#shouldUseEmulators),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  String get r2ProductsFolder =>
+      (super.noSuchMethod(
+            Invocation.getter(#r2ProductsFolder),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#r2ProductsFolder),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#r2ProductsFolder),
+            ),
+          )
+          as String);
+
+  @override
+  String get r2UsersFolder =>
+      (super.noSuchMethod(
+            Invocation.getter(#r2UsersFolder),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#r2UsersFolder),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#r2UsersFolder),
+            ),
+          )
+          as String);
+
+  @override
+  String get algoliaIndexName =>
+      (super.noSuchMethod(
+            Invocation.getter(#algoliaIndexName),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#algoliaIndexName),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#algoliaIndexName),
+            ),
+          )
+          as String);
+
+  @override
+  String get displayName =>
+      (super.noSuchMethod(
+            Invocation.getter(#displayName),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#displayName),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#displayName),
+            ),
+          )
+          as String);
+
+  @override
+  void printInfo() => super.noSuchMethod(
+    Invocation.method(#printInfo, []),
+    returnValueForMissingStub: null,
+  );
 }

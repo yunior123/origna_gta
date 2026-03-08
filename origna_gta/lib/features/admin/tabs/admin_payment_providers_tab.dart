@@ -216,11 +216,15 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                     children: [
                       Row(
                         children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Flexible(
+                            child: Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -233,7 +237,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                               ),
                               child: Text(
                                 'admin.payments.not_configured'.tr(),
-                                style: TextStyle(fontSize: 10, color: DesignTokens.warning, fontWeight: FontWeight.w600),
+                                style: const TextStyle(fontSize: 10, color: DesignTokens.warning, fontWeight: FontWeight.w600),
                               ),
                             ),
                         ],

@@ -1,28 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:origna_gta/screens/checkout_screen.dart';
-import 'package:origna_gta/features/checkout/checkout_provider.dart';
-import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:origna_gta/features/cart/cart_provider.dart';
-import 'package:origna_gta/features/subscription/subscription_provider.dart';
+import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
-import 'package:origna_gta/core/repositories/auth_repository.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/features/checkout/checkout_provider.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/models.dart';
+import 'package:origna_gta/screens/checkout_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
-import '../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<OrderRepository>(),
-  MockSpec<UserRepository>(),
-  MockSpec<AuthRepository>(),
-])
+import '../test_utils.dart';
+@GenerateNiceMocks([MockSpec<OrderRepository>(), MockSpec<UserRepository>(), MockSpec<AuthRepository>()])
 import 'checkout_screen_test.mocks.dart';
 
 void main() {
@@ -37,22 +32,9 @@ void main() {
     initTestMocks();
   });
 
-  final testUser = UserModel(
-    uid: 'user_123',
-    email: 'test@example.com',
-    name: 'Test User',
-    roles: ['buyer'],
-    createdAt: DateTime.now(),
-  );
+  final testUser = UserModel(uid: 'user_123', email: 'test@example.com', name: 'Test User', roles: ['buyer'], createdAt: DateTime.now());
 
-  final testAddress = Address(
-    street: '123 Main St',
-    city: 'Toronto',
-    state: 'ON',
-    postalCode: 'M5V 3A8',
-    country: 'Canada',
-    isDefault: true,
-  );
+  final testAddress = Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada', isDefault: true);
 
   final testItem = CartItemDetailModel(
     productId: 'prod_1',
@@ -71,11 +53,7 @@ void main() {
     createdAt: Timestamp.now(),
   );
 
-  Widget createTestWidget({
-    List<CartItemDetailModel> items = const [],
-    UserModel? user,
-    CheckoutState? initialState,
-  }) {
+  Widget createTestWidget({List<CartItemDetailModel> items = const [], UserModel? user, CheckoutState? initialState}) {
     return TestWrapper(
       overrides: [
         userProfileProvider.overrideWith((ref) => Stream.value(user)),
@@ -84,7 +62,7 @@ void main() {
         authRepositoryProvider.overrideWithValue(mockAuthRepo),
         userIdProvider.overrideWithValue('user_123'),
         userAddressesProvider.overrideWith((ref) => Stream.value([])),
-        cartSubtotalProvider.overrideWith((ref) => items.fold(0.0, (sum, i) => sum + (i.price * i.quantity))),
+        cartSubtotalProvider.overrideWith((ref) => items.fold(0.0, (total, i) => total + (i.price * i.quantity))),
         cartWithDetailsProvider.overrideWith((ref) => items),
         subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
         deliveryInstructionsProvider.overrideWith((ref) => ''),
@@ -97,7 +75,7 @@ void main() {
             return notifier;
           }),
       ],
-      child: CheckoutScreen(items: items, total: items.fold(0.0, (sum, i) => sum + (i.price * i.quantity))),
+      child: CheckoutScreen(items: items, total: items.fold(0.0, (total, i) => total + (i.price * i.quantity))),
     );
   }
 
@@ -110,10 +88,7 @@ void main() {
       // Make sure repo returns the address so initialize() finds it
       when(mockUserRepo.getUserProfile(any)).thenAnswer((_) async => testUser.copyWith(address: testAddress));
 
-      await tester.pumpWidget(createTestWidget(
-        user: testUser,
-        items: [testItem],
-      ));
+      await tester.pumpWidget(createTestWidget(user: testUser, items: [testItem]));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       await tester.pump(const Duration(seconds: 1));
@@ -130,10 +105,7 @@ void main() {
 
       when(mockUserRepo.getUserProfile(any)).thenAnswer((_) async => testUser.copyWith(address: null));
 
-      await tester.pumpWidget(createTestWidget(
-        user: testUser,
-        items: [testItem],
-      ));
+      await tester.pumpWidget(createTestWidget(user: testUser, items: [testItem]));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       await tester.pump(const Duration(seconds: 1));

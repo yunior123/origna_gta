@@ -301,6 +301,7 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
   late AnimationController _breathingController;
   Timer? _blinkTimer;
   Timer? _tipTimer;
+  Timer? _speechBubbleTimer;
   int _currentTipIndex = 0;
   bool _isBubbleVisible = false;
 
@@ -381,6 +382,7 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
   void dispose() {
     _blinkTimer?.cancel();
     _tipTimer?.cancel();
+    _speechBubbleTimer?.cancel();
     _idleController.dispose();
     _jumpController.dispose();
     _blinkController.dispose();
@@ -403,7 +405,7 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
     _breathingController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
 
     if (widget.showSpeechBubble) {
-      Future.delayed(const Duration(seconds: 2), () {
+      _speechBubbleTimer = Timer(const Duration(seconds: 2), () {
         if (mounted) {
           setState(() => _isBubbleVisible = true);
           _bubbleController.forward();

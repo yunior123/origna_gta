@@ -18,6 +18,7 @@ final editProductViewModelProvider = StateNotifierProvider.autoDispose.family<Ed
 
 /// Top-level isolate function for image compression — runs in a separate thread.
 Uint8List? _compressImageEditIsolate(Uint8List bytes) {
+  if (bytes.isEmpty) return null;
   const int maxDimension = 2048;
   final image = img.decodeImage(bytes);
   if (image == null) return null;
@@ -71,6 +72,16 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       );
 
   ProductRepository get _repository => _ref.read(productRepositoryProvider);
+
+  Future<void> addImage(XFile file) async {
+    final bytes = await file.readAsBytes();
+    state = state.copyWith(
+      newImages: [
+        ...state.newImages,
+        ImageModel(url: file.path, bytes: bytes),
+      ],
+    );
+  }
 
   Future<void> onStreetChanged(String value) async {
     if (value.length < 3) {
@@ -136,6 +147,8 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
 
   void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
 
+  void toggleAgeRestricted(bool value) => state = state.copyWith(isAgeRestricted: value);
+
   void toggleDigital(bool value) => state = state.copyWith(
     isDigital: value,
     freeShipping: value ? true : state.freeShipping,
@@ -160,8 +173,6 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   void toggleLocalDelivery(bool value) => state = state.copyWith(isLocalDeliveryOnly: value);
 
   void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
-
-  void toggleAgeRestricted(bool value) => state = state.copyWith(isAgeRestricted: value);
 
   void toggleSoldOut(bool value) => state = state.copyWith(isSoldOut: value);
 
@@ -294,6 +305,18 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
 
     try {
+      if (state.videoFile != null) {
+        if ((state.videoDurationSeconds ?? 0) > BusinessRules.maxVideoDurationSeconds) {
+          state = state.copyWith(isLoading: false, errorMessage: 'product.video_too_long'.tr());
+          return;
+        }
+        final bytes = await state.videoFile!.readAsBytes();
+        if (bytes.length > BusinessRules.maxVideoBytes) {
+          state = state.copyWith(isLoading: false, errorMessage: 'product.video_too_large'.tr());
+          return;
+        }
+      }
+
       final keywords = generateSearchKeywords(name);
       List<String> allImageUrls = List.from(state.existingImageUrls);
 
@@ -304,21 +327,12 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       }
 
       String? uploadedVideoUrl;
-      // If a new video is selected, validate limits and upload
+      // If a new video is selected, already validated above, now upload
       if (state.videoFile != null) {
-        if ((state.videoDurationSeconds ?? 0) > BusinessRules.maxVideoDurationSeconds) {
-          throw Exception('product.video_too_long'.tr());
-        }
-        // Manual size check before repository call for early failure
-        final bytes = await state.videoFile!.readAsBytes();
-        if (bytes.length > BusinessRules.maxVideoBytes) {
-          throw Exception('product.video_too_large'.tr());
-        }
         uploadedVideoUrl = await _repository.uploadProductVideo(state.videoFile!, _product.sellerId);
       } else if (state.existingVideoUrl != null) {
         uploadedVideoUrl = state.existingVideoUrl;
       }
-
       final sanitizedDeliveryOptions = state.isDigital ? <models.SellerDeliveryOption>[] : deliveryOptions;
       final updatedProduct = _product.copyWith(
         name: name,

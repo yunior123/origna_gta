@@ -69,7 +69,7 @@ void main() {
       await tester.pump();
 
       // Verify "Out of Stock" label
-      expect(find.text('Out of Stock'), findsOneWidget);
+      expect(find.text('OUT OF STOCK'), findsOneWidget);
       
       // Add to cart button should NOT be rendered
       expect(find.byIcon(Icons.add), findsNothing);

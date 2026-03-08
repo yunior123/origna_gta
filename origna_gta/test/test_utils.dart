@@ -10,12 +10,14 @@ class TestWrapper extends StatelessWidget {
   final Widget child;
   final List<Override> overrides;
   final List<NavigatorObserver> navigatorObservers;
+  final Route<dynamic>? Function(RouteSettings)? onGenerateRoute;
 
   const TestWrapper({
     super.key,
     required this.child,
     this.overrides = const [],
     this.navigatorObservers = const [],
+    this.onGenerateRoute,
   });
 
   @override
@@ -37,7 +39,8 @@ class TestWrapper extends StatelessWidget {
               supportedLocales: context.supportedLocales,
               locale: context.locale,
               navigatorObservers: navigatorObservers,
-              home: child,
+              onGenerateRoute: onGenerateRoute,
+              home: Scaffold(body: child),
             );
           },
         ),

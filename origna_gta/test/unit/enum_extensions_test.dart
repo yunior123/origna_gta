@@ -1,32 +1,38 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:origna_gta/models/enum_extensions.dart';
 import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/models/enum_extensions.dart';
 
 void main() {
-  group('Enum Extensions', () {
-    test('DeliveryStatus extension maps values', () {
+  group('Enum Extensions Tests', () {
+    test('DeliveryStatusExtension', () {
+      expect(DeliveryStatus.pending.displayText, 'Pending');
       expect(DeliveryStatus.pending.value, 'pending');
-      expect(DeliveryStatus.shipped.displayText, 'Shipped');
-      expect(DeliveryStatusExtension.fromValue('delivered'), DeliveryStatus.delivered);
-      expect(DeliveryStatusExtension.fromValue('UNKNOWN'), DeliveryStatus.pending);
+      expect(DeliveryStatusExtension.fromValue('pending'), DeliveryStatus.pending);
+      expect(DeliveryStatusExtension.fromValue('SHIPPED'), DeliveryStatus.shipped);
+      expect(DeliveryStatusExtension.fromValue('unknown'), DeliveryStatus.pending);
     });
 
-    test('PaymentStatus extension maps authorized value', () {
+    test('OrderStatusExtension', () {
+      expect(OrderStatus.confirmed.displayText, 'Confirmed');
+      expect(OrderStatus.confirmed.value, 'confirmed');
+      expect(OrderStatusExtension.fromValue('processing'), OrderStatus.processing);
+      expect(OrderStatusExtension.fromValue('IN_TRANSIT'), OrderStatus.inTransit);
+      expect(OrderStatusExtension.fromValue(null), OrderStatus.pending);
+    });
+
+    test('PaymentStatusExtension', () {
+      expect(PaymentStatus.paid.displayText, 'Paid');
+      expect(PaymentStatus.paid.value, 'paid');
       expect(PaymentStatusExtension.fromValue('authorized'), PaymentStatus.authorized);
-      expect(PaymentStatus.authorized.value, 'authorized');
-      expect(PaymentStatus.refunded.displayText, 'Refunded');
+      expect(PaymentStatusExtension.fromValue('CAPTURED'), PaymentStatus.captured);
+      expect(PaymentStatusExtension.fromValue('session_expired'), PaymentStatus.sessionExpired);
     });
 
-    test('ShippingApprovalStatus extension maps values', () {
-      expect(ShippingApprovalStatus.pending.value, 'pending');
-      expect(ShippingApprovalStatus.rejected.displayText, 'Rejected');
-      expect(ShippingApprovalStatusExtension.fromValue('not_required'), ShippingApprovalStatus.notRequired);
-    });
-
-    test('OrderStatus extension maps values', () {
-      expect(OrderStatus.pending.value, 'pending');
-      expect(OrderStatus.delivered.displayText, 'Delivered');
-      expect(OrderStatusExtension.fromValue('cancelled'), OrderStatus.cancelled);
+    test('ShippingApprovalStatusExtension', () {
+      expect(ShippingApprovalStatus.approved.displayText, 'Approved');
+      expect(ShippingApprovalStatus.approved.value, 'approved');
+      expect(ShippingApprovalStatusExtension.fromValue('pending'), ShippingApprovalStatus.pending);
+      expect(ShippingApprovalStatusExtension.fromValue('REJECTED'), ShippingApprovalStatus.rejected);
     });
   });
 }

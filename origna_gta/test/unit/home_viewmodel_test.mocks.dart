@@ -6,6 +6,7 @@
 import 'dart:async' as _i3;
 import 'dart:typed_data' as _i5;
 
+import 'package:algolia_helper_flutter/algolia_helper_flutter.dart' as _i11;
 import 'package:cloud_firestore/cloud_firestore.dart' as _i7;
 import 'package:cross_file/cross_file.dart' as _i9;
 import 'package:mockito/mockito.dart' as _i1;
@@ -13,6 +14,7 @@ import 'package:mockito/src/dummies.dart' as _i6;
 import 'package:origna_gta/core/repositories/product_repository.dart' as _i2;
 import 'package:origna_gta/core/schema/schema_constants.dart' as _i8;
 import 'package:origna_gta/models/generated/models.dart' as _i4;
+import 'package:origna_gta/services/algolia_service.dart' as _i10;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -351,4 +353,56 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
             returnValueForMissingStub: _i3.Stream<int>.empty(),
           )
           as _i3.Stream<int>);
+}
+
+/// A class which mocks [AlgoliaService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockAlgoliaService extends _i1.Mock implements _i10.AlgoliaService {
+  @override
+  bool get isAvailable =>
+      (super.noSuchMethod(
+            Invocation.getter(#isAvailable),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  _i3.Stream<_i11.SearchResponse> get responses =>
+      (super.noSuchMethod(
+            Invocation.getter(#responses),
+            returnValue: _i3.Stream<_i11.SearchResponse>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i11.SearchResponse>.empty(),
+          )
+          as _i3.Stream<_i11.SearchResponse>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void search(
+    String? searchQuery, {
+    int? categoryId,
+    String? subcategory,
+    _i8.SortOption? sortOption = _i8.SortOption.relevance,
+    int? minPriceCents,
+    int? maxPriceCents,
+  }) => super.noSuchMethod(
+    Invocation.method(
+      #search,
+      [searchQuery],
+      {
+        #categoryId: categoryId,
+        #subcategory: subcategory,
+        #sortOption: sortOption,
+        #minPriceCents: minPriceCents,
+        #maxPriceCents: maxPriceCents,
+      },
+    ),
+    returnValueForMissingStub: null,
+  );
 }

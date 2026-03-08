@@ -12,6 +12,7 @@ import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/services/algolia_service.dart';
 import 'package:origna_gta/services/conf_services.dart';
+import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 // Algolia-based product repository (hybrid mode with Firestore fallback)
@@ -56,6 +57,8 @@ final firebaseFunctionsProvider = Provider<FirebaseFunctions>((ref) {
 });
 
 final firestoreProvider = Provider<FirebaseFirestore>((ref) => FirebaseFirestore.instance);
+
+final envConfigProvider = Provider<EnvConfig>((ref) => EnvConfig());
 
 final locationRepositoryProvider = Provider<LocationRepository>((ref) {
   return GeoapifyLocationRepository();

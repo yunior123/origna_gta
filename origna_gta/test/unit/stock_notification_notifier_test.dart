@@ -40,7 +40,7 @@ void main() {
     when(mockFirestore.collection(any)).thenReturn(mockCollection);
     
     // Recursive mock for where() to support multiple calls
-    final whereMock = (Invocation invocation) => mockQuery;
+    MockQuery whereMock(Invocation invocation) => mockQuery;
     when(mockCollection.where(any, 
       isEqualTo: anyNamed('isEqualTo'), 
       isNotEqualTo: anyNamed('isNotEqualTo'),
@@ -95,7 +95,7 @@ void main() {
       final provider = stockNotificationNotifierProvider((productId: 'prod_123', variantKey: null));
       
       // Use a listener to keep the provider alive (it's autoDispose)
-      final sub = container.listen(provider, (_, __) {});
+      final sub = container.listen(provider, (_, _) {});
       
       // Wait for async init() to complete
       int count = 0;
@@ -112,7 +112,7 @@ void main() {
     test('subscribe calls backend and updates state', () async {
       when(mockSnapshots.docs).thenReturn([]); // Initially not subscribed
       final provider = stockNotificationNotifierProvider((productId: 'prod_123', variantKey: 'red'));
-      final sub = container.listen(provider, (_, __) {});
+      final sub = container.listen(provider, (_, _) {});
       
       // Wait for init
       while (container.read(provider).isLoading) {
@@ -131,7 +131,7 @@ void main() {
     test('unsubscribe calls backend and updates state', () async {
       when(mockSnapshots.docs).thenReturn([MockQueryDocumentSnapshot()]); // Initially subscribed
       final provider = stockNotificationNotifierProvider((productId: 'prod_123', variantKey: null));
-      final sub = container.listen(provider, (_, __) {});
+      final sub = container.listen(provider, (_, _) {});
       
       // Wait for init
       while (container.read(provider).isLoading) {

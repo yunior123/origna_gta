@@ -3,7 +3,6 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
-import 'package:origna_gta/features/orders/seller_orders_state.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
