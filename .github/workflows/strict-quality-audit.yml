@@ -79,7 +79,7 @@ jobs:
           FLOWS=(integration_test/flows/*_test.dart)
           RANDOM_FLOW=$(shuf -e "${FLOWS[@]}" | head -n 1)
           echo "Running random integration flow: $RANDOM_FLOW"
-          xvfb-run -a flutter test -d linux "$RANDOM_FLOW"
+          xvfb-run -a flutter test -d linux --dart-define=ENVIRONMENT=dev "$RANDOM_FLOW"
 
       - name: Run strict quality gate
         env:
