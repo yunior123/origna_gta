@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: yunior123/orignabase
+          token: ${{ secrets.ORIGNABASE_REPO_TOKEN }}
           path: orignabase
 
       - uses: subosito/flutter-action@v2
@@ -70,6 +71,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: yunior123/orignabase
+          token: ${{ secrets.ORIGNABASE_REPO_TOKEN }}
           path: orignabase
 
       - uses: subosito/flutter-action@v2
