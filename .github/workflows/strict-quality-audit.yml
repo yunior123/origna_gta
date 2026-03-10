@@ -38,6 +38,9 @@ jobs:
           token: ${{ secrets.ORIGNABASE_REPO_TOKEN }}
           path: orignabase
 
+      - name: Expose OrignaBase at expected sibling path
+        run: ln -sfn "$GITHUB_WORKSPACE/orignabase" "$GITHUB_WORKSPACE/../orignabase"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"

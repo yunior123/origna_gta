@@ -20,6 +20,9 @@ jobs:
           token: ${{ secrets.ORIGNABASE_REPO_TOKEN }}
           path: orignabase
 
+      - name: Expose OrignaBase at expected sibling path
+        run: ln -sfn "$GITHUB_WORKSPACE/orignabase" "$GITHUB_WORKSPACE/../orignabase"
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.x"
@@ -73,6 +76,9 @@ jobs:
           repository: yunior123/orignabase
           token: ${{ secrets.ORIGNABASE_REPO_TOKEN }}
           path: orignabase
+
+      - name: Expose OrignaBase at expected sibling path
+        run: ln -sfn "$GITHUB_WORKSPACE/orignabase" "$GITHUB_WORKSPACE/../orignabase"
 
       - uses: subosito/flutter-action@v2
         with:
