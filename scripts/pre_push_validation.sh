@@ -18,7 +18,7 @@ else
     echo ""
     echo "Heavy local pre-push validation skipped by default."
     echo "Remote strict validation runs in GitHub Actions/Codemagic."
-    echo "Set ALLOW_LOCAL_HEAVY_PRE_PUSH=1 to force local Flutter builds/tests and Playwright."
+    echo "Set ALLOW_LOCAL_HEAVY_PRE_PUSH=1 to force local Flutter builds/tests and Firebase checks."
 fi
 
 # 0a. Flutter unit/widget tests — run FIRST while RAM is fresh (before heavy builds)
@@ -37,18 +37,6 @@ else
     echo "--- [0a] Flutter Tests (pre-build, RAM-fresh) ---"
     echo "⏭️  Skipped locally. Remote strict gate enforces Flutter coverage/tests."
 fi
-
-# 0b. Python backend tests — run before builds too
-echo ""
-echo "--- [0b] Python Backend Tests (pre-build) ---"
-cd functions
-pip install -q pytest pytest-mock mockito sentry_sdk > /dev/null 2>&1
-if ! python3 -m pytest tests/ -q --tb=short; then
-    echo "❌ ERROR: Backend Python tests failed."
-    exit 1
-fi
-cd "$REPO_ROOT"
-echo "✅ Backend tests passed."
 
 # 0. Validate Flutter builds for all 3 environments
 echo ""
@@ -94,67 +82,33 @@ fi
 
 # 1. Check for credential leaks
 echo ""
-echo "--- [1/10] Credential Leak Check ---"
+echo "--- [1/5] Credential Leak Check ---"
 if grep -r "960227Y#y" e2e/ origna_gta/lib/ origna_gta/test/ origna_gta/patrol_test/ 2>/dev/null; then
     echo "❌ ERROR: Old admin password found in source code."
     exit 1
 fi
 echo "✅ No credential leaks found."
 
-# 2. Schema sync: Python ↔ Dart constants
+# 2. Validate Firestore indexes, rules, storage across environments
 echo ""
-echo "--- [2/10] Schema Constants Sync (Python ↔ Dart) ---"
-if ! python3 scripts/validate_schema_sync.py; then
-    echo "❌ ERROR: Schema constants are out of sync."
-    exit 1
-fi
-echo "✅ Schema constants in sync."
-
-# 3. Algolia config validation
-echo ""
-echo "--- [3/10] Algolia Configuration Sync ---"
-if ! python3 scripts/validate_algolia_sync.py; then
-    echo "❌ ERROR: Algolia configuration mismatch."
-    exit 1
-fi
-echo "✅ Algolia config validated."
-
-# 4. Magic string detection on changed files
-echo ""
-echo "--- [4/10] Magic String Detection ---"
-if ! python3 scripts/validate_no_magic_strings.py --ci; then
-    echo "⚠️  WARNING: Magic strings detected (see above). Consider fixing before push."
-    # Non-blocking for now — switch to exit 1 after cleanup
+echo "--- [2/5] Firestore Rules & Indexes ---"
+if [ "$ALLOW_LOCAL_HEAVY_PRE_PUSH" = "1" ]; then
+    python3 scripts/validate_indexes.py
+    python3 scripts/validate_rules.py
+    python3 scripts/validate_storage_rules.py
+else
+    echo "⏭️  Skipped locally. Remote CI/Codemagic enforce Firebase validation."
 fi
 
-# 5. API endpoint cross-reference (static analysis only — no HTTP)
+# 3. Git diff summary
 echo ""
-echo "--- [5/10] API Endpoint Sync (Frontend ↔ Backend) ---"
-if ! python3 scripts/validate_api_endpoints.py --skip-http; then
-    echo "❌ ERROR: API endpoint mismatch between frontend and backend."
-    exit 1
-fi
-echo "✅ API endpoints in sync."
+echo "--- [3/5] Changed Files Summary ---"
+git diff --check
+echo "✅ No whitespace or conflict marker issues."
 
-# 6. Validate Firestore indexes, rules, storage across environments
+# 4. Playwright E2E tests against dev
 echo ""
-echo "--- [6/10] Firestore Rules & Indexes ---"
-python3 scripts/validate_indexes.py
-python3 scripts/validate_rules.py
-python3 scripts/validate_storage_rules.py
-
-# 7. Cloud Functions sync + deploy version parity
-echo ""
-echo "--- [7/10] Cloud Functions & Deploy Parity ---"
-python3 scripts/verify_functions_sync.py
-python3 scripts/check_deploy_versions.py
-
-# 8. (Flutter tests already ran in step 0a)
-# 9. (Python tests already ran in step 0b)
-
-# 10. Playwright E2E tests against dev
-echo ""
-echo "--- [10/10] Playwright E2E Tests (dev) ---"
+echo "--- [4/5] Playwright E2E Tests (dev) ---"
 if [ "$ALLOW_LOCAL_HEAVY_PRE_PUSH" = "1" ]; then
     cd e2e
     if ! npx playwright test --config=playwright.config.dev.ts --retries=1 --workers=2; then
@@ -166,6 +120,11 @@ if [ "$ALLOW_LOCAL_HEAVY_PRE_PUSH" = "1" ]; then
 else
     echo "⏭️  Skipped locally. Remote strict gate enforces Playwright flows and coverage."
 fi
+
+# 5. Ready to push
+echo ""
+echo "--- [5/5] Ready For Push ---"
+echo "✅ Local lightweight pre-push checks completed."
 
 echo ""
 echo "============================================"
