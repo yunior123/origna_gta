@@ -53,7 +53,7 @@ orignagta.ca, www.orignagta.ca {
 	import site_security_headers
 	encode zstd gzip
 
-	root * /var/www/orignagta
+	root * /var/www/orignagta/current
 	try_files {path} {path}/ /index.html
 	file_server
 }

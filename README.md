@@ -77,6 +77,7 @@ sequenceDiagram
 - Strict quality gate (100% + real E2E): scripts/run_quality_gate.sh
 - Real browser E2E smoke: scripts/run_real_e2e_smoke.sh
 - Deploy hosting/config as needed from repo root
+- Hetzner web deploys use staged releases under `/var/www/orignagta/releases/<timestamp>` with an atomic switch of `/var/www/orignagta/current`
 - Install pre-push hook (safe local checks by default): scripts/install_git_hooks.sh
 - Flutter analyze: (cd origna_gta) flutter analyze
 - Flutter tests: (cd origna_gta) flutter test
