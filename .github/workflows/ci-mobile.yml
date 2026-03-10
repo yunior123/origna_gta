@@ -13,6 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout OrignaBase dependency
+        uses: actions/checkout@v4
+        with:
+          repository: yunior123/orignabase
+          path: orignabase
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.x"
@@ -59,6 +65,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Checkout OrignaBase dependency
+        uses: actions/checkout@v4
+        with:
+          repository: yunior123/orignabase
+          path: orignabase
 
       - uses: subosito/flutter-action@v2
         with:

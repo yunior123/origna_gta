@@ -31,6 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout OrignaBase dependency
+        uses: actions/checkout@v4
+        with:
+          repository: yunior123/orignabase
+          path: orignabase
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
