@@ -1,5 +1,3 @@
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -45,8 +43,6 @@ import 'package:origna_gta/screens/terms_of_service_screen.dart';
 import 'package:origna_gta/utils/env_config.dart';
 
 @GenerateNiceMocks([
-  MockSpec<User>(),
-  MockSpec<FirebaseFunctions>(),
   MockSpec<ProductRepository>(),
   MockSpec<OrderRepository>(),
   MockSpec<UserRepository>(),
@@ -57,7 +53,7 @@ import 'coverage_booster_test.mocks.dart';
 import 'test_utils.dart';
 
 void main() {
-  late MockUser mockUser;
+  late AppAuthUser mockUser;
   late MockProductRepository mockProductRepo;
   late MockOrderRepository mockOrderRepo;
   late MockUserRepository mockUserRepo;
@@ -69,14 +65,13 @@ void main() {
   });
 
   setUp(() {
-    mockUser = MockUser();
+    mockUser = const AppAuthUser(uid: 'test_user', email: 't@e.com');
     mockProductRepo = MockProductRepository();
     mockOrderRepo = MockOrderRepository();
     mockUserRepo = MockUserRepository();
     mockAuthRepo = MockAuthRepository();
     mockConfig = MockEnvConfig();
 
-    when(mockUser.uid).thenReturn('test_user');
     when(mockConfig.isDev).thenReturn(true);
 
     when(
@@ -84,13 +79,13 @@ void main() {
         searchQuery: anyNamed('searchQuery'),
         categoryId: anyNamed('categoryId'),
         subcategory: anyNamed('subcategory'),
-        lastDocument: anyNamed('lastDocument'),
+        lastDocumentId: anyNamed('lastDocumentId'),
         pageSize: anyNamed('pageSize'),
         sortOption: anyNamed('sortOption'),
         minPriceCents: anyNamed('minPriceCents'),
         maxPriceCents: anyNamed('maxPriceCents'),
       ),
-    ).thenAnswer((_) async => ProductQueryResult(products: [], lastDocument: null, hasMore: false));
+    ).thenAnswer((_) async => ProductQueryResult(products: [], lastDocumentId: null, hasMore: false));
 
     when(mockUserRepo.watchAddresses(any)).thenAnswer((_) => Stream.value([]));
     when(mockOrderRepo.watchBuyerOrders(any)).thenAnswer((_) => Stream.value([]));

@@ -1,5 +1,5 @@
 // Circuit Breaker Pattern Implementation
-// Prevents cascade failures when external services (Stripe, Algolia) are down
+// Prevents cascade failures when external services (Stripe, Meilisearch) are down
 
 import 'package:flutter/foundation.dart';
 
@@ -44,7 +44,7 @@ class CircuitBreakerConfig {
     successThreshold: 2,
   );
 
-  /// Default configuration for search services (Algolia)
+  /// Default configuration for search services (Meilisearch)
   static const searchDefault = CircuitBreakerConfig(
     failureThreshold: 5,
     resetTimeout: Duration(seconds: 60),

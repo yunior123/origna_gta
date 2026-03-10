@@ -3,14 +3,11 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i5;
+import 'dart:async' as _i3;
 
-import 'package:cloud_functions/cloud_functions.dart' as _i4;
-import 'package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart'
-    as _i2;
-import 'package:firebase_core/firebase_core.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:origna_gta/features/admin/admin_repository.dart' as _i2;
+import 'package:origna_gta/utils/utils.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -27,231 +24,248 @@ import 'package:mockito/src/dummies.dart' as _i6;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeFirebaseFunctionsPlatform_0 extends _i1.SmartFake
-    implements _i2.FirebaseFunctionsPlatform {
-  _FakeFirebaseFunctionsPlatform_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeFirebaseApp_1 extends _i1.SmartFake implements _i3.FirebaseApp {
-  _FakeFirebaseApp_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallable_2 extends _i1.SmartFake implements _i4.HttpsCallable {
-  _FakeHttpsCallable_2(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallablePlatform_3 extends _i1.SmartFake
-    implements _i2.HttpsCallablePlatform {
-  _FakeHttpsCallablePlatform_3(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallableResult_4<T1> extends _i1.SmartFake
-    implements _i4.HttpsCallableResult<T1> {
-  _FakeHttpsCallableResult_4(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-/// A class which mocks [FirebaseFunctions].
+/// A class which mocks [AdminRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockFirebaseFunctions extends _i1.Mock implements _i4.FirebaseFunctions {
+class MockAdminRepository extends _i1.Mock implements _i2.AdminRepository {
   @override
-  _i2.FirebaseFunctionsPlatform get delegate =>
+  _i3.Future<void> approveProduct(String? productId) =>
       (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
+            Invocation.method(#approveProduct, [productId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i2.FirebaseFunctionsPlatform);
+          as _i3.Future<void>);
 
   @override
-  _i3.FirebaseApp get app =>
+  _i3.Future<void> deleteProduct(String? productId) =>
       (super.noSuchMethod(
-            Invocation.getter(#app),
-            returnValue: _FakeFirebaseApp_1(this, Invocation.getter(#app)),
-            returnValueForMissingStub: _FakeFirebaseApp_1(
-              this,
-              Invocation.getter(#app),
+            Invocation.method(#deleteProduct, [productId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> deleteReview(String? reviewId) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteReview, [reviewId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> disableAdminMfa(String? code) =>
+      (super.noSuchMethod(
+            Invocation.method(#disableAdminMfa, [code]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> enableAdminMfa() =>
+      (super.noSuchMethod(
+            Invocation.method(#enableAdminMfa, []),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
             ),
           )
-          as _i3.FirebaseApp);
+          as _i3.Future<Map<String, dynamic>>);
 
   @override
-  Map<dynamic, dynamic> get pluginConstants =>
+  _i3.Future<_i4.UserModel?> fetchUserById(String? userId) =>
       (super.noSuchMethod(
-            Invocation.getter(#pluginConstants),
-            returnValue: <dynamic, dynamic>{},
-            returnValueForMissingStub: <dynamic, dynamic>{},
+            Invocation.method(#fetchUserById, [userId]),
+            returnValue: _i3.Future<_i4.UserModel?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.UserModel?>.value(),
           )
-          as Map<dynamic, dynamic>);
+          as _i3.Future<_i4.UserModel?>);
 
   @override
-  _i4.HttpsCallable httpsCallable(
-    String? name, {
-    _i2.HttpsCallableOptions? options,
+  _i3.Future<Map<String, dynamic>> getPaymentProviders() =>
+      (super.noSuchMethod(
+            Invocation.method(#getPaymentProviders, []),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<void> flagReview(String? reviewId, {required bool? flagged}) =>
+      (super.noSuchMethod(
+            Invocation.method(#flagReview, [reviewId], {#flagged: flagged}),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> refundOrder(
+    String? orderId, {
+    String? reason = 'Admin refund',
   }) =>
       (super.noSuchMethod(
-            Invocation.method(#httpsCallable, [name], {#options: options}),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
+            Invocation.method(#refundOrder, [orderId], {#reason: reason}),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i4.HttpsCallable);
+          as _i3.Future<void>);
 
   @override
-  _i4.HttpsCallable httpsCallableFromUrl(
-    String? url, {
-    _i2.HttpsCallableOptions? options,
+  _i3.Future<void> rejectProduct(String? productId, String? reason) =>
+      (super.noSuchMethod(
+            Invocation.method(#rejectProduct, [productId, reason]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> setUserSuspended(String? userId, bool? suspended) =>
+      (super.noSuchMethod(
+            Invocation.method(#setUserSuspended, [userId, suspended]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> updatePaymentProvider(
+    String? provider,
+    bool? enabled, {
+    String? reason,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
-              #httpsCallableFromUrl,
-              [url],
-              {#options: options},
+              #updatePaymentProvider,
+              [provider, enabled],
+              {#reason: reason},
             ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i4.HttpsCallable);
+          as _i3.Future<void>);
 
   @override
-  _i4.HttpsCallable httpsCallableFromUri(
-    Uri? uri, {
-    _i2.HttpsCallableOptions? options,
+  _i3.Future<void> updateProductStock(String? productId, int? quantity) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateProductStock, [productId, quantity]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> updateUserRoles(
+    String? userId, {
+    List<String>? add,
+    List<String>? remove,
+    String? reason,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
-              #httpsCallableFromUri,
-              [uri],
-              {#options: options},
+              #updateUserRoles,
+              [userId],
+              {#add: add, #remove: remove, #reason: reason},
             ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> verifyAdminMfa(String? code) =>
+      (super.noSuchMethod(
+            Invocation.method(#verifyAdminMfa, [code]),
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
             ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
+            returnValueForMissingStub: _i3.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
             ),
           )
-          as _i4.HttpsCallable);
+          as _i3.Future<Map<String, dynamic>>);
 
   @override
-  void useFunctionsEmulator(
-    String? host,
-    int? port, {
-    bool? automaticHostMapping = true,
-  }) => super.noSuchMethod(
-    Invocation.method(
-      #useFunctionsEmulator,
-      [host, port],
-      {#automaticHostMapping: automaticHostMapping},
-    ),
-    returnValueForMissingStub: null,
-  );
-}
-
-/// A class which mocks [HttpsCallable].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallable extends _i1.Mock implements _i4.HttpsCallable {
-  @override
-  _i2.HttpsCallablePlatform get delegate =>
+  _i3.Stream<List<_i4.OrderModel>> watchOrders({String? status, int? limit}) =>
       (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
+            Invocation.method(#watchOrders, [], {
+              #status: status,
+              #limit: limit,
+            }),
+            returnValue: _i3.Stream<List<_i4.OrderModel>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i4.OrderModel>>.empty(),
           )
-          as _i2.HttpsCallablePlatform);
+          as _i3.Stream<List<_i4.OrderModel>>);
 
   @override
-  _i5.Future<_i4.HttpsCallableResult<T>> call<T>([dynamic parameters]) =>
+  _i3.Stream<List<_i4.ProductModel>> watchProducts({
+    int? limit,
+    String? sellerId,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#call, [parameters]),
-            returnValue: _i5.Future<_i4.HttpsCallableResult<T>>.value(
-              _FakeHttpsCallableResult_4<T>(
-                this,
-                Invocation.method(#call, [parameters]),
-              ),
-            ),
+            Invocation.method(#watchProducts, [], {
+              #limit: limit,
+              #sellerId: sellerId,
+            }),
+            returnValue: _i3.Stream<List<_i4.ProductModel>>.empty(),
             returnValueForMissingStub:
-                _i5.Future<_i4.HttpsCallableResult<T>>.value(
-                  _FakeHttpsCallableResult_4<T>(
-                    this,
-                    Invocation.method(#call, [parameters]),
-                  ),
-                ),
+                _i3.Stream<List<_i4.ProductModel>>.empty(),
           )
-          as _i5.Future<_i4.HttpsCallableResult<T>>);
+          as _i3.Stream<List<_i4.ProductModel>>);
 
   @override
-  _i5.Stream<_i4.StreamResponse<T, R>> stream<T, R>([Object? input]) =>
+  _i3.Stream<List<_i4.ProductModel>> watchPendingReviewProducts({int? limit}) =>
       (super.noSuchMethod(
-            Invocation.method(#stream, [input]),
-            returnValue: _i5.Stream<_i4.StreamResponse<T, R>>.empty(),
+            Invocation.method(#watchPendingReviewProducts, [], {#limit: limit}),
+            returnValue: _i3.Stream<List<_i4.ProductModel>>.empty(),
             returnValueForMissingStub:
-                _i5.Stream<_i4.StreamResponse<T, R>>.empty(),
+                _i3.Stream<List<_i4.ProductModel>>.empty(),
           )
-          as _i5.Stream<_i4.StreamResponse<T, R>>);
-}
+          as _i3.Stream<List<_i4.ProductModel>>);
 
-/// A class which mocks [HttpsCallableResult].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallableResult<T> extends _i1.Mock
-    implements _i4.HttpsCallableResult<T> {
   @override
-  T get data =>
+  _i3.Stream<List<Map<String, dynamic>>> watchReviews({
+    bool? flaggedOnly,
+    bool? hasPhotosOnly,
+    int? limit,
+  }) =>
       (super.noSuchMethod(
-            Invocation.getter(#data),
-            returnValue: _i6.dummyValue<T>(this, Invocation.getter(#data)),
-            returnValueForMissingStub: _i6.dummyValue<T>(
-              this,
-              Invocation.getter(#data),
-            ),
+            Invocation.method(#watchReviews, [], {
+              #flaggedOnly: flaggedOnly,
+              #hasPhotosOnly: hasPhotosOnly,
+              #limit: limit,
+            }),
+            returnValue: _i3.Stream<List<Map<String, dynamic>>>.empty(),
+            returnValueForMissingStub:
+                _i3.Stream<List<Map<String, dynamic>>>.empty(),
           )
-          as T);
+          as _i3.Stream<List<Map<String, dynamic>>>);
+
+  @override
+  _i3.Stream<List<_i4.UserModel>> watchSellers({int? limit}) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchSellers, [], {#limit: limit}),
+            returnValue: _i3.Stream<List<_i4.UserModel>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i4.UserModel>>.empty(),
+          )
+          as _i3.Stream<List<_i4.UserModel>>);
+
+  @override
+  _i3.Stream<List<_i4.UserModel>> watchUsers({int? limit}) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchUsers, [], {#limit: limit}),
+            returnValue: _i3.Stream<List<_i4.UserModel>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i4.UserModel>>.empty(),
+          )
+          as _i3.Stream<List<_i4.UserModel>>);
 }

@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/widgets/promotions/standalone_promo_widget.dart';

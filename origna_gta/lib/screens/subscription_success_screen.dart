@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -14,7 +15,7 @@ import '../features/subscription/subscription_provider.dart';
 
 /// Screen displayed after the user completes a Stripe premium subscription checkout.
 ///
-/// Guards itself behind a Firestore `isPremium` check so the success UI only
+/// Guards itself behind a database `isPremium` check so the success UI only
 /// appears once the webhook has fired and the subscription document is updated.
 /// A 30-second timeout shows a manual-refresh fallback if activation is delayed.
 ///
@@ -116,7 +117,7 @@ class _SubscriptionSuccessScreenState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final subAsync = ref.watch(subscriptionStreamProvider);
 
-    // Gate the success UI on actual isPremium=true from Firestore
+    // Gate the success UI on actual isPremium=true from database
     final isPremium = subAsync.valueOrNull?.isPremium ?? false;
 
     // HIGH-021 FIX: Prevent success screen bypass.

@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -93,16 +93,20 @@ class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
   /// Manually sets the selected variant ID.
   void setSelectedVariantId(String? variantId) => state = state.copyWith(selectedVariantId: variantId);
 
-  /// Fetches seller metrics from Firestore and stores in state.
+  /// Fetches seller metrics from database and stores in state.
   /// Submits a helpful/not-helpful vote for a product review.
   /// MVVM FIX (AUDIT): Moved from UI layer to ViewModel.
   Future<void> voteHelpful(String ratingId, String productId, bool helpful) async {
     try {
-      final functions = _ref.read(firebaseFunctionsProvider);
-      await functions.httpsCallable(CloudFunctionEndpoints.voteReviewHelpful).call({
-        Fields.ratingId: ratingId,
-        Fields.productId: productId,
-        'helpful': helpful,
+      final ob = _ref.read(orignabaseProvider);
+      final userId = _ref.read(obUserIdProvider);
+      if (userId == null || userId.isEmpty) {
+        throw StateError('User must be logged in to vote on reviews');
+      }
+      await ob.request('POST', '/api/products/review-vote', body: {
+        'reviewId': ratingId,
+        'userId': userId,
+        'vote': helpful ? 'helpful' : 'unhelpful',
       });
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'voteHelpful');
@@ -116,15 +120,15 @@ class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
     state = state.copyWith(sellerMetricsLoading: true);
     try {
       final doc = await _ref
-          .read(firestoreProvider)
+          .read(orignabaseProvider)
           .collection(Collections.sellerMetrics)
           .doc(sellerId)
           .get();
-      if (!doc.exists) {
+      if (doc == null || !doc.exists) {
         state = state.copyWith(sellerMetricsLoading: false, sellerMetrics: const SellerMetrics());
         return;
       }
-      final data = doc.data()!;
+      final data = doc.data;
       state = state.copyWith(
         sellerMetricsLoading: false,
         sellerMetrics: SellerMetrics(

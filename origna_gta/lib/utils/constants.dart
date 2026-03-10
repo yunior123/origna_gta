@@ -319,7 +319,7 @@ enum PayoutStatus {
 }
 
 /// Seller-defined delivery option for a product
-/// Stored in Firestore under [Fields.deliveryOptions].
+/// Stored in database under [Fields.deliveryOptions].
 ///
 /// Canonical schema uses: type/description/cost/estimatedDays (+ optional volume discounts).
 /// Alternate schema uses: speed/isEnabled/price/maxRadiusKm.

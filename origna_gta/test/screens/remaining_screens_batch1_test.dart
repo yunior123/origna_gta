@@ -1,29 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 import 'package:origna_gta/screens/notifications_screen.dart';
 import 'package:origna_gta/screens/favorites_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([MockSpec<User>()])
-import 'remaining_screens_batch1_test.mocks.dart';
 
 void main() {
   setUpAll(() {
     initTestMocks();
   });
-  late MockUser mockUser;
-  late FakeFirebaseFirestore fakeFirestore;
+  late AppAuthUser mockUser;
 
   setUp(() {
-    mockUser = MockUser();
-    fakeFirestore = FakeFirebaseFirestore();
-    when(mockUser.uid).thenReturn('test_user_123');
+    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
   });
 
   group('Remaining Screens Batch 1 Smoke Tests', () {
@@ -32,7 +23,6 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            firestoreProvider.overrideWithValue(fakeFirestore),
           ],
           child: const NotificationsScreen(),
         ),
@@ -48,7 +38,6 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            firestoreProvider.overrideWithValue(fakeFirestore),
             favoritesProvider.overrideWith((ref) => Stream.value(<String>{})),
           ],
           child: const FavoritesScreen(),
@@ -64,7 +53,6 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            firestoreProvider.overrideWithValue(fakeFirestore),
           ],
           child: const OrderSuccessScreen(orderId: 'order_123'),
         ),

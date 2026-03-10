@@ -3,7 +3,6 @@
 // Generated from Pydantic models - Single source of truth
 // ignore_for_file: non_abstract_class_inherits_abstract_member
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../core/schema/schema_constants.dart';
@@ -208,12 +207,9 @@ abstract class Product with _$Product {
     DateTime? updatedAt,
   }) = _Product;
 
-  factory Product.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-
+  factory Product.fromMap(Map<String, dynamic> data, String docId) {
     final rawCreatedAt = data[Fields.createdAt];
     final DateTime parsedCreatedAt = switch (rawCreatedAt) {
-      Timestamp t => t.toDate(),
       DateTime d => d,
       String s => DateTime.tryParse(s) ?? DateTime.now(),
       _ => DateTime.now(),
@@ -221,7 +217,6 @@ abstract class Product with _$Product {
 
     final rawUpdatedAt = data[Fields.updatedAt];
     final DateTime? parsedUpdatedAt = switch (rawUpdatedAt) {
-      Timestamp t => t.toDate(),
       DateTime d => d,
       String s => DateTime.tryParse(s),
       _ => null,
@@ -229,7 +224,7 @@ abstract class Product with _$Product {
 
     final jsonMap = <String, dynamic>{
       ...data,
-      'productId': doc.id,
+      'productId': docId,
       'createdAt': parsedCreatedAt.toIso8601String(),
       if (parsedUpdatedAt != null) 'updatedAt': parsedUpdatedAt.toIso8601String(),
     };
@@ -426,18 +421,16 @@ abstract class SellerWarehouse with _$SellerWarehouse {
     DateTime? createdAt,
   }) = _SellerWarehouse;
 
-  factory SellerWarehouse.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory SellerWarehouse.fromMap(Map<String, dynamic> data, String docId) {
     final rawCreatedAt = data['createdAt'];
     final String? parsedCreatedAt = switch (rawCreatedAt) {
-      Timestamp t => t.toDate().toIso8601String(),
       DateTime d => d.toIso8601String(),
       String s => s,
       _ => null,
     };
     return SellerWarehouse.fromJson({
       ...data,
-      'warehouseId': doc.id,
+      'warehouseId': docId,
       // ignore: use_null_aware_elements — key is a string literal so ?key: value is invalid
       if (parsedCreatedAt != null) 'createdAt': parsedCreatedAt,
     });

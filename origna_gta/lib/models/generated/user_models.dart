@@ -3,7 +3,6 @@
 // Generated from Pydantic models - Single source of truth
 // ignore_for_file: non_abstract_class_inherits_abstract_member
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'base_models.dart';
@@ -12,12 +11,12 @@ import '../../core/schema/schema_constants.dart';
 part 'user_models.freezed.dart';
 part 'user_models.g.dart';
 
-/// Safely parse a dynamic value (Timestamp, String, DateTime) to DateTime?
+/// Safely parse a dynamic value (String, DateTime, int) to DateTime?
 DateTime? _parseDateTime(dynamic value) {
   if (value == null) return null;
-  if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;
   if (value is String) return DateTime.tryParse(value);
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
   return null;
 }
 
@@ -90,15 +89,14 @@ abstract class User with _$User {
     DateTime? fcmTokenUpdatedAt,
   }) = _User;
 
-  factory User.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory User.fromMap(Map<String, dynamic> data, String docId) {
 
     // Parse roles
     final rolesData = data[Fields.roles] as List<dynamic>? ?? [UserRoleValues.buyer];
     final roles = rolesData.map((r) => UserRole.values.firstWhere((e) => e.name == r.toString(), orElse: () => UserRole.buyer)).toList();
 
     return User(
-      uid: data[Fields.uid] ?? doc.id,
+      uid: data[Fields.uid] ?? docId,
       email: data[Fields.email] ?? '',
       name: data[Fields.name] ?? '',
       roles: roles,

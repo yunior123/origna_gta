@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,17 +15,15 @@ import 'package:origna_gta/screens/payment_screens.dart';
 import 'package:origna_gta/widgets/language_selector.dart';
 
 @GenerateNiceMocks([
-  MockSpec<User>(),
   MockSpec<UserRepository>(),
   MockSpec<OrderRepository>(),
   MockSpec<AdminActionsViewModel>(),
-  MockSpec<FirebaseFirestore>(),
 ])
 import 'high_impact_coverage_test.mocks.dart';
 import 'test_utils.dart';
 
 void main() {
-  late MockUser mockUser;
+  late AppAuthUser mockUser;
   late MockOrderRepository mockOrderRepo;
   late MockAdminActionsViewModel mockAdminVM;
   late MockUserRepository mockUserRepo;
@@ -37,12 +33,11 @@ void main() {
   });
 
   setUp(() {
-    mockUser = MockUser();
+    mockUser = const AppAuthUser(uid: 'admin_user', email: 'admin@example.com');
     mockOrderRepo = MockOrderRepository();
     mockAdminVM = MockAdminActionsViewModel();
     mockUserRepo = MockUserRepository();
 
-    when(mockUser.uid).thenReturn('admin_user');
     when(mockAdminVM.state).thenReturn(const AdminActionsState());
     when(mockUserRepo.updatePreferredLanguage(any, any)).thenAnswer((_) async {});
   });
@@ -53,7 +48,6 @@ void main() {
         currentUserProvider.overrideWithValue(mockUser),
         adminActionsViewModelProvider.overrideWith((ref) => mockAdminVM),
         userRepositoryProvider.overrideWithValue(mockUserRepo),
-        firestoreProvider.overrideWithValue(MockFirebaseFirestore()),
         ...overrides,
       ],
       child: child,

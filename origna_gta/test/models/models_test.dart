@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:origna_gta/core/compat/timestamp.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';
@@ -127,10 +127,11 @@ void main() {
 
   group('FavoriteItem Tests', () {
     test('toMap', () {
-      final fav = FavoriteItem(productId: 'prod_1', dateFavorited: DateTime.now());
+      final now = DateTime.now();
+      final fav = FavoriteItem(productId: 'prod_1', dateFavorited: now);
       final map = fav.toMap();
       expect(map[Fields.productId], 'prod_1');
-      expect(map[Fields.dateFavorited] is Timestamp, true);
+      expect(map[Fields.dateFavorited], now);
     });
   });
 

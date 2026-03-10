@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -20,17 +19,19 @@ class SessionTimeoutService {
   GlobalKey<NavigatorState>? _navigatorKey;
   // BOOT-H2: Track which user started the timer to prevent signing out a different user
   String? _watchedUserId;
-
-  FirebaseAuth? _authOverride;
-  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
+  String? Function()? _currentUserIdProvider;
+  Future<void> Function()? _signOutCallback;
   
   factory SessionTimeoutService() => _instance;
   SessionTimeoutService._internal();
 
-  /// For testing purposes only: set a mock FirebaseAuth instance
-  @visibleForTesting
-  void setAuth(FirebaseAuth auth) {
-    _authOverride = auth;
+  /// Inject app auth callbacks so this service stays backend-agnostic.
+  void configure({
+    String? Function()? currentUserIdProvider,
+    Future<void> Function()? signOutCallback,
+  }) {
+    _currentUserIdProvider = currentUserIdProvider;
+    _signOutCallback = signOutCallback;
   }
 
   /// Get remaining time before timeout
@@ -54,9 +55,10 @@ class SessionTimeoutService {
   /// Start monitoring user activity. Pass the app's [GlobalKey] of [NavigatorState].
   void startMonitoring(GlobalKey<NavigatorState> navigatorKey) {
     _timeoutTimer?.cancel(); // Prevent timer leak on repeated calls
-    if (_auth.currentUser == null) return;
+    final currentUserId = _currentUserIdProvider?.call();
+    if (currentUserId == null) return;
     _navigatorKey = navigatorKey;
-    _watchedUserId = _auth.currentUser?.uid; // BOOT-H2: bind timer to this user
+    _watchedUserId = currentUserId; // BOOT-H2: bind timer to this user
     _resetTimer();
   }
 
@@ -70,21 +72,13 @@ class SessionTimeoutService {
 
   /// Handle timeout event - sign out user
   Future<void> _handleTimeout() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    final currentUserId = _currentUserIdProvider?.call();
+    if (currentUserId == null) return;
     // BOOT-H2: only sign out the exact user whose session started this timer
-    if (_watchedUserId != null && user.uid != _watchedUserId) return;
+    if (_watchedUserId != null && currentUserId != _watchedUserId) return;
 
     try {
-      await _auth.signOut();
-
-      // Best-effort: wait for auth state propagation (esp. Web)
-      try {
-        await _auth
-            .authStateChanges()
-            .firstWhere((u) => u == null)
-            .timeout(const Duration(seconds: 5));
-      } catch (_) {}
+      await _signOutCallback?.call();
 
       // Show snackbar using the NavigatorState's context (never stale)
       final ctx = _navigatorKey?.currentContext;

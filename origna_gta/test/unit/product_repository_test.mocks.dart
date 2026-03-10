@@ -3,15 +3,16 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i5;
+import 'dart:async' as _i3;
+import 'dart:typed_data' as _i5;
 
-import 'package:cloud_functions/cloud_functions.dart' as _i4;
-import 'package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart'
-    as _i2;
-import 'package:firebase_core/firebase_core.dart' as _i3;
+import 'package:cross_file/cross_file.dart' as _i8;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i6;
-import 'package:origna_gta/services/conf_services.dart' as _i7;
+import 'package:origna_gta/core/repositories/product_repository.dart' as _i2;
+import 'package:origna_gta/core/schema/schema_constants.dart' as _i7;
+import 'package:origna_gta/models/generated/models.dart' as _i4;
+import 'package:origna_gta/services/conf_services.dart' as _i9;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -28,269 +29,334 @@ import 'package:origna_gta/services/conf_services.dart' as _i7;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeFirebaseFunctionsPlatform_0 extends _i1.SmartFake
-    implements _i2.FirebaseFunctionsPlatform {
-  _FakeFirebaseFunctionsPlatform_0(Object parent, Invocation parentInvocation)
+class _FakeProductQueryResult_0 extends _i1.SmartFake
+    implements _i2.ProductQueryResult {
+  _FakeProductQueryResult_0(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeFirebaseApp_1 extends _i1.SmartFake implements _i3.FirebaseApp {
-  _FakeFirebaseApp_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallable_2 extends _i1.SmartFake implements _i4.HttpsCallable {
-  _FakeHttpsCallable_2(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallablePlatform_3 extends _i1.SmartFake
-    implements _i2.HttpsCallablePlatform {
-  _FakeHttpsCallablePlatform_3(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallableResult_4<T1> extends _i1.SmartFake
-    implements _i4.HttpsCallableResult<T1> {
-  _FakeHttpsCallableResult_4(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-/// A class which mocks [FirebaseFunctions].
+/// A class which mocks [ProductRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockFirebaseFunctions extends _i1.Mock implements _i4.FirebaseFunctions {
+class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
   @override
-  _i2.FirebaseFunctionsPlatform get delegate =>
-      (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
-          )
-          as _i2.FirebaseFunctionsPlatform);
-
-  @override
-  _i3.FirebaseApp get app =>
-      (super.noSuchMethod(
-            Invocation.getter(#app),
-            returnValue: _FakeFirebaseApp_1(this, Invocation.getter(#app)),
-            returnValueForMissingStub: _FakeFirebaseApp_1(
-              this,
-              Invocation.getter(#app),
-            ),
-          )
-          as _i3.FirebaseApp);
-
-  @override
-  Map<dynamic, dynamic> get pluginConstants =>
-      (super.noSuchMethod(
-            Invocation.getter(#pluginConstants),
-            returnValue: <dynamic, dynamic>{},
-            returnValueForMissingStub: <dynamic, dynamic>{},
-          )
-          as Map<dynamic, dynamic>);
-
-  @override
-  _i4.HttpsCallable httpsCallable(
-    String? name, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(#httpsCallable, [name], {#options: options}),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  _i4.HttpsCallable httpsCallableFromUrl(
-    String? url, {
-    _i2.HttpsCallableOptions? options,
+  _i3.Future<String> createProductAtomic(
+    _i4.Product? product,
+    List<_i5.Uint8List>? imageBytes, {
+    List<String>? testImageUrls,
+    String? bookSourceUrl,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
-              #httpsCallableFromUrl,
-              [url],
-              {#options: options},
+              #createProductAtomic,
+              [product, imageBytes],
+              {#testImageUrls: testImageUrls, #bookSourceUrl: bookSourceUrl},
             ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  _i4.HttpsCallable httpsCallableFromUri(
-    Uri? uri, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(
-              #httpsCallableFromUri,
-              [uri],
-              {#options: options},
-            ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  void useFunctionsEmulator(
-    String? host,
-    int? port, {
-    bool? automaticHostMapping = true,
-  }) => super.noSuchMethod(
-    Invocation.method(
-      #useFunctionsEmulator,
-      [host, port],
-      {#automaticHostMapping: automaticHostMapping},
-    ),
-    returnValueForMissingStub: null,
-  );
-}
-
-/// A class which mocks [HttpsCallable].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallable extends _i1.Mock implements _i4.HttpsCallable {
-  @override
-  _i2.HttpsCallablePlatform get delegate =>
-      (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
-          )
-          as _i2.HttpsCallablePlatform);
-
-  @override
-  _i5.Future<_i4.HttpsCallableResult<T>> call<T>([dynamic parameters]) =>
-      (super.noSuchMethod(
-            Invocation.method(#call, [parameters]),
-            returnValue: _i5.Future<_i4.HttpsCallableResult<T>>.value(
-              _FakeHttpsCallableResult_4<T>(
+            returnValue: _i3.Future<String>.value(
+              _i6.dummyValue<String>(
                 this,
-                Invocation.method(#call, [parameters]),
+                Invocation.method(
+                  #createProductAtomic,
+                  [product, imageBytes],
+                  {
+                    #testImageUrls: testImageUrls,
+                    #bookSourceUrl: bookSourceUrl,
+                  },
+                ),
               ),
+            ),
+            returnValueForMissingStub: _i3.Future<String>.value(
+              _i6.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #createProductAtomic,
+                  [product, imageBytes],
+                  {
+                    #testImageUrls: testImageUrls,
+                    #bookSourceUrl: bookSourceUrl,
+                  },
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<void> deleteProduct(String? productId) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteProduct, [productId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<_i4.Product?> fetchProductById(String? productId) =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchProductById, [productId]),
+            returnValue: _i3.Future<_i4.Product?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.Product?>.value(),
+          )
+          as _i3.Future<_i4.Product?>);
+
+  @override
+  _i3.Future<_i2.ProductQueryResult> fetchProducts({
+    String? searchQuery,
+    int? categoryId,
+    String? subcategory,
+    String? lastDocumentId,
+    int? pageSize = 20,
+    _i7.SortOption? sortOption = _i7.SortOption.relevance,
+    int? minPriceCents,
+    int? maxPriceCents,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchProducts, [], {
+              #searchQuery: searchQuery,
+              #categoryId: categoryId,
+              #subcategory: subcategory,
+              #lastDocumentId: lastDocumentId,
+              #pageSize: pageSize,
+              #sortOption: sortOption,
+              #minPriceCents: minPriceCents,
+              #maxPriceCents: maxPriceCents,
+            }),
+            returnValue: _i3.Future<_i2.ProductQueryResult>.value(
+              _FakeProductQueryResult_0(
+                this,
+                Invocation.method(#fetchProducts, [], {
+                  #searchQuery: searchQuery,
+                  #categoryId: categoryId,
+                  #subcategory: subcategory,
+                  #lastDocumentId: lastDocumentId,
+                  #pageSize: pageSize,
+                  #sortOption: sortOption,
+                  #minPriceCents: minPriceCents,
+                  #maxPriceCents: maxPriceCents,
+                }),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i2.ProductQueryResult>.value(
+              _FakeProductQueryResult_0(
+                this,
+                Invocation.method(#fetchProducts, [], {
+                  #searchQuery: searchQuery,
+                  #categoryId: categoryId,
+                  #subcategory: subcategory,
+                  #lastDocumentId: lastDocumentId,
+                  #pageSize: pageSize,
+                  #sortOption: sortOption,
+                  #minPriceCents: minPriceCents,
+                  #maxPriceCents: maxPriceCents,
+                }),
+              ),
+            ),
+          )
+          as _i3.Future<_i2.ProductQueryResult>);
+
+  @override
+  _i3.Future<List<_i4.Product>> fetchProductsByIds(List<String>? productIds) =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchProductsByIds, [productIds]),
+            returnValue: _i3.Future<List<_i4.Product>>.value(<_i4.Product>[]),
+            returnValueForMissingStub: _i3.Future<List<_i4.Product>>.value(
+              <_i4.Product>[],
+            ),
+          )
+          as _i3.Future<List<_i4.Product>>);
+
+  @override
+  String generateProductId() =>
+      (super.noSuchMethod(
+            Invocation.method(#generateProductId, []),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.method(#generateProductId, []),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.method(#generateProductId, []),
+            ),
+          )
+          as String);
+
+  @override
+  _i3.Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(
+    String? query,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#getAutocompleteSuggestions, [query]),
+            returnValue: _i3.Future<List<Map<String, dynamic>>>.value(
+              <Map<String, dynamic>>[],
             ),
             returnValueForMissingStub:
-                _i5.Future<_i4.HttpsCallableResult<T>>.value(
-                  _FakeHttpsCallableResult_4<T>(
-                    this,
-                    Invocation.method(#call, [parameters]),
-                  ),
+                _i3.Future<List<Map<String, dynamic>>>.value(
+                  <Map<String, dynamic>>[],
                 ),
           )
-          as _i5.Future<_i4.HttpsCallableResult<T>>);
+          as _i3.Future<List<Map<String, dynamic>>>);
 
   @override
-  _i5.Stream<_i4.StreamResponse<T, R>> stream<T, R>([Object? input]) =>
+  _i3.Future<_i4.Product?> getProductBySlug(String? slug) =>
       (super.noSuchMethod(
-            Invocation.method(#stream, [input]),
-            returnValue: _i5.Stream<_i4.StreamResponse<T, R>>.empty(),
-            returnValueForMissingStub:
-                _i5.Stream<_i4.StreamResponse<T, R>>.empty(),
+            Invocation.method(#getProductBySlug, [slug]),
+            returnValue: _i3.Future<_i4.Product?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.Product?>.value(),
           )
-          as _i5.Stream<_i4.StreamResponse<T, R>>);
-}
+          as _i3.Future<_i4.Product?>);
 
-/// A class which mocks [HttpsCallableResult].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallableResult<T> extends _i1.Mock
-    implements _i4.HttpsCallableResult<T> {
   @override
-  T get data =>
+  _i3.Future<String?> getUploadUrl(String? fileName) =>
       (super.noSuchMethod(
-            Invocation.getter(#data),
-            returnValue: _i6.dummyValue<T>(this, Invocation.getter(#data)),
-            returnValueForMissingStub: _i6.dummyValue<T>(
-              this,
-              Invocation.getter(#data),
+            Invocation.method(#getUploadUrl, [fileName]),
+            returnValue: _i3.Future<String?>.value(),
+            returnValueForMissingStub: _i3.Future<String?>.value(),
+          )
+          as _i3.Future<String?>);
+
+  @override
+  _i3.Future<Map<String, String>?> getUploadUrlInfo(String? fileName) =>
+      (super.noSuchMethod(
+            Invocation.method(#getUploadUrlInfo, [fileName]),
+            returnValue: _i3.Future<Map<String, String>?>.value(),
+            returnValueForMissingStub: _i3.Future<Map<String, String>?>.value(),
+          )
+          as _i3.Future<Map<String, String>?>);
+
+  @override
+  _i3.Future<Map<String, String>?> getUploadVideoUrlInfo(
+    String? fileName,
+    String? contentType,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#getUploadVideoUrlInfo, [fileName, contentType]),
+            returnValue: _i3.Future<Map<String, String>?>.value(),
+            returnValueForMissingStub: _i3.Future<Map<String, String>?>.value(),
+          )
+          as _i3.Future<Map<String, String>?>);
+
+  @override
+  _i3.Future<void> submitRating(
+    String? orderId,
+    String? productId,
+    int? rating, {
+    List<String>? reviewImageUrls,
+    String? reviewText,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #submitRating,
+              [orderId, productId, rating],
+              {#reviewImageUrls: reviewImageUrls, #reviewText: reviewText},
+            ),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> submitRatingAtomic(
+    String? orderId,
+    String? productId,
+    int? rating, {
+    List<_i5.Uint8List>? reviewImages,
+    String? reviewText,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #submitRatingAtomic,
+              [orderId, productId, rating],
+              {#reviewImages: reviewImages, #reviewText: reviewText},
+            ),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> toggleFavorite(String? userId, String? productId) =>
+      (super.noSuchMethod(
+            Invocation.method(#toggleFavorite, [userId, productId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> updateProduct(
+    String? productId,
+    Map<String, dynamic>? data,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateProduct, [productId, data]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<List<String>> uploadImages(
+    List<_i5.Uint8List>? images,
+    String? productId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#uploadImages, [images, productId]),
+            returnValue: _i3.Future<List<String>>.value(<String>[]),
+            returnValueForMissingStub: _i3.Future<List<String>>.value(
+              <String>[],
             ),
           )
-          as T);
+          as _i3.Future<List<String>>);
+
+  @override
+  _i3.Future<String?> uploadProductVideo(
+    _i8.XFile? videoFile,
+    String? sellerId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#uploadProductVideo, [videoFile, sellerId]),
+            returnValue: _i3.Future<String?>.value(),
+            returnValueForMissingStub: _i3.Future<String?>.value(),
+          )
+          as _i3.Future<String?>);
+
+  @override
+  _i3.Future<List<String>> uploadReviewImages(
+    List<_i5.Uint8List>? images,
+    String? userId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#uploadReviewImages, [images, userId]),
+            returnValue: _i3.Future<List<String>>.value(<String>[]),
+            returnValueForMissingStub: _i3.Future<List<String>>.value(
+              <String>[],
+            ),
+          )
+          as _i3.Future<List<String>>);
+
+  @override
+  _i3.Stream<Set<String>> watchFavorites(String? userId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchFavorites, [userId]),
+            returnValue: _i3.Stream<Set<String>>.empty(),
+            returnValueForMissingStub: _i3.Stream<Set<String>>.empty(),
+          )
+          as _i3.Stream<Set<String>>);
+
+  @override
+  _i3.Stream<int> watchUnansweredQuestionsCount(String? sellerId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchUnansweredQuestionsCount, [sellerId]),
+            returnValue: _i3.Stream<int>.empty(),
+            returnValueForMissingStub: _i3.Stream<int>.empty(),
+          )
+          as _i3.Stream<int>);
 }
 
 /// A class which mocks [ConfigService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockConfigService extends _i1.Mock implements _i7.ConfigService {
-  @override
-  String get algoliaAppId =>
-      (super.noSuchMethod(
-            Invocation.getter(#algoliaAppId),
-            returnValue: _i6.dummyValue<String>(
-              this,
-              Invocation.getter(#algoliaAppId),
-            ),
-            returnValueForMissingStub: _i6.dummyValue<String>(
-              this,
-              Invocation.getter(#algoliaAppId),
-            ),
-          )
-          as String);
-
-  @override
-  String get algoliaSearchApiKey =>
-      (super.noSuchMethod(
-            Invocation.getter(#algoliaSearchApiKey),
-            returnValue: _i6.dummyValue<String>(
-              this,
-              Invocation.getter(#algoliaSearchApiKey),
-            ),
-            returnValueForMissingStub: _i6.dummyValue<String>(
-              this,
-              Invocation.getter(#algoliaSearchApiKey),
-            ),
-          )
-          as String);
-
+class MockConfigService extends _i1.Mock implements _i9.ConfigService {
   @override
   String get geoapifyKey =>
       (super.noSuchMethod(
@@ -337,11 +403,11 @@ class MockConfigService extends _i1.Mock implements _i7.ConfigService {
           as String);
 
   @override
-  _i5.Future<void> initialize({bool? skipFetch = false}) =>
+  _i3.Future<void> initialize({bool? skipFetch = false}) =>
       (super.noSuchMethod(
             Invocation.method(#initialize, [], {#skipFetch: skipFetch}),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i3.Future<void>);
 }

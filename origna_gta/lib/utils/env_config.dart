@@ -2,15 +2,14 @@
 /// =====================================================
 ///
 /// WHAT'S EMULATED (Local):
-/// - Firebase Auth (port 9099)
-/// - Firestore (port 8080)
-/// - Firebase Functions (port 5001)
-/// - Firebase Storage (port 9199)
+/// - OrignaBase Auth
+/// - OrignaBase Database
+/// - OrignaBase Handlers
+/// - OrignaBase Storage
 ///
 /// WHAT'S REAL (Even in Emulator Mode):
 /// - Cloudflare R2 → Uses emulator/ folder prefix
 /// - Stripe → Uses test keys (sk_test_*)
-/// - Algolia → Uses products_emulator index
 /// - All other external APIs
 ///
 /// USAGE:
@@ -24,10 +23,34 @@ import 'package:flutter/foundation.dart';
 
 /// Environment enumeration
 enum AppEnvironment {
-  emulator,   // Local development with Firebase emulators
-  dev,        // Development Firebase project
-  staging,    // Staging Firebase project
-  production, // Production Firebase project
+  emulator, // Local development against OrignaBase/local services
+  dev, // Development environment
+  staging, // Staging environment
+  production, // Production environment
+}
+
+String _baseUrlForEnvironment(AppEnvironment environment) {
+  switch (environment) {
+    case AppEnvironment.emulator:
+      return 'http://localhost:5001';
+    case AppEnvironment.dev:
+      return 'https://orignagta-dev.web.app';
+    case AppEnvironment.staging:
+      return 'https://orignagta-staging.web.app';
+    case AppEnvironment.production:
+      return 'https://orignagta.ca';
+  }
+}
+
+String _orignabaseUrlForEnvironment(AppEnvironment environment) {
+  switch (environment) {
+    case AppEnvironment.emulator:
+    case AppEnvironment.dev:
+      return 'http://localhost:8080';
+    case AppEnvironment.staging:
+    case AppEnvironment.production:
+      return 'http://orignabase:8080';
+  }
 }
 
 /// Environment configuration class
@@ -37,23 +60,36 @@ class EnvConfig {
   factory EnvConfig() => _instance;
   EnvConfig._internal();
 
+  static String baseUrlFor(AppEnvironment environment) =>
+      _baseUrlForEnvironment(environment);
+
+  static String orignabaseUrlFor(AppEnvironment environment) =>
+      _orignabaseUrlForEnvironment(environment);
+
   /// Get current environment from compile-time constant
   static const String _envString = String.fromEnvironment(
     'ENVIRONMENT',
     defaultValue: 'production',
   );
-  
-  /// Whether to use Firebase emulators
+
+  /// Whether to use local OrignaBase services
   static const bool _useEmulators = bool.fromEnvironment(
     'USE_EMULATORS',
     defaultValue: false,
+  );
+
+  static const String _orignabaseUrlOverride = String.fromEnvironment(
+    'ORIGNABASE_URL',
+    defaultValue: '',
   );
 
   /// Cached environment — resolved once at construction time, never re-evaluated.
   late final AppEnvironment _cachedEnvironment = _resolveEnvironment();
 
   AppEnvironment _resolveEnvironment() {
-    if (_envString == 'emulator' || _useEmulators) return AppEnvironment.emulator;
+    if (_envString == 'emulator' || _useEmulators) {
+      return AppEnvironment.emulator;
+    }
     if (_envString == 'dev') return AppEnvironment.dev;
     if (_envString == 'staging') return AppEnvironment.staging;
     return AppEnvironment.production;
@@ -69,24 +105,12 @@ class EnvConfig {
   bool get isProduction => environment == AppEnvironment.production;
 
   /// Get the base URL for the current environment
-  String get baseUrl {
-    switch (environment) {
-      case AppEnvironment.emulator:
-        return 'http://localhost:5001';
-      case AppEnvironment.dev:
-        return 'https://orignagta-dev.web.app';
-      case AppEnvironment.staging:
-        return 'https://orignagta-staging.web.app';
-      case AppEnvironment.production:
-        return 'https://orignagta.ca';
-    }
-  }
+  String get baseUrl => _baseUrlForEnvironment(environment);
 
   /// Whether we are running in an integration test environment
   bool get isTest => const bool.fromEnvironment('IS_TEST', defaultValue: false);
 
-  /// Whether to connect to Firebase emulators
-  /// In web, also check localhost detection
+  /// Whether to connect to local OrignaBase services.
   bool get shouldUseEmulators {
     if (_useEmulators) return true;
     if (environment == AppEnvironment.emulator) return true;
@@ -109,13 +133,15 @@ class EnvConfig {
     AppEnvironment.production => 'users',
   };
 
-  /// Algolia index name based on environment
-  String get algoliaIndexName => switch (environment) {
-    AppEnvironment.emulator => 'products_emulator',
-    AppEnvironment.dev => 'products_dev',
-    AppEnvironment.staging => 'products_staging',
-    AppEnvironment.production => 'products',
-  };
+  /// OrignaBase API URL per environment.
+  /// dev -> localhost, staging/prod -> shared OrignaBase host.
+  String get orignabaseUrl {
+    if (_orignabaseUrlOverride.isNotEmpty) {
+      return _orignabaseUrlOverride;
+    }
+
+    return orignabaseUrlFor(environment);
+  }
 
   /// Get environment display name
   String get displayName {
@@ -133,15 +159,25 @@ class EnvConfig {
 
   /// Print environment info (for debugging)
   void printInfo() {
-    debugPrint('╔════════════════════════════════════════════════════════════╗');
-    debugPrint('║ 🔧 ENVIRONMENT CONFIGURATION                               ║');
-    debugPrint('╠════════════════════════════════════════════════════════════╣');
+    debugPrint(
+      '╔════════════════════════════════════════════════════════════╗',
+    );
+    debugPrint(
+      '║ 🔧 ENVIRONMENT CONFIGURATION                               ║',
+    );
+    debugPrint(
+      '╠════════════════════════════════════════════════════════════╣',
+    );
     debugPrint('║ Environment: ${displayName.padRight(43)}║');
-    debugPrint('║ Use Emulators: ${shouldUseEmulators.toString().padRight(41)}║');
+    debugPrint(
+      '║ Use Emulators: ${shouldUseEmulators.toString().padRight(41)}║',
+    );
     debugPrint('║ R2 Products: ${r2ProductsFolder.padRight(43)}║');
-    debugPrint('║ Algolia Index: ${algoliaIndexName.padRight(41)}║');
+    debugPrint('║ OrignaBase URL: ${orignabaseUrl.padRight(40)}║');
     debugPrint('║ Is Debug Mode: ${(!kReleaseMode).toString().padRight(41)}║');
-    debugPrint('╚════════════════════════════════════════════════════════════╝');
+    debugPrint(
+      '╚════════════════════════════════════════════════════════════╝',
+    );
   }
 }
 

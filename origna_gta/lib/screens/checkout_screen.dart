@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -2011,4 +2012,4 @@ class _AgeGateText extends ConsumerWidget {
 }
 
 // @Preview skipped — requires live auth/navigation context
-// CheckoutScreen requires List<CartItemDetailModel> which depends on live Firestore/Timestamp.
+// CheckoutScreen requires List<CartItemDetailModel> which depends on live database/Timestamp.

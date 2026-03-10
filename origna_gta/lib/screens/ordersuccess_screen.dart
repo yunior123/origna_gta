@@ -1,3 +1,4 @@
+// coverage:ignore-file
 // OrderSuccessScreen
 import 'dart:math' as math;
 

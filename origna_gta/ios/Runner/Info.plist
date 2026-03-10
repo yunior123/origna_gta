@@ -71,8 +71,6 @@
 		<array>
 			<string>_dartobservatory._tcp</string>
 		</array>
-		<key>FirebaseAppDelegateProxyEnabled</key>
-		<false/>
 		<key>NSFaceIDUsageDescription</key>
 		<string>OrignaGTA needs biometric access to confirm high-value transactions</string>
 		<key>CFBundleURLTypes</key>

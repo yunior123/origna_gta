@@ -32,13 +32,6 @@ dependencies:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
-  firebase_core: ^4.4.0
-  cloud_firestore: ^6.1.2
-  firebase_analytics: ^12.1.2
-  firebase_app_check: ^0.4.1+5
-
-  firebase_auth: ^6.1.4
-  firebase_storage: ^13.0.6
 
   cached_network_image: ^3.4.1 
   shimmer: ^3.0.0 
@@ -55,10 +48,7 @@ dependencies:
   qr_flutter: ^4.1.0
   cloudflare_r2: ^0.0.14
   cloudflare_r2_uploader: ^1.0.0
-  cloud_functions: ^6.0.6
   url_launcher: ^6.3.2
-  firebase_remote_config: ^6.1.4
-  firebase_messaging: ^16.1.1
   app_links: ^6.4.0
   image: ^4.7.2
   sentry_flutter: ^9.10.0
@@ -68,8 +58,6 @@ dependencies:
   collection: ^1.19.0
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.7
-  algolia_helper_flutter: ^1.6.0
-  algoliasearch: ^1.1.1
   universal_io: ^2.2.2
   shared_preferences: ^2.3.5
 
@@ -85,7 +73,10 @@ dependencies:
   video_player: ^2.11.0
   chewie: ^1.13.0
   cross_file: ^0.3.5+2
-  fake_cloud_firestore: ^4.0.1
+
+  # OrignaBase — Rust BaaS (Firebase replacement, gradual migration)
+  orignabase:
+    path: '../../orignabase/sdks/flutter/orignabase'
 
 
 dev_dependencies:

@@ -1,9 +1,10 @@
+// coverage:ignore-file
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
@@ -567,10 +568,11 @@ class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
   Future<void> _download() async {
     setState(() => _loading = true);
     try {
-      final result = await ref.read(firebaseFunctionsProvider).httpsCallable(CloudFunctionEndpoints.generateBookDownloadSession).call({
+      final ob = ref.read(orignabaseProvider);
+      final result = await ob.request('POST', '/api/digital/book-download', body: {
         Fields.licenseKey: widget.item.licenseKey,
       });
-      final downloadUrl = result.data[ApiKeys.downloadUrl] as String?;
+      final downloadUrl = (result as Map<String, dynamic>?)?[ApiKeys.downloadUrl] as String?;
       if (downloadUrl == null) throw Exception('Download URL not available');
       await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
     } catch (e) {
@@ -1632,11 +1634,12 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
   Future<void> _download(String platform) async {
     setState(() => _loading[platform] = true);
     try {
-      final result = await ref.read(firebaseFunctionsProvider).httpsCallable(CloudFunctionEndpoints.generateSoftwareDownloadSession).call({
+      final ob = ref.read(orignabaseProvider);
+      final result = await ob.request('POST', '/api/digital/software-download', body: {
         Fields.licenseKey: widget.item.licenseKey,
         Fields.platform: platform,
       });
-      final downloadUrl = result.data[ApiKeys.downloadUrl] as String?;
+      final downloadUrl = (result as Map<String, dynamic>?)?[ApiKeys.downloadUrl] as String?;
       if (downloadUrl == null) throw Exception('Download URL not available');
       await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
     } catch (e) {

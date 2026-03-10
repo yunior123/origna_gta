@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

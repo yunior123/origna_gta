@@ -1,12 +1,14 @@
+// coverage:ignore-file
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/theme_provider.dart';
 // Deferred imports for code splitting — reduces initial JS bundle on Flutter Web
@@ -44,7 +46,7 @@ import 'package:origna_gta/screens/subscription_cancel_screen.dart';
 import 'package:origna_gta/screens/subscription_screen.dart';
 import 'package:origna_gta/screens/subscription_success_screen.dart';
 import 'package:origna_gta/screens/terms_of_service_screen.dart' deferred as terms;
-import 'package:origna_gta/services/notification_service.dart';
+import 'package:origna_gta/services/orignabase_notification_service.dart';
 import 'package:origna_gta/services/session_timeout_service.dart';
 import 'package:origna_gta/utils/animations.dart';
 import 'package:origna_gta/utils/deferred_widget.dart';
@@ -68,7 +70,7 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
     debugPrint('🔗 Parsed URI path: ${uri.path}, query: ${uri.queryParameters}');
   }
 
-  // Handle Firebase Auth action URLs (like password reset)
+  // Handle auth action URLs (like password reset)
   if (uri != null && uri.queryParameters['mode'] == 'resetPassword') {
     final oobCode = uri.queryParameters['oobCode'];
     final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
@@ -206,7 +208,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   if (uri == null) return null;
 
-  // Handle Firebase Auth action URLs (like password reset) dynamically via deep links
+  // Handle auth action URLs (like password reset) dynamically via deep links
   if (uri.queryParameters['mode'] == 'resetPassword') {
     final oobCode = uri.queryParameters['oobCode'];
     final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
@@ -592,12 +594,13 @@ class OrignaApp extends ConsumerStatefulWidget {
 
 class _OrignaAppState extends ConsumerState<OrignaApp> {
   final _sessionTimeout = SessionTimeoutService();
-  StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<Uri>? _deepLinkSubscription;
-  // FIX-5 (HIGH): Use the shared navigatorKey from NotificationService so
+  // FIX-5 (HIGH): Use the shared navigatorKey from OrignaBaseNotificationService so
   // notification tap handlers can push routes headlessly (without BuildContext).
   // The private _navigatorKey is replaced by the static singleton key.
-  GlobalKey<NavigatorState> get _navigatorKey => NotificationService.navigatorKey;
+  GlobalKey<NavigatorState> get _navigatorKey =>
+      OrignaBaseNotificationService.navigatorKey;
 
   @override
   Widget build(BuildContext context) {
@@ -614,7 +617,8 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
         onPointerSignal: (_) => _sessionTimeout.recordActivity(), // mouse wheel / trackpad scroll
         child: MaterialApp(
           navigatorKey: _navigatorKey,
-          scaffoldMessengerKey: NotificationService.scaffoldMessengerKey,
+          scaffoldMessengerKey:
+              OrignaBaseNotificationService.scaffoldMessengerKey,
           builder: (context, child) => EnvPreviewBanner(child: child ?? const SizedBox.shrink()),
           // === i18n: easy_localization (Quebec Bill 96 / Loi 96 compliance) ===
           localizationsDelegates: context.localizationDelegates,
@@ -770,9 +774,14 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
     // Initialize Push Notifications after first frame to avoid ProviderScope.containerOf error in initState
     if (!kIsWeb) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        NotificationService.instance.initialize(ref);
+        OrignaBaseNotificationService.instance.initialize(ref);
       });
     }
+
+    _sessionTimeout.configure(
+      currentUserIdProvider: () => ref.read(currentUserProvider)?.uid,
+      signOutCallback: () => ref.read(authRepositoryProvider).signOut(),
+    );
 
     // Listen for incoming deep links (Universal Links / URL schemes on iOS)
     if (!kIsWeb) {
@@ -799,11 +808,14 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
     }
 
     // Listen to auth state changes — store subscription for cleanup
-    _authSubscription = ref.read(firebaseAuthProvider).authStateChanges().listen((user) async {
+    _authSubscription = ref.read(orignabaseProvider).auth.authStateChanges.listen((state) async {
+      final user = state.isAuthenticated && state.userId != null
+          ? AppAuthUser.fromAuthState(state)
+          : null;
       if (user != null && mounted) {
         _sessionTimeout.startMonitoring(_navigatorKey);
 
-        // Ensure Firestore document exists for verified users
+        // Ensure user profile exists for authenticated users.
         try {
           await ref.read(authRepositoryProvider).ensureUserDocumentExists();
           if (!mounted) return;

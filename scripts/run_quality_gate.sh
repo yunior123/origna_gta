@@ -510,6 +510,34 @@ if pct + 1e-9 < threshold:
 PY
 }
 
+resolve_playwright_node() {
+  local active_node=""
+  local active_major=""
+  local candidate=""
+
+  if active_node="$(command -v node 2>/dev/null)"; then
+    active_major="$("$active_node" -p "process.versions.node.split('.')[0]" 2>/dev/null || true)"
+    if [[ "$active_major" == "22" ]]; then
+      echo "$active_node"
+      return 0
+    fi
+  fi
+
+  for candidate in "$HOME"/.nvm/versions/node/v22*/bin/node; do
+    if [[ -x "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  if [[ -n "$active_node" ]]; then
+    echo "$active_node"
+    return 0
+  fi
+
+  return 1
+}
+
 check_backend_incremental_threshold() {
   local baseline="$1"
   local min_delta="$2"
@@ -840,8 +868,15 @@ if [[ "$RUN_E2E" == true ]]; then
           FAILURES=$((FAILURES + 1))
         else
           rm -rf coverage-playwright
+          PLAYWRIGHT_NODE="$(resolve_playwright_node || true)"
+          if [[ -z "$PLAYWRIGHT_NODE" ]]; then
+            echo "Unable to find a usable Node.js binary for Playwright coverage."
+            FAILURES=$((FAILURES + 1))
+            popd >/dev/null || exit 1
+            continue
+          fi
           PW_COV_CMD=(
-            npx --yes c8
+            "$PLAYWRIGHT_NODE" ./node_modules/c8/bin/c8.js
             --all
             --reporter=lcovonly
             --reporter=text-summary
@@ -851,7 +886,8 @@ if [[ "$RUN_E2E" == true ]]; then
             PW_COV_CMD+=(--include="$cov_include")
           done
           PW_COV_CMD+=(
-            npx playwright test
+            env E2E_SKIP_GLOBAL_SETUP=true
+            "$PLAYWRIGHT_NODE" ./node_modules/playwright/cli.js test
             "${PW_COV_TARGETS[@]}"
             --config="$E2E_CONFIG"
             --project="$E2E_PROJECT"
@@ -859,6 +895,7 @@ if [[ "$RUN_E2E" == true ]]; then
             --fail-on-flaky-tests
           )
 
+          echo "Using Node for Playwright coverage: $PLAYWRIGHT_NODE"
           echo "Running Playwright coverage targets: ${PW_COV_TARGETS[*]}"
           set +e
           run_with_optional_timeout "$PLAYWRIGHT_COVERAGE_TIMEOUT_SECONDS" "${PW_COV_CMD[@]}"

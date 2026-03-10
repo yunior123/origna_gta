@@ -1,25 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
+import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/core/repositories/auth_repository.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:origna_gta/utils/utils.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<FirebaseAuth>()])
-import 'login_screen_test.mocks.dart';
+class FakeAuthRepository implements AuthRepository {
+  @override
+  Future<void> confirmPasswordReset(String code, String newPassword) async {}
+
+  @override
+  Future<void> deleteAccount() async {}
+
+  @override
+  Future<void> ensureUserDocumentExists() async {}
+
+  @override
+  Future<bool> isEmailVerified() async => false;
+
+  @override
+  Future<void> registerWithEmail(
+    String email,
+    String password,
+    String name, {
+    bool marketingOptIn = false,
+  }) async {}
+
+  @override
+  Future<void> sendEmailVerification() async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<void> signInWithApple() async {}
+
+  @override
+  Future<void> signInWithEmail(String email, String password) async {}
+
+  @override
+  Future<void> signInWithGoogle() async {}
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<bool> validateCurrentUser() async => true;
+
+  @override
+  Stream<UserModel?> watchProfile(String userId) => const Stream.empty();
+}
 
 void main() {
   setUpAll(() {
     initTestMocks();
   });
-  late MockAuthRepository mockAuthRepo;
-  late MockFirebaseAuth mockAuth;
+  late FakeAuthRepository fakeAuthRepo;
 
   setUp(() {
-    mockAuthRepo = MockAuthRepository();
-    mockAuth = MockFirebaseAuth();
+    fakeAuthRepo = FakeAuthRepository();
   });
 
   group('LoginScreen Smoke Test', () {
@@ -27,8 +67,7 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: [
-            authRepositoryProvider.overrideWithValue(mockAuthRepo),
-            firebaseAuthProvider.overrideWithValue(mockAuth),
+            authRepositoryProvider.overrideWithValue(fakeAuthRepo),
           ],
           child: const LoginScreen(),
         ),
@@ -51,8 +90,7 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: [
-            authRepositoryProvider.overrideWithValue(mockAuthRepo),
-            firebaseAuthProvider.overrideWithValue(mockAuth),
+            authRepositoryProvider.overrideWithValue(fakeAuthRepo),
           ],
           child: const LoginScreen(),
         ),

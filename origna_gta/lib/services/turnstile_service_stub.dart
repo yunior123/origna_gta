@@ -1,4 +1,4 @@
-/// Non-web stub — mobile/desktop use Firebase App Check for attestation.
+/// Non-web stub — mobile/desktop do not request a Turnstile token.
 library;
 
 import 'dart:async';

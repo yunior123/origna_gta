@@ -5,13 +5,16 @@
 
 import 'dart:math';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/main_test.dart' as app;
+
+/// Lazily-initialized OrignaBase instance for integration tests.
+OrignaBase get _ob => OrignaBase.initialize(url: EnvConfig().orignabaseUrl);
 
 bool _appBootstrapped = false;
 bool _devSeedEnsured = false;
@@ -24,22 +27,15 @@ Future<void> ensureDevSeedData(
   _devSeedEnsured = true;
 
   await tester.runAsync(() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      debugPrint('⚠ ensureDevSeedData: no FirebaseAuth user; skipping');
+    final userId = _ob.auth.currentUserId;
+    if (userId == null) {
+      debugPrint('⚠ ensureDevSeedData: no authenticated user; skipping');
       return;
     }
 
-    final firestore = FirebaseFirestore.instance;
-
     try {
-      final products = await firestore
-          .collection(Collections.products)
-          .limit(1)
-          .get(const GetOptions(source: Source.server));
-      if (products.docs.isNotEmpty) {
-        // ok
-      } else {
+      final products = await _ob.collection(Collections.products).get();
+      if (products.isEmpty) {
         debugPrint(
           '⚠ ensureDevSeedData: no products found in DEV. Admin/Buyer demos may look empty.',
         );
@@ -48,19 +44,15 @@ Future<void> ensureDevSeedData(
       debugPrint('⚠ ensureDevSeedData: products query failed: $e');
     }
 
-    // Read-only checks: client writes to orders are typically blocked by rules.
-    // For demos (non-emulator DEV), seed via Admin SDK script if needed.
     try {
-      final favoritesRef = firestore
-          .collection(Collections.users)
-          .doc(user.uid)
-          .collection(Collections.favorites);
-      final existingFavs = await favoritesRef
+      final existingFavs = await _ob
+          .collection(Collections.favorites)
+          .where('userId', isEqualTo: userId)
           .limit(1)
-          .get(const GetOptions(source: Source.server));
-      if (existingFavs.docs.isEmpty) {
+          .get();
+      if (existingFavs.isEmpty) {
         debugPrint(
-          'ℹ️ ensureDevSeedData: favorites empty for ${signedInCredential?.email ?? user.uid} (ok, but demo may look empty).',
+          'ℹ️ ensureDevSeedData: favorites empty for ${signedInCredential?.email ?? userId} (ok, but demo may look empty).',
         );
       }
     } catch (e) {
@@ -68,11 +60,8 @@ Future<void> ensureDevSeedData(
     }
 
     try {
-      final ordersRef = firestore.collection(Collections.orders);
-      final existingOrders = await ordersRef
-          .limit(1)
-          .get(const GetOptions(source: Source.server));
-      if (existingOrders.docs.isEmpty) {
+      final existingOrders = await _ob.collection(Collections.orders).get();
+      if (existingOrders.isEmpty) {
         debugPrint(
           'ℹ️ ensureDevSeedData: orders collection appears empty (ok for tests, but Admin Orders tab may look empty).',
         );
@@ -155,7 +144,7 @@ class CaseTracker {
 
 // ─── CREDENTIALS ─────────────────────────────────────────────────────────────
 
-// Integration tests run against DEV Firebase (no emulators).
+// Integration tests run against DEV OrignaBase services (no local emulators).
 // Credentials MUST be provided via `--dart-define` or `--dart-define-from-file`.
 // Defaults are intentionally empty to avoid accidentally using real accounts.
 
@@ -184,7 +173,7 @@ void _assertDevIntegrationConfig() {
   const env = String.fromEnvironment('ENVIRONMENT', defaultValue: 'production');
   if (env != 'dev') {
     fail(
-      'Integration tests must run against DEV Firebase only. '
+      'Integration tests must run against DEV OrignaBase only. '
       'Provide --dart-define=ENVIRONMENT=dev (current ENVIRONMENT=$env).',
     );
   }
@@ -210,7 +199,7 @@ void _assertDevIntegrationConfig() {
 }
 
 String _resolvedSellerEmail() {
-  // DEV Firebase can legitimately have only an admin + buyer account.
+  // DEV may legitimately have only an admin + buyer account.
   // Allow seller flows to reuse the admin account when seller creds aren't set.
   return sellerEmail.isNotEmpty ? sellerEmail : adminEmail;
 }
@@ -256,28 +245,27 @@ final adminCredentialCandidates = <Credential>[
   ),
 ];
 
-Future<bool> _waitForFirebaseAuthSignedIn(
+Future<bool> _waitForAuthSignedIn(
   WidgetTester tester, {
   Duration timeout = const Duration(seconds: 12),
 }) async {
-  if (FirebaseAuth.instance.currentUser != null) return true;
+  if (_ob.auth.currentUserId != null) return true;
 
   bool signedIn = false;
   await tester.runAsync(() async {
     try {
-      await FirebaseAuth.instance
-          .authStateChanges()
-          .firstWhere((user) => user != null)
+      await _ob.auth.authStateChanges
+          .firstWhere((state) => state.isAuthenticated)
           .timeout(timeout);
       signedIn = true;
     } catch (_) {
-      signedIn = FirebaseAuth.instance.currentUser != null;
+      signedIn = _ob.auth.currentUserId != null;
     }
   });
 
   // One more pump to let providers/UI react.
   await tester.pump(const Duration(milliseconds: 250));
-  return signedIn || FirebaseAuth.instance.currentUser != null;
+  return signedIn || _ob.auth.currentUserId != null;
 }
 
 // ─── PUMP HELPERS ────────────────────────────────────────────────────────────
@@ -293,7 +281,7 @@ Future<void> pumpFor(
   }
 }
 
-/// Wait for network / Firebase operations.
+/// Wait for network / backend operations.
 Future<void> pumpWait(WidgetTester tester, {int seconds = 3}) async {
   debugPrint('⏱️  pumpWait START: ${seconds}s');
   final iterations = seconds * 2;
@@ -489,10 +477,10 @@ Future<bool> loginWith(
   debugPrint('  🔘 Login button found, tapping...');
 
   await tester.tap(loginButton.first, warnIfMissed: false);
-  debugPrint('  ⏳ Waiting for FirebaseAuth signed-in...');
+  debugPrint('  ⏳ Waiting for auth signed-in...');
   await pumpWait(tester, seconds: 2);
 
-  final signedIn = await _waitForFirebaseAuthSignedIn(tester);
+  final signedIn = await _waitForAuthSignedIn(tester);
   if (signedIn) {
     debugPrint('✅ loginWith COMPLETE (signed in)');
     return true;
@@ -538,7 +526,7 @@ Future<Credential?> switchToAnyCredential(
     password: credential.password,
   );
 
-  final signedIn = await _waitForFirebaseAuthSignedIn(tester);
+  final signedIn = await _waitForAuthSignedIn(tester);
   if (!signedIn) {
     debugPrint(
       '❌ switchToAnyCredential: failed to establish auth session for ${credential.email}',
@@ -639,13 +627,12 @@ Future<bool> verifySignedOutState(WidgetTester tester) async {
   await navigateToTab(tester, Icons.home);
   await tester.pump(const Duration(milliseconds: 250));
 
-  // Best-effort: wait for the Firebase auth state to actually flip to signed-out.
+  // Best-effort: wait for the auth state to actually flip to signed-out.
   // On Flutter Web, propagation can be delayed.
   await tester.runAsync(() async {
     try {
-      await FirebaseAuth.instance
-          .authStateChanges()
-          .firstWhere((user) => user == null)
+      await _ob.auth.authStateChanges
+          .firstWhere((state) => !state.isAuthenticated)
           .timeout(const Duration(seconds: 12));
     } catch (_) {
       // Don't fail here — we'll fall back to UI + currentUser polling below.
@@ -664,7 +651,7 @@ Future<bool> verifySignedOutState(WidgetTester tester) async {
   }
 
   // Give auth/UI time to settle after sign-out.
-  // On Web/Chrome, Firebase Auth state propagation can take several seconds.
+  // On Web/Chrome, auth state propagation can take several seconds.
   const maxPolls = 80; // 80 * 250ms ~= 20s
   for (var i = 0; i < maxPolls; i++) {
     if (hasSignInPopupOrLoginForm()) {
@@ -672,17 +659,17 @@ Future<bool> verifySignedOutState(WidgetTester tester) async {
       return true;
     }
 
-    final user = FirebaseAuth.instance.currentUser;
+    final userId = _ob.auth.currentUserId;
     final signOutButton = find.byKey(const Key('profile_sign_out_button'));
-    if (user == null && signOutButton.evaluate().isEmpty) {
-      debugPrint('✅ verifySignedOutState: FirebaseAuth currentUser is null');
+    if (userId == null && signOutButton.evaluate().isEmpty) {
+      debugPrint('✅ verifySignedOutState: no authenticated user');
       return true;
     }
 
     if (i == 0 || (i + 1) % 16 == 0) {
       debugPrint(
         '⏳ verifySignedOutState: waiting... poll=${i + 1}/$maxPolls '
-        '(currentUser=${user != null}, signOutBtn=${signOutButton.evaluate().isNotEmpty})',
+        '(hasUser=${userId != null}, signOutBtn=${signOutButton.evaluate().isNotEmpty})',
       );
     }
 
@@ -705,7 +692,7 @@ Future<bool> verifySignedOutState(WidgetTester tester) async {
     );
   }
 
-  final stillSignedIn = FirebaseAuth.instance.currentUser != null;
+  final stillSignedIn = _ob.auth.currentUserId != null;
   final signOutButton = find.byKey(const Key('profile_sign_out_button'));
   if (!stillSignedIn && signOutButton.evaluate().isEmpty) {
     debugPrint(
@@ -1376,9 +1363,9 @@ Future<String?> tapPublishProduct(WidgetTester tester) async {
     );
   }
 
-  final currentUser = FirebaseAuth.instance.currentUser;
+  final currentUserId = _ob.auth.currentUserId;
   debugPrint(
-    'ℹ️ Publish auth context: uid=${currentUser?.uid} email=${currentUser?.email}',
+    'ℹ️ Publish auth context: uid=$currentUserId',
   );
 
   // DEBUG: Dump all TextFormField error states before publish

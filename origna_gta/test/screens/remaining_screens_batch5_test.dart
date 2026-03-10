@@ -6,18 +6,15 @@ import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/screens/privacy_policy_screen.dart';
 import 'package:origna_gta/screens/authwrapper_screen.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import '../test_utils.dart';
 
 import 'package:origna_gta/core/repositories/product_repository.dart';
 
-@GenerateNiceMocks([MockSpec<User>(), MockSpec<ProductRepository>()])
+@GenerateNiceMocks([MockSpec<ProductRepository>()])
 import 'remaining_screens_batch5_test.mocks.dart';
 
 void main() {
-  late MockUser mockUser;
-  late FakeFirebaseFirestore fakeFirestore;
+  late AppAuthUser mockUser;
   late MockProductRepository mockProductRepo;
 
   setUpAll(() {
@@ -25,10 +22,8 @@ void main() {
   });
 
   setUp(() {
-    mockUser = MockUser();
-    fakeFirestore = FakeFirebaseFirestore();
+    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
     mockProductRepo = MockProductRepository();
-    when(mockUser.uid).thenReturn('test_user_123');
   });
 
   Future<void> pumpResilient(WidgetTester tester) async {
@@ -47,7 +42,6 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            firestoreProvider.overrideWithValue(fakeFirestore),
             productRepositoryProvider.overrideWithValue(mockProductRepo),
           ],
           child: const ResetPasswordScreen(oobCode: 'test_code'),
@@ -62,7 +56,6 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            firestoreProvider.overrideWithValue(fakeFirestore),
             productRepositoryProvider.overrideWithValue(mockProductRepo),
           ],
           child: const TermsScreen(),
@@ -77,7 +70,6 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            firestoreProvider.overrideWithValue(fakeFirestore),
             productRepositoryProvider.overrideWithValue(mockProductRepo),
           ],
           child: const PrivacyPolicyScreen(),
@@ -93,18 +85,17 @@ void main() {
           searchQuery: anyNamed('searchQuery'),
           categoryId: anyNamed('categoryId'),
           subcategory: anyNamed('subcategory'),
-          lastDocument: anyNamed('lastDocument'),
+          lastDocumentId: anyNamed('lastDocumentId'),
           pageSize: anyNamed('pageSize'),
           sortOption: anyNamed('sortOption'),
           minPriceCents: anyNamed('minPriceCents'),
           maxPriceCents: anyNamed('maxPriceCents'),
-        )).thenAnswer((_) async => ProductQueryResult(products: [], lastDocument: null, hasMore: false));
+        )).thenAnswer((_) async => ProductQueryResult(products: [], lastDocumentId: null, hasMore: false));
 
         await tester.pumpWidget(
           TestWrapper(
             overrides: [
               currentUserProvider.overrideWithValue(null),
-              firestoreProvider.overrideWithValue(fakeFirestore),
               productRepositoryProvider.overrideWithValue(mockProductRepo),
               authStateProvider.overrideWith((ref) => Stream.value(null)),
             ],

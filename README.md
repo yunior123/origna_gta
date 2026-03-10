@@ -2,13 +2,14 @@
 
 This repo contains:
 - Flutter app: origna_gta
-- Firebase Functions backend: functions
+- Hosting/config artifacts at the repo root
+- Legacy backend/tests under `functions/` are not part of the active Flutter runtime path
 
 ## Architecture overview
 - MVVM in Flutter
-- Functions own payment/shipping validation
+- OrignaBase owns auth/data/service calls for the active app path
 - Idempotent payment and webhook processing
-- Product ratings are submitted via Cloud Function (server-validated)
+- Product ratings are submitted through server-side validation
 
 ## Security hardening (2026-01-31)
 **Audit Score**: 9.2/10 ✅ Production Ready | [Full Report](docs/SECURITY_AUDIT_2026_01_31.md)
@@ -54,19 +55,19 @@ This repo contains:
 sequenceDiagram
   participant U as User
   participant App as Flutter App
-  participant Fn as Functions
+  participant API as OrignaBase API
   participant Stripe as Stripe
-  participant DB as Firestore
+  participant DB as OrignaBase DB
 
   U->>App: Start checkout
-  App->>Fn: create_checkout_session (idempotencyKey)
-  Fn->>DB: Validate stock, reserve, create order
-  Fn->>Stripe: Create Checkout Session (manual capture, tax)
+  App->>API: create_checkout_session (idempotencyKey)
+  API->>DB: Validate stock, reserve, create order
+  API->>Stripe: Create Checkout Session (manual capture, tax)
   Stripe-->>App: Hosted checkout URL
-  Stripe-->>Fn: Webhooks (session completed / PI status)
-  Fn->>DB: Update order totals, taxes, status
-  App->>Fn: confirm_order_receipt
-  Fn->>Stripe: Capture payment
+  Stripe-->>API: Webhooks (session completed / PI status)
+  API->>DB: Update order totals, taxes, status
+  App->>API: confirm_order_receipt
+  API->>Stripe: Capture payment
 ```
 
 ## Quick commands
@@ -75,11 +76,11 @@ sequenceDiagram
 - Force full local strict gate (not recommended on 8GB RAM): ./scripts/run_quality_gate.sh --allow-local-heavy --backend-gate-mode strict
 - Strict quality gate (100% + real E2E): scripts/run_quality_gate.sh
 - Real browser E2E smoke: scripts/run_real_e2e_smoke.sh
-- Deploy Firestore rules: scripts/deploy_rules.sh
+- Deploy hosting/config as needed from repo root
 - Install pre-push hook (safe local checks by default): scripts/install_git_hooks.sh
-- Firestore indexes: firebase deploy --only firestore:indexes
 - Flutter analyze: (cd origna_gta) flutter analyze
 - Flutter tests: (cd origna_gta) flutter test
+- Playwright coverage target: (cd e2e) E2E_SKIP_GLOBAL_SETUP=true npx playwright test playwright_ui/coverage-gate.spec.ts --config=playwright.config.dev.ts --project=chromium
 - Functions tests: (cd functions) pytest
 - Configure Algolia index: Call `configure_algolia` Cloud Function (admin only)
 
@@ -157,6 +158,7 @@ Coverage-specific gate files:
 - `origna_gta/integration_test/coverage_gate_integration_test.dart`
 - `e2e/playwright_ui/coverage-gate.spec.ts`
 - `e2e/playwright_ui/coverage_gate.ts`
+- `e2e/playwright.config.dev.ts` skips `global-setup.ts` when `E2E_SKIP_GLOBAL_SETUP=true`, which keeps the coverage-only Playwright gate off the legacy Firebase-auth prewarm path.
 
 ## origna_flows/ — AI Flow Context Bundles
 

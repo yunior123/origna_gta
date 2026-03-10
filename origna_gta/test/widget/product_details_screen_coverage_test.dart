@@ -1,12 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as auth;
+// firebase_auth removed — using AppAuthUser from providers
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -15,7 +12,6 @@ import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/features/products/stock_notification_provider.dart';
 import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
-import 'package:origna_gta/features/subscription/subscription_state.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/models/models.dart' as models;
 import 'package:origna_gta/models/qa_model.dart';
@@ -25,28 +21,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_utils.dart';
 @GenerateNiceMocks([
-  MockSpec<auth.User>(),
-  MockSpec<auth.FirebaseAuth>(),
-  MockSpec<FirebaseFirestore>(),
   MockSpec<CartController>(),
   MockSpec<StockNotificationNotifier>(as: #MockStockNotificationNotifier),
 ])
 import 'product_details_screen_coverage_test.mocks.dart';
 
 void main() {
-  late MockUser mockUser;
-  late MockFirebaseAuth mockAuth;
+  late AppAuthUser mockUser;
 
   setUp(() {
-    mockUser = MockUser();
-    mockAuth = MockFirebaseAuth();
-
-    when(mockUser.uid).thenReturn('u1');
-    when(mockUser.email).thenReturn('test@example.com');
-    when(mockUser.emailVerified).thenReturn(true);
-
-    when(mockAuth.authStateChanges()).thenAnswer((_) => Stream.value(mockUser));
-    when(mockAuth.currentUser).thenReturn(mockUser);
+    mockUser = const AppAuthUser(uid: 'u1', email: 'test@example.com', emailVerified: true);
 
     SharedPreferences.setMockInitialValues({});
     initTestMocks();
@@ -82,17 +66,15 @@ void main() {
   );
 
   Widget createTestApp({required Widget child, List<Override> overrides = const []}) {
-    final fakeFirestore = FakeFirebaseFirestore();
     final mockCartController = MockCartController();
     
     return TestWrapper(
       overrides: [
-        firestoreProvider.overrideWithValue(fakeFirestore),
         cartControllerProvider.overrideWithValue(mockCartController),
-        firebaseAuthProvider.overrideWithValue(mockAuth),
         authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
         subscriptionStreamProvider.overrideWith((ref) => Stream.value(const SubscriptionInfo(status: 'active', isPremium: true))),
         qaListProvider('p1').overrideWith((ref) => Stream.value(const <QAModel>[])),
+        productRatingsProvider('p1').overrideWith((ref) => const Stream.empty()),
         ...overrides,
       ],
       child: child,

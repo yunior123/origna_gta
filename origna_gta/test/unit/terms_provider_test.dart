@@ -4,7 +4,7 @@ import 'package:origna_gta/features/terms/terms_provider.dart';
 
 void main() {
   group('TermsProvider Tests', () {
-    test('returns default terms when Firebase is not available', () async {
+    test('returns default terms when remote terms are not available', () async {
       final container = ProviderContainer();
       final terms = await container.read(termsProvider.future);
       expect(terms, contains('Welcome to OrignaGTA'));

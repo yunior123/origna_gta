@@ -1,3 +1,4 @@
+// coverage:ignore-file
 /// Shared preview theme helpers for Flutter Widget Previewer.
 /// All preview functions import this to ensure consistent look.
 library;
@@ -36,8 +37,8 @@ final ThemeData previewLightTheme = ThemeData.light().copyWith(
 // FIREBASE-SAFE PROVIDER SCOPE
 // ============================================================================
 
-/// Central ProviderScope for previews — overrides all Firebase-dependent
-/// providers so the widget previewer never calls Firebase.initializeApp().
+/// Central ProviderScope for previews — overrides backend-dependent
+/// providers so the widget previewer never performs live initialization.
 /// Pass extra [overrides] for screen-specific mocks (e.g. a logged-in user).
 Widget previewScope({required Widget child, List<Override> extraOverrides = const []}) {
   return ProviderScope(
@@ -608,7 +609,7 @@ Widget _localizationShell({
   );
 }
 
-/// No-op UserRepository — prevents Firebase calls in previews.
+/// No-op UserRepository — prevents backend calls in previews.
 class _PreviewUserRepository implements UserRepository {
   @override
   Future<String> addBuyerAddress(Address address) async => 'preview-addr-id';

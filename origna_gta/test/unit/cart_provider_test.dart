@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -69,8 +68,8 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           cartItemsProvider.overrideWith((ref) => Stream.value([
-            CartItemModel(cartItemId: 'i1', productId: 'p1', quantity: 2, createdAt: Timestamp.now()),
-            CartItemModel(cartItemId: 'i2', productId: 'p2', quantity: 3, createdAt: Timestamp.now()),
+            CartItemModel(cartItemId: 'i1', productId: 'p1', quantity: 2, createdAt: DateTime.now()),
+            CartItemModel(cartItemId: 'i2', productId: 'p2', quantity: 3, createdAt: DateTime.now()),
           ])),
         ],
       );

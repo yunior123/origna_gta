@@ -1,5 +1,20 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:orignabase/orignabase.dart' show FieldValue;
 import 'package:origna_gta/core/schema/schema_constants.dart';
+
+DateTime? _parseDt(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value);
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+  final dynamic maybeDate = value;
+  if (maybeDate is! String && maybeDate is! int) {
+    try {
+      final converted = maybeDate.toDate();
+      if (converted is DateTime) return converted;
+    } catch (_) {}
+  }
+  return null;
+}
 
 /// Documentation for QAModel
 class QAModel {
@@ -18,9 +33,9 @@ class QAModel {
       id: id,
       question: map[Fields.questionText] ?? map['question'] ?? '',
       authorId: map[Fields.askerId] ?? map['authorId'] ?? '',
-      createdAt: (map[Fields.createdAt] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDt(map[Fields.createdAt]) ?? DateTime.now(),
       answer: map[Fields.answerText] ?? map['answer'],
-      answeredAt: (map[Fields.answeredAt] as Timestamp?)?.toDate(),
+      answeredAt: _parseDt(map[Fields.answeredAt]),
       answeredBy: map[Fields.answeredBy],
     );
   }
@@ -42,7 +57,7 @@ class QAModel {
 
     if (answer != null) {
       map[Fields.answerText] = answer;
-      map[Fields.answeredAt] = answeredAt != null ? Timestamp.fromDate(answeredAt!) : FieldValue.serverTimestamp();
+      map[Fields.answeredAt] = answeredAt?.toIso8601String() ?? FieldValue.serverTimestamp();
       if (answeredBy != null) map[Fields.answeredBy] = answeredBy;
     }
 

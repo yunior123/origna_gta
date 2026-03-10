@@ -3,27 +3,36 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i12;
-import 'dart:ui' as _i15;
+import 'dart:async' as _i21;
+import 'dart:ui' as _i24;
 
-import 'package:firebase_core/firebase_core.dart' as _i2;
-import 'package:firebase_messaging/firebase_messaging.dart' as _i11;
-import 'package:firebase_messaging_platform_interface/firebase_messaging_platform_interface.dart'
-    as _i3;
-import 'package:flutter/foundation.dart' as _i5;
-import 'package:flutter/scheduler.dart' as _i8;
-import 'package:flutter/services.dart' as _i13;
-import 'package:flutter/src/material/banner.dart' as _i19;
-import 'package:flutter/src/material/scaffold.dart' as _i9;
-import 'package:flutter/src/material/snack_bar.dart' as _i17;
-import 'package:flutter/src/widgets/basic.dart' as _i18;
-import 'package:flutter/src/widgets/focus_manager.dart' as _i4;
-import 'package:flutter/src/widgets/framework.dart' as _i7;
-import 'package:flutter/src/widgets/restoration.dart' as _i16;
-import 'package:flutter/widgets.dart' as _i6;
+import 'package:flutter/foundation.dart' as _i4;
+import 'package:flutter/scheduler.dart' as _i7;
+import 'package:flutter/services.dart' as _i22;
+import 'package:flutter/src/material/banner.dart' as _i28;
+import 'package:flutter/src/material/scaffold.dart' as _i8;
+import 'package:flutter/src/material/snack_bar.dart' as _i26;
+import 'package:flutter/src/widgets/basic.dart' as _i27;
+import 'package:flutter/src/widgets/focus_manager.dart' as _i3;
+import 'package:flutter/src/widgets/framework.dart' as _i6;
+import 'package:flutter/src/widgets/restoration.dart' as _i25;
+import 'package:flutter/widgets.dart' as _i5;
+import 'package:http/http.dart' as _i9;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i14;
-import 'package:riverpod/src/internals.dart' as _i10;
+import 'package:mockito/src/dummies.dart' as _i23;
+import 'package:origna_gta/services/push_transport.dart' as _i2;
+import 'package:orignabase/src/auth.dart' as _i10;
+import 'package:orignabase/src/batch.dart' as _i20;
+import 'package:orignabase/src/client.dart' as _i29;
+import 'package:orignabase/src/collection.dart' as _i19;
+import 'package:orignabase/src/config.dart' as _i13;
+import 'package:orignabase/src/links.dart' as _i15;
+import 'package:orignabase/src/metrics.dart' as _i17;
+import 'package:orignabase/src/offline.dart' as _i12;
+import 'package:orignabase/src/presence.dart' as _i14;
+import 'package:orignabase/src/push.dart' as _i16;
+import 'package:orignabase/src/storage.dart' as _i11;
+import 'package:orignabase/src/vector.dart' as _i18;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -40,199 +49,195 @@ import 'package:riverpod/src/internals.dart' as _i10;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeFirebaseApp_0 extends _i1.SmartFake implements _i2.FirebaseApp {
-  _FakeFirebaseApp_0(Object parent, Invocation parentInvocation)
+class _FakeAppNotificationSettings_0 extends _i1.SmartFake
+    implements _i2.AppNotificationSettings {
+  _FakeAppNotificationSettings_0(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeNotificationSettings_1 extends _i1.SmartFake
-    implements _i3.NotificationSettings {
-  _FakeNotificationSettings_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeFocusNode_2 extends _i1.SmartFake implements _i4.FocusNode {
-  _FakeFocusNode_2(Object parent, Invocation parentInvocation)
+class _FakeFocusNode_1 extends _i1.SmartFake implements _i3.FocusNode {
+  _FakeFocusNode_1(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 
   @override
-  String toString({_i5.DiagnosticLevel? minLevel = _i5.DiagnosticLevel.info}) =>
+  String toString({_i4.DiagnosticLevel? minLevel = _i4.DiagnosticLevel.info}) =>
       super.toString();
 }
 
-class _FakeValueNotifier_3<T> extends _i1.SmartFake
-    implements _i5.ValueNotifier<T> {
-  _FakeValueNotifier_3(Object parent, Invocation parentInvocation)
+class _FakeValueNotifier_2<T> extends _i1.SmartFake
+    implements _i4.ValueNotifier<T> {
+  _FakeValueNotifier_2(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeNavigator_4 extends _i1.SmartFake implements _i6.Navigator {
-  _FakeNavigator_4(Object parent, Invocation parentInvocation)
+class _FakeNavigator_3 extends _i1.SmartFake implements _i5.Navigator {
+  _FakeNavigator_3(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 
   @override
-  String toString({_i5.DiagnosticLevel? minLevel = _i5.DiagnosticLevel.info}) =>
+  String toString({_i4.DiagnosticLevel? minLevel = _i4.DiagnosticLevel.info}) =>
       super.toString();
 }
 
-class _FakeBuildContext_5 extends _i1.SmartFake implements _i7.BuildContext {
-  _FakeBuildContext_5(Object parent, Invocation parentInvocation)
+class _FakeBuildContext_4 extends _i1.SmartFake implements _i6.BuildContext {
+  _FakeBuildContext_4(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeWidget_6 extends _i1.SmartFake implements _i7.Widget {
-  _FakeWidget_6(Object parent, Invocation parentInvocation)
+class _FakeWidget_5 extends _i1.SmartFake implements _i6.Widget {
+  _FakeWidget_5(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 
   @override
-  String toString({_i5.DiagnosticLevel? minLevel = _i5.DiagnosticLevel.info}) =>
+  String toString({_i4.DiagnosticLevel? minLevel = _i4.DiagnosticLevel.info}) =>
       super.toString();
 }
 
-class _FakeDiagnosticsNode_7 extends _i1.SmartFake
-    implements _i5.DiagnosticsNode {
-  _FakeDiagnosticsNode_7(Object parent, Invocation parentInvocation)
+class _FakeDiagnosticsNode_6 extends _i1.SmartFake
+    implements _i4.DiagnosticsNode {
+  _FakeDiagnosticsNode_6(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 
   @override
   String toString({
-    _i5.TextTreeConfiguration? parentConfiguration,
-    _i5.DiagnosticLevel? minLevel = _i5.DiagnosticLevel.info,
+    _i4.TextTreeConfiguration? parentConfiguration,
+    _i4.DiagnosticLevel? minLevel = _i4.DiagnosticLevel.info,
   }) => super.toString();
 }
 
-class _FakeTicker_8 extends _i1.SmartFake implements _i8.Ticker {
-  _FakeTicker_8(Object parent, Invocation parentInvocation)
+class _FakeTicker_7 extends _i1.SmartFake implements _i7.Ticker {
+  _FakeTicker_7(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 
   @override
   String toString({bool? debugIncludeStack = false}) => super.toString();
 }
 
-class _FakeScaffoldMessenger_9 extends _i1.SmartFake
-    implements _i9.ScaffoldMessenger {
-  _FakeScaffoldMessenger_9(Object parent, Invocation parentInvocation)
+class _FakeScaffoldMessenger_8 extends _i1.SmartFake
+    implements _i8.ScaffoldMessenger {
+  _FakeScaffoldMessenger_8(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 
   @override
-  String toString({_i5.DiagnosticLevel? minLevel = _i5.DiagnosticLevel.info}) =>
+  String toString({_i4.DiagnosticLevel? minLevel = _i4.DiagnosticLevel.info}) =>
       super.toString();
 }
 
-class _FakeScaffoldFeatureController_10<T extends _i7.Widget, U>
+class _FakeScaffoldFeatureController_9<T extends _i6.Widget, U>
     extends _i1.SmartFake
-    implements _i9.ScaffoldFeatureController<T, U> {
-  _FakeScaffoldFeatureController_10(Object parent, Invocation parentInvocation)
+    implements _i8.ScaffoldFeatureController<T, U> {
+  _FakeScaffoldFeatureController_9(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeNode_11 extends _i1.SmartFake implements _i10.Node {
-  _FakeNode_11(Object parent, Invocation parentInvocation)
+class _FakeClient_10 extends _i1.SmartFake implements _i9.Client {
+  _FakeClient_10(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-/// A class which mocks [FirebaseMessaging].
+class _FakeOrignaBaseAuth_11 extends _i1.SmartFake
+    implements _i10.OrignaBaseAuth {
+  _FakeOrignaBaseAuth_11(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOrignaBaseStorage_12 extends _i1.SmartFake
+    implements _i11.OrignaBaseStorage {
+  _FakeOrignaBaseStorage_12(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOfflineCache_13 extends _i1.SmartFake implements _i12.OfflineCache {
+  _FakeOfflineCache_13(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOrignaBaseConfig_14 extends _i1.SmartFake
+    implements _i13.OrignaBaseConfig {
+  _FakeOrignaBaseConfig_14(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOrignaBasePresence_15 extends _i1.SmartFake
+    implements _i14.OrignaBasePresence {
+  _FakeOrignaBasePresence_15(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOrignaBaseLinks_16 extends _i1.SmartFake
+    implements _i15.OrignaBaseLinks {
+  _FakeOrignaBaseLinks_16(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOrignaBasePush_17 extends _i1.SmartFake
+    implements _i16.OrignaBasePush {
+  _FakeOrignaBasePush_17(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOrignaBaseMetrics_18 extends _i1.SmartFake
+    implements _i17.OrignaBaseMetrics {
+  _FakeOrignaBaseMetrics_18(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeVectorSearch_19 extends _i1.SmartFake implements _i18.VectorSearch {
+  _FakeVectorSearch_19(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeCollectionRef_20 extends _i1.SmartFake
+    implements _i19.CollectionRef {
+  _FakeCollectionRef_20(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeWriteBatch_21 extends _i1.SmartFake implements _i20.WriteBatch {
+  _FakeWriteBatch_21(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakePushResult_22 extends _i1.SmartFake implements _i16.PushResult {
+  _FakePushResult_22(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+/// A class which mocks [PushMessagingClient].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockFirebaseMessaging extends _i1.Mock implements _i11.FirebaseMessaging {
-  MockFirebaseMessaging() {
-    _i1.throwOnMissingStub(this);
-  }
-
+class MockPushMessagingClient extends _i1.Mock
+    implements _i2.PushMessagingClient {
   @override
-  _i2.FirebaseApp get app =>
-      (super.noSuchMethod(
-            Invocation.getter(#app),
-            returnValue: _FakeFirebaseApp_0(this, Invocation.getter(#app)),
-          )
-          as _i2.FirebaseApp);
-
-  @override
-  bool get isAutoInitEnabled =>
-      (super.noSuchMethod(
-            Invocation.getter(#isAutoInitEnabled),
-            returnValue: false,
-          )
-          as bool);
-
-  @override
-  _i12.Stream<String> get onTokenRefresh =>
+  _i21.Stream<String> get onTokenRefresh =>
       (super.noSuchMethod(
             Invocation.getter(#onTokenRefresh),
-            returnValue: _i12.Stream<String>.empty(),
+            returnValue: _i21.Stream<String>.empty(),
+            returnValueForMissingStub: _i21.Stream<String>.empty(),
           )
-          as _i12.Stream<String>);
+          as _i21.Stream<String>);
 
   @override
-  set app(_i2.FirebaseApp? value) => super.noSuchMethod(
-    Invocation.setter(#app, value),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  Map<dynamic, dynamic> get pluginConstants =>
+  _i21.Future<String?> getToken() =>
       (super.noSuchMethod(
-            Invocation.getter(#pluginConstants),
-            returnValue: <dynamic, dynamic>{},
+            Invocation.method(#getToken, []),
+            returnValue: _i21.Future<String?>.value(),
+            returnValueForMissingStub: _i21.Future<String?>.value(),
           )
-          as Map<dynamic, dynamic>);
+          as _i21.Future<String?>);
 
   @override
-  _i12.Future<_i3.RemoteMessage?> getInitialMessage() =>
+  _i21.Future<_i2.AppRemoteMessage?> getInitialMessage() =>
       (super.noSuchMethod(
             Invocation.method(#getInitialMessage, []),
-            returnValue: _i12.Future<_i3.RemoteMessage?>.value(),
+            returnValue: _i21.Future<_i2.AppRemoteMessage?>.value(),
+            returnValueForMissingStub:
+                _i21.Future<_i2.AppRemoteMessage?>.value(),
           )
-          as _i12.Future<_i3.RemoteMessage?>);
+          as _i21.Future<_i2.AppRemoteMessage?>);
 
   @override
-  _i12.Future<void> deleteToken() =>
-      (super.noSuchMethod(
-            Invocation.method(#deleteToken, []),
-            returnValue: _i12.Future<void>.value(),
-            returnValueForMissingStub: _i12.Future<void>.value(),
-          )
-          as _i12.Future<void>);
-
-  @override
-  _i12.Future<String?> getAPNSToken() =>
-      (super.noSuchMethod(
-            Invocation.method(#getAPNSToken, []),
-            returnValue: _i12.Future<String?>.value(),
-          )
-          as _i12.Future<String?>);
-
-  @override
-  _i12.Future<String?> getToken({String? vapidKey}) =>
-      (super.noSuchMethod(
-            Invocation.method(#getToken, [], {#vapidKey: vapidKey}),
-            returnValue: _i12.Future<String?>.value(),
-          )
-          as _i12.Future<String?>);
-
-  @override
-  _i12.Future<bool> isSupported() =>
-      (super.noSuchMethod(
-            Invocation.method(#isSupported, []),
-            returnValue: _i12.Future<bool>.value(false),
-          )
-          as _i12.Future<bool>);
-
-  @override
-  _i12.Future<_i3.NotificationSettings> getNotificationSettings() =>
-      (super.noSuchMethod(
-            Invocation.method(#getNotificationSettings, []),
-            returnValue: _i12.Future<_i3.NotificationSettings>.value(
-              _FakeNotificationSettings_1(
-                this,
-                Invocation.method(#getNotificationSettings, []),
-              ),
-            ),
-          )
-          as _i12.Future<_i3.NotificationSettings>);
-
-  @override
-  _i12.Future<_i3.NotificationSettings> requestPermission({
+  _i21.Future<_i2.AppNotificationSettings> requestPermission({
     bool? alert = true,
     bool? announcement = false,
     bool? badge = true,
@@ -240,7 +245,6 @@ class MockFirebaseMessaging extends _i1.Mock implements _i11.FirebaseMessaging {
     bool? criticalAlert = false,
     bool? provisional = false,
     bool? sound = true,
-    bool? providesAppNotificationSettings = false,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#requestPermission, [], {
@@ -251,10 +255,9 @@ class MockFirebaseMessaging extends _i1.Mock implements _i11.FirebaseMessaging {
               #criticalAlert: criticalAlert,
               #provisional: provisional,
               #sound: sound,
-              #providesAppNotificationSettings: providesAppNotificationSettings,
             }),
-            returnValue: _i12.Future<_i3.NotificationSettings>.value(
-              _FakeNotificationSettings_1(
+            returnValue: _i21.Future<_i2.AppNotificationSettings>.value(
+              _FakeAppNotificationSettings_0(
                 this,
                 Invocation.method(#requestPermission, [], {
                   #alert: alert,
@@ -264,228 +267,99 @@ class MockFirebaseMessaging extends _i1.Mock implements _i11.FirebaseMessaging {
                   #criticalAlert: criticalAlert,
                   #provisional: provisional,
                   #sound: sound,
-                  #providesAppNotificationSettings:
-                      providesAppNotificationSettings,
                 }),
               ),
             ),
+            returnValueForMissingStub:
+                _i21.Future<_i2.AppNotificationSettings>.value(
+                  _FakeAppNotificationSettings_0(
+                    this,
+                    Invocation.method(#requestPermission, [], {
+                      #alert: alert,
+                      #announcement: announcement,
+                      #badge: badge,
+                      #carPlay: carPlay,
+                      #criticalAlert: criticalAlert,
+                      #provisional: provisional,
+                      #sound: sound,
+                    }),
+                  ),
+                ),
           )
-          as _i12.Future<_i3.NotificationSettings>);
-
-  @override
-  _i12.Future<void> setAutoInitEnabled(bool? enabled) =>
-      (super.noSuchMethod(
-            Invocation.method(#setAutoInitEnabled, [enabled]),
-            returnValue: _i12.Future<void>.value(),
-            returnValueForMissingStub: _i12.Future<void>.value(),
-          )
-          as _i12.Future<void>);
-
-  @override
-  _i12.Future<void> setDeliveryMetricsExportToBigQuery(bool? enabled) =>
-      (super.noSuchMethod(
-            Invocation.method(#setDeliveryMetricsExportToBigQuery, [enabled]),
-            returnValue: _i12.Future<void>.value(),
-            returnValueForMissingStub: _i12.Future<void>.value(),
-          )
-          as _i12.Future<void>);
-
-  @override
-  _i12.Future<void> setForegroundNotificationPresentationOptions({
-    bool? alert = false,
-    bool? badge = false,
-    bool? sound = false,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(
-              #setForegroundNotificationPresentationOptions,
-              [],
-              {#alert: alert, #badge: badge, #sound: sound},
-            ),
-            returnValue: _i12.Future<void>.value(),
-            returnValueForMissingStub: _i12.Future<void>.value(),
-          )
-          as _i12.Future<void>);
-
-  @override
-  _i12.Future<void> subscribeToTopic(String? topic) =>
-      (super.noSuchMethod(
-            Invocation.method(#subscribeToTopic, [topic]),
-            returnValue: _i12.Future<void>.value(),
-            returnValueForMissingStub: _i12.Future<void>.value(),
-          )
-          as _i12.Future<void>);
-
-  @override
-  _i12.Future<void> unsubscribeFromTopic(String? topic) =>
-      (super.noSuchMethod(
-            Invocation.method(#unsubscribeFromTopic, [topic]),
-            returnValue: _i12.Future<void>.value(),
-            returnValueForMissingStub: _i12.Future<void>.value(),
-          )
-          as _i12.Future<void>);
-}
-
-/// A class which mocks [NotificationSettings].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockNotificationSettings extends _i1.Mock
-    implements _i3.NotificationSettings {
-  MockNotificationSettings() {
-    _i1.throwOnMissingStub(this);
-  }
-
-  @override
-  _i3.AppleNotificationSetting get alert =>
-      (super.noSuchMethod(
-            Invocation.getter(#alert),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
-
-  @override
-  _i3.AppleNotificationSetting get announcement =>
-      (super.noSuchMethod(
-            Invocation.getter(#announcement),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
-
-  @override
-  _i3.AuthorizationStatus get authorizationStatus =>
-      (super.noSuchMethod(
-            Invocation.getter(#authorizationStatus),
-            returnValue: _i3.AuthorizationStatus.authorized,
-          )
-          as _i3.AuthorizationStatus);
-
-  @override
-  _i3.AppleNotificationSetting get timeSensitive =>
-      (super.noSuchMethod(
-            Invocation.getter(#timeSensitive),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
-
-  @override
-  _i3.AppleNotificationSetting get criticalAlert =>
-      (super.noSuchMethod(
-            Invocation.getter(#criticalAlert),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
-
-  @override
-  _i3.AppleNotificationSetting get badge =>
-      (super.noSuchMethod(
-            Invocation.getter(#badge),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
-
-  @override
-  _i3.AppleNotificationSetting get carPlay =>
-      (super.noSuchMethod(
-            Invocation.getter(#carPlay),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
-
-  @override
-  _i3.AppleNotificationSetting get lockScreen =>
-      (super.noSuchMethod(
-            Invocation.getter(#lockScreen),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
-
-  @override
-  _i3.AppleNotificationSetting get notificationCenter =>
-      (super.noSuchMethod(
-            Invocation.getter(#notificationCenter),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
-
-  @override
-  _i3.AppleShowPreviewSetting get showPreviews =>
-      (super.noSuchMethod(
-            Invocation.getter(#showPreviews),
-            returnValue: _i3.AppleShowPreviewSetting.always,
-          )
-          as _i3.AppleShowPreviewSetting);
-
-  @override
-  _i3.AppleNotificationSetting get sound =>
-      (super.noSuchMethod(
-            Invocation.getter(#sound),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
-
-  @override
-  _i3.AppleNotificationSetting get providesAppNotificationSettings =>
-      (super.noSuchMethod(
-            Invocation.getter(#providesAppNotificationSettings),
-            returnValue: _i3.AppleNotificationSetting.disabled,
-          )
-          as _i3.AppleNotificationSetting);
+          as _i21.Future<_i2.AppNotificationSettings>);
 }
 
 /// A class which mocks [NavigatorState].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
-  MockNavigatorState() {
-    _i1.throwOnMissingStub(this);
-  }
-
+class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
   @override
-  _i4.FocusNode get focusNode =>
+  _i3.FocusNode get focusNode =>
       (super.noSuchMethod(
             Invocation.getter(#focusNode),
-            returnValue: _FakeFocusNode_2(this, Invocation.getter(#focusNode)),
+            returnValue: _FakeFocusNode_1(this, Invocation.getter(#focusNode)),
+            returnValueForMissingStub: _FakeFocusNode_1(
+              this,
+              Invocation.getter(#focusNode),
+            ),
           )
-          as _i4.FocusNode);
+          as _i3.FocusNode);
 
   @override
   bool get userGestureInProgress =>
       (super.noSuchMethod(
             Invocation.getter(#userGestureInProgress),
             returnValue: false,
+            returnValueForMissingStub: false,
           )
           as bool);
 
   @override
-  _i5.ValueNotifier<bool> get userGestureInProgressNotifier =>
+  _i4.ValueNotifier<bool> get userGestureInProgressNotifier =>
       (super.noSuchMethod(
             Invocation.getter(#userGestureInProgressNotifier),
-            returnValue: _FakeValueNotifier_3<bool>(
+            returnValue: _FakeValueNotifier_2<bool>(
+              this,
+              Invocation.getter(#userGestureInProgressNotifier),
+            ),
+            returnValueForMissingStub: _FakeValueNotifier_2<bool>(
               this,
               Invocation.getter(#userGestureInProgressNotifier),
             ),
           )
-          as _i5.ValueNotifier<bool>);
+          as _i4.ValueNotifier<bool>);
 
   @override
-  _i6.Navigator get widget =>
+  _i5.Navigator get widget =>
       (super.noSuchMethod(
             Invocation.getter(#widget),
-            returnValue: _FakeNavigator_4(this, Invocation.getter(#widget)),
+            returnValue: _FakeNavigator_3(this, Invocation.getter(#widget)),
+            returnValueForMissingStub: _FakeNavigator_3(
+              this,
+              Invocation.getter(#widget),
+            ),
           )
-          as _i6.Navigator);
+          as _i5.Navigator);
 
   @override
-  _i7.BuildContext get context =>
+  _i6.BuildContext get context =>
       (super.noSuchMethod(
             Invocation.getter(#context),
-            returnValue: _FakeBuildContext_5(this, Invocation.getter(#context)),
+            returnValue: _FakeBuildContext_4(this, Invocation.getter(#context)),
+            returnValueForMissingStub: _FakeBuildContext_4(
+              this,
+              Invocation.getter(#context),
+            ),
           )
-          as _i7.BuildContext);
+          as _i6.BuildContext);
 
   @override
   bool get mounted =>
-      (super.noSuchMethod(Invocation.getter(#mounted), returnValue: false)
+      (super.noSuchMethod(
+            Invocation.getter(#mounted),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
           as bool);
 
   @override
@@ -493,6 +367,7 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
       (super.noSuchMethod(
             Invocation.getter(#restorePending),
             returnValue: false,
+            returnValueForMissingStub: false,
           )
           as bool);
 
@@ -503,14 +378,14 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
   );
 
   @override
-  void restoreState(_i13.RestorationBucket? oldBucket, bool? initialRestore) =>
+  void restoreState(_i22.RestorationBucket? oldBucket, bool? initialRestore) =>
       super.noSuchMethod(
         Invocation.method(#restoreState, [oldBucket, initialRestore]),
         returnValueForMissingStub: null,
       );
 
   @override
-  void didToggleBucket(_i13.RestorationBucket? oldBucket) => super.noSuchMethod(
+  void didToggleBucket(_i22.RestorationBucket? oldBucket) => super.noSuchMethod(
     Invocation.method(#didToggleBucket, [oldBucket]),
     returnValueForMissingStub: null,
   );
@@ -522,7 +397,7 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
   );
 
   @override
-  void didUpdateWidget(_i7.StatefulWidget? oldWidget) => super.noSuchMethod(
+  void didUpdateWidget(_i6.StatefulWidget? oldWidget) => super.noSuchMethod(
     Invocation.method(#didUpdateWidget, [oldWidget]),
     returnValueForMissingStub: null,
   );
@@ -546,15 +421,16 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
   );
 
   @override
-  _i12.Future<T?> pushNamed<T extends Object?>(
+  _i21.Future<T?> pushNamed<T extends Object?>(
     String? routeName, {
     Object? arguments,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#pushNamed, [routeName], {#arguments: arguments}),
-            returnValue: _i12.Future<T?>.value(),
+            returnValue: _i21.Future<T?>.value(),
+            returnValueForMissingStub: _i21.Future<T?>.value(),
           )
-          as _i12.Future<T?>);
+          as _i21.Future<T?>);
 
   @override
   String restorablePushNamed<T extends Object?>(
@@ -567,7 +443,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [routeName],
               {#arguments: arguments},
             ),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(
+                #restorablePushNamed,
+                [routeName],
+                {#arguments: arguments},
+              ),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushNamed,
@@ -579,7 +463,7 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
           as String);
 
   @override
-  _i12.Future<T?> pushReplacementNamed<T extends Object?, TO extends Object?>(
+  _i21.Future<T?> pushReplacementNamed<T extends Object?, TO extends Object?>(
     String? routeName, {
     TO? result,
     Object? arguments,
@@ -590,9 +474,10 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [routeName],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i12.Future<T?>.value(),
+            returnValue: _i21.Future<T?>.value(),
+            returnValueForMissingStub: _i21.Future<T?>.value(),
           )
-          as _i12.Future<T?>);
+          as _i21.Future<T?>);
 
   @override
   String restorablePushReplacementNamed<T extends Object?, TO extends Object?>(
@@ -606,7 +491,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [routeName],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(
+                #restorablePushReplacementNamed,
+                [routeName],
+                {#result: result, #arguments: arguments},
+              ),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushReplacementNamed,
@@ -618,7 +511,7 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
           as String);
 
   @override
-  _i12.Future<T?> popAndPushNamed<T extends Object?, TO extends Object?>(
+  _i21.Future<T?> popAndPushNamed<T extends Object?, TO extends Object?>(
     String? routeName, {
     TO? result,
     Object? arguments,
@@ -629,9 +522,10 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [routeName],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i12.Future<T?>.value(),
+            returnValue: _i21.Future<T?>.value(),
+            returnValueForMissingStub: _i21.Future<T?>.value(),
           )
-          as _i12.Future<T?>);
+          as _i21.Future<T?>);
 
   @override
   String restorablePopAndPushNamed<T extends Object?, TO extends Object?>(
@@ -645,7 +539,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [routeName],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(
+                #restorablePopAndPushNamed,
+                [routeName],
+                {#result: result, #arguments: arguments},
+              ),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePopAndPushNamed,
@@ -657,9 +559,9 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
           as String);
 
   @override
-  _i12.Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
+  _i21.Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
     String? newRouteName,
-    _i6.RoutePredicate? predicate, {
+    _i5.RoutePredicate? predicate, {
     Object? arguments,
   }) =>
       (super.noSuchMethod(
@@ -668,14 +570,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [newRouteName, predicate],
               {#arguments: arguments},
             ),
-            returnValue: _i12.Future<T?>.value(),
+            returnValue: _i21.Future<T?>.value(),
+            returnValueForMissingStub: _i21.Future<T?>.value(),
           )
-          as _i12.Future<T?>);
+          as _i21.Future<T?>);
 
   @override
   String restorablePushNamedAndRemoveUntil<T extends Object?>(
     String? newRouteName,
-    _i6.RoutePredicate? predicate, {
+    _i5.RoutePredicate? predicate, {
     Object? arguments,
   }) =>
       (super.noSuchMethod(
@@ -684,7 +587,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [newRouteName, predicate],
               {#arguments: arguments},
             ),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(
+                #restorablePushNamedAndRemoveUntil,
+                [newRouteName, predicate],
+                {#arguments: arguments},
+              ),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushNamedAndRemoveUntil,
@@ -696,16 +607,17 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
           as String);
 
   @override
-  _i12.Future<T?> push<T extends Object?>(_i6.Route<T>? route) =>
+  _i21.Future<T?> push<T extends Object?>(_i5.Route<T>? route) =>
       (super.noSuchMethod(
             Invocation.method(#push, [route]),
-            returnValue: _i12.Future<T?>.value(),
+            returnValue: _i21.Future<T?>.value(),
+            returnValueForMissingStub: _i21.Future<T?>.value(),
           )
-          as _i12.Future<T?>);
+          as _i21.Future<T?>);
 
   @override
   String restorablePush<T extends Object?>(
-    _i6.RestorableRouteBuilder<T>? routeBuilder, {
+    _i5.RestorableRouteBuilder<T>? routeBuilder, {
     Object? arguments,
   }) =>
       (super.noSuchMethod(
@@ -714,7 +626,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [routeBuilder],
               {#arguments: arguments},
             ),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(
+                #restorablePush,
+                [routeBuilder],
+                {#arguments: arguments},
+              ),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePush,
@@ -726,19 +646,20 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
           as String);
 
   @override
-  _i12.Future<T?> pushReplacement<T extends Object?, TO extends Object?>(
-    _i6.Route<T>? newRoute, {
+  _i21.Future<T?> pushReplacement<T extends Object?, TO extends Object?>(
+    _i5.Route<T>? newRoute, {
     TO? result,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#pushReplacement, [newRoute], {#result: result}),
-            returnValue: _i12.Future<T?>.value(),
+            returnValue: _i21.Future<T?>.value(),
+            returnValueForMissingStub: _i21.Future<T?>.value(),
           )
-          as _i12.Future<T?>);
+          as _i21.Future<T?>);
 
   @override
   String restorablePushReplacement<T extends Object?, TO extends Object?>(
-    _i6.RestorableRouteBuilder<T>? routeBuilder, {
+    _i5.RestorableRouteBuilder<T>? routeBuilder, {
     TO? result,
     Object? arguments,
   }) =>
@@ -748,7 +669,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [routeBuilder],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(
+                #restorablePushReplacement,
+                [routeBuilder],
+                {#result: result, #arguments: arguments},
+              ),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushReplacement,
@@ -760,20 +689,21 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
           as String);
 
   @override
-  _i12.Future<T?> pushAndRemoveUntil<T extends Object?>(
-    _i6.Route<T>? newRoute,
-    _i6.RoutePredicate? predicate,
+  _i21.Future<T?> pushAndRemoveUntil<T extends Object?>(
+    _i5.Route<T>? newRoute,
+    _i5.RoutePredicate? predicate,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#pushAndRemoveUntil, [newRoute, predicate]),
-            returnValue: _i12.Future<T?>.value(),
+            returnValue: _i21.Future<T?>.value(),
+            returnValueForMissingStub: _i21.Future<T?>.value(),
           )
-          as _i12.Future<T?>);
+          as _i21.Future<T?>);
 
   @override
   String restorablePushAndRemoveUntil<T extends Object?>(
-    _i6.RestorableRouteBuilder<T>? newRouteBuilder,
-    _i6.RoutePredicate? predicate, {
+    _i5.RestorableRouteBuilder<T>? newRouteBuilder,
+    _i5.RoutePredicate? predicate, {
     Object? arguments,
   }) =>
       (super.noSuchMethod(
@@ -782,7 +712,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               [newRouteBuilder, predicate],
               {#arguments: arguments},
             ),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(
+                #restorablePushAndRemoveUntil,
+                [newRouteBuilder, predicate],
+                {#arguments: arguments},
+              ),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushAndRemoveUntil,
@@ -795,8 +733,8 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
 
   @override
   void replace<T extends Object?>({
-    required _i6.Route<dynamic>? oldRoute,
-    required _i6.Route<T>? newRoute,
+    required _i5.Route<dynamic>? oldRoute,
+    required _i5.Route<T>? newRoute,
   }) => super.noSuchMethod(
     Invocation.method(#replace, [], {#oldRoute: oldRoute, #newRoute: newRoute}),
     returnValueForMissingStub: null,
@@ -804,8 +742,8 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
 
   @override
   String restorableReplace<T extends Object?>({
-    required _i6.Route<dynamic>? oldRoute,
-    required _i6.RestorableRouteBuilder<T>? newRouteBuilder,
+    required _i5.Route<dynamic>? oldRoute,
+    required _i5.RestorableRouteBuilder<T>? newRouteBuilder,
     Object? arguments,
   }) =>
       (super.noSuchMethod(
@@ -814,7 +752,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               #newRouteBuilder: newRouteBuilder,
               #arguments: arguments,
             }),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(#restorableReplace, [], {
+                #oldRoute: oldRoute,
+                #newRouteBuilder: newRouteBuilder,
+                #arguments: arguments,
+              }),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(#restorableReplace, [], {
                 #oldRoute: oldRoute,
@@ -827,8 +773,8 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
 
   @override
   void replaceRouteBelow<T extends Object?>({
-    required _i6.Route<dynamic>? anchorRoute,
-    required _i6.Route<T>? newRoute,
+    required _i5.Route<dynamic>? anchorRoute,
+    required _i5.Route<T>? newRoute,
   }) => super.noSuchMethod(
     Invocation.method(#replaceRouteBelow, [], {
       #anchorRoute: anchorRoute,
@@ -839,8 +785,8 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
 
   @override
   String restorableReplaceRouteBelow<T extends Object?>({
-    required _i6.Route<dynamic>? anchorRoute,
-    required _i6.RestorableRouteBuilder<T>? newRouteBuilder,
+    required _i5.Route<dynamic>? anchorRoute,
+    required _i5.RestorableRouteBuilder<T>? newRouteBuilder,
     Object? arguments,
   }) =>
       (super.noSuchMethod(
@@ -849,7 +795,15 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               #newRouteBuilder: newRouteBuilder,
               #arguments: arguments,
             }),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(#restorableReplaceRouteBelow, [], {
+                #anchorRoute: anchorRoute,
+                #newRouteBuilder: newRouteBuilder,
+                #arguments: arguments,
+              }),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(#restorableReplaceRouteBelow, [], {
                 #anchorRoute: anchorRoute,
@@ -862,16 +816,21 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
 
   @override
   bool canPop() =>
-      (super.noSuchMethod(Invocation.method(#canPop, []), returnValue: false)
+      (super.noSuchMethod(
+            Invocation.method(#canPop, []),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
           as bool);
 
   @override
-  _i12.Future<bool> maybePop<T extends Object?>([T? result]) =>
+  _i21.Future<bool> maybePop<T extends Object?>([T? result]) =>
       (super.noSuchMethod(
             Invocation.method(#maybePop, [result]),
-            returnValue: _i12.Future<bool>.value(false),
+            returnValue: _i21.Future<bool>.value(false),
+            returnValueForMissingStub: _i21.Future<bool>.value(false),
           )
-          as _i12.Future<bool>);
+          as _i21.Future<bool>);
 
   @override
   void pop<T extends Object?>([T? result]) => super.noSuchMethod(
@@ -880,14 +839,14 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
   );
 
   @override
-  void popUntil(_i6.RoutePredicate? predicate) => super.noSuchMethod(
+  void popUntil(_i5.RoutePredicate? predicate) => super.noSuchMethod(
     Invocation.method(#popUntil, [predicate]),
     returnValueForMissingStub: null,
   );
 
   @override
   void popUntilWithResult<T extends Object?>(
-    _i6.RoutePredicate? predicate,
+    _i5.RoutePredicate? predicate,
     T? result,
   ) => super.noSuchMethod(
     Invocation.method(#popUntilWithResult, [predicate, result]),
@@ -895,7 +854,7 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
   );
 
   @override
-  void removeRoute<T extends Object?>(_i6.Route<T>? route, [T? result]) =>
+  void removeRoute<T extends Object?>(_i5.Route<T>? route, [T? result]) =>
       super.noSuchMethod(
         Invocation.method(#removeRoute, [route, result]),
         returnValueForMissingStub: null,
@@ -903,7 +862,7 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
 
   @override
   void removeRouteBelow<T extends Object?>(
-    _i6.Route<T>? anchorRoute, [
+    _i5.Route<T>? anchorRoute, [
     T? result,
   ]) => super.noSuchMethod(
     Invocation.method(#removeRouteBelow, [anchorRoute, result]),
@@ -911,7 +870,7 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
   );
 
   @override
-  void finalizeRoute(_i6.Route<dynamic>? route) => super.noSuchMethod(
+  void finalizeRoute(_i5.Route<dynamic>? route) => super.noSuchMethod(
     Invocation.method(#finalizeRoute, [route]),
     returnValueForMissingStub: null,
   );
@@ -929,15 +888,19 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
   );
 
   @override
-  _i7.Widget build(_i7.BuildContext? context) =>
+  _i6.Widget build(_i6.BuildContext? context) =>
       (super.noSuchMethod(
             Invocation.method(#build, [context]),
-            returnValue: _FakeWidget_6(
+            returnValue: _FakeWidget_5(
+              this,
+              Invocation.method(#build, [context]),
+            ),
+            returnValueForMissingStub: _FakeWidget_5(
               this,
               Invocation.method(#build, [context]),
             ),
           )
-          as _i7.Widget);
+          as _i6.Widget);
 
   @override
   void reassemble() => super.noSuchMethod(
@@ -946,27 +909,31 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
   );
 
   @override
-  void setState(_i15.VoidCallback? fn) => super.noSuchMethod(
+  void setState(_i24.VoidCallback? fn) => super.noSuchMethod(
     Invocation.method(#setState, [fn]),
     returnValueForMissingStub: null,
   );
 
   @override
-  void debugFillProperties(_i5.DiagnosticPropertiesBuilder? properties) =>
+  void debugFillProperties(_i4.DiagnosticPropertiesBuilder? properties) =>
       super.noSuchMethod(
         Invocation.method(#debugFillProperties, [properties]),
         returnValueForMissingStub: null,
       );
 
   @override
-  String toString({_i5.DiagnosticLevel? minLevel = _i5.DiagnosticLevel.info}) =>
+  String toString({_i4.DiagnosticLevel? minLevel = _i4.DiagnosticLevel.info}) =>
       super.toString();
 
   @override
   String toStringShort() =>
       (super.noSuchMethod(
             Invocation.method(#toStringShort, []),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(#toStringShort, []),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(#toStringShort, []),
             ),
@@ -974,16 +941,23 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
           as String);
 
   @override
-  _i5.DiagnosticsNode toDiagnosticsNode({
+  _i4.DiagnosticsNode toDiagnosticsNode({
     String? name,
-    _i5.DiagnosticsTreeStyle? style,
+    _i4.DiagnosticsTreeStyle? style,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#toDiagnosticsNode, [], {
               #name: name,
               #style: style,
             }),
-            returnValue: _FakeDiagnosticsNode_7(
+            returnValue: _FakeDiagnosticsNode_6(
+              this,
+              Invocation.method(#toDiagnosticsNode, [], {
+                #name: name,
+                #style: style,
+              }),
+            ),
+            returnValueForMissingStub: _FakeDiagnosticsNode_6(
               this,
               Invocation.method(#toDiagnosticsNode, [], {
                 #name: name,
@@ -991,22 +965,26 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
               }),
             ),
           )
-          as _i5.DiagnosticsNode);
+          as _i4.DiagnosticsNode);
 
   @override
-  _i8.Ticker createTicker(_i8.TickerCallback? onTick) =>
+  _i7.Ticker createTicker(_i7.TickerCallback? onTick) =>
       (super.noSuchMethod(
             Invocation.method(#createTicker, [onTick]),
-            returnValue: _FakeTicker_8(
+            returnValue: _FakeTicker_7(
+              this,
+              Invocation.method(#createTicker, [onTick]),
+            ),
+            returnValueForMissingStub: _FakeTicker_7(
               this,
               Invocation.method(#createTicker, [onTick]),
             ),
           )
-          as _i8.Ticker);
+          as _i7.Ticker);
 
   @override
   void registerForRestoration(
-    _i16.RestorableProperty<Object?>? property,
+    _i25.RestorableProperty<Object?>? property,
     String? restorationId,
   ) => super.noSuchMethod(
     Invocation.method(#registerForRestoration, [property, restorationId]),
@@ -1014,7 +992,7 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
   );
 
   @override
-  void unregisterFromRestoration(_i16.RestorableProperty<Object?>? property) =>
+  void unregisterFromRestoration(_i25.RestorableProperty<Object?>? property) =>
       super.noSuchMethod(
         Invocation.method(#unregisterFromRestoration, [property]),
         returnValueForMissingStub: null,
@@ -1031,33 +1009,41 @@ class MockNavigatorState extends _i1.Mock implements _i6.NavigatorState {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockScaffoldMessengerState extends _i1.Mock
-    implements _i9.ScaffoldMessengerState {
-  MockScaffoldMessengerState() {
-    _i1.throwOnMissingStub(this);
-  }
-
+    implements _i8.ScaffoldMessengerState {
   @override
-  _i9.ScaffoldMessenger get widget =>
+  _i8.ScaffoldMessenger get widget =>
       (super.noSuchMethod(
             Invocation.getter(#widget),
-            returnValue: _FakeScaffoldMessenger_9(
+            returnValue: _FakeScaffoldMessenger_8(
+              this,
+              Invocation.getter(#widget),
+            ),
+            returnValueForMissingStub: _FakeScaffoldMessenger_8(
               this,
               Invocation.getter(#widget),
             ),
           )
-          as _i9.ScaffoldMessenger);
+          as _i8.ScaffoldMessenger);
 
   @override
-  _i7.BuildContext get context =>
+  _i6.BuildContext get context =>
       (super.noSuchMethod(
             Invocation.getter(#context),
-            returnValue: _FakeBuildContext_5(this, Invocation.getter(#context)),
+            returnValue: _FakeBuildContext_4(this, Invocation.getter(#context)),
+            returnValueForMissingStub: _FakeBuildContext_4(
+              this,
+              Invocation.getter(#context),
+            ),
           )
-          as _i7.BuildContext);
+          as _i6.BuildContext);
 
   @override
   bool get mounted =>
-      (super.noSuchMethod(Invocation.getter(#mounted), returnValue: false)
+      (super.noSuchMethod(
+            Invocation.getter(#mounted),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
           as bool);
 
   @override
@@ -1067,10 +1053,10 @@ class MockScaffoldMessengerState extends _i1.Mock
   );
 
   @override
-  _i9.ScaffoldFeatureController<_i17.SnackBar, _i17.SnackBarClosedReason>
+  _i8.ScaffoldFeatureController<_i26.SnackBar, _i26.SnackBarClosedReason>
   showSnackBar(
-    _i17.SnackBar? snackBar, {
-    _i18.AnimationStyle? snackBarAnimationStyle,
+    _i26.SnackBar? snackBar, {
+    _i27.AnimationStyle? snackBarAnimationStyle,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
@@ -1079,9 +1065,21 @@ class MockScaffoldMessengerState extends _i1.Mock
               {#snackBarAnimationStyle: snackBarAnimationStyle},
             ),
             returnValue:
-                _FakeScaffoldFeatureController_10<
-                  _i17.SnackBar,
-                  _i17.SnackBarClosedReason
+                _FakeScaffoldFeatureController_9<
+                  _i26.SnackBar,
+                  _i26.SnackBarClosedReason
+                >(
+                  this,
+                  Invocation.method(
+                    #showSnackBar,
+                    [snackBar],
+                    {#snackBarAnimationStyle: snackBarAnimationStyle},
+                  ),
+                ),
+            returnValueForMissingStub:
+                _FakeScaffoldFeatureController_9<
+                  _i26.SnackBar,
+                  _i26.SnackBarClosedReason
                 >(
                   this,
                   Invocation.method(
@@ -1091,14 +1089,14 @@ class MockScaffoldMessengerState extends _i1.Mock
                   ),
                 ),
           )
-          as _i9.ScaffoldFeatureController<
-            _i17.SnackBar,
-            _i17.SnackBarClosedReason
+          as _i8.ScaffoldFeatureController<
+            _i26.SnackBar,
+            _i26.SnackBarClosedReason
           >);
 
   @override
   void removeCurrentSnackBar({
-    _i17.SnackBarClosedReason? reason = _i17.SnackBarClosedReason.remove,
+    _i26.SnackBarClosedReason? reason = _i26.SnackBarClosedReason.remove,
   }) => super.noSuchMethod(
     Invocation.method(#removeCurrentSnackBar, [], {#reason: reason}),
     returnValueForMissingStub: null,
@@ -1106,7 +1104,7 @@ class MockScaffoldMessengerState extends _i1.Mock
 
   @override
   void hideCurrentSnackBar({
-    _i17.SnackBarClosedReason? reason = _i17.SnackBarClosedReason.hide,
+    _i26.SnackBarClosedReason? reason = _i26.SnackBarClosedReason.hide,
   }) => super.noSuchMethod(
     Invocation.method(#hideCurrentSnackBar, [], {#reason: reason}),
     returnValueForMissingStub: null,
@@ -1119,31 +1117,39 @@ class MockScaffoldMessengerState extends _i1.Mock
   );
 
   @override
-  _i9.ScaffoldFeatureController<
-    _i19.MaterialBanner,
-    _i19.MaterialBannerClosedReason
+  _i8.ScaffoldFeatureController<
+    _i28.MaterialBanner,
+    _i28.MaterialBannerClosedReason
   >
-  showMaterialBanner(_i19.MaterialBanner? materialBanner) =>
+  showMaterialBanner(_i28.MaterialBanner? materialBanner) =>
       (super.noSuchMethod(
             Invocation.method(#showMaterialBanner, [materialBanner]),
             returnValue:
-                _FakeScaffoldFeatureController_10<
-                  _i19.MaterialBanner,
-                  _i19.MaterialBannerClosedReason
+                _FakeScaffoldFeatureController_9<
+                  _i28.MaterialBanner,
+                  _i28.MaterialBannerClosedReason
+                >(
+                  this,
+                  Invocation.method(#showMaterialBanner, [materialBanner]),
+                ),
+            returnValueForMissingStub:
+                _FakeScaffoldFeatureController_9<
+                  _i28.MaterialBanner,
+                  _i28.MaterialBannerClosedReason
                 >(
                   this,
                   Invocation.method(#showMaterialBanner, [materialBanner]),
                 ),
           )
-          as _i9.ScaffoldFeatureController<
-            _i19.MaterialBanner,
-            _i19.MaterialBannerClosedReason
+          as _i8.ScaffoldFeatureController<
+            _i28.MaterialBanner,
+            _i28.MaterialBannerClosedReason
           >);
 
   @override
   void removeCurrentMaterialBanner({
-    _i19.MaterialBannerClosedReason? reason =
-        _i19.MaterialBannerClosedReason.remove,
+    _i28.MaterialBannerClosedReason? reason =
+        _i28.MaterialBannerClosedReason.remove,
   }) => super.noSuchMethod(
     Invocation.method(#removeCurrentMaterialBanner, [], {#reason: reason}),
     returnValueForMissingStub: null,
@@ -1151,8 +1157,8 @@ class MockScaffoldMessengerState extends _i1.Mock
 
   @override
   void hideCurrentMaterialBanner({
-    _i19.MaterialBannerClosedReason? reason =
-        _i19.MaterialBannerClosedReason.hide,
+    _i28.MaterialBannerClosedReason? reason =
+        _i28.MaterialBannerClosedReason.hide,
   }) => super.noSuchMethod(
     Invocation.method(#hideCurrentMaterialBanner, [], {#reason: reason}),
     returnValueForMissingStub: null,
@@ -1165,15 +1171,19 @@ class MockScaffoldMessengerState extends _i1.Mock
   );
 
   @override
-  _i7.Widget build(_i7.BuildContext? context) =>
+  _i6.Widget build(_i6.BuildContext? context) =>
       (super.noSuchMethod(
             Invocation.method(#build, [context]),
-            returnValue: _FakeWidget_6(
+            returnValue: _FakeWidget_5(
+              this,
+              Invocation.method(#build, [context]),
+            ),
+            returnValueForMissingStub: _FakeWidget_5(
               this,
               Invocation.method(#build, [context]),
             ),
           )
-          as _i7.Widget);
+          as _i6.Widget);
 
   @override
   void dispose() => super.noSuchMethod(
@@ -1188,7 +1198,7 @@ class MockScaffoldMessengerState extends _i1.Mock
   );
 
   @override
-  void didUpdateWidget(_i9.ScaffoldMessenger? oldWidget) => super.noSuchMethod(
+  void didUpdateWidget(_i8.ScaffoldMessenger? oldWidget) => super.noSuchMethod(
     Invocation.method(#didUpdateWidget, [oldWidget]),
     returnValueForMissingStub: null,
   );
@@ -1200,7 +1210,7 @@ class MockScaffoldMessengerState extends _i1.Mock
   );
 
   @override
-  void setState(_i15.VoidCallback? fn) => super.noSuchMethod(
+  void setState(_i24.VoidCallback? fn) => super.noSuchMethod(
     Invocation.method(#setState, [fn]),
     returnValueForMissingStub: null,
   );
@@ -1218,21 +1228,25 @@ class MockScaffoldMessengerState extends _i1.Mock
   );
 
   @override
-  void debugFillProperties(_i5.DiagnosticPropertiesBuilder? properties) =>
+  void debugFillProperties(_i4.DiagnosticPropertiesBuilder? properties) =>
       super.noSuchMethod(
         Invocation.method(#debugFillProperties, [properties]),
         returnValueForMissingStub: null,
       );
 
   @override
-  String toString({_i5.DiagnosticLevel? minLevel = _i5.DiagnosticLevel.info}) =>
+  String toString({_i4.DiagnosticLevel? minLevel = _i4.DiagnosticLevel.info}) =>
       super.toString();
 
   @override
   String toStringShort() =>
       (super.noSuchMethod(
             Invocation.method(#toStringShort, []),
-            returnValue: _i14.dummyValue<String>(
+            returnValue: _i23.dummyValue<String>(
+              this,
+              Invocation.method(#toStringShort, []),
+            ),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
               Invocation.method(#toStringShort, []),
             ),
@@ -1240,16 +1254,23 @@ class MockScaffoldMessengerState extends _i1.Mock
           as String);
 
   @override
-  _i5.DiagnosticsNode toDiagnosticsNode({
+  _i4.DiagnosticsNode toDiagnosticsNode({
     String? name,
-    _i5.DiagnosticsTreeStyle? style,
+    _i4.DiagnosticsTreeStyle? style,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#toDiagnosticsNode, [], {
               #name: name,
               #style: style,
             }),
-            returnValue: _FakeDiagnosticsNode_7(
+            returnValue: _FakeDiagnosticsNode_6(
+              this,
+              Invocation.method(#toDiagnosticsNode, [], {
+                #name: name,
+                #style: style,
+              }),
+            ),
+            returnValueForMissingStub: _FakeDiagnosticsNode_6(
               this,
               Invocation.method(#toDiagnosticsNode, [], {
                 #name: name,
@@ -1257,56 +1278,486 @@ class MockScaffoldMessengerState extends _i1.Mock
               }),
             ),
           )
-          as _i5.DiagnosticsNode);
+          as _i4.DiagnosticsNode);
 
   @override
-  _i8.Ticker createTicker(_i8.TickerCallback? onTick) =>
+  _i7.Ticker createTicker(_i7.TickerCallback? onTick) =>
       (super.noSuchMethod(
             Invocation.method(#createTicker, [onTick]),
-            returnValue: _FakeTicker_8(
+            returnValue: _FakeTicker_7(
+              this,
+              Invocation.method(#createTicker, [onTick]),
+            ),
+            returnValueForMissingStub: _FakeTicker_7(
               this,
               Invocation.method(#createTicker, [onTick]),
             ),
           )
-          as _i8.Ticker);
+          as _i7.Ticker);
 }
 
-/// A class which mocks [ProviderSubscription].
+/// A class which mocks [OrignaBase].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockProviderSubscription<State> extends _i1.Mock
-    implements _i10.ProviderSubscription<State> {
-  MockProviderSubscription() {
-    _i1.throwOnMissingStub(this);
-  }
-
+class MockOrignaBase extends _i1.Mock implements _i29.OrignaBase {
   @override
-  _i10.Node get source =>
+  String get url =>
       (super.noSuchMethod(
-            Invocation.getter(#source),
-            returnValue: _FakeNode_11(this, Invocation.getter(#source)),
-          )
-          as _i10.Node);
-
-  @override
-  bool get closed =>
-      (super.noSuchMethod(Invocation.getter(#closed), returnValue: false)
-          as bool);
-
-  @override
-  State read() =>
-      (super.noSuchMethod(
-            Invocation.method(#read, []),
-            returnValue: _i14.dummyValue<State>(
+            Invocation.getter(#url),
+            returnValue: _i23.dummyValue<String>(this, Invocation.getter(#url)),
+            returnValueForMissingStub: _i23.dummyValue<String>(
               this,
-              Invocation.method(#read, []),
+              Invocation.getter(#url),
             ),
           )
-          as State);
+          as String);
 
   @override
-  void close() => super.noSuchMethod(
-    Invocation.method(#close, []),
+  _i9.Client get httpClient =>
+      (super.noSuchMethod(
+            Invocation.getter(#httpClient),
+            returnValue: _FakeClient_10(this, Invocation.getter(#httpClient)),
+            returnValueForMissingStub: _FakeClient_10(
+              this,
+              Invocation.getter(#httpClient),
+            ),
+          )
+          as _i9.Client);
+
+  @override
+  _i10.OrignaBaseAuth get auth =>
+      (super.noSuchMethod(
+            Invocation.getter(#auth),
+            returnValue: _FakeOrignaBaseAuth_11(this, Invocation.getter(#auth)),
+            returnValueForMissingStub: _FakeOrignaBaseAuth_11(
+              this,
+              Invocation.getter(#auth),
+            ),
+          )
+          as _i10.OrignaBaseAuth);
+
+  @override
+  _i11.OrignaBaseStorage get storage =>
+      (super.noSuchMethod(
+            Invocation.getter(#storage),
+            returnValue: _FakeOrignaBaseStorage_12(
+              this,
+              Invocation.getter(#storage),
+            ),
+            returnValueForMissingStub: _FakeOrignaBaseStorage_12(
+              this,
+              Invocation.getter(#storage),
+            ),
+          )
+          as _i11.OrignaBaseStorage);
+
+  @override
+  _i12.OfflineCache get offline =>
+      (super.noSuchMethod(
+            Invocation.getter(#offline),
+            returnValue: _FakeOfflineCache_13(
+              this,
+              Invocation.getter(#offline),
+            ),
+            returnValueForMissingStub: _FakeOfflineCache_13(
+              this,
+              Invocation.getter(#offline),
+            ),
+          )
+          as _i12.OfflineCache);
+
+  @override
+  _i13.OrignaBaseConfig get config =>
+      (super.noSuchMethod(
+            Invocation.getter(#config),
+            returnValue: _FakeOrignaBaseConfig_14(
+              this,
+              Invocation.getter(#config),
+            ),
+            returnValueForMissingStub: _FakeOrignaBaseConfig_14(
+              this,
+              Invocation.getter(#config),
+            ),
+          )
+          as _i13.OrignaBaseConfig);
+
+  @override
+  _i14.OrignaBasePresence get presence =>
+      (super.noSuchMethod(
+            Invocation.getter(#presence),
+            returnValue: _FakeOrignaBasePresence_15(
+              this,
+              Invocation.getter(#presence),
+            ),
+            returnValueForMissingStub: _FakeOrignaBasePresence_15(
+              this,
+              Invocation.getter(#presence),
+            ),
+          )
+          as _i14.OrignaBasePresence);
+
+  @override
+  _i15.OrignaBaseLinks get links =>
+      (super.noSuchMethod(
+            Invocation.getter(#links),
+            returnValue: _FakeOrignaBaseLinks_16(
+              this,
+              Invocation.getter(#links),
+            ),
+            returnValueForMissingStub: _FakeOrignaBaseLinks_16(
+              this,
+              Invocation.getter(#links),
+            ),
+          )
+          as _i15.OrignaBaseLinks);
+
+  @override
+  _i16.OrignaBasePush get push =>
+      (super.noSuchMethod(
+            Invocation.getter(#push),
+            returnValue: _FakeOrignaBasePush_17(this, Invocation.getter(#push)),
+            returnValueForMissingStub: _FakeOrignaBasePush_17(
+              this,
+              Invocation.getter(#push),
+            ),
+          )
+          as _i16.OrignaBasePush);
+
+  @override
+  _i17.OrignaBaseMetrics get metrics =>
+      (super.noSuchMethod(
+            Invocation.getter(#metrics),
+            returnValue: _FakeOrignaBaseMetrics_18(
+              this,
+              Invocation.getter(#metrics),
+            ),
+            returnValueForMissingStub: _FakeOrignaBaseMetrics_18(
+              this,
+              Invocation.getter(#metrics),
+            ),
+          )
+          as _i17.OrignaBaseMetrics);
+
+  @override
+  _i18.VectorSearch get vectorSearch =>
+      (super.noSuchMethod(
+            Invocation.getter(#vectorSearch),
+            returnValue: _FakeVectorSearch_19(
+              this,
+              Invocation.getter(#vectorSearch),
+            ),
+            returnValueForMissingStub: _FakeVectorSearch_19(
+              this,
+              Invocation.getter(#vectorSearch),
+            ),
+          )
+          as _i18.VectorSearch);
+
+  @override
+  set auth(_i10.OrignaBaseAuth? value) => super.noSuchMethod(
+    Invocation.setter(#auth, value),
     returnValueForMissingStub: null,
   );
+
+  @override
+  set storage(_i11.OrignaBaseStorage? value) => super.noSuchMethod(
+    Invocation.setter(#storage, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set offline(_i12.OfflineCache? value) => super.noSuchMethod(
+    Invocation.setter(#offline, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set config(_i13.OrignaBaseConfig? value) => super.noSuchMethod(
+    Invocation.setter(#config, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set presence(_i14.OrignaBasePresence? value) => super.noSuchMethod(
+    Invocation.setter(#presence, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set links(_i15.OrignaBaseLinks? value) => super.noSuchMethod(
+    Invocation.setter(#links, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set push(_i16.OrignaBasePush? value) => super.noSuchMethod(
+    Invocation.setter(#push, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set metrics(_i17.OrignaBaseMetrics? value) => super.noSuchMethod(
+    Invocation.setter(#metrics, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set vectorSearch(_i18.VectorSearch? value) => super.noSuchMethod(
+    Invocation.setter(#vectorSearch, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i19.CollectionRef collection(String? name) =>
+      (super.noSuchMethod(
+            Invocation.method(#collection, [name]),
+            returnValue: _FakeCollectionRef_20(
+              this,
+              Invocation.method(#collection, [name]),
+            ),
+            returnValueForMissingStub: _FakeCollectionRef_20(
+              this,
+              Invocation.method(#collection, [name]),
+            ),
+          )
+          as _i19.CollectionRef);
+
+  @override
+  _i20.WriteBatch batch() =>
+      (super.noSuchMethod(
+            Invocation.method(#batch, []),
+            returnValue: _FakeWriteBatch_21(
+              this,
+              Invocation.method(#batch, []),
+            ),
+            returnValueForMissingStub: _FakeWriteBatch_21(
+              this,
+              Invocation.method(#batch, []),
+            ),
+          )
+          as _i20.WriteBatch);
+
+  @override
+  _i21.Future<Map<String, dynamic>> graphql(
+    String? query, {
+    Map<String, dynamic>? variables,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#graphql, [query], {#variables: variables}),
+            returnValue: _i21.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i21.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i21.Future<Map<String, dynamic>>);
+
+  @override
+  _i21.Future<Map<String, dynamic>> request(
+    String? method,
+    String? path, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #request,
+              [method, path],
+              {#body: body, #headers: headers},
+            ),
+            returnValue: _i21.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i21.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i21.Future<Map<String, dynamic>>);
+
+  @override
+  _i21.Future<Map<String, dynamic>> search(
+    String? index,
+    String? query, {
+    int? limit,
+    int? offset,
+    String? filter,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #search,
+              [index, query],
+              {#limit: limit, #offset: offset, #filter: filter},
+            ),
+            returnValue: _i21.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i21.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i21.Future<Map<String, dynamic>>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
+}
+
+/// A class which mocks [OrignaBasePush].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
+  @override
+  _i21.Future<void> registerToken({
+    required String? userId,
+    required String? token,
+    required String? platform,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#registerToken, [], {
+              #userId: userId,
+              #token: token,
+              #platform: platform,
+            }),
+            returnValue: _i21.Future<void>.value(),
+            returnValueForMissingStub: _i21.Future<void>.value(),
+          )
+          as _i21.Future<void>);
+
+  @override
+  _i21.Future<void> unregisterToken(String? token) =>
+      (super.noSuchMethod(
+            Invocation.method(#unregisterToken, [token]),
+            returnValue: _i21.Future<void>.value(),
+            returnValueForMissingStub: _i21.Future<void>.value(),
+          )
+          as _i21.Future<void>);
+
+  @override
+  _i21.Future<_i16.PushResult> sendToUser(
+    String? userId, {
+    required String? title,
+    required String? body,
+    Map<String, dynamic>? data,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #sendToUser,
+              [userId],
+              {#title: title, #body: body, #data: data},
+            ),
+            returnValue: _i21.Future<_i16.PushResult>.value(
+              _FakePushResult_22(
+                this,
+                Invocation.method(
+                  #sendToUser,
+                  [userId],
+                  {#title: title, #body: body, #data: data},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i21.Future<_i16.PushResult>.value(
+              _FakePushResult_22(
+                this,
+                Invocation.method(
+                  #sendToUser,
+                  [userId],
+                  {#title: title, #body: body, #data: data},
+                ),
+              ),
+            ),
+          )
+          as _i21.Future<_i16.PushResult>);
+
+  @override
+  _i21.Future<_i16.PushResult> sendToToken(
+    String? token, {
+    required String? title,
+    required String? body,
+    Map<String, dynamic>? data,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #sendToToken,
+              [token],
+              {#title: title, #body: body, #data: data},
+            ),
+            returnValue: _i21.Future<_i16.PushResult>.value(
+              _FakePushResult_22(
+                this,
+                Invocation.method(
+                  #sendToToken,
+                  [token],
+                  {#title: title, #body: body, #data: data},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i21.Future<_i16.PushResult>.value(
+              _FakePushResult_22(
+                this,
+                Invocation.method(
+                  #sendToToken,
+                  [token],
+                  {#title: title, #body: body, #data: data},
+                ),
+              ),
+            ),
+          )
+          as _i21.Future<_i16.PushResult>);
+
+  @override
+  _i21.Future<_i16.PushResult> sendToTopic(
+    String? topic, {
+    required String? title,
+    required String? body,
+    Map<String, dynamic>? data,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #sendToTopic,
+              [topic],
+              {#title: title, #body: body, #data: data},
+            ),
+            returnValue: _i21.Future<_i16.PushResult>.value(
+              _FakePushResult_22(
+                this,
+                Invocation.method(
+                  #sendToTopic,
+                  [topic],
+                  {#title: title, #body: body, #data: data},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i21.Future<_i16.PushResult>.value(
+              _FakePushResult_22(
+                this,
+                Invocation.method(
+                  #sendToTopic,
+                  [topic],
+                  {#title: title, #body: body, #data: data},
+                ),
+              ),
+            ),
+          )
+          as _i21.Future<_i16.PushResult>);
+
+  @override
+  _i21.Future<void> subscribeToTopic(String? token, String? topic) =>
+      (super.noSuchMethod(
+            Invocation.method(#subscribeToTopic, [token, topic]),
+            returnValue: _i21.Future<void>.value(),
+            returnValueForMissingStub: _i21.Future<void>.value(),
+          )
+          as _i21.Future<void>);
+
+  @override
+  _i21.Future<void> unsubscribeFromTopic(String? token, String? topic) =>
+      (super.noSuchMethod(
+            Invocation.method(#unsubscribeFromTopic, [token, topic]),
+            returnValue: _i21.Future<void>.value(),
+            returnValueForMissingStub: _i21.Future<void>.value(),
+          )
+          as _i21.Future<void>);
 }

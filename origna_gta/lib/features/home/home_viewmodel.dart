@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -97,7 +98,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
   }
 
   // ---------------------------------------------------------------------------
-  // GAP #7 — Autocomplete suggestions via Algolia
+  // Autocomplete suggestions via OrignaBase Meilisearch
   // ---------------------------------------------------------------------------
 
   void _fetchSuggestions(String query) {
@@ -109,15 +110,17 @@ class HomeViewModel extends StateNotifier<HomeState> {
     }
     _suggestionDebounce = Timer(const Duration(milliseconds: 300), () async {
       try {
-        final algoliaService = _ref.read(algoliaServiceProvider);
-        if (!algoliaService.isAvailable) return;
+        final ob = _ref.read(orignabaseProvider);
+        final result = await ob.search(
+          Collections.products,
+          query,
+          limit: 5,
+          filter: '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
+        );
 
-        algoliaService.search(query);
-        final response = await algoliaService.responses.first
-            .timeout(const Duration(seconds: 3));
-
-        final names = response.hits
-            .map((hit) => hit[Fields.name] as String?)
+        final hits = (result['hits'] as List<dynamic>?) ?? [];
+        final names = hits
+            .map((hit) => (hit as Map<String, dynamic>)[Fields.name] as String?)
             .whereType<String>()
             .where((n) => n.isNotEmpty)
             .take(5)
@@ -140,7 +143,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
     state = state.copyWith(
       selectedSort: sort,
       products: [],
-      lastDocument: null,
+      lastDocumentId: null,
       hasMore: true,
       isLoading: false,
       isLoadingMore: false,
@@ -159,7 +162,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       minPriceCents: minCents,
       maxPriceCents: maxCents,
       products: [],
-      lastDocument: null,
+      lastDocumentId: null,
       hasMore: true,
       isLoading: false,
       isLoadingMore: false,
@@ -211,7 +214,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
         searchQuery: state.searchQuery,
         categoryId: state.selectedCategoryId,
         subcategory: state.selectedSubcategory,
-        lastDocument: state.lastDocument,
+        lastDocumentId: state.lastDocumentId,
         sortOption: state.selectedSort,
         minPriceCents: state.minPriceCents,
         maxPriceCents: state.maxPriceCents,
@@ -226,7 +229,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
 
       state = state.copyWith(
         products: isInitialLoad ? result.products : [...state.products, ...newProducts],
-        lastDocument: result.lastDocument ?? state.lastDocument,
+        lastDocumentId: result.lastDocumentId ?? state.lastDocumentId,
         hasMore: effectiveHasMore,
         isLoading: false,
         isLoadingMore: false,
@@ -249,7 +252,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       selectedCategoryId: categoryId,
       selectedSubcategory: null,
       products: [],
-      lastDocument: null,
+      lastDocumentId: null,
       hasMore: true,
       isLoading: false,
       isLoadingMore: false,
@@ -263,7 +266,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
     state = state.copyWith(
       selectedSubcategory: subcategory,
       products: [],
-      lastDocument: null,
+      lastDocumentId: null,
       hasMore: true,
       isLoading: false,
       isLoadingMore: false,
@@ -282,7 +285,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       state = state.copyWith(
         searchQuery: value,
         products: [],
-        lastDocument: null,
+        lastDocumentId: null,
         hasMore: true,
         isLoading: false,
         isLoadingMore: false,
@@ -301,7 +304,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
   }
 
   Future<void> refresh() async {
-    state = state.copyWith(products: [], lastDocument: null, hasMore: true, isLoading: false, isLoadingMore: false);
+    state = state.copyWith(products: [], lastDocumentId: null, hasMore: true, isLoading: false, isLoadingMore: false);
     await loadProducts();
   }
 }

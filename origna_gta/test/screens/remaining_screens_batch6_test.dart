@@ -1,31 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/screens/editaddress_screen.dart';
 import 'package:origna_gta/screens/notifications_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([MockSpec<User>()])
-import 'remaining_screens_batch6_test.mocks.dart';
 
 void main() {
-  late MockUser mockUser;
-  late FakeFirebaseFirestore fakeFirestore;
+  late AppAuthUser mockUser;
 
   setUpAll(() {
     initTestMocks();
   });
 
   setUp(() {
-    mockUser = MockUser();
-    fakeFirestore = FakeFirebaseFirestore();
-    when(mockUser.uid).thenReturn('test_user_123');
+    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
   });
 
   Future<void> pumpResilient(WidgetTester tester, Widget widget) async {
@@ -33,7 +24,6 @@ void main() {
       TestWrapper(
         overrides: [
           currentUserProvider.overrideWithValue(mockUser),
-          firestoreProvider.overrideWithValue(fakeFirestore),
         ],
         child: widget,
       ),

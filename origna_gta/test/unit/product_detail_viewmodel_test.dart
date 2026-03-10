@@ -1,19 +1,48 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
-import 'package:origna_gta/core/providers.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
+import 'package:orignabase/orignabase.dart';
+
+@GenerateNiceMocks([
+  MockSpec<OrignaBase>(),
+  MockSpec<CollectionRef>(),
+  MockSpec<DocumentRef>(),
+  MockSpec<Document>(),
+])
+import 'product_detail_viewmodel_test.mocks.dart';
 
 void main() {
-  late FakeFirebaseFirestore fakeFirestore;
+  late MockOrignaBase mockOrignaBase;
+  late MockCollectionRef mockCollectionRef;
+  late MockDocumentRef mockDocumentRef;
+  late MockDocument mockDocument;
   late ProviderContainer container;
 
   setUp(() {
-    fakeFirestore = FakeFirebaseFirestore();
+    mockOrignaBase = MockOrignaBase();
+    mockCollectionRef = MockCollectionRef();
+    mockDocumentRef = MockDocumentRef();
+    mockDocument = MockDocument();
+
+    when(mockOrignaBase.collection(Collections.sellerMetrics))
+        .thenReturn(mockCollectionRef);
+    when(mockCollectionRef.doc('s1')).thenReturn(mockDocumentRef);
+    when(mockDocumentRef.get()).thenAnswer((_) async => mockDocument);
+    when(mockDocument.exists).thenReturn(true);
+    when(mockDocument.data).thenReturn({
+      Fields.avgResponseTimeHours: 2.5,
+      Fields.avgShipDays: 1.0,
+      Fields.positiveRatePct: 98.0,
+      Fields.totalReviews: 50,
+    });
+
     container = ProviderContainer(
       overrides: [
-        firestoreProvider.overrideWithValue(fakeFirestore),
+        orignabaseProvider.overrideWithValue(mockOrignaBase),
       ],
     );
   });
@@ -45,16 +74,9 @@ void main() {
     });
 
     test('fetchSellerMetrics', () async {
-      await fakeFirestore.collection(Collections.sellerMetrics).doc('s1').set({
-        Fields.avgResponseTimeHours: 2.5,
-        Fields.avgShipDays: 1.0,
-        Fields.positiveRatePct: 98.0,
-        Fields.totalReviews: 50,
-      });
-      
       final notifier = container.read(productDetailViewModelProvider.notifier);
       await notifier.fetchSellerMetrics('s1');
-      
+
       final state = container.read(productDetailViewModelProvider);
       expect(state.sellerMetrics!.avgResponseHours, 2.5);
       expect(state.sellerMetrics!.totalReviews, 50);

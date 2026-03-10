@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'reset_password_state.dart';
 
 final resetPasswordViewModelProvider = StateNotifierProvider.autoDispose.family<ResetPasswordViewModel, ResetPasswordState, String>((ref, oobCode) {
@@ -18,24 +18,7 @@ class ResetPasswordViewModel extends StateNotifier<ResetPasswordState> {
   }
 
   Future<void> _verifyCode() async {
-    try {
-      final auth = _ref.read(firebaseAuthProvider);
-      final email = await auth.verifyPasswordResetCode(_oobCode);
-      state = state.copyWith(
-        userEmail: email,
-        isVerifying: false,
-      );
-    } on FirebaseAuthException catch (e) {
-      state = state.copyWith(
-        isVerifying: false,
-        errorMessage: _getLocalizedError(e.code),
-      );
-    } catch (e) {
-      state = state.copyWith(
-        isVerifying: false,
-        errorMessage: 'auth.reset_link_invalid'.tr(),
-      );
-    }
+    state = state.copyWith(isVerifying: false, errorMessage: null);
   }
 
   String _getLocalizedError(String code) {
@@ -69,16 +52,15 @@ class ResetPasswordViewModel extends StateNotifier<ResetPasswordState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      final auth = _ref.read(firebaseAuthProvider);
-      await auth.confirmPasswordReset(
-        code: _oobCode,
-        newPassword: password,
+      await _ref.read(authRepositoryProvider).confirmPasswordReset(
+        _oobCode,
+        password,
       );
       state = state.copyWith(
         isSuccess: true,
         isLoading: false,
       );
-    } on FirebaseAuthException catch (e) {
+    } on OrignaBaseAuthException catch (e) {
       state = state.copyWith(
         isLoading: false,
         errorMessage: _getLocalizedError(e.code),

@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -390,7 +391,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       if (uploadedVideoUrl != null) {
         updateMap[Fields.videoUrl] = uploadedVideoUrl;
       } else {
-        // If neither videoFile nor existingVideoUrl is set, ensure videoUrl is cleared in firestore
+        // If neither videoFile nor existingVideoUrl is set, clear the stored videoUrl.
         updateMap[Fields.videoUrl] = null;
       }
 

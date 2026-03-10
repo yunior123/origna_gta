@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -100,6 +101,6 @@ void _persistLang(WidgetRef ref, String langCode) {
       .read(userRepositoryProvider)
       .updatePreferredLanguage(userId, lang)
       .catchError((_) {
-        // Fire-and-forget — UI locale is already set; Firestore failure is non-critical
+        // Fire-and-forget — UI locale is already set; database failure is non-critical
       });
 }

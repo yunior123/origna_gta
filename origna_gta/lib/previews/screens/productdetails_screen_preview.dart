@@ -1,7 +1,6 @@
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,9 +12,7 @@ import 'package:origna_gta/screens/productdetails_screen.dart';
 
 import '../_preview_theme.dart';
 
-final _fakeFirestore = FakeFirebaseFirestore();
-
-/// Preview stub — returns false immediately, no Firebase calls.
+/// Preview stub — returns false immediately, no backend calls.
 class _PreviewStockNotifier extends StockNotificationNotifier {
   _PreviewStockNotifier(super.ref, super.productId, super.variantKey);
 
@@ -25,8 +22,6 @@ class _PreviewStockNotifier extends StockNotificationNotifier {
 
 Widget _productDetailsContent({int stockQuantity = 5}) => previewScope(
   extraOverrides: [
-    // Firestore mock — blocks _productRatingsProvider + any other direct Firestore calls
-    firestoreProvider.overrideWithValue(_fakeFirestore),
     productByIdProvider('preview-id').overrideWith(
       (ref) => Future.value(
         Product(
@@ -45,6 +40,7 @@ Widget _productDetailsContent({int stockQuantity = 5}) => previewScope(
     userProfileProvider.overrideWith((ref) => Stream.value(null)),
     subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
     qaListProvider('preview-id').overrideWith((ref) => Stream.value([])),
+    productRatingsProvider('preview-id').overrideWith((ref) => Stream.value(const [])),
     similarProductsProvider((excludeProductId: 'preview-id', categoryId: 1)).overrideWith((ref) => Future.value([])),
     stockNotificationNotifierProvider.overrideWith(
       (ref, args) => _PreviewStockNotifier(ref, args.productId, args.variantKey),

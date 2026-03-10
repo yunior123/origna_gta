@@ -2,33 +2,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:origna_gta/core/repositories/product_repository.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
 
 @GenerateNiceMocks([
   MockSpec<CartRepository>(),
-  MockSpec<FirebaseFirestore>(),
-  MockSpec<CollectionReference<Map<String, dynamic>>>(),
-  MockSpec<DocumentReference<Map<String, dynamic>>>(),
+  MockSpec<ProductRepository>(),
 ])
 import 'cart_controller_test.mocks.dart';
 
 void main() {
   late MockCartRepository mockRepo;
-  late MockFirebaseFirestore mockFirestore;
+  late MockProductRepository mockProductRepository;
   late ProviderContainer container;
 
   setUp(() {
     mockRepo = MockCartRepository();
-    mockFirestore = MockFirebaseFirestore();
+    mockProductRepository = MockProductRepository();
     
     container = ProviderContainer(
       overrides: [
         cartRepositoryProvider.overrideWithValue(mockRepo),
+        productRepositoryProvider.overrideWithValue(mockProductRepository),
         userIdProvider.overrideWithValue('user_123'),
-        firestoreProvider.overrideWithValue(mockFirestore),
       ],
     );
   });
@@ -79,19 +77,16 @@ void main() {
       verify(mockRepo.removeFromCart('user_123', 'cart_item_123')).called(1);
     });
 
-    test('saveForLater updates firestore and removes from cart', () async {
+    test('saveForLater toggles favorite and removes from cart', () async {
       final controller = container.read(cartControllerProvider);
-      final mockCollection = MockCollectionReference();
-      final mockDoc = MockDocumentReference();
-      
-      when(mockFirestore.collection(any)).thenReturn(mockCollection);
-      when(mockCollection.doc(any)).thenReturn(mockDoc);
-      when(mockDoc.collection(any)).thenReturn(mockCollection);
+      when(mockProductRepository.toggleFavorite(any, any))
+          .thenAnswer((_) async {});
       
       final result = await controller.saveForLater('prod_123', 'cart_item_456');
       
       expect(result, isTrue);
-      verify(mockDoc.set(any, any)).called(1);
+      verify(mockProductRepository.toggleFavorite('user_123', 'prod_123'))
+          .called(1);
       verify(mockRepo.removeFromCart('user_123', 'cart_item_456')).called(1);
     });
   });

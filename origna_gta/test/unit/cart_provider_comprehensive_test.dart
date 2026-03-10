@@ -1,10 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:origna_gta/core/compat/timestamp.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
+import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/utils/constants.dart' as utils;
@@ -12,18 +13,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 @GenerateNiceMocks([
   MockSpec<CartRepository>(),
-  MockSpec<FirebaseFirestore>(),
-  MockSpec<CollectionReference<Map<String, dynamic>>>(),
-  MockSpec<DocumentReference<Map<String, dynamic>>>(),
+  MockSpec<ProductRepository>(),
 ])
 import 'cart_provider_comprehensive_test.mocks.dart';
+
+class _LegacyTimestampLike {
+  _LegacyTimestampLike(this.value);
+
+  final DateTime value;
+
+  DateTime toDate() => value;
+}
 
 // Helper to create a CartItemModel
 CartItemModel _cartItem({
   String cartItemId = 'item1',
   String productId = 'prod1',
   int quantity = 1,
-  Timestamp? createdAt,
+  DateTime? createdAt,
   String? buyerNote,
   String? variantId,
   String? variantTitle,
@@ -33,7 +40,7 @@ CartItemModel _cartItem({
     cartItemId: cartItemId,
     productId: productId,
     quantity: quantity,
-    createdAt: createdAt ?? Timestamp.now(),
+    createdAt: createdAt ?? DateTime.now(),
     buyerNote: buyerNote,
     variantId: variantId,
     variantTitle: variantTitle,
@@ -65,7 +72,7 @@ CartItemDetailModel _detailItem({
     price: price,
     imageUrls: const ['https://example.com/img.jpg'],
     quantity: quantity,
-    createdAt: Timestamp.now(),
+    createdAt: DateTime.now(),
     sellerAddress: Address(
       street: '123 Main St',
       city: 'Toronto',
@@ -91,11 +98,11 @@ void main() {
   SharedPreferences.setMockInitialValues({});
 
   late MockCartRepository mockRepo;
-  late MockFirebaseFirestore mockFirestore;
+  late MockProductRepository mockProductRepository;
 
   setUp(() {
     mockRepo = MockCartRepository();
-    mockFirestore = MockFirebaseFirestore();
+    mockProductRepository = MockProductRepository();
   });
 
   // ================================================================
@@ -106,8 +113,8 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
+          productRepositoryProvider.overrideWithValue(mockProductRepository),
           userIdProvider.overrideWithValue(null),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -124,7 +131,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -143,7 +149,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('seller1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -162,7 +167,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -185,7 +189,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -205,7 +208,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -223,7 +225,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -244,7 +245,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -271,7 +271,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue(null),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -285,7 +284,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -301,7 +299,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -317,7 +314,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -333,7 +329,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -354,7 +349,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue(null),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -370,7 +364,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -391,7 +384,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue(null),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -412,7 +404,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue(null),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -429,7 +420,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -451,7 +441,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue(null),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -467,7 +456,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -483,7 +471,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -504,7 +491,6 @@ void main() {
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWithValue(null),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -516,19 +502,14 @@ void main() {
     });
 
     test('returns true and creates favorite + removes from cart', () async {
-      final mockCollection = MockCollectionReference();
-      final mockDoc = MockDocumentReference();
-
-      when(mockFirestore.collection(any)).thenReturn(mockCollection);
-      when(mockCollection.doc(any)).thenReturn(mockDoc);
-      when(mockDoc.collection(any)).thenReturn(mockCollection);
-      when(mockDoc.set(any, any)).thenAnswer((_) async {});
+      when(mockProductRepository.toggleFavorite(any, any))
+          .thenAnswer((_) async {});
 
       final container = ProviderContainer(
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
+          productRepositoryProvider.overrideWithValue(mockProductRepository),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -537,23 +518,19 @@ void main() {
       final result = await controller.saveForLater('prod1', 'item1');
 
       expect(result, isTrue);
+      verify(mockProductRepository.toggleFavorite('user1', 'prod1')).called(1);
       verify(mockRepo.removeFromCart('user1', 'item1')).called(1);
     });
 
-    test('returns false on firestore exception', () async {
-      final mockCollection = MockCollectionReference();
-      final mockDoc = MockDocumentReference();
-
-      when(mockFirestore.collection(any)).thenReturn(mockCollection);
-      when(mockCollection.doc(any)).thenReturn(mockDoc);
-      when(mockDoc.collection(any)).thenReturn(mockCollection);
-      when(mockDoc.set(any, any)).thenThrow(Exception('Firestore error'));
+    test('returns false on repository exception', () async {
+      when(mockProductRepository.toggleFavorite(any, any))
+          .thenThrow(Exception('favorite error'));
 
       final container = ProviderContainer(
         overrides: [
           cartRepositoryProvider.overrideWithValue(mockRepo),
+          productRepositoryProvider.overrideWithValue(mockProductRepository),
           userIdProvider.overrideWithValue('user1'),
-          firestoreProvider.overrideWithValue(mockFirestore),
         ],
       );
       addTearDown(container.dispose);
@@ -615,7 +592,7 @@ void main() {
   // ================================================================
   group('cartItemDateProvider', () {
     test('returns createdAt for existing cart item', () async {
-      final ts = Timestamp.fromDate(DateTime(2026, 1, 15));
+      final ts = DateTime(2026, 1, 15);
       final container = ProviderContainer(
         overrides: [
           cartItemsProvider.overrideWith(
@@ -888,7 +865,7 @@ void main() {
       expect(item.cartItemId, 'doc1');
       expect(item.quantity, 3);
       expect(item.productId, 'p1');
-      expect(item.createdAt, ts);
+      expect(item.createdAt, ts.toDate());
     });
 
     test('fromMap with String createdAt', () {
@@ -900,6 +877,17 @@ void main() {
 
       expect(item.createdAt, isNotNull);
       expect(item.productId, 'p1');
+    });
+
+    test('fromMap with toDate object preserves timestamp', () {
+      final expected = DateTime(2026, 3, 2, 12, 30);
+      final item = CartItemModel.fromMap({
+        'quantity': 1,
+        'productId': 'p1',
+        'createdAt': _LegacyTimestampLike(expected),
+      }, docId: 'doc1');
+
+      expect(item.createdAt, expected);
     });
 
     test('fromMap with null createdAt uses Timestamp.now()', () {
@@ -968,6 +956,7 @@ void main() {
   // ================================================================
   group('CartItemDetailModel', () {
     test('fromMap with complete data', () {
+      final createdAt = Timestamp.fromDate(DateTime(2026, 3, 1, 8, 15));
       final detail = CartItemDetailModel.fromMap({
         'productId': 'p1',
         'name': 'Test',
@@ -975,7 +964,7 @@ void main() {
         'price': 19.99,
         'imageUrls': ['img1.jpg'],
         'quantity': 2,
-        'createdAt': Timestamp.now(),
+        'createdAt': createdAt,
         'sellerAddress': {
           'street': '123 St',
           'city': 'Toronto',
@@ -996,6 +985,7 @@ void main() {
 
       expect(detail.productId, 'p1');
       expect(detail.price, 19.99);
+      expect(detail.createdAt, createdAt.toDate());
       expect(detail.isDigital, isTrue);
       expect(detail.freeShipping, isTrue);
       expect(detail.minimumOrderQuantity, 5);

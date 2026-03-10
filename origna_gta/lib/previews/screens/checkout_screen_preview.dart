@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/models/models.dart';
@@ -22,7 +22,7 @@ final _mockItems = [
     price: 24.99,
     imageUrls: [],
     quantity: 2,
-    createdAt: Timestamp.fromDate(DateTime(2026, 3, 1)),
+    createdAt: DateTime(2026, 3, 1),
     sellerAddress: _mockSellerAddress,
     sellerId: 'seller-1',
     sellerName: 'Maple Artisans Co.',
@@ -36,7 +36,7 @@ final _mockItems = [
     price: 45.00,
     imageUrls: [],
     quantity: 1,
-    createdAt: Timestamp.fromDate(DateTime(2026, 3, 1)),
+    createdAt: DateTime(2026, 3, 1),
     sellerAddress: _mockSellerAddress,
     sellerId: 'seller-2',
     sellerName: 'Fromagerie de Quebec',

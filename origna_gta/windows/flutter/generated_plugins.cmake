@@ -4,11 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
-  cloud_firestore
   file_selector_windows
-  firebase_auth
-  firebase_core
-  firebase_storage
   local_auth_windows
   sentry_flutter
   share_plus

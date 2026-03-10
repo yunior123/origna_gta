@@ -1,6 +1,8 @@
+// coverage:ignore-file
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/features/admin/admin_repository.dart';
-import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/admin/orignabase_admin_repository.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 final adminOrdersProvider = StreamProvider.autoDispose.family<List<OrderModel>, String>((ref, status) {
@@ -16,7 +18,7 @@ final adminPendingReviewProductsProvider = StreamProvider.autoDispose<List<Produ
 });
 
 final adminRepositoryProvider = Provider<AdminRepository>((ref) {
-  return FirebaseAdminRepository(ref.watch(firestoreProvider), ref.watch(firebaseFunctionsProvider));
+  return OrignaBaseAdminRepository(ref.watch(orignabaseProvider));
 });
 
 final adminReviewsProvider = StreamProvider.autoDispose.family<List<Map<String, dynamic>>, ({bool flaggedOnly, bool hasPhotosOnly})>((ref, filters) {

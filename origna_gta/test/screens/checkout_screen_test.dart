@@ -1,26 +1,23 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/models.dart' as models;
 import 'package:origna_gta/screens/checkout_screen.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:orignabase/orignabase.dart';
 
 import '../test_utils.dart';
 @GenerateNiceMocks([
-  MockSpec<User>(),
-  MockSpec<FirebaseFunctions>(),
-  MockSpec<HttpsCallable>(),
-  MockSpec<HttpsCallableResult<Map>>(as: #MockHttpsCallableResultMap),
+  MockSpec<OrignaBase>(),
   MockSpec<OrderRepository>(),
   MockSpec<UserRepository>(),
   MockSpec<AuthRepository>(),
@@ -28,9 +25,12 @@ import '../test_utils.dart';
 import 'checkout_screen_test.mocks.dart';
 
 void main() {
-  late MockUser mockUser;
-  late FakeFirebaseFirestore fakeFirestore;
-  late MockFirebaseFunctions mockFunctions;
+  const signedInUser = AppAuthUser(
+    uid: 'test_user_123',
+    email: 'test@example.com',
+    emailVerified: true,
+  );
+  late MockOrignaBase mockOrignaBase;
   late MockOrderRepository mockOrderRepo;
   late MockUserRepository mockUserRepo;
   late MockAuthRepository mockAuthRepo;
@@ -40,31 +40,29 @@ void main() {
   });
 
   setUp(() {
-    mockUser = MockUser();
-    fakeFirestore = FakeFirebaseFirestore();
-    mockFunctions = MockFirebaseFunctions();
+    mockOrignaBase = MockOrignaBase();
     mockOrderRepo = MockOrderRepository();
     mockUserRepo = MockUserRepository();
     mockAuthRepo = MockAuthRepository();
 
-    when(mockUser.uid).thenReturn('test_user_123');
-    when(mockUser.email).thenReturn('test@example.com');
-    when(mockUser.displayName).thenReturn('Test User');
-
     when(mockAuthRepo.isEmailVerified()).thenAnswer((_) async => true);
+    when(mockOrignaBase.request(any, any, body: anyNamed('body')))
+        .thenAnswer((_) async => <String, dynamic>{});
   });
 
   Widget buildTestWidget({List<models.CartItemDetailModel> items = const [], double total = 0.0, List<models.Address> addresses = const []}) {
     return TestWrapper(
       overrides: [
-        currentUserProvider.overrideWithValue(mockUser),
+        currentUserProvider.overrideWithValue(signedInUser),
+        obUserIdProvider.overrideWithValue(signedInUser.uid),
         userProfileProvider.overrideWith(
           (ref) =>
               Stream.value(models.UserModel(uid: 'test_user_123', name: 'Test User', email: 'test@example.com', roles: ['buyer'], createdAt: DateTime.now())),
         ),
         userAddressesProvider.overrideWith((ref) => Stream.value(addresses)),
-        firestoreProvider.overrideWithValue(fakeFirestore),
-        firebaseFunctionsProvider.overrideWithValue(mockFunctions),
+        cartItemsProvider.overrideWith((ref) => Stream.value(const [])),
+        subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
+        orignabaseProvider.overrideWithValue(mockOrignaBase),
         orderRepositoryProvider.overrideWithValue(mockOrderRepo),
         userRepositoryProvider.overrideWithValue(mockUserRepo),
         authRepositoryProvider.overrideWithValue(mockAuthRepo),
@@ -85,7 +83,7 @@ void main() {
         price: 50.0,
         imageUrls: [],
         quantity: 1,
-        createdAt: Timestamp.now(),
+        createdAt: DateTime.now(),
         sellerAddress: models.Address(street: '123 Seller St', city: 'Toronto', state: 'ON', postalCode: 'M5V 2L7', country: 'Canada'),
         sellerId: 'seller_123',
         sellerName: 'Best Seller',
@@ -94,11 +92,8 @@ void main() {
 
       final mockAddress = models.Address(street: '456 Buyer Ave', city: 'Toronto', state: 'ON', postalCode: 'M1M 1M1', country: 'Canada', isDefault: true);
 
-      final mockVerifyCallable = MockHttpsCallable();
-      final mockVerifyResult = MockHttpsCallableResultMap();
-      when(mockFunctions.httpsCallable('verify_cart_prices', options: anyNamed('options'))).thenReturn(mockVerifyCallable);
-      when(mockVerifyCallable.call(any)).thenAnswer((_) async => mockVerifyResult);
-      when(mockVerifyResult.data).thenReturn({'hasChanges': false});
+      when(mockOrignaBase.request('POST', any, body: anyNamed('body')))
+          .thenAnswer((_) async => {'hasChanges': false});
 
       when(mockOrderRepo.createCheckoutSession(any)).thenAnswer(
         (_) async => {'checkoutUrl': 'https://stripe.com/checkout/test_session', 'sessionId': 'sess_123', 'orderId': 'order_123', 'taxAmountCents': 650},
@@ -129,7 +124,7 @@ void main() {
         price: 10,
         imageUrls: [],
         quantity: 1,
-        createdAt: Timestamp.now(),
+        createdAt: DateTime.now(),
         sellerAddress: models.Address.empty(),
         sellerId: 's1',
         sellerName: 'S1',
@@ -153,18 +148,15 @@ void main() {
         price: 10,
         imageUrls: [],
         quantity: 1,
-        createdAt: Timestamp.now(),
+        createdAt: DateTime.now(),
         sellerAddress: models.Address.empty(),
         sellerId: 's1',
         sellerName: 'S1',
       );
       final mockAddress = models.Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA', isDefault: true);
 
-      final mockVerifyCallable = MockHttpsCallable();
-      final mockVerifyResult = MockHttpsCallableResultMap();
-      when(mockFunctions.httpsCallable('verify_cart_prices', options: anyNamed('options'))).thenReturn(mockVerifyCallable);
-      when(mockVerifyCallable.call(any)).thenAnswer((_) async => mockVerifyResult);
-      when(mockVerifyResult.data).thenReturn({'hasChanges': false});
+      when(mockOrignaBase.request('POST', any, body: anyNamed('body')))
+          .thenAnswer((_) async => {'hasChanges': false});
 
       when(mockOrderRepo.createCheckoutSession(any)).thenThrow(Exception('Payment failed'));
 
@@ -192,7 +184,7 @@ void main() {
         price: 10,
         imageUrls: [],
         quantity: 1,
-        createdAt: Timestamp.now(),
+        createdAt: DateTime.now(),
         sellerAddress: models.Address.empty(),
         sellerId: 's1',
         sellerName: 'S1',
@@ -218,7 +210,7 @@ void main() {
         price: 10,
         imageUrls: [],
         quantity: 1,
-        createdAt: Timestamp.now(),
+        createdAt: DateTime.now(),
         sellerAddress: models.Address.empty(),
         sellerId: 's1',
         sellerName: 'S1',

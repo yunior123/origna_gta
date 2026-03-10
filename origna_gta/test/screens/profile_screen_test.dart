@@ -1,30 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:origna_gta/features/profile/profile_viewmodel.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
-import 'package:origna_gta/features/subscription/subscription_state.dart';
 import 'package:origna_gta/core/theme_provider.dart';
-import 'package:origna_gta/core/repositories/auth_repository.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import '../test_utils.dart';
-
-@GenerateNiceMocks([
-  MockSpec<User>(),
-  MockSpec<UserInfo>(),
-  MockSpec<ProfileViewModel>(),
-  MockSpec<AuthRepository>(),
-  MockSpec<FirebaseAuth>(),
-])
-import 'profile_screen_test.mocks.dart';
 
 /// Duration long enough to settle FadeSlideIn animations (400ms + max 200ms delay)
 const _animationDuration = Duration(seconds: 1);
@@ -34,19 +19,18 @@ void main() {
     initTestMocks();
   });
 
-  late MockUser mockUser;
+  late AppAuthUser mockUser;
   late UserModel buyerUserModel;
   late UserModel sellerUserModel;
   late UserModel adminUserModel;
   late UserModel premiumUserModel;
 
   setUp(() {
-    mockUser = MockUser();
-    when(mockUser.uid).thenReturn('test_user_123');
-    when(mockUser.email).thenReturn('test@example.com');
-    when(mockUser.displayName).thenReturn('Test User');
-    when(mockUser.emailVerified).thenReturn(true);
-    when(mockUser.providerData).thenReturn([]);
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+      emailVerified: true,
+    );
 
     buyerUserModel = UserModel(
       uid: 'test_user_123',
@@ -97,7 +81,7 @@ void main() {
   /// Helper to build ProfileScreenLayout directly (avoids ConsumerWidget provider complexity)
   Widget buildLayout({
     required AsyncValue<UserModel?> userProfileAsync,
-    User? currentUser,
+    AppAuthUser? currentUser,
     bool isExportLoading = false,
     ThemeMode themeMode = ThemeMode.light,
     bool isPremium = false,
@@ -1060,11 +1044,11 @@ void main() {
 
   group('ProfileScreen - Email Verification', () {
     testWidgets('shows email verification view for unverified non-google user', (tester) async {
-      final unverifiedUser = MockUser();
-      when(unverifiedUser.uid).thenReturn('test_user_123');
-      when(unverifiedUser.email).thenReturn('unverified@example.com');
-      when(unverifiedUser.emailVerified).thenReturn(false);
-      when(unverifiedUser.providerData).thenReturn([]);
+      const unverifiedUser = AppAuthUser(
+        uid: 'test_user_123',
+        email: 'unverified@example.com',
+        emailVerified: false,
+      );
 
       await tester.pumpWidget(
         buildLayout(
@@ -1085,11 +1069,11 @@ void main() {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
 
-      final unverifiedUser = MockUser();
-      when(unverifiedUser.uid).thenReturn('test_user_123');
-      when(unverifiedUser.email).thenReturn('unverified@example.com');
-      when(unverifiedUser.emailVerified).thenReturn(false);
-      when(unverifiedUser.providerData).thenReturn([]);
+      const unverifiedUser = AppAuthUser(
+        uid: 'test_user_123',
+        email: 'unverified@example.com',
+        emailVerified: false,
+      );
 
       await tester.pumpWidget(
         buildLayout(
@@ -1107,15 +1091,13 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('does NOT show email verification for google user', (tester) async {
-      final googleUser = MockUser();
-      when(googleUser.uid).thenReturn('test_user_123');
-      when(googleUser.email).thenReturn('google@example.com');
-      when(googleUser.emailVerified).thenReturn(false);
-
-      final googleProviderData = MockUserInfo();
-      when(googleProviderData.providerId).thenReturn('google.com');
-      when(googleUser.providerData).thenReturn([googleProviderData]);
+    testWidgets('does NOT show email verification for verified oauth user', (tester) async {
+      const googleUser = AppAuthUser(
+        uid: 'test_user_123',
+        email: 'google@example.com',
+        emailVerified: true,
+        providerData: [AppAuthProviderInfo('google.com')],
+      );
 
       await tester.pumpWidget(
         buildLayout(

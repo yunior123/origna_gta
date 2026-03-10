@@ -86,7 +86,7 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
     setState(() => _accepting = true);
     try {
       await ref.read(userRepositoryProvider).recordTermsAcceptance();
-      // Provider will auto-update via Firestore stream — no manual navigation needed.
+      // Provider will auto-update via database stream — no manual navigation needed.
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'terms_update_gate');
       if (mounted) {

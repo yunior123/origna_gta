@@ -6,7 +6,6 @@ import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/features/qa/qa_repository.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
-import 'package:origna_gta/features/subscription/subscription_state.dart';
 
 @GenerateNiceMocks([
   MockSpec<QARepository>(),

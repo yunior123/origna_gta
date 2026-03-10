@@ -3,16 +3,25 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i6;
+import 'dart:async' as _i17;
 
-import 'package:cloud_functions/cloud_functions.dart' as _i4;
-import 'package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart'
-    as _i2;
-import 'package:firebase_core/firebase_core.dart' as _i3;
+import 'package:http/http.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i8;
-import 'package:origna_gta/core/repositories/user_repository.dart' as _i5;
-import 'package:origna_gta/utils/utils.dart' as _i7;
+import 'package:mockito/src/dummies.dart' as _i16;
+import 'package:origna_gta/core/repositories/user_repository.dart' as _i14;
+import 'package:origna_gta/utils/utils.dart' as _i18;
+import 'package:orignabase/src/auth.dart' as _i3;
+import 'package:orignabase/src/batch.dart' as _i13;
+import 'package:orignabase/src/client.dart' as _i15;
+import 'package:orignabase/src/collection.dart' as _i12;
+import 'package:orignabase/src/config.dart' as _i6;
+import 'package:orignabase/src/links.dart' as _i8;
+import 'package:orignabase/src/metrics.dart' as _i10;
+import 'package:orignabase/src/offline.dart' as _i5;
+import 'package:orignabase/src/presence.dart' as _i7;
+import 'package:orignabase/src/push.dart' as _i9;
+import 'package:orignabase/src/storage.dart' as _i4;
+import 'package:orignabase/src/vector.dart' as _i11;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -29,316 +38,481 @@ import 'package:origna_gta/utils/utils.dart' as _i7;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeFirebaseFunctionsPlatform_0 extends _i1.SmartFake
-    implements _i2.FirebaseFunctionsPlatform {
-  _FakeFirebaseFunctionsPlatform_0(Object parent, Invocation parentInvocation)
+class _FakeClient_0 extends _i1.SmartFake implements _i2.Client {
+  _FakeClient_0(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeFirebaseApp_1 extends _i1.SmartFake implements _i3.FirebaseApp {
-  _FakeFirebaseApp_1(Object parent, Invocation parentInvocation)
+class _FakeOrignaBaseAuth_1 extends _i1.SmartFake
+    implements _i3.OrignaBaseAuth {
+  _FakeOrignaBaseAuth_1(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeHttpsCallable_2 extends _i1.SmartFake implements _i4.HttpsCallable {
-  _FakeHttpsCallable_2(Object parent, Invocation parentInvocation)
+class _FakeOrignaBaseStorage_2 extends _i1.SmartFake
+    implements _i4.OrignaBaseStorage {
+  _FakeOrignaBaseStorage_2(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeHttpsCallablePlatform_3 extends _i1.SmartFake
-    implements _i2.HttpsCallablePlatform {
-  _FakeHttpsCallablePlatform_3(Object parent, Invocation parentInvocation)
+class _FakeOfflineCache_3 extends _i1.SmartFake implements _i5.OfflineCache {
+  _FakeOfflineCache_3(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeHttpsCallableResult_4<T1> extends _i1.SmartFake
-    implements _i4.HttpsCallableResult<T1> {
-  _FakeHttpsCallableResult_4(Object parent, Invocation parentInvocation)
+class _FakeOrignaBaseConfig_4 extends _i1.SmartFake
+    implements _i6.OrignaBaseConfig {
+  _FakeOrignaBaseConfig_4(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeSellerAccountStatus_5 extends _i1.SmartFake
-    implements _i5.SellerAccountStatus {
-  _FakeSellerAccountStatus_5(Object parent, Invocation parentInvocation)
+class _FakeOrignaBasePresence_5 extends _i1.SmartFake
+    implements _i7.OrignaBasePresence {
+  _FakeOrignaBasePresence_5(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-/// A class which mocks [FirebaseFunctions].
+class _FakeOrignaBaseLinks_6 extends _i1.SmartFake
+    implements _i8.OrignaBaseLinks {
+  _FakeOrignaBaseLinks_6(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOrignaBasePush_7 extends _i1.SmartFake
+    implements _i9.OrignaBasePush {
+  _FakeOrignaBasePush_7(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOrignaBaseMetrics_8 extends _i1.SmartFake
+    implements _i10.OrignaBaseMetrics {
+  _FakeOrignaBaseMetrics_8(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeVectorSearch_9 extends _i1.SmartFake implements _i11.VectorSearch {
+  _FakeVectorSearch_9(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeCollectionRef_10 extends _i1.SmartFake
+    implements _i12.CollectionRef {
+  _FakeCollectionRef_10(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeWriteBatch_11 extends _i1.SmartFake implements _i13.WriteBatch {
+  _FakeWriteBatch_11(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeSellerAccountStatus_12 extends _i1.SmartFake
+    implements _i14.SellerAccountStatus {
+  _FakeSellerAccountStatus_12(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+/// A class which mocks [OrignaBase].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockFirebaseFunctions extends _i1.Mock implements _i4.FirebaseFunctions {
+class MockOrignaBase extends _i1.Mock implements _i15.OrignaBase {
   @override
-  _i2.FirebaseFunctionsPlatform get delegate =>
+  String get url =>
       (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeFirebaseFunctionsPlatform_0(
+            Invocation.getter(#url),
+            returnValue: _i16.dummyValue<String>(this, Invocation.getter(#url)),
+            returnValueForMissingStub: _i16.dummyValue<String>(
               this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
+              Invocation.getter(#url),
             ),
           )
-          as _i2.FirebaseFunctionsPlatform);
+          as String);
 
   @override
-  _i3.FirebaseApp get app =>
+  _i2.Client get httpClient =>
       (super.noSuchMethod(
-            Invocation.getter(#app),
-            returnValue: _FakeFirebaseApp_1(this, Invocation.getter(#app)),
-            returnValueForMissingStub: _FakeFirebaseApp_1(
+            Invocation.getter(#httpClient),
+            returnValue: _FakeClient_0(this, Invocation.getter(#httpClient)),
+            returnValueForMissingStub: _FakeClient_0(
               this,
-              Invocation.getter(#app),
+              Invocation.getter(#httpClient),
             ),
           )
-          as _i3.FirebaseApp);
+          as _i2.Client);
 
   @override
-  Map<dynamic, dynamic> get pluginConstants =>
+  _i3.OrignaBaseAuth get auth =>
       (super.noSuchMethod(
-            Invocation.getter(#pluginConstants),
-            returnValue: <dynamic, dynamic>{},
-            returnValueForMissingStub: <dynamic, dynamic>{},
-          )
-          as Map<dynamic, dynamic>);
-
-  @override
-  _i4.HttpsCallable httpsCallable(
-    String? name, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(#httpsCallable, [name], {#options: options}),
-            returnValue: _FakeHttpsCallable_2(
+            Invocation.getter(#auth),
+            returnValue: _FakeOrignaBaseAuth_1(this, Invocation.getter(#auth)),
+            returnValueForMissingStub: _FakeOrignaBaseAuth_1(
               this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
+              Invocation.getter(#auth),
             ),
           )
-          as _i4.HttpsCallable);
+          as _i3.OrignaBaseAuth);
 
   @override
-  _i4.HttpsCallable httpsCallableFromUrl(
-    String? url, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
+  _i4.OrignaBaseStorage get storage =>
       (super.noSuchMethod(
-            Invocation.method(
-              #httpsCallableFromUrl,
-              [url],
-              {#options: options},
-            ),
-            returnValue: _FakeHttpsCallable_2(
+            Invocation.getter(#storage),
+            returnValue: _FakeOrignaBaseStorage_2(
               this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
+              Invocation.getter(#storage),
             ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
+            returnValueForMissingStub: _FakeOrignaBaseStorage_2(
               this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
+              Invocation.getter(#storage),
             ),
           )
-          as _i4.HttpsCallable);
+          as _i4.OrignaBaseStorage);
 
   @override
-  _i4.HttpsCallable httpsCallableFromUri(
-    Uri? uri, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
+  _i5.OfflineCache get offline =>
       (super.noSuchMethod(
-            Invocation.method(
-              #httpsCallableFromUri,
-              [uri],
-              {#options: options},
-            ),
-            returnValue: _FakeHttpsCallable_2(
+            Invocation.getter(#offline),
+            returnValue: _FakeOfflineCache_3(this, Invocation.getter(#offline)),
+            returnValueForMissingStub: _FakeOfflineCache_3(
               this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
+              Invocation.getter(#offline),
             ),
           )
-          as _i4.HttpsCallable);
+          as _i5.OfflineCache);
 
   @override
-  void useFunctionsEmulator(
-    String? host,
-    int? port, {
-    bool? automaticHostMapping = true,
-  }) => super.noSuchMethod(
-    Invocation.method(
-      #useFunctionsEmulator,
-      [host, port],
-      {#automaticHostMapping: automaticHostMapping},
-    ),
+  _i6.OrignaBaseConfig get config =>
+      (super.noSuchMethod(
+            Invocation.getter(#config),
+            returnValue: _FakeOrignaBaseConfig_4(
+              this,
+              Invocation.getter(#config),
+            ),
+            returnValueForMissingStub: _FakeOrignaBaseConfig_4(
+              this,
+              Invocation.getter(#config),
+            ),
+          )
+          as _i6.OrignaBaseConfig);
+
+  @override
+  _i7.OrignaBasePresence get presence =>
+      (super.noSuchMethod(
+            Invocation.getter(#presence),
+            returnValue: _FakeOrignaBasePresence_5(
+              this,
+              Invocation.getter(#presence),
+            ),
+            returnValueForMissingStub: _FakeOrignaBasePresence_5(
+              this,
+              Invocation.getter(#presence),
+            ),
+          )
+          as _i7.OrignaBasePresence);
+
+  @override
+  _i8.OrignaBaseLinks get links =>
+      (super.noSuchMethod(
+            Invocation.getter(#links),
+            returnValue: _FakeOrignaBaseLinks_6(
+              this,
+              Invocation.getter(#links),
+            ),
+            returnValueForMissingStub: _FakeOrignaBaseLinks_6(
+              this,
+              Invocation.getter(#links),
+            ),
+          )
+          as _i8.OrignaBaseLinks);
+
+  @override
+  _i9.OrignaBasePush get push =>
+      (super.noSuchMethod(
+            Invocation.getter(#push),
+            returnValue: _FakeOrignaBasePush_7(this, Invocation.getter(#push)),
+            returnValueForMissingStub: _FakeOrignaBasePush_7(
+              this,
+              Invocation.getter(#push),
+            ),
+          )
+          as _i9.OrignaBasePush);
+
+  @override
+  _i10.OrignaBaseMetrics get metrics =>
+      (super.noSuchMethod(
+            Invocation.getter(#metrics),
+            returnValue: _FakeOrignaBaseMetrics_8(
+              this,
+              Invocation.getter(#metrics),
+            ),
+            returnValueForMissingStub: _FakeOrignaBaseMetrics_8(
+              this,
+              Invocation.getter(#metrics),
+            ),
+          )
+          as _i10.OrignaBaseMetrics);
+
+  @override
+  _i11.VectorSearch get vectorSearch =>
+      (super.noSuchMethod(
+            Invocation.getter(#vectorSearch),
+            returnValue: _FakeVectorSearch_9(
+              this,
+              Invocation.getter(#vectorSearch),
+            ),
+            returnValueForMissingStub: _FakeVectorSearch_9(
+              this,
+              Invocation.getter(#vectorSearch),
+            ),
+          )
+          as _i11.VectorSearch);
+
+  @override
+  set auth(_i3.OrignaBaseAuth? value) => super.noSuchMethod(
+    Invocation.setter(#auth, value),
     returnValueForMissingStub: null,
   );
-}
 
-/// A class which mocks [HttpsCallable].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallable extends _i1.Mock implements _i4.HttpsCallable {
   @override
-  _i2.HttpsCallablePlatform get delegate =>
+  set storage(_i4.OrignaBaseStorage? value) => super.noSuchMethod(
+    Invocation.setter(#storage, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set offline(_i5.OfflineCache? value) => super.noSuchMethod(
+    Invocation.setter(#offline, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set config(_i6.OrignaBaseConfig? value) => super.noSuchMethod(
+    Invocation.setter(#config, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set presence(_i7.OrignaBasePresence? value) => super.noSuchMethod(
+    Invocation.setter(#presence, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set links(_i8.OrignaBaseLinks? value) => super.noSuchMethod(
+    Invocation.setter(#links, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set push(_i9.OrignaBasePush? value) => super.noSuchMethod(
+    Invocation.setter(#push, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set metrics(_i10.OrignaBaseMetrics? value) => super.noSuchMethod(
+    Invocation.setter(#metrics, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set vectorSearch(_i11.VectorSearch? value) => super.noSuchMethod(
+    Invocation.setter(#vectorSearch, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i12.CollectionRef collection(String? name) =>
       (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeHttpsCallablePlatform_3(
+            Invocation.method(#collection, [name]),
+            returnValue: _FakeCollectionRef_10(
               this,
-              Invocation.getter(#delegate),
+              Invocation.method(#collection, [name]),
             ),
-            returnValueForMissingStub: _FakeHttpsCallablePlatform_3(
+            returnValueForMissingStub: _FakeCollectionRef_10(
               this,
-              Invocation.getter(#delegate),
+              Invocation.method(#collection, [name]),
             ),
           )
-          as _i2.HttpsCallablePlatform);
+          as _i12.CollectionRef);
 
   @override
-  _i6.Future<_i4.HttpsCallableResult<T>> call<T>([dynamic parameters]) =>
+  _i13.WriteBatch batch() =>
       (super.noSuchMethod(
-            Invocation.method(#call, [parameters]),
-            returnValue: _i6.Future<_i4.HttpsCallableResult<T>>.value(
-              _FakeHttpsCallableResult_4<T>(
-                this,
-                Invocation.method(#call, [parameters]),
-              ),
+            Invocation.method(#batch, []),
+            returnValue: _FakeWriteBatch_11(
+              this,
+              Invocation.method(#batch, []),
             ),
-            returnValueForMissingStub:
-                _i6.Future<_i4.HttpsCallableResult<T>>.value(
-                  _FakeHttpsCallableResult_4<T>(
-                    this,
-                    Invocation.method(#call, [parameters]),
-                  ),
-                ),
+            returnValueForMissingStub: _FakeWriteBatch_11(
+              this,
+              Invocation.method(#batch, []),
+            ),
           )
-          as _i6.Future<_i4.HttpsCallableResult<T>>);
+          as _i13.WriteBatch);
 
   @override
-  _i6.Stream<_i4.StreamResponse<T, R>> stream<T, R>([Object? input]) =>
+  _i17.Future<Map<String, dynamic>> graphql(
+    String? query, {
+    Map<String, dynamic>? variables,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#stream, [input]),
-            returnValue: _i6.Stream<_i4.StreamResponse<T, R>>.empty(),
-            returnValueForMissingStub:
-                _i6.Stream<_i4.StreamResponse<T, R>>.empty(),
+            Invocation.method(#graphql, [query], {#variables: variables}),
+            returnValue: _i17.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i17.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
           )
-          as _i6.Stream<_i4.StreamResponse<T, R>>);
+          as _i17.Future<Map<String, dynamic>>);
+
+  @override
+  _i17.Future<Map<String, dynamic>> request(
+    String? method,
+    String? path, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #request,
+              [method, path],
+              {#body: body, #headers: headers},
+            ),
+            returnValue: _i17.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i17.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i17.Future<Map<String, dynamic>>);
+
+  @override
+  _i17.Future<Map<String, dynamic>> search(
+    String? index,
+    String? query, {
+    int? limit,
+    int? offset,
+    String? filter,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #search,
+              [index, query],
+              {#limit: limit, #offset: offset, #filter: filter},
+            ),
+            returnValue: _i17.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+            returnValueForMissingStub: _i17.Future<Map<String, dynamic>>.value(
+              <String, dynamic>{},
+            ),
+          )
+          as _i17.Future<Map<String, dynamic>>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
 }
 
 /// A class which mocks [UserRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockUserRepository extends _i1.Mock implements _i5.UserRepository {
+class MockUserRepository extends _i1.Mock implements _i14.UserRepository {
   @override
-  _i6.Future<String> addBuyerAddress(_i7.Address? address) =>
+  _i17.Future<String> addBuyerAddress(_i18.Address? address) =>
       (super.noSuchMethod(
             Invocation.method(#addBuyerAddress, [address]),
-            returnValue: _i6.Future<String>.value(
-              _i8.dummyValue<String>(
+            returnValue: _i17.Future<String>.value(
+              _i16.dummyValue<String>(
                 this,
                 Invocation.method(#addBuyerAddress, [address]),
               ),
             ),
-            returnValueForMissingStub: _i6.Future<String>.value(
-              _i8.dummyValue<String>(
+            returnValueForMissingStub: _i17.Future<String>.value(
+              _i16.dummyValue<String>(
                 this,
                 Invocation.method(#addBuyerAddress, [address]),
               ),
             ),
           )
-          as _i6.Future<String>);
+          as _i17.Future<String>);
 
   @override
-  _i6.Future<void> deleteBuyerAddress(String? addressId) =>
+  _i17.Future<void> deleteBuyerAddress(String? addressId) =>
       (super.noSuchMethod(
             Invocation.method(#deleteBuyerAddress, [addressId]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i17.Future<void>.value(),
+            returnValueForMissingStub: _i17.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i17.Future<void>);
 
   @override
-  _i6.Future<_i5.SellerAccountStatus> getSellerAccountStatus(String? userId) =>
+  _i17.Future<_i14.SellerAccountStatus> getSellerAccountStatus(
+    String? userId,
+  ) =>
       (super.noSuchMethod(
             Invocation.method(#getSellerAccountStatus, [userId]),
-            returnValue: _i6.Future<_i5.SellerAccountStatus>.value(
-              _FakeSellerAccountStatus_5(
+            returnValue: _i17.Future<_i14.SellerAccountStatus>.value(
+              _FakeSellerAccountStatus_12(
                 this,
                 Invocation.method(#getSellerAccountStatus, [userId]),
               ),
             ),
             returnValueForMissingStub:
-                _i6.Future<_i5.SellerAccountStatus>.value(
-                  _FakeSellerAccountStatus_5(
+                _i17.Future<_i14.SellerAccountStatus>.value(
+                  _FakeSellerAccountStatus_12(
                     this,
                     Invocation.method(#getSellerAccountStatus, [userId]),
                   ),
                 ),
           )
-          as _i6.Future<_i5.SellerAccountStatus>);
+          as _i17.Future<_i14.SellerAccountStatus>);
 
   @override
-  _i6.Future<_i7.UserModel?> getUserProfile(String? userId) =>
+  _i17.Future<_i18.UserModel?> getUserProfile(String? userId) =>
       (super.noSuchMethod(
             Invocation.method(#getUserProfile, [userId]),
-            returnValue: _i6.Future<_i7.UserModel?>.value(),
-            returnValueForMissingStub: _i6.Future<_i7.UserModel?>.value(),
+            returnValue: _i17.Future<_i18.UserModel?>.value(),
+            returnValueForMissingStub: _i17.Future<_i18.UserModel?>.value(),
           )
-          as _i6.Future<_i7.UserModel?>);
+          as _i17.Future<_i18.UserModel?>);
 
   @override
-  _i6.Future<void> recordTermsAcceptance() =>
+  _i17.Future<void> recordTermsAcceptance() =>
       (super.noSuchMethod(
             Invocation.method(#recordTermsAcceptance, []),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i17.Future<void>.value(),
+            returnValueForMissingStub: _i17.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i17.Future<void>);
 
   @override
-  _i6.Future<void> setDefaultBuyerAddress(String? addressId) =>
+  _i17.Future<void> setDefaultBuyerAddress(String? addressId) =>
       (super.noSuchMethod(
             Invocation.method(#setDefaultBuyerAddress, [addressId]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i17.Future<void>.value(),
+            returnValueForMissingStub: _i17.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i17.Future<void>);
 
   @override
-  _i6.Future<void> updateBuyerAddress(
+  _i17.Future<void> updateBuyerAddress(
     String? addressId,
-    _i7.Address? address,
+    _i18.Address? address,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateBuyerAddress, [addressId, address]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i17.Future<void>.value(),
+            returnValueForMissingStub: _i17.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i17.Future<void>);
 
   @override
-  _i6.Future<void> updateNotificationPreferences(
+  _i17.Future<void> updateNotificationPreferences(
     String? userId, {
     bool? notifyNewProducts,
     bool? notifyTrending,
@@ -352,38 +526,38 @@ class MockUserRepository extends _i1.Mock implements _i5.UserRepository {
                 #notifyTrending: notifyTrending,
               },
             ),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i17.Future<void>.value(),
+            returnValueForMissingStub: _i17.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i17.Future<void>);
 
   @override
-  _i6.Future<void> updatePreferredLanguage(String? userId, String? lang) =>
+  _i17.Future<void> updatePreferredLanguage(String? userId, String? lang) =>
       (super.noSuchMethod(
             Invocation.method(#updatePreferredLanguage, [userId, lang]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i17.Future<void>.value(),
+            returnValueForMissingStub: _i17.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i17.Future<void>);
 
   @override
-  _i6.Stream<List<_i7.Address>> watchAddresses(String? userId) =>
+  _i17.Stream<List<_i18.Address>> watchAddresses(String? userId) =>
       (super.noSuchMethod(
             Invocation.method(#watchAddresses, [userId]),
-            returnValue: _i6.Stream<List<_i7.Address>>.empty(),
-            returnValueForMissingStub: _i6.Stream<List<_i7.Address>>.empty(),
+            returnValue: _i17.Stream<List<_i18.Address>>.empty(),
+            returnValueForMissingStub: _i17.Stream<List<_i18.Address>>.empty(),
           )
-          as _i6.Stream<List<_i7.Address>>);
+          as _i17.Stream<List<_i18.Address>>);
 
   @override
-  _i6.Stream<_i5.SellerAccountStatus> watchSellerAccountStatus(
+  _i17.Stream<_i14.SellerAccountStatus> watchSellerAccountStatus(
     String? userId,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#watchSellerAccountStatus, [userId]),
-            returnValue: _i6.Stream<_i5.SellerAccountStatus>.empty(),
+            returnValue: _i17.Stream<_i14.SellerAccountStatus>.empty(),
             returnValueForMissingStub:
-                _i6.Stream<_i5.SellerAccountStatus>.empty(),
+                _i17.Stream<_i14.SellerAccountStatus>.empty(),
           )
-          as _i6.Stream<_i5.SellerAccountStatus>);
+          as _i17.Stream<_i14.SellerAccountStatus>);
 }

@@ -1,0 +1,59 @@
+{
+	email admin@orignagta.ca
+}
+
+(api_security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()"
+		-Server
+	}
+}
+
+(site_security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()"
+		-Server
+	}
+}
+
+api.orignagta.ca {
+	import api_security_headers
+	encode zstd gzip
+
+	@preflight method OPTIONS
+	handle @preflight {
+		header Access-Control-Allow-Origin "https://www.orignagta.ca"
+		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		header Access-Control-Allow-Headers "Authorization, Content-Type, Origin, Accept, X-Requested-With"
+		header Access-Control-Allow-Credentials "true"
+		header Access-Control-Max-Age "86400"
+		respond "" 204
+	}
+
+	header {
+		Access-Control-Allow-Origin "https://www.orignagta.ca"
+		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Authorization, Content-Type, Origin, Accept, X-Requested-With"
+		Access-Control-Allow-Credentials "true"
+		Vary "Origin"
+	}
+
+	reverse_proxy localhost:8080
+}
+
+orignagta.ca, www.orignagta.ca {
+	import site_security_headers
+	encode zstd gzip
+
+	root * /var/www/orignagta
+	try_files {path} {path}/ /index.html
+	file_server
+}

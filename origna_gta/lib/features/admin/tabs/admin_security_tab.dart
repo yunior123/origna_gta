@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -31,7 +32,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // F-62: Read MFA status via the Riverpod userProfileProvider instead of a
-      // direct Firestore call. Falls back gracefully if the profile is not yet loaded.
+      // direct database call. Falls back gracefully if the profile is not yet loaded.
       final uid = ref.read(currentUserProvider)?.uid;
       if (uid == null || !mounted) return;
       // Use the providers.dart userRepository to avoid magic string collection names

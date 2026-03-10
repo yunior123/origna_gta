@@ -1,10 +1,23 @@
 import 'dart:typed_data';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/compat/timestamp.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
+
+/// Lightweight document snapshot used by manual model factories.
+class DocumentSnapshot {
+  final String id;
+  final Map<String, dynamic> _data;
+
+  const DocumentSnapshot({
+    required this.id,
+    required Map<String, dynamic> data,
+  }) : _data = data;
+
+  Map<String, dynamic> data() => _data;
+}
 
 /// Safely parse a dynamic value (Timestamp, String, DateTime) to DateTime?
 DateTime? _parseDateTime(dynamic value) {
@@ -15,15 +28,9 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
-/// Safely parse a dynamic value to Timestamp (never null)
-Timestamp _parseTimestamp(dynamic value) {
-  if (value is Timestamp) return value;
-  if (value is DateTime) return Timestamp.fromDate(value);
-  if (value is String) {
-    final dt = DateTime.tryParse(value);
-    if (dt != null) return Timestamp.fromDate(dt);
-  }
-  return Timestamp.now();
+/// Required DateTime fields fall back to "now" rather than crashing on stale data.
+DateTime _parseDateTimeRequired(dynamic value) {
+  return _parseDateTime(value) ?? DateTime.now();
 }
 
 /// Documentation for Address
@@ -160,7 +167,7 @@ class CartItemDetailModel {
   final double price;
   final List<String> imageUrls;
   final int quantity;
-  final Timestamp createdAt;
+  final DateTime createdAt;
   final Address sellerAddress;
   final String sellerId;
   final String sellerName;
@@ -224,7 +231,7 @@ class CartItemDetailModel {
     this.variantOptions,
   });
 
-  // Convert Firestore Map to CartItemDetailModel
+  // Convert a backend document map to CartItemDetailModel.
   factory CartItemDetailModel.fromMap(Map<String, dynamic> map) {
     return CartItemDetailModel(
       productId: map[Fields.productId] ?? '',
@@ -233,7 +240,7 @@ class CartItemDetailModel {
       price: (map[Fields.price] ?? 0).toDouble(),
       imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
-      createdAt: _parseTimestamp(map[Fields.createdAt]),
+      createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
       sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
       sellerId: map[Fields.sellerId] ?? '',
       sellerName: map[Fields.sellerName] ?? '',
@@ -269,7 +276,7 @@ class CartItemDetailModel {
     );
   }
 
-  // Convert model to Map for Firestore
+  // Convert model to a serializable map.
   Map<String, dynamic> toMap() {
     return {
       Fields.productId: productId,
@@ -311,10 +318,10 @@ class CartItemDetailModel {
 
 /// Documentation for CartItemModel
 class CartItemModel {
-  final String cartItemId; // Auto-generated Firestore doc ID
+  final String cartItemId; // Auto-generated document ID
   final int quantity;
   final String productId;
-  final Timestamp createdAt;
+  final DateTime createdAt;
   final String? buyerNote;
   final String? variantId;
   final String? variantTitle;
@@ -332,22 +339,11 @@ class CartItemModel {
   });
 
   factory CartItemModel.fromMap(Map<String, dynamic> map, {String? docId}) {
-    final raw = map[Fields.createdAt];
-    Timestamp ts;
-    if (raw is Timestamp) {
-      ts = raw;
-    } else if (raw is String) {
-      ts = Timestamp.fromDate(DateTime.parse(raw));
-    } else if (raw is DateTime) {
-      ts = Timestamp.fromDate(raw);
-    } else {
-      ts = Timestamp.now();
-    }
     return CartItemModel(
       cartItemId: docId ?? (map[Fields.cartItemId] as String? ?? ''),
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
       productId: map[Fields.productId] ?? '',
-      createdAt: ts,
+      createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
       buyerNote: map[Fields.buyerNote] as String?,
       variantId: map[Fields.variantId] as String?,
       variantTitle: map[Fields.variantTitle] as String?,
@@ -367,7 +363,7 @@ class CartItemModel {
 
 /// Documentation for CartModel
 class CartModel {
-  final String cartItemId; // Auto-generated Firestore doc ID
+  final String cartItemId; // Auto-generated document ID
   final String productId;
   final int quantity;
   final DateTime createdAt;
@@ -390,22 +386,11 @@ class CartModel {
   });
 
   factory CartModel.fromMap(Map<String, dynamic> map, {String? docId}) {
-    // Handle both Timestamp and null cases safely
-    DateTime parsedDate;
-    final rawDate = map[Fields.createdAt];
-    if (rawDate is Timestamp) {
-      parsedDate = rawDate.toDate();
-    } else if (rawDate is DateTime) {
-      parsedDate = rawDate;
-    } else {
-      parsedDate = DateTime.now();
-    }
-
     return CartModel(
       cartItemId: docId ?? (map[Fields.cartItemId] as String? ?? ''),
       productId: map[Fields.productId] ?? '',
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 1,
-      createdAt: parsedDate,
+      createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
       variantId: map[Fields.variantId] as String?,
       variantTitle: map[Fields.variantTitle] as String?,
       variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
@@ -415,7 +400,7 @@ class CartModel {
   }
 
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{Fields.productId: productId, Fields.quantity: quantity, Fields.createdAt: Timestamp.fromDate(createdAt)};
+    final map = <String, dynamic>{Fields.productId: productId, Fields.quantity: quantity, Fields.createdAt: createdAt};
     if (variantId != null) map[Fields.variantId] = variantId;
     if (variantTitle != null) map[Fields.variantTitle] = variantTitle;
     if (variantOptions != null) map[Fields.variantOptions] = variantOptions;
@@ -433,12 +418,12 @@ class FavoriteItem {
   FavoriteItem({required this.productId, required this.dateFavorited});
 
   factory FavoriteItem.fromDocument(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FavoriteItem(productId: data[Fields.productId] ?? doc.id, dateFavorited: (data[Fields.dateFavorited] as Timestamp?)?.toDate() ?? DateTime.now());
+    final data = doc.data();
+    return FavoriteItem(productId: data[Fields.productId] ?? doc.id, dateFavorited: _parseDateTime(data[Fields.dateFavorited]) ?? DateTime.now());
   }
 
   Map<String, dynamic> toMap() {
-    return {Fields.productId: productId, Fields.dateFavorited: Timestamp.fromDate(dateFavorited)};
+    return {Fields.productId: productId, Fields.dateFavorited: dateFavorited};
   }
 }
 
@@ -513,7 +498,7 @@ class OrderModel {
   }) : paymentStatus = paymentStatus ?? PaymentStatus.awaitingPayment.value;
 
   factory OrderModel.fromDocument(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data();
 
     // Convert the list of items
     final itemsData = data[Fields.items] as List<dynamic>? ?? [];
@@ -526,7 +511,7 @@ class OrderModel {
         price: (map[Fields.price] ?? 0).toDouble(),
         imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
         quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
-        createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
+        createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
         sellerName: map[Fields.sellerName] ?? '',
@@ -549,12 +534,7 @@ class OrderModel {
     final taxAmountCents = (data[Fields.taxAmountCents] as num?)?.toInt() ?? 0;
     final platformFeeTotalCents = (data[Fields.platformFeeTotalCents] as num?)?.toInt() ?? 0;
 
-    final createdAtRaw = data[Fields.createdAt];
-    final createdAt = createdAtRaw is Timestamp
-        ? createdAtRaw.toDate()
-        : createdAtRaw is DateTime
-        ? createdAtRaw
-        : DateTime.now();
+    final createdAt = _parseDateTimeRequired(data[Fields.createdAt]);
 
     return OrderModel(
       orderId: data[Fields.orderId] ?? doc.id,
@@ -580,7 +560,7 @@ class OrderModel {
       pendingTotalCents: (data[Fields.pendingTotalCents] as num?)?.toInt() ?? 0,
       sellerPayouts: sellerPayouts,
       confirmedByClient: data[Fields.confirmedByClient] ?? false,
-      confirmedAt: (data[Fields.confirmedAt] as Timestamp?)?.toDate(),
+      confirmedAt: _parseDateTime(data[Fields.confirmedAt]),
       platformFeeTotalCents: platformFeeTotalCents,
       payoutStatus: data[Fields.payoutStatus] ?? PayoutStatusValues.pending,
       ratings: Map<String, dynamic>.from(data[Fields.ratings] ?? {}),
@@ -598,7 +578,7 @@ class OrderModel {
         price: (map[Fields.price] ?? 0).toDouble(),
         imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
         quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
-        createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
+        createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
         sellerName: map[Fields.sellerName] ?? '',
@@ -621,12 +601,7 @@ class OrderModel {
     final taxAmountCents = (data[Fields.taxAmountCents] as num?)?.toInt() ?? 0;
     final platformFeeTotalCents = (data[Fields.platformFeeTotalCents] as num?)?.toInt() ?? 0;
 
-    final createdAtRaw = data[Fields.createdAt];
-    final createdAt = createdAtRaw is Timestamp
-        ? createdAtRaw.toDate()
-        : createdAtRaw is DateTime
-        ? createdAtRaw
-        : DateTime.now();
+    final createdAt = _parseDateTimeRequired(data[Fields.createdAt]);
 
     return OrderModel(
       orderId: data[Fields.orderId] ?? '',
@@ -652,7 +627,7 @@ class OrderModel {
       pendingTotalCents: (data[Fields.pendingTotalCents] as num?)?.toInt() ?? 0,
       sellerPayouts: sellerPayouts,
       confirmedByClient: data[Fields.confirmedByClient] ?? false,
-      confirmedAt: (data[Fields.confirmedAt] is Timestamp?) ? (data[Fields.confirmedAt] as Timestamp?)?.toDate() : null,
+      confirmedAt: _parseDateTime(data[Fields.confirmedAt]),
       platformFeeTotalCents: platformFeeTotalCents,
       payoutStatus: data[Fields.payoutStatus] ?? PayoutStatusValues.pending,
       ratings: Map<String, dynamic>.from(data[Fields.ratings] ?? {}),
@@ -677,7 +652,7 @@ class OrderModel {
   // Dollar getters derived from cents
   double get total => totalAmountCents / 100.0;
 
-  // Convert OrderModel to map for Firestore
+  // Convert OrderModel to a serializable map.
   Map<String, dynamic> toMap() {
     return {
       Fields.userId: userId,
@@ -700,7 +675,7 @@ class OrderModel {
       Fields.actualShippingCents: actualShippingCents,
       Fields.pendingTotalCents: pendingTotalCents,
       Fields.confirmedByClient: confirmedByClient,
-      if (confirmedAt != null) Fields.confirmedAt: Timestamp.fromDate(confirmedAt!),
+      if (confirmedAt != null) Fields.confirmedAt: (confirmedAt!),
       Fields.platformFeeTotalCents: platformFeeTotalCents,
       Fields.payoutStatus: payoutStatus,
       Fields.ratings: ratings,
@@ -730,7 +705,7 @@ class ProductModel {
   final int categoryId;
   final double rating;
   final int ratingCount;
-  final Timestamp? createdAt;
+  final DateTime? createdAt;
   final List<String> searchKeywords;
   // Shipping dimensions (optional - for better shipping calculation)
   final double? weightKg; // Weight in kilograms
@@ -745,7 +720,7 @@ class ProductModel {
   final bool isPerishable; // Food, flowers, etc. - affects same-day delivery logic
   final int minimumOrderQuantity;
   final bool freeShipping;
-  final Timestamp? deletedAt;
+  final DateTime? deletedAt;
   final bool isDigital; // True if product is digital (no shipping required)
   final bool isAgeRestricted; // True if buyer must confirm age 18+ before purchasing
   final String? digitalType; // 'software' | 'book'
@@ -789,8 +764,7 @@ class ProductModel {
        searchKeywords = keywords;
 
   factory ProductModel.fromDocument(DocumentSnapshot doc) {
-    assert(doc.data() != null, 'Product document data is null');
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data();
 
     assert(data.containsKey(Fields.name), 'Product missing "name"');
     assert(data.containsKey(Fields.price), 'Product missing "price"');
@@ -800,7 +774,7 @@ class ProductModel {
   }
 
   factory ProductModel.fromMap(Map<String, dynamic> map) {
-    // Parse delivery options from Firestore
+    // Parse delivery options from stored data.
     List<SellerDeliveryOption>? parsedDeliveryOptions;
     if (map[Fields.deliveryOptions] != null && map[Fields.deliveryOptions] is List) {
       parsedDeliveryOptions = (map[Fields.deliveryOptions] as List)
@@ -820,7 +794,7 @@ class ProductModel {
       categoryId: _parseInt(map[Fields.categoryId]),
       rating: _parseDouble(map[Fields.rating]),
       ratingCount: _parseInt(map[Fields.ratingCount]),
-      createdAt: map[Fields.createdAt] != null ? _parseTimestamp(map[Fields.createdAt]) : null,
+      createdAt: _parseDateTime(map[Fields.createdAt]),
       sellerId: map[Fields.sellerId]?.toString() ?? '',
       keywords: _parseStringList(map[Fields.keywords]),
       stockQuantity: _parseInt(map[Fields.stockQuantity]),
@@ -841,7 +815,7 @@ class ProductModel {
       isPerishable: map[Fields.isPerishable] ?? false,
       minimumOrderQuantity: _parseIntOr(map[Fields.minimumOrderQuantity], defaultValue: 1),
       freeShipping: map[Fields.freeShipping] ?? false,
-      deletedAt: map[Fields.deletedAt] != null ? _parseTimestamp(map[Fields.deletedAt]) : null,
+      deletedAt: _parseDateTime(map[Fields.deletedAt]),
     );
   }
 
@@ -972,7 +946,7 @@ class SellerPayout {
       Fields.netAmountCents: netAmountCents,
       Fields.status: status,
       Fields.stripeTransferId: stripeTransferId,
-      if (payoutDate != null) Fields.payoutDate: Timestamp.fromDate(payoutDate!),
+      if (payoutDate != null) Fields.payoutDate: (payoutDate!),
       Fields.failureReason: failureReason,
     };
   }
@@ -1179,17 +1153,17 @@ class UserModel {
       Fields.name: name,
       Fields.roles: roles,
       Fields.address: address?.toMap(),
-      Fields.createdAt: Timestamp.fromDate(createdAt),
+      Fields.createdAt: (createdAt),
       Fields.customerId: customerId,
       if (lastCheckoutSession != null) Fields.lastCheckoutSession: lastCheckoutSession,
       if (lastOrderId != null) Fields.lastOrderId: lastOrderId,
-      if (lastCheckoutTimestamp != null) Fields.lastCheckoutTimestamp: Timestamp.fromDate(lastCheckoutTimestamp!),
+      if (lastCheckoutTimestamp != null) Fields.lastCheckoutTimestamp: (lastCheckoutTimestamp!),
       if (stripeAccountId != null) Fields.stripeAccountId: stripeAccountId,
       Fields.payoutsEnabled: payoutsEnabled,
       Fields.chargesEnabled: chargesEnabled,
       Fields.onboardingCompleted: onboardingCompleted,
       Fields.suspended: suspended,
-      if (suspendedAt != null) Fields.suspendedAt: Timestamp.fromDate(suspendedAt!),
+      if (suspendedAt != null) Fields.suspendedAt: (suspendedAt!),
       Fields.paymentProvider: paymentProvider,
       // Seller-specific fields
       Fields.verified: verified,
@@ -1201,15 +1175,5 @@ class UserModel {
       if (pendingRequirements.isNotEmpty) Fields.pendingRequirements: pendingRequirements,
       Fields.mfaEnabled: mfaEnabled,
     };
-  }
-
-  // Helper method to get cart subcollection reference
-  static CollectionReference getCartCollection(String userId) {
-    return FirebaseFirestore.instance.collection(Collections.users).doc(userId).collection(Collections.cart);
-  }
-
-  // Helper method to get favorites subcollection reference
-  static CollectionReference getFavoritesCollection(String userId) {
-    return FirebaseFirestore.instance.collection(Collections.users).doc(userId).collection(Collections.favorites);
   }
 }

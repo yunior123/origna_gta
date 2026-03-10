@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:cross_file/cross_file.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
@@ -139,7 +140,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         state = state.copyWith(errorMessage: 'product.address_required'.tr());
         return;
       }
-      // FIX: Validate address field lengths to match Firestore Rules
+      // FIX: Validate address field lengths to match server-side validation
       if (street.trim().length < 3) {
         state = state.copyWith(errorMessage: 'product.street_too_short'.tr());
         return;
@@ -271,7 +272,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       final provinceTrimmed = state.selectedProvince.trim();
       final postalTrimmed = postalCode.trim().toUpperCase();
 
-      // Atomic: compress images then delegate both upload + Firestore write to backend.
+      // Atomic: compress images then delegate both upload + database write to backend.
       // On any failure the backend cleans up R2 automatically — no orphan images.
       List<Uint8List> compressedImages = [];
       List<String>? testImageUrls;

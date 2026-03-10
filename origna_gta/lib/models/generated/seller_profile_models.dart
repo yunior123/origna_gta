@@ -3,7 +3,6 @@
 // Generated from Pydantic models - Single source of truth
 // ignore_for_file: non_abstract_class_inherits_abstract_member
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../core/schema/schema_constants.dart';
@@ -12,12 +11,12 @@ import 'base_models.dart';
 part 'seller_profile_models.freezed.dart';
 part 'seller_profile_models.g.dart';
 
-/// Safely parse a dynamic value (Timestamp, String, DateTime) to DateTime?
+/// Safely parse a dynamic value (String, DateTime, int) to DateTime?
 DateTime? _parseDateTime(dynamic value) {
   if (value == null) return null;
-  if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;
   if (value is String) return DateTime.tryParse(value);
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
   return null;
 }
 
@@ -69,8 +68,7 @@ abstract class SellerProfile with _$SellerProfile {
     DateTime? updatedAt,
   }) = _SellerProfile;
 
-  factory SellerProfile.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory SellerProfile.fromMap(Map<String, dynamic> data) {
     Address? businessAddr;
     final rawAddr = data[Fields.businessAddress];
     if (rawAddr is Map<String, dynamic>) {

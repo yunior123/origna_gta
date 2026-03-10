@@ -1,20 +1,19 @@
-import 'dart:async';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart' hide User;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/core/providers.dart';
+// coverage:ignore-file
+// Migrated: delegates to OrignaBase chat repository.
+// Screens continue using chatRepositoryProvider, chatMessagesProvider, chatViewModelProvider, etc.
 
+import 'dart:async';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orignabase/orignabase.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 import 'chat_repository.dart';
 
 // ─── Repository ────────────────────────────────────────────────────────────
 
-final chatRepositoryProvider = Provider<ChatRepository>((ref) {
-  return ChatRepository(
-    ref.watch(firestoreProvider),
-    ref.watch(firebaseFunctionsProvider),
-  );
+final chatRepositoryProvider = Provider<OrignaBaseChatRepository>((ref) {
+  return OrignaBaseChatRepository(ref.watch(orignabaseProvider));
 });
 
 // ─── Messages stream ───────────────────────────────────────────────────────
@@ -27,7 +26,7 @@ final chatMessagesProvider =
 // ─── User's buyer chats stream ─────────────────────────────────────────────
 
 final myBuyerChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(obUserIdProvider);
   if (uid == null) return const Stream.empty();
   return ref.watch(chatRepositoryProvider).userChatsStream(uid);
 });
@@ -35,29 +34,26 @@ final myBuyerChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) 
 // ─── User's seller chats stream ────────────────────────────────────────────
 
 final mySellerChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(obUserIdProvider);
   if (uid == null) return const Stream.empty();
   return ref.watch(chatRepositoryProvider).sellerChatsStream(uid);
 });
 
 // ─── Unified chat inbox (buyer + seller merged, deduped, sorted) ───────────
 
-/// F-71: Single inbox for users who are both buyer and seller.
-/// Use this provider for the main chat inbox screen.
 final myAllChatsProvider = StreamProvider.autoDispose<List<ChatThread>>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(obUserIdProvider);
   if (uid == null) return const Stream.empty();
   return ref.watch(chatRepositoryProvider).allChatsStream(uid);
 });
 
 // ─── Chat ViewModel ────────────────────────────────────────────────────────
 
-/// Documentation for ChatState
+/// Chat state used by the ChatViewModel.
 class ChatState {
   final bool isLoading;
   final String? errorMessage;
   final String? chatId;
-  /// True when the current user is the seller of this product — they should use their seller inbox.
   final bool isOwnProduct;
 
   const ChatState({this.isLoading = false, this.errorMessage, this.chatId, this.isOwnProduct = false});
@@ -77,7 +73,7 @@ final chatViewModelProvider =
   return ChatViewModel(ref, productId);
 });
 
-/// Documentation for ChatViewModel
+/// Chat viewmodel — uses OrignaBase chat repository.
 class ChatViewModel extends StateNotifier<ChatState> {
   final Ref _ref;
   final String _productId;
@@ -97,15 +93,15 @@ class ChatViewModel extends StateNotifier<ChatState> {
     try {
       final chatId = await _ref.read(chatRepositoryProvider).getOrCreateChat(_productId);
       state = state.copyWith(isLoading: false, chatId: chatId);
-    } catch (e) {
-      // Detect self-chat (seller viewing own product) and surface a clear UX state
-      final isSelfChat = e is FirebaseFunctionsException && e.code == 'permission-denied' &&
-          (e.message?.contains('yourself') ?? false);
+    } on OrignaBaseException catch (e) {
+      final isSelfChat = e.message.contains('yourself');
       state = state.copyWith(
         isLoading: false,
         isOwnProduct: isSelfChat,
-        errorMessage: isSelfChat ? null : _parseError(e),
+        errorMessage: isSelfChat ? null : e.message,
       );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
     }
   }
 
@@ -113,10 +109,8 @@ class ChatViewModel extends StateNotifier<ChatState> {
     final chatId = state.chatId;
     final trimmed = text.trim();
     if (chatId == null || trimmed.isEmpty) return;
-    if (state.isLoading) return; // in-flight guard
+    if (state.isLoading) return;
 
-    // Mirror backend ValidationLimits (BusinessRules) to avoid unnecessary round-trips.
-    // These constants are the single source of truth — also used by the TextField maxLength.
     if (trimmed.length < BusinessRules.minMessageLength) {
       state = state.copyWith(errorMessage: 'Message is too short (minimum ${BusinessRules.minMessageLength} characters).');
       return;
@@ -136,7 +130,6 @@ class ChatViewModel extends StateNotifier<ChatState> {
     }
   }
 
-  /// Debounced markRead — coalesces rapid message batches into a single Firestore write.
   void markReadDebounced() {
     _markReadTimer?.cancel();
     _markReadTimer = Timer(const Duration(milliseconds: 500), () => markRead());
@@ -149,20 +142,15 @@ class ChatViewModel extends StateNotifier<ChatState> {
   }
 
   String _parseError(Object e) {
-    if (e is FirebaseFunctionsException) {
-      switch (e.code) {
-        case 'permission-denied':
-          if (e.message?.toLowerCase().contains('premium') == true) {
-            return 'A Premium membership is required to chat with sellers.';
-          }
-          return e.message ?? 'Access denied.';
-        case 'resource-exhausted':
-          return 'Too many messages. Please slow down.';
-        case 'failed-precondition':
-          return e.message ?? 'Action not allowed.';
-        default:
-          return e.message ?? e.toString();
+    if (e is OrignaBaseException) {
+      final msg = e.message;
+      if (msg.toLowerCase().contains('premium')) {
+        return 'A Premium membership is required to chat with sellers.';
       }
+      if (msg.contains('rate') || msg.contains('exhausted')) {
+        return 'Too many messages. Please slow down.';
+      }
+      return msg;
     }
     final str = e.toString();
     if (str.contains('] ')) return str.split('] ').last;

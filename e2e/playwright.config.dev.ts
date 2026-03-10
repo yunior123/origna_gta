@@ -12,7 +12,10 @@ export default defineConfig({
   reporter: process.env.CI ? 'list' : 'html',
   timeout: 300 * 1000,
   expect: { timeout: 15 * 1000 },
-  globalSetup: './playwright_ui/global-setup.ts',
+  globalSetup:
+    process.env.E2E_SKIP_GLOBAL_SETUP === 'true'
+      ? undefined
+      : './playwright_ui/global-setup.ts',
   use: {
     actionTimeout: 15 * 1000,
     baseURL: process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app',

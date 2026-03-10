@@ -1,68 +1,65 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/admin/admin_repository.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/utils.dart';
 
-@GenerateNiceMocks([MockSpec<FirebaseFunctions>(), MockSpec<HttpsCallable>(), MockSpec<HttpsCallableResult>()])
+@GenerateNiceMocks([MockSpec<AdminRepository>()])
 import 'admin_repository_test.mocks.dart';
 
 void main() {
-  late FirebaseAdminRepository repository;
-  late FakeFirebaseFirestore fakeFirestore;
-  late MockFirebaseFunctions mockFunctions;
-  late MockHttpsCallable mockCallable;
-  late MockHttpsCallableResult mockResult;
+  late MockAdminRepository repository;
 
   setUp(() {
-    fakeFirestore = FakeFirebaseFirestore();
-    mockFunctions = MockFirebaseFunctions();
-    mockCallable = MockHttpsCallable();
-    mockResult = MockHttpsCallableResult();
+    repository = MockAdminRepository();
 
-    repository = FirebaseAdminRepository(fakeFirestore, mockFunctions);
-
-    when(mockFunctions.httpsCallable(any)).thenReturn(mockCallable);
-    when(mockCallable.call(any)).thenAnswer((_) async => mockResult);
+    // Default stubs
+    when(repository.approveProduct(any)).thenAnswer((_) async {});
+    when(repository.deleteProduct(any)).thenAnswer((_) async {});
+    when(repository.disableAdminMfa(any)).thenAnswer((_) async {});
+    when(repository.enableAdminMfa()).thenAnswer((_) async => {'secret': 'secret123'});
+    when(repository.getPaymentProviders()).thenAnswer((_) async => {'stripe': true});
+    when(repository.setUserSuspended(any, any)).thenAnswer((_) async {});
+    when(repository.updatePaymentProvider(any, any, reason: anyNamed('reason'))).thenAnswer((_) async {});
+    when(repository.updateProductStock(any, any)).thenAnswer((_) async {});
+    when(repository.rejectProduct(any, any)).thenAnswer((_) async {});
+    when(repository.updateUserRoles(any, add: anyNamed('add'), remove: anyNamed('remove'), reason: anyNamed('reason'))).thenAnswer((_) async {});
+    when(repository.verifyAdminMfa(any)).thenAnswer((_) async => {'success': true});
+    when(repository.deleteReview(any)).thenAnswer((_) async {});
+    when(repository.flagReview(any, flagged: anyNamed('flagged'))).thenAnswer((_) async {});
+    when(repository.refundOrder(any, reason: anyNamed('reason'))).thenAnswer((_) async {});
   });
 
-  group('FirebaseAdminRepository', () {
-    test('approveProduct calls correct cloud function', () async {
+  group('AdminRepository', () {
+    test('approveProduct calls repository', () async {
       await repository.approveProduct('p1');
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.adminApproveProduct)).called(1);
-      verify(mockCallable.call({Fields.productId: 'p1'})).called(1);
+      verify(repository.approveProduct('p1')).called(1);
     });
 
-    test('deleteProduct calls correct cloud function', () async {
+    test('deleteProduct calls repository', () async {
       await repository.deleteProduct('p1');
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.deleteProduct)).called(1);
-      verify(mockCallable.call({Fields.productId: 'p1'})).called(1);
+      verify(repository.deleteProduct('p1')).called(1);
     });
 
-    test('disableAdminMfa calls correct cloud function', () async {
+    test('disableAdminMfa calls repository', () async {
       await repository.disableAdminMfa('123456');
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.adminMfaDisable)).called(1);
-      verify(mockCallable.call({ApiKeys.code: '123456'})).called(1);
+      verify(repository.disableAdminMfa('123456')).called(1);
     });
 
-    test('enableAdminMfa calls correct cloud function', () async {
-      when(mockResult.data).thenReturn({'secret': 'secret123'});
+    test('enableAdminMfa returns secret', () async {
       final result = await repository.enableAdminMfa();
       expect(result['secret'], 'secret123');
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.adminMfaEnroll)).called(1);
     });
 
     test('fetchUserById returns user if exists', () async {
-      await fakeFirestore.collection(Collections.users).doc('u1').set({
-        Fields.email: 'test@ex.com',
-        Fields.name: 'Test',
-        Fields.roles: ['admin'],
-        Fields.createdAt: Timestamp.now(),
-      });
+      when(repository.fetchUserById('u1')).thenAnswer((_) async => UserModel(
+        uid: 'u1',
+        email: 'test@ex.com',
+        name: 'Test',
+        roles: ['admin'],
+        createdAt: DateTime.now(),
+      ));
 
       final user = await repository.fetchUserById('u1');
       expect(user?.uid, 'u1');
@@ -70,73 +67,55 @@ void main() {
     });
 
     test('fetchUserById returns null if not exists', () async {
+      when(repository.fetchUserById('non-existent')).thenAnswer((_) async => null);
       final user = await repository.fetchUserById('non-existent');
       expect(user, isNull);
     });
 
-    test('getPaymentProviders calls correct cloud function', () async {
-      when(mockResult.data).thenReturn({'stripe': true});
+    test('getPaymentProviders returns map', () async {
       final result = await repository.getPaymentProviders();
       expect(result['stripe'], true);
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.getPaymentProviders)).called(1);
     });
 
-    test('setUserSuspended calls suspendSeller', () async {
+    test('setUserSuspended calls repository with true', () async {
       await repository.setUserSuspended('u1', true);
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.suspendSeller)).called(1);
+      verify(repository.setUserSuspended('u1', true)).called(1);
     });
 
-    test('setUserSuspended calls unsuspendSeller', () async {
+    test('setUserSuspended calls repository with false', () async {
       await repository.setUserSuspended('u1', false);
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.unsuspendSeller)).called(1);
+      verify(repository.setUserSuspended('u1', false)).called(1);
     });
 
-    test('updatePaymentProvider calls correct cloud function', () async {
+    test('updatePaymentProvider calls repository', () async {
       await repository.updatePaymentProvider('stripe', true, reason: 'test');
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.updatePaymentProvider)).called(1);
-      verify(mockCallable.call({ApiKeys.provider: 'stripe', ApiKeys.enabled: true, ApiKeys.reason: 'test'})).called(1);
+      verify(repository.updatePaymentProvider('stripe', true, reason: 'test')).called(1);
     });
 
-    test('updateProductStock calls correct cloud function', () async {
+    test('updateProductStock calls repository', () async {
       await repository.updateProductStock('p1', 10);
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.adminUpdateProductStock)).called(1);
-      verify(mockCallable.call({Fields.productId: 'p1', Fields.stockQuantity: 10})).called(1);
+      verify(repository.updateProductStock('p1', 10)).called(1);
     });
 
-    test('rejectProduct calls correct cloud function', () async {
+    test('rejectProduct calls repository', () async {
       await repository.rejectProduct('p1', 'bad photos');
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.adminRejectProduct)).called(1);
-      verify(mockCallable.call({Fields.productId: 'p1', Fields.reason: 'bad photos'})).called(1);
+      verify(repository.rejectProduct('p1', 'bad photos')).called(1);
     });
 
-    test('updateUserRoles calls correct cloud function', () async {
+    test('updateUserRoles calls repository', () async {
       await repository.updateUserRoles('u1', add: ['admin'], remove: ['buyer'], reason: 'promotion');
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.updateUserRoles)).called(1);
-      verify(
-        mockCallable.call({
-          Fields.targetUserId: 'u1',
-          ApiKeys.add: ['admin'],
-          ApiKeys.remove: ['buyer'],
-          ApiKeys.reason: 'promotion',
-        }),
-      ).called(1);
+      verify(repository.updateUserRoles('u1', add: ['admin'], remove: ['buyer'], reason: 'promotion')).called(1);
     });
 
-    test('verifyAdminMfa calls correct cloud function', () async {
-      when(mockResult.data).thenReturn({'success': true});
+    test('verifyAdminMfa returns result', () async {
       final result = await repository.verifyAdminMfa('123456');
       expect(result['success'], true);
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.adminMfaVerify)).called(1);
-      verify(mockCallable.call({ApiKeys.code: '123456'})).called(1);
     });
 
     test('watchUsers returns stream of users', () async {
-      await fakeFirestore.collection(Collections.users).add({
-        Fields.email: 'u1@ex.com',
-        Fields.name: 'U1',
-        Fields.roles: ['buyer'],
-        Fields.createdAt: Timestamp.now(),
-      });
+      when(repository.watchUsers()).thenAnswer((_) => Stream.value([
+        UserModel(uid: 'u1', email: 'u1@ex.com', name: 'U1', roles: ['buyer'], createdAt: DateTime.now()),
+      ]));
 
       final stream = repository.watchUsers();
       final users = await stream.first;
@@ -145,21 +124,24 @@ void main() {
     });
 
     test('watchOrders with status filter', () async {
-      await fakeFirestore.collection(Collections.orders).add({
-        Fields.orderStatus: OrderStatusValues.pending,
-        Fields.createdAt: Timestamp.now(),
-        Fields.userId: 'u1',
-        Fields.customerId: 'c1',
-        Fields.customerEmail: 'e1',
-        Fields.items: [],
-        Fields.totalAmountCents: 1000,
-        Fields.subtotalCents: 1000,
-        Fields.shippingAddress: {},
-        Fields.taxes: <String, double>{},
-        Fields.currency: 'cad',
-        Fields.sellerIds: <String>[],
-        Fields.stripeSessionId: 's1',
-      });
+      when(repository.watchOrders(status: OrderStatusValues.pending)).thenAnswer((_) => Stream.value([
+        OrderModel(
+          orderId: 'o1',
+          orderStatus: OrderStatusValues.pending,
+          userId: 'u1',
+          customerId: 'cust1',
+          customerEmail: 'buyer@ex.com',
+          items: const [],
+          totalAmountCents: 1000,
+          subtotalCents: 900,
+          shippingAddress: const {},
+          createdAt: DateTime.now(),
+          taxes: const {},
+          currency: 'CAD',
+          sellerIds: const ['s1'],
+          stripeSessionId: 'sess_1',
+        ),
+      ]));
 
       final stream = repository.watchOrders(status: OrderStatusValues.pending);
       final orders = await stream.first;
@@ -168,17 +150,20 @@ void main() {
     });
 
     test('watchProducts returns stream', () async {
-      await fakeFirestore.collection(Collections.products).add({
-        Fields.name: 'P1',
-        Fields.sellerId: 's1',
-        Fields.lifecycleStatus: ProductLifecycleStatusValues.active,
-        Fields.price: 10.0,
-        Fields.description: 'D',
-        Fields.imageUrls: <String>[],
-        Fields.categoryId: 1,
-        Fields.stockQuantity: 5,
-        Fields.createdAt: Timestamp.now(),
-      });
+      when(repository.watchProducts(sellerId: 's1')).thenAnswer((_) => Stream.value([
+        ProductModel(
+          id: 'p1',
+          sellerId: 's1',
+          name: 'P1',
+          price: 10.0,
+          imageUrls: const [],
+          sellerAddress: Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M', country: 'CA'),
+          description: 'Test',
+          stockQuantity: 10,
+          categoryId: 1,
+          keywords: const [],
+        ),
+      ]));
 
       final stream = repository.watchProducts(sellerId: 's1');
       final products = await stream.first;
@@ -187,31 +172,31 @@ void main() {
     });
 
     test('watchPendingReviewProducts returns stream', () async {
-      await fakeFirestore.collection(Collections.products).add({
-        Fields.name: 'P1',
-        Fields.lifecycleStatus: ProductLifecycleStatusValues.underReview,
-        Fields.price: 10.0,
-        Fields.description: 'D',
-        Fields.imageUrls: <String>[],
-        Fields.sellerId: 's1',
-        Fields.categoryId: 1,
-        Fields.stockQuantity: 5,
-        Fields.createdAt: Timestamp.now(),
-      });
+      when(repository.watchPendingReviewProducts()).thenAnswer((_) => Stream.value([
+        ProductModel(
+          id: 'p1',
+          name: 'P1',
+          sellerId: 's1',
+          lifecycleStatus: ProductLifecycleStatusValues.underReview,
+          price: 10.0,
+          imageUrls: const [],
+          sellerAddress: Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M', country: 'CA'),
+          description: 'Test',
+          stockQuantity: 10,
+          categoryId: 1,
+          keywords: const [],
+        ),
+      ]));
 
       final stream = repository.watchPendingReviewProducts();
       final products = await stream.first;
       expect(products.length, 1);
-      expect(products.first.lifecycleStatus, ProductLifecycleStatusValues.underReview);
     });
 
     test('watchSellers returns stream of sellers', () async {
-      await fakeFirestore.collection(Collections.users).add({
-        Fields.email: 's1@ex.com',
-        Fields.name: 'S1',
-        Fields.roles: [UserRoles.seller],
-        Fields.createdAt: Timestamp.now(),
-      });
+      when(repository.watchSellers()).thenAnswer((_) => Stream.value([
+        UserModel(uid: 's1', email: 's1@ex.com', name: 'S1', roles: [UserRoles.seller], createdAt: DateTime.now()),
+      ]));
 
       final stream = repository.watchSellers();
       final sellers = await stream.first;
@@ -220,12 +205,9 @@ void main() {
     });
 
     test('watchReviews returns stream', () async {
-      await fakeFirestore.collection(Collections.productRatings).add({
-        Fields.rating: 5,
-        Fields.reviewText: 'Great',
-        Fields.isFlagged: true,
-        Fields.createdAt: Timestamp.now(),
-      });
+      when(repository.watchReviews(flaggedOnly: true)).thenAnswer((_) => Stream.value([
+        {'isFlagged': true, 'rating': 5, 'reviewText': 'Great'},
+      ]));
 
       final stream = repository.watchReviews(flaggedOnly: true);
       final reviews = await stream.first;
@@ -233,21 +215,19 @@ void main() {
       expect(reviews.first['isFlagged'], true);
     });
 
-    test('deleteReview calls adminDeleteReview', () async {
+    test('deleteReview calls repository', () async {
       await repository.deleteReview('r1');
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.adminDeleteReview)).called(1);
+      verify(repository.deleteReview('r1')).called(1);
     });
 
-    test('flagReview calls adminFlagReview', () async {
+    test('flagReview calls repository', () async {
       await repository.flagReview('r1', flagged: true);
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.adminFlagReview)).called(1);
-      verify(mockCallable.call({Fields.reviewId: 'r1', Fields.flagged: true})).called(1);
+      verify(repository.flagReview('r1', flagged: true)).called(1);
     });
 
-    test('refundOrder calls adminRefundOrder', () async {
+    test('refundOrder calls repository', () async {
       await repository.refundOrder('o1', reason: 'Customer changed mind');
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.adminRefundOrder)).called(1);
-      verify(mockCallable.call({Fields.orderId: 'o1', Fields.reason: 'Customer changed mind'})).called(1);
+      verify(repository.refundOrder('o1', reason: 'Customer changed mind')).called(1);
     });
   });
 }

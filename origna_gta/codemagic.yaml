@@ -19,12 +19,6 @@ workflows:
           cd "$CM_BUILD_DIR/../e2e"
           npm ci
           npx playwright install chromium
-      - name: Backend dependencies
-        script: |
-          cd "$CM_BUILD_DIR/../functions"
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -r requirements.txt
-          python3 -m pip install pytest pytest-cov
       - name: Run random Flutter integration flows (Crash check)
         script: |
           cd "$CM_BUILD_DIR/.."
@@ -40,13 +34,10 @@ workflows:
           flutter config --enable-macos-desktop
           RUN_FLUTTER_INTEGRATION_COVERAGE="true" \
           FLUTTER_INTEGRATION_DEVICE="macos" \
-          ./scripts/run_quality_gate.sh --backend-gate-mode strict
+          ./scripts/run_quality_gate.sh --skip-backend --backend-gate-mode strict
       - name: Collect quality artifacts
         script: |
           mkdir -p "$CM_BUILD_DIR/build/remote-quality"
-          if [ -f "$CM_BUILD_DIR/../functions/coverage.xml" ]; then
-            cp "$CM_BUILD_DIR/../functions/coverage.xml" "$CM_BUILD_DIR/build/remote-quality/backend-coverage.xml"
-          fi
           if [ -f "$CM_BUILD_DIR/coverage_unit.info" ]; then
             cp "$CM_BUILD_DIR/coverage_unit.info" "$CM_BUILD_DIR/build/remote-quality/flutter-coverage.info"
           fi

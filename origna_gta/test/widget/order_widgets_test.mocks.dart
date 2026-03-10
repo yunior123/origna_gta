@@ -3,17 +3,12 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i6;
+import 'dart:async' as _i3;
 
-import 'package:cloud_functions/cloud_functions.dart' as _i4;
-import 'package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart'
-    as _i2;
-import 'package:firebase_core/firebase_core.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i9;
-import 'package:origna_gta/core/repositories/order_repository.dart' as _i5;
-import 'package:origna_gta/features/cart/cart_provider.dart' as _i8;
-import 'package:origna_gta/models/generated/models.dart' as _i7;
+import 'package:origna_gta/core/repositories/order_repository.dart' as _i2;
+import 'package:origna_gta/features/cart/cart_provider.dart' as _i5;
+import 'package:origna_gta/models/generated/models.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -30,95 +25,67 @@ import 'package:origna_gta/models/generated/models.dart' as _i7;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeFirebaseFunctionsPlatform_0 extends _i1.SmartFake
-    implements _i2.FirebaseFunctionsPlatform {
-  _FakeFirebaseFunctionsPlatform_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeFirebaseApp_1 extends _i1.SmartFake implements _i3.FirebaseApp {
-  _FakeFirebaseApp_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallable_2 extends _i1.SmartFake implements _i4.HttpsCallable {
-  _FakeHttpsCallable_2(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallablePlatform_3 extends _i1.SmartFake
-    implements _i2.HttpsCallablePlatform {
-  _FakeHttpsCallablePlatform_3(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallableResult_4<T1> extends _i1.SmartFake
-    implements _i4.HttpsCallableResult<T1> {
-  _FakeHttpsCallableResult_4(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
 /// A class which mocks [OrderRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockOrderRepository extends _i1.Mock implements _i5.OrderRepository {
+class MockOrderRepository extends _i1.Mock implements _i2.OrderRepository {
   @override
-  _i6.Future<void> approveShippingCost(String? orderId, bool? approved) =>
+  _i3.Future<void> approveShippingCost(String? orderId, bool? approved) =>
       (super.noSuchMethod(
             Invocation.method(#approveShippingCost, [orderId, approved]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i6.Future<void> capturePayment(String? orderId) =>
+  _i3.Future<void> capturePayment(String? orderId) =>
       (super.noSuchMethod(
             Invocation.method(#capturePayment, [orderId]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i6.Future<void> confirmReceipt(String? orderId, {String? productId}) =>
+  _i3.Future<void> confirmReceipt(String? orderId, {String? productId}) =>
       (super.noSuchMethod(
             Invocation.method(
               #confirmReceipt,
               [orderId],
               {#productId: productId},
             ),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i6.Future<Map<String, dynamic>> createCheckoutSession(
+  _i3.Future<Map<String, dynamic>> createCheckoutSession(
     Map<String, dynamic>? orderData,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#createCheckoutSession, [orderData]),
-            returnValue: _i6.Future<Map<String, dynamic>>.value(
+            returnValue: _i3.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i6.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i3.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i6.Future<Map<String, dynamic>>);
+          as _i3.Future<Map<String, dynamic>>);
 
   @override
-  _i6.Future<_i7.Order?> fetchOrderById(String? orderId) =>
+  _i3.Future<_i4.Order?> fetchOrderById(String? orderId) =>
       (super.noSuchMethod(
             Invocation.method(#fetchOrderById, [orderId]),
-            returnValue: _i6.Future<_i7.Order?>.value(),
-            returnValueForMissingStub: _i6.Future<_i7.Order?>.value(),
+            returnValue: _i3.Future<_i4.Order?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.Order?>.value(),
           )
-          as _i6.Future<_i7.Order?>);
+          as _i3.Future<_i4.Order?>);
 
   @override
-  _i6.Future<void> updateItemStatus(
+  _i3.Future<void> updateItemStatus(
     String? orderId,
     String? itemId,
     String? status, {
@@ -136,26 +103,26 @@ class MockOrderRepository extends _i1.Mock implements _i5.OrderRepository {
                 #carrierNote: carrierNote,
               },
             ),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i6.Future<void> updateLastSession(
+  _i3.Future<void> updateLastSession(
     String? userId,
     String? sessionId,
     String? orderId,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateLastSession, [userId, sessionId, orderId]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i6.Future<void> updateShippingCost(
+  _i3.Future<void> updateShippingCost(
     String? orderId,
     double? newShippingCost,
     String? reason,
@@ -166,45 +133,45 @@ class MockOrderRepository extends _i1.Mock implements _i5.OrderRepository {
               newShippingCost,
               reason,
             ]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i6.Stream<List<_i7.Order>> watchBuyerOrders(String? userId) =>
+  _i3.Stream<List<_i4.Order>> watchBuyerOrders(String? userId) =>
       (super.noSuchMethod(
             Invocation.method(#watchBuyerOrders, [userId]),
-            returnValue: _i6.Stream<List<_i7.Order>>.empty(),
-            returnValueForMissingStub: _i6.Stream<List<_i7.Order>>.empty(),
+            returnValue: _i3.Stream<List<_i4.Order>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i4.Order>>.empty(),
           )
-          as _i6.Stream<List<_i7.Order>>);
+          as _i3.Stream<List<_i4.Order>>);
 
   @override
-  _i6.Stream<_i7.Order?> watchPaidOrderBySession(String? sessionId) =>
+  _i3.Stream<_i4.Order?> watchPaidOrderBySession(String? sessionId) =>
       (super.noSuchMethod(
             Invocation.method(#watchPaidOrderBySession, [sessionId]),
-            returnValue: _i6.Stream<_i7.Order?>.empty(),
-            returnValueForMissingStub: _i6.Stream<_i7.Order?>.empty(),
+            returnValue: _i3.Stream<_i4.Order?>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i4.Order?>.empty(),
           )
-          as _i6.Stream<_i7.Order?>);
+          as _i3.Stream<_i4.Order?>);
 
   @override
-  _i6.Stream<List<_i7.Order>> watchSellerOrders(String? userId) =>
+  _i3.Stream<List<_i4.Order>> watchSellerOrders(String? userId) =>
       (super.noSuchMethod(
             Invocation.method(#watchSellerOrders, [userId]),
-            returnValue: _i6.Stream<List<_i7.Order>>.empty(),
-            returnValueForMissingStub: _i6.Stream<List<_i7.Order>>.empty(),
+            returnValue: _i3.Stream<List<_i4.Order>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i4.Order>>.empty(),
           )
-          as _i6.Stream<List<_i7.Order>>);
+          as _i3.Stream<List<_i4.Order>>);
 }
 
 /// A class which mocks [CartController].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockCartController extends _i1.Mock implements _i8.CartController {
+class MockCartController extends _i1.Mock implements _i5.CartController {
   @override
-  _i6.Future<bool> addToCart(
+  _i3.Future<bool> addToCart(
     String? productId,
     int? quantity, {
     String? variantId,
@@ -221,28 +188,28 @@ class MockCartController extends _i1.Mock implements _i8.CartController {
                 #priceCad: priceCad,
               },
             ),
-            returnValue: _i6.Future<bool>.value(false),
-            returnValueForMissingStub: _i6.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
           )
-          as _i6.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i6.Future<bool> canAddToCart(String? productId) =>
+  _i3.Future<bool> canAddToCart(String? productId) =>
       (super.noSuchMethod(
             Invocation.method(#canAddToCart, [productId]),
-            returnValue: _i6.Future<bool>.value(false),
-            returnValueForMissingStub: _i6.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
           )
-          as _i6.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i6.Future<void> clearCart() =>
+  _i3.Future<void> clearCart() =>
       (super.noSuchMethod(
             Invocation.method(#clearCart, []),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i3.Future<void>);
 
   @override
   void refreshCart() => super.noSuchMethod(
@@ -251,239 +218,38 @@ class MockCartController extends _i1.Mock implements _i8.CartController {
   );
 
   @override
-  _i6.Future<void> removeFromCart(String? cartItemId) =>
+  _i3.Future<void> removeFromCart(String? cartItemId) =>
       (super.noSuchMethod(
             Invocation.method(#removeFromCart, [cartItemId]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i6.Future<bool> saveForLater(String? productId, String? cartItemId) =>
+  _i3.Future<bool> saveForLater(String? productId, String? cartItemId) =>
       (super.noSuchMethod(
             Invocation.method(#saveForLater, [productId, cartItemId]),
-            returnValue: _i6.Future<bool>.value(false),
-            returnValueForMissingStub: _i6.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
           )
-          as _i6.Future<bool>);
+          as _i3.Future<bool>);
 
   @override
-  _i6.Future<void> updateBuyerNote(String? cartItemId, String? note) =>
+  _i3.Future<void> updateBuyerNote(String? cartItemId, String? note) =>
       (super.noSuchMethod(
             Invocation.method(#updateBuyerNote, [cartItemId, note]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i3.Future<void>);
 
   @override
-  _i6.Future<bool> updateQuantity(String? cartItemId, int? newQuantity) =>
+  _i3.Future<bool> updateQuantity(String? cartItemId, int? newQuantity) =>
       (super.noSuchMethod(
             Invocation.method(#updateQuantity, [cartItemId, newQuantity]),
-            returnValue: _i6.Future<bool>.value(false),
-            returnValueForMissingStub: _i6.Future<bool>.value(false),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
           )
-          as _i6.Future<bool>);
-}
-
-/// A class which mocks [FirebaseFunctions].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockFirebaseFunctions extends _i1.Mock implements _i4.FirebaseFunctions {
-  @override
-  _i2.FirebaseFunctionsPlatform get delegate =>
-      (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
-          )
-          as _i2.FirebaseFunctionsPlatform);
-
-  @override
-  _i3.FirebaseApp get app =>
-      (super.noSuchMethod(
-            Invocation.getter(#app),
-            returnValue: _FakeFirebaseApp_1(this, Invocation.getter(#app)),
-            returnValueForMissingStub: _FakeFirebaseApp_1(
-              this,
-              Invocation.getter(#app),
-            ),
-          )
-          as _i3.FirebaseApp);
-
-  @override
-  Map<dynamic, dynamic> get pluginConstants =>
-      (super.noSuchMethod(
-            Invocation.getter(#pluginConstants),
-            returnValue: <dynamic, dynamic>{},
-            returnValueForMissingStub: <dynamic, dynamic>{},
-          )
-          as Map<dynamic, dynamic>);
-
-  @override
-  _i4.HttpsCallable httpsCallable(
-    String? name, {
-    _i4.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(#httpsCallable, [name], {#options: options}),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  _i4.HttpsCallable httpsCallableFromUrl(
-    String? url, {
-    _i4.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(
-              #httpsCallableFromUrl,
-              [url],
-              {#options: options},
-            ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  _i4.HttpsCallable httpsCallableFromUri(
-    Uri? uri, {
-    _i4.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(
-              #httpsCallableFromUri,
-              [uri],
-              {#options: options},
-            ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  void useFunctionsEmulator(
-    String? host,
-    int? port, {
-    bool? automaticHostMapping = true,
-  }) => super.noSuchMethod(
-    Invocation.method(
-      #useFunctionsEmulator,
-      [host, port],
-      {#automaticHostMapping: automaticHostMapping},
-    ),
-    returnValueForMissingStub: null,
-  );
-}
-
-/// A class which mocks [HttpsCallable].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallable extends _i1.Mock implements _i4.HttpsCallable {
-  @override
-  _i2.HttpsCallablePlatform get delegate =>
-      (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
-          )
-          as _i2.HttpsCallablePlatform);
-
-  @override
-  _i6.Future<_i4.HttpsCallableResult<T>> call<T>([dynamic parameters]) =>
-      (super.noSuchMethod(
-            Invocation.method(#call, [parameters]),
-            returnValue: _i6.Future<_i4.HttpsCallableResult<T>>.value(
-              _FakeHttpsCallableResult_4<T>(
-                this,
-                Invocation.method(#call, [parameters]),
-              ),
-            ),
-            returnValueForMissingStub:
-                _i6.Future<_i4.HttpsCallableResult<T>>.value(
-                  _FakeHttpsCallableResult_4<T>(
-                    this,
-                    Invocation.method(#call, [parameters]),
-                  ),
-                ),
-          )
-          as _i6.Future<_i4.HttpsCallableResult<T>>);
-
-  @override
-  _i6.Stream<_i4.StreamResponse<T, R>> stream<T, R>([Object? input]) =>
-      (super.noSuchMethod(
-            Invocation.method(#stream, [input]),
-            returnValue: _i6.Stream<_i4.StreamResponse<T, R>>.empty(),
-            returnValueForMissingStub:
-                _i6.Stream<_i4.StreamResponse<T, R>>.empty(),
-          )
-          as _i6.Stream<_i4.StreamResponse<T, R>>);
-}
-
-/// A class which mocks [HttpsCallableResult].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallableResult<T> extends _i1.Mock
-    implements _i4.HttpsCallableResult<T> {
-  @override
-  T get data =>
-      (super.noSuchMethod(
-            Invocation.getter(#data),
-            returnValue: _i9.dummyValue<T>(this, Invocation.getter(#data)),
-            returnValueForMissingStub: _i9.dummyValue<T>(
-              this,
-              Invocation.getter(#data),
-            ),
-          )
-          as T);
+          as _i3.Future<bool>);
 }

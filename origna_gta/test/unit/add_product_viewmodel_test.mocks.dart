@@ -4,18 +4,17 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i3;
-import 'dart:convert' as _i11;
+import 'dart:convert' as _i10;
 import 'dart:typed_data' as _i5;
 
-import 'package:cloud_firestore/cloud_firestore.dart' as _i7;
-import 'package:cross_file/cross_file.dart' as _i9;
+import 'package:cross_file/cross_file.dart' as _i8;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i6;
-import 'package:origna_gta/core/repositories/location_repository.dart' as _i10;
+import 'package:origna_gta/core/repositories/location_repository.dart' as _i9;
 import 'package:origna_gta/core/repositories/product_repository.dart' as _i2;
-import 'package:origna_gta/core/schema/schema_constants.dart' as _i8;
+import 'package:origna_gta/core/schema/schema_constants.dart' as _i7;
 import 'package:origna_gta/models/generated/models.dart' as _i4;
-import 'package:origna_gta/utils/env_config.dart' as _i12;
+import 'package:origna_gta/utils/env_config.dart' as _i11;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -112,9 +111,9 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
     String? searchQuery,
     int? categoryId,
     String? subcategory,
-    _i7.DocumentSnapshot<Object?>? lastDocument,
+    String? lastDocumentId,
     int? pageSize = 20,
-    _i8.SortOption? sortOption = _i8.SortOption.relevance,
+    _i7.SortOption? sortOption = _i7.SortOption.relevance,
     int? minPriceCents,
     int? maxPriceCents,
   }) =>
@@ -123,7 +122,7 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
               #searchQuery: searchQuery,
               #categoryId: categoryId,
               #subcategory: subcategory,
-              #lastDocument: lastDocument,
+              #lastDocumentId: lastDocumentId,
               #pageSize: pageSize,
               #sortOption: sortOption,
               #minPriceCents: minPriceCents,
@@ -136,7 +135,7 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
                   #searchQuery: searchQuery,
                   #categoryId: categoryId,
                   #subcategory: subcategory,
-                  #lastDocument: lastDocument,
+                  #lastDocumentId: lastDocumentId,
                   #pageSize: pageSize,
                   #sortOption: sortOption,
                   #minPriceCents: minPriceCents,
@@ -151,7 +150,7 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
                   #searchQuery: searchQuery,
                   #categoryId: categoryId,
                   #subcategory: subcategory,
-                  #lastDocument: lastDocument,
+                  #lastDocumentId: lastDocumentId,
                   #pageSize: pageSize,
                   #sortOption: sortOption,
                   #minPriceCents: minPriceCents,
@@ -318,7 +317,7 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
 
   @override
   _i3.Future<String?> uploadProductVideo(
-    _i9.XFile? videoFile,
+    _i8.XFile? videoFile,
     String? sellerId,
   ) =>
       (super.noSuchMethod(
@@ -365,7 +364,7 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockLocationRepository extends _i1.Mock
-    implements _i10.LocationRepository {
+    implements _i9.LocationRepository {
   @override
   _i3.Future<List<Map<String, dynamic>>> getAddressSuggestions(String? query) =>
       (super.noSuchMethod(
@@ -384,7 +383,7 @@ class MockLocationRepository extends _i1.Mock
 /// A class which mocks [XFile].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockXFile extends _i1.Mock implements _i9.XFile {
+class MockXFile extends _i1.Mock implements _i8.XFile {
   @override
   String get path =>
       (super.noSuchMethod(
@@ -429,7 +428,7 @@ class MockXFile extends _i1.Mock implements _i9.XFile {
 
   @override
   _i3.Future<String> readAsString({
-    _i11.Encoding? encoding = const _i11.Utf8Codec(),
+    _i10.Encoding? encoding = const _i10.Utf8Codec(),
   }) =>
       (super.noSuchMethod(
             Invocation.method(#readAsString, [], {#encoding: encoding}),
@@ -485,15 +484,15 @@ class MockXFile extends _i1.Mock implements _i9.XFile {
 /// A class which mocks [EnvConfig].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockEnvConfig extends _i1.Mock implements _i12.EnvConfig {
+class MockEnvConfig extends _i1.Mock implements _i11.EnvConfig {
   @override
-  _i12.AppEnvironment get environment =>
+  _i11.AppEnvironment get environment =>
       (super.noSuchMethod(
             Invocation.getter(#environment),
-            returnValue: _i12.AppEnvironment.emulator,
-            returnValueForMissingStub: _i12.AppEnvironment.emulator,
+            returnValue: _i11.AppEnvironment.emulator,
+            returnValueForMissingStub: _i11.AppEnvironment.emulator,
           )
-          as _i12.AppEnvironment);
+          as _i11.AppEnvironment);
 
   @override
   bool get isEmulator =>
@@ -595,16 +594,16 @@ class MockEnvConfig extends _i1.Mock implements _i12.EnvConfig {
           as String);
 
   @override
-  String get algoliaIndexName =>
+  String get orignabaseUrl =>
       (super.noSuchMethod(
-            Invocation.getter(#algoliaIndexName),
+            Invocation.getter(#orignabaseUrl),
             returnValue: _i6.dummyValue<String>(
               this,
-              Invocation.getter(#algoliaIndexName),
+              Invocation.getter(#orignabaseUrl),
             ),
             returnValueForMissingStub: _i6.dummyValue<String>(
               this,
-              Invocation.getter(#algoliaIndexName),
+              Invocation.getter(#orignabaseUrl),
             ),
           )
           as String);

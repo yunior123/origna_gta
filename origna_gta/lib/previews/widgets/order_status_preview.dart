@@ -1,3 +1,4 @@
+// coverage:ignore-file
 /// Flutter Widget Previewer — Order Status Badges & Cards.
 /// Covers all 7 order statuses defined in schema_constants.dart.
 /// Run: flutter widget-preview start

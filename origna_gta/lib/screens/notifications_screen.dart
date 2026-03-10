@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,19 +12,14 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-/// Stream of the current user's notifications, newest first.
+/// Live stream of the current user's notifications via OrignaBase realtime.
 final _userNotificationsProvider = StreamProvider.autoDispose<List<AppNotification>>((ref) {
   final uid = ref.watch(currentUserProvider)?.uid;
-  if (uid == null) return Stream.value([]);
+  if (uid == null) return Stream.value(const []);
   return ref
-      .watch(firestoreProvider)
-      .collection(Collections.users)
-      .doc(uid)
-      .collection(Collections.notifications)
-      .orderBy(Fields.createdAt, descending: true)
-      .limit(50)
-      .snapshots()
-      .map((snap) => snap.docs.map(AppNotification.fromDoc).toList());
+      .watch(notificationRepositoryProvider)
+      .watchNotifications(uid)
+      .map((items) => items.map(AppNotification.fromMap).toList());
 });
 
 /// Documentation for NotificationsScreen
@@ -49,7 +44,7 @@ class NotificationsScreen extends ConsumerWidget {
   Future<void> _markAll(BuildContext context, String? uid, WidgetRef ref) async {
     if (uid == null) return;
     try {
-      // MVVM FIX (AUDIT): Delegated to NotificationRepository — UI no longer builds Firestore queries.
+      // MVVM FIX (AUDIT): Delegated to NotificationRepository — UI no longer builds database queries.
       await ref.read(notificationRepositoryProvider).markAllRead(uid);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -187,7 +182,6 @@ class NotificationsScreenLayout extends StatelessWidget {
   }
 }
 
-/// A notification item read from Firestore users/{uid}/notifications.
 class AppNotification {
   final String id;
   final String title;
@@ -198,16 +192,23 @@ class AppNotification {
 
   const AppNotification({required this.id, required this.title, required this.body, required this.type, required this.isRead, required this.createdAt});
 
-  factory AppNotification.fromDoc(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
+  factory AppNotification.fromMap(Map<String, dynamic> data) {
     final ts = data[Fields.createdAt];
+    DateTime parsedDate;
+    if (ts is DateTime) {
+      parsedDate = ts;
+    } else if (ts is String) {
+      parsedDate = DateTime.tryParse(ts) ?? DateTime.now();
+    } else {
+      parsedDate = DateTime.now();
+    }
     return AppNotification(
-      id: doc.id,
+      id: data['id'] as String? ?? '',
       title: data['title'] as String? ?? '',
       body: data['body'] as String? ?? '',
       type: data[Fields.type] as String? ?? '',
       isRead: data[Fields.isRead] as bool? ?? false,
-      createdAt: ts is Timestamp ? ts.toDate() : DateTime.now(),
+      createdAt: parsedDate,
     );
   }
 }

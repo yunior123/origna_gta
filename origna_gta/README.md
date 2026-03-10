@@ -1,35 +1,35 @@
 #+#+#+#+ origna_gta (Flutter app)
 
-E-commerce marketplace serving Canadian buyers (Web, Android, iOS) using Firebase + Stripe Connect Express. Sellers can be worldwide.
+E-commerce marketplace serving Canadian buyers (Web, Android, iOS) using OrignaBase + Stripe Connect Express. Sellers can be worldwide.
 
 ## Architecture (MVVM)
-- UI → ViewModels → Repositories → Firebase/Stripe services
+- UI → ViewModels → Repositories → OrignaBase/Stripe services
 - No business logic in widgets
 - Idempotent payments + defensive validation
-- Product ratings submitted via Cloud Function (server-validated)
+- Product ratings submitted via server-side validation
 
 ## App flow diagram
 ```mermaid
 sequenceDiagram
 	participant U as User
 	participant A as App
-	participant F as Firebase Functions
+	participant API as OrignaBase API
 	participant S as Stripe
-	participant DB as Firestore
+	participant DB as OrignaBase DB
 
 	U->>A: Checkout
-	A->>F: create_checkout_session (idempotencyKey)
-	F->>DB: Validate stock, reserve, create order
-	F->>S: Create Checkout Session (manual capture, tax)
+	A->>API: create_checkout_session (idempotencyKey)
+	API->>DB: Validate stock, reserve, create order
+	API->>S: Create Checkout Session (manual capture, tax)
 	S-->>A: Hosted checkout URL
-	S-->>F: Webhook events (session completed, PI status)
-	F->>DB: Update order totals/taxes/status
-	A->>F: confirm_order_receipt (buyer)
-	F->>S: Capture payment
-	S-->>F: transfer events
+	S-->>API: Webhook events (session completed, PI status)
+	API->>DB: Update order totals/taxes/status
+	A->>API: confirm_order_receipt (buyer)
+	API->>S: Capture payment
+	S-->>API: transfer events
 ```
 
-## Database diagram (Firestore)
+## Database diagram
 ```mermaid
 erDiagram
 	USERS ||--o{ USERS_CART : has
@@ -192,7 +192,7 @@ Source complet des champs : docs/database_schema.json
 1. Flutter: `flutter pub get`
 2. Run app: `flutter run`
 3. Tests: `../scripts/run_all_tests.sh`
-4. Firestore indexes: `firebase deploy --only firestore:indexes`
+4. Hosting/config deploys live at the repo root; the Flutter app itself uses OrignaBase.
 
 ## Testing
 - Fast local unit/widget path:
@@ -201,6 +201,8 @@ Source complet des champs : docs/database_schema.json
   - `flutter test test/coverage_gate_test.dart --coverage --coverage-path=coverage_unit.info`
 - Dedicated integration coverage target:
   - `flutter test integration_test/coverage_gate_integration_test.dart`
+- Dedicated Playwright coverage target:
+  - `cd ../e2e && E2E_SKIP_GLOBAL_SETUP=true npx playwright test playwright_ui/coverage-gate.spec.ts --config=playwright.config.dev.ts --project=chromium`
 - Full strict gate:
   - `../scripts/run_quality_gate.sh`
 - Heavy Flutter integration coverage is enforced remotely by:
@@ -226,6 +228,3 @@ Use any future expiry, any CVC, any postal code.
 - Keep checkout/order/payment flows green in the remote strict audit.
 - Expand integration/device tests around user-visible flows instead of adding logic to widgets.
 - Expand threat-model tests for cart/checkout abuse.
-
-
-

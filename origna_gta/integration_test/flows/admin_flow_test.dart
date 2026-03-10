@@ -35,7 +35,7 @@ void main() {
         'D01',
         tracker,
         'S001',
-        'Admin session could not be established. Provide --dart-define=TEST_ADMIN_EMAIL/TEST_ADMIN_PASSWORD for the DEV Firebase account.',
+        'Admin session could not be established. Provide --dart-define=TEST_ADMIN_EMAIL/TEST_ADMIN_PASSWORD for the DEV OrignaBase account.',
       );
       if (adminCredential == null) {
         return;

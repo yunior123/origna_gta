@@ -3,7 +3,6 @@
 // Generated from Pydantic models - Single source of truth
 // ignore_for_file: non_abstract_class_inherits_abstract_member
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../core/schema/schema_constants.dart';
@@ -13,16 +12,16 @@ import 'product_models.dart';
 part 'order_models.freezed.dart';
 part 'order_models.g.dart';
 
-/// Safely parse a dynamic value (Timestamp, String, DateTime) to DateTime?
+/// Safely parse a dynamic value (String, DateTime, int) to DateTime?
 DateTime? _parseDateTime(dynamic value) {
   if (value == null) return null;
-  if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;
   if (value is String) return DateTime.tryParse(value);
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
   return null;
 }
 
-/// Parse an OrderItem from a Firestore map without relying on generated fromJson
+/// Parse an OrderItem from a database map without relying on generated fromJson
 OrderItem _parseOrderItem(dynamic raw) {
   final map = _safeMap(raw);
   return OrderItem(
@@ -72,7 +71,7 @@ OrderItem _parseOrderItem(dynamic raw) {
   );
 }
 
-/// Parse Ratings from a Firestore map without relying on generated fromJson
+/// Parse Ratings from a database map without relying on generated fromJson
 Ratings _parseRating(dynamic raw) {
   final map = _safeMap(raw);
   return Ratings(
@@ -83,7 +82,7 @@ Ratings _parseRating(dynamic raw) {
   );
 }
 
-/// Parse an Address from any dynamic Firestore value
+/// Parse an Address from any dynamic database value
 Address _safeAddress(dynamic value) {
   final map = _safeMap(value);
   return Address(
@@ -128,7 +127,7 @@ int _safeInt(dynamic value, [int fallback = 0]) {
   return fallback;
 }
 
-/// Safely parse a Map from dynamic (handles Firestore internal types)
+/// Safely parse a Map from dynamic (handles database internal types)
 Map<String, dynamic> _safeMap(dynamic value) {
   if (value == null) return {};
   if (value is Map<String, dynamic>) return value;
@@ -136,7 +135,7 @@ Map<String, dynamic> _safeMap(dynamic value) {
   return {};
 }
 
-/// Safely convert any Firestore value to String (handles MiniFieldValue, int, etc.)
+/// Safely convert any database value to String (handles MiniFieldValue, int, etc.)
 String _safeString(dynamic value, [String fallback = '']) {
   if (value == null) return fallback;
   if (value is String) return value;
@@ -192,7 +191,7 @@ abstract class Order with _$Order {
     @Default(PayoutStatusValues.pending) String payoutStatus,
     // Ratings
     @Default([]) List<Ratings> ratings,
-    // === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
+    // === AUDIT FIX: 18 missing fields synced from Python/database ===
     // Payment capture tracking
     String? stripePaymentIntentId,
     @Default(0) int captureAttempts,
@@ -231,8 +230,7 @@ abstract class Order with _$Order {
     String? lastCaptureError,
   }) = _Order;
 
-  factory Order.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory Order.fromMap(Map<String, dynamic> data, String docId) {
 
     OrderStatus parseOrderStatus(dynamic raw) {
       final value = raw?.toString();
@@ -350,7 +348,7 @@ abstract class Order with _$Order {
     final rawAddress = _safeMap(data[Fields.shippingAddress]);
 
     return Order(
-      orderId: _safeString(data[Fields.orderId], doc.id),
+      orderId: _safeString(data[Fields.orderId], docId),
       userId: _safeString(data[Fields.userId]),
       version: _safeInt(data[Fields.version], 1),
       schemaVersion: _safeInt(data[Fields.schemaVersion], 1),
@@ -418,7 +416,7 @@ abstract class Order with _$Order {
 
   const Order._();
 
-  /// Actual shipping in dollars (derived from cents — Firestore stores cents)
+  /// Actual shipping in dollars (derived from cents — database stores cents)
   double get actualShipping => actualShippingCents / 100.0;
 
   /// Pending total in dollars (derived from cents)

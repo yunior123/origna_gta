@@ -1,3 +1,4 @@
+// coverage:ignore-file
 /// Flutter Widget Previewer — CustomAppBar variants.
 /// Run: flutter widget-preview start
 library;

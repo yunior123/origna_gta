@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
+// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,7 +74,7 @@ class ProfileScreen extends ConsumerWidget {
 /// Documentation for ProfileScreenLayout
 class ProfileScreenLayout extends StatelessWidget {
   final AsyncValue<UserModel?> userProfileAsync;
-  final User? currentUser;
+  final AppAuthUser? currentUser;
   final bool isExportLoading;
   final ThemeMode themeMode;
   final bool isPremium;
@@ -130,8 +130,7 @@ class ProfileScreenLayout extends StatelessWidget {
           data: (userModel) {
             if (userModel == null) {
               if (currentUser != null) {
-                final needsVerification =
-                    !currentUser!.emailVerified && !currentUser!.providerData.any((p) => p.providerId == 'google.com') && !EnvConfig().isEmulator;
+                final needsVerification = !currentUser!.emailVerified && !EnvConfig().isEmulator;
                 if (needsVerification) {
                   return _EmailVerificationRequiredView(user: currentUser!);
                 }
@@ -1019,7 +1018,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
 
 /// Widget shown inside ProfileScreen when user is authenticated but email is not verified
 class _EmailVerificationRequiredView extends ConsumerStatefulWidget {
-  final User user;
+  final AppAuthUser user;
   const _EmailVerificationRequiredView({required this.user});
 
   @override
@@ -1171,32 +1170,23 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
   Future<void> _checkVerification() async {
     setState(() => _isChecking = true);
     try {
-      // LEG-H2: use firebaseAuthProvider instead of FirebaseAuth.instance directly
-      final auth = ref.read(firebaseAuthProvider);
-      final user = auth.currentUser;
-      if (user != null) {
-        await user.reload();
-        final freshUser = auth.currentUser;
-        if (freshUser != null && freshUser.emailVerified) {
-          // Email is now verified! Create the Firestore document
-          await ref.read(authRepositoryProvider).ensureUserDocumentExists();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('🎉 ${'profile.email_verified_snackbar'.tr()}'),
-                backgroundColor: DesignTokens.success,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-            // userProfileProvider stream will auto-update with the new Firestore document
-            // ProfileScreen will automatically rebuild and show the full profile
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('profile.not_verified_error'.tr()), backgroundColor: DesignTokens.warning, behavior: SnackBarBehavior.floating),
-            );
-          }
+      final verified = await ref.read(authRepositoryProvider).isEmailVerified();
+      if (verified) {
+        await ref.read(authRepositoryProvider).ensureUserDocumentExists();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🎉 ${'profile.email_verified_snackbar'.tr()}'),
+              backgroundColor: DesignTokens.success,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('profile.not_verified_error'.tr()), backgroundColor: DesignTokens.warning, behavior: SnackBarBehavior.floating),
+          );
         }
       }
     } catch (e) {

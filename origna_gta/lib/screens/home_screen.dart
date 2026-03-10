@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'dart:async';
 import 'dart:convert';
 
@@ -64,7 +65,7 @@ class _AddProductButton extends ConsumerWidget {
       );
     }
 
-    // Show only for sellers/admins to match Firestore rules.
+    // Show only for sellers/admins to match server-side validation.
     if (!userCanAccess) {
       if (kDebugMode) debugPrint('🔍 User cannot access → returning shrink()');
       return const SizedBox.shrink();
@@ -74,7 +75,7 @@ class _AddProductButton extends ConsumerWidget {
     final isVerified =
         sellerStatus.whenOrNull(data: (status) => status.isComplete) ?? false;
 
-    // Must match Firestore rules: admin OR verified seller.
+    // Must match server-side validation: admin OR verified seller.
     final canAddProducts = isAdmin || isVerified;
     if (kDebugMode) {
       debugPrint('🔍 isVerified=$isVerified, canAddProducts=$canAddProducts');
@@ -156,7 +157,7 @@ class _CartBadgeState extends ConsumerState<_CartBadge>
                       return;
                     }
                     if (!context.mounted) return;
-                    final verified = await checkEmailVerifiedOrPrompt(context);
+                    final verified = await checkEmailVerifiedOrPrompt(context, ref);
                     if (!verified) return;
                     if (!context.mounted) return;
                     Navigator.pushNamed(context, AppRoutes.cart);

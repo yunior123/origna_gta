@@ -1,4 +1,3 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,18 +14,12 @@ import '../test_utils.dart';
 @GenerateNiceMocks([
   MockSpec<OrderRepository>(),
   MockSpec<CartController>(),
-  MockSpec<FirebaseFunctions>(),
-  MockSpec<HttpsCallable>(),
-  MockSpec<HttpsCallableResult>(),
 ])
 import 'order_widgets_test.mocks.dart';
 
 void main() {
   late MockOrderRepository mockOrderRepo;
   late MockCartController mockCartController;
-  late MockFirebaseFunctions mockFunctions;
-  late MockHttpsCallable mockCallable;
-  late MockHttpsCallableResult mockResult;
 
   setUpAll(() {
     initTestMocks();
@@ -35,12 +28,6 @@ void main() {
   setUp(() {
     mockOrderRepo = MockOrderRepository();
     mockCartController = MockCartController();
-    mockFunctions = MockFirebaseFunctions();
-    mockCallable = MockHttpsCallable();
-    mockResult = MockHttpsCallableResult();
-
-    when(mockFunctions.httpsCallable(any)).thenReturn(mockCallable);
-    when(mockCallable.call(any)).thenAnswer((_) async => mockResult);
   });
 
   Widget buildTestWidget(Widget child, WidgetTester tester) {
@@ -50,7 +37,6 @@ void main() {
       overrides: [
         orderRepositoryProvider.overrideWithValue(mockOrderRepo),
         cartControllerProvider.overrideWithValue(mockCartController),
-        firebaseFunctionsProvider.overrideWithValue(mockFunctions),
       ],
       onGenerateRoute: (settings) => MaterialPageRoute(builder: (_) => const Scaffold(body: Text('Dummy Route'))),
       child: Scaffold(body: SingleChildScrollView(child: child)),

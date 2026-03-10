@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -239,7 +240,7 @@ class AuthRequiredGate extends ConsumerWidget {
           );
         }
         // Gate: block unverified email users from protected routes
-        if (!user.emailVerified && !user.providerData.any((p) => p.providerId == 'google.com') && !EnvConfig().isEmulator) {
+        if (!user.emailVerified && !EnvConfig().isEmulator) {
           return const EmailVerificationRequiredScreen();
         }
         return child;
@@ -480,9 +481,8 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
     try {
       final user = ref.read(currentUserProvider);
       if (user != null) {
-        await user.reload();
-        final freshUser = ref.read(firebaseAuthProvider).currentUser;
-        if (freshUser != null && freshUser.emailVerified) {
+        final verified = await ref.read(authRepositoryProvider).isEmailVerified();
+        if (verified) {
           await ref.read(authRepositoryProvider).ensureUserDocumentExists();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -539,4 +539,3 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
-

@@ -1,66 +1,34 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as auth;
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:origna_gta/screens/notifications_screen.dart';
+import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/notification_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/screens/notifications_screen.dart';
+
 import '../test_utils.dart';
+import 'notifications_screen_test.mocks.dart';
 
 @GenerateNiceMocks([
   MockSpec<NotificationRepository>(),
-  MockSpec<FirebaseFirestore>(),
-  MockSpec<CollectionReference<Map<String, dynamic>>>(),
-  MockSpec<DocumentReference<Map<String, dynamic>>>(),
-  MockSpec<Query<Map<String, dynamic>>>(),
-  MockSpec<QuerySnapshot<Map<String, dynamic>>>(),
-  MockSpec<QueryDocumentSnapshot<Map<String, dynamic>>>(),
-  MockSpec<auth.User>(),
 ])
-import 'notifications_screen_test.mocks.dart';
-
 void main() {
   late MockNotificationRepository mockRepo;
-  late MockFirebaseFirestore mockFirestore;
-  late MockCollectionReference mockCollection;
-  late MockDocumentReference mockDoc;
-  late MockQuery mockQuery;
-  late MockQuerySnapshot mockQuerySnapshot;
-  late MockUser mockUser;
+  late AppAuthUser mockUser;
 
   setUp(() {
     mockRepo = MockNotificationRepository();
-    mockFirestore = MockFirebaseFirestore();
-    mockCollection = MockCollectionReference();
-    mockDoc = MockDocumentReference();
-    mockQuery = MockQuery();
-    mockQuerySnapshot = MockQuerySnapshot();
-    mockUser = MockUser();
-    
+    mockUser = const AppAuthUser(uid: 'user_123', email: 'test@example.com');
     initTestMocks();
-    
-    when(mockUser.uid).thenReturn('user_123');
-    
-    when(mockFirestore.collection(any)).thenReturn(mockCollection);
-    when(mockCollection.doc(any)).thenReturn(mockDoc);
-    when(mockDoc.collection(any)).thenReturn(mockCollection);
-    when(mockCollection.orderBy(any, descending: anyNamed('descending'))).thenReturn(mockQuery);
-    when(mockQuery.limit(any)).thenReturn(mockQuery);
-    when(mockQuery.snapshots()).thenAnswer((_) => Stream.value(mockQuerySnapshot));
   });
 
-  Widget createTestWidget({
-    bool loggedIn = true,
-  }) {
+  Widget createTestWidget({bool loggedIn = true}) {
     return TestWrapper(
       overrides: [
         currentUserProvider.overrideWithValue(loggedIn ? mockUser : null),
         notificationRepositoryProvider.overrideWithValue(mockRepo),
-        firestoreProvider.overrideWithValue(mockFirestore),
       ],
       child: const NotificationsScreen(),
     );
@@ -68,8 +36,9 @@ void main() {
 
   group('NotificationsScreen Widget Tests', () {
     testWidgets('renders empty state when no notifications', (tester) async {
-      when(mockQuerySnapshot.docs).thenReturn([]);
-      
+      when(mockRepo.watchNotifications('user_123'))
+          .thenAnswer((_) => Stream.value(const <Map<String, dynamic>>[]));
+
       await tester.pumpWidget(createTestWidget());
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
@@ -78,18 +47,19 @@ void main() {
     });
 
     testWidgets('renders list of notifications', (tester) async {
-      final mockDoc1 = MockQueryDocumentSnapshot();
-      when(mockDoc1.id).thenReturn('n1');
-      when(mockDoc1.data()).thenReturn({
-        'title': 'Test Title',
-        'body': 'Test Body',
-        Fields.type: 'order_confirmation',
-        Fields.isRead: false,
-        Fields.createdAt: Timestamp.now(),
-      });
-      
-      when(mockQuerySnapshot.docs).thenReturn([mockDoc1]);
-      
+      when(mockRepo.watchNotifications('user_123')).thenAnswer(
+        (_) => Stream.value([
+          {
+            'id': 'n1',
+            'title': 'Test Title',
+            'body': 'Test Body',
+            Fields.type: 'order_confirmation',
+            Fields.isRead: false,
+            Fields.createdAt: DateTime(2026, 3, 1),
+          },
+        ]),
+      );
+
       await tester.pumpWidget(createTestWidget());
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
@@ -99,13 +69,19 @@ void main() {
     });
 
     testWidgets('can mark all read', (tester) async {
-      final mockDoc1 = MockQueryDocumentSnapshot();
-      when(mockDoc1.id).thenReturn('n1');
-      when(mockDoc1.data()).thenReturn({
-        'title': 'T1', 'body': 'B1', Fields.type: 't', Fields.isRead: false, Fields.createdAt: Timestamp.now(),
-      });
-      when(mockQuerySnapshot.docs).thenReturn([mockDoc1]);
-      
+      when(mockRepo.watchNotifications('user_123')).thenAnswer(
+        (_) => Stream.value([
+          {
+            'id': 'n1',
+            'title': 'T1',
+            'body': 'B1',
+            Fields.type: 't',
+            Fields.isRead: false,
+            Fields.createdAt: DateTime(2026, 3, 1),
+          },
+        ]),
+      );
+
       await tester.pumpWidget(createTestWidget());
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
@@ -118,13 +94,19 @@ void main() {
     });
 
     testWidgets('can mark single read by tapping', (tester) async {
-      final mockDoc1 = MockQueryDocumentSnapshot();
-      when(mockDoc1.id).thenReturn('n1');
-      when(mockDoc1.data()).thenReturn({
-        'title': 'T1', 'body': 'B1', Fields.type: 't', Fields.isRead: false, Fields.createdAt: Timestamp.now(),
-      });
-      when(mockQuerySnapshot.docs).thenReturn([mockDoc1]);
-      
+      when(mockRepo.watchNotifications('user_123')).thenAnswer(
+        (_) => Stream.value([
+          {
+            'id': 'n1',
+            'title': 'T1',
+            'body': 'B1',
+            Fields.type: 't',
+            Fields.isRead: false,
+            Fields.createdAt: DateTime(2026, 3, 1),
+          },
+        ]),
+      );
+
       await tester.pumpWidget(createTestWidget());
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));

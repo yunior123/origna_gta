@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 /// Documentation for SubscriptionState
@@ -49,8 +48,10 @@ class SubscriptionInfo {
   factory SubscriptionInfo.fromMap(Map<String, dynamic> data) {
     DateTime? periodEnd;
     final periodEndRaw = data[Fields.currentPeriodEnd];
-    if (periodEndRaw is Timestamp) {
-      periodEnd = periodEndRaw.toDate();
+    if (periodEndRaw is DateTime) {
+      periodEnd = periodEndRaw;
+    } else if (periodEndRaw is String) {
+      periodEnd = DateTime.tryParse(periodEndRaw);
     } else if (periodEndRaw is int) {
       periodEnd = DateTime.fromMillisecondsSinceEpoch(periodEndRaw * 1000);
     }

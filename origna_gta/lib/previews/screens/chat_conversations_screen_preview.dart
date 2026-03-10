@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/screens/chat_conversations_screen.dart';

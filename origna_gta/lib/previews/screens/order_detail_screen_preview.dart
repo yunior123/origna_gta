@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

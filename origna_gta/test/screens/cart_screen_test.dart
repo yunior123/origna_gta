@@ -6,16 +6,13 @@ import 'package:origna_gta/screens/cart_screen.dart';
 import 'package:origna_gta/screens/cartitem_screen.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../test_utils.dart';
 
 @GenerateNiceMocks([
-  MockSpec<User>(),
   MockSpec<CartController>(),
   MockSpec<NavigatorObserver>(),
 ])
@@ -26,7 +23,11 @@ void main() {
     initTestMocks();
   });
 
-  late MockUser mockUser;
+  const signedInUser = AppAuthUser(
+    uid: 'user_123',
+    email: 'test@example.com',
+    emailVerified: true,
+  );
   late MockCartController mockCartController;
   late MockNavigatorObserver mockNavigatorObserver;
 
@@ -51,7 +52,7 @@ void main() {
     cartItemId: 'item_1',
     productId: 'prod_1',
     quantity: 2,
-    createdAt: Timestamp.now(),
+    createdAt: DateTime.now(),
   );
 
   final testProduct = CartItemDetailModel(
@@ -61,19 +62,15 @@ void main() {
     price: 50.0,
     imageUrls: ['https://example.com/image.png'],
     quantity: 2,
-    createdAt: Timestamp.now(),
+    createdAt: DateTime.now(),
     sellerAddress: testAddress,
     sellerId: 'seller_1',
     sellerName: 'Test Seller',
   );
 
   setUp(() {
-    mockUser = MockUser();
     mockCartController = MockCartController();
     mockNavigatorObserver = MockNavigatorObserver();
-    when(mockUser.uid).thenReturn('user_123');
-    when(mockUser.email).thenReturn('test@example.com');
-    when(mockUser.displayName).thenReturn('Test User');
   });
 
   Widget createCartScreen({
@@ -81,7 +78,7 @@ void main() {
   }) {
     return TestWrapper(
       overrides: [
-        currentUserProvider.overrideWithValue(mockUser),
+        currentUserProvider.overrideWithValue(signedInUser),
         userProfileProvider.overrideWith((ref) => Stream.value(testUser)),
         cartControllerProvider.overrideWithValue(mockCartController),
         ...overrides,
@@ -168,7 +165,7 @@ void main() {
         cartItemId: 'item_1',
         productId: 'prod_1',
         quantity: 1,
-        createdAt: Timestamp.now(),
+        createdAt: DateTime.now(),
       );
 
       await tester.pumpWidget(createCartScreen(
@@ -195,7 +192,7 @@ void main() {
         cartItemId: 'item_1',
         productId: 'prod_1',
         quantity: 1,
-        createdAt: Timestamp.now(),
+        createdAt: DateTime.now(),
       );
 
       await tester.pumpWidget(createCartScreen(

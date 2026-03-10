@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:origna_gta/core/compat/timestamp.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';

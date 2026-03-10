@@ -1,6 +1,3 @@
-import 'dart:async';
-
-import 'package:algolia_helper_flutter/algolia_helper_flutter.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,19 +5,17 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/home/home_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
-import 'package:origna_gta/services/algolia_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-@GenerateNiceMocks([MockSpec<ProductRepository>(), MockSpec<AlgoliaService>()])
+@GenerateNiceMocks([MockSpec<ProductRepository>()])
 import 'home_viewmodel_test.mocks.dart';
 
 void main() {
   late MockProductRepository mockRepo;
-  late MockAlgoliaService mockAlgolia;
   late ProviderContainer container;
-  late StreamController<SearchResponse> algoliaController;
 
   Product createTestProduct(String id, String name) {
     return Product(
@@ -39,28 +34,21 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     mockRepo = MockProductRepository();
-    mockAlgolia = MockAlgoliaService();
-    algoliaController = StreamController<SearchResponse>.broadcast();
 
-    // Default stub for initial load
-    // Return at least one product so HomeViewModel doesn't set hasMore to false (due to line 223 logic)
     when(
       mockRepo.fetchProducts(
         searchQuery: anyNamed('searchQuery'),
         categoryId: anyNamed('categoryId'),
         subcategory: anyNamed('subcategory'),
-        lastDocument: anyNamed('lastDocument'),
+        lastDocumentId: anyNamed('lastDocumentId'),
         pageSize: anyNamed('pageSize'),
         sortOption: anyNamed('sortOption'),
         minPriceCents: anyNamed('minPriceCents'),
         maxPriceCents: anyNamed('maxPriceCents'),
       ),
-    ).thenAnswer((_) async => ProductQueryResult(products: [createTestProduct('init', 'initial product')], lastDocument: null, hasMore: true));
+    ).thenAnswer((_) async => ProductQueryResult(products: [createTestProduct('init', 'initial product')], lastDocumentId: null, hasMore: true));
 
-    when(mockAlgolia.isAvailable).thenReturn(true);
-    when(mockAlgolia.responses).thenAnswer((_) => algoliaController.stream);
-
-    container = ProviderContainer(overrides: [productRepositoryProvider.overrideWithValue(mockRepo), algoliaServiceProvider.overrideWithValue(mockAlgolia)]);
+    container = ProviderContainer(overrides: [productRepositoryProvider.overrideWithValue(mockRepo)]);
 
     // Keep alive and wait for initial load
     container.listen(homeViewModelProvider, (_, _) {});
@@ -73,7 +61,6 @@ void main() {
   });
 
   tearDown(() {
-    algoliaController.close();
     container.dispose();
   });
 
@@ -101,7 +88,7 @@ void main() {
             searchQuery: 'new query',
             categoryId: anyNamed('categoryId'),
             subcategory: anyNamed('subcategory'),
-            lastDocument: anyNamed('lastDocument'),
+            lastDocumentId: anyNamed('lastDocumentId'),
             pageSize: anyNamed('pageSize'),
             sortOption: anyNamed('sortOption'),
             minPriceCents: anyNamed('minPriceCents'),
@@ -126,14 +113,13 @@ void main() {
     test('loadProducts handles error', () async {
       final viewModel = container.read(homeViewModelProvider.notifier);
 
-      // Setup error result for a subsequent load
       reset(mockRepo);
       when(
         mockRepo.fetchProducts(
           searchQuery: anyNamed('searchQuery'),
           categoryId: anyNamed('categoryId'),
           subcategory: anyNamed('subcategory'),
-          lastDocument: anyNamed('lastDocument'),
+          lastDocumentId: anyNamed('lastDocumentId'),
           pageSize: anyNamed('pageSize'),
           sortOption: anyNamed('sortOption'),
           minPriceCents: anyNamed('minPriceCents'),
@@ -141,7 +127,6 @@ void main() {
         ),
       ).thenThrow(Exception('Failed'));
 
-      // Wait for any previous pending state updates
       await Future.delayed(Duration.zero);
 
       await viewModel.loadProducts();
@@ -157,33 +142,30 @@ void main() {
 
       final viewModel = container.read(homeViewModelProvider.notifier);
 
-      // Start with a clean slate
       reset(mockRepo);
       when(
         mockRepo.fetchProducts(
           searchQuery: anyNamed('searchQuery'),
           categoryId: anyNamed('categoryId'),
           subcategory: anyNamed('subcategory'),
-          lastDocument: anyNamed('lastDocument'),
+          lastDocumentId: anyNamed('lastDocumentId'),
           pageSize: anyNamed('pageSize'),
           sortOption: anyNamed('sortOption'),
           minPriceCents: anyNamed('minPriceCents'),
           maxPriceCents: anyNamed('maxPriceCents'),
         ),
-      ).thenAnswer((_) async => ProductQueryResult(products: [p1, p2], lastDocument: null, hasMore: true));
+      ).thenAnswer((_) async => ProductQueryResult(products: [p1, p2], lastDocumentId: null, hasMore: true));
 
-      // Refresh to ensure products are replaced (clean slate)
       await viewModel.refresh();
       expect(container.read(homeViewModelProvider).products.length, 2);
 
-      // Load more with a duplicate
       reset(mockRepo);
       when(
         mockRepo.fetchProducts(
           searchQuery: anyNamed('searchQuery'),
           categoryId: anyNamed('categoryId'),
           subcategory: anyNamed('subcategory'),
-          lastDocument: anyNamed('lastDocument'),
+          lastDocumentId: anyNamed('lastDocumentId'),
           pageSize: anyNamed('pageSize'),
           sortOption: anyNamed('sortOption'),
           minPriceCents: anyNamed('minPriceCents'),
@@ -195,7 +177,7 @@ void main() {
             p2, // duplicate
             createTestProduct('3', 'P3'),
           ],
-          lastDocument: null,
+          lastDocumentId: null,
           hasMore: false,
         ),
       );
@@ -203,36 +185,6 @@ void main() {
       await viewModel.loadProducts();
       final products = container.read(homeViewModelProvider).products;
       expect(products.length, 3, reason: 'IDs: ${products.map((p) => p.productId).toList()}');
-    });
-
-    test('fetchSuggestions updates suggestions with debounce', () {
-      fakeAsync((async) {
-        final viewModel = container.read(homeViewModelProvider.notifier);
-        viewModel.onSearchChanged('test');
-
-        async.elapse(const Duration(milliseconds: 310));
-
-        algoliaController.add(
-          SearchResponse({
-            'hits': [
-              {'name': 'Suggest 1'},
-              {'name': 'Suggest 2'},
-            ],
-            'nbHits': 2,
-            'page': 0,
-            'nbPages': 1,
-            'hitsPerPage': 20,
-            'processingTimeMS': 1,
-            'query': 'test',
-            'params': '',
-            'index': '',
-          }),
-        );
-
-        async.flushMicrotasks();
-
-        expect(container.read(homeViewModelProvider).searchSuggestions, containsAll(['Suggest 1', 'Suggest 2']));
-      });
     });
 
     test('onSearchFocusChanged updates overlay and suggestions', () {

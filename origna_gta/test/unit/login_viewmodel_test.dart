@@ -1,18 +1,87 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
+import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/features/auth/login_viewmodel.dart';
+import 'package:origna_gta/utils/utils.dart';
 
-@GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<UserCredential>()])
-import 'login_viewmodel_test.mocks.dart';
+class FakeAuthRepository implements AuthRepository {
+  Future<void> Function(String email, String password)? onSignInWithEmail;
+  Future<void> Function(String email, String password, String name, bool marketingOptIn)? onRegisterWithEmail;
+  Future<void> Function()? onSignInWithGoogle;
+  Future<void> Function()? onSignInWithApple;
+  Future<void> Function(String email)? onSendPasswordResetEmail;
+
+  int signInWithEmailCalls = 0;
+  int registerWithEmailCalls = 0;
+  int signInWithGoogleCalls = 0;
+  int signInWithAppleCalls = 0;
+  int sendPasswordResetEmailCalls = 0;
+
+  @override
+  Future<void> confirmPasswordReset(String code, String newPassword) async {}
+
+  @override
+  Future<void> deleteAccount() async {}
+
+  @override
+  Future<void> ensureUserDocumentExists() async {}
+
+  @override
+  Future<bool> isEmailVerified() async => false;
+
+  @override
+  Future<void> registerWithEmail(
+    String email,
+    String password,
+    String name, {
+    bool marketingOptIn = false,
+  }) async {
+    registerWithEmailCalls += 1;
+    await onRegisterWithEmail?.call(email, password, name, marketingOptIn);
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    sendPasswordResetEmailCalls += 1;
+    await onSendPasswordResetEmail?.call(email);
+  }
+
+  @override
+  Future<void> signInWithApple() async {
+    signInWithAppleCalls += 1;
+    await onSignInWithApple?.call();
+  }
+
+  @override
+  Future<void> signInWithEmail(String email, String password) async {
+    signInWithEmailCalls += 1;
+    await onSignInWithEmail?.call(email, password);
+  }
+
+  @override
+  Future<void> signInWithGoogle() async {
+    signInWithGoogleCalls += 1;
+    await onSignInWithGoogle?.call();
+  }
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<bool> validateCurrentUser() async => true;
+
+  @override
+  Stream<UserModel?> watchProfile(String userId) => const Stream.empty();
+}
 
 void main() {
-  late MockAuthRepository mockAuthRepo;
+  late FakeAuthRepository fakeAuthRepo;
   late ProviderContainer container;
 
   setUpAll(() async {
@@ -25,8 +94,10 @@ void main() {
   });
 
   setUp(() {
-    mockAuthRepo = MockAuthRepository();
-    container = ProviderContainer(overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)]);
+    fakeAuthRepo = FakeAuthRepository();
+    container = ProviderContainer(
+      overrides: [authRepositoryProvider.overrideWithValue(fakeAuthRepo)],
+    );
   });
 
   group('LoginViewModel', () {
@@ -49,30 +120,28 @@ void main() {
 
     test('handleAuth (login) calls signInWithEmail and succeeds', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
-      final mockCredential = MockUserCredential();
-
-      when(mockAuthRepo.signInWithEmail(any, any)).thenAnswer((_) async => mockCredential);
+      fakeAuthRepo.onSignInWithEmail =
+          (email, password) => Future<void>.value();
 
       await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
 
       expect(container.read(loginViewModelProvider).isSuccess, isTrue);
       expect(container.read(loginViewModelProvider).isLoading, isFalse);
-      verify(mockAuthRepo.signInWithEmail('test@example.com', 'Password123!')).called(1);
+      expect(fakeAuthRepo.signInWithEmailCalls, 1);
     });
 
     test('handleAuth (register) calls registerWithEmail and succeeds', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
-      final mockCredential = MockUserCredential();
-
       // Set to registration mode
       viewModel.toggleAuthMode();
 
-      when(mockAuthRepo.registerWithEmail(any, any, any, marketingOptIn: anyNamed('marketingOptIn'))).thenAnswer((_) async => mockCredential);
+      fakeAuthRepo.onRegisterWithEmail =
+          (email, password, name, marketingOptIn) => Future<void>.value();
 
       await viewModel.handleAuth(email: 'newuser@example.com', password: 'SecurePassword123!', name: 'John Doe');
 
       expect(container.read(loginViewModelProvider).isSuccess, isTrue);
-      verify(mockAuthRepo.registerWithEmail('newuser@example.com', 'SecurePassword123!', 'John Doe', marketingOptIn: false)).called(1);
+      expect(fakeAuthRepo.registerWithEmailCalls, 1);
     });
 
     test('handleAuth validates weak password on registration', () async {
@@ -84,7 +153,7 @@ void main() {
       expect(container.read(loginViewModelProvider).errorMessage, isNotNull);
       // It returns the key when not found, which is what we check
       expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('password_min_8'), isNotEmpty));
-      verifyNever(mockAuthRepo.registerWithEmail(any, any, any));
+      expect(fakeAuthRepo.registerWithEmailCalls, 0);
     });
 
     test('handleAuth validates invalid email', () async {
@@ -98,24 +167,26 @@ void main() {
 
     test('handleGoogleSignIn succeeds', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
-      final mockCredential = MockUserCredential();
-
-      when(mockAuthRepo.signInWithGoogle()).thenAnswer((_) async => mockCredential);
+      fakeAuthRepo.onSignInWithGoogle = () => Future<void>.value();
 
       await viewModel.handleGoogleSignIn();
 
       expect(container.read(loginViewModelProvider).isSuccess, isTrue);
-      verify(mockAuthRepo.signInWithGoogle()).called(1);
+      expect(fakeAuthRepo.signInWithGoogleCalls, 1);
     });
 
     test('handleGoogleSignIn handles cancel/popup-closed gracefully', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
 
-      when(mockAuthRepo.signInWithGoogle()).thenThrow(Exception('popup-closed'));
+      fakeAuthRepo.onSignInWithGoogle = () async {
+        throw Exception('popup-closed');
+      };
       await viewModel.handleGoogleSignIn();
       expect(container.read(loginViewModelProvider).errorMessage, isNull);
 
-      when(mockAuthRepo.signInWithGoogle()).thenThrow(Exception('cancelled'));
+      fakeAuthRepo.onSignInWithGoogle = () async {
+        throw Exception('cancelled');
+      };
       await viewModel.handleGoogleSignIn();
       expect(container.read(loginViewModelProvider).errorMessage, isNull);
     });
@@ -123,43 +194,49 @@ void main() {
     test('handleGoogleSignIn sets error message on error', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
 
-      when(mockAuthRepo.signInWithGoogle()).thenThrow(Exception('other error'));
+      fakeAuthRepo.onSignInWithGoogle = () async {
+        throw Exception('other error');
+      };
       await viewModel.handleGoogleSignIn();
       expect(container.read(loginViewModelProvider).errorMessage, isNotNull);
     });
 
-    test('handleGoogleSignIn handles FirebaseAuthException', () async {
+    test('handleGoogleSignIn handles auth exception', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
 
-      when(mockAuthRepo.signInWithGoogle()).thenThrow(_authException('network-request-failed'));
+      fakeAuthRepo.onSignInWithGoogle = () async {
+        throw _authException('network-request-failed');
+      };
       await viewModel.handleGoogleSignIn();
       expect(container.read(loginViewModelProvider).errorMessage, isNotNull);
     });
 
     test('handleAppleSignIn succeeds', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
-      final mockCredential = MockUserCredential();
-
-      when(mockAuthRepo.signInWithApple()).thenAnswer((_) async => mockCredential);
+      fakeAuthRepo.onSignInWithApple = () => Future<void>.value();
 
       await viewModel.handleAppleSignIn();
 
       expect(container.read(loginViewModelProvider).isSuccess, isTrue);
-      verify(mockAuthRepo.signInWithApple()).called(1);
+      expect(fakeAuthRepo.signInWithAppleCalls, 1);
     });
 
     test('handleAppleSignIn handles cancel gracefully', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
 
-      when(mockAuthRepo.signInWithApple()).thenThrow(Exception('user_cancelled'));
+      fakeAuthRepo.onSignInWithApple = () async {
+        throw Exception('user_cancelled');
+      };
       await viewModel.handleAppleSignIn();
       expect(container.read(loginViewModelProvider).errorMessage, isNull);
     });
 
-    test('handleAppleSignIn handles FirebaseAuthException', () async {
+    test('handleAppleSignIn handles auth exception', () async {
       final viewModel = container.read(loginViewModelProvider.notifier);
 
-      when(mockAuthRepo.signInWithApple()).thenThrow(_authException('user-not-found'));
+      fakeAuthRepo.onSignInWithApple = () async {
+        throw _authException('user-not-found');
+      };
       await viewModel.handleAppleSignIn();
       expect(container.read(loginViewModelProvider).errorMessage, isNotNull);
     });
@@ -169,7 +246,7 @@ void main() {
       const email = 'reset@example.com';
 
       await viewModel.resetPassword(email);
-      verify(mockAuthRepo.sendPasswordResetEmail(email)).called(1);
+      expect(fakeAuthRepo.sendPasswordResetEmailCalls, 1);
     });
 
     test('setters update state correctly', () {
@@ -261,7 +338,7 @@ void main() {
     });
 
     group('Error Mappings', () {
-      test('handleAuth maps specific FirebaseAuthExceptions', () async {
+      test('handleAuth maps specific auth exceptions', () async {
         final viewModel = container.read(loginViewModelProvider.notifier);
 
         final codes = [
@@ -279,7 +356,9 @@ void main() {
         ];
 
         for (final code in codes) {
-          when(mockAuthRepo.signInWithEmail(any, any)).thenThrow(_authException(code));
+          fakeAuthRepo.onSignInWithEmail = (email, password) async {
+            throw _authException(code);
+          };
           await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
           expect(container.read(loginViewModelProvider).errorMessage, isNotNull, reason: 'Failed for code: $code');
         }
@@ -289,17 +368,23 @@ void main() {
         final viewModel = container.read(loginViewModelProvider.notifier);
 
         // Permission denied (profile setup failed)
-        when(mockAuthRepo.signInWithEmail(any, any)).thenThrow(Exception('permission-denied'));
+        fakeAuthRepo.onSignInWithEmail = (email, password) async {
+          throw Exception('permission-denied');
+        };
         await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
         expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('profile_setup_failed'), isNotEmpty));
 
         // Network error (generic)
-        when(mockAuthRepo.signInWithEmail(any, any)).thenThrow(Exception('network error'));
+        fakeAuthRepo.onSignInWithEmail = (email, password) async {
+          throw Exception('network error');
+        };
         await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
         expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('network_error'), isNotEmpty));
 
-        // Unknown FirebaseAuthException code
-        when(mockAuthRepo.signInWithEmail(any, any)).thenThrow(_authException('unknown-code'));
+        // Unknown auth exception code
+        fakeAuthRepo.onSignInWithEmail = (email, password) async {
+          throw _authException('unknown-code');
+        };
         await viewModel.handleAuth(email: 'test@example.com', password: 'Password123!');
         expect(container.read(loginViewModelProvider).errorMessage, anyOf(contains('authentication_failed'), isNotEmpty));
       });
@@ -307,7 +392,6 @@ void main() {
   });
 }
 
-// Helper to create FirebaseAuthException
-FirebaseAuthException _authException(String code, [String? message]) {
-  return FirebaseAuthException(code: code, message: message);
+OrignaBaseAuthException _authException(String code, [String? message]) {
+  return OrignaBaseAuthException(code: code, message: message);
 }

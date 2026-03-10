@@ -1,37 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 import 'package:origna_gta/screens/common_screens.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/models/models.dart' as models;
-import 'package:firebase_auth/firebase_auth.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<User>(),
-  MockSpec<FirebaseAuth>(),
-])
-import 'common_screens_test.mocks.dart';
-
 void main() {
-  late MockUser mockUser;
-  late MockFirebaseAuth mockAuth;
+  const verifiedUser = AppAuthUser(
+    uid: 'test_user_123',
+    email: 'test@example.com',
+    emailVerified: true,
+  );
 
   setUpAll(() {
     initTestMocks();
-  });
-
-  setUp(() {
-    mockUser = MockUser();
-    mockAuth = MockFirebaseAuth();
-    
-    when(mockAuth.authStateChanges()).thenAnswer((_) => Stream.value(mockUser));
-    when(mockUser.uid).thenReturn('test_user_123');
-    when(mockUser.email).thenReturn('test@example.com');
-    when(mockUser.emailVerified).thenReturn(true);
-    when(mockUser.providerData).thenReturn([]);
   });
 
   group('Common Screens Smoke Tests', () {
@@ -77,7 +60,7 @@ void main() {
     testWidgets('pumps AuthRequiredGate (Authenticated)', (tester) async {
       await tester.pumpWidget(TestWrapper(
         overrides: [
-          authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
+          authStateProvider.overrideWith((ref) => Stream.value(verifiedUser)),
           userProfileProvider.overrideWith((ref) => Stream.value(models.UserModel(
             uid: 'u1', name: 'N', email: 'e', roles: [], createdAt: DateTime.now()
           ))),
@@ -111,7 +94,7 @@ void main() {
     testWidgets('pumps EmailVerificationRequiredScreen', (tester) async {
       await tester.pumpWidget(TestWrapper(
         overrides: [
-          currentUserProvider.overrideWithValue(mockUser),
+          currentUserProvider.overrideWithValue(verifiedUser),
         ],
         child: const EmailVerificationRequiredScreen(),
       ));

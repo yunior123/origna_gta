@@ -12,7 +12,7 @@ import 'package:origna_gta/services/analytics_service.dart';
 // ============================================================================
 
 /// Full product details for all favorites — chunked into 30-ID batches and
-/// fetched in parallel to avoid Firestore's whereIn limit.
+/// fetched in parallel to avoid the batch query limit.
 final favoritedProductsProvider = FutureProvider.autoDispose<List<Product>>((ref) async {
   final favoriteIds = ref.watch(favoritesProvider).valueOrNull ?? {};
   if (favoriteIds.isEmpty) return [];
@@ -20,7 +20,7 @@ final favoritedProductsProvider = FutureProvider.autoDispose<List<Product>>((ref
   final repository = ref.watch(productRepositoryProvider);
   final ids = favoriteIds.toList();
 
-  // Chunk into 30-ID batches (Firestore whereIn limit)
+  // Chunk into 30-ID batches (batch query limit)
   final chunks = [
     for (var i = 0; i < ids.length; i += 30) ids.sublist(i, min(i + 30, ids.length)),
   ];

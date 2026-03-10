@@ -6,18 +6,6 @@
   "storage": {
     "rules": "storage.rules"
   },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
-        "venv",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log"
-      ]
-    }
-  ],
   "hosting": {
     "public": "origna_gta/build/web",
     "ignore": [
@@ -66,16 +54,6 @@
         "destination": "/terms-of-service.html"
       },
       {
-        "source": "/dl",
-        "function": "get_book_redirect",
-        "region": "northamerica-northeast1"
-      },
-      {
-        "source": "/sdl",
-        "function": "get_software_redirect",
-        "region": "northamerica-northeast1"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -84,10 +62,6 @@
   "emulators": {
     "auth": {
       "port": 9099,
-      "host": "0.0.0.0"
-    },
-    "functions": {
-      "port": 5001,
       "host": "0.0.0.0"
     },
     "firestore": {

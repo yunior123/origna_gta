@@ -16,11 +16,9 @@ import 'package:origna_gta/widgets/mascot/mascot_provider.dart';
 import 'package:origna_gta/widgets/mascot/moose_provider.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/mascot/canadian_moose.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([MockSpec<User>(), MockSpec<ProductRepository>()])
+@GenerateNiceMocks([MockSpec<ProductRepository>()])
 import 'home_screen_test.mocks.dart';
 
 /// Helper to create a test Product instance with minimal required fields.
@@ -57,17 +55,20 @@ Product _makeProduct({
 
 /// Shared overrides used by most tests.
 List<Override> _baseOverrides({
-  required MockUser mockUser,
-  required FakeFirebaseFirestore fakeFirestore,
   required MockProductRepository mockProductRepo,
   required MascotController mascotController,
   required MooseController mooseController,
-  User? currentUser,
+  AppAuthUser? currentUser,
   models.UserModel? userProfile,
   int cartCount = 0,
   HomeState? homeState,
 }) {
-  final user = currentUser ?? mockUser;
+  final user = currentUser ??
+      const AppAuthUser(
+        uid: 'test_user_123',
+        email: 'test@example.com',
+        emailVerified: true,
+      );
   final profile = userProfile ??
       models.UserModel(
         uid: 'test_user_123',
@@ -82,7 +83,6 @@ List<Override> _baseOverrides({
     userProfileProvider.overrideWith(
       (ref) => Stream.value(profile),
     ),
-    firestoreProvider.overrideWithValue(fakeFirestore),
     productRepositoryProvider.overrideWithValue(mockProductRepo),
     cartItemCountProvider.overrideWithValue(cartCount),
     mascotControllerProvider.overrideWithValue(mascotController),
@@ -95,7 +95,7 @@ List<Override> _baseOverrides({
 }
 
 /// A fake HomeViewModel that starts with a given state and does not
-/// call loadProducts on construction (avoids needing Algolia/Firestore).
+/// call loadProducts on construction (avoids needing backend services).
 class _FakeHomeViewModel extends HomeViewModel {
   _FakeHomeViewModel(super.ref, HomeState initial) {
     state = initial;
@@ -106,8 +106,6 @@ class _FakeHomeViewModel extends HomeViewModel {
 }
 
 void main() {
-  late MockUser mockUser;
-  late FakeFirebaseFirestore fakeFirestore;
   late MockProductRepository mockProductRepo;
   late MascotController mascotController;
   late MooseController mooseController;
@@ -117,26 +115,22 @@ void main() {
   });
 
   setUp(() {
-    mockUser = MockUser();
-    fakeFirestore = FakeFirebaseFirestore();
     mockProductRepo = MockProductRepository();
     mascotController = MascotController();
     mooseController = MooseController();
-    when(mockUser.uid).thenReturn('test_user_123');
-    when(mockUser.email).thenReturn('test@example.com');
 
     // Default stub so fetchProducts never throws
     when(mockProductRepo.fetchProducts(
       searchQuery: anyNamed('searchQuery'),
       categoryId: anyNamed('categoryId'),
       subcategory: anyNamed('subcategory'),
-      lastDocument: anyNamed('lastDocument'),
+      lastDocumentId: anyNamed('lastDocumentId'),
       pageSize: anyNamed('pageSize'),
       sortOption: anyNamed('sortOption'),
       minPriceCents: anyNamed('minPriceCents'),
       maxPriceCents: anyNamed('maxPriceCents'),
     )).thenAnswer((_) async =>
-        ProductQueryResult(products: [], lastDocument: null, hasMore: false));
+        ProductQueryResult(products: [], lastDocumentId: null, hasMore: false));
 
     // Default stub for fetchProductsByIds (recently viewed)
     when(mockProductRepo.fetchProductsByIds(any))
@@ -171,8 +165,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -193,8 +185,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -215,8 +205,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -237,8 +225,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -260,8 +246,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -282,8 +266,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -304,8 +286,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -335,8 +315,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -365,8 +343,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -401,8 +377,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -444,8 +418,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -477,8 +449,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -506,8 +476,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -530,8 +498,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -554,8 +520,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -583,8 +547,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -607,8 +569,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -632,8 +592,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -662,8 +620,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -692,8 +648,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -723,8 +677,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -764,7 +716,6 @@ void main() {
             userProfileProvider.overrideWith(
               (ref) => Stream.value(null),
             ),
-            firestoreProvider.overrideWithValue(fakeFirestore),
             productRepositoryProvider.overrideWithValue(mockProductRepo),
             cartItemCountProvider.overrideWithValue(0),
             mascotControllerProvider.overrideWithValue(mascotController),
@@ -804,8 +755,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -851,8 +800,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -898,8 +845,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -943,8 +888,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -984,8 +927,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,
@@ -1024,8 +965,6 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: _baseOverrides(
-            mockUser: mockUser,
-            fakeFirestore: fakeFirestore,
             mockProductRepo: mockProductRepo,
             mascotController: mascotController,
             mooseController: mooseController,

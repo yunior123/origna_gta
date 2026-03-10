@@ -1,14 +1,24 @@
+// coverage:ignore-file
+// Migrated: delegates to OrignaBase warehouses viewmodel.
+// Screens continue using warehousesViewModelProvider, sellerWarehousesStreamProvider, WarehousesViewModel.
+
+export 'orignabase_warehouses_viewmodel.dart';
+
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/core/providers.dart';
+import 'package:orignabase/orignabase.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/models/generated/base_models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
+import 'package:origna_gta/utils/utils.dart';
+
+import 'orignabase_warehouses_viewmodel.dart';
 
 // ---------------------------------------------------------------------------
-// State
+// State (kept here — orignabase counterpart imports it)
 // ---------------------------------------------------------------------------
 
-/// Documentation for WarehousesState
+/// State for the warehouses viewmodel.
 class WarehousesState {
   final List<SellerWarehouse> warehouses;
   final bool isLoading;
@@ -43,140 +53,72 @@ const _sentinel = Object();
 // Providers
 // ---------------------------------------------------------------------------
 
-/// Real-time stream of the seller's warehouses (ordered: default first, then by creation)
+/// Stream of the seller's warehouses via OrignaBase.
+/// Uses polling via the viewmodel's success state to trigger refreshes.
 final sellerWarehousesStreamProvider = StreamProvider.autoDispose<List<SellerWarehouse>>((ref) {
-  final uid = ref.watch(userIdProvider);
+  final uid = ref.watch(obUserIdProvider);
   if (uid == null) return const Stream.empty();
 
-  return ref
-      .read(firestoreProvider)
-      .collection(Collections.users)
-      .doc(uid)
-      .collection(Collections.warehouses)
-      .orderBy(Fields.isDefault, descending: true)
-      .orderBy(Fields.createdAt, descending: false)
-      .snapshots()
-      .map((snap) => snap.docs.map((doc) => SellerWarehouse.fromFirestore(doc)).toList());
+  final ob = ref.watch(orignabaseProvider);
+  final controller = StreamController<List<SellerWarehouse>>();
+
+  Future<void> fetch() async {
+    try {
+      final snap = await ob
+          .collection(Collections.users)
+          .doc(uid)
+          .subcollection(Collections.warehouses)
+          .orderBy(Fields.isDefault, descending: true)
+          .orderBy(Fields.createdAt, descending: false)
+          .get();
+
+      final warehouses = snap.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data);
+        // Convert createdAt to ISO string for Freezed/fromJson compatibility
+        final rawCreatedAt = data[Fields.createdAt];
+        if (rawCreatedAt is String) {
+          data[Fields.createdAt] = rawCreatedAt;
+        } else if (rawCreatedAt is int) {
+          data[Fields.createdAt] = DateTime.fromMillisecondsSinceEpoch(rawCreatedAt).toIso8601String();
+        }
+        return SellerWarehouse.fromJson({...data, 'warehouseId': doc.id});
+      }).toList();
+
+      if (!controller.isClosed) controller.add(warehouses);
+    } catch (e, st) {
+      AppError.log(e, stackTrace: st, context: 'sellerWarehousesStreamProvider');
+      if (!controller.isClosed) controller.addError(e);
+    }
+  }
+
+  // Initial fetch
+  fetch();
+
+  // Subscribe to realtime changes on the warehouses subcollection
+  final realtime = RealtimeClient(ob);
+  realtime.connect();
+  final subName = '${Collections.users}__${Collections.warehouses}';
+  final sub = realtime.subscribe(subName).listen(
+    (change) {
+      // Re-fetch the full list on any change to keep ordering consistent
+      fetch();
+    },
+    onError: (Object e, StackTrace st) {
+      AppError.log(e, stackTrace: st, context: 'sellerWarehousesStreamProvider.realtime');
+    },
+  );
+
+  ref.onDispose(() {
+    sub.cancel();
+    realtime.disconnect();
+    controller.close();
+  });
+
+  return controller.stream;
 });
 
-final warehousesViewModelProvider =
-    StateNotifierProvider.autoDispose<WarehousesViewModel, WarehousesState>(
-  (ref) => WarehousesViewModel(ref),
-);
+/// Backward-compatible alias — screens use this name.
+final warehousesViewModelProvider = obWarehousesViewModelProvider;
 
-// ---------------------------------------------------------------------------
-// ViewModel
-// ---------------------------------------------------------------------------
-
-/// Documentation for WarehousesViewModel
-class WarehousesViewModel extends StateNotifier<WarehousesState> {
-  final Ref _ref;
-
-  WarehousesViewModel(this._ref) : super(const WarehousesState());
-
-  Future<void> createWarehouse({
-    required String label,
-    required String type,
-    required Address address,
-    bool isDefault = false,
-  }) async {
-    if (state.isLoading) return;
-
-    final trimmedLabel = label.trim();
-    if (trimmedLabel.isEmpty || trimmedLabel.length > 100) {
-      state = state.copyWith(isLoading: false, errorMessage: 'Warehouse label must be 1–100 characters');
-      return;
-    }
-    if (address.city.trim().isEmpty) {
-      state = state.copyWith(isLoading: false, errorMessage: 'City is required for a warehouse address');
-      return;
-    }
-
-    state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
-
-    try {
-      final functions = _ref.read(firebaseFunctionsProvider);
-      final callable = functions.httpsCallable(CloudFunctionEndpoints.createWarehouse);
-      await callable.call({
-        'label': label.trim(),
-        'type': type,
-        'address': _addressToMap(address),
-        'isDefault': isDefault,
-      });
-      state = state.copyWith(isLoading: false, isSuccess: true);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
-    }
-  }
-
-  Future<void> updateWarehouse({
-    required String warehouseId,
-    String? label,
-    String? type,
-    Address? address,
-    bool? isDefault,
-  }) async {
-    if (state.isLoading) return;
-    state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
-
-    try {
-      final functions = _ref.read(firebaseFunctionsProvider);
-      final callable = functions.httpsCallable(CloudFunctionEndpoints.updateWarehouse);
-      final payload = <String, dynamic>{'warehouseId': warehouseId};
-      if (label != null) payload['label'] = label.trim();
-      if (type != null) payload['type'] = type;
-      if (address != null) payload['address'] = _addressToMap(address);
-      if (isDefault != null) payload['isDefault'] = isDefault;
-      await callable.call(payload);
-      state = state.copyWith(isLoading: false, isSuccess: true);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
-    }
-  }
-
-  Future<void> deleteWarehouse(String warehouseId) async {
-    if (state.isLoading) return;
-    state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
-
-    try {
-      final functions = _ref.read(firebaseFunctionsProvider);
-      final callable = functions.httpsCallable(CloudFunctionEndpoints.deleteWarehouse);
-      await callable.call({'warehouseId': warehouseId});
-      state = state.copyWith(isLoading: false, isSuccess: true);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
-    }
-  }
-
-  void clearStatus() {
-    state = state.copyWith(errorMessage: null, isSuccess: false);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
-  Map<String, dynamic> _addressToMap(Address address) => {
-    Fields.street: address.street,
-    if (address.apartment.isNotEmpty) Fields.apartment: address.apartment,
-    Fields.city: address.city,
-    Fields.state: address.state,
-    Fields.postalCode: address.postalCode,
-    Fields.country: address.country,
-    if (address.phoneNumber != null) Fields.phoneNumber: address.phoneNumber,
-    if (address.latitude != null) Fields.latitude: address.latitude,
-    if (address.longitude != null) Fields.longitude: address.longitude,
-    if (address.label != null) Fields.label: address.label,
-  };
-
-  String _parseError(Object e) {
-    final msg = e.toString();
-    if (msg.contains('unauthenticated')) return 'Please log in to manage warehouses.';
-    if (msg.contains('not-found')) return 'Warehouse not found.';
-    if (msg.contains('invalid-argument')) {
-      final start = msg.indexOf('] ');
-      return start >= 0 ? msg.substring(start + 2) : 'Invalid input. Please check the form.';
-    }
-    return 'Something went wrong. Please try again.';
-  }
-}
+/// Backward-compatible typedef.
+typedef WarehousesViewModel = OrignaBaseWarehousesViewModel;

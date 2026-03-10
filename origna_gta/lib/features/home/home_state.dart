@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 
@@ -13,7 +12,7 @@ class HomeState {
   final bool isLoading;
   final bool isLoadingMore;
   final bool hasMore;
-  final DocumentSnapshot? lastDocument;
+  final String? lastDocumentId;
   final String searchQuery;
   final int? selectedCategoryId;
   final String? selectedSubcategory;
@@ -43,7 +42,7 @@ class HomeState {
     this.isLoading = false,
     this.isLoadingMore = false,
     this.hasMore = true,
-    this.lastDocument,
+    this.lastDocumentId,
     this.searchQuery = '',
     this.selectedCategoryId,
     this.selectedSubcategory,
@@ -75,7 +74,7 @@ class HomeState {
     bool? isLoading,
     bool? isLoadingMore,
     bool? hasMore,
-    Object? lastDocument = const _Sentinel(),
+    Object? lastDocumentId = const _Sentinel(),
     String? searchQuery,
     Object? selectedCategoryId = const _Sentinel(),
     Object? selectedSubcategory = const _Sentinel(),
@@ -93,9 +92,9 @@ class HomeState {
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       hasMore: hasMore ?? this.hasMore,
-      lastDocument: lastDocument is _Sentinel
-          ? this.lastDocument
-          : lastDocument as DocumentSnapshot?,
+      lastDocumentId: lastDocumentId is _Sentinel
+          ? this.lastDocumentId
+          : lastDocumentId as String?,
       searchQuery: searchQuery ?? this.searchQuery,
       selectedCategoryId: selectedCategoryId is _Sentinel
           ? this.selectedCategoryId

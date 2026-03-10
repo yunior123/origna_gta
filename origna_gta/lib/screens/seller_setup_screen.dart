@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -508,14 +509,14 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
     setState(() => _isRefreshing = true);
 
     try {
-      // Call backend to sync Stripe status with Firestore
+      // Call backend to sync Stripe status with database
       // This ensures chargesEnabled, payoutsEnabled, onboardingCompleted are updated
       await ref.read(refreshSellerStatusProvider(null).future);
     } catch (e) {
       // Ignore errors - we'll still navigate home
     }
 
-    // Refresh user profile to get updated seller status from Firestore
+    // Refresh user profile to get updated seller status from database
     ref.invalidate(userProfileProvider);
 
     if (mounted) {

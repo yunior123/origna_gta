@@ -6,42 +6,37 @@ import 'package:origna_gta/features/checkout/checkout_provider.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:orignabase/orignabase.dart';
 
 @GenerateNiceMocks([
   MockSpec<OrderRepository>(),
   MockSpec<UserRepository>(),
-  MockSpec<FirebaseFunctions>(),
-  MockSpec<HttpsCallable>(),
-  MockSpec<HttpsCallableResult>(),
+  MockSpec<OrignaBase>(),
 ])
 import 'checkout_provider_test.mocks.dart';
 
 void main() {
   late MockOrderRepository mockOrderRepo;
   late MockUserRepository mockUserRepo;
-  late MockFirebaseFunctions mockFunctions;
-  late MockHttpsCallable mockCallable;
+  late MockOrignaBase mockOrignaBase;
   late ProviderContainer container;
 
   setUp(() {
     mockOrderRepo = MockOrderRepository();
     mockUserRepo = MockUserRepository();
-    mockFunctions = MockFirebaseFunctions();
-    mockCallable = MockHttpsCallable();
-    
+    mockOrignaBase = MockOrignaBase();
+
     container = ProviderContainer(
       overrides: [
         orderRepositoryProvider.overrideWithValue(mockOrderRepo),
         userRepositoryProvider.overrideWithValue(mockUserRepo),
-        firebaseFunctionsProvider.overrideWithValue(mockFunctions),
-        userIdProvider.overrideWith((ref) => 'user_123'),
+        orignabaseProvider.overrideWithValue(mockOrignaBase),
+        obUserIdProvider.overrideWithValue('user_123'),
       ],
     );
-    
-    when(mockFunctions.httpsCallable(any)).thenReturn(mockCallable);
   });
 
   group('CheckoutNotifier Tests', () {
@@ -54,22 +49,21 @@ void main() {
     test('updateAddress updates state', () {
       final address = Address(street: 'S', city: 'C', state: 'P', postalCode: 'Z', country: 'CA');
       container.read(checkoutStateProvider.notifier).updateAddress(address);
-      
+
       final state = container.read(checkoutStateProvider);
       expect(state.address, address);
     });
 
-    test('applyCoupon calls function', () async {
-      final mockResult = MockHttpsCallableResult();
-      when(mockResult.data).thenReturn({Fields.discountAmountCents: 500});
-      when(mockCallable.call(any)).thenAnswer((_) async => mockResult);
-      
+    test('applyCoupon calls OrignaBase', () async {
+      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
+          .thenAnswer((_) async => {Fields.discountAmountCents: 500});
+
       await container.read(checkoutStateProvider.notifier).applyCoupon('SAVE5', 10000);
-      
+
       final state = container.read(checkoutStateProvider);
       expect(state.couponCode, 'SAVE5');
       expect(state.couponDiscountCents, 500);
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.applyCoupon)).called(1);
+      verify(mockOrignaBase.request('POST', '/api/coupons/apply', body: anyNamed('body'))).called(1);
     });
   });
 }

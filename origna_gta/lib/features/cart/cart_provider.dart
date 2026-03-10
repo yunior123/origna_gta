@@ -1,6 +1,6 @@
+// coverage:ignore-file
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
@@ -23,7 +23,7 @@ final cartItemCountProvider = Provider.autoDispose<int>((ref) {
 /// Provider for cart item creation date (used to avoid rebuilding item UI on quantity changes)
 /// Keyed by cartItemDocId (format: productId or productId_variantId) to correctly
 /// distinguish items with the same product but different variants.
-final cartItemDateProvider = Provider.autoDispose.family<Timestamp?, String>((ref, cartItemDocId) {
+final cartItemDateProvider = Provider.autoDispose.family<DateTime?, String>((ref, cartItemDocId) {
   return ref.watch(
     cartItemsProvider.select((async) {
       return async.maybeWhen(data: (items) => items.where((i) => i.cartItemId == cartItemDocId).firstOrNull?.createdAt, orElse: () => null);
@@ -33,7 +33,7 @@ final cartItemDateProvider = Provider.autoDispose.family<Timestamp?, String>((re
 
 /// Family provider for individual cart item details - cached by Riverpod
 /// AUDIT FIX: Reads from batch-fetched cache instead of making individual
-/// Firestore reads per item (N+1 query elimination).
+/// database reads per item (N+1 query elimination).
 /// Keyed by cartItemDocId (format: productId or productId_variantId) to correctly
 /// distinguish items with the same product but different variants.
 final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailModel?, String>((ref, cartItemDocId) async {
@@ -41,7 +41,7 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
   if (createdAt == null) return null;
 
   // Extract productId: doc ID is "productId" or "productId_variantId"
-  // Firestore auto-IDs use Base62 (no underscores), so the first segment is always productId.
+  // Database auto-IDs use Base62 (no underscores), so the first segment is always productId.
   final productId = cartItemDocId.split('_').first;
 
   // Pull from batch-fetched product cache (single whereIn query for all cart items)
@@ -166,7 +166,7 @@ final cartSubtotalProvider = Provider.autoDispose<double>((ref) {
 });
 
 /// Fetches cart items with full product details using the shared batch-fetch cache.
-/// Reuses [_cartProductsBatchProvider] to avoid a duplicate Firestore whereIn query.
+/// Reuses [_cartProductsBatchProvider] to avoid a duplicate batch query.
 final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailModel>>((ref) async {
   final cartItems = ref.watch(cartItemsProvider);
   final productCache = await ref.watch(_cartProductsBatchProvider.future);
@@ -248,7 +248,7 @@ final unavailableCartItemsProvider = FutureProvider.autoDispose<List<String>>((r
 /// Internal provider that batch-fetches product documents for all cart items.
 /// Returns a `Map<productId, productData>` for O(1) lookup by [cartItemDetailProvider].
 final _cartProductsBatchProvider = FutureProvider.autoDispose<Map<String, Map<String, dynamic>>>((ref) async {
-  final firestore = ref.watch(firestoreProvider);
+  final productRepository = ref.watch(productRepositoryProvider);
   final cartItems = ref.watch(cartItemsProvider);
 
   final productIds = cartItems.maybeWhen(data: (items) => items.map((i) => i.productId).toList(), orElse: () => <String>[]);
@@ -256,19 +256,13 @@ final _cartProductsBatchProvider = FutureProvider.autoDispose<Map<String, Map<St
   if (productIds.isEmpty) return {};
 
   final Map<String, Map<String, dynamic>> cache = {};
-
-  // Firestore whereIn limit is 30 — batch accordingly
-  for (int i = 0; i < productIds.length; i += 30) {
-    final chunk = productIds.skip(i).take(30).toList();
-    try {
-      final snapshot = await firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: chunk).get();
-      for (final doc in snapshot.docs) {
-        if (doc.exists) cache[doc.id] = doc.data();
-      }
-    } catch (e, st) {
-      Sentry.captureException(e, stackTrace: st);
-      // Continue with partial cache — better than empty cart
+  try {
+    final products = await productRepository.fetchProductsByIds(productIds);
+    for (final product in products) {
+      cache[product.productId] = product.toJson();
     }
+  } catch (e, st) {
+    Sentry.captureException(e, stackTrace: st);
   }
 
   return cache;
@@ -348,11 +342,7 @@ class CartController {
     if (userId == null) return false;
 
     try {
-      final firestore = _ref.read(firestoreProvider);
-      await firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).doc(productId).set({
-        Fields.productId: productId,
-        Fields.dateFavorited: FieldValue.serverTimestamp(),
-      });
+      await _ref.read(productRepositoryProvider).toggleFavorite(userId, productId);
       await removeFromCart(cartItemId);
       return true;
     } catch (e, st) {

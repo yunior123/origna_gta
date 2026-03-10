@@ -3,14 +3,11 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i5;
+import 'dart:async' as _i3;
 
-import 'package:cloud_functions/cloud_functions.dart' as _i4;
-import 'package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart'
-    as _i2;
-import 'package:firebase_core/firebase_core.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:mockito/src/dummies.dart' as _i4;
+import 'package:origna_gta/features/chat/chat_repository.dart' as _i2;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -27,231 +24,90 @@ import 'package:mockito/src/dummies.dart' as _i6;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeFirebaseFunctionsPlatform_0 extends _i1.SmartFake
-    implements _i2.FirebaseFunctionsPlatform {
-  _FakeFirebaseFunctionsPlatform_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeFirebaseApp_1 extends _i1.SmartFake implements _i3.FirebaseApp {
-  _FakeFirebaseApp_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallable_2 extends _i1.SmartFake implements _i4.HttpsCallable {
-  _FakeHttpsCallable_2(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallablePlatform_3 extends _i1.SmartFake
-    implements _i2.HttpsCallablePlatform {
-  _FakeHttpsCallablePlatform_3(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallableResult_4<T1> extends _i1.SmartFake
-    implements _i4.HttpsCallableResult<T1> {
-  _FakeHttpsCallableResult_4(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-/// A class which mocks [FirebaseFunctions].
+/// A class which mocks [ChatRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockFirebaseFunctions extends _i1.Mock implements _i4.FirebaseFunctions {
+class MockChatRepository extends _i1.Mock implements _i2.ChatRepository {
   @override
-  _i2.FirebaseFunctionsPlatform get delegate =>
+  _i3.Future<String> getOrCreateChat(String? productId) =>
       (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
-          )
-          as _i2.FirebaseFunctionsPlatform);
-
-  @override
-  _i3.FirebaseApp get app =>
-      (super.noSuchMethod(
-            Invocation.getter(#app),
-            returnValue: _FakeFirebaseApp_1(this, Invocation.getter(#app)),
-            returnValueForMissingStub: _FakeFirebaseApp_1(
-              this,
-              Invocation.getter(#app),
-            ),
-          )
-          as _i3.FirebaseApp);
-
-  @override
-  Map<dynamic, dynamic> get pluginConstants =>
-      (super.noSuchMethod(
-            Invocation.getter(#pluginConstants),
-            returnValue: <dynamic, dynamic>{},
-            returnValueForMissingStub: <dynamic, dynamic>{},
-          )
-          as Map<dynamic, dynamic>);
-
-  @override
-  _i4.HttpsCallable httpsCallable(
-    String? name, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(#httpsCallable, [name], {#options: options}),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  _i4.HttpsCallable httpsCallableFromUrl(
-    String? url, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(
-              #httpsCallableFromUrl,
-              [url],
-              {#options: options},
-            ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  _i4.HttpsCallable httpsCallableFromUri(
-    Uri? uri, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(
-              #httpsCallableFromUri,
-              [uri],
-              {#options: options},
-            ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  void useFunctionsEmulator(
-    String? host,
-    int? port, {
-    bool? automaticHostMapping = true,
-  }) => super.noSuchMethod(
-    Invocation.method(
-      #useFunctionsEmulator,
-      [host, port],
-      {#automaticHostMapping: automaticHostMapping},
-    ),
-    returnValueForMissingStub: null,
-  );
-}
-
-/// A class which mocks [HttpsCallable].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallable extends _i1.Mock implements _i4.HttpsCallable {
-  @override
-  _i2.HttpsCallablePlatform get delegate =>
-      (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
-          )
-          as _i2.HttpsCallablePlatform);
-
-  @override
-  _i5.Future<_i4.HttpsCallableResult<T>> call<T>([dynamic parameters]) =>
-      (super.noSuchMethod(
-            Invocation.method(#call, [parameters]),
-            returnValue: _i5.Future<_i4.HttpsCallableResult<T>>.value(
-              _FakeHttpsCallableResult_4<T>(
+            Invocation.method(#getOrCreateChat, [productId]),
+            returnValue: _i3.Future<String>.value(
+              _i4.dummyValue<String>(
                 this,
-                Invocation.method(#call, [parameters]),
+                Invocation.method(#getOrCreateChat, [productId]),
               ),
             ),
-            returnValueForMissingStub:
-                _i5.Future<_i4.HttpsCallableResult<T>>.value(
-                  _FakeHttpsCallableResult_4<T>(
-                    this,
-                    Invocation.method(#call, [parameters]),
-                  ),
-                ),
-          )
-          as _i5.Future<_i4.HttpsCallableResult<T>>);
-
-  @override
-  _i5.Stream<_i4.StreamResponse<T, R>> stream<T, R>([Object? input]) =>
-      (super.noSuchMethod(
-            Invocation.method(#stream, [input]),
-            returnValue: _i5.Stream<_i4.StreamResponse<T, R>>.empty(),
-            returnValueForMissingStub:
-                _i5.Stream<_i4.StreamResponse<T, R>>.empty(),
-          )
-          as _i5.Stream<_i4.StreamResponse<T, R>>);
-}
-
-/// A class which mocks [HttpsCallableResult].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallableResult<T> extends _i1.Mock
-    implements _i4.HttpsCallableResult<T> {
-  @override
-  T get data =>
-      (super.noSuchMethod(
-            Invocation.getter(#data),
-            returnValue: _i6.dummyValue<T>(this, Invocation.getter(#data)),
-            returnValueForMissingStub: _i6.dummyValue<T>(
-              this,
-              Invocation.getter(#data),
+            returnValueForMissingStub: _i3.Future<String>.value(
+              _i4.dummyValue<String>(
+                this,
+                Invocation.method(#getOrCreateChat, [productId]),
+              ),
             ),
           )
-          as T);
+          as _i3.Future<String>);
+
+  @override
+  _i3.Stream<List<_i2.ChatMessage>> messagesStream(String? chatId) =>
+      (super.noSuchMethod(
+            Invocation.method(#messagesStream, [chatId]),
+            returnValue: _i3.Stream<List<_i2.ChatMessage>>.empty(),
+            returnValueForMissingStub:
+                _i3.Stream<List<_i2.ChatMessage>>.empty(),
+          )
+          as _i3.Stream<List<_i2.ChatMessage>>);
+
+  @override
+  _i3.Stream<List<_i2.ChatThread>> userChatsStream(String? userId) =>
+      (super.noSuchMethod(
+            Invocation.method(#userChatsStream, [userId]),
+            returnValue: _i3.Stream<List<_i2.ChatThread>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i2.ChatThread>>.empty(),
+          )
+          as _i3.Stream<List<_i2.ChatThread>>);
+
+  @override
+  _i3.Stream<List<_i2.ChatThread>> sellerChatsStream(String? sellerId) =>
+      (super.noSuchMethod(
+            Invocation.method(#sellerChatsStream, [sellerId]),
+            returnValue: _i3.Stream<List<_i2.ChatThread>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i2.ChatThread>>.empty(),
+          )
+          as _i3.Stream<List<_i2.ChatThread>>);
+
+  @override
+  _i3.Stream<List<_i2.ChatThread>> allChatsStream(String? userId) =>
+      (super.noSuchMethod(
+            Invocation.method(#allChatsStream, [userId]),
+            returnValue: _i3.Stream<List<_i2.ChatThread>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i2.ChatThread>>.empty(),
+          )
+          as _i3.Stream<List<_i2.ChatThread>>);
+
+  @override
+  _i3.Future<void> sendMessage(String? chatId, String? text) =>
+      (super.noSuchMethod(
+            Invocation.method(#sendMessage, [chatId, text]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> deleteMessage(String? chatId, String? messageId) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteMessage, [chatId, messageId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> markRead(String? chatId) =>
+      (super.noSuchMethod(
+            Invocation.method(#markRead, [chatId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 }

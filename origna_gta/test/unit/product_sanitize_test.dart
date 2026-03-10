@@ -3,7 +3,7 @@ import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 void main() {
-  group('sanitizeProductForFirestore', () {
+  group('sanitizeProductData', () {
     test('normalizes empty seller apartment to null', () {
       final input = <String, dynamic>{
         Fields.name: 'Produit Test',
@@ -17,7 +17,7 @@ void main() {
         },
       };
 
-      final sanitized = sanitizeProductForFirestore(input);
+      final sanitized = sanitizeProductData(input);
       final address = sanitized[Fields.sellerAddress] as Map<String, dynamic>;
 
       expect(address['apartment'], isNull);

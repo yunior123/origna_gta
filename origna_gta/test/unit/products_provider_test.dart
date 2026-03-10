@@ -61,12 +61,12 @@ void main() {
         searchQuery: anyNamed('searchQuery'),
         categoryId: anyNamed('categoryId'),
         subcategory: anyNamed('subcategory'),
-        lastDocument: anyNamed('lastDocument'),
+        lastDocumentId: anyNamed('lastDocumentId'),
         pageSize: anyNamed('pageSize'),
         sortOption: anyNamed('sortOption'),
         minPriceCents: anyNamed('minPriceCents'),
         maxPriceCents: anyNamed('maxPriceCents'),
-      )).thenAnswer((_) async => ProductQueryResult(products: [], lastDocument: null, hasMore: false));
+      )).thenAnswer((_) async => ProductQueryResult(products: [], lastDocumentId: null, hasMore: false));
 
       final sub = container.listen(filteredProductsProvider, (prev, next) {});
       await container.read(filteredProductsProvider.future);
@@ -84,7 +84,7 @@ void main() {
         categoryId: anyNamed('categoryId'),
         pageSize: anyNamed('pageSize'),
         subcategory: anyNamed('subcategory'),
-        lastDocument: anyNamed('lastDocument'),
+        lastDocumentId: anyNamed('lastDocumentId'),
         sortOption: anyNamed('sortOption'),
         minPriceCents: anyNamed('minPriceCents'),
         maxPriceCents: anyNamed('maxPriceCents'),
@@ -112,7 +112,7 @@ void main() {
         pageSize: 12,
         searchQuery: anyNamed('searchQuery'),
         subcategory: anyNamed('subcategory'),
-        lastDocument: anyNamed('lastDocument'),
+        lastDocumentId: anyNamed('lastDocumentId'),
         sortOption: anyNamed('sortOption'),
         minPriceCents: anyNamed('minPriceCents'),
         maxPriceCents: anyNamed('maxPriceCents'),
@@ -121,7 +121,7 @@ void main() {
           Product(productId: 'p1', name: 'P1', price: 10, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now()),
           Product(productId: 'p2', name: 'P2', price: 10, description: '', imageUrls: [], sellerId: 's', categoryId: 1, stockQuantity: 1, createdAt: DateTime.now()),
         ],
-        lastDocument: null,
+        lastDocumentId: null,
         hasMore: false,
       ));
 

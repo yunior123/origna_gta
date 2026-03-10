@@ -1,17 +1,23 @@
 # Repository Map — OrignaGta
 
-> **Purpose:** Condensed index of every module, file, and its responsibility. Use this to navigate the codebase efficiently without reading every file.
+> **Purpose:** Condensed index of the active code paths.
+> Current direction: Flutter app uses OrignaBase for auth/data/service calls. Root `firebase.json` remains for hosting/config only.
+> Read the active Flutter package through the OrignaBase-backed frontend sections first.
 
 ---
 
-## 🔧 Backend — `functions/`
+## 🔧 Active Backend Surface
+
+The active Flutter runtime talks to OrignaBase-backed repositories/providers under `origna_gta/lib/**`.
+
+## 📱 Frontend — `origna_gta/lib/`
 
 ### Entry Point
 | File | Exports | Responsibility |
 |------|---------|----------------|
-| `main.py` | All Cloud Functions | Function registration, Stripe init, validation helpers |
+| `main.py` | Backend entrypoint inventory | Historical backend entrypoint reference |
 
-### Handlers — `functions/handlers/` (114 Cloud Functions total)
+### Handlers — `functions/handlers/` (historical backend inventory)
 | File | Key Functions | Responsibility |
 |------|---------------|----------------|
 | `payment_stripe.py` | `create_checkout_session`, `verify_cart_prices`, `stripe_webhook`, `capture_payment`, `create_connect_account`, `get_connect_account_status`, `create_account_link`, `process_charge_refunded`, `process_dispute_created`, `process_dispute_closed`, `process_dispute_updated`, `process_dispute_funds_reinstated` | Stripe payments: checkout, capture, webhooks, Connect onboarding, dispute handling |
@@ -40,14 +46,14 @@
 ### Services
 | File | Responsibility |
 |------|----------------|
-| `schema_constants.py` | All Firestore field names, collection names, enum values (525 lines) |
-| `shipping_service.py` | Shipping cost calculation: distance, province, tiers, weight surcharge. Exports `calculate_shipping_cost` Cloud Function |
+| `schema_constants.py` | Historical backend field names, collections, enum values (525 lines) |
+| `shipping_service.py` | Shipping cost calculation: distance, province, tiers, weight surcharge |
 | `email_service.py` | Mailjet email sending, all HTML templates (~733 lines) |
 | `algolia_service.py` | Algolia index sync |
 | `rate_limiter.py` | API rate limiting by IP/user |
 | `utils.py` | Auth validation, error helpers |
 | `config.py` | Environment config |
-| `push_service.py` | Firebase Cloud Messaging (FCM) push notifications. |
+| `push_service.py` | Historical push notification service. |
 | `pdf_invoice_service.py` | PDF invoice generation. |
 | `email_task.py` | Helper for sending email tasks via Cloud Tasks. |
 
@@ -97,13 +103,14 @@
 |------|----------------|
 | `providers.dart` | Global Riverpod providers |
 | `schema/schema_constants.dart` | Dart mirror of Python schema_constants (465 lines) |
-| `repositories/auth_repository.dart` | Firebase Auth operations |
-| `repositories/cart_repository.dart` | Cart Firestore CRUD |
-| `repositories/order_repository.dart` | Order Firestore queries |
-| `repositories/product_repository.dart` | Product Firestore CRUD |
-| `repositories/user_repository.dart` | User profile operations |
+| `core/orignabase_provider.dart` | Shared OrignaBase client + auth providers |
+| `repositories/auth_repository.dart` | Auth repository abstraction (implemented by OrignaBase-backed repositories) |
+| `repositories/cart_repository.dart` | Cart repository abstraction |
+| `repositories/order_repository.dart` | Order repository abstraction |
+| `repositories/product_repository.dart` | Product repository abstraction |
+| `repositories/user_repository.dart` | User/profile repository abstraction |
 | `repositories/location_repository.dart` | Geoapify location services |
-| `repositories/algolia_product_repository.dart` | Algolia search queries |
+| `repositories/orignabase_*` | Active OrignaBase-backed implementations for auth/cart/location/notification/order/product/user |
 
 ### Features — `lib/features/` (MVVM ViewModels + State)
 | Feature | Files | Responsibility |
@@ -123,26 +130,26 @@
 ### Screens — `lib/screens/` (35 screens)
 | Screen | ViewModel/Provider | Backend Handler |
 |--------|-------------------|-----------------|
-| `login_screen.dart` | `login_viewmodel` | Firebase Auth (direct) |
-| `home_screen.dart` | `home_viewmodel` | Algolia (direct search) |
-| `productdetails_screen.dart` | `product_detail_viewmodel` | Firestore (direct read) |
-| `addproduct_screen.dart` | `add_product_viewmodel` | Firestore write → `on_product_created` trigger |
-| `editproduct_screen.dart` | `edit_product_viewmodel` | Firestore write → `on_product_updated` trigger |
-| `cart_screen.dart` | `cart_provider` | — (local Firestore) |
+| `login_screen.dart` | `login_viewmodel` | OrignaBase auth flow |
+| `home_screen.dart` | `home_viewmodel` | Algolia + OrignaBase-backed data flow |
+| `productdetails_screen.dart` | `product_detail_viewmodel` | OrignaBase-backed product read |
+| `addproduct_screen.dart` | `add_product_viewmodel` | OrignaBase-backed product creation |
+| `editproduct_screen.dart` | `edit_product_viewmodel` | OrignaBase-backed product update |
+| `cart_screen.dart` | `cart_provider` | OrignaBase-backed cart flow |
 | `checkout_screen.dart` | `checkout_provider` | `payment_stripe.create_checkout_session` |
-| `orders_screen.dart` | `buyer_orders_viewmodel` | Firestore query (direct) |
+| `orders_screen.dart` | `buyer_orders_viewmodel` | OrignaBase-backed order queries |
 | `seller_orders_screen.dart` | `seller_orders_viewmodel` | `orders.update_shipping_cost`, `orders.capture_payment` |
 | `shipping_approval_screen.dart` | `shipping_approval_viewmodel` | `orders.approve_shipping_cost` |
 | `ordersuccess_screen.dart` | — | — |
 | `seller_registration_screen.dart` | `seller_registration_view_model` | `payment_stripe.create_connect_account` |
 | `profile_screen.dart` | — | `users.get_user_profile` |
-| `addressmanagement_screen.dart` | — | user_repository (Firestore) |
-| `favorites_screen.dart` | — | product_repository (Firestore) |
-| `product_card_screen.dart` | `product_detail_viewmodel` | Firestore (direct read) |
-| `productaddimages_screen.dart` | `add_product_viewmodel` | Firestore write → `upload_product_images` |
+| `addressmanagement_screen.dart` | — | user_repository |
+| `favorites_screen.dart` | — | product_repository |
+| `product_card_screen.dart` | `product_detail_viewmodel` | OrignaBase-backed product read |
+| `productaddimages_screen.dart` | `add_product_viewmodel` | OrignaBase-backed media upload |
 | `chat_screen.dart` | `chat_viewmodel` | `chat.get_or_create_chat`, `chat.send_message` |
 | `seller/seller_warehouses_screen.dart` | `seller_warehouses_viewmodel` | Warehouse CRUD functions |
-| `productaddvideo_screen.dart` | `add_product_viewmodel` | Firestore write → `upload_product_video` |
+| `productaddvideo_screen.dart` | `add_product_viewmodel` | OrignaBase-backed video upload |
 | `seller_products_screen.dart` | `seller_products_viewmodel` | Seller product listings |
 | `authwrapper_screen.dart` | `auth_provider` | Authentication flow wrapper |
 | `cartitem_screen.dart` | `cart_provider` | Individual cart item display |
@@ -173,10 +180,12 @@
 | File | Responsibility |
 |------|----------------|
 | `algolia_service.dart` | Algolia client configuration |
-| `analytics_service.dart` | Analytics tracking |
-| `conf_services.dart` | Service configuration |
+| `analytics_service.dart` | Analytics abstraction |
+| `orignabase_analytics_service.dart` | Active analytics transport via OrignaBase |
+| `conf_services.dart` | Service configuration abstraction |
+| `orignabase_conf_service.dart` | Active config service via OrignaBase |
 | `session_timeout_service.dart` | Session management |
-| `notification_service.dart` | Manages local and push notifications. |
+| `orignabase_notification_service.dart` | Active notification transport |
 | `splash_service.dart` | App splash/loading |
 | `turnstile_service.dart` | Cloudflare Turnstile platform dispatcher (web/stub) |
 | `turnstile_service_web.dart` | Web implementation via `dart:js_interop` → `window._getTurnstileToken()` |
@@ -202,6 +211,11 @@
 | `design_tokens.dart` | Color tokens, gradients, theme |
 
 ---
+
+## 🧪 Tests
+
+- `origna_gta/test/`, `origna_gta/integration_test/`: active Flutter/unit/integration coverage.
+- `origna_gta/patrol_test/`: excluded Patrol suite pending rewrite to the active backend stack.
 
 ## 🧪 E2E Tests — `e2e/playwright_ui/` (36 spec files)
 
@@ -241,12 +255,13 @@
 | `notifications.spec.ts` | General notifications functionality |
 | `order-notifications.spec.ts` | Order-specific notifications |
 | `return-request.spec.ts` | Return request flow |
-| `api-coverage.spec.ts` | Headless API tests — 65+ uncovered Cloud Functions |
+| `api-coverage.spec.ts` | Headless API tests — backend coverage support |
 | `deep-ui-scenarios.spec.ts` | Deep browser E2E: buyer/seller/admin full journeys |
 
 Shared helpers: `api-helpers.ts`, `flutter-helpers.ts`
 
 Run: `cd e2e && npx playwright test --config=playwright.config.dev.ts --workers=2`  
+Coverage gate: `cd e2e && E2E_SKIP_GLOBAL_SETUP=true npx playwright test playwright_ui/coverage-gate.spec.ts --config=playwright.config.dev.ts --project=chromium`  
 Screenshots: auto-saved to `~/Desktop/origna-screenshots/dev/`
 
 ---
@@ -281,12 +296,12 @@ python3 scripts/collect_flow_files.py
 | `collect_flow_files.py` | Bundle source + test files into flow folders for Claude.ai (62 flows, ≤20 files each) |
 | `mega_seed_dev.py` | Seed orignagta-dev: 5 sellers, 30 products, 16 orders, returns, coupons, licenses |
 | `deploy_with_validation.sh` | Full deploy with pre-checks |
-| `deploy_rules.sh` | Deploy Firestore rules only |
+| `deploy_rules.sh` | Deploy repo-level rules/config artifacts |
 | `validate_schema_consistency.sh` | Check Python↔Dart↔JSON schema sync |
 | `generate_dart_models.sh` | Run build_runner for Freezed models |
 | `run_all_tests.sh` | All test suites |
 | `install_git_hooks.sh` | Install pre-push hooks |
-| `start-emulators.sh` | Start Firebase emulators |
+| `start-emulators.sh` | Start local development services |
 | `audit_orchestrator.py` | Orchestrates various audit tasks. |
 | `audit_translations.py` | Audits translation files for consistency. |
 | `audit-stripe-webhooks.sh` | Audits Stripe webhooks configuration. |
@@ -295,7 +310,7 @@ python3 scripts/collect_flow_files.py
 | `collect_simplified_flows_35.py` | Collects simplified flow files (35 flows). |
 | `create_stripe_webhooks.py` | Creates Stripe webhooks. |
 | `delete_dev_products.py` | Deletes development products. |
-| `deploy_functions.sh` | Deploys Cloud Functions. |
+| `deploy_functions.sh` | Deploys historical backend functions. |
 | `e2e-with-services.sh` | Runs E2E tests with necessary services. |
 | `fix_stripe_webhooks.py` | Fixes Stripe webhooks configurations. |
 | `fix-all-tests-comprehensive.sh` | Comprehensive script to fix all tests. |
@@ -322,7 +337,7 @@ python3 scripts/collect_flow_files.py
 | `run-integration-tests.sh` | Runs integration tests. |
 | `run-playwright-e2e.sh` | Runs Playwright E2E tests. |
 | `seed_dev_db.py` | Seeds the development database. |
-| `seed_dev_firestore_admin_samples.py` | Seeds Firestore with admin samples for development. |
+| `seed_dev_firestore_admin_samples.py` | Seeds development admin samples. |
 | `setup_algolia.sh` | Sets up Algolia. |
 | `setup_secrets.py` | Sets up secrets. |
 | `setup_test_seller.py` | Sets up a test seller. |
@@ -344,7 +359,7 @@ python3 scripts/collect_flow_files.py
 | `validate_storage_rules.py` | Validates storage rules. |
 | `verify_dev_data.py` | Verifies development data. |
 | `verify_dev_integration_credentials.py` | Verifies development integration credentials. |
-| `verify_functions_sync.py` | Verifies Cloud Functions synchronization. |
+| `verify_functions_sync.py` | Verifies historical backend sync. |
 | `version_tracker.py` | Tracks repository versions. |
 | `write_index_html.py` | Writes the index HTML file. |
 
@@ -377,7 +392,7 @@ python3 scripts/collect_flow_files.py
 
 | File/Dir | Content |
 |----------|---------|
-| `database_schema.json` | Complete Firestore schema (1421 lines, v2.0.0) |
+| `database_schema.json` | Complete database schema snapshot (1421 lines, v2.0.0) |
 | `json_schemas/individual/*.json` | 18 individual collection schemas |
 | `diagrams/*.puml` | 7 PlantUML diagrams (architecture, sequences, state) |
 | `STRIPE_CONNECT_REFERENCE.md` | Stripe Connect integration guide |

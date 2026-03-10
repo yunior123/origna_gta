@@ -1,12 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
@@ -19,74 +17,64 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_utils.dart';
 @GenerateNiceMocks([
-  MockSpec<auth.User>(),
-  MockSpec<auth.FirebaseAuth>(),
-  MockSpec<FirebaseFirestore>(),
-  MockSpec<CollectionReference<Map<String, dynamic>>>(as: #MockCollectionReferenceMap),
-  MockSpec<DocumentReference<Map<String, dynamic>>>(as: #MockDocumentReferenceMap),
-  MockSpec<DocumentSnapshot<Map<String, dynamic>>>(as: #MockDocumentSnapshotMap),
-  MockSpec<Query<Map<String, dynamic>>>(as: #MockQueryMap),
-  MockSpec<QuerySnapshot<Map<String, dynamic>>>(as: #MockQuerySnapshotMap),
-  MockSpec<QueryDocumentSnapshot<Map<String, dynamic>>>(as: #MockQueryDocumentSnapshotMap),
-  MockSpec<FirebaseFunctions>(),
-  MockSpec<HttpsCallable>(),
-  MockSpec<HttpsCallableResult>(),
   MockSpec<CartController>(),
 ])
 import 'product_details_screen_test.mocks.dart';
 
+class FakeAuthRepository implements AuthRepository {
+  @override
+  Future<void> confirmPasswordReset(String code, String newPassword) async {}
+
+  @override
+  Future<void> deleteAccount() async {}
+
+  @override
+  Future<void> ensureUserDocumentExists() async {}
+
+  @override
+  Future<bool> isEmailVerified() async => true;
+
+  @override
+  Future<void> registerWithEmail(
+    String email,
+    String password,
+    String name, {
+    bool marketingOptIn = false,
+  }) async {}
+
+  @override
+  Future<void> sendEmailVerification() async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<void> signInWithApple() async {}
+
+  @override
+  Future<void> signInWithEmail(String email, String password) async {}
+
+  @override
+  Future<void> signInWithGoogle() async {}
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<bool> validateCurrentUser() async => true;
+
+  @override
+  Stream<models.UserModel?> watchProfile(String userId) => const Stream.empty();
+}
+
 void main() {
-  late MockUser mockUser;
-  late MockFirebaseAuth mockAuth;
-  late MockFirebaseFirestore mockFirestore;
-  late MockCollectionReferenceMap mockCollection;
-  late MockDocumentReferenceMap mockDoc;
-  late MockDocumentSnapshotMap mockSnapshot;
-  late MockQueryMap mockQuery;
-  late MockQuerySnapshotMap mockQuerySnapshot;
-  late MockFirebaseFunctions mockFunctions;
-  late MockHttpsCallable mockCallable;
-  late MockHttpsCallableResult mockResult;
   late MockCartController mockCartController;
 
   setUp(() {
-    mockUser = MockUser();
-    mockAuth = MockFirebaseAuth();
-    mockFirestore = MockFirebaseFirestore();
-    mockCollection = MockCollectionReferenceMap();
-    mockDoc = MockDocumentReferenceMap();
-    mockSnapshot = MockDocumentSnapshotMap();
-    mockQuery = MockQueryMap();
-    mockQuerySnapshot = MockQuerySnapshotMap();
-    mockFunctions = MockFirebaseFunctions();
-    mockCallable = MockHttpsCallable();
-    mockResult = MockHttpsCallableResult();
     mockCartController = MockCartController();
-
-    when(mockUser.uid).thenReturn('u1');
-    when(mockUser.email).thenReturn('test@example.com');
-    when(mockUser.emailVerified).thenReturn(true);
-    when(mockUser.providerData).thenReturn([]);
-
-    when(mockAuth.authStateChanges()).thenAnswer((_) => Stream.value(mockUser));
-    when(mockAuth.currentUser).thenReturn(mockUser);
 
     SharedPreferences.setMockInitialValues({});
     initTestMocks();
-
-    when(mockFirestore.collection(any)).thenReturn(mockCollection);
-    when(mockCollection.doc(any)).thenReturn(mockDoc);
-    when(mockDoc.get()).thenAnswer((_) async => mockSnapshot);
-    when(mockSnapshot.exists).thenReturn(false);
-
-    when(mockCollection.where(any, isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockQuery);
-    when(mockQuery.where(any, isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockQuery);
-    when(mockQuery.limit(any)).thenReturn(mockQuery);
-    when(mockQuery.get()).thenAnswer((_) async => mockQuerySnapshot);
-    when(mockQuerySnapshot.docs).thenReturn([]);
-
-    when(mockFunctions.httpsCallable(any)).thenReturn(mockCallable);
-    when(mockCallable.call(any)).thenAnswer((_) async => mockResult);
   });
 
   final testProduct = Product(
@@ -105,6 +93,12 @@ void main() {
     isLocalDeliveryOnly: false,
     sellerAddress: const Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA'),
   );
+  const signedInUser = AppAuthUser(
+    uid: 'u1',
+    email: 'test@example.com',
+    emailVerified: true,
+  );
+  final fakeAuthRepository = FakeAuthRepository();
 
   Widget createTestApp({required Widget child, List<Override> overrides = const []}) {
     return TestWrapper(overrides: overrides, child: child);
@@ -123,12 +117,12 @@ void main() {
             userProfileProvider.overrideWith(
               (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const ['buyer'], createdAt: DateTime.now())),
             ),
-            authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
-            currentUserProvider.overrideWithValue(mockUser),
-            firebaseAuthProvider.overrideWithValue(mockAuth),
+            authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
+            currentUserProvider.overrideWithValue(signedInUser),
+            authRepositoryProvider.overrideWithValue(fakeAuthRepository),
             subscriptionStreamProvider.overrideWith((ref) => const Stream.empty()),
             qaListProvider('p1').overrideWith((ref) => const Stream.empty()),
-            firestoreProvider.overrideWithValue(mockFirestore),
+            productRatingsProvider('p1').overrideWith((ref) => const Stream.empty()),
             cartControllerProvider.overrideWithValue(mockCartController),
           ],
           child: const ProductDetailScreen(productId: 'p1'),
@@ -160,12 +154,12 @@ void main() {
             userProfileProvider.overrideWith(
               (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const ['buyer'], createdAt: DateTime.now())),
             ),
-            authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
-            currentUserProvider.overrideWithValue(mockUser),
-            firebaseAuthProvider.overrideWithValue(mockAuth),
+            authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
+            currentUserProvider.overrideWithValue(signedInUser),
+            authRepositoryProvider.overrideWithValue(fakeAuthRepository),
             subscriptionStreamProvider.overrideWith((ref) => const Stream.empty()),
             qaListProvider('p1').overrideWith((ref) => const Stream.empty()),
-            firestoreProvider.overrideWithValue(mockFirestore),
+            productRatingsProvider('p1').overrideWith((ref) => const Stream.empty()),
             cartControllerProvider.overrideWithValue(mockCartController),
           ],
           child: const ProductDetailScreen(productId: 'p1'),
@@ -192,12 +186,12 @@ void main() {
             userProfileProvider.overrideWith(
               (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const ['buyer'], createdAt: DateTime.now())),
             ),
-            authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
-            currentUserProvider.overrideWithValue(mockUser),
-            firebaseAuthProvider.overrideWithValue(mockAuth),
+            authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
+            currentUserProvider.overrideWithValue(signedInUser),
+            authRepositoryProvider.overrideWithValue(fakeAuthRepository),
             subscriptionStreamProvider.overrideWith((ref) => const Stream.empty()),
             qaListProvider('p1').overrideWith((ref) => const Stream.empty()),
-            firestoreProvider.overrideWithValue(mockFirestore),
+            productRatingsProvider('p1').overrideWith((ref) => const Stream.empty()),
             cartControllerProvider.overrideWithValue(mockCartController),
           ],
           child: const ProductDetailScreen(productId: 'p1'),

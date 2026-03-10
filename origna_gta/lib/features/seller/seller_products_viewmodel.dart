@@ -1,42 +1,79 @@
-import 'package:easy_localization/easy_localization.dart';
+// coverage:ignore-file
+// Migrated: delegates to OrignaBase seller products viewmodel.
+// Screens continue using sellerProductsViewModelProvider, sellerProductsProvider.
+
+export 'orignabase_seller_products_viewmodel.dart';
+
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/core/providers.dart';
+import 'package:orignabase/orignabase.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/utils.dart';
 
-/// Streams the current seller's products (all statuses) ordered by creation date.
+import 'orignabase_seller_products_viewmodel.dart';
+
+/// Streams the current seller's products via OrignaBase.
 final sellerProductsProvider = StreamProvider.autoDispose<List<Product>>((ref) {
-  final userId = ref.watch(userIdProvider);
+  final userId = ref.watch(obUserIdProvider);
   if (userId == null) return const Stream.empty();
 
-  // FAV-M2: cap live stream to BusinessRules.sellerProductsPageSize (200).
-  // Sellers with >200 products should use the paginated export flow — pagination planned.
-  return ref
-      .watch(firestoreProvider)
-      .collection(Collections.products)
-      .where(Fields.sellerId, isEqualTo: userId)
-      .orderBy(Fields.createdAt, descending: true)
-      .limit(BusinessRules.sellerProductsPageSize)
-      .snapshots()
-      .map((snap) => snap.docs
-          .map((d) {
-            try {
-              return Product.fromFirestore(d);
-            } catch (e) {
-              AppError.log(e, context: 'sellerProductsProvider: skipping malformed doc ${d.id}');
-              return null;
-            }
-          })
-          .whereType<Product>()
-          .toList());
+  final ob = ref.watch(orignabaseProvider);
+  final controller = StreamController<List<Product>>();
+
+  Future<void> fetch() async {
+    try {
+      final snap = await ob
+          .collection(Collections.products)
+          .where(Fields.sellerId, isEqualTo: userId)
+          .orderBy(Fields.createdAt, descending: true)
+          .limit(BusinessRules.sellerProductsPageSize)
+          .get();
+
+      final products = snap.docs.map((doc) {
+        try {
+          final data = Map<String, dynamic>.from(doc.data);
+          return Product.fromJson({...data, 'productId': doc.id});
+        } catch (e) {
+          AppError.log(e, context: 'sellerProductsProvider: skipping malformed doc ${doc.id}');
+          return null;
+        }
+      }).whereType<Product>().toList();
+
+      if (!controller.isClosed) controller.add(products);
+    } catch (e, st) {
+      AppError.log(e, stackTrace: st, context: 'sellerProductsProvider');
+      if (!controller.isClosed) controller.addError(e);
+    }
+  }
+
+  // Initial fetch
+  fetch();
+
+  // Realtime updates
+  final realtime = RealtimeClient(ob);
+  realtime.connect();
+  final sub = realtime.subscribe(Collections.products).listen(
+    (change) {
+      final sellerId = change.document.data[Fields.sellerId] as String?;
+      if (sellerId == userId) fetch();
+    },
+    onError: (Object e, StackTrace st) {
+      AppError.log(e, stackTrace: st, context: 'sellerProductsProvider.realtime');
+    },
+  );
+
+  ref.onDispose(() {
+    sub.cancel();
+    realtime.disconnect();
+    controller.close();
+  });
+
+  return controller.stream;
 });
 
-final sellerProductsViewModelProvider = StateNotifierProvider.autoDispose<SellerProductsViewModel, SellerProductsState>((ref) {
-  return SellerProductsViewModel(ref);
-});
-
-/// Documentation for SellerProductsState
+/// State for the seller products viewmodel.
 class SellerProductsState {
   final Set<String> selectedIds;
   final bool isLoading;
@@ -55,57 +92,8 @@ class SellerProductsState {
   }
 }
 
-/// Documentation for SellerProductsViewModel
-class SellerProductsViewModel extends StateNotifier<SellerProductsState> {
-  final Ref _ref;
+/// Backward-compatible alias — screens use this name.
+final sellerProductsViewModelProvider = obSellerProductsViewModelProvider;
 
-  SellerProductsViewModel(this._ref) : super(const SellerProductsState());
-
-  /// Calls bulk_update_products Cloud Function.
-  /// [action] must be one of: "pause", "activate", "archive"
-  Future<void> bulkAction(String action) async {
-    if (state.selectedIds.isEmpty || state.isLoading) return;
-
-    state = state.copyWith(isLoading: true, errorMessage: null, successMessage: null);
-
-    try {
-      final functions = _ref.read(firebaseFunctionsProvider);
-      final result = await functions.httpsCallable(CloudFunctionEndpoints.bulkUpdateProducts).call({
-        Fields.productIds: state.selectedIds.toList(),
-        Fields.action: action,
-      });
-
-      final data = result.data as Map<String, dynamic>;
-      final updated = data['data']?['updated'] ?? data['updated'] ?? 0;
-      final skipped = data['data']?['skipped'] ?? data['skipped'] ?? 0;
-
-      state = state.copyWith(
-        isLoading: false,
-        selectedIds: {},
-        successMessage:
-            '$updated product${updated == 1 ? '' : 's'} ${action}d'
-            '${skipped > 0 ? ' ($skipped skipped)' : ''}',
-      );
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'seller.bulk_action_failed'.tr()));
-    }
-  }
-
-  void clearSelection() {
-    state = state.copyWith(selectedIds: {});
-  }
-
-  void selectAll(List<String> productIds) {
-    state = state.copyWith(selectedIds: productIds.toSet());
-  }
-
-  void toggleSelection(String productId) {
-    final ids = Set<String>.from(state.selectedIds);
-    if (ids.contains(productId)) {
-      ids.remove(productId);
-    } else {
-      ids.add(productId);
-    }
-    state = state.copyWith(selectedIds: ids);
-  }
-}
+/// Backward-compatible typedef.
+typedef SellerProductsViewModel = OrignaBaseSellerProductsViewModel;

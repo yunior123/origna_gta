@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -30,7 +29,7 @@ void main() {
         price: 10.0,
         imageUrls: [],
         quantity: quantity,
-        createdAt: Timestamp.now(),
+        createdAt: DateTime.now(),
         sellerAddress: mockAddress,
         sellerId: 'seller_123',
         sellerName: 'Test Seller',

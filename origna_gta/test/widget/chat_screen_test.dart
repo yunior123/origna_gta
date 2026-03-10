@@ -1,10 +1,10 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/screens/chat_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/chat/chat_provider.dart';
@@ -91,9 +91,9 @@ void main() {
 
     testWidgets('renders own product message', (tester) async {
       when(mockRepo.getOrCreateChat(any)).thenThrow(
-        FirebaseFunctionsException(
-          code: 'permission-denied',
-          message: 'You cannot chat with yourself',
+        OrignaBaseException(
+          'You cannot chat with yourself',
+          statusCode: 403,
         ),
       );
 

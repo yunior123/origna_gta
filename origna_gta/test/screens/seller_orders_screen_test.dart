@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,7 +16,7 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../test_utils.dart';
-@GenerateNiceMocks([MockSpec<auth.User>(), MockSpec<SellerOrdersViewModel>(), MockSpec<NavigatorObserver>()])
+@GenerateNiceMocks([MockSpec<SellerOrdersViewModel>(), MockSpec<NavigatorObserver>()])
 import 'seller_orders_screen_test.mocks.dart';
 
 void main() {
@@ -25,7 +24,7 @@ void main() {
     initTestMocks();
   });
 
-  late MockUser mockUser;
+  late AppAuthUser mockUser;
   late MockSellerOrdersViewModel mockViewModel;
   late MockNavigatorObserver mockNavigatorObserver;
 
@@ -68,12 +67,9 @@ void main() {
   );
 
   setUp(() {
-    mockUser = MockUser();
+    mockUser = const AppAuthUser(uid: 'seller_123', email: 'seller@example.com');
     mockViewModel = MockSellerOrdersViewModel();
     mockNavigatorObserver = MockNavigatorObserver();
-    when(mockUser.uid).thenReturn('seller_123');
-    when(mockUser.email).thenReturn('seller@example.com');
-    when(mockUser.displayName).thenReturn('Test Seller');
 
     // Default viewmodel state
     when(mockViewModel.state).thenReturn(const seller_orders_state.SellerOrdersState());

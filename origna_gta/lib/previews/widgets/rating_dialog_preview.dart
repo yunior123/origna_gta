@@ -1,7 +1,7 @@
+// coverage:ignore-file
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
-import 'package:origna_gta/features/subscription/subscription_state.dart';
 import 'package:origna_gta/previews/_preview_theme.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
 

@@ -1,12 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:origna_gta/core/compat/timestamp.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/qa_model.dart';
+import 'package:orignabase/orignabase.dart' show FieldValue;
 
 void main() {
   group('QAModel serialization', () {
     test('fromMap parses question correctly', () {
-      final now = Timestamp.now();
+      final now = Timestamp.fromDate(DateTime(2026, 3, 10, 8, 51, 30));
       final map = {Fields.questionText: 'What is the color?', Fields.askerId: 'user1', Fields.createdAt: now};
 
       final model = QAModel.fromMap('doc1', map);
@@ -62,9 +63,7 @@ void main() {
       final map = model.toMap();
       expect(map[Fields.answerText], 'Ans');
       expect(map[Fields.answeredBy], 'B');
-      expect(map[Fields.answeredAt], isA<Timestamp>());
-      final timestamp = map[Fields.answeredAt] as Timestamp;
-      expect(timestamp.toDate(), DateTime(2023, 5, 6));
+      expect(map[Fields.answeredAt], DateTime(2023, 5, 6).toIso8601String());
     });
   });
 }

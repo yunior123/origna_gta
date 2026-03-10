@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,6 @@ import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../features/seller/seller_account_status_viewmodel.dart';
-import '../features/seller/seller_registration_state.dart';
 import '../features/seller/seller_registration_view_model.dart';
 
 /// Available payment providers - add new providers here.

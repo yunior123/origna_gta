@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,6 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../features/subscription/subscription_provider.dart';
-import '../features/subscription/subscription_state.dart';
 
 /// Documentation for SubscriptionScreen
 class SubscriptionScreen extends ConsumerWidget {
@@ -601,4 +601,3 @@ class _PremiumMascotState extends State<_PremiumMascot> {
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
-

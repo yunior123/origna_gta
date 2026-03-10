@@ -1,24 +1,14 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-import 'package:origna_gta/config/firebase_config_dev.dart';
-import 'package:origna_gta/config/firebase_config_prod.dart';
-import 'package:origna_gta/config/firebase_config_staging.dart';
 import 'package:origna_gta/origna_app.dart';
-import 'package:origna_gta/services/conf_services.dart';
-import 'package:origna_gta/services/notification_service.dart';
+import 'package:orignabase/orignabase.dart';
+import 'package:origna_gta/services/orignabase_conf_service.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
@@ -57,90 +47,12 @@ void main() {
         }
       }
 
-      FirebaseOptions firebaseOptions;
-
-      switch (envConfig.environment) {
-        case AppEnvironment.dev:
-          firebaseOptions = FirebaseConfigDev.currentPlatform;
-          break;
-        case AppEnvironment.staging:
-          firebaseOptions = FirebaseConfigStaging.currentPlatform;
-          break;
-        case AppEnvironment.production:
-          firebaseOptions = FirebaseConfigProd.currentPlatform;
-          break;
-        case AppEnvironment.emulator:
-          firebaseOptions = FirebaseConfigDev.currentPlatform;
-          break;
-      }
-
-      // F-284: Phase 1 Parallel Initialization (Keep launch time < 2s)
-      await Firebase.initializeApp(options: firebaseOptions);
-
-      // EMULATOR CONFIGURATION
-      if (envConfig.shouldUseEmulators) {
-        try {
-          await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
-          FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
-          FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
-          await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
-        } catch (e) {
-          // BOOT-C1: Never silently fall back to dev Firebase when emulators are
-          // unavailable — this would cause data contamination in dev.
-          throw Exception(
-            'EMULATOR mode is enabled but emulators are unavailable: $e\n'
-            'Start emulators with `firebase emulators:start` before running the app.',
-          );
-        }
-      }
-
-      // App Check — attestation layer protecting Cloud Functions from abuse.
-      // Web: reCAPTCHA Enterprise (SCORE type) with site key injected at build time.
-      //   Staging key: RECAPTCHA_SITE_KEY_STAGING (orignagta-staging project)
-      //   Prod key:    RECAPTCHA_SITE_KEY_PROD    (orignagta project)
-      //   Dev: uses Google test key (always passes) + UNENFORCED mode — never blocks E2E.
-      // Mobile: DeviceCheck (iOS/macOS) + Play Integrity (Android).
-      const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY', defaultValue: '');
-      try {
-        await FirebaseAppCheck.instance.activate(
-          providerWeb: recaptchaSiteKey.isNotEmpty
-              ? ReCaptchaEnterpriseProvider(recaptchaSiteKey)
-              : ReCaptchaV3Provider('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'), // Google test key (dev only)
-          providerAndroid: const AndroidPlayIntegrityProvider(),
-          providerApple: const AppleDeviceCheckProvider(),
-        );
-      } catch (e) {
-        // App Check failures must never crash the app — attestation is a soft guard.
-        // The server enforces tokens for staging/prod; dev is monitoring-only.
-        debugPrint('⚠️ App Check activation failed (non-fatal): $e');
-      }
-
-      // F-284: Phase 2 Parallel Initialization
-      await Future.wait([
-        ConfigService().initialize(),
-        if (kIsWeb)
-          FirebaseAuth.instance.setPersistence(Persistence.LOCAL)
-        else
-          Future.value(null),
-      ]);
-
-      // F-285: Enable Firestore web persistence (survive refreshes)
-      if (kIsWeb) {
-        try {
-          FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
-        } catch (e) {
-          debugPrint('⚠️ Firestore persistence error: $e');
-        }
-      }
-
-      // Register FCM background handler before runApp — FCM requires this to be
-      // called at app startup before any other Firebase Messaging calls.
-      if (!kIsWeb) {
-        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-      }
+      // Initialize the OrignaBase-backed config service.
+      final ob = OrignaBase.initialize(url: envConfig.orignabaseUrl);
+      await OrignaBaseConfigService().initialize(ob);
 
       await SentryFlutter.init((options) {
-        options.dsn = ConfigService().sentryDnsKey;
+        options.dsn = OrignaBaseConfigService().sentryDnsKey;
         // Use env_config for environment naming (dev/staging must not be labeled 'emulator')
         options.environment = envConfig.isProduction
             ? 'production'

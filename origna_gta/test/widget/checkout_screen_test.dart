@@ -1,10 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
@@ -50,7 +50,7 @@ void main() {
     isLocalDeliveryOnly: false,
     estimatedShipDays: 3,
     sellerAddress: testAddress,
-    createdAt: Timestamp.now(),
+    createdAt: DateTime.now(),
   );
 
   Widget createTestWidget({List<CartItemDetailModel> items = const [], UserModel? user, CheckoutState? initialState}) {
@@ -60,8 +60,10 @@ void main() {
         orderRepositoryProvider.overrideWithValue(mockOrderRepo),
         userRepositoryProvider.overrideWithValue(mockUserRepo),
         authRepositoryProvider.overrideWithValue(mockAuthRepo),
+        obUserIdProvider.overrideWithValue('user_123'),
         userIdProvider.overrideWithValue('user_123'),
         userAddressesProvider.overrideWith((ref) => Stream.value([])),
+        cartItemsProvider.overrideWith((ref) => Stream.value(const [])),
         cartSubtotalProvider.overrideWith((ref) => items.fold(0.0, (total, i) => total + (i.price * i.quantity))),
         cartWithDetailsProvider.overrideWith((ref) => items),
         subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),

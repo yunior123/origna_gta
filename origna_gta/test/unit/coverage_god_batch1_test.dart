@@ -3,7 +3,7 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/core/errors/error_codes.dart';
-import 'package:origna_gta/config/firebase_config_dev.dart';
+import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/features/seller/seller_registration_state.dart';
 
 void main() {
@@ -26,8 +26,8 @@ void main() {
       expect(ErrorCodes.sysUnknown, isNotEmpty);
     });
 
-    test('FirebaseConfig coverage', () {
-      expect(FirebaseConfigDev.currentPlatform, isNotNull);
+    test('EnvConfig coverage', () {
+      expect(EnvConfig().orignabaseUrl, isNotEmpty);
     });
 
     test('SellerRegistrationState coverage', () {

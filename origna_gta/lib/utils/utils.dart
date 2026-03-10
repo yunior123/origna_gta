@@ -1,12 +1,13 @@
 import 'dart:convert';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:orignabase/orignabase.dart' show OrignaBaseException;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/errors/error_codes.dart';
+import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/services/conf_services.dart';
@@ -38,7 +39,7 @@ const Map<String, Map<String, double>> provinceTaxRates = {
   'YT': {'GST': 0.05},
 };
 
-/// Maximum total keywords to generate (Firestore array limit consideration)
+/// Maximum total keywords to generate for search prefixes.
 const int _maxKeywords = 30;
 
 /// Maximum characters per word to generate prefixes for
@@ -73,65 +74,6 @@ final List<ProductCategories> productCategories = [
 // NOTE: These are FRONTEND ESTIMATES only. The backend uses Stripe Tax API
 // for the authoritative calculation (which includes shipping in the tax base).
 final taxConfig = provinceTaxRates;
-
-Future<bool> addToCart({required String productId, required int quantity, required BuildContext context}) async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    Navigator.of(context).pushNamed(AppRoutes.login);
-    return false;
-  }
-
-  if (quantity <= 0) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('cart.invalid_quantity'.tr()), backgroundColor: DesignTokens.error));
-    }
-    return false;
-  }
-
-  final cartRef = FirebaseFirestore.instance.collection(Collections.users).doc(user.uid).collection(Collections.cart);
-
-  // Use productId as deterministic cart doc ID so we can transactionally read it.
-  final cartItemRef = cartRef.doc(productId);
-
-  try {
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      // Check product stock before adding to cart
-      final productRef = FirebaseFirestore.instance.collection(Collections.products).doc(productId);
-      final productSnapshot = await transaction.get(productRef);
-      if (!productSnapshot.exists) {
-        throw Exception('cart.product_not_found'.tr());
-      }
-      final productData = productSnapshot.data()!;
-      final stockQuantity = productData[Fields.stockQuantity] as int? ?? 0;
-
-      // Read existing cart item with deterministic ID — safe inside transaction.
-      final existingSnapshot = await transaction.get(cartItemRef);
-      final currentQty = existingSnapshot.exists ? (existingSnapshot.data()?[Fields.quantity] as num?)?.toInt() ?? 0 : 0;
-      final newTotalQty = currentQty + quantity;
-
-      if (newTotalQty > stockQuantity) {
-        throw Exception('cart.stock_limit_count'.tr(namedArgs: {'count': stockQuantity.toString()}));
-      }
-
-      if (existingSnapshot.exists) {
-        transaction.update(cartItemRef, {Fields.quantity: newTotalQty});
-      } else {
-        transaction.set(cartItemRef, CartModel(productId: productId, quantity: quantity, createdAt: DateTime.now()).toMap());
-      }
-    });
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('cart.updated'.tr()), backgroundColor: DesignTokens.success));
-    }
-  } catch (e, stack) {
-    AppError.log(e, stackTrace: stack, context: 'addToCart');
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppError.getMessage(e)), backgroundColor: DesignTokens.error));
-    }
-    return false;
-  }
-  return true;
-}
 
 // Calculate detailed taxes based on selected province
 Map<String, double> calculateDetailedTaxes(Address? address, double total) {
@@ -269,9 +211,8 @@ double calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sell
 
 /// Check if current user's email is verified. Returns true if verified or in emulator mode.
 /// Shows dialog and returns false if not verified.
-Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, {FirebaseAuth? auth}) async {
-  final firebaseAuth = auth ?? FirebaseAuth.instance;
-  final user = firebaseAuth.currentUser;
+Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, WidgetRef ref) async {
+  final user = ref.read(currentUserProvider);
   if (user == null) return false;
 
   // BOOT-H1: emulator bypass is intentional for local dev only.
@@ -283,36 +224,20 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, {FirebaseAuth? aut
   }
 
   try {
-    await user.reload();
+    final verified = await ref.read(authRepositoryProvider).isEmailVerified();
+    if (verified) return true;
   } catch (e) {
-    // reload() failed (network error on non-emulator env) — fail closed to protect verification gate
-    debugPrint('checkEmailVerifiedOrPrompt: reload failed: $e');
-    if (!EnvConfig().isEmulator && context.mounted) {
-      showEmailVerificationDialog(
-        context,
-        auth: firebaseAuth,
-        onResend: () async {
-          try {
-            await firebaseAuth.currentUser?.sendEmailVerification();
-          } catch (_) {}
-        },
-      );
-      return false;
-    }
-    return true; // emulator: treat as verified
-  }
-  final freshUser = firebaseAuth.currentUser;
-  if (freshUser != null && freshUser.emailVerified) {
-    return true;
+    debugPrint('checkEmailVerifiedOrPrompt: verification check failed: $e');
+    if (EnvConfig().isEmulator) return true;
   }
 
   if (context.mounted) {
     showEmailVerificationDialog(
       context,
-      auth: firebaseAuth,
+      email: user.email,
       onResend: () async {
         try {
-          await freshUser?.sendEmailVerification();
+          await ref.read(authRepositoryProvider).sendEmailVerification();
         } catch (_) {}
       },
     );
@@ -320,11 +245,24 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, {FirebaseAuth? aut
   return false;
 }
 
-/// Helper to convert dynamic date/timestamp to Firestore Timestamp
-Timestamp dynamicToTimestamp(dynamic value) {
-  if (value is Timestamp) return value;
-  if (value is DateTime) return Timestamp.fromDate(value);
-  return Timestamp.now();
+/// Helper to convert dynamic date/timestamp to DateTime
+DateTime dynamicToDateTime(dynamic value) {
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+  return DateTime.now();
+}
+
+/// Convert a dynamic date/timestamp value to DateTime.
+/// Kept for backward compatibility with tests that called the old Timestamp version.
+DateTime dynamicToTimestamp(dynamic value) {
+  if (value is DateTime) return value;
+  if (value is String) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) return parsed;
+  }
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+  return DateTime.now();
 }
 
 List<String> generateSearchKeywords(String name) {
@@ -348,19 +286,6 @@ List<String> generateSearchKeywords(String name) {
 
   keywords.add(cleanName);
   return keywords.take(_maxKeywords).toList();
-}
-
-Future<int> getCartItemCount(String userId) async {
-  final query = FirebaseFirestore.instance.collection(Collections.users).doc(userId).collection(Collections.cart);
-
-  final snapshot = await query.count().get();
-  return snapshot.count ?? 0;
-}
-
-Stream<List<CartItemModel>> getCartStream(String userId) {
-  return FirebaseFirestore.instance.collection(Collections.users).doc(userId).collection(Collections.cart).snapshots().map((snapshot) {
-    return snapshot.docs.map((doc) => CartItemModel.fromMap(doc.data(), docId: doc.id)).toList();
-  });
 }
 
 int getCrossAxisCount(BuildContext context) {
@@ -452,9 +377,7 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
 /// Show a dialog prompting the user to verify their email before proceeding.
 /// [onResend] optional callback to resend verification email.
 /// Returns true if user dismissed, false if they tapped resend.
-void showEmailVerificationDialog(BuildContext context, {FirebaseAuth? auth, VoidCallback? onResend}) {
-  final firebaseAuth = auth ?? FirebaseAuth.instance;
-  final user = firebaseAuth.currentUser;
+void showEmailVerificationDialog(BuildContext context, {String? email, VoidCallback? onResend}) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -468,13 +391,13 @@ void showEmailVerificationDialog(BuildContext context, {FirebaseAuth? auth, Void
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (user?.email != null)
+          if (email != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16)),
               child: Text(
-                user!.email!,
+                email,
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.primary),
               ),
             ),
@@ -719,11 +642,11 @@ Future<void> _launchPath(String path) async {
 class AppError {
   /// Extract user-friendly message from error.
   ///
-  /// For [FirebaseFunctionsException], returns the backend message (safe — our
+  /// For [OrignaBaseException], returns the backend message (safe — our
   /// backend already sanitises messages before raising HttpsError), but filters
-  /// out any raw Firestore exceptions that might have leaked.
-  /// For [FirebaseException], returns a safe generic message, as raw Firebase
-  /// messages often contain internal structure details.
+  /// out any raw database exceptions that might have leaked.
+  /// For auth/storage/backend exceptions, returns a safe generic message when
+  /// the raw message may leak internals.
   /// For everything else, returns [fallback] to avoid leaking internals.
   ///
   /// If [code] is provided it is appended to the message so users can quote it
@@ -736,16 +659,15 @@ class AppError {
 
     String rawMsg;
 
-    if (error is FirebaseFunctionsException) {
-      final msg = error.message ?? '';
+    if (error is OrignaBaseException) {
+      final msg = error.message;
       // Filter out leaked backend errors
       if (msg.contains('FailedPrecondition') || msg.contains('The query requires an index')) {
         rawMsg = 'errors.service_unavailable'.tr();
       } else {
         rawMsg = msg.isNotEmpty ? msg : actualFallback;
       }
-    } else if (error is FirebaseException) {
-      // Don't expose raw Firebase exceptions to the user UI
+    } else if (error is OrignaBaseAuthException || error is OrignaBaseException) {
       rawMsg = 'errors.service_unavailable'.tr();
     } else {
       // NEVER expose raw e.toString() — it can contain stack traces,
@@ -822,13 +744,13 @@ class AppError {
     );
   }
 
-  /// Infer an ORIGNA error code from a known Firebase / Stripe error code or
+  /// Infer an ORIGNA error code from a known auth/backend error code or
   /// from the exception type.  Returns null when no mapping exists.
   static String? _inferCode(dynamic error) {
-    if (error is FirebaseFunctionsException) {
+    if (error is OrignaBaseException) {
       return null; // Backend already appends codes; no client-side inference needed.
     }
-    if (error is FirebaseAuthException) {
+    if (error is OrignaBaseAuthException) {
       return switch (error.code) {
         'email-already-in-use' => ErrorCodes.authEmailInUse,
         'wrong-password' => ErrorCodes.authWrongPassword,
@@ -839,7 +761,7 @@ class AppError {
         _ => ErrorCodes.sysUnknown,
       };
     }
-    if (error is FirebaseException) {
+    if (error is OrignaBaseException) {
       return ErrorCodes.sysServerError;
     }
     return null;

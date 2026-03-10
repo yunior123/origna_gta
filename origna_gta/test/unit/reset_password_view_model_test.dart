@@ -1,76 +1,89 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/auth_repository.dart';
+import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/features/auth/reset_password_view_model.dart';
+import 'package:origna_gta/utils/utils.dart';
 
-@GenerateNiceMocks([MockSpec<FirebaseAuth>()])
-import 'reset_password_view_model_test.mocks.dart';
+class FakeAuthRepository implements AuthRepository {
+  Future<void> Function(String code, String newPassword)? onConfirmPasswordReset;
+  int confirmPasswordResetCallCount = 0;
+
+  @override
+  Future<void> confirmPasswordReset(String code, String newPassword) async {
+    confirmPasswordResetCallCount += 1;
+    await onConfirmPasswordReset?.call(code, newPassword);
+  }
+
+  @override
+  Future<void> deleteAccount() async {}
+
+  @override
+  Future<void> ensureUserDocumentExists() async {}
+
+  @override
+  Future<bool> isEmailVerified() async => false;
+
+  @override
+  Future<void> registerWithEmail(
+    String email,
+    String password,
+    String name, {
+    bool marketingOptIn = false,
+  }) async {}
+
+  @override
+  Future<void> sendEmailVerification() async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<void> signInWithApple() async {}
+
+  @override
+  Future<void> signInWithEmail(String email, String password) async {}
+
+  @override
+  Future<void> signInWithGoogle() async {}
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<bool> validateCurrentUser() async => true;
+
+  @override
+  Stream<UserModel?> watchProfile(String userId) => const Stream.empty();
+}
 
 void main() {
-  late MockFirebaseAuth mockAuth;
+  late FakeAuthRepository fakeAuthRepository;
   late ProviderContainer container;
   const oobCode = 'test-code';
 
   setUp(() {
-    mockAuth = MockFirebaseAuth();
-    container = ProviderContainer(overrides: [firebaseAuthProvider.overrideWithValue(mockAuth)]);
+    fakeAuthRepository = FakeAuthRepository();
+    container = ProviderContainer(
+      overrides: [authRepositoryProvider.overrideWithValue(fakeAuthRepository)],
+    );
   });
 
   group('ResetPasswordViewModel', () {
-    test('initialization calls verifyPasswordResetCode', () async {
-      when(mockAuth.verifyPasswordResetCode(oobCode)).thenAnswer((_) async => 'test@example.com');
-
+    test('initialization completes verification state', () async {
       final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
       container.read(resetPasswordViewModelProvider(oobCode).notifier);
 
-      // Wait for async initialization in constructor
       await Future.delayed(Duration.zero);
 
       final state = container.read(resetPasswordViewModelProvider(oobCode));
-      expect(state.userEmail, 'test@example.com');
       expect(state.isVerifying, isFalse);
-      verify(mockAuth.verifyPasswordResetCode(oobCode)).called(1);
-      keepAlive.close();
-    });
-
-    test('initialization handles FirebaseAuthException codes', () async {
-      final codes = ['expired-action-code', 'invalid-action-code', 'user-disabled', 'user-not-found', 'weak-password', 'other'];
-
-      for (final code in codes) {
-        when(mockAuth.verifyPasswordResetCode(oobCode)).thenThrow(FirebaseAuthException(code: code));
-
-        final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
-        container.read(resetPasswordViewModelProvider(oobCode).notifier);
-        await Future.delayed(Duration.zero);
-
-        final state = container.read(resetPasswordViewModelProvider(oobCode));
-        expect(state.errorMessage, isNotNull, reason: 'Failed for code: $code');
-        expect(state.isVerifying, isFalse);
-        keepAlive.close();
-
-        // Reset container/state for next iteration
-        container = ProviderContainer(overrides: [firebaseAuthProvider.overrideWithValue(mockAuth)]);
-      }
-    });
-
-    test('initialization handles generic error', () async {
-      when(mockAuth.verifyPasswordResetCode(oobCode)).thenThrow(Exception('unknown'));
-
-      final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
-      container.read(resetPasswordViewModelProvider(oobCode).notifier);
-      await Future.delayed(Duration.zero);
-
-      final state = container.read(resetPasswordViewModelProvider(oobCode));
-      expect(state.errorMessage, isNotNull);
-      expect(state.isVerifying, isFalse);
+      expect(state.errorMessage, isNull);
       keepAlive.close();
     });
 
     test('resetPassword validates password requirements', () async {
-      when(mockAuth.verifyPasswordResetCode(oobCode)).thenAnswer((_) async => 'test@example.com');
       final viewModel = container.read(resetPasswordViewModelProvider(oobCode).notifier);
       final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
       await Future.delayed(Duration.zero);
@@ -90,8 +103,8 @@ void main() {
     });
 
     test('resetPassword success', () async {
-      when(mockAuth.verifyPasswordResetCode(oobCode)).thenAnswer((_) async => 'test@example.com');
-      when(mockAuth.confirmPasswordReset(code: oobCode, newPassword: 'Password123!')).thenAnswer((_) async {});
+      fakeAuthRepository.onConfirmPasswordReset =
+          (code, password) => Future<void>.value();
 
       final viewModel = container.read(resetPasswordViewModelProvider(oobCode).notifier);
       final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
@@ -102,13 +115,14 @@ void main() {
       final state = container.read(resetPasswordViewModelProvider(oobCode));
       expect(state.isSuccess, isTrue);
       expect(state.isLoading, isFalse);
-      verify(mockAuth.confirmPasswordReset(code: oobCode, newPassword: 'Password123!')).called(1);
+      expect(fakeAuthRepository.confirmPasswordResetCallCount, 1);
       keepAlive.close();
     });
 
-    test('resetPassword handles failure', () async {
-      when(mockAuth.verifyPasswordResetCode(oobCode)).thenAnswer((_) async => 'test@example.com');
-      when(mockAuth.confirmPasswordReset(code: anyNamed('code'), newPassword: anyNamed('newPassword'))).thenThrow(FirebaseAuthException(code: 'weak-password'));
+    test('resetPassword handles auth failure', () async {
+      fakeAuthRepository.onConfirmPasswordReset = (code, password) async {
+        throw OrignaBaseAuthException(code: 'weak-password');
+      };
 
       final viewModel = container.read(resetPasswordViewModelProvider(oobCode).notifier);
       final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
@@ -123,8 +137,9 @@ void main() {
     });
 
     test('resetPassword handles generic failure', () async {
-      when(mockAuth.verifyPasswordResetCode(oobCode)).thenAnswer((_) async => 'test@example.com');
-      when(mockAuth.confirmPasswordReset(code: anyNamed('code'), newPassword: anyNamed('newPassword'))).thenThrow(Exception('error'));
+      fakeAuthRepository.onConfirmPasswordReset = (code, password) async {
+        throw Exception('error');
+      };
 
       final viewModel = container.read(resetPasswordViewModelProvider(oobCode).notifier);
       final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});

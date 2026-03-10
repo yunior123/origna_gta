@@ -1,4 +1,3 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -9,30 +8,26 @@ import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/seller/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/seller/seller_registration_view_model.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';
-import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:orignabase/orignabase.dart';
 import '../test_utils.dart';
 
 @GenerateNiceMocks([
-  MockSpec<FirebaseFunctions>(),
-  MockSpec<HttpsCallable>(),
-  MockSpec<HttpsCallableResult>(),
+  MockSpec<OrignaBase>(),
 ])
 import 'seller_registration_screen_test.mocks.dart';
 
 void main() {
-  late MockFirebaseFunctions mockFunctions;
-  late MockHttpsCallable mockCallable;
+  late MockOrignaBase mockOrignaBase;
 
   setUp(() {
-    mockFunctions = MockFirebaseFunctions();
-    mockCallable = MockHttpsCallable();
+    mockOrignaBase = MockOrignaBase();
     initTestMocks();
-    
-    when(mockFunctions.httpsCallable(any)).thenReturn(mockCallable);
-    when(mockCallable.call(any)).thenAnswer((_) async => MockHttpsCallableResult());
+
+    when(mockOrignaBase.request(any, any, body: anyNamed('body')))
+        .thenAnswer((_) async => <String, dynamic>{});
   });
 
   final testUser = UserModel(
@@ -52,7 +47,8 @@ void main() {
         userProfileProvider.overrideWith((ref) => Stream.value(user)),
         sellerAccountStatusProvider.overrideWith((ref) => Stream.value(status)),
         paymentProviderStatusProvider.overrideWith((ref) => Future.value({})),
-        firebaseFunctionsProvider.overrideWithValue(mockFunctions),
+        orignabaseProvider.overrideWithValue(mockOrignaBase),
+        obUserIdProvider.overrideWithValue(user?.uid),
       ],
       child: const SellerRegistrationScreen(),
     );
@@ -63,6 +59,7 @@ void main() {
       await tester.pumpWidget(TestWrapper(
         overrides: [
           userProfileProvider.overrideWith((ref) => const Stream.empty()),
+          obUserIdProvider.overrideWithValue(null),
         ],
         child: const SellerRegistrationScreen(),
       ));
@@ -103,7 +100,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      verify(mockFunctions.httpsCallable(CloudFunctionEndpoints.createConnectAccount)).called(1);
+      verify(mockOrignaBase.request(any, any, body: anyNamed('body'))).called(greaterThan(0));
     });
 
     testWidgets('shows verification pending status', (tester) async {

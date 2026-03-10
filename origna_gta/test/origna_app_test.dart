@@ -1,8 +1,4 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as auth;
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,17 +11,14 @@ import 'package:origna_gta/origna_app.dart';
 import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/screens/privacy_policy_screen.dart';
 import 'package:origna_gta/screens/productdetails_screen.dart';
-import 'package:origna_gta/services/notification_service.dart';
+import 'package:origna_gta/services/orignabase_notification_service.dart';
+import 'package:origna_gta/services/push_transport.dart';
 import 'package:origna_gta/services/session_timeout_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'mock_asset_loader.dart';
 @GenerateNiceMocks([
-  MockSpec<auth.User>(),
-  MockSpec<auth.FirebaseAuth>(),
-  MockSpec<FirebaseMessaging>(),
-  MockSpec<NotificationSettings>(),
-  MockSpec<FirebaseFunctions>(),
+  MockSpec<PushMessagingClient>(),
   MockSpec<ProductRepository>(),
 ])
 import 'origna_app_test.mocks.dart';
@@ -33,11 +26,7 @@ import 'origna_app_test.mocks.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late MockFirebaseAuth mockAuth;
-  late FakeFirebaseFirestore fakeFirestore;
-  late MockFirebaseMessaging mockMessaging;
-  late MockNotificationSettings mockSettings;
-  late MockFirebaseFunctions mockFunctions;
+  late MockPushMessagingClient mockMessaging;
   late MockProductRepository mockProductRepository;
 
   setUpAll(() async {
@@ -45,23 +34,25 @@ void main() {
   });
 
   setUp(() {
-    mockAuth = MockFirebaseAuth();
-    fakeFirestore = FakeFirebaseFirestore();
-    mockMessaging = MockFirebaseMessaging();
-    mockSettings = MockNotificationSettings();
-    mockFunctions = MockFirebaseFunctions();
+    mockMessaging = MockPushMessagingClient();
     mockProductRepository = MockProductRepository();
 
     // Reset the singleton service and its keys
-    NotificationService.instance.resetForTesting();
-    NotificationService.instance.testNavigatorKey = GlobalKey<NavigatorState>();
-    NotificationService.instance.testScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+    OrignaBaseNotificationService.instance.resetForTesting();
+    OrignaBaseNotificationService.instance.testNavigatorKey =
+        GlobalKey<NavigatorState>();
+    OrignaBaseNotificationService.instance.testScaffoldMessengerKey =
+        GlobalKey<ScaffoldMessengerState>();
 
-    // Inject mock auth into the singleton service to prevent crash
-    SessionTimeoutService().setAuth(mockAuth);
-    NotificationService.instance.messagingOverride = mockMessaging;
-    NotificationService.instance.onMessageOverride = const Stream.empty();
-    NotificationService.instance.onMessageOpenedAppOverride = const Stream.empty();
+    SessionTimeoutService().configure(
+      currentUserIdProvider: () => null,
+      signOutCallback: () async {},
+    );
+    OrignaBaseNotificationService.instance.messagingOverride = mockMessaging;
+    OrignaBaseNotificationService.instance.onMessageOverride =
+        const Stream.empty();
+    OrignaBaseNotificationService.instance.onMessageOpenedAppOverride =
+        const Stream.empty();
 
     when(
       mockMessaging.requestPermission(
@@ -72,24 +63,20 @@ void main() {
         criticalAlert: anyNamed('criticalAlert'),
         provisional: anyNamed('provisional'),
         sound: anyNamed('sound'),
-        providesAppNotificationSettings: anyNamed('providesAppNotificationSettings'),
       ),
-    ).thenAnswer((_) async => mockSettings);
-
-    when(mockSettings.authorizationStatus).thenReturn(AuthorizationStatus.authorized);
+    ).thenAnswer((_) async => const AppNotificationSettings(
+          authorizationStatus: AppNotificationAuthorizationStatus.authorized,
+        ));
     when(mockMessaging.getToken()).thenAnswer((_) async => 'fake-token');
     when(mockMessaging.onTokenRefresh).thenAnswer((_) => const Stream.empty());
     when(mockMessaging.getInitialMessage()).thenAnswer((_) async => null);
-
-    when(mockAuth.authStateChanges()).thenAnswer((_) => Stream.value(null));
-    when(mockAuth.currentUser).thenReturn(null);
 
     when(
       mockProductRepository.fetchProducts(
         searchQuery: anyNamed('searchQuery'),
         categoryId: anyNamed('categoryId'),
         subcategory: anyNamed('subcategory'),
-        lastDocument: anyNamed('lastDocument'),
+        lastDocumentId: anyNamed('lastDocumentId'),
         pageSize: anyNamed('pageSize'),
         sortOption: anyNamed('sortOption'),
         minPriceCents: anyNamed('minPriceCents'),
@@ -115,9 +102,7 @@ void main() {
   Widget createTestApp({List<Override> overrides = const []}) {
     return ProviderScope(
       overrides: [
-        firebaseAuthProvider.overrideWithValue(mockAuth),
-        firestoreProvider.overrideWithValue(fakeFirestore),
-        firebaseFunctionsProvider.overrideWithValue(mockFunctions),
+        authStateProvider.overrideWith((ref) => Stream.value(null)),
         productRepositoryProvider.overrideWithValue(mockProductRepository),
         ...overrides,
       ],
@@ -140,7 +125,7 @@ void main() {
 
       expect(find.byType(OrignaApp), findsOneWidget);
 
-      final nav = NotificationService.navigatorKey.currentState;
+      final nav = OrignaBaseNotificationService.navigatorKey.currentState;
       expect(nav, isNotNull, reason: 'Navigator state should not be null');
 
       Future<void> pumpRobust() async {

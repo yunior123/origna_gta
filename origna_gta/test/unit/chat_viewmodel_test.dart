@@ -4,7 +4,7 @@ import 'package:mockito/annotations.dart';
 import 'package:origna_gta/features/chat/chat_provider.dart';
 import 'package:origna_gta/features/chat/chat_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:orignabase/orignabase.dart';
 
 @GenerateNiceMocks([MockSpec<ChatRepository>()])
 import 'chat_viewmodel_test.mocks.dart';
@@ -36,7 +36,7 @@ void main() {
 
     test('openChat sets isOwnProduct true on self-chat error', () async {
       when(mockRepo.getOrCreateChat(productId)).thenThrow(
-        FirebaseFunctionsException(code: 'permission-denied', message: 'cannot chat with yourself'),
+        OrignaBaseException('cannot chat with yourself', statusCode: 403),
       );
       
       final viewModel = container.read(chatViewModelProvider(productId).notifier);

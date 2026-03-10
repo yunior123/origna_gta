@@ -1,6 +1,6 @@
 // Schema Constants - Single Source of Truth for Field Names
 //
-// This file defines all Firestore field names as constants to:
+// This file defines all database field names as constants to:
 // 1. Eliminate magic strings throughout the codebase
 // 2. Enable IDE autocomplete and refactoring
 // 3. Catch typos at compile time rather than runtime
@@ -10,18 +10,18 @@
 //   // Instead of: doc.get('createdAt')
 //   // Use: doc.get(Fields.createdAt)
 //
-//   // Instead of: FirebaseFirestore.instance.collection('orders')
-//   // Use: FirebaseFirestore.instance.collection(Collections.orders)
+//   // Instead of: db.collection('orders')
+//   // Use: db.collection(Collections.orders)
 //
 // NAMING CONVENTION:
 // - Dart constants: camelCase (e.g., createdAt)
-// - Firestore fields: camelCase (e.g., 'createdAt')
-// - Values match the actual Firestore field names
+// - Database fields: camelCase (e.g., 'createdAt')
+// - Values match the actual database field names
 //
 // See: docs/database_schema.json for full schema documentation
 
 // =============================================================================
-// COLLECTIONS - Top-level Firestore collection names
+// COLLECTIONS - Top-level database collection names
 // =============================================================================
 
 /// Standard address labels
@@ -44,30 +44,18 @@ abstract final class AdminActionValues {
 }
 
 // =============================================================================
-// FIELD NAMES - All Firestore document field names
+// FIELD NAMES - All database document field names
 // =============================================================================
-
-abstract final class AlgoliaActionValues {
-  static const index = 'index';
-  static const delete = 'delete';
-}
 
 // =============================================================================
 // ENUM VALUES - Valid values for enum fields
 // =============================================================================
 
-/// Algolia replica index suffixes for sort options.
-/// Appended to the base index name: `<base>_price_asc`, `<base>_price_desc`.
-abstract final class AlgoliaReplicaSuffixes {
-  static const priceAsc = '_price_asc';
-  static const priceDesc = '_price_desc';
-}
-
-/// Cloud Function API parameter and response keys.
-/// These are NOT Firestore fields — they are the contract between
-/// Flutter and Cloud Functions (request params + response keys).
+/// Backend API parameter and response keys.
+/// These are NOT database fields — they are the contract between
+/// Flutter and the backend (request params + response keys).
 abstract final class ApiKeys {
-  // === REQUEST PARAMS (sent to Cloud Functions) ===
+  // === REQUEST PARAMS ===
   static const turnstileToken = 'turnstileToken'; // Cloudflare Turnstile challenge token (web-only)
   static const eulaAccepted = 'eulaAccepted'; // Digital product EULA acceptance flag
   static const ageVerificationAccepted = 'ageVerificationAccepted'; // Buyer age-gate confirmation for age-restricted items
@@ -88,7 +76,7 @@ abstract final class ApiKeys {
   static const idempotencyKey = 'idempotencyKey';
   static const productId = 'productId';
 
-  // === RESPONSE KEYS (returned from Cloud Functions) ===
+  // === RESPONSE KEYS ===
   static const success = 'success';
   static const itemStatus = 'itemStatus';
   static const allItemsDelivered = 'allItemsDelivered';
@@ -265,7 +253,7 @@ abstract final class CategoryIds {
   static const max = 21;
 }
 
-/// Cloud Function endpoint names. Update here ONLY if backend function names change.
+/// Backend endpoint/action names. Update here only if service names change.
 /// Prevents endpoint name drift between frontend and backend.
 abstract final class CloudFunctionEndpoints {
   // === ADDRESS ENDPOINTS ===
@@ -374,7 +362,7 @@ abstract final class CloudFunctionEndpoints {
   static const adminCreateCoupon = 'admin_create_coupon';
 }
 
-/// Firestore collection names
+/// Database collection names
 abstract final class Collections {
   static const users = 'users';
   static const products = 'products';
@@ -390,7 +378,6 @@ abstract final class Collections {
   static const productRatings = 'product_ratings';
   static const sellerRatings = 'seller_ratings'; // F-315: Separate seller performance
   static const reviewVotes = 'review_votes'; // subcollection of product_ratings/{ratingId}
-  static const algoliaSyncFailures = 'algolia_sync_failures';
   static const cronLocks = '_cron_locks';
   static const cronFailures = '_cron_failures'; // M-14: Alerting on unhandled cron exceptions
 
@@ -589,7 +576,7 @@ abstract final class ExternalUrls {
 // BUSINESS CONSTANTS
 // =============================================================================
 
-/// Firestore document field names.
+/// Database document field names.
 ///
 /// IMPORTANT: These are the canonical field names. All code MUST use these
 /// constants instead of string literals to prevent drift.
@@ -1073,8 +1060,7 @@ abstract final class Fields {
   static const failureMessage = 'failureMessage';
   static const adminId = 'adminId';
   // Alert data fields
-  static const firestoreCount = 'firestoreCount';
-  static const algoliaCount = 'algoliaCount';
+  static const recordCount = 'recordCount';
   static const mismatchPercent = 'mismatchPercent';
   static const reversalErrors = 'reversalErrors';
   static const payoutId = 'payoutId';
@@ -1110,7 +1096,7 @@ abstract final class Fields {
   static const dateFavorited = 'dateFavorited';
   static const favoriteCount = 'favoriteCount';
 
-  // === ALTERNATE FIELD NAMES (used in Firestore deserialization fallbacks) ===
+  // === ALTERNATE FIELD NAMES (used in database deserialization fallbacks) ===
   /// Alternate name for [confirmedByBuyer]
   static const buyerConfirmed = 'buyerConfirmed';
 
@@ -1242,7 +1228,7 @@ abstract final class LocalStorageKeys {
 }
 
 // =============================================================================
-// API KEYS - Cloud Function request/response parameter names
+// API KEYS - backend request/response parameter names
 // =============================================================================
 
 // =============================================================================
@@ -1280,7 +1266,7 @@ abstract final class NotificationTypes {
 }
 
 // =============================================================================
-// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
+// BACKEND ACTION/ENDPOINT NAMES - single source of truth for service actions
 // =============================================================================
 
 // =============================================================================
@@ -1538,7 +1524,6 @@ abstract final class RateLimitActions {
   static const deleteProduct = 'delete_product';
   static const submitRating = 'submit_rating';
   static const createProduct = 'create_product';
-  static const configureAlgolia = 'configure_algolia';
   static const getProducts = 'get_products';
   static const getSellerProducts = 'get_seller_products';
   static const getProductRatings = 'get_product_ratings';
@@ -1566,10 +1551,8 @@ abstract final class RefundReasonValues {
   static const incorrectItem = 'incorrect_item';
 }
 
-/// Firebase RemoteConfig keys
+/// Remote config keys used by the app config service.
 abstract final class RemoteConfigKeys {
-  static const algoliaAppId = 'algolia_app_id';
-  static const algoliaSearchApiKey = 'algolia_search_api_key';
   static const geoapifyApiKey = 'geoapify_api_key';
   static const imageBaseUrl = 'image_base_url';
   static const sentryDnsKey = 'sentry_dns';
@@ -1606,7 +1589,6 @@ abstract final class SchemaRegistry {
 
 /// Security alert type values
 abstract final class SecurityAlertTypes {
-  static const algoliaSyncIssue = 'algolia_sync_issue';
   static const disputeCreated = 'dispute_created';
   static const disputeFundsReinstated = 'dispute_funds_reinstated';
   static const roleChange = 'role_change';
@@ -1656,15 +1638,15 @@ abstract final class ShippingSourceValues {
 }
 
 /// Sort options for product listings.
-/// Each maps to a specific Algolia index replica or sort parameter.
+/// Each maps to a specific Meilisearch sort parameter.
 enum SortOption {
-  /// Default relevance ranking — uses the main Algolia index (no replica).
+  /// Default relevance ranking — uses the main Meilisearch index.
   relevance,
 
-  /// Price ascending — maps to Algolia replica `<index>_price_asc`.
+  /// Price ascending — maps to a Meilisearch ascending sort parameter.
   priceLowToHigh,
 
-  /// Price descending — maps to Algolia replica `<index>_price_desc`.
+  /// Price descending — maps to a Meilisearch descending sort parameter.
   priceHighToLow,
 
   /// Newest first — sorts by [Fields.createdAt] descending.

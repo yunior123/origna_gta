@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/screens/productaddvideo_screen.dart';
@@ -8,22 +7,18 @@ import 'package:origna_gta/screens/shipping_approval_screen.dart';
 import 'package:origna_gta/screens/subscription_cancel_screen.dart';
 import 'package:origna_gta/screens/subscription_screen.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import '../test_utils.dart';
 
 @GenerateNiceMocks([
-  MockSpec<User>(),
   MockSpec<ProductRepository>(),
   MockSpec<OrderRepository>(),
 ])
 import 'remaining_screens_batch8_test.mocks.dart';
 
 void main() {
-  late MockUser mockUser;
-  late FakeFirebaseFirestore fakeFirestore;
+  late AppAuthUser mockUser;
   late MockProductRepository mockProductRepo;
   late MockOrderRepository mockOrderRepo;
 
@@ -32,11 +27,9 @@ void main() {
   });
 
   setUp(() {
-    mockUser = MockUser();
-    fakeFirestore = FakeFirebaseFirestore();
+    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
     mockProductRepo = MockProductRepository();
     mockOrderRepo = MockOrderRepository();
-    when(mockUser.uid).thenReturn('test_user_123');
   });
 
   Future<void> pumpResilient(WidgetTester tester, Widget widget) async {
@@ -44,7 +37,6 @@ void main() {
       TestWrapper(
         overrides: [
           currentUserProvider.overrideWithValue(mockUser),
-          firestoreProvider.overrideWithValue(fakeFirestore),
           productRepositoryProvider.overrideWithValue(mockProductRepo),
           orderRepositoryProvider.overrideWithValue(mockOrderRepo),
         ],

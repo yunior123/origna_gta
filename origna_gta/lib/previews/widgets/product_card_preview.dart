@@ -1,3 +1,4 @@
+// coverage:ignore-file
 /// Flutter Widget Previewer — ModernProductCard variants.
 /// Run: flutter widget-preview start
 ///

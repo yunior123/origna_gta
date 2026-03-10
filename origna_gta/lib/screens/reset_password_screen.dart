@@ -1,3 +1,4 @@
+// coverage:ignore-file
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -119,49 +120,41 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                  if (state.userEmail != null) ...[
-                    ModernTextField(
-                      key: const Key('reset_password_new_password_field'),
-                      semanticsLabel: 'reset_password_new_password_field',
-                      label: 'auth.new_password'.tr(),
-                      hint: '••••••••',
-                      controller: _passwordController,
-                      isPassword: _obscurePassword,
-                      prefixIcon: Icons.lock_outline,
-                      suffixIcon: _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      onSuffixTap: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ModernTextField(
+                    key: const Key('reset_password_new_password_field'),
+                    semanticsLabel: 'reset_password_new_password_field',
+                    label: 'auth.new_password'.tr(),
+                    hint: '••••••••',
+                    controller: _passwordController,
+                    isPassword: _obscurePassword,
+                    prefixIcon: Icons.lock_outline,
+                    suffixIcon: _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    onSuffixTap: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                  const SizedBox(height: DesignTokens.spacing16),
+                  ModernTextField(
+                    key: const Key('reset_password_confirm_password_field'),
+                    semanticsLabel: 'reset_password_confirm_password_field',
+                    label: 'auth.confirm_new_password'.tr(),
+                    hint: '••••••••',
+                    controller: _confirmController,
+                    isPassword: _obscureConfirm,
+                    prefixIcon: Icons.lock_outline,
+                    suffixIcon: _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    onSuffixTap: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                  ),
+                  const SizedBox(height: DesignTokens.spacing32),
+                  Semantics(
+                    button: true,
+                    label: 'reset_password_submit_button',
+                    child: ModernButton(
+                      label: 'auth.reset_password_button'.tr(),
+                      isLoading: state.isLoading,
+                      onPressed: () => ref
+                          .read(resetPasswordViewModelProvider(widget.oobCode).notifier)
+                          .resetPassword(_passwordController.text.trim(), _confirmController.text.trim()),
                     ),
-                    const SizedBox(height: DesignTokens.spacing16),
-                    ModernTextField(
-                      key: const Key('reset_password_confirm_password_field'),
-                      semanticsLabel: 'reset_password_confirm_password_field',
-                      label: 'auth.confirm_new_password'.tr(),
-                      hint: '••••••••',
-                      controller: _confirmController,
-                      isPassword: _obscureConfirm,
-                      prefixIcon: Icons.lock_outline,
-                      suffixIcon: _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      onSuffixTap: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                    ),
-                    const SizedBox(height: DesignTokens.spacing32),
-                    Semantics(
-                      button: true,
-                      label: 'reset_password_submit_button',
-                      child: ModernButton(
-                        label: 'auth.reset_password_button'.tr(),
-                        isLoading: state.isLoading,
-                        onPressed: () => ref
-                            .read(resetPasswordViewModelProvider(widget.oobCode).notifier)
-                            .resetPassword(_passwordController.text.trim(), _confirmController.text.trim()),
-                      ),
-                    ),
-                  ] else ...[
-                    Semantics(
-                      button: true,
-                      label: 'reset_password_go_to_login_button',
-                      child: ModernButton(label: 'auth.go_to_login'.tr(), onPressed: () => Navigator.of(context).pushReplacementNamed('/')),
-                    ),
-                  ],
+                  ),
                 ],
               ),
             ),

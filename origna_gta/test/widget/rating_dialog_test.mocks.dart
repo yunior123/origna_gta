@@ -6,12 +6,11 @@
 import 'dart:async' as _i3;
 import 'dart:typed_data' as _i5;
 
-import 'package:cloud_firestore/cloud_firestore.dart' as _i7;
-import 'package:cross_file/cross_file.dart' as _i9;
+import 'package:cross_file/cross_file.dart' as _i8;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i6;
 import 'package:origna_gta/core/repositories/product_repository.dart' as _i2;
-import 'package:origna_gta/core/schema/schema_constants.dart' as _i8;
+import 'package:origna_gta/core/schema/schema_constants.dart' as _i7;
 import 'package:origna_gta/models/generated/models.dart' as _i4;
 
 // ignore_for_file: type=lint
@@ -104,9 +103,9 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
     String? searchQuery,
     int? categoryId,
     String? subcategory,
-    _i7.DocumentSnapshot<Object?>? lastDocument,
+    String? lastDocumentId,
     int? pageSize = 20,
-    _i8.SortOption? sortOption = _i8.SortOption.relevance,
+    _i7.SortOption? sortOption = _i7.SortOption.relevance,
     int? minPriceCents,
     int? maxPriceCents,
   }) =>
@@ -115,7 +114,7 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
               #searchQuery: searchQuery,
               #categoryId: categoryId,
               #subcategory: subcategory,
-              #lastDocument: lastDocument,
+              #lastDocumentId: lastDocumentId,
               #pageSize: pageSize,
               #sortOption: sortOption,
               #minPriceCents: minPriceCents,
@@ -128,7 +127,7 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
                   #searchQuery: searchQuery,
                   #categoryId: categoryId,
                   #subcategory: subcategory,
-                  #lastDocument: lastDocument,
+                  #lastDocumentId: lastDocumentId,
                   #pageSize: pageSize,
                   #sortOption: sortOption,
                   #minPriceCents: minPriceCents,
@@ -143,7 +142,7 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
                   #searchQuery: searchQuery,
                   #categoryId: categoryId,
                   #subcategory: subcategory,
-                  #lastDocument: lastDocument,
+                  #lastDocumentId: lastDocumentId,
                   #pageSize: pageSize,
                   #sortOption: sortOption,
                   #minPriceCents: minPriceCents,
@@ -310,7 +309,7 @@ class MockProductRepository extends _i1.Mock implements _i2.ProductRepository {
 
   @override
   _i3.Future<String?> uploadProductVideo(
-    _i9.XFile? videoFile,
+    _i8.XFile? videoFile,
     String? sellerId,
   ) =>
       (super.noSuchMethod(

@@ -1,11 +1,7 @@
 import 'dart:async';
 
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -17,8 +13,6 @@ import 'package:origna_gta/screens/seller_products_screen.dart';
 
 import '../test_utils.dart';
 
-@GenerateNiceMocks([MockSpec<User>()])
-import 'seller_products_screen_test.mocks.dart';
 
 Product _makeProduct({
   String id = 'prod_1',
@@ -53,8 +47,7 @@ Future<void> pumpFrames(WidgetTester tester, {int count = 10}) async {
 }
 
 void main() {
-  late MockUser mockUser;
-  late FakeFirebaseFirestore fakeFirestore;
+  late AppAuthUser mockUser;
 
   final testUserModel = models.UserModel(
     uid: 'test_user_123',
@@ -69,9 +62,7 @@ void main() {
   });
 
   setUp(() {
-    mockUser = MockUser();
-    fakeFirestore = FakeFirebaseFirestore();
-    when(mockUser.uid).thenReturn('test_user_123');
+    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
   });
 
   Widget buildScreen({
@@ -86,7 +77,6 @@ void main() {
         userProfileProvider.overrideWith(
           (ref) => loggedIn ? Stream.value(testUserModel) : Stream.value(null),
         ),
-        firestoreProvider.overrideWithValue(fakeFirestore),
         sellerProductsProvider.overrideWith(
           (ref) => productsStream ?? Stream.value([]),
         ),

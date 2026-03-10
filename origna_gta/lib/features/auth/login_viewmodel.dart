@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/services/analytics_service.dart';
 
 import 'login_state.dart';
@@ -14,10 +14,8 @@ final loginViewModelProvider = StateNotifierProvider.autoDispose<LoginViewModel,
   return LoginViewModel(ref);
 });
 
-/// Maps Firebase Auth error codes to translation keys.
-/// On web, [FirebaseAuthException.message] is often just "Error",
-/// so we must rely on [FirebaseAuthException.code] instead.
-String _friendlyAuthError(FirebaseAuthException e) {
+/// Maps OrignaBase auth error codes to translation keys.
+String _friendlyAuthError(OrignaBaseAuthException e) {
   switch (e.code) {
     case 'user-not-found':
       return 'auth.errors.user_not_found'.tr();
@@ -43,7 +41,7 @@ String _friendlyAuthError(FirebaseAuthException e) {
       return 'auth.errors.account_exists_different_credential'.tr();
     default:
       if (kDebugMode) {
-        debugPrint('⚠️ Unhandled FirebaseAuthException code: ${e.code}, message: ${e.message}');
+        debugPrint('⚠️ Unhandled auth exception code: ${e.code}, message: ${e.message}');
       }
       return 'auth.errors.authentication_failed'.tr();
   }
@@ -65,7 +63,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
       await repository.signInWithApple();
       unawaited(AnalyticsService.logLogin(method: 'apple'));
       state = state.copyWith(isLoading: false, isSuccess: true);
-    } on FirebaseAuthException catch (e) {
+    } on OrignaBaseAuthException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
     } catch (e) {
       state = state.copyWith(isLoading: false);
@@ -124,9 +122,9 @@ class LoginViewModel extends StateNotifier<LoginState> {
         return;
       }
       state = state.copyWith(isLoading: false, isSuccess: true);
-    } on FirebaseAuthException catch (e) {
+    } on OrignaBaseAuthException catch (e) {
       if (kDebugMode) {
-        debugPrint('🔐 FirebaseAuthException — code: ${e.code}, message: ${e.message}');
+        debugPrint('🔐 Auth exception — code: ${e.code}, message: ${e.message}');
       }
       state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
     } catch (e) {
@@ -158,7 +156,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
       await repository.signInWithGoogle();
       unawaited(AnalyticsService.logLogin(method: 'google'));
       state = state.copyWith(isLoading: false, isSuccess: true);
-    } on FirebaseAuthException catch (e) {
+    } on OrignaBaseAuthException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
     } catch (e) {
       state = state.copyWith(isLoading: false);
@@ -211,7 +209,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
     return null; // Valid
   }
 
-  /// Validate name format (must match Firestore rules)
+  /// Validate name format (must match server-side validation)
   String? _validateName(String? name) {
     if (name == null || name.trim().isEmpty) {
       return 'auth.validation.name_required_validation';

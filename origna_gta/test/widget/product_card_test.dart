@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+// firebase_auth removed — using AppAuthUser from providers
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
@@ -18,7 +18,6 @@ import '../test_utils.dart';
 @GenerateNiceMocks([
   MockSpec<CartController>(),
   MockSpec<FavoritesController>(),
-  MockSpec<firebase_auth.User>(),
   MockSpec<ProductRepository>(),
 ])
 import 'product_card_test.mocks.dart';
@@ -26,17 +25,15 @@ import 'product_card_test.mocks.dart';
 void main() {
   late MockCartController mockCart;
   late MockFavoritesController mockFavController;
-  late MockUser mockFirebaseUser;
+  late AppAuthUser mockCurrentUser;
   late MockProductRepository mockRepo;
 
   setUp(() {
     mockCart = MockCartController();
     mockFavController = MockFavoritesController();
-    mockFirebaseUser = MockUser();
+    mockCurrentUser = const AppAuthUser(uid: 'user_123', email: 'test@example.com');
     mockRepo = MockProductRepository();
-    
-    when(mockFirebaseUser.uid).thenReturn('user_123');
-    
+
     initTestMocks();
   });
 
@@ -68,7 +65,7 @@ void main() {
   Widget createTestWidget({
     required Product product,
     manual_models.UserModel? userModel,
-    firebase_auth.User? firebaseUser,
+    AppAuthUser? currentUser,
     int? trendingRank,
   }) {
     return TestWrapper(
@@ -76,7 +73,7 @@ void main() {
         productRepositoryProvider.overrideWithValue(mockRepo),
         cartControllerProvider.overrideWithValue(mockCart),
         favoritesControllerProvider.overrideWithValue(mockFavController),
-        currentUserProvider.overrideWithValue(firebaseUser),
+        currentUserProvider.overrideWithValue(currentUser),
         favoritesProvider.overrideWith((ref) => Stream.value({'other_prod'})),
         unansweredQaCountProvider(product.productId).overrideWith((ref) => Stream.value(0)),
       ],
@@ -130,7 +127,7 @@ void main() {
     });
 
     testWidgets('toggling favorite requires login', (tester) async {
-      await tester.pumpWidget(createTestWidget(product: testProduct, firebaseUser: null));
+      await tester.pumpWidget(createTestWidget(product: testProduct, currentUser: null));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
@@ -143,7 +140,7 @@ void main() {
     });
 
     testWidgets('can toggle favorite when logged in', (tester) async {
-      await tester.pumpWidget(createTestWidget(product: testProduct, firebaseUser: mockFirebaseUser));
+      await tester.pumpWidget(createTestWidget(product: testProduct, currentUser: mockCurrentUser));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
@@ -161,7 +158,7 @@ void main() {
     testWidgets('can add to cart when logged in', (tester) async {
       when(mockCart.addToCart(any, any)).thenAnswer((_) async => true);
       
-      await tester.pumpWidget(createTestWidget(product: testProduct, firebaseUser: mockFirebaseUser));
+      await tester.pumpWidget(createTestWidget(product: testProduct, currentUser: mockCurrentUser));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 

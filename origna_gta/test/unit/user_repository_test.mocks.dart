@@ -3,14 +3,12 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i5;
+import 'dart:async' as _i3;
 
-import 'package:cloud_functions/cloud_functions.dart' as _i4;
-import 'package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart'
-    as _i2;
-import 'package:firebase_core/firebase_core.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:mockito/src/dummies.dart' as _i5;
+import 'package:origna_gta/core/repositories/user_repository.dart' as _i2;
+import 'package:origna_gta/utils/utils.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -27,231 +25,150 @@ import 'package:mockito/src/dummies.dart' as _i6;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeFirebaseFunctionsPlatform_0 extends _i1.SmartFake
-    implements _i2.FirebaseFunctionsPlatform {
-  _FakeFirebaseFunctionsPlatform_0(Object parent, Invocation parentInvocation)
+class _FakeSellerAccountStatus_0 extends _i1.SmartFake
+    implements _i2.SellerAccountStatus {
+  _FakeSellerAccountStatus_0(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeFirebaseApp_1 extends _i1.SmartFake implements _i3.FirebaseApp {
-  _FakeFirebaseApp_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallable_2 extends _i1.SmartFake implements _i4.HttpsCallable {
-  _FakeHttpsCallable_2(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallablePlatform_3 extends _i1.SmartFake
-    implements _i2.HttpsCallablePlatform {
-  _FakeHttpsCallablePlatform_3(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeHttpsCallableResult_4<T1> extends _i1.SmartFake
-    implements _i4.HttpsCallableResult<T1> {
-  _FakeHttpsCallableResult_4(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-/// A class which mocks [FirebaseFunctions].
+/// A class which mocks [UserRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockFirebaseFunctions extends _i1.Mock implements _i4.FirebaseFunctions {
+class MockUserRepository extends _i1.Mock implements _i2.UserRepository {
   @override
-  _i2.FirebaseFunctionsPlatform get delegate =>
+  _i3.Future<String> addBuyerAddress(_i4.Address? address) =>
       (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeFirebaseFunctionsPlatform_0(
-              this,
-              Invocation.getter(#delegate),
-            ),
-          )
-          as _i2.FirebaseFunctionsPlatform);
-
-  @override
-  _i3.FirebaseApp get app =>
-      (super.noSuchMethod(
-            Invocation.getter(#app),
-            returnValue: _FakeFirebaseApp_1(this, Invocation.getter(#app)),
-            returnValueForMissingStub: _FakeFirebaseApp_1(
-              this,
-              Invocation.getter(#app),
-            ),
-          )
-          as _i3.FirebaseApp);
-
-  @override
-  Map<dynamic, dynamic> get pluginConstants =>
-      (super.noSuchMethod(
-            Invocation.getter(#pluginConstants),
-            returnValue: <dynamic, dynamic>{},
-            returnValueForMissingStub: <dynamic, dynamic>{},
-          )
-          as Map<dynamic, dynamic>);
-
-  @override
-  _i4.HttpsCallable httpsCallable(
-    String? name, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(#httpsCallable, [name], {#options: options}),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(#httpsCallable, [name], {#options: options}),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  _i4.HttpsCallable httpsCallableFromUrl(
-    String? url, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(
-              #httpsCallableFromUrl,
-              [url],
-              {#options: options},
-            ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUrl,
-                [url],
-                {#options: options},
-              ),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  _i4.HttpsCallable httpsCallableFromUri(
-    Uri? uri, {
-    _i2.HttpsCallableOptions? options,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(
-              #httpsCallableFromUri,
-              [uri],
-              {#options: options},
-            ),
-            returnValue: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallable_2(
-              this,
-              Invocation.method(
-                #httpsCallableFromUri,
-                [uri],
-                {#options: options},
-              ),
-            ),
-          )
-          as _i4.HttpsCallable);
-
-  @override
-  void useFunctionsEmulator(
-    String? host,
-    int? port, {
-    bool? automaticHostMapping = true,
-  }) => super.noSuchMethod(
-    Invocation.method(
-      #useFunctionsEmulator,
-      [host, port],
-      {#automaticHostMapping: automaticHostMapping},
-    ),
-    returnValueForMissingStub: null,
-  );
-}
-
-/// A class which mocks [HttpsCallable].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallable extends _i1.Mock implements _i4.HttpsCallable {
-  @override
-  _i2.HttpsCallablePlatform get delegate =>
-      (super.noSuchMethod(
-            Invocation.getter(#delegate),
-            returnValue: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
-            returnValueForMissingStub: _FakeHttpsCallablePlatform_3(
-              this,
-              Invocation.getter(#delegate),
-            ),
-          )
-          as _i2.HttpsCallablePlatform);
-
-  @override
-  _i5.Future<_i4.HttpsCallableResult<T>> call<T>([dynamic parameters]) =>
-      (super.noSuchMethod(
-            Invocation.method(#call, [parameters]),
-            returnValue: _i5.Future<_i4.HttpsCallableResult<T>>.value(
-              _FakeHttpsCallableResult_4<T>(
+            Invocation.method(#addBuyerAddress, [address]),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
                 this,
-                Invocation.method(#call, [parameters]),
+                Invocation.method(#addBuyerAddress, [address]),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(#addBuyerAddress, [address]),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<void> deleteBuyerAddress(String? addressId) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteBuyerAddress, [addressId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<_i2.SellerAccountStatus> getSellerAccountStatus(String? userId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getSellerAccountStatus, [userId]),
+            returnValue: _i3.Future<_i2.SellerAccountStatus>.value(
+              _FakeSellerAccountStatus_0(
+                this,
+                Invocation.method(#getSellerAccountStatus, [userId]),
               ),
             ),
             returnValueForMissingStub:
-                _i5.Future<_i4.HttpsCallableResult<T>>.value(
-                  _FakeHttpsCallableResult_4<T>(
+                _i3.Future<_i2.SellerAccountStatus>.value(
+                  _FakeSellerAccountStatus_0(
                     this,
-                    Invocation.method(#call, [parameters]),
+                    Invocation.method(#getSellerAccountStatus, [userId]),
                   ),
                 ),
           )
-          as _i5.Future<_i4.HttpsCallableResult<T>>);
+          as _i3.Future<_i2.SellerAccountStatus>);
 
   @override
-  _i5.Stream<_i4.StreamResponse<T, R>> stream<T, R>([Object? input]) =>
+  _i3.Future<_i4.UserModel?> getUserProfile(String? userId) =>
       (super.noSuchMethod(
-            Invocation.method(#stream, [input]),
-            returnValue: _i5.Stream<_i4.StreamResponse<T, R>>.empty(),
-            returnValueForMissingStub:
-                _i5.Stream<_i4.StreamResponse<T, R>>.empty(),
+            Invocation.method(#getUserProfile, [userId]),
+            returnValue: _i3.Future<_i4.UserModel?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.UserModel?>.value(),
           )
-          as _i5.Stream<_i4.StreamResponse<T, R>>);
-}
+          as _i3.Future<_i4.UserModel?>);
 
-/// A class which mocks [HttpsCallableResult].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockHttpsCallableResult<T> extends _i1.Mock
-    implements _i4.HttpsCallableResult<T> {
   @override
-  T get data =>
+  _i3.Future<void> recordTermsAcceptance() =>
       (super.noSuchMethod(
-            Invocation.getter(#data),
-            returnValue: _i6.dummyValue<T>(this, Invocation.getter(#data)),
-            returnValueForMissingStub: _i6.dummyValue<T>(
-              this,
-              Invocation.getter(#data),
+            Invocation.method(#recordTermsAcceptance, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> setDefaultBuyerAddress(String? addressId) =>
+      (super.noSuchMethod(
+            Invocation.method(#setDefaultBuyerAddress, [addressId]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> updateBuyerAddress(
+    String? addressId,
+    _i4.Address? address,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateBuyerAddress, [addressId, address]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> updateNotificationPreferences(
+    String? userId, {
+    bool? notifyNewProducts,
+    bool? notifyTrending,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #updateNotificationPreferences,
+              [userId],
+              {
+                #notifyNewProducts: notifyNewProducts,
+                #notifyTrending: notifyTrending,
+              },
             ),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
           )
-          as T);
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> updatePreferredLanguage(String? userId, String? lang) =>
+      (super.noSuchMethod(
+            Invocation.method(#updatePreferredLanguage, [userId, lang]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Stream<List<_i4.Address>> watchAddresses(String? userId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchAddresses, [userId]),
+            returnValue: _i3.Stream<List<_i4.Address>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i4.Address>>.empty(),
+          )
+          as _i3.Stream<List<_i4.Address>>);
+
+  @override
+  _i3.Stream<_i2.SellerAccountStatus> watchSellerAccountStatus(
+    String? userId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchSellerAccountStatus, [userId]),
+            returnValue: _i3.Stream<_i2.SellerAccountStatus>.empty(),
+            returnValueForMissingStub:
+                _i3.Stream<_i2.SellerAccountStatus>.empty(),
+          )
+          as _i3.Stream<_i2.SellerAccountStatus>);
 }

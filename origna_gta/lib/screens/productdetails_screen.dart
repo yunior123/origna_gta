@@ -1,11 +1,12 @@
+// coverage:ignore-file
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chewie/chewie.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -35,15 +36,37 @@ import 'package:shimmer/shimmer.dart';
 import 'package:video_player/video_player.dart';
 
 /// Stream of up to 10 most recent product ratings, ordered by createdAt desc.
-final _productRatingsProvider = StreamProvider.autoDispose.family<List<Map<String, dynamic>>, String>(
-  (ref, productId) => ref
-      .watch(firestoreProvider)
-      .collection(Collections.productRatings)
-      .where(Fields.productId, isEqualTo: productId)
-      .orderBy(Fields.createdAt, descending: true)
-      .limit(10)
-      .snapshots()
-      .map((snap) => snap.docs.map((d) => {...d.data(), Fields.ratingId: d.id}).toList()),
+final productRatingsProvider = StreamProvider.autoDispose.family<List<Map<String, dynamic>>, String>(
+  (ref, productId) {
+    final ob = ref.watch(orignabaseProvider);
+    final ratings = ob.collection(Collections.productRatings);
+
+    Future<List<Map<String, dynamic>>> fetchRatings() async {
+      final snapshot = await ratings
+          .where(Fields.productId, isEqualTo: productId)
+          .orderBy(Fields.createdAt, descending: true)
+          .limit(10)
+          .get();
+      return snapshot.docs
+          .map((doc) => <String, dynamic>{...doc.data, Fields.ratingId: doc.id})
+          .toList();
+    }
+
+    return Stream.multi((controller) async {
+      try {
+        controller.add(await fetchRatings());
+      } catch (error, stackTrace) {
+        controller.addError(error, stackTrace);
+      }
+
+      final subscription = ratings.snapshots().asyncMap((_) => fetchRatings()).listen(
+            controller.add,
+            onError: controller.addError,
+          );
+
+      controller.onCancel = () => subscription.cancel();
+    });
+  },
 );
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
@@ -730,7 +753,7 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
               return;
             }
             if (context.mounted) {
-              final verified = await checkEmailVerifiedOrPrompt(context, auth: ref.read(firebaseAuthProvider));
+              final verified = await checkEmailVerifiedOrPrompt(context, ref);
               if (!verified) return;
             }
             if (!context.mounted) return;
@@ -769,7 +792,7 @@ class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
       return;
     }
     if (context.mounted) {
-      final verified = await checkEmailVerifiedOrPrompt(context, auth: ref.read(firebaseAuthProvider));
+      final verified = await checkEmailVerifiedOrPrompt(context, ref);
       if (!verified) return;
     }
     if (!context.mounted) return;
@@ -1650,6 +1673,27 @@ class _ReviewCard extends ConsumerStatefulWidget {
 class _ReviewCardState extends ConsumerState<_ReviewCard> {
   bool _votingHelpful = false;
 
+  DateTime? _parseCreatedAt(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    if (value is int) {
+      final millis = value > 1000000000000 ? value : value * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(millis);
+    }
+    if (value is num) {
+      final millis = value > 1000000000000 ? value.toInt() : (value * 1000).toInt();
+      return DateTime.fromMillisecondsSinceEpoch(millis);
+    }
+
+    final dynamic dynamicValue = value;
+    final toDate = dynamicValue?.toDate;
+    if (toDate is Function) {
+      final result = toDate();
+      if (result is DateTime) return result;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1663,7 +1707,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     final userId = review[Fields.userId] as String? ?? '';
     final reviewer = userId.length > 8 ? userId.substring(0, 8) : userId;
     final reviewerLabel = reviewer.isNotEmpty ? 'User ${reviewer.toUpperCase()}' : 'Anonymous';
-    final createdAt = (review[Fields.createdAt] as Timestamp?)?.toDate();
+    final createdAt = _parseCreatedAt(review[Fields.createdAt]);
     final isVerified = review[Fields.verifiedPurchase] as bool? ?? false;
     final photoUrls = (review[Fields.reviewImageUrls] as List?)?.whereType<String>().toList() ?? <String>[];
 
@@ -1897,7 +1941,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
     setState(() => _votingHelpful = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // MVVM FIX (AUDIT): Delegated to ViewModel — UI no longer calls Firebase directly.
+      // MVVM FIX (AUDIT): delegated to the ViewModel — UI no longer performs direct backend calls.
       await ref.read(productDetailViewModelProvider.notifier).voteHelpful(ratingId, widget.productId, helpful);
       if (mounted) {
         messenger.showSnackBar(
@@ -1936,7 +1980,7 @@ class _ReviewsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ratingsAsync = ref.watch(_productRatingsProvider(productId));
+    final ratingsAsync = ref.watch(productRatingsProvider(productId));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

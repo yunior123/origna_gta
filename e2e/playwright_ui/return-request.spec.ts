@@ -99,10 +99,11 @@ test.describe('Return Request Flow (Flow 6)', () => {
   test('Cannot request return for digital products', async () => {
     // Seed a fake delivered order with a digital item, then assert the backend rejects the return.
     const buyerAuth = await signIn(BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS); // admin token can write to orders/
     const fakeOrderId = `e2e_digital_return_${Date.now()}`;
     const fakeProductId = 'product_010'; // Canadian History eBook Bundle (isDigital: true)
 
-    // Create minimal order doc with a delivered digital item
+    // Create minimal order doc with a delivered digital item (use admin token for write access)
     await writeDoc(
       `orders/${fakeOrderId}`,
       toFirestoreFields({
@@ -124,7 +125,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
         ],
         createdAt: new Date().toISOString(),
       }),
-      buyerAuth.idToken
+      adminAuth.idToken
     );
 
     try {
