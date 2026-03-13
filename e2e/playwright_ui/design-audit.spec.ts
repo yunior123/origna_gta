@@ -26,7 +26,7 @@ import {
 import { TEST_ACCOUNTS } from './api-helpers';
 
 // ─── Config ───────────────────────────────────────────────────────────────
-const TARGET = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
+const TARGET = process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca';
 const DESKTOP = path.join(process.env.HOME ?? '/tmp', 'Desktop', 'origna-design-audit');
 
 // Mobile viewport — matches 390px mockup width

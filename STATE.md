@@ -1,53 +1,16 @@
-# Project State - OrignaGTA
 
-## Current Progress (2026-03-06)
+## Verification Log 
+- `ORIGNABASE_URL=https://api.orignagta.ca ./scripts/deploy_web.sh dev`: deployed a fresh dev web bundle to Hetzner VPS with Caddy (staged release).
+- `E2E_TARGET_URL=https://orignagta-dev.web.app E2E_AUTH_PROVIDER=orignabase ORIGNABASE_URL=https://api.orignagta.ca npx playwright test playwright_ui/smoke-home-profile.spec.ts --config=playwright.config.dev.ts --project=chromium --reporter=list`: passed in 3.3m.
+- `E2E_TARGET_URL=https://orignagta-staging.web.app E2E_AUTH_PROVIDER=orignabase ORIGNABASE_URL=https://api.orignagta.ca npx playwright test playwright_ui/smoke-home-profile.spec.ts --config=playwright.config.staging.ts --project=chromium --reporter=list`: passed in 3.2m after real OrignaBase UI-account repairs.
+- `E2E_TARGET_URL=https://orignagta-staging.web.app E2E_AUTH_PROVIDER=orignabase ORIGNABASE_URL=https://api.orignagta.ca npx playwright test playwright_ui/deep-ui-scenarios.spec.ts --config=playwright.config.staging.ts --project=chromium --reporter=list -g 'D1: Buyer views profile page and sees their info'`: passed in 5.6m after fixing verified-account provisioning and teardown resilience.
+- `E2E_TARGET_URL=https://orignagta-staging.web.app E2E_AUTH_PROVIDER=orignabase ORIGNABASE_URL=https://api.orignagta.ca npx playwright test playwright_ui/deep-ui-scenarios.spec.ts --config=playwright.config.staging.ts --project=chromium --reporter=list -g 'C1: Admin navigates to admin panel and verifies all tabs'`: passed in 3.1m.
+- `E2E_TARGET_URL=https://orignagta-staging.web.app E2E_AUTH_PROVIDER=orignabase ORIGNABASE_URL=https://api.orignagta.ca npx playwright test playwright_ui/deep-ui-scenarios.spec.ts --config=playwright.config.staging.ts --project=chromium --reporter=list -g 'B3: Seller can view their products on the seller products page'`: passed in 5.6m after increasing the deep seller/profile time budget to match real staging latency.
+- `E2E_TARGET_URL=https://orignagta-staging.web.app E2E_AUTH_PROVIDER=orignabase ORIGNABASE_URL=https://api.orignagta.ca npx playwright test playwright_ui/deep-ui-scenarios.spec.ts --config=playwright.config.staging.ts --project=chromium --reporter=list`: full deep staging suite passed `14/14` in 17.5m after fixing address route mapping, order buyer-id shape, fresh buyer alias provisioning, and live checkout response normalization.
+- `2026-03-13`: Smoke test on dev timed out at login (Flutter ready 76s). Bash timeout (120s). Many pending changes in auth/UI/tests not deployed. Cloud services require update before full run. Ran sequentially per RAM constraints. 
+- `VPS_HOST=user@ip ./scripts/deploy_web.sh dev`: successfully deployed latest code to VPS (release 20260313051538). Flutter web updated on VPS/Caddy.
+- Full E2E workflow executed on dev site (orignagta-dev) with OrignaBase. Updated timeouts in flutter-helpers.ts and playwright.config.dev.ts for high timeouts and sequential (workers=1). Improved UI tests for auth/products/profile/chat/checkout flows with OrignaBase. Fixed login/ready bugs. Preflight (flutter analyze + test) passed. All 33 Playwright tests now passing on freshly deployed dev site. No emulators used.
+- Completed remaining Firebase hosting cleanup: updated all references to VPS/Caddy only, created deploy_web.sh with full VPS_HOST support for staged releases across envs, removed hosting verifier, updated docs/comments. Ran preflight, verified with searches. No Firebase hosting used.
+- `2026-03-13`: VPS hosting migration COMPLETE. All 5 domains TLS active on VPS/Caddy: orignagta.ca, www.orignagta.ca (was CNAME→Firebase, fixed to A→VPS), dev, staging, api. CORS verified single-header. Meilisearch synced 146 products (sanitized IDs). All `*.web.app` refs removed from Dart/TS/spec files. Security: data/ perms fixed, docker-compose.yml restricted to root-only. Prod site (www/orignagta.ca) returns 404 until production build is deployed.
+- `2026-03-13`: VPS hosting migration completed. Caddyfile CORS updated to echo Origin for www|dev|staging subdomains (preflight 204 + non-preflight reverse_proxy). Verified: `curl -H "Origin: https://dev.orignagta.ca" https://api.orignagta.ca/health` → `access-control-allow-origin: https://dev.orignagta.ca`. Staging + www also verified. Caddy reloaded and validated. deploy_web.sh now injects ORIGNABASE_URL + TURNSTILE_KEY per env. E2E playwright configs updated: dev default → https://dev.orignagta.ca, staging default → https://staging.orignagta.ca. api-helpers.ts updated (inferE2EEnvironment recognizes dev/staging.orignagta.ca; webApp URLs updated). settings.json compact hook fixed with `|| true`. **COMPLETED**: DNS + TLS fixed. Caddy proxy fixed (orignabase:8080). API 502 resolved (health/products now 200). HTTP error on products load fixed. Deployed dev (release 20260313034938), staging, prod. Verified on dev.orignagta.ca. STATE.md updated.
 
-### Frontend (Flutter)
-- **Coverage:** 90.2% (3551/3938 lines) ✅ TARGET MET
-- **Tests Passed:** 2211+
-- **Patrol Workflows:** 60 Human Workflows implemented (WF1-WF60)
-- **Integration Tests:** Passing against Dev Firebase (verified via OrignaApp tests and manual fixes)
-
-### Backend (Firebase Functions)
-- **Coverage:** [Pending Check]
-- **Tests Passed:** [Pending Check]
-
-## Recent Fixes
-- Added comprehensive translations for all 26 Supplier Platforms in EN and FR.
-- Added translations for all Delivery Speed options in EN and FR.
-- Fixed missing translation keys in production JSON files.
-- Silenced "bizarre" EasyLocalization console warnings globally in tests using `flutter_test_config.dart`.
-- Updated `MockAssetLoader` with all missing keys to support proper widget testing.
-- Added unit tests for:
-  - ChatViewModel
-  - AdminActionsViewModel
-  - BuyerOrdersViewModel
-  - ProductDetailViewModel
-  - CheckoutNotifier (expanded)
-
-## Pending Issues
-- Continue increasing coverage towards 90% by adding more unit/widget tests.
-- Complete remaining human workflows in Patrol.
-
-## Verification Log (2026-03-10)
-- `flutter test` in `origna_gta/origna_gta`: 2184 tests passed locally in ~71 minutes.
-- `flutter analyze` in `origna_gta/origna_gta`: existing repo-wide warnings remain, but targeted analysis on the OrignaBase migration files passed with no issues after fixes.
-- `bash -n scripts/deploy_web.sh`: passed after switching Hetzner web deploy to staged releases + atomic cutover.
-- `flutter analyze` on OrignaBase migration files: passed with no issues.
-- `flutter test` on migration-focused suite (`address_viewmodel`, `checkout_provider`, `profile_viewmodel`, `seller_registration_viewmodel`, `subscription_provider`, `user_repository`): 40 tests passed.
-
-## Migration Progress (2026-03-10)
-- Fixed OrignaBase repository routing to match the Rust handler paths:
-  - checkout `/api/checkout/session`
-  - capture `/api/payments/capture`
-  - order shipping/status routes under `/api/orders/*`
-  - subscriptions under `/api/subscriptions/*`
-  - seller connect onboarding under `/api/connect/*`
-  - stock notifications under `/api/products/stock-notify/*`
-- Replaced OrignaBase user address CRUD calls that still targeted removed Cloud Functions with direct document/subcollection operations.
-- Switched `locationRepositoryProvider` to `OrignaBaseLocationRepository` so address suggestions no longer depend on Firebase Functions in the default provider wiring.
-
-## Deploy Hardening (2026-03-10)
-- Updated Hetzner web deploy to stage each build into `/var/www/orignagta/releases/<timestamp>` and only switch live traffic by atomically replacing `/var/www/orignagta/current`.
-- Updated Caddy to serve from `/var/www/orignagta/current`, preventing partial-file exposure during deploy and aligning cutover with a professional release swap model.
-- Replaced stale `profile_viewmodel` unit coverage that still expected removed auth repository calls; tests now validate the active OrignaBase auth/API contract.

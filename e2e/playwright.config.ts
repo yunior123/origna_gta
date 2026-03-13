@@ -17,7 +17,7 @@ export default defineConfig({
   },
   use: {
     actionTimeout: 15 * 1000,
-    baseURL: process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app',
+    baseURL: process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca',
     trace: 'on-first-retry',
     screenshot: 'on',
     bypassCSP: true,

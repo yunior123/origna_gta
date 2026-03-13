@@ -6,7 +6,7 @@ import {
     ensureLoggedInAsAdmin,
     performSignOut,
     navigateHome,
-    BTN_SETTINGS,
+    BTN_SETTINGS_LABEL,
     BTN_CART,
 } from './flutter-helpers';
 import { TEST_ACCOUNTS } from './api-helpers';
@@ -15,7 +15,7 @@ import { TEST_ACCOUNTS } from './api-helpers';
  * REPLICA of integration_test/flows/smoke_home_profile_test.dart
  */
 
-const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
+const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca';
 const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASSWORD = TEST_ACCOUNTS.ADMIN_PASS;
 
@@ -26,8 +26,29 @@ test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
         await requireWebApp(page, TARGET_URL);
         page.setDefaultTimeout(60_000);
 
+        const ensureOnHome = async () => {
+            for (let attempt = 0; attempt < 4; attempt++) {
+                const currentSettingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
+                if (await currentSettingsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+                    return currentSettingsBtn;
+                }
+
+                const backBtn = page.getByRole('button', { name: /back/i }).first();
+                if (await backBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+                    await backBtn.click({ force: true }).catch(() => {});
+                    await waitForFlutter(page);
+                    continue;
+                }
+
+                await page.goto(`${TARGET_URL}/`, { waitUntil: 'domcontentloaded' });
+                await waitForFlutter(page);
+            }
+
+            return page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
+        };
+
         // C001/C002: App renders Flutter Web with semantics
-        await page.goto(`${TARGET_URL}/`);
+        await page.goto(`${TARGET_URL}/`, { waitUntil: 'domcontentloaded' });
         await waitForFlutter(page);
         await checkSemantics(page);
 
@@ -37,7 +58,14 @@ test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
         await waitForFlutter(page);
 
         // C004: settings button visible after login
-        const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+        const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
+        if (!(await settingsBtn.isVisible({ timeout: 3000 }).catch(() => false))) {
+            const profileBackBtn = page.getByRole('button', { name: /^back$/i }).first();
+            if (await profileBackBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+                await profileBackBtn.click({ force: true });
+                await waitForFlutter(page);
+            }
+        }
         await expect(settingsBtn).toBeAttached({ timeout: 60000 });
 
         // C006/C007: Cart button visible and navigates to /cart
@@ -95,7 +123,9 @@ test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
         expect(afterRefreshSemCount, 'Semantic tree must survive pull-to-refresh overscroll').toBeGreaterThan(0);
 
         // C009: Profile navigation via settings button
-        await settingsBtn.click();
+        const profileSettingsBtn = await ensureOnHome();
+        await expect(profileSettingsBtn).toBeVisible({ timeout: 30000 });
+        await profileSettingsBtn.click({ force: true });
         await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
         await waitForFlutter(page);
 
@@ -112,7 +142,7 @@ test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
             }
             if (!/\/profile/i.test(page.url())) {
                 await navigateHome(page, TARGET_URL);
-                const dynamicSettingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+                const dynamicSettingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
                 await expect(dynamicSettingsBtn).toBeAttached({ timeout: 30000 });
                 await dynamicSettingsBtn.click();
             }

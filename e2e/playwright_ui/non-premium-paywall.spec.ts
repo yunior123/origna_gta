@@ -10,7 +10,7 @@
  * should trigger the chat ViewModel to call get_or_create_chat, which
  * returns a "Premium" error, causing the PremiumPaywallWidget to render.
  *
- * Target: https://orignagta-dev.web.app (dev Firebase)
+ * Target: https://dev.orignagta.ca
  * Run: cd e2e && npx playwright test non-premium-paywall.spec.ts --config=playwright.config.dev.ts
  */
 import { test, expect } from '@playwright/test';

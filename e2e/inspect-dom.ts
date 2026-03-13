@@ -5,7 +5,7 @@ import { chromium } from '@playwright/test';
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
   page.setDefaultTimeout(180000);
-  await page.goto('https://orignagta-dev.web.app/', { timeout: 180000 });
+  await page.goto('https://dev.orignagta.ca/', { timeout: 180000 });
 
   // Wait 30s then dump whatever HTML is on the page
   console.log('Waiting 30s for initial page load...');

@@ -15,7 +15,7 @@ import {
  * REPLICA of integration_test/flows/seller_flow_test.dart
  */
 
-const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app';
+const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca';
 const SELLER_EMAIL = process.env.E2E_SELLER_EMAIL ?? 'yuniorrodriguezo4601@yahoo.com';
 const SELLER_PASSWORD = process.env.E2E_SELLER_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
 

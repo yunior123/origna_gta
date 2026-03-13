@@ -128,7 +128,7 @@ test.describe('Order Notifications', () => {
         price: actualPrice,
         quantity: 1,
         sellerId: productA!.sellerId,
-        imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+        imageUrls: ['https://dev.orignagta.ca/icons/Icon-192.png'],
         isDigital: false
       }],
       subtotalCents: Math.round(actualPrice * 100),

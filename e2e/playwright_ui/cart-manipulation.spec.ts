@@ -8,7 +8,7 @@
  * Cart path: users/{userId}/cart/{productId}
  * Cart document fields: productId, quantity, createdAt
  *
- * Target: https://orignagta-dev.web.app (dev Firebase)
+ * Target: https://dev.orignagta.ca
  * Run: cd e2e && npx playwright test cart-manipulation.spec.ts --config=playwright.config.dev.ts
  */
 import { test, expect } from '@playwright/test';

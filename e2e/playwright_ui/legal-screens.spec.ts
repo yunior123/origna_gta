@@ -11,7 +11,7 @@
  * These pages are publicly accessible (no auth required) — they sit
  * on top of the AuthWrapper home screen via initial route stacking.
  *
- * Target: https://orignagta-dev.web.app (dev Firebase)
+ * Target: https://dev.orignagta.ca
  * Run: cd e2e && npx playwright test legal-screens.spec.ts --config=playwright.config.dev.ts
  */
 import { test, expect } from '@playwright/test';

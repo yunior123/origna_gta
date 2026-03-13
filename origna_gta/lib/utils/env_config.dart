@@ -12,9 +12,15 @@
 /// - Stripe → Uses test keys (sk_test_*)
 /// - All other external APIs
 ///
+/// BACKEND CONTRACT:
+/// - `baseUrl` is the public website host and share-link origin.
+/// - `orignabaseUrl` is the primary backend for auth, data, and business APIs.
+/// - Web bundle served from Hetzner VPS with Caddy (no Firebase Hosting).
+///
 /// USAGE:
 /// - Emulator mode: Pass --dart-define=ENVIRONMENT=emulator
-/// - Production mode: Pass --dart-define=ENVIRONMENT=production (or omit)
+/// - Dev mode: Pass --dart-define=ENVIRONMENT=dev
+/// - Production mode: Pass --dart-define=ENVIRONMENT=production
 ///
 /// VS Code will automatically pass these flags when using launch configurations.
 library;
@@ -34,9 +40,9 @@ String _baseUrlForEnvironment(AppEnvironment environment) {
     case AppEnvironment.emulator:
       return 'http://localhost:5001';
     case AppEnvironment.dev:
-      return 'https://orignagta-dev.web.app';
+      return 'https://dev.orignagta.ca';
     case AppEnvironment.staging:
-      return 'https://orignagta-staging.web.app';
+      return 'https://staging.orignagta.ca';
     case AppEnvironment.production:
       return 'https://orignagta.ca';
   }
@@ -45,11 +51,13 @@ String _baseUrlForEnvironment(AppEnvironment environment) {
 String _orignabaseUrlForEnvironment(AppEnvironment environment) {
   switch (environment) {
     case AppEnvironment.emulator:
-    case AppEnvironment.dev:
       return 'http://localhost:8080';
+    case AppEnvironment.dev:
+      return '';
     case AppEnvironment.staging:
+      return '';
     case AppEnvironment.production:
-      return 'http://orignabase:8080';
+      return 'https://api.orignagta.ca';
   }
 }
 
@@ -104,7 +112,7 @@ class EnvConfig {
   bool get isStaging => environment == AppEnvironment.staging;
   bool get isProduction => environment == AppEnvironment.production;
 
-  /// Get the base URL for the current environment
+  /// Public website host used for links and browser-facing routes.
   String get baseUrl => _baseUrlForEnvironment(environment);
 
   /// Whether we are running in an integration test environment
@@ -133,14 +141,20 @@ class EnvConfig {
     AppEnvironment.production => 'users',
   };
 
-  /// OrignaBase API URL per environment.
-  /// dev -> localhost, staging/prod -> shared OrignaBase host.
+  /// Primary OrignaBase API URL for auth, data, and business logic.
+  /// Non-production defaults fail away from production unless explicitly overridden.
   String get orignabaseUrl {
     if (_orignabaseUrlOverride.isNotEmpty) {
       return _orignabaseUrlOverride;
     }
 
-    return orignabaseUrlFor(environment);
+    final defaultUrl = orignabaseUrlFor(environment);
+    if (defaultUrl.isEmpty) {
+      throw StateError(
+        'ENVIRONMENT=${environment.name} requires ORIGNABASE_URL to be set.',
+      );
+    }
+    return defaultUrl;
   }
 
   /// Get environment display name

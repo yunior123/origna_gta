@@ -86,7 +86,7 @@ test.describe('Shipping Calculation', () => {
       lifecycleStatus: 'active',
       stockQuantity: 50,
       categoryId: 1,
-      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+      imageUrls: ['https://dev.orignagta.ca/icons/Icon-192.png'],
       keywords: [],
       isDigital: false,
       isLocalDeliveryOnly: false,
@@ -169,7 +169,7 @@ test.describe('Shipping Calculation', () => {
       lifecycleStatus: 'active',
       stockQuantity: 20,
       categoryId: 1,
-      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+      imageUrls: ['https://dev.orignagta.ca/icons/Icon-192.png'],
       keywords: [],
       isDigital: false,
       isLocalDeliveryOnly: true,
@@ -208,7 +208,7 @@ test.describe('Shipping Calculation', () => {
     }
   });
 
-  test.skip('Local-only item: checkout blocked for out-of-province buyer', async () => {
+  test.fixme('Local-only item: checkout blocked for out-of-province buyer', async () => {
     // TODO: Backend does not yet enforce isLocalDeliveryOnly province check in create_checkout_session
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const productId = `test_local_only_block_${Date.now()}`;
@@ -223,7 +223,7 @@ test.describe('Shipping Calculation', () => {
       lifecycleStatus: 'active',
       stockQuantity: 10,
       categoryId: 1,
-      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+      imageUrls: ['https://dev.orignagta.ca/icons/Icon-192.png'],
       keywords: [],
       isDigital: false,
       isLocalDeliveryOnly: true,
@@ -271,7 +271,7 @@ test.describe('Shipping Calculation', () => {
       // Intentionally not setting lifecycleStatus — let the trigger set it
       stockQuantity: 5,
       categoryId: 1,
-      imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+      imageUrls: ['https://dev.orignagta.ca/icons/Icon-192.png'],
       keywords: [],
       isDigital: false,
       isLocalDeliveryOnly: false,
