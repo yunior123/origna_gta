@@ -8,3 +8,4 @@
 8. right now it shows: impossible the charger les avis. is that an error?. Also: in dev make sure to populate some products with avis and also questions and answers.
 9. update tasks.json , settings.json, launch.json
 10. update hooks, all
+11. update skills, agents
