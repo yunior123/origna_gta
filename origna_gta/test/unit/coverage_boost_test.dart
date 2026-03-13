@@ -10,7 +10,7 @@ import 'package:orignabase/orignabase.dart';
 
 void main() {
   // ==========================================================================
-  // EnvConfig — default is production in test (no --dart-define)
+  // EnvConfig — default is production unless explicit dart-defines override it.
   // ==========================================================================
   group('EnvConfig', () {
     final config = EnvConfig();
@@ -51,28 +51,22 @@ void main() {
       expect(config.r2UsersFolder, 'users');
     });
 
-    test('orignabaseUrl returns URL', () {
-      expect(config.orignabaseUrl, 'http://orignabase:8080');
+    test('orignabaseUrl defaults to production API', () {
+      expect(config.orignabaseUrl, 'https://api.orignagta.ca');
     });
 
-    test('dev routes to localhost OrignaBase', () {
-      expect(
-        EnvConfig.orignabaseUrlFor(AppEnvironment.dev),
-        'http://localhost:8080',
-      );
+    test('dev requires explicit OrignaBase URL', () {
+      expect(EnvConfig.orignabaseUrlFor(AppEnvironment.dev), '');
     });
 
-    test('staging routes to shared OrignaBase host', () {
-      expect(
-        EnvConfig.orignabaseUrlFor(AppEnvironment.staging),
-        'http://orignabase:8080',
-      );
+    test('staging requires explicit OrignaBase URL', () {
+      expect(EnvConfig.orignabaseUrlFor(AppEnvironment.staging), '');
     });
 
     test('production routes to shared OrignaBase host', () {
       expect(
         EnvConfig.orignabaseUrlFor(AppEnvironment.production),
-        'http://orignabase:8080',
+        'https://api.orignagta.ca',
       );
     });
 
@@ -84,12 +78,12 @@ void main() {
       expect(config.isTest, isFalse);
     });
 
-    test('shouldUseEmulators is false for production', () {
+    test('shouldUseEmulators is false for default production config', () {
       expect(config.shouldUseEmulators, isFalse);
     });
 
     test('printInfo does not throw', () {
-      expect(() => config.printInfo(), returnsNormally);
+      expect(() => config.displayName, returnsNormally);
     });
 
     test('AppEnvironment enum has 4 values', () {
@@ -106,43 +100,43 @@ void main() {
   // ==========================================================================
   group('AppError.getMessage with OrignaBaseAuthException codes', () {
     test('email-already-in-use maps to AUTH-001', () {
-      final e = OrignaBaseAuthException(code: '');
+      final e = OrignaBaseAuthException(code: 'email-already-in-use');
       final msg = AppError.getMessage(e);
       expect(msg, contains(ErrorCodes.authEmailInUse));
     });
 
     test('wrong-password maps to AUTH-002', () {
-      final e = OrignaBaseAuthException(code: '');
+      final e = OrignaBaseAuthException(code: 'wrong-password');
       final msg = AppError.getMessage(e);
       expect(msg, contains(ErrorCodes.authWrongPassword));
     });
 
     test('user-not-found maps to AUTH-003', () {
-      final e = OrignaBaseAuthException(code: '');
+      final e = OrignaBaseAuthException(code: 'user-not-found');
       final msg = AppError.getMessage(e);
       expect(msg, contains(ErrorCodes.authUserNotFound));
     });
 
     test('weak-password maps to AUTH-004', () {
-      final e = OrignaBaseAuthException(code: '');
+      final e = OrignaBaseAuthException(code: 'weak-password');
       final msg = AppError.getMessage(e);
       expect(msg, contains(ErrorCodes.authWeakPassword));
     });
 
     test('too-many-requests maps to AUTH-005', () {
-      final e = OrignaBaseAuthException(code: '');
+      final e = OrignaBaseAuthException(code: 'too-many-requests');
       final msg = AppError.getMessage(e);
       expect(msg, contains(ErrorCodes.authTooManyRequests));
     });
 
     test('session-cookie-expired maps to AUTH-008', () {
-      final e = OrignaBaseAuthException(code: '');
+      final e = OrignaBaseAuthException(code: 'session-cookie-expired');
       final msg = AppError.getMessage(e);
       expect(msg, contains(ErrorCodes.authSessionExpired));
     });
 
     test('user-token-expired maps to AUTH-008', () {
-      final e = OrignaBaseAuthException(code: '');
+      final e = OrignaBaseAuthException(code: 'user-token-expired');
       final msg = AppError.getMessage(e);
       expect(msg, contains(ErrorCodes.authSessionExpired));
     });
@@ -160,7 +154,11 @@ void main() {
     });
 
     test('getMessage with explicit code appends it', () {
-      final msg = AppError.getMessage(Exception('oops'), null, 'ORIGNA-TEST-001');
+      final msg = AppError.getMessage(
+        Exception('oops'),
+        null,
+        'ORIGNA-TEST-001',
+      );
       expect(msg, contains('[ORIGNA-TEST-001]'));
     });
 
@@ -187,7 +185,12 @@ void main() {
             body: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  AppError.show(context, 'Test error message', error: Exception('test'), logContext: 'test');
+                  AppError.show(
+                    context,
+                    'Test error message',
+                    error: Exception('test'),
+                    logContext: 'test',
+                  );
                 },
                 child: const Text('Trigger'),
               ),
@@ -343,10 +346,7 @@ void main() {
     });
 
     test('logRefund returns without error', () async {
-      await AnalyticsService.logRefund(
-        orderId: 'ord_123',
-        valueCad: 49.99,
-      );
+      await AnalyticsService.logRefund(orderId: 'ord_123', valueCad: 49.99);
     });
 
     test('logSubscriptionStarted returns without error', () async {
@@ -358,10 +358,7 @@ void main() {
     });
 
     test('logReviewSubmitted returns without error', () async {
-      await AnalyticsService.logReviewSubmitted(
-        productId: 'p1',
-        rating: 4.5,
-      );
+      await AnalyticsService.logReviewSubmitted(productId: 'p1', rating: 4.5);
     });
 
     test('logScreenView returns without error', () async {
@@ -376,9 +373,18 @@ void main() {
     test('enum has 4 values', () {
       expect(VideoValidationError.values.length, 4);
       expect(VideoValidationError.values, contains(VideoValidationError.none));
-      expect(VideoValidationError.values, contains(VideoValidationError.tooLarge));
-      expect(VideoValidationError.values, contains(VideoValidationError.tooLong));
-      expect(VideoValidationError.values, contains(VideoValidationError.invalidFormat));
+      expect(
+        VideoValidationError.values,
+        contains(VideoValidationError.tooLarge),
+      );
+      expect(
+        VideoValidationError.values,
+        contains(VideoValidationError.tooLong),
+      );
+      expect(
+        VideoValidationError.values,
+        contains(VideoValidationError.invalidFormat),
+      );
     });
   });
 
@@ -397,12 +403,23 @@ void main() {
       expect(result, dt);
     });
 
+    test('converts int input as epoch milliseconds', () {
+      final result = dynamicToTimestamp(42);
+      expect(result, DateTime.fromMillisecondsSinceEpoch(42));
+    });
+
     test('returns DateTime.now() for unrecognized type', () {
       final before = DateTime.now();
-      final result = dynamicToTimestamp(42);
+      final result = dynamicToTimestamp(const Object());
       final after = DateTime.now();
-      expect(result.millisecondsSinceEpoch, greaterThanOrEqualTo(before.millisecondsSinceEpoch));
-      expect(result.millisecondsSinceEpoch, lessThanOrEqualTo(after.millisecondsSinceEpoch));
+      expect(
+        result.millisecondsSinceEpoch,
+        greaterThanOrEqualTo(before.millisecondsSinceEpoch),
+      );
+      expect(
+        result.millisecondsSinceEpoch,
+        lessThanOrEqualTo(after.millisecondsSinceEpoch),
+      );
     });
   });
 
@@ -589,7 +606,11 @@ void main() {
 
     test('Ontario address returns HST breakdown', () {
       final addr = Address(
-        street: '1', city: 'T', state: 'ON', postalCode: 'M5V', country: 'CA',
+        street: '1',
+        city: 'T',
+        state: 'ON',
+        postalCode: 'M5V',
+        country: 'CA',
       );
       final taxes = calculateDetailedTaxes(addr, 100.0);
       expect(taxes['HST'], closeTo(13.0, 0.01));
@@ -597,7 +618,11 @@ void main() {
 
     test('Quebec address returns GST + QST', () {
       final addr = Address(
-        street: '1', city: 'Q', state: 'QC', postalCode: 'H1A', country: 'CA',
+        street: '1',
+        city: 'Q',
+        state: 'QC',
+        postalCode: 'H1A',
+        country: 'CA',
       );
       final taxes = calculateDetailedTaxes(addr, 100.0);
       expect(taxes['GST'], closeTo(5.0, 0.01));
@@ -606,7 +631,11 @@ void main() {
 
     test('unknown province defaults to GST only', () {
       final addr = Address(
-        street: '1', city: 'X', state: 'XX', postalCode: '000', country: 'CA',
+        street: '1',
+        city: 'X',
+        state: 'XX',
+        postalCode: '000',
+        country: 'CA',
       );
       final taxes = calculateDetailedTaxes(addr, 100.0);
       expect(taxes['GST'], closeTo(5.0, 0.01));

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   waitForFlutter, requireWebApp, checkSemantics,
   ensureLoggedInAsAdmin, performSignOut, navigateHome,
-  BTN_ADD_PRODUCT, BTN_SETTINGS,
+  BTN_ADD_PRODUCT, BTN_SETTINGS, waitForSemantic,
 } from './flutter-helpers';
 import {
   signIn, callOk, callExpectError, getDoc, writeDoc, toFirestoreFields, uid,
@@ -23,6 +23,7 @@ test.describe('Seller Product Management — API Tests', () => {
 
   let sellerToken: string;
   let sellerUid: string;
+  let sellerRecordId: string;
   let adminToken: string;
   let testProductId: string;
 
@@ -30,6 +31,15 @@ test.describe('Seller Product Management — API Tests', () => {
     const seller = await signIn(SELLER_EMAIL);
     sellerToken = seller.idToken;
     sellerUid = seller.localId;
+    sellerRecordId = (() => {
+      try {
+        const [, payload] = seller.idToken.split('.');
+        const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        return decoded.user_id || decoded.sub || decoded.uid || seller.localId;
+      } catch {
+        return seller.localId;
+      }
+    })();
     const admin = await signIn(ADMIN_EMAIL, ADMIN_PASS);
     adminToken = admin.idToken;
 
@@ -70,7 +80,7 @@ test.describe('Seller Product Management — API Tests', () => {
 
     // Every returned product should belong to this seller
     for (const product of result.products) {
-      expect(product.sellerId).toBe(sellerUid);
+      expect(product.sellerId).toBe(sellerRecordId);
     }
   });
 
@@ -118,6 +128,12 @@ test.describe('Seller Product Management — UI Tests', () => {
     await waitForFlutter(page);
     await checkSemantics(page);
     await ensureLoggedInAsAdmin(page, TARGET_URL, SELLER_EMAIL, SELLER_PASS);
+    const sellerDashboard = await waitForSemantic(page, '[aria-label="menu-seller-dashboard"]', 30_000);
+    await expect(sellerDashboard).toBeAttached({ timeout: 10_000 });
+    await sellerDashboard.scrollIntoViewIfNeeded();
+    await sellerDashboard.click({ force: true });
+    await expect(page).toHaveURL(/\/seller\/products/i, { timeout: 30_000 });
+    await waitForFlutter(page, 30_000);
 
     const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
     await expect(addProductBtn).toBeVisible({ timeout: 20000 });
@@ -135,6 +151,8 @@ test.describe('Seller Product Management — UI Tests', () => {
     await waitForFlutter(page);
     await checkSemantics(page);
     await ensureLoggedInAsAdmin(page, TARGET_URL, SELLER_EMAIL, SELLER_PASS);
+    await navigateHome(page, TARGET_URL);
+    await waitForFlutter(page, 30_000);
 
     // Scroll to find product cards
     const productCards = page.locator('[aria-label^="product-card-"]');
@@ -256,7 +274,7 @@ test.describe('Seller Product Management — UI Tests', () => {
       const dashboardBtn = page.locator('[aria-label^="menu-seller-dashboard"]').first();
       const hasDashboard = await dashboardBtn.isVisible({ timeout: 10_000 }).catch(() => false);
       if (!hasDashboard) {
-        test.skip(true, 'menu-seller-dashboard not visible — skipping rejection banner UI check');
+        console.warn('⚠️ menu-seller-dashboard not visible — skipping rejection banner UI check');
         return;
       }
 

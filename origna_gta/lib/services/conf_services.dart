@@ -12,6 +12,7 @@ class ConfigService {
   String get geoapifyKey => OrignaBaseConfigService().geoapifyKey;
   String get imageBaseUrl => OrignaBaseConfigService().imageBaseUrl;
   String get sentryDnsKey => OrignaBaseConfigService().sentryDnsKey;
+  String get googleWebClientId => OrignaBaseConfigService().googleWebClientId;
 
   /// No-op — initialization is done by [OrignaBaseConfigService] in main.dart.
   Future<void> initialize({bool skipFetch = false}) async {}

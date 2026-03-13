@@ -1431,7 +1431,7 @@ test.describe('O. Webhook Edge Cases', () => {
 
   // TODO: Requires active Stripe CLI listener forwarding to dev webhook endpoint.
   // Run: stripe listen --forward-to <DEV_FUNCTIONS_URL>/stripe_webhook
-  test.skip('O1: invoice.payment_failed → subscription status becomes past_due', async () => {
+  test.fixme('O1: invoice.payment_failed → subscription status becomes past_due', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
     // Trigger Stripe CLI test event
@@ -1452,7 +1452,7 @@ test.describe('O. Webhook Edge Cases', () => {
 
   // TODO: Requires a real subscription advancing through a billing cycle in test mode.
   // Use Stripe test clocks (https://stripe.com/docs/billing/testing/test-clocks) to simulate renewal.
-  test.skip('O2: invoice.payment_succeeded keeps isPremium=true and advances expiresAt', async () => {
+  test.fixme('O2: invoice.payment_succeeded keeps isPremium=true and advances expiresAt', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
     const beforeDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
@@ -1476,7 +1476,7 @@ test.describe('O. Webhook Edge Cases', () => {
 
   // TODO: Requires seeding a user with past_due status in Firestore (or triggering it via CLI).
   // Then verify premium-gated features (chat, fee waiver) are blocked.
-  test.skip('O3: past_due user loses premium access to gated features', async () => {
+  test.fixme('O3: past_due user loses premium access to gated features', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
     // Precondition: user must be in past_due state

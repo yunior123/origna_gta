@@ -31,7 +31,6 @@ Verify supplier integrations correctly import products, enforce CAD pricing, and
 - [ ] Supplier images imported to R2 with correct environment prefix; original supplier URLs not stored publicly?
 - [ ] Delivery day estimates from supplier config (`minDeliveryDays`/`maxDeliveryDays`) propagated to product?
 - [ ] Supplier deactivation: deactivating a supplier platform gracefully hides its products from search?
-- [ ] Supplier field names consistent in Dart config, Python model, and Firestore schema?
 - [ ] New supplier addition does not require code changes; config-driven extensibility verified?
 
 ## Output

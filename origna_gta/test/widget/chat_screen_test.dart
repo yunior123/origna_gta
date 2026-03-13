@@ -9,6 +9,7 @@ import 'package:origna_gta/screens/chat_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/chat/chat_provider.dart';
 import 'package:origna_gta/features/chat/chat_repository.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import '../mock_asset_loader.dart';
 import '../test_utils.dart';
 
@@ -71,6 +72,12 @@ void main() {
     );
   }
 
+  Override premiumOverride() {
+    return subscriptionStreamProvider.overrideWith((ref) async* {
+      yield const SubscriptionInfo(isPremium: true, status: 'active');
+    });
+  }
+
   group('ChatScreen Widget Tests', () {
     testWidgets('renders basic screen structure', (tester) async {
       when(mockRepo.getOrCreateChat(any)).thenAnswer((_) async => 'chat_123');
@@ -80,6 +87,7 @@ void main() {
         overrides: [
           userIdProvider.overrideWithValue('my_uid'),
           chatRepositoryProvider.overrideWithValue(mockRepo),
+          premiumOverride(),
         ],
         child: const ChatScreen(productId: 'prod_123', productTitle: 'Test Product'),
       ));
@@ -101,6 +109,7 @@ void main() {
         overrides: [
           userIdProvider.overrideWithValue('my_uid'),
           chatRepositoryProvider.overrideWithValue(mockRepo),
+          premiumOverride(),
         ],
         child: const ChatScreen(productId: 'prod_123', productTitle: 'Test Product'),
       ));
@@ -119,6 +128,7 @@ void main() {
         overrides: [
           userIdProvider.overrideWithValue('my_uid'),
           chatRepositoryProvider.overrideWithValue(mockRepo),
+          premiumOverride(),
         ],
         child: const ChatScreen(productId: 'prod_123', productTitle: 'Test Product'),
       ));
@@ -139,6 +149,7 @@ void main() {
         overrides: [
           userIdProvider.overrideWithValue('my_uid'),
           chatRepositoryProvider.overrideWithValue(mockRepo),
+          premiumOverride(),
         ],
         child: const ChatScreen(productId: 'prod_123', productTitle: 'Test Product'),
       ));

@@ -23,8 +23,7 @@ class OrignaBaseQARepository implements QARepository {
 
     await _ob.request('POST', '/api/products/questions/answer', body: {
       Fields.questionId: qaId,
-      'answer': answer.trim(),
-      'userId': sellerId,
+      Fields.answerText: answer.trim(),
     });
   }
 
@@ -37,8 +36,7 @@ class OrignaBaseQARepository implements QARepository {
 
     await _ob.request('POST', '/api/products/questions/ask', body: {
       Fields.productId: productId,
-      'question': question.trim(),
-      'userId': userId,
+      Fields.questionText: question.trim(),
     });
   }
 

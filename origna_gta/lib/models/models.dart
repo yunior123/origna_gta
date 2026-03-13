@@ -2,9 +2,9 @@ import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:origna_gta/core/compat/timestamp.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 /// Lightweight document snapshot used by manual model factories.
 class DocumentSnapshot {
@@ -21,16 +21,12 @@ class DocumentSnapshot {
 
 /// Safely parse a dynamic value (Timestamp, String, DateTime) to DateTime?
 DateTime? _parseDateTime(dynamic value) {
-  if (value == null) return null;
-  if (value is Timestamp) return value.toDate();
-  if (value is DateTime) return value;
-  if (value is String) return DateTime.tryParse(value);
-  return null;
+  return parseDateTime(value);
 }
 
 /// Required DateTime fields fall back to "now" rather than crashing on stale data.
 DateTime _parseDateTimeRequired(dynamic value) {
-  return _parseDateTime(value) ?? DateTime.now();
+  return parseDateTimeRequired(value);
 }
 
 /// Documentation for Address

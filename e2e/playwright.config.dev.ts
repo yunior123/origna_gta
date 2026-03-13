@@ -1,4 +1,4 @@
-// playwright.config.dev.ts — Dev environment (orignagta-dev Firebase)
+// playwright.config.dev.ts — Dev environment (orignagta-dev on VPS with Caddy)
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
@@ -8,9 +8,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
-  workers: process.env.CI ? 1 : 4,
+  workers: 1,
   reporter: process.env.CI ? 'list' : 'html',
-  timeout: 300 * 1000,
+  timeout: 600 * 1000,
   expect: { timeout: 15 * 1000 },
   globalSetup:
     process.env.E2E_SKIP_GLOBAL_SETUP === 'true'
@@ -18,7 +18,7 @@ export default defineConfig({
       : './playwright_ui/global-setup.ts',
   use: {
     actionTimeout: 15 * 1000,
-    baseURL: process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app',
+    baseURL: process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca',
     trace: 'on-first-retry',
     screenshot: 'on',
     bypassCSP: true,

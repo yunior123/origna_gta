@@ -60,16 +60,12 @@ echo "✓ Security scan..."
 
 echo "✓ Building..."
 cd origna_gta
-flutter build web --release
+flutter build web --release --dart-define=ENVIRONMENT=$ENV
 cd ..
 
-# Deploy
-if [[ "$ENV" == "production" ]]; then
-  firebase deploy --only hosting,functions
-else
-  firebase deploy --only hosting:staging,functions:staging
-fi
+# Deploy web to VPS with staged releases (no Firebase hosting)
+VPS_HOST=${VPS_HOST:-youruser@your-vps} ./scripts/deploy_web.sh $ENV
 
-echo "✓ Deployed to $ENV"
-echo "URL: https://orignagta.ca"
+echo "✓ Deployed web to $ENV on VPS/Caddy"
+echo "URL: https://orignagta.ca (prod) or dev/staging equivalents"
 ```

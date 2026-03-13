@@ -923,6 +923,10 @@
         "delivery_local_free": "Free local delivery",
         "delivery_free": "FREE delivery",
         "delivery_intl": "Ships in {min}–{max} days",
+        "delivery_instant": "Instant delivery",
+        "delivery_business_days": "{min}–{max} business days",
+        "delivery_local_business_days": "{min}–{max} business days (local)",
+        "delivery_unknown_origin": "Unknown",
         "low_stock_alert_subtitle": "You will be notified when this product is back in stock.",
         "low_stock_threshold": "Low stock — only {count} left",
         "pick_video_failed": "Failed to pick video. Please try again.",
@@ -1689,6 +1693,7 @@
         "badge_unlock_premium": "UNLOCK PREMIUM"
     },
     "chat": {
+        "title": "Chat",
         "message_copied": "Message copied",
         "empty_state_no_messages": "No messages yet. Say hello! 👋",
         "send_message_cta": "Send a message",

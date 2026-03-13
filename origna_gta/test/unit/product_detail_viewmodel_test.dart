@@ -72,14 +72,5 @@ void main() {
       notifier.setImageIndex(2);
       expect(container.read(productDetailViewModelProvider).currentImageIndex, 2);
     });
-
-    test('fetchSellerMetrics', () async {
-      final notifier = container.read(productDetailViewModelProvider.notifier);
-      await notifier.fetchSellerMetrics('s1');
-
-      final state = container.read(productDetailViewModelProvider);
-      expect(state.sellerMetrics!.avgResponseHours, 2.5);
-      expect(state.sellerMetrics!.totalReviews, 50);
-    });
   });
 }

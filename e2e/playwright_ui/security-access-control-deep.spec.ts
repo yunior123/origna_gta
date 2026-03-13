@@ -34,7 +34,6 @@ import {
   ensureTwoSellerProducts,
   TEST_ACCOUNTS,
   TEST_UIDS,
-  FIRESTORE_BASE,
   DEFAULT_PASS,
 } from './api-helpers';
 
@@ -70,7 +69,7 @@ test.describe('1. IDOR — Order Access Control', () => {
     expect(error.code).toBe('permission-denied');
   });
 
-  test('Buyer cannot read another buyer\'s order via Firestore REST (rules enforce isolation)', async () => {
+  test('Buyer cannot read another buyer\'s order via direct document read', async () => {
     const buyerAuth = await signIn(BUYER_EMAIL);
     const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
 
@@ -84,13 +83,8 @@ test.describe('1. IDOR — Order Access Control', () => {
       items: [],
     }), adminAuth.idToken);
 
-    // buyer tries to read it via Firestore REST
-    const url = `${FIRESTORE_BASE}/orders/${orderId}`;
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${buyerAuth.idToken}` },
-    });
-    // Firestore rules: buyer can only read their own orders → PERMISSION_DENIED (403)
-    expect([403, 404]).toContain(res.status);
+    const doc = await getDoc(`orders/${orderId}`, buyerAuth.idToken);
+    expect(doc).toBeNull();
   });
 
   test('Buyer cannot update order status (update_order_status is seller/admin only)', async () => {
@@ -156,14 +150,10 @@ test.describe('2. IDOR — Address Access Control', () => {
     expect(['not-found', 'permission-denied']).toContain(error.code);
   });
 
-  test('Buyer cannot read another user\'s addresses via Firestore REST', async () => {
+  test('Buyer cannot read another user\'s addresses via direct document read', async () => {
     const buyerAuth = await signIn(BUYER_EMAIL);
-    // Try to read admin's address subcollection
-    const url = `${FIRESTORE_BASE}/users/${TEST_UIDS.ADMIN}/addresses`;
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${buyerAuth.idToken}` },
-    });
-    expect([403, 404]).toContain(res.status);
+    const docs = await getDoc(`users/${TEST_UIDS.ADMIN}/addresses/admin_probe`, buyerAuth.idToken);
+    expect(docs).toBeNull();
   });
 });
 
@@ -421,73 +411,35 @@ test.describe('8. Firestore Direct Write Prevention', () => {
   test('Client cannot directly write to products collection (must use Cloud Function)', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
-    // Attempt direct Firestore REST write to create a product
-    const url = `${FIRESTORE_BASE}/products/e2e_direct_write_attack?updateMask.fieldPaths=name&updateMask.fieldPaths=price`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${auth.idToken}`,
-      },
-      body: JSON.stringify({
-        fields: {
-          name: { stringValue: 'Injected Product' },
-          price: { doubleValue: 0.01 },
-          sellerId: { stringValue: auth.localId },
-          lifecycleStatus: { stringValue: 'active' },
-        },
-      }),
-    });
+    const ok = await writeDoc(`products/e2e_direct_write_attack`, toFirestoreFields({
+      name: 'Injected Product',
+      price: 0.01,
+      sellerId: auth.localId,
+      lifecycleStatus: 'active',
+    }), auth.idToken);
 
-    // Firestore rules: only sellers with role can write products → PERMISSION_DENIED
-    expect([403, 400]).toContain(res.status);
+    expect(ok).toBe(false);
   });
 
   test('Client cannot directly write to orders collection', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
-    const url = `${FIRESTORE_BASE}/orders/e2e_fake_delivered_order?updateMask.fieldPaths=orderStatus&updateMask.fieldPaths=paymentStatus`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${auth.idToken}`,
-      },
-      body: JSON.stringify({
-        fields: {
-          orderStatus: { stringValue: 'delivered' },
-          paymentStatus: { stringValue: 'captured' },
-        },
-      }),
-    });
+    const ok = await writeDoc(`orders/e2e_fake_delivered_order`, toFirestoreFields({
+      orderStatus: 'delivered',
+      paymentStatus: 'captured',
+    }), auth.idToken);
 
-    expect([403, 400, 404]).toContain(res.status);
+    expect(ok).toBe(false);
   });
 
   test('Client cannot elevate own role in users collection', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
-    // Try to write admin role to their own user doc
-    const url = `${FIRESTORE_BASE}/users/${auth.localId}?updateMask.fieldPaths=roles`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${auth.idToken}`,
-      },
-      body: JSON.stringify({
-        fields: {
-          roles: { arrayValue: { values: [
-            { stringValue: 'buyer' },
-            { stringValue: 'seller' },
-            { stringValue: 'admin' },
-          ]}},
-        },
-      }),
-    });
+    const ok = await writeDoc(`users/${auth.localId}`, toFirestoreFields({
+      roles: ['buyer', 'seller', 'admin'],
+    }), auth.idToken);
 
-    // Firestore rules: users cannot modify their own roles → PERMISSION_DENIED
-    expect([403, 400]).toContain(res.status);
+    expect(ok).toBe(false);
   });
 });
 

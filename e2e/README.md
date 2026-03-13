@@ -17,30 +17,34 @@ Before running the E2E tests, ensure you have the following installed:
 
 *   **Node.js**: LTS version recommended.
 *   **Playwright**: The Playwright test runner and browsers are automatically installed when you run `npm install` in the `e2e/` directory.
-*   **Firebase CLI**: For interacting with Firebase projects (e.g., `firebase use`).
 *   **Stripe CLI**: Used for local testing of Stripe webhooks or specific payment scenarios.
 
 ## 2. Environment Setup
 
-Tests run against a live Firebase project, NOT emulators. It is critical to select the correct Firebase project and set the `TEST_ENVIRONMENT` variable.
+Playwright targets the real Flutter web app plus a real OrignaBase backend. Do not run browser tests against production.
 
-1.  **Select Firebase Project**:
-    Use the Firebase CLI to select the target project. For development E2E tests, you will typically use `orignagta-dev`:
+1.  **Set the web target**:
+    Pick the deployed or local app explicitly.
     ```bash
-    firebase use orignagta-dev
+    export E2E_TARGET_URL=https://orignagta-dev.web.app
     ```
 
-2.  **Set `TEST_ENVIRONMENT`**:
-    The `TEST_ENVIRONMENT` variable in `api-helpers.ts` determines which Firebase project the API helpers will target.
-    *   `dev` (default, used by `playwright.config.dev.ts`): Targets `orignagta-dev` Firebase project.
-    *   `staging`: Targets `orignagta-staging` Firebase project.
-    *   `production`: Targets `orignagta` Firebase project.
-
-    You can set this in your shell environment (e.g., `~/.bashrc` / `~/.zshrc`) or before running tests:
+2.  **Set the backend explicitly**:
+    The helpers default by target host, but for reliable runs you should pass the backend URL you expect the app and helpers to use.
     ```bash
-    export TEST_ENVIRONMENT=dev
+    export ORIGNABASE_URL=http://127.0.0.1:8080
     ```
-    **IMPORTANT**: Tests run against live Firebase (NOT emulators) because the local Mac has only 8GB RAM, which is insufficient to run Firebase emulators alongside Playwright. The dev Firebase project handles the test load.
+
+3.  **Use OrignaBase for primary backend calls**:
+    ```bash
+    export E2E_AUTH_PROVIDER=orignabase
+    ```
+    Primary helper flows now fail closed if a route is not mapped to OrignaBase. Do not rely on silent Cloud Functions fallback for active app coverage.
+
+4.  **Environment rules**:
+    - `dev`: preferred target for local debugging and the default Playwright config.
+    - `staging`: use `playwright.config.staging.ts` plus an explicit reachable staging backend.
+    - `prod`: forbidden for Playwright browser runs.
 
 ## 3. How to Run Tests
 
@@ -48,12 +52,18 @@ All commands should be run from the `e2e/` directory.
 
 *   **Run all tests**:
     ```bash
+    E2E_TARGET_URL=http://127.0.0.1:3000 \
+    ORIGNABASE_URL=http://127.0.0.1:8080 \
+    E2E_AUTH_PROVIDER=orignabase \
     npx playwright test --config=playwright.config.dev.ts
     ```
 
 *   **Run a single test file**:
     Specify the path to the individual test file you wish to run.
     ```bash
+    E2E_TARGET_URL=http://127.0.0.1:3000 \
+    ORIGNABASE_URL=http://127.0.0.1:8080 \
+    E2E_AUTH_PROVIDER=orignabase \
     npx playwright test <path/to/your/test-file.spec.ts> --config=playwright.config.dev.ts
     # Example:
     # npx playwright test playwright_ui/buyer-flow.spec.ts --config=playwright.config.dev.ts
@@ -62,7 +72,10 @@ All commands should be run from the `e2e/` directory.
 *   **Run with specific workers (parallelism)**:
     Keep local worker counts conservative on low-memory machines.
     ```bash
-    npx playwright test --workers=2 --config=playwright.config.dev.ts
+    E2E_TARGET_URL=http://127.0.0.1:3000 \
+    ORIGNABASE_URL=http://127.0.0.1:8080 \
+    E2E_AUTH_PROVIDER=orignabase \
+    npx playwright test --workers=1 --config=playwright.config.dev.ts
     ```
 
 *   **Run the deterministic Playwright coverage gate**:
@@ -81,7 +94,7 @@ All commands should be run from the `e2e/` directory.
 
 ## 4. Test Accounts
 
-The following test accounts are defined in `e2e/api-helpers.ts` and are pre-seeded into the Firebase project by `mega-seed.ts`. These accounts have known credentials and are designed for various testing roles.
+The shared helpers define role-based accounts in `playwright_ui/api-helpers.ts`. For OrignaBase runs, the helper can provision dedicated UI accounts on demand. For seeded local environments, use `scripts/seed_orignabase.py`.
 
 | Role                   | Email                       | Password       |
 | :--------------------- | :-------------------------- | :------------- |
@@ -98,14 +111,11 @@ The following test accounts are defined in `e2e/api-helpers.ts` and are pre-seed
 
 ## 5. Seed Data
 
-The `mega-seed.ts` script is crucial for populating the Firebase project with a consistent and comprehensive dataset required for E2E tests. It creates users, products, orders, and other necessary entities.
+Use the OrignaBase seeder for local real-service runs:
 
-*   **Location**: `e2e/mega-seed.ts`
-*   **Usage**: To seed or re-seed the database, run:
-    ```bash
-    npx ts-node mega-seed.ts
-    ```
-*   **Recommendation**: Run this script whenever you need to refresh the test environment data or after significant schema changes.
+```bash
+python ../scripts/seed_orignabase.py --url http://127.0.0.1:8080
+```
 
 ## 6. Stable Test Products
 
@@ -144,7 +154,7 @@ Playwright offers powerful debugging tools:
 
 ## 9. Rate Limiting Considerations
 
-Be mindful of Firebase and external service rate limits during test execution. Notably, the `create_checkout_session` function (and potentially others) has a rate limit of approximately **5 requests per minute**. Rapid, successive calls exceeding this limit can lead to test failures. Structure your tests to minimize concurrent calls to such endpoints or implement appropriate delays.
+Be mindful of backend and Stripe rate limits during test execution. `create-profile`, checkout, and other write-heavy flows are intentionally rate-limited, so keep runs sequential and avoid parallel worker bursts.
 
 ## 10. Test File Categories
 

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 
 import 'chat_repository.dart';
 
@@ -55,15 +56,30 @@ class ChatState {
   final String? errorMessage;
   final String? chatId;
   final bool isOwnProduct;
+  final bool isPremiumRequired;
 
-  const ChatState({this.isLoading = false, this.errorMessage, this.chatId, this.isOwnProduct = false});
+  const ChatState({
+    this.isLoading = false,
+    this.errorMessage,
+    this.chatId,
+    this.isOwnProduct = false,
+    this.isPremiumRequired = false,
+  });
 
-  ChatState copyWith({bool? isLoading, String? errorMessage, String? chatId, bool? isOwnProduct, bool clearError = false}) {
+  ChatState copyWith({
+    bool? isLoading,
+    String? errorMessage,
+    String? chatId,
+    bool? isOwnProduct,
+    bool? isPremiumRequired,
+    bool clearError = false,
+  }) {
     return ChatState(
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
       chatId: chatId ?? this.chatId,
       isOwnProduct: isOwnProduct ?? this.isOwnProduct,
+      isPremiumRequired: isPremiumRequired ?? this.isPremiumRequired,
     );
   }
 }
@@ -89,16 +105,39 @@ class ChatViewModel extends StateNotifier<ChatState> {
 
   Future<void> openChat() async {
     if (state.chatId != null || state.isLoading) return;
-    state = state.copyWith(isLoading: true, clearError: true);
+
+    // Proactive Premium Check
+    SubscriptionInfo? subInfo;
+    final subState = _ref.read(subscriptionStreamProvider);
+    
+    if (subState is AsyncData<SubscriptionInfo?>) {
+      subInfo = subState.value;
+    } else {
+      // If loading or error, try to get the future value
+      try {
+        subInfo = await _ref.read(subscriptionStreamProvider.future);
+      } catch (_) {
+        // Fallback to non-premium on error
+      }
+    }
+
+    if (subInfo == null || !subInfo.isPremium) {
+      state = state.copyWith(isPremiumRequired: true);
+      return;
+    }
+
+    state = state.copyWith(isLoading: true, clearError: true, isPremiumRequired: false);
     try {
       final chatId = await _ref.read(chatRepositoryProvider).getOrCreateChat(_productId);
       state = state.copyWith(isLoading: false, chatId: chatId);
     } on OrignaBaseException catch (e) {
       final isSelfChat = e.message.contains('yourself');
+      final isPremiumErr = e.message.toLowerCase().contains('premium');
       state = state.copyWith(
         isLoading: false,
         isOwnProduct: isSelfChat,
-        errorMessage: isSelfChat ? null : e.message,
+        isPremiumRequired: isPremiumErr,
+        errorMessage: (isSelfChat || isPremiumErr) ? null : e.message,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));

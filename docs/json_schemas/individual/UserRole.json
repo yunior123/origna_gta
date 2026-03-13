@@ -1,9 +1,0 @@
-{
-  "type": "string",
-  "enum": [
-    "admin",
-    "seller",
-    "buyer"
-  ],
-  "description": "User role values"
-}

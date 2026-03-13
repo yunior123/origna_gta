@@ -6,6 +6,8 @@ import 'package:origna_gta/features/chat/chat_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
+
 @GenerateNiceMocks([MockSpec<ChatRepository>()])
 import 'chat_viewmodel_test.mocks.dart';
 
@@ -19,6 +21,9 @@ void main() {
     container = ProviderContainer(
       overrides: [
         chatRepositoryProvider.overrideWithValue(mockRepo),
+        subscriptionStreamProvider.overrideWith((ref) => Stream.value(
+          const SubscriptionInfo(status: 'active', isPremium: true),
+        )),
       ],
     );
   });
@@ -32,6 +37,25 @@ void main() {
 
       expect(container.read(chatViewModelProvider(productId)).chatId, 'chat_456');
       expect(container.read(chatViewModelProvider(productId)).isLoading, isFalse);
+    });
+
+    test('openChat sets isPremiumRequired when not premium', () async {
+      // Re-create container with non-premium override
+      final nonPremiumContainer = ProviderContainer(
+        overrides: [
+          chatRepositoryProvider.overrideWithValue(mockRepo),
+          subscriptionStreamProvider.overrideWith((ref) => Stream.value(
+            const SubscriptionInfo(status: 'inactive', isPremium: false),
+          )),
+        ],
+      );
+      
+      final viewModel = nonPremiumContainer.read(chatViewModelProvider(productId).notifier);
+      await viewModel.openChat();
+
+      expect(nonPremiumContainer.read(chatViewModelProvider(productId)).isPremiumRequired, isTrue);
+      expect(nonPremiumContainer.read(chatViewModelProvider(productId)).chatId, isNull);
+      verifyNever(mockRepo.getOrCreateChat(any));
     });
 
     test('openChat sets isOwnProduct true on self-chat error', () async {

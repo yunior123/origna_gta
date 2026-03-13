@@ -35,18 +35,30 @@ class OrignaBaseProductRepository implements ProductRepository {
   Product _docToProduct(Document doc) {
     final data = <String, dynamic>{...doc.data};
 
-    // Normalize timestamps: OrignaBase stores ISO strings, Product.fromJson expects strings.
-    final rawCreatedAt = data[Fields.createdAt];
-    if (rawCreatedAt is DateTime) {
-      data[Fields.createdAt] = rawCreatedAt.toIso8601String();
-    }
-    final rawUpdatedAt = data[Fields.updatedAt];
-    if (rawUpdatedAt is DateTime) {
-      data[Fields.updatedAt] = rawUpdatedAt.toIso8601String();
+    // Normalize timestamps: SurrealDB returns nanosecond-precision ISO strings
+    // (e.g. "2026-03-12T11:56:03.185238962+00:00") which Dart's DateTime.parse
+    // cannot handle (only supports up to microseconds). Truncate to 6 decimal places.
+    for (final key in [
+      Fields.createdAt,
+      Fields.updatedAt,
+      'trendingAt',
+      'lastLowStockAlertAt',
+    ]) {
+      final raw = data[key];
+      if (raw is String) {
+        data[key] = _truncateNanoseconds(raw);
+      } else if (raw is DateTime) {
+        data[key] = raw.toIso8601String();
+      }
     }
 
-    data['productId'] = doc.id;
+    data[Fields.productId] = doc.id;
     return Product.fromJson(data);
+  }
+
+  /// Truncate subsecond precision to 6 digits (microseconds) so Dart can parse it.
+  static String _truncateNanoseconds(String iso) {
+    return iso.replaceAllMapped(RegExp(r'(\.\d{6})\d+'), (m) => m.group(1)!);
   }
 
   // ---------------------------------------------------------------------------
@@ -93,7 +105,7 @@ class OrignaBaseProductRepository implements ProductRepository {
       'POST',
       '/api/products/create-atomic',
       body: {
-        'userId': userId,
+        Fields.userId: userId,
         'productData': productJson,
         'testImageUrls': testImageUrls ?? const <String>[],
       },
@@ -110,10 +122,7 @@ class OrignaBaseProductRepository implements ProductRepository {
       await _ob.request(
         'POST',
         '/api/products/upload-images',
-        body: {
-          Fields.productId: productId,
-          Fields.imageUrls: imageUrls,
-        },
+        body: {Fields.productId: productId, Fields.imageUrls: imageUrls},
       );
     }
 
@@ -129,10 +138,7 @@ class OrignaBaseProductRepository implements ProductRepository {
     await _ob.request(
       'POST',
       '/api/products/delete',
-      body: {
-        Fields.productId: productId,
-        'userId': userId,
-      },
+      body: {Fields.productId: productId, Fields.userId: userId},
     );
   }
 
@@ -217,7 +223,16 @@ class OrignaBaseProductRepository implements ProductRepository {
         ? snapshot.docs.take(pageSize).toList()
         : snapshot.docs;
 
-    final products = docsToMap.map(_docToProduct).toList();
+    final products = docsToMap.expand((doc) {
+      try {
+        return [_docToProduct(doc)];
+      } catch (e) {
+        debugPrint(
+          'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
+        );
+        return <Product>[];
+      }
+    }).toList();
 
     return ProductQueryResult(
       products: products,
@@ -242,7 +257,13 @@ class OrignaBaseProductRepository implements ProductRepository {
       final docs = await Future.wait(futures);
       for (final doc in docs) {
         if (doc != null && doc.exists) {
-          results.add(_docToProduct(doc));
+          try {
+            results.add(_docToProduct(doc));
+          } catch (e) {
+            debugPrint(
+              'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
+            );
+          }
         }
       }
     }
@@ -399,10 +420,7 @@ class OrignaBaseProductRepository implements ProductRepository {
     await _ob.request(
       'POST',
       '/api/products/toggle-favorite',
-      body: {
-        'userId': userId,
-        Fields.productId: productId,
-      },
+      body: {Fields.userId: userId, Fields.productId: productId},
     );
   }
 
@@ -420,7 +438,7 @@ class OrignaBaseProductRepository implements ProductRepository {
       '/api/products/update',
       body: {
         Fields.productId: productId,
-        'userId': userId,
+        Fields.userId: userId,
         'productData': data,
       },
     );
@@ -536,38 +554,38 @@ class OrignaBaseProductRepository implements ProductRepository {
     final Set<String> favorites = {};
     final controller = StreamController<Set<String>>();
 
-    favoritesQuery.get().then((snapshot) {
-      favorites
-        ..clear()
-        ..addAll(
-          snapshot.docs
-              .map((doc) => doc.data[Fields.productId] as String?)
-              .whereType<String>(),
-        );
-      controller.add(Set<String>.from(favorites));
-    }).catchError((Object error, StackTrace stackTrace) {
-      controller.addError(error, stackTrace);
-    });
+    favoritesQuery
+        .get()
+        .then((snapshot) {
+          favorites
+            ..clear()
+            ..addAll(
+              snapshot.docs
+                  .map((doc) => doc.data[Fields.productId] as String?)
+                  .whereType<String>(),
+            );
+          controller.add(Set<String>.from(favorites));
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          controller.addError(error, stackTrace);
+        });
 
     final realtime = RealtimeClient(_ob);
     realtime.connect();
-    final sub = realtime.subscribe(Collections.favorites).listen(
-      (change) {
-        final data = change.document.data;
-        if (data[Fields.userId] != userId) return;
-        final productId = data[Fields.productId] as String?;
-        if (productId == null || productId.isEmpty) return;
-        switch (change.type) {
-          case ChangeType.create:
-          case ChangeType.update:
-            favorites.add(productId);
-          case ChangeType.delete:
-            favorites.remove(productId);
-        }
-        controller.add(Set<String>.from(favorites));
-      },
-      onError: controller.addError,
-    );
+    final sub = realtime.subscribe(Collections.favorites).listen((change) {
+      final data = change.document.data;
+      if (data[Fields.userId] != userId) return;
+      final productId = data[Fields.productId] as String?;
+      if (productId == null || productId.isEmpty) return;
+      switch (change.type) {
+        case ChangeType.create:
+        case ChangeType.update:
+          favorites.add(productId);
+        case ChangeType.delete:
+          favorites.remove(productId);
+      }
+      controller.add(Set<String>.from(favorites));
+    }, onError: controller.addError);
 
     controller.onCancel = () {
       sub.cancel();

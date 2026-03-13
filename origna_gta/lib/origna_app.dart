@@ -12,9 +12,11 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/theme_provider.dart';
 // Deferred imports for code splitting — reduces initial JS bundle on Flutter Web
-import 'package:origna_gta/features/admin/admin_panel_screen.dart' deferred as admin_panel;
+import 'package:origna_gta/features/admin/admin_panel_screen.dart'
+    deferred as admin_panel;
 import 'package:origna_gta/features/products/products_provider.dart';
-import 'package:origna_gta/screens/addproduct_screen.dart' deferred as add_product;
+import 'package:origna_gta/screens/addproduct_screen.dart'
+    deferred as add_product;
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/screens/authwrapper_screen.dart';
 import 'package:origna_gta/screens/cart_screen.dart';
@@ -23,7 +25,8 @@ import 'package:origna_gta/screens/chat_screen.dart';
 import 'package:origna_gta/screens/checkout_screen.dart' deferred as checkout;
 import 'package:origna_gta/screens/common_screens.dart';
 import 'package:origna_gta/screens/editaddress_screen.dart';
-import 'package:origna_gta/screens/editproduct_screen.dart' deferred as edit_product;
+import 'package:origna_gta/screens/editproduct_screen.dart'
+    deferred as edit_product;
 import 'package:origna_gta/screens/favorites_screen.dart';
 import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/screens/notifications_screen.dart';
@@ -31,23 +34,33 @@ import 'package:origna_gta/screens/order_detail_screen.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/screens/payment_screens.dart';
-import 'package:origna_gta/screens/privacy_policy_screen.dart' deferred as privacy;
+import 'package:origna_gta/screens/privacy_policy_screen.dart'
+    deferred as privacy;
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
 import 'package:origna_gta/screens/reset_password_screen.dart';
-import 'package:origna_gta/screens/seller/seller_warehouses_screen.dart' deferred as seller_warehouses;
-import 'package:origna_gta/screens/seller_integration_screen.dart' deferred as seller_integration;
-import 'package:origna_gta/screens/seller_orders_screen.dart' deferred as seller_orders;
-import 'package:origna_gta/screens/seller_products_screen.dart' deferred as seller_products;
-import 'package:origna_gta/screens/seller_registration_screen.dart' deferred as seller_reg;
+import 'package:origna_gta/screens/seller/seller_warehouses_screen.dart'
+    deferred as seller_warehouses;
+import 'package:origna_gta/screens/seller_integration_screen.dart'
+    deferred as seller_integration;
+import 'package:origna_gta/screens/seller_orders_screen.dart'
+    deferred as seller_orders;
+import 'package:origna_gta/screens/seller_products_screen.dart'
+    deferred as seller_products;
+import 'package:origna_gta/screens/seller_registration_screen.dart'
+    deferred as seller_reg;
 import 'package:origna_gta/screens/seller_setup_screen.dart';
-import 'package:origna_gta/screens/shipping_approval_screen.dart' deferred as shipping_approval;
+import 'package:origna_gta/screens/shipping_approval_screen.dart'
+    deferred as shipping_approval;
 import 'package:origna_gta/screens/subscription_cancel_screen.dart';
 import 'package:origna_gta/screens/subscription_screen.dart';
 import 'package:origna_gta/screens/subscription_success_screen.dart';
-import 'package:origna_gta/screens/terms_of_service_screen.dart' deferred as terms;
+import 'package:origna_gta/screens/terms_of_service_screen.dart'
+    deferred as terms;
 import 'package:origna_gta/services/orignabase_notification_service.dart';
 import 'package:origna_gta/services/session_timeout_service.dart';
+import 'package:origna_gta/services/web_auth_redirect_stub.dart'
+    if (dart.library.js_interop) 'package:origna_gta/services/web_auth_redirect_web.dart';
 import 'package:origna_gta/utils/animations.dart';
 import 'package:origna_gta/utils/deferred_widget.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -67,7 +80,9 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   final uri = kIsWeb ? Uri.base : Uri.tryParse(initialRoute);
 
   if (kDebugMode && uri != null) {
-    debugPrint('🔗 Parsed URI path: ${uri.path}, query: ${uri.queryParameters}');
+    debugPrint(
+      '🔗 Parsed URI path: ${uri.path}, query: ${uri.queryParameters}',
+    );
   }
 
   // Handle auth action URLs (like password reset)
@@ -75,7 +90,10 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
     final oobCode = uri.queryParameters['oobCode'];
     final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
     if (oobCode != null && validOobCode.hasMatch(oobCode)) {
-      return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: ResetPasswordScreen(oobCode: oobCode))];
+      return [
+        SlidePageRoute(page: const AuthWrapper()),
+        SlidePageRoute(page: ResetPasswordScreen(oobCode: oobCode)),
+      ];
     }
   }
 
@@ -108,7 +126,9 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   }
 
   // Handle payment success redirect from Stripe
-  if (uri != null && (uri.path == AppRoutes.paymentSuccess || uri.path.endsWith(AppRoutes.paymentSuccess))) {
+  if (uri != null &&
+      (uri.path == AppRoutes.paymentSuccess ||
+          uri.path.endsWith(AppRoutes.paymentSuccess))) {
     final sessionId = uri.queryParameters['session_id'];
     if (sessionId != null && sessionId.isNotEmpty) {
       return [
@@ -118,7 +138,12 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
         ),
       ];
     }
-    return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: ErrorScreen(message: 'errors.invalid_payment_link'.tr()))];
+    return [
+      SlidePageRoute(page: const AuthWrapper()),
+      SlidePageRoute(
+        page: ErrorScreen(message: 'errors.invalid_payment_link'.tr()),
+      ),
+    ];
   }
 
   // Handle privacy policy route
@@ -126,7 +151,10 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
     return [
       SlidePageRoute(page: const AuthWrapper()),
       SlidePageRoute(
-        page: DeferredWidget(loader: privacy.loadLibrary, builder: () => privacy.PrivacyPolicyScreen()),
+        page: DeferredWidget(
+          loader: privacy.loadLibrary,
+          builder: () => privacy.PrivacyPolicyScreen(),
+        ),
       ),
     ];
   }
@@ -134,14 +162,22 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
     return [
       SlidePageRoute(page: const AuthWrapper()),
       SlidePageRoute(
-        page: DeferredWidget(loader: terms.loadLibrary, builder: () => terms.TermsOfServiceScreen()),
+        page: DeferredWidget(
+          loader: terms.loadLibrary,
+          builder: () => terms.TermsOfServiceScreen(),
+        ),
       ),
     ];
   }
 
   // Handle payment cancellation redirect
   if (uri != null && uri.path == AppRoutes.paymentCancel) {
-    return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: const AuthRequiredGate(child: PaymentCanceledScreen()))];
+    return [
+      SlidePageRoute(page: const AuthWrapper()),
+      SlidePageRoute(
+        page: const AuthRequiredGate(child: PaymentCanceledScreen()),
+      ),
+    ];
   }
 
   // Handle subscription success redirect from Stripe
@@ -168,12 +204,22 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
 
   // Handle seller registration return from Stripe Connect
   if (uri != null && uri.path == AppRoutes.sellerReturn) {
-    return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupCompleteScreen()))];
+    return [
+      SlidePageRoute(page: const AuthWrapper()),
+      SlidePageRoute(
+        page: const AuthRequiredGate(child: SellerSetupCompleteScreen()),
+      ),
+    ];
   }
 
   // Handle seller registration refresh (user needs to retry)
   if (uri != null && uri.path == AppRoutes.sellerRefresh) {
-    return [SlidePageRoute(page: const AuthWrapper()), SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupRefreshScreen()))];
+    return [
+      SlidePageRoute(page: const AuthWrapper()),
+      SlidePageRoute(
+        page: const AuthRequiredGate(child: SellerSetupRefreshScreen()),
+      ),
+    ];
   }
 
   // Handle Admin Panel direct access (to ensure AdminRequiredGate takes effect)
@@ -183,7 +229,10 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
       SlidePageRoute(
         page: AuthRequiredGate(
           child: AdminRequiredGate(
-            child: DeferredWidget(loader: admin_panel.loadLibrary, builder: () => admin_panel.AdminPanelScreen()),
+            child: DeferredWidget(
+              loader: admin_panel.loadLibrary,
+              builder: () => admin_panel.AdminPanelScreen(),
+            ),
           ),
         ),
       ),
@@ -231,12 +280,18 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   // Handle privacy policy route
   if (uri.path == AppRoutes.privacyPolicy) {
     return SlidePageRoute(
-      page: DeferredWidget(loader: privacy.loadLibrary, builder: () => privacy.PrivacyPolicyScreen()),
+      page: DeferredWidget(
+        loader: privacy.loadLibrary,
+        builder: () => privacy.PrivacyPolicyScreen(),
+      ),
     );
   }
   if (uri.path == AppRoutes.termsOfService) {
     return SlidePageRoute(
-      page: DeferredWidget(loader: terms.loadLibrary, builder: () => terms.TermsOfServiceScreen()),
+      page: DeferredWidget(
+        loader: terms.loadLibrary,
+        builder: () => terms.TermsOfServiceScreen(),
+      ),
     );
   }
 
@@ -245,7 +300,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     final sessionId = uri.queryParameters['session_id'];
 
     if (sessionId == null || sessionId.isEmpty) {
-      return SlidePageRoute(page: ErrorScreen(message: 'errors.invalid_payment_link'.tr()));
+      return SlidePageRoute(
+        page: ErrorScreen(message: 'errors.invalid_payment_link'.tr()),
+      );
     }
 
     return SlidePageRoute(
@@ -255,17 +312,23 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Handle payment cancellation deep link
   if (uri.path == AppRoutes.paymentCancel) {
-    return SlidePageRoute(page: const AuthRequiredGate(child: PaymentCanceledScreen()));
+    return SlidePageRoute(
+      page: const AuthRequiredGate(child: PaymentCanceledScreen()),
+    );
   }
 
   // Handle seller registration return
   if (uri.path == AppRoutes.sellerReturn) {
-    return SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupCompleteScreen()));
+    return SlidePageRoute(
+      page: const AuthRequiredGate(child: SellerSetupCompleteScreen()),
+    );
   }
 
   // Handle seller registration refresh
   if (uri.path == AppRoutes.sellerRefresh) {
-    return SlidePageRoute(page: const AuthRequiredGate(child: SellerSetupRefreshScreen()));
+    return SlidePageRoute(
+      page: const AuthRequiredGate(child: SellerSetupRefreshScreen()),
+    );
   }
 
   // /p/{slug} — shareable product deep link
@@ -341,7 +404,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
-        child: DeferredWidget(loader: add_product.loadLibrary, builder: () => add_product.AddProductScreen()),
+        child: DeferredWidget(
+          loader: add_product.loadLibrary,
+          builder: () => add_product.AddProductScreen(),
+        ),
       ),
     );
   }
@@ -377,7 +443,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     }
     return SlidePageRoute(
       settings: settings,
-      page: ProductDetailScreen(productId: args.productId, product: args.product),
+      page: ProductDetailScreen(
+        productId: args.productId,
+        product: args.product,
+      ),
     );
   }
 
@@ -412,7 +481,8 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
       page: AuthRequiredGate(
         child: DeferredWidget(
           loader: checkout.loadLibrary,
-          builder: () => checkout.CheckoutScreen(items: args.items, total: args.total),
+          builder: () =>
+              checkout.CheckoutScreen(items: args.items, total: args.total),
         ),
       ),
     );
@@ -438,7 +508,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
-        child: DeferredWidget(loader: shipping_approval.loadLibrary, builder: () => shipping_approval.ShippingApprovalScreen()),
+        child: DeferredWidget(
+          loader: shipping_approval.loadLibrary,
+          builder: () => shipping_approval.ShippingApprovalScreen(),
+        ),
       ),
     );
   }
@@ -448,7 +521,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
-        child: DeferredWidget(loader: seller_reg.loadLibrary, builder: () => seller_reg.SellerRegistrationScreen()),
+        child: DeferredWidget(
+          loader: seller_reg.loadLibrary,
+          builder: () => seller_reg.SellerRegistrationScreen(),
+        ),
       ),
     );
   }
@@ -458,7 +534,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
-        child: DeferredWidget(loader: seller_orders.loadLibrary, builder: () => seller_orders.SellerOrdersScreen()),
+        child: DeferredWidget(
+          loader: seller_orders.loadLibrary,
+          builder: () => seller_orders.SellerOrdersScreen(),
+        ),
       ),
     );
   }
@@ -468,7 +547,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
-        child: DeferredWidget(loader: seller_products.loadLibrary, builder: () => seller_products.SellerProductsScreen()),
+        child: DeferredWidget(
+          loader: seller_products.loadLibrary,
+          builder: () => seller_products.SellerProductsScreen(),
+        ),
       ),
     );
   }
@@ -478,7 +560,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
-        child: DeferredWidget(loader: seller_warehouses.loadLibrary, builder: () => seller_warehouses.SellerWarehousesScreen()),
+        child: DeferredWidget(
+          loader: seller_warehouses.loadLibrary,
+          builder: () => seller_warehouses.SellerWarehousesScreen(),
+        ),
       ),
     );
   }
@@ -488,7 +573,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
-        child: DeferredWidget(loader: seller_integration.loadLibrary, builder: () => seller_integration.SellerIntegrationScreen()),
+        child: DeferredWidget(
+          loader: seller_integration.loadLibrary,
+          builder: () => seller_integration.SellerIntegrationScreen(),
+        ),
       ),
     );
   }
@@ -499,7 +587,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
       settings: settings,
       page: AuthRequiredGate(
         child: AdminRequiredGate(
-          child: DeferredWidget(loader: admin_panel.loadLibrary, builder: () => admin_panel.AdminPanelScreen()),
+          child: DeferredWidget(
+            loader: admin_panel.loadLibrary,
+            builder: () => admin_panel.AdminPanelScreen(),
+          ),
         ),
       ),
     );
@@ -544,7 +635,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     final resolvedArgs =
         args ??
         (uri.queryParameters.containsKey('productId')
-            ? ChatArgs(productId: uri.queryParameters['productId']!, productTitle: uri.queryParameters['productTitle'] ?? '')
+            ? ChatArgs(
+                productId: uri.queryParameters['productId']!,
+                productTitle: uri.queryParameters['productTitle'] ?? '',
+              )
             : null);
     if (resolvedArgs == null) {
       return SlidePageRoute(
@@ -555,7 +649,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: AuthRequiredGate(
-        child: ChatScreen(productId: resolvedArgs.productId, productTitle: resolvedArgs.productTitle),
+        child: ChatScreen(
+          productId: resolvedArgs.productId,
+          productTitle: resolvedArgs.productTitle,
+        ),
       ),
     );
   }
@@ -614,12 +711,14 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
       child: Listener(
         onPointerDown: (_) => _sessionTimeout.recordActivity(),
         onPointerMove: (_) => _sessionTimeout.recordActivity(),
-        onPointerSignal: (_) => _sessionTimeout.recordActivity(), // mouse wheel / trackpad scroll
+        onPointerSignal: (_) =>
+            _sessionTimeout.recordActivity(), // mouse wheel / trackpad scroll
         child: MaterialApp(
           navigatorKey: _navigatorKey,
           scaffoldMessengerKey:
               OrignaBaseNotificationService.scaffoldMessengerKey,
-          builder: (context, child) => EnvPreviewBanner(child: child ?? const SizedBox.shrink()),
+          builder: (context, child) =>
+              EnvPreviewBanner(child: child ?? const SizedBox.shrink()),
           // === i18n: easy_localization (Quebec Bill 96 / Loi 96 compliance) ===
           localizationsDelegates: context.localizationDelegates,
           supportedLocales: context.supportedLocales,
@@ -665,8 +764,13 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                ),
                 backgroundColor: DesignTokens.primary,
                 foregroundColor: DesignTokens.textOnPrimary,
               ),
@@ -674,27 +778,43 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: DesignTokens.surface,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                borderSide: const BorderSide(color: DesignTokens.outlineVariant),
+                borderSide: const BorderSide(
+                  color: DesignTokens.outlineVariant,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                borderSide: const BorderSide(color: DesignTokens.outlineVariant),
+                borderSide: const BorderSide(
+                  color: DesignTokens.outlineVariant,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
+                borderSide: const BorderSide(
+                  color: DesignTokens.primary,
+                  width: 2,
+                ),
               ),
             ),
             cardTheme: CardThemeData(
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+              ),
               color: DesignTokens.surface,
               surfaceTintColor: DesignTokens.surface,
             ),
-            dividerTheme: const DividerThemeData(color: DesignTokens.outlineVariant, thickness: 1, space: 1),
+            dividerTheme: const DividerThemeData(
+              color: DesignTokens.outlineVariant,
+              thickness: 1,
+              space: 1,
+            ),
           ),
           // ── Dark Theme ───────────────────────────────────────────────────────
           darkTheme: ThemeData(
@@ -719,8 +839,13 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                ),
                 backgroundColor: DesignTokens.primary,
                 foregroundColor: DesignTokens.textOnPrimary,
               ),
@@ -728,7 +853,10 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: DesignTokens.darkSurfaceVariant,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
                 borderSide: const BorderSide(color: DesignTokens.darkOutline),
@@ -739,20 +867,33 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
+                borderSide: const BorderSide(
+                  color: DesignTokens.primary,
+                  width: 2,
+                ),
               ),
-              labelStyle: const TextStyle(color: DesignTokens.textOnDarkSecondary),
-              hintStyle: const TextStyle(color: DesignTokens.textOnDarkSecondary),
+              labelStyle: const TextStyle(
+                color: DesignTokens.textOnDarkSecondary,
+              ),
+              hintStyle: const TextStyle(
+                color: DesignTokens.textOnDarkSecondary,
+              ),
             ),
             cardTheme: const CardThemeData(
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(DesignTokens.radius16)),
+                borderRadius: BorderRadius.all(
+                  Radius.circular(DesignTokens.radius16),
+                ),
               ),
               color: DesignTokens.darkCard,
               surfaceTintColor: DesignTokens.darkCard,
             ),
-            dividerTheme: const DividerThemeData(color: DesignTokens.darkOutline, thickness: 1, space: 1),
+            dividerTheme: const DividerThemeData(
+              color: DesignTokens.darkOutline,
+              thickness: 1,
+              space: 1,
+            ),
           ),
         ),
       ), // Listener
@@ -808,24 +949,52 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
     }
 
     // Listen to auth state changes — store subscription for cleanup
-    _authSubscription = ref.read(orignabaseProvider).auth.authStateChanges.listen((state) async {
-      final user = state.isAuthenticated && state.userId != null
-          ? AppAuthUser.fromAuthState(state)
-          : null;
-      if (user != null && mounted) {
-        _sessionTimeout.startMonitoring(_navigatorKey);
+    _authSubscription = ref
+        .read(orignabaseProvider)
+        .auth
+        .authStateChanges
+        .listen((state) async {
+          final user = state.isAuthenticated && state.userId != null
+              ? AppAuthUser.fromAuthState(state)
+              : null;
+          if (user != null && mounted) {
+            _sessionTimeout.startMonitoring(_navigatorKey);
 
-        // Ensure user profile exists for authenticated users.
-        try {
-          await ref.read(authRepositoryProvider).ensureUserDocumentExists();
-          if (!mounted) return;
-        } catch (e) {
-          debugPrint('Could not ensure user document: $e');
-        }
-      } else {
-        _sessionTimeout.stopMonitoring();
-      }
-    });
+            // Ensure user profile exists for authenticated users.
+            try {
+              await ref.read(authRepositoryProvider).ensureUserDocumentExists();
+              if (!mounted) return;
+            } catch (e) {
+              debugPrint('Could not ensure user document: $e');
+            }
+          } else {
+            _sessionTimeout.stopMonitoring();
+          }
+        });
+
+    _restoreWebOAuthCallbackSession();
+  }
+
+  void _restoreWebOAuthCallbackSession() {
+    if (!kIsWeb) return;
+
+    final uri = Uri.base;
+    if (uri.fragment.isEmpty) return;
+
+    final fragment = Uri.splitQueryString(uri.fragment);
+    final accessToken = fragment['ob_access_token'];
+    if (accessToken == null || accessToken.isEmpty) return;
+
+    ref
+        .read(orignabaseProvider)
+        .auth
+        .restoreSession(
+          accessToken: accessToken,
+          refreshToken: fragment['ob_refresh_token'],
+        );
+
+    final cleaned = uri.replace(fragment: '').toString();
+    clearWebAuthCallbackFragment(cleaned);
   }
 
   void _handleDeepLink(Uri uri) {
@@ -864,12 +1033,24 @@ class _ProductBySlugScreen extends ConsumerWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.search_off_rounded, size: 64, color: DesignTokens.textSecondary),
+                      Icon(
+                        Icons.search_off_rounded,
+                        size: 64,
+                        color: DesignTokens.textSecondary,
+                      ),
                       const SizedBox(height: 16),
-                      Text('product.not_found'.tr(), style: TextStyle(fontSize: 18, color: DesignTokens.textSecondary)),
+                      Text(
+                        'product.not_found'.tr(),
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: DesignTokens.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       TextButton(
-                        onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (_) => false),
+                        onPressed: () => Navigator.of(
+                          context,
+                        ).pushNamedAndRemoveUntil(AppRoutes.home, (_) => false),
                         child: Text('product.browse'.tr()),
                       ),
                     ],
@@ -877,9 +1058,13 @@ class _ProductBySlugScreen extends ConsumerWidget {
                 ),
               );
             }
-            return ProductDetailScreen(productId: product.productId, product: product.toJson());
+            return ProductDetailScreen(
+              productId: product.productId,
+              product: product.toJson(),
+            );
           },
-          loading: () => const Scaffold(body: Center(child: ModernLoadingIndicator())),
+          loading: () =>
+              const Scaffold(body: Center(child: ModernLoadingIndicator())),
           error: (error, _) => Scaffold(
             appBar: AppBar(),
             body: Center(child: Text(AppError.getMessage(error))),

@@ -1300,6 +1300,7 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton>
             child: Semantics(
               label: 'btn-home-settings',
               button: true,
+              excludeSemantics: true,
               child: IconButton(
                 key: const Key('home_settings_button'),
                 tooltip: 'home.settings'.tr(),

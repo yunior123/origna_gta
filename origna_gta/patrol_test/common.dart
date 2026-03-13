@@ -13,18 +13,22 @@
 /// ```
 library;
 
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // ignore: depend_on_referenced_packages
 import 'package:meta/meta.dart';
+import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/firebase_options.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:origna_gta/services/conf_services.dart';
+import 'package:origna_gta/utils/env_config.dart';
 import 'package:patrol/patrol.dart';
 
 export 'package:flutter_test/flutter_test.dart';
@@ -39,29 +43,15 @@ const kEmulatorHost = 'localhost';
 
 /// Admin account seeded in Firebase emulator.
 const kTestAdminEmail = 'yr62813@gmail.com';
-
 const kTestAdminPassword = 'REDACTED_TEST_PASSWORD';
-
-// ──────────────────────────────────────────────────────────────────
-// App bootstrap (one-time Firebase init + emulators)
-// ──────────────────────────────────────────────────────────────────
-
-/// Second buyer for multi-user scenarios.
-const kTestBuyer2Email = 'buyer2@test.origna.ca';
-
-// ──────────────────────────────────────────────────────────────────
-// Test helper – short alias for patrolTest with project defaults
-// ──────────────────────────────────────────────────────────────────
-
-const kTestBuyer2Password = 'REDACTED_TEST_PASSWORD';
-
-// ──────────────────────────────────────────────────────────────────
-// Test data constants
-// ──────────────────────────────────────────────────────────────────
 
 /// Buyer account seeded in Firebase emulator.
 const kTestBuyerEmail = 'yuniorrodriguezo460@gmail.com';
 const kTestBuyerPassword = 'REDACTED_TEST_PASSWORD2026';
+
+/// Second buyer for multi-user scenarios.
+const kTestBuyer2Email = 'buyer2@test.origna.ca';
+const kTestBuyer2Password = 'REDACTED_TEST_PASSWORD';
 
 /// Combo account (buyer+seller) seeded in Firebase emulator.
 const kTestComboEmail = 'combo1@test.origna.ca';
@@ -79,35 +69,47 @@ const kTestSellerPassword = 'REDACTED_TEST_PASSWORD';
 const kTestSuspendedEmail = 'suspended@test.origna.ca';
 const kTestSuspendedPassword = 'REDACTED_TEST_PASSWORD';
 
+// ──────────────────────────────────────────────────────────────────
+// App bootstrap (one-time Firebase init + emulators)
+// ──────────────────────────────────────────────────────────────────
+
 /// Flag to avoid double-initialising Firebase across tests.
 bool _firebaseInitialised = false;
 final _patrolTesterConfig = PatrolTesterConfig(printLogs: true);
 
-/// Initialise Firebase and pump the OrignaGTA app.
+/// Initialise Firebase, OrignaBase and pump the OrignaGTA app.
 ///
 /// Call this at the beginning of every `patrol()` callback.
 /// Firebase is only initialised on the first invocation; subsequent
 /// calls just pump the widget.
 Future<void> createApp(PatrolIntegrationTester $) async {
   if (!_firebaseInitialised) {
+    // 1. Firebase Emulators (Legacy fallback / Auth)
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-    // Connect to Firebase emulators for testing
     try {
       await FirebaseAuth.instance.useAuthEmulator(kEmulatorHost, 9099);
       FirebaseFirestore.instance.useFirestoreEmulator(kEmulatorHost, 8080);
       FirebaseFunctions.instance.useFunctionsEmulator(kEmulatorHost, 5001);
       await FirebaseStorage.instance.useStorageEmulator(kEmulatorHost, 9199);
-      debugPrint('✓ Patrol: connected to Firebase Emulators');
     } catch (e) {
       debugPrint('Patrol: emulator connection: $e');
+    }
+
+    // 2. OrignaBase Initialization (Active Backend)
+    final env = EnvConfig();
+    if (kDebugMode) {
+      debugPrint('✓ Patrol: OrignaBase URL: ${env.orignabaseUrl}');
     }
 
     await ConfigService().initialize(skipFetch: true);
     _firebaseInitialised = true;
   }
 
-  await $.pumpWidgetAndSettle(const ProviderScope(child: OrignaApp()));
+  await $.pumpWidgetAndSettle(
+    const ProviderScope(
+      child: OrignaApp(),
+    ),
+  );
 }
 
 /// Ensure logged in as admin.

@@ -15,17 +15,11 @@ class MainScreen extends ConsumerStatefulWidget {
 class _MainScreenState extends ConsumerState<MainScreen> {
   bool _timedOut = false;
   Timer? _timeoutTimer;
+  ProviderSubscription<dynamic>? _userProfileSubscription;
 
   @override
   Widget build(BuildContext context) {
     final userProfileAsync = ref.watch(userProfileProvider);
-
-    // Reset timeout flag once data arrives so future reloads work correctly
-    ref.listen(userProfileProvider, (_, next) {
-      if ((next.hasValue || next.hasError) && _timedOut) {
-        setState(() => _timedOut = false);
-      }
-    });
 
     // If profile loading takes too long, show HomeScreen without profile data
     // User remains logged in (auth session active), just without database profile
@@ -43,6 +37,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   @override
   void dispose() {
+    _userProfileSubscription?.close();
     _timeoutTimer?.cancel();
     super.dispose();
   }
@@ -50,6 +45,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _userProfileSubscription = ref.listenManual(userProfileProvider, (_, next) {
+      if ((next.hasValue || next.hasError) && _timedOut && mounted) {
+        setState(() => _timedOut = false);
+      }
+    });
     // Safety timeout: if user profile takes more than 3 seconds, show home anyway
     // This prevents infinite loading if the database is slow or unresponsive
     _timeoutTimer = Timer(const Duration(seconds: 3), () {

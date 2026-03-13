@@ -10,8 +10,8 @@ import {
   TEST_UIDS,
   discoverProducts,
   getDoc,
+  parseDoc,
 } from './api-helpers';
-import { parseDoc } from '../api-helpers';
 
 test.describe('New Notification Features E2E', () => {
   test.setTimeout(120_000);

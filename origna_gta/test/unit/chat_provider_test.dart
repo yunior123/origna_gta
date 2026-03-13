@@ -4,6 +4,7 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:origna_gta/features/chat/chat_provider.dart';
 import 'package:origna_gta/features/chat/chat_repository.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 
 @GenerateNiceMocks([
   MockSpec<ChatRepository>(),
@@ -19,6 +20,9 @@ void main() {
     container = ProviderContainer(
       overrides: [
         chatRepositoryProvider.overrideWithValue(mockRepo),
+        subscriptionStreamProvider.overrideWith((ref) => Stream.value(
+          const SubscriptionInfo(status: 'active', isPremium: true),
+        )),
       ],
     );
   });

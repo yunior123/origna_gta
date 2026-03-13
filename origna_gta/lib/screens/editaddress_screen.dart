@@ -29,36 +29,13 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _phoneController = TextEditingController();
+  ProviderSubscription<dynamic>? _addressSubscription;
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(addressViewModelProvider);
     final viewModel = ref.read(addressViewModelProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    ref.listen(addressViewModelProvider, (previous, next) {
-      if (next.isSuccess) {
-        final messenger = ScaffoldMessenger.of(context);
-        Navigator.pop(context);
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('address.saved_success'.tr()),
-            backgroundColor: DesignTokens.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-          ),
-        );
-      } else if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.errorMessage!),
-            backgroundColor: DesignTokens.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-          ),
-        );
-      }
-    });
 
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
@@ -309,6 +286,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
 
   @override
   void dispose() {
+    _addressSubscription?.close();
     _streetController.dispose();
     _apartmentController.dispose();
     _cityController.dispose();
@@ -320,6 +298,37 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   @override
   void initState() {
     super.initState();
+    _addressSubscription = ref.listenManual(addressViewModelProvider, (
+      previous,
+      next,
+    ) {
+      if (next == null || !mounted) return;
+      if (next.isSuccess) {
+        final messenger = ScaffoldMessenger.of(context);
+        Navigator.pop(context);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('address.saved_success'.tr()),
+            backgroundColor: DesignTokens.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            ),
+          ),
+        );
+      } else if (next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: DesignTokens.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            ),
+          ),
+        );
+      }
+    });
     if (widget.address != null) {
       _streetController.text = widget.address!.street;
       _cityController.text = widget.address!.city;

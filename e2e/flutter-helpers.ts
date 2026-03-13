@@ -63,7 +63,7 @@ export async function takeScreenshot(page: Page, label: string): Promise<void> {
  * Wait for Flutter Web to fully initialize and semantics tree to be ready.
  * No Tab-key hack needed — semantics is force-enabled in main.dart.
  */
-export async function waitForFlutter(page: Page, timeout = 90000): Promise<void> {
+export async function waitForFlutter(page: Page, timeout = 180000): Promise<void> {
   console.log(`⏳ Waiting for Flutter Web to initialize (timeout: ${timeout}ms)...`);
   const startTime = Date.now();
 

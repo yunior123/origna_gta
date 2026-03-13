@@ -57,9 +57,23 @@ void main() {
     initTestMocks();
   });
   late FakeAuthRepository fakeAuthRepo;
+  late TextEditingController nameController;
+  late TextEditingController emailController;
+  late TextEditingController passwordController;
+  late GlobalKey<FormState> formKey;
 
   setUp(() {
     fakeAuthRepo = FakeAuthRepository();
+    nameController = TextEditingController();
+    emailController = TextEditingController();
+    passwordController = TextEditingController();
+    formKey = GlobalKey<FormState>();
+  });
+
+  tearDown(() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
   });
 
   group('LoginScreen Smoke Test', () {
@@ -119,5 +133,74 @@ void main() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
+
+    testWidgets('shows Google sign-in when layout enables it', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoginScreenLayout(
+              isLogin: true,
+              obscurePassword: true,
+              isLoading: false,
+              acceptedTerms: true,
+              marketingOptIn: false,
+              showGoogleSignIn: true,
+              nameController: nameController,
+              emailController: emailController,
+              passwordController: passwordController,
+              formKey: formKey,
+              onAuthToggle: _noop,
+              onAuthSubmit: _noop,
+              onGoogleSignIn: _noop,
+              onAppleSignIn: _noop,
+              onForgotPassword: _noop,
+              onToggleObscurePassword: _noop,
+              onTermsChanged: _noopChanged,
+              onMarketingOptInChanged: _noopChanged,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('login_google_button')), findsOneWidget);
+    });
+
+    testWidgets('hides Google sign-in when layout disables it', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoginScreenLayout(
+              isLogin: true,
+              obscurePassword: true,
+              isLoading: false,
+              acceptedTerms: true,
+              marketingOptIn: false,
+              showGoogleSignIn: false,
+              nameController: nameController,
+              emailController: emailController,
+              passwordController: passwordController,
+              formKey: formKey,
+              onAuthToggle: _noop,
+              onAuthSubmit: _noop,
+              onGoogleSignIn: _noop,
+              onAppleSignIn: _noop,
+              onForgotPassword: _noop,
+              onToggleObscurePassword: _noop,
+              onTermsChanged: _noopChanged,
+              onMarketingOptInChanged: _noopChanged,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('login_google_button')), findsNothing);
+    });
   });
 }
+
+void _noop() {}
+void _noopChanged(bool? _) {}

@@ -21,30 +21,24 @@ import '../features/profile/profile_viewmodel.dart';
 import '../features/subscription/subscription_provider.dart';
 
 /// Documentation for ProfileScreen
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  ProviderSubscription<ProfileState>? _profileSubscription;
+
+  @override
+  Widget build(BuildContext context) {
     final userProfileAsync = ref.watch(userProfileProvider);
     final profileState = ref.watch(profileViewModelProvider);
     final viewModel = ref.read(profileViewModelProvider.notifier);
     final currentUser = ref.watch(currentUserProvider);
     final themeMode = ref.watch(themeModeProvider);
     final isPremium = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? userProfileAsync.valueOrNull?.isPremium ?? false;
-
-    // Listen for success/error messages
-    ref.listen(profileViewModelProvider, (previous, next) {
-      if (next.successMessage != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(next.successMessage!), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating));
-      } else if (next.errorMessage != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error, behavior: SnackBarBehavior.floating));
-      }
-    });
 
     return ProfileScreenLayout(
       userProfileAsync: userProfileAsync,
@@ -68,6 +62,37 @@ class ProfileScreen extends ConsumerWidget {
         await viewModel.updateLanguage(lang);
       },
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _profileSubscription = ref.listenManual(profileViewModelProvider, (_, next) {
+      if (!mounted) return;
+      if (next.successMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.successMessage!),
+            backgroundColor: DesignTokens.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else if (next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: DesignTokens.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _profileSubscription?.close();
+    super.dispose();
   }
 }
 
@@ -360,6 +385,7 @@ class ProfileScreenLayout extends StatelessWidget {
                             Semantics(
                               button: true,
                               label: 'btn-sign-out',
+                              excludeSemantics: true,
                               child: ModernButton(
                                 key: const Key('profile_sign_out_button'),
                                 label: 'auth.sign_out'.tr(),
@@ -371,6 +397,7 @@ class ProfileScreenLayout extends StatelessWidget {
                             Semantics(
                               button: true,
                               label: 'btn-delete-account',
+                              excludeSemantics: true,
                               child: GestureDetector(
                                 key: const Key('profile_delete_account_button'),
                                 onTap: onDeleteAccountRequested,
@@ -502,6 +529,7 @@ class ProfileScreenLayout extends StatelessWidget {
       child: Semantics(
         button: true,
         label: semanticLabel ?? 'menu-${title.toLowerCase().replaceAll(' ', '-')}',
+        excludeSemantics: true,
         child: GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
@@ -571,6 +599,7 @@ class ProfileScreenLayout extends StatelessWidget {
       child: Semantics(
         button: true,
         label: 'menu-premium',
+        excludeSemantics: true,
         child: GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
@@ -933,21 +962,13 @@ class _DeleteAccountDialog extends ConsumerStatefulWidget {
 
 class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
   late final TextEditingController confirmController;
+  ProviderSubscription<ProfileState>? _deleteAccountSubscription;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final profileState = ref.watch(profileViewModelProvider);
     final viewModel = ref.read(profileViewModelProvider.notifier);
-
-    ref.listen(profileViewModelProvider, (previous, next) {
-      if (next.isDeleted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('auth.account_deleted'.tr()), backgroundColor: DesignTokens.success));
-      } else if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error));
-      }
-    });
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
@@ -1005,6 +1026,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
 
   @override
   void dispose() {
+    _deleteAccountSubscription?.close();
     confirmController.dispose();
     super.dispose();
   }
@@ -1013,6 +1035,28 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
   void initState() {
     super.initState();
     confirmController = TextEditingController();
+    _deleteAccountSubscription = ref.listenManual(
+      profileViewModelProvider,
+      (_, next) {
+        if (!mounted) return;
+        if (next.isDeleted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('auth.account_deleted'.tr()),
+              backgroundColor: DesignTokens.success,
+            ),
+          );
+        } else if (next.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.errorMessage!),
+              backgroundColor: DesignTokens.error,
+            ),
+          );
+        }
+      },
+    );
   }
 }
 

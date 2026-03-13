@@ -192,15 +192,10 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
   static const _timeoutDuration = Duration(seconds: 90);
   Timer? _timeoutTimer;
   bool _timedOut = false;
+  ProviderSubscription<dynamic>? _paidOrderSubscription;
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(paidOrderBySessionProvider(widget.sessionId), (previous, next) {
-      if (next.valueOrNull != null) {
-        _timeoutTimer?.cancel();
-      }
-    });
-
     final orderAsync = ref.watch(paidOrderBySessionProvider(widget.sessionId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -226,6 +221,7 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
 
   @override
   void dispose() {
+    _paidOrderSubscription?.close();
     _timeoutTimer?.cancel();
     super.dispose();
   }
@@ -233,6 +229,14 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
   @override
   void initState() {
     super.initState();
+    _paidOrderSubscription = ref.listenManual(
+      paidOrderBySessionProvider(widget.sessionId),
+      (_, next) {
+        if (next.valueOrNull != null) {
+          _timeoutTimer?.cancel();
+        }
+      },
+    );
     _timeoutTimer = Timer(_timeoutDuration, () {
       if (mounted) setState(() => _timedOut = true);
     });

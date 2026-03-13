@@ -53,6 +53,7 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
       enabled: !isDisabled,
       label: widget.semanticsLabel ?? widget.label,
       container: true,
+      excludeSemantics: true,
       child: GestureDetector(
         onTapDown: isDisabled
             ? null

@@ -56,7 +56,7 @@ test.describe('Product Video Flow', () => {
     // T02 and T03 require test asset files > 100MB and > 1 minute duration respectively.
     // The current stub assets (15KB, 57KB) are too small to trigger validation.
     // TODO: Generate proper-sized test assets via a script before these tests can run.
-    test.skip('T02: Validation - Oversized video', async ({ page }) => {
+    test.fixme('T02: Validation - Oversized video', async ({ page }) => {
         await page.getByRole('button', { name: BTN_ADD_PRODUCT }).click();
         await waitForFlutter(page);
 
@@ -72,7 +72,7 @@ test.describe('Product Video Flow', () => {
         await expect(errorText.first()).toBeVisible({ timeout: 15000 });
     });
 
-    test.skip('T03: Validation - Overly long video', async ({ page }) => {
+    test.fixme('T03: Validation - Overly long video', async ({ page }) => {
         await page.getByRole('button', { name: BTN_ADD_PRODUCT }).click();
         await waitForFlutter(page);
 

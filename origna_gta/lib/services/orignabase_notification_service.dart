@@ -254,7 +254,7 @@ class OrignaBaseNotificationService {
   /// Routes to the appropriate screen based on the FCM message payload.
   void handleNotificationTap(AppRemoteMessage message) {
     final data = message.data;
-    final type = data['type'] as String?;
+    final type = data[Fields.type] as String?;
 
     final navigator = navigatorKey.currentState;
     if (navigator == null) return;
@@ -265,7 +265,7 @@ class OrignaBaseNotificationService {
       case NotificationTypes.returnStatus:
       case NotificationTypes.returnRequest:
       case NotificationTypes.refundIssued:
-        final orderId = data['orderId'] as String?;
+        final orderId = data[Fields.orderId] as String?;
         if (orderId != null && orderId.isNotEmpty) {
           navigator.pushNamed(AppRoutes.orderDetail,
               arguments: OrderDetailArgs(orderId: orderId));
@@ -274,7 +274,7 @@ class OrignaBaseNotificationService {
         }
 
       case NotificationTypes.backInStock:
-        final productId = data['productId'] as String?;
+        final productId = data[Fields.productId] as String?;
         if (productId != null && productId.isNotEmpty) {
           navigator.pushNamed(AppRoutes.productDetails,
               arguments: ProductDetailsArgs(productId: productId));

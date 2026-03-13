@@ -19,8 +19,8 @@ case "$FILE_PATH" in
     BLOCKED=true
     REASON="🔒 SERVICE ACCOUNT KEY — This is a production secret. Are you sure you need to edit it?"
     ;;
-  *firebase.json)
-    REASON="⚠️ FIREBASE CONFIG — Changes here affect ALL environments (emulator + production)."
+  *deploy_web.sh)
+    REASON="⚠️ VPS DEPLOY SCRIPT — Changes affect all environments. Test staged releases."
     ;;
   *firestore.rules)
     REASON="⚠️ FIRESTORE RULES — Changes affect data security for ALL users. Run schema-sync-checker after editing."

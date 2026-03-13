@@ -12,12 +12,33 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 class SellerIntegrationScreen extends ConsumerWidget {
   const SellerIntegrationScreen({super.key});
 
-  String get _activateEndpoint => '${EnvConfig().baseUrl}/activate_license';
-  String get _verifyEndpoint => '${EnvConfig().baseUrl}/verify_license';
+  String? get _activateEndpoint {
+    final baseUrl = _safeOrignabaseUrl();
+    if (baseUrl == null) return null;
+    return '$baseUrl/api/digital/activate-license';
+  }
+
+  String? get _verifyEndpoint {
+    final baseUrl = _safeOrignabaseUrl();
+    if (baseUrl == null) return null;
+    return '$baseUrl/api/digital/verify-license';
+  }
+
+  String? _safeOrignabaseUrl() {
+    try {
+      return EnvConfig().orignabaseUrl;
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activateEndpoint = _activateEndpoint;
+    final verifyEndpoint = _verifyEndpoint;
+    final hasConfiguredEndpoints =
+        activateEndpoint != null && verifyEndpoint != null;
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'seller_integration.title'.tr()),
@@ -34,11 +55,20 @@ class SellerIntegrationScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
                   _HowItWorksCard(),
                   const SizedBox(height: 20),
-                  _EndpointsCard(activateEndpoint: _activateEndpoint, verifyEndpoint: _verifyEndpoint),
-                  const SizedBox(height: 20),
-                  _SwiftSnippetCard(activateEndpoint: _activateEndpoint),
-                  const SizedBox(height: 20),
-                  _PythonSnippetCard(activateEndpoint: _activateEndpoint),
+                  if (hasConfiguredEndpoints) ...[
+                    _EndpointsCard(
+                      activateEndpoint: activateEndpoint,
+                      verifyEndpoint: verifyEndpoint,
+                    ),
+                    const SizedBox(height: 20),
+                    _SwiftSnippetCard(activateEndpoint: activateEndpoint),
+                    const SizedBox(height: 20),
+                    _PythonSnippetCard(activateEndpoint: activateEndpoint),
+                    const SizedBox(height: 20),
+                  ] else ...[
+                    const _ConfigRequiredCard(),
+                    const SizedBox(height: 20),
+                  ],
                   const SizedBox(height: 20),
                   _BookIntegrationCard(),
                   const SizedBox(height: 20),
@@ -51,6 +81,21 @@ class SellerIntegrationScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ConfigRequiredCard extends StatelessWidget {
+  const _ConfigRequiredCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _GuideCard(
+      icon: Icons.info_outline,
+      title: 'API configuration required',
+      child: const _BodyText(
+        'Set ORIGNABASE_URL to preview live activation and verification endpoints.',
       ),
     );
   }
@@ -178,8 +223,8 @@ class _EndpointRow extends StatelessWidget {
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 class _EndpointsCard extends StatelessWidget {
-  final String activateEndpoint;
-  final String verifyEndpoint;
+  final String? activateEndpoint;
+  final String? verifyEndpoint;
 
   const _EndpointsCard({required this.activateEndpoint, required this.verifyEndpoint});
 
@@ -191,14 +236,15 @@ class _EndpointsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _EndpointRow(method: 'POST', url: activateEndpoint, label: 'seller_integration.endpoints_activate_label'.tr()),
+          _EndpointRow(method: 'POST', url: activateEndpoint!, label: 'seller_integration.endpoints_activate_label'.tr()),
           const SizedBox(height: 8),
-          _EndpointRow(method: 'POST', url: verifyEndpoint, label: 'seller_integration.endpoints_verify_label'.tr()),
+          _EndpointRow(method: 'POST', url: verifyEndpoint!, label: 'seller_integration.endpoints_verify_label'.tr()),
           const SizedBox(height: 12),
           _SubHeading('seller_integration.endpoints_req_title'.tr()),
           const _CodeBlock('''
 {
   "licenseKey": "XXXX-XXXX-XXXX-XXXX",
+  "userId":     "<orignagta user id>",
   "deviceId":   "<unique device identifier>",
   "platform":   "macos" | "windows" | "linux"
 }'''),
@@ -206,7 +252,7 @@ class _EndpointsCard extends StatelessWidget {
           _SubHeading('seller_integration.endpoints_res_title'.tr()),
           const _CodeBlock('''
 {
-  "activated": true,
+  "approved": true,
   "productName": "FXCleaner",
   "licenseKey": "XXXX-XXXX-XXXX-XXXX",
   "activatedAt": "2025-03-01T12:00:00Z"
@@ -419,11 +465,16 @@ def device_id() -> str:
 def activate_license(key: str, plat: str = "windows") -> dict:
     resp = requests.post(
         "$activateEndpoint",
-        json={"licenseKey": key, "deviceId": device_id(), "platform": plat},
+        json={
+            "licenseKey": key,
+            "userId": "your-orignagta-user-id",
+            "deviceId": device_id(),
+            "platform": plat,
+        },
         timeout=10,
     )
     resp.raise_for_status()
-    return resp.json()  # {"activated": True, "productName": "..."}''';
+    return resp.json()  # {"approved": True, "productName": "..."}''';
 
   @override
   Widget build(BuildContext context) {
@@ -544,6 +595,7 @@ func activateLicense(key: String, platform: String = "macos") async throws -> Bo
     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
     req.httpBody = try JSONSerialization.data(withJSONObject: [
         "licenseKey": key,
+        "userId": "your-orignagta-user-id",
         "deviceId":   deviceID(),
         "platform":   platform,
     ])

@@ -11,11 +11,11 @@ Usage:
   python audit/scripts/verify_infra.py --domain firestore # Firestore only
   python audit/scripts/verify_infra.py --domain functions # Cloud Functions only
   python audit/scripts/verify_infra.py --domain secrets   # GCP Secrets only
-  python audit/scripts/verify_infra.py --domain hosting   # Firebase Hosting only
   python audit/scripts/verify_infra.py --domain storage   # Storage rules only
   python audit/scripts/verify_infra.py --domain all       # Everything
   python audit/scripts/verify_infra.py --json             # JSON output
 """
+
 import argparse
 import json
 import sys
@@ -30,7 +30,6 @@ from hooks.hook_infra import (
     verify_stripe,
     verify_secrets,
     verify_storage,
-    verify_hosting,
 )
 from hooks.config import CRITICAL, HIGH, MEDIUM, LOW
 
@@ -41,7 +40,6 @@ DOMAIN_MAP = {
     "stripe": ("💳 Stripe Configuration", verify_stripe),
     "secrets": ("🔑 GCP Secret Manager", verify_secrets),
     "storage": ("📦 Storage Rules", verify_storage),
-    "hosting": ("🌐 Firebase Hosting", verify_hosting),
 }
 
 SEVERITY_EMOJI = {
@@ -58,13 +56,15 @@ def main():
         description="🏗️ Infrastructure Verification — CLI-based (no LLM cost)"
     )
     parser.add_argument(
-        "--domain", "-d",
+        "--domain",
+        "-d",
         choices=list(DOMAIN_MAP.keys()) + ["all"],
         default="all",
         help="Which domain to verify (default: all)",
     )
     parser.add_argument(
-        "--json", "-j",
+        "--json",
+        "-j",
         action="store_true",
         help="Output as JSON instead of text",
     )
@@ -85,9 +85,9 @@ def main():
     all_findings = []
     results = {}
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("🏗️  INFRASTRUCTURE VERIFICATION")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     for domain in domains:
         label, verifier = DOMAIN_MAP[domain]
@@ -109,7 +109,12 @@ def main():
             print(f"  ✅ {len(findings)} findings ({medium} medium)")
 
         # Print detailed findings
-        for f in sorted(findings, key=lambda x: {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}.get(x.severity, 99)):
+        for f in sorted(
+            findings,
+            key=lambda x: {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}.get(
+                x.severity, 99
+            ),
+        ):
             emoji = SEVERITY_EMOJI.get(f.severity, "⚪")
             print(f"    {emoji} [{f.severity}] {f.title}")
             if f.fix_suggestion:
@@ -123,10 +128,12 @@ def main():
     total_m = sum(1 for f in all_findings if f.severity == MEDIUM)
     total_l = sum(1 for f in all_findings if f.severity == LOW)
 
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"📊 SUMMARY: {total} findings")
-    print(f"   🔴 {total_c} Critical | 🟠 {total_h} High | 🟡 {total_m} Medium | 🟢 {total_l} Low")
-    print(f"{'='*60}")
+    print(
+        f"   🔴 {total_c} Critical | 🟠 {total_h} High | 🟡 {total_m} Medium | 🟢 {total_l} Low"
+    )
+    print(f"{'=' * 60}")
 
     if total_c > 0:
         print(f"\n🚨 {total_c} CRITICAL issues — MUST FIX before production!")
@@ -136,8 +143,11 @@ def main():
         output = {
             "timestamp": __import__("datetime").datetime.now().isoformat(),
             "summary": {
-                "critical": total_c, "high": total_h,
-                "medium": total_m, "low": total_l, "total": total,
+                "critical": total_c,
+                "high": total_h,
+                "medium": total_m,
+                "low": total_l,
+                "total": total,
             },
             "domains": {
                 domain: [f.to_dict() for f in findings]
@@ -147,8 +157,7 @@ def main():
         }
         # Fix: findings from results dict
         output["domains"] = {
-            domain: [f.to_dict() for f in results[domain]]
-            for domain in results
+            domain: [f.to_dict() for f in results[domain]] for domain in results
         }
         print(json.dumps(output, indent=2))
 

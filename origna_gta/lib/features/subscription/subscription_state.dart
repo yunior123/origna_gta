@@ -1,4 +1,5 @@
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 /// Documentation for SubscriptionState
 class SubscriptionState {
@@ -46,15 +47,7 @@ class SubscriptionInfo {
   });
 
   factory SubscriptionInfo.fromMap(Map<String, dynamic> data) {
-    DateTime? periodEnd;
-    final periodEndRaw = data[Fields.currentPeriodEnd];
-    if (periodEndRaw is DateTime) {
-      periodEnd = periodEndRaw;
-    } else if (periodEndRaw is String) {
-      periodEnd = DateTime.tryParse(periodEndRaw);
-    } else if (periodEndRaw is int) {
-      periodEnd = DateTime.fromMillisecondsSinceEpoch(periodEndRaw * 1000);
-    }
+    final periodEnd = parseDateTime(data[Fields.currentPeriodEnd]);
 
     final status = data[Fields.status] as String? ?? SubscriptionStatusValues.inactive;
     final isPremium = SubscriptionStatusValues.premiumActive.contains(status);

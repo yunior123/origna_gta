@@ -1,4 +1,4 @@
-// playwright.config.staging.ts — Staging environment (orignagta-staging.web.app)
+// playwright.config.staging.ts — Staging environment (orignagta-staging on VPS with Caddy)
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
@@ -14,7 +14,7 @@ export default defineConfig({
   expect: { timeout: 20 * 1000 },
   use: {
     actionTimeout: 20 * 1000,
-    baseURL: process.env.E2E_TARGET_URL ?? 'https://orignagta-staging.web.app',
+    baseURL: process.env.E2E_TARGET_URL ?? 'https://staging.orignagta.ca',
     trace: 'on-first-retry',
     screenshot: 'on',
     bypassCSP: true,

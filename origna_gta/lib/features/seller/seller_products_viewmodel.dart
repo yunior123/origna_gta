@@ -34,7 +34,7 @@ final sellerProductsProvider = StreamProvider.autoDispose<List<Product>>((ref) {
       final products = snap.docs.map((doc) {
         try {
           final data = Map<String, dynamic>.from(doc.data);
-          return Product.fromJson({...data, 'productId': doc.id});
+          return Product.fromJson({...data, Fields.productId: doc.id});
         } catch (e) {
           AppError.log(e, context: 'sellerProductsProvider: skipping malformed doc ${doc.id}');
           return null;

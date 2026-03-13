@@ -1,44 +1,52 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
 
-# Deploy Flutter web build to Hetzner VPS using staged releases + atomic cutover.
-# Usage: ./scripts/deploy_web.sh [dev|staging|prod]
+ENV="${1:-production}"
+if [ -z "${VPS_HOST:-}" ]; then
+  echo "Error: VPS_HOST must be set e.g. VPS_HOST=user@ip"
+  echo "Usage: VPS_HOST=user@your-vps-ip $0 [dev|staging|production]"
+  exit 1
+fi
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_DIR="$REPO_ROOT/origna_gta"
-REMOTE_USER="${REMOTE_USER:-root}"
-REMOTE_HOST="${REMOTE_HOST:-204.168.137.16}"
-REMOTE_DIR="${REMOTE_DIR:-/var/www/orignagta}"
-SSH_TARGET="${REMOTE_USER}@${REMOTE_HOST}"
-ENV="${1:-dev}"
-RELEASE_ID="${RELEASE_ID:-$(date -u +%Y%m%d%H%M%S)}"
-REMOTE_RELEASES_DIR="$REMOTE_DIR/releases"
-REMOTE_RELEASE_DIR="$REMOTE_RELEASES_DIR/$RELEASE_ID"
-REMOTE_CURRENT_LINK="$REMOTE_DIR/current"
+if [[ ! "$ENV" =~ ^(dev|staging|production)$ ]]; then
+  echo "Error: Invalid environment. Must be dev, staging or production."
+  exit 1
+fi
 
-echo "=== Building Flutter web ($ENV) ==="
-cd "$APP_DIR"
-flutter build web --release --dart-define=ENVIRONMENT="$ENV"
+TIMESTAMP=$(date +%Y%m%d%H%M%S)
+REMOTE_BASE="/var/www/orignagta/${ENV}"
+RELEASE_DIR="${REMOTE_BASE}/releases/${TIMESTAMP}"
+CURRENT_LINK="${REMOTE_BASE}/current"
 
-echo "=== Preparing release $RELEASE_ID on $SSH_TARGET ==="
-ssh "$SSH_TARGET" "mkdir -p '$REMOTE_RELEASES_DIR'"
+echo "Deploying web for ${ENV} to ${VPS_HOST} with release ${TIMESTAMP}"
 
-rsync -avz --delete \
-  "$APP_DIR/build/web/" \
-  "$SSH_TARGET:$REMOTE_RELEASE_DIR/"
+ORIGNABASE_URL="https://api.orignagta.ca"
+case "$ENV" in
+  dev)        TURNSTILE_KEY="1x00000000000000000000AA" ;;
+  staging)    TURNSTILE_KEY="0x4AAAAAACmRNCDQqc20J_1T" ;;
+  production) TURNSTILE_KEY="0x4AAAAAACmRNXgZQ1M928iq" ;;
+esac
 
-ssh "$SSH_TARGET" "
-  set -euo pipefail
-  test -f '$REMOTE_RELEASE_DIR/index.html'
-  find '$REMOTE_RELEASE_DIR' -type d -exec chmod 755 {} \\;
-  find '$REMOTE_RELEASE_DIR' -type f -exec chmod 644 {} \\;
-  ln -sfn '$REMOTE_RELEASE_DIR' '$REMOTE_CURRENT_LINK.tmp'
-  mv -Tf '$REMOTE_CURRENT_LINK.tmp' '$REMOTE_CURRENT_LINK'
-  find '$REMOTE_RELEASES_DIR' -mindepth 1 -maxdepth 1 -type d | sort | head -n -5 | xargs -r rm -rf
+cd origna_gta
+flutter build web --release \
+  --dart-define=ENVIRONMENT=${ENV} \
+  --dart-define=ORIGNABASE_URL=${ORIGNABASE_URL} \
+  --no-tree-shake-icons
+
+# Inject Turnstile site key
+sed -i '' "s|__TURNSTILE_SITE_KEY__|${TURNSTILE_KEY}|g" build/web/index.html 2>/dev/null || true
+cd ..
+
+ssh "${VPS_HOST}" "mkdir -p ${REMOTE_BASE}/releases && chmod -R 755 ${REMOTE_BASE}"
+
+rsync -avz --delete origna_gta/build/web/ "${VPS_HOST}:${RELEASE_DIR}/"
+
+ssh "${VPS_HOST}" "
+  ln -sfn ${RELEASE_DIR} ${CURRENT_LINK}
+  echo 'Deployed release ${TIMESTAMP}'
+  ls -l ${CURRENT_LINK}
+  echo 'Current symlink updated.'
 "
 
-echo "=== Deploy complete ==="
-echo "Release: $RELEASE_ID"
-echo "Live dir: $REMOTE_CURRENT_LINK"
-echo "Site: https://www.orignagta.ca"
-echo "API:  https://api.orignagta.ca"
+echo "Successfully deployed to VPS for ${ENV}. Release: ${TIMESTAMP}"
+echo "Current link: ${CURRENT_LINK}"

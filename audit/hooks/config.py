@@ -18,10 +18,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 ANTHROPIC_MODEL = "claude-opus-4-20250514"  # Opus 4
 
-
-
-# --- Token limits ---
-MAX_OUTPUT_TOKENS = 16384      # Audit responses (enough for full JSON findings)
+# Token limits - tight to protect your $5 budget
+MAX_OUTPUT_TOKENS = 4096       # Audit responses (~$0.31)
 MAX_OUTPUT_TOKENS_FIX = 8192   # Fixer needs more room (~$0.61)
 
 # --- Audit Settings ---
@@ -46,8 +44,8 @@ EXCLUDE_PATTERNS = {
 }
 
 
-def load_api_key(provider: str = "anthropic") -> str:
-    """Load API key from env or functions/.env."""
+def load_api_key() -> str:
+    """Load Anthropic API key from env or functions/.env."""
     key_name = "ANTHROPIC_API_KEY"
 
     key = os.getenv(key_name)

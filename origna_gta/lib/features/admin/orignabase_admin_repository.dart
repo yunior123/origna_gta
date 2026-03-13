@@ -41,19 +41,16 @@ class OrignaBaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> disableAdminMfa(String code) async {
-    final adminUserId = _requireCurrentUserId();
+    _requireCurrentUserId();
     await _ob.request('POST', '/api/admin/mfa/disable', body: {
-      'userId': adminUserId,
       ApiKeys.code: code,
     });
   }
 
   @override
   Future<Map<String, dynamic>> enableAdminMfa() async {
-    final adminUserId = _requireCurrentUserId();
-    final result = await _ob.request('POST', '/api/admin/mfa/enroll', body: {
-      'userId': adminUserId,
-    });
+    _requireCurrentUserId();
+    final result = await _ob.request('POST', '/api/admin/mfa/enroll', body: {});
     return Map<String, dynamic>.from(result as Map);
   }
 
@@ -66,11 +63,9 @@ class OrignaBaseAdminRepository implements AdminRepository {
 
   @override
   Future<Map<String, dynamic>> getPaymentProviders() async {
-    final adminUserId = _requireCurrentUserId();
+    _requireCurrentUserId();
     final result =
-        await _ob.request('POST', '/api/payments/providers/list', body: {
-          'adminUserId': adminUserId,
-        });
+        await _ob.request('POST', '/api/payments/providers/list', body: {});
     final data = Map<String, dynamic>.from(result as Map);
     final providers = data[ApiKeys.providers];
     if (providers is List) {
@@ -78,7 +73,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
       for (final item in providers) {
         if (item is! Map) continue;
         final provider = Map<String, dynamic>.from(item);
-        final id = provider['name']?.toString();
+        final id = provider[Fields.name]?.toString();
         if (id == null || id.isEmpty) continue;
         final configured = provider['webhookConfigured'] == true;
         normalized[id] = <String, dynamic>{
@@ -136,9 +131,8 @@ class OrignaBaseAdminRepository implements AdminRepository {
   @override
   Future<void> updatePaymentProvider(String provider, bool enabled,
       {String? reason}) async {
-    final adminUserId = _requireCurrentUserId();
+    _requireCurrentUserId();
     await _ob.request('POST', '/api/payments/providers/update', body: {
-      'adminUserId': adminUserId,
       'providerName': provider,
       ApiKeys.enabled: enabled,
     });
@@ -167,9 +161,8 @@ class OrignaBaseAdminRepository implements AdminRepository {
 
   @override
   Future<Map<String, dynamic>> verifyAdminMfa(String code) async {
-    final adminUserId = _requireCurrentUserId();
+    _requireCurrentUserId();
     final result = await _ob.request('POST', '/api/admin/mfa/verify', body: {
-      'userId': adminUserId,
       ApiKeys.code: code,
     });
     return Map<String, dynamic>.from(result as Map);

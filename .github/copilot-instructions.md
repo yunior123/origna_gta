@@ -54,7 +54,7 @@
 7. If playwright tests or cloud functions deployement take too long ex 1h, it means that something is wrong. So we stop and analyze what went wrong to start over if needed and fix it.
 8. env , env.local , etc and service account keys cannot be deployed to cloud functions
 9. you are supposed to do all the work, using tools like stripe cli, gcloud cli, firebase cli, mcp connections, etc. Avoid asking Yunior for manual setup, he is a solo developer so he is too busy reviewing code. all tools are your disposal can be freely used, Yunior trust you, that is why he gave you full tool access.
-10. on every deploy of indexes, rules, functions, hosting make sure to deploy to dev, staging and prod.
+10. on every deploy of indexes, rules, functions, web (VPS) make sure to deploy to dev, staging and prod.
 11. everytime playwright tests are executed, save screen shots of the different views to desktop so that Yunior can see the views and give feedback related to ui ux and logic, etc.
 12. running playwright tests and fixing should be really fast, take screenshot of the tests while they are running then analyze them to see what is wrong and fix it.
 13. there are many mcp, cli tools that you can use, dont be shy. You can use them all without Yunior permission, he has already given you authorization.

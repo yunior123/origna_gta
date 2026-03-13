@@ -13,21 +13,22 @@ import 'package:url_launcher/url_launcher.dart';
 import '../features/subscription/subscription_provider.dart';
 
 /// Documentation for SubscriptionScreen
-class SubscriptionScreen extends ConsumerWidget {
+class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SubscriptionScreen> createState() =>
+      _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
+  ProviderSubscription<String?>? _checkoutUrlSubscription;
+
+  @override
+  Widget build(BuildContext context) {
     final subAsync = ref.watch(subscriptionStreamProvider);
     final vmState = ref.watch(subscriptionViewModelProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    ref.listen(subscriptionViewModelProvider.select((s) => s.checkoutUrl), (prev, next) async {
-      if (next != null && next.isNotEmpty) {
-        await launchUrl(Uri.parse(next), mode: LaunchMode.externalApplication);
-        ref.read(subscriptionViewModelProvider.notifier).clearCheckoutUrl();
-      }
-    });
 
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
@@ -57,6 +58,29 @@ class SubscriptionScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkoutUrlSubscription = ref.listenManual(
+      subscriptionViewModelProvider.select((s) => s.checkoutUrl),
+      (_, next) async {
+        if (next != null && next.isNotEmpty) {
+          await launchUrl(
+            Uri.parse(next),
+            mode: LaunchMode.externalApplication,
+          );
+          ref.read(subscriptionViewModelProvider.notifier).clearCheckoutUrl();
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _checkoutUrlSubscription?.close();
+    super.dispose();
   }
 
   Widget _buildBenefitCard(IconData icon, Color iconColor, String title, String subtitle, {String? semanticsLabel, bool isDark = false}) {

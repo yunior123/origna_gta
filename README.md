@@ -5,38 +5,16 @@ This repo contains:
 - Hosting/config artifacts at the repo root
 - Legacy backend/tests under `functions/` are not part of the active Flutter runtime path
 
+## Backend contract
+- `orignabaseUrl` is the only primary backend for auth, data, and business logic in the active app path.
+- `baseUrl` is the public web host used for browser routes and share links.
+- No Firebase hosting; all web hosting on Hetzner VPS with Caddy. Firebase not used for hosting.
+
 ## Architecture overview
 - MVVM in Flutter
 - OrignaBase owns auth/data/service calls for the active app path
 - Idempotent payment and webhook processing
 - Product ratings are submitted through server-side validation
-
-## Security hardening (2026-01-31)
-**Audit Score**: 9.2/10 ✅ Production Ready | [Full Report](docs/SECURITY_AUDIT_2026_01_31.md)
-
-- ✅ **CRITICAL**: Server-side price validation (cart items vs DB products, tolerance 1 cent)
-- ✅ **CRITICAL**: Server-side shipping/tax recalculation (client values ignored)
-- ✅ **CRITICAL**: Subtotal verification (1% tolerance, rejects tampering)
-- ✅ **HIGH**: Authorization timeout tracking (7 days max, daily cronjob cancels expired)
-- ✅ **MEDIUM**: Uniform email validation across all auth flows (no consecutive dots, strict TLD)
-- ✅ **LOW**: Webhook signature errors masked in production logs
-- ✅ Rate limiting: 10 req/5min per user/IP on checkout (rate_limiter.py)
-- ✅ Debug prints wrapped in IS_EMULATOR checks (no sensitive data in prod logs)
-- ✅ Firestore rules enforce field lengths, postal code format, and product constraints
-- ✅ CSP: removed 'unsafe-eval', kept 'unsafe-inline' for Flutter Web
-- ✅ Idempotent payments with client-supplied + Stripe keys
-- ✅ Atomic stock transactions prevent race conditions
-
-## Phase 3.5: Edge Case Fixes (2026-02-02)
-**Status**: ✅ Complete | [Full Audit](EDGE_CASES_AUDIT.md)
-
-**6 Critical Edge Cases Fixed**:
-1. ✅ **Seller Suspension** (URGENT): `suspend_seller()` Cloud Function - auto-cancels orders, refunds buyers, restores stock
-2. ✅ **Multi-Seller Capture** (URGENT): Per-seller tracking via `sellerCaptures` dict - prevents double-charging
-3. ✅ **Auto-Capture Failure** (HIGH): Tracks `captureAttempts`, flags for manual review after 3 failures
-4. ✅ **Rate Limiter Race** (HIGH): Transaction-based rate limiting - atomic increment prevents bypass
-5. ✅ **Product Deletion** (MEDIUM): Pre-delete check for active orders - prevents stock issues
-6. ✅ **Dispute Fraud** (MEDIUM): Fraud scoring system (30-90pts) - flags post-delivery disputes
 
 **New Collections**:
 - `security_alerts`: Immutable audit log for fraud/suspension events (admin read-only)
@@ -76,7 +54,7 @@ sequenceDiagram
 - Force full local strict gate (not recommended on 8GB RAM): ./scripts/run_quality_gate.sh --allow-local-heavy --backend-gate-mode strict
 - Strict quality gate (100% + real E2E): scripts/run_quality_gate.sh
 - Real browser E2E smoke: scripts/run_real_e2e_smoke.sh
-- Deploy hosting/config as needed from repo root
+- Deploy web to VPS using scripts/deploy_web.sh (no Firebase hosting)
 - Hetzner web deploys use staged releases under `/var/www/orignagta/releases/<timestamp>` with an atomic switch of `/var/www/orignagta/current`
 - Install pre-push hook (safe local checks by default): scripts/install_git_hooks.sh
 - Flutter analyze: (cd origna_gta) flutter analyze
@@ -197,12 +175,12 @@ Repo docs (`origna_flows/`):
 
 ## Search Architecture (Algolia)
 - **Primary Search**: Algolia for fast, typo-tolerant product search
-- **Fallback**: Firestore keyword search if Algolia unavailable
-- **Auto-Indexing**: Products automatically synced to Algolia via Firestore triggers
-- **Credentials**: Stored in Firebase Remote Config and Google Secret Manager
+- **Fallback**: OrignaBase-backed keyword search if Algolia is unavailable
+- **Auto-Indexing**: Products are synced by backend services, not by the Flutter runtime
+- **Credentials**: Stored in backend-managed secrets/config, not in the Flutter runtime
   - `ALGOLIA_APP_ID` (public)
   - `ALGOLIA_SEARCH_API_KEY` (search-only, frontend-safe)
-  - `ALGOLIA_WRITE_API_KEY` (backend-only, in Cloud Functions)
+  - `ALGOLIA_WRITE_API_KEY` (backend-only)
 
 **Algolia Features**:
 - Instant search with debouncing (500ms)
@@ -214,9 +192,9 @@ Repo docs (`origna_flows/`):
 - 20 results per page
 
 **Setup**:
-1. Add keys to `.env` and Firebase Remote Config
-2. Deploy Cloud Functions: `firebase deploy --only functions`
-3. Configure index settings: Call `configure_algolia` function once
+1. Add keys to the backend environment/config
+2. Deploy the active backend services
+3. Configure index settings through the backend admin path
 4. Products auto-index on create/update/delete
 
 ## Docs
@@ -230,20 +208,14 @@ Repo docs (`origna_flows/`):
 - **Emulators**: `flutter run -d chrome --dart-define=ENVIRONMENT=emulator`
 
 ### Deployment
-Deploy backend/hosting to specific environment:
+Web hosting is now on Hetzner VPS (Caddy + staged releases in /var/www/orignagta/{env}/releases/<ts> with current symlink). Firebase hosting disabled.
 ```bash
-# Dev
-firebase use dev
-firebase deploy
-# Staging
-firebase use staging
-firebase deploy
-# Prod
-firebase use prod
-firebase deploy
+# Web hosting to VPS (set VPS_HOST=user@ip)
+VPS_HOST=youruser@your-vps-ip ./scripts/deploy_web.sh production
+# Or for dev/staging subdomains
+VPS_HOST=youruser@your-vps-ip ./scripts/deploy_web.sh dev
 ```
+Backend remains on VPS (OrignaBase).
 
 ## Architecture Notes
-- Canada-only delivery enforced in Functions (buyer/shipping addresses only; sellers can be worldwide).
-- Stripe Connect Express direct charges, manual capture.
-- Algolia search with Firestore fallback.
+- Canada-only delivery enforced in backend handlers (buyer/shipping addresses only; sellers can be worldwide).

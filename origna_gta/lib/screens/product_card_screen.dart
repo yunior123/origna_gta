@@ -133,66 +133,72 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                         () => _currentImageIndex = index,
                                       ),
                                       itemBuilder: (context, index) {
-                                        return ColorFiltered(
-                                          colorFilter: isOutOfStock
-                                              ? const ColorFilter.mode(
-                                                  Colors.grey,
-                                                  BlendMode.saturation,
-                                                )
-                                              : const ColorFilter.mode(
-                                                  Colors.transparent,
-                                                  BlendMode.multiply,
-                                                ),
-                                          child: CachedNetworkImage(
-                                            imageUrl:
-                                                isValidImageUrl(
-                                                  imageUrls[index],
-                                                )
-                                                ? imageUrls[index]
-                                                : '',
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) =>
-                                                Shimmer.fromColors(
-                                                  baseColor: DesignTokens
-                                                      .outlineVariant,
-                                                  highlightColor:
-                                                      DesignTokens.surface,
-                                                  child: Container(
-                                                    color: Colors.white,
+                                        return Semantics(
+                                          image: true,
+                                          excludeSemantics: true,
+                                          label:
+                                              '${widget.product.name} image ${index + 1} of ${imageUrls.length}',
+                                          child: ColorFiltered(
+                                            colorFilter: isOutOfStock
+                                                ? const ColorFilter.mode(
+                                                    Colors.grey,
+                                                    BlendMode.saturation,
+                                                  )
+                                                : const ColorFilter.mode(
+                                                    Colors.transparent,
+                                                    BlendMode.multiply,
                                                   ),
-                                                ),
-                                            errorWidget:
-                                                (
-                                                  context,
-                                                  url,
-                                                  error,
-                                                ) => Container(
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                        gradient: LinearGradient(
-                                                          colors: [
-                                                            DesignTokens
-                                                                .gradientStart,
-                                                            DesignTokens
-                                                                .gradientMiddle,
-                                                          ],
-                                                          begin:
-                                                              Alignment.topLeft,
-                                                          end: Alignment
-                                                              .bottomRight,
-                                                        ),
-                                                      ),
-                                                  child: Center(
-                                                    child: Icon(
-                                                      Icons.camera_alt_outlined,
-                                                      size: isCompact ? 24 : 36,
-                                                      color: Colors.white
-                                                          .withValues(
-                                                            alpha: 0.8,
-                                                          ),
+                                            child: CachedNetworkImage(
+                                              imageUrl:
+                                                  isValidImageUrl(
+                                                    imageUrls[index],
+                                                  )
+                                                  ? imageUrls[index]
+                                                  : '',
+                                              fit: BoxFit.cover,
+                                              placeholder: (context, url) =>
+                                                  Shimmer.fromColors(
+                                                    baseColor: DesignTokens
+                                                        .outlineVariant,
+                                                    highlightColor:
+                                                        DesignTokens.surface,
+                                                    child: Container(
+                                                      color: Colors.white,
                                                     ),
                                                   ),
-                                                ),
+                                              errorWidget:
+                                                  (
+                                                    context,
+                                                    url,
+                                                    error,
+                                                  ) => Container(
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                          gradient: LinearGradient(
+                                                            colors: [
+                                                              DesignTokens
+                                                                  .gradientStart,
+                                                              DesignTokens
+                                                                  .gradientMiddle,
+                                                            ],
+                                                            begin:
+                                                                Alignment.topLeft,
+                                                            end: Alignment
+                                                                .bottomRight,
+                                                          ),
+                                                        ),
+                                                    child: Center(
+                                                      child: Icon(
+                                                        Icons.camera_alt_outlined,
+                                                        size: isCompact ? 24 : 36,
+                                                        color: Colors.white
+                                                            .withValues(
+                                                              alpha: 0.8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                            ),
                                           ),
                                         );
                                       },

@@ -117,6 +117,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late final TextEditingController _expressDaysController;
   late final TextEditingController _expressPriceController;
   late final TextEditingController _sameDayPriceController;
+  ProviderSubscription<EditProductState>? _editProductSubscription;
 
   static const Map<String, String> _provinceNames = ProvinceCodeValues.names;
 
@@ -126,20 +127,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     final viewModel = ref.read(
       editProductViewModelProvider(widget.product).notifier,
     );
-
-    // Listen for success or error
-    ref.listen(editProductViewModelProvider(widget.product), (previous, next) {
-      if (next.isSuccess) {
-        _onUpdateSuccess();
-      } else if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.errorMessage!),
-            backgroundColor: DesignTokens.error,
-          ),
-        );
-      }
-    });
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'product.edit_product'.tr()),
@@ -641,6 +628,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
   @override
   void dispose() {
+    _editProductSubscription?.close();
     _nameController.dispose();
     _nameFController.dispose();
     _descriptionController.dispose();
@@ -677,6 +665,22 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   @override
   void initState() {
     super.initState();
+    _editProductSubscription = ref.listenManual(
+      editProductViewModelProvider(widget.product),
+      (_, next) {
+        if (!mounted) return;
+        if (next.isSuccess) {
+          _onUpdateSuccess();
+        } else if (next.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.errorMessage!),
+              backgroundColor: DesignTokens.error,
+            ),
+          );
+        }
+      },
+    );
     final p = widget.product;
     _nameController = TextEditingController(text: p.name);
     _nameFController = TextEditingController(text: p.nameF ?? '');

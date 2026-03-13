@@ -12,35 +12,13 @@ import 'seller_registration_state.dart';
 final obPaymentProviderStatusProvider = FutureProvider<Map<String, dynamic>>((
   ref,
 ) async {
-  try {
-    final ob = ref.read(orignabaseProvider);
-    final result = await ob.request(
-      'POST',
-      '/api/payments/providers/list',
-      body: {},
-    );
-    final data = Map<String, dynamic>.from(result as Map);
-    final providers = data[ApiKeys.providers];
-    if (data[ApiKeys.success] == true && providers is List) {
-      final normalized = <String, dynamic>{};
-      for (final item in providers) {
-        if (item is! Map) continue;
-        final provider = Map<String, dynamic>.from(item);
-        final id = provider['name']?.toString();
-        if (id == null || id.isEmpty) continue;
-        final configured = provider['webhookConfigured'] == true;
-        normalized[id] = <String, dynamic>{
-          ApiKeys.enabled: provider[ApiKeys.enabled] == true,
-          ApiKeys.configured: configured,
-          ApiKeys.missingKeys: configured ? const <String>[] : <String>['webhook'],
-        };
-      }
-      return normalized;
-    }
-    return {};
-  } catch (e) {
-    return {};
-  }
+  return const {
+    PaymentProviderValues.stripe: {
+      ApiKeys.enabled: true,
+      ApiKeys.configured: true,
+      ApiKeys.missingKeys: <String>[],
+    },
+  };
 });
 
 final obSellerRegistrationViewModelProvider =
@@ -102,7 +80,7 @@ class OrignaBaseSellerRegistrationViewModel
       final result = await _ob.request(
         'POST',
         '/api/admin/stripe-login-link',
-        body: {'userId': userId},
+        body: {Fields.userId: userId},
       );
       final data = Map<String, dynamic>.from(result as Map);
       final url = data[ApiKeys.url] as String?;
@@ -131,7 +109,7 @@ class OrignaBaseSellerRegistrationViewModel
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required.');
       }
-      await _ob.request('POST', '/api/connect/status', body: {'userId': userId});
+      await _ob.request('POST', '/api/connect/status', body: {});
     } on OrignaBaseException catch (e) {
       state = state.copyWith(
         error: _cleanErrorMessage(e, 'Failed to refresh account status'),
@@ -143,20 +121,18 @@ class OrignaBaseSellerRegistrationViewModel
 
   Future<void> setPaymentProvider(String provider) async {
     if (state.isLoading) return;
+    if (provider != PaymentProviderValues.stripe) {
+      state = state.copyWith(
+        error: 'This payment provider is not available yet.',
+        successMessage: null,
+      );
+      return;
+    }
     state = state.copyWith(
       paymentProvider: provider,
       error: null,
       successMessage: null,
     );
-    try {
-      await _ob.request(
-        'POST',
-        '/api/payments/providers/update',
-        body: {ApiKeys.provider: provider},
-      );
-    } catch (e) {
-      state = state.copyWith(error: 'Failed to update payment provider');
-    }
   }
 
   /// Starts the registration process (Step 1).
@@ -172,9 +148,7 @@ class OrignaBaseSellerRegistrationViewModel
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required.');
       }
-      await _ob.request('POST', '/api/connect/create-account', body: {
-        'userId': userId,
-      });
+      await _ob.request('POST', '/api/connect/create-account', body: {});
       await _continueOnboarding();
     } on OrignaBaseException catch (e) {
       state = state.copyWith(
@@ -212,7 +186,7 @@ class OrignaBaseSellerRegistrationViewModel
       final result = await _ob.request(
         'POST',
         '/api/connect/account-link',
-        body: {'userId': userId},
+        body: {},
       );
       final data = Map<String, dynamic>.from(result as Map);
       final url = data[ApiKeys.url] as String?;

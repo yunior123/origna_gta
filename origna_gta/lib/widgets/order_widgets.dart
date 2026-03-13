@@ -569,7 +569,7 @@ class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
     setState(() => _loading = true);
     try {
       final ob = ref.read(orignabaseProvider);
-      final result = await ob.request('POST', '/api/digital/book-download', body: {
+      final result = await ob.request('POST', '/api/digital/download/book', body: {
         Fields.licenseKey: widget.item.licenseKey,
       });
       final downloadUrl = (result as Map<String, dynamic>?)?[ApiKeys.downloadUrl] as String?;
@@ -1635,7 +1635,7 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
     setState(() => _loading[platform] = true);
     try {
       final ob = ref.read(orignabaseProvider);
-      final result = await ob.request('POST', '/api/digital/software-download', body: {
+      final result = await ob.request('POST', '/api/digital/download/software', body: {
         Fields.licenseKey: widget.item.licenseKey,
         Fields.platform: platform,
       });

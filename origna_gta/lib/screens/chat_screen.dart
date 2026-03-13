@@ -109,7 +109,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
               ),
             )
-          else if (vmState.errorMessage != null && vmState.errorMessage!.contains('Premium'))
+          else if (vmState.isPremiumRequired)
             Expanded(
               child: Center(
                 child: PremiumPaywallWidget(featureName: 'subscription.chat_with_sellers'.tr()),
@@ -163,7 +163,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
-class _MessagesList extends ConsumerWidget {
+class _MessagesList extends ConsumerStatefulWidget {
   final String chatId;
   final String productId;
   final String myUid;
@@ -183,20 +183,15 @@ class _MessagesList extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final messagesAsync = ref.watch(chatMessagesProvider(chatId));
+  ConsumerState<_MessagesList> createState() => _MessagesListState();
+}
 
-    ref.listen(chatMessagesProvider(chatId), (prev, next) {
-      if (next.hasValue) {
-        final prevCount = prev?.value?.length ?? 0;
-        final nextCount = next.value?.length ?? 0;
-        // Only scroll + markRead when new messages arrive (not on our own sends)
-        if (nextCount > prevCount) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => onNewMessages());
-          ref.read(chatViewModelProvider(productId).notifier).markReadDebounced();
-        }
-      }
-    });
+class _MessagesListState extends ConsumerState<_MessagesList> {
+  ProviderSubscription<dynamic>? _chatMessagesSubscription;
+
+  @override
+  Widget build(BuildContext context) {
+    final messagesAsync = ref.watch(chatMessagesProvider(widget.chatId));
 
     return messagesAsync.when(
       loading: () => const Center(child: ModernLoadingIndicator()),
@@ -213,7 +208,7 @@ class _MessagesList extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 TextButton(
-                  onPressed: onFocusInput,
+                  onPressed: widget.onFocusInput,
                   child: Text('chat.send_message_cta'.tr()),
                 ),
               ],
@@ -224,7 +219,10 @@ class _MessagesList extends ConsumerWidget {
         return _ChatDeleteScope(
           onDelete: (messageId) async {
             try {
-              await ref.read(chatRepositoryProvider).deleteMessage(chatId, messageId);
+              await ref.read(chatRepositoryProvider).deleteMessage(
+                widget.chatId,
+                messageId,
+              );
             } catch (e) {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -234,18 +232,58 @@ class _MessagesList extends ConsumerWidget {
             }
           },
           child: ListView.builder(
-            controller: scrollController,
+            controller: widget.scrollController,
             padding: const EdgeInsets.all(16),
             itemCount: messages.length,
             itemBuilder: (ctx, i) => _AnimatedMessageBubble(
               key: ValueKey(messages[i].id),
               index: i,
               message: messages[i],
-              isMe: messages[i].senderId == myUid,
-              isDark: isDark,
+              isMe: messages[i].senderId == widget.myUid,
+              isDark: widget.isDark,
             ),
           ),
         );
+      },
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _MessagesList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.chatId != widget.chatId) {
+      _bindChatListener();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _bindChatListener();
+  }
+
+  @override
+  void dispose() {
+    _chatMessagesSubscription?.close();
+    super.dispose();
+  }
+
+  void _bindChatListener() {
+    _chatMessagesSubscription?.close();
+    _chatMessagesSubscription = ref.listenManual(
+      chatMessagesProvider(widget.chatId),
+      (prev, next) {
+        if (next == null || !next.hasValue) return;
+        final prevCount = prev?.value?.length ?? 0;
+        final nextCount = next.value?.length ?? 0;
+        if (nextCount > prevCount) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => widget.onNewMessages(),
+          );
+          ref
+              .read(chatViewModelProvider(widget.productId).notifier)
+              .markReadDebounced();
+        }
       },
     );
   }
@@ -523,4 +561,3 @@ class _MessageInput extends StatelessWidget {
 }
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
-

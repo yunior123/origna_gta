@@ -83,9 +83,9 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
       final result = await _ob.request(
         'POST',
         '/api/subscriptions/create',
-        body: {'userId': userId},
+        body: {},
       );
-      final url = result['checkoutUrl'] as String?;
+      final url = result[ApiKeys.checkoutUrl] as String?;
 
       final analytics = OrignaBaseAnalyticsService(_ob);
       unawaited(
@@ -107,7 +107,7 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required.');
       }
-      await _ob.request('POST', '/api/subscriptions/cancel', body: {'userId': userId});
+      await _ob.request('POST', '/api/subscriptions/cancel', body: {});
 
       final analytics = OrignaBaseAnalyticsService(_ob);
       unawaited(analytics.logSubscriptionCancelled());
@@ -125,7 +125,7 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required.');
       }
-      await _ob.request('POST', '/api/subscriptions/reactivate', body: {'userId': userId});
+      await _ob.request('POST', '/api/subscriptions/reactivate', body: {});
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
@@ -143,7 +143,6 @@ class OrignaBaseSubscriptionViewModel extends StateNotifier<SubscriptionState> {
         throw StateError('Authentication required.');
       }
       await _ob.request('POST', '/api/subscriptions/notification-preferences', body: {
-        'userId': userId,
         Fields.notifyNewProducts: notifyNewProducts,
         Fields.notifyTrending: notifyTrending,
       });

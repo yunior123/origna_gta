@@ -32,7 +32,7 @@ const getEnvironmentConfig = () => {
         auth: 'https://identitytoolkit.googleapis.com',
         firestore: 'https://firestore.googleapis.com',
         functions: 'https://northamerica-northeast1-orignagta-staging.cloudfunctions.net',
-        webApp: 'https://orignagta-staging.web.app',
+        webApp: 'https://staging.orignagta.ca',
         projectId: 'orignagta-staging',
       };
     case 'production':
@@ -40,7 +40,7 @@ const getEnvironmentConfig = () => {
         auth: 'https://identitytoolkit.googleapis.com',
         firestore: 'https://firestore.googleapis.com',
         functions: 'https://northamerica-northeast1-orignagta.cloudfunctions.net',
-        webApp: 'https://orignagta.web.app',
+        webApp: 'https://www.orignagta.ca',
         projectId: 'orignagta',
       };
     case 'dev':
@@ -49,7 +49,7 @@ const getEnvironmentConfig = () => {
         auth: 'https://identitytoolkit.googleapis.com',
         firestore: 'https://firestore.googleapis.com',
         functions: 'https://northamerica-northeast1-orignagta-dev.cloudfunctions.net',
-        webApp: 'https://orignagta-dev.web.app',
+        webApp: 'https://dev.orignagta.ca',
         projectId: 'orignagta-dev',
       };
   }

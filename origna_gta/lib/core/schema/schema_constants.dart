@@ -75,6 +75,7 @@ abstract final class ApiKeys {
   static const itemIds = 'itemIds';
   static const idempotencyKey = 'idempotencyKey';
   static const productId = 'productId';
+  static const adminUserId = 'adminUserId';
 
   // === RESPONSE KEYS ===
   static const success = 'success';
@@ -1556,6 +1557,7 @@ abstract final class RemoteConfigKeys {
   static const geoapifyApiKey = 'geoapify_api_key';
   static const imageBaseUrl = 'image_base_url';
   static const sentryDnsKey = 'sentry_dns';
+  static const googleWebClientId = 'google_web_client_id';
 }
 
 /// Valid values for return request status — state machine for physical returns.

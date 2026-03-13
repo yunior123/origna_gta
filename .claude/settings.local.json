@@ -32,7 +32,9 @@
       "mcp__stitch__edit_screens",
       "mcp__stitch__list_projects",
       "mcp__stitch__get_screen",
-      "mcp__stitch__get_project"
+      "mcp__stitch__get_project",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__plugin_playwright_playwright__browser_network_requests"
     ]
   }
 }

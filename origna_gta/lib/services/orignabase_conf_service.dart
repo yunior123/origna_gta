@@ -32,6 +32,9 @@ class OrignaBaseConfigService {
   String get sentryDnsKey =>
       _cache[RemoteConfigKeys.sentryDnsKey] ?? '';
 
+  String get googleWebClientId =>
+      _cache[RemoteConfigKeys.googleWebClientId] ?? '';
+
   /// Initialize with defaults, then fetch from OrignaBase server.
   Future<void> initialize(OrignaBase ob, {bool skipFetch = false}) async {
     _ob = ob;
@@ -40,6 +43,7 @@ class OrignaBaseConfigService {
     _cache[RemoteConfigKeys.geoapifyApiKey] = '';
     _cache[RemoteConfigKeys.imageBaseUrl] = '';
     _cache[RemoteConfigKeys.sentryDnsKey] = '';
+    _cache[RemoteConfigKeys.googleWebClientId] = '';
     if (skipFetch) return;
 
     try {

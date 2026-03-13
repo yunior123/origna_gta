@@ -31,17 +31,20 @@ class OrignaBaseChatRepository {
       throw OrignaBaseException('User not authenticated');
     }
 
-    final product = await _ob.collection(Collections.products).doc(productId).get();
+    final product = await _ob
+        .collection(Collections.products)
+        .doc(productId)
+        .get();
     final sellerId = product?.get<String>(Fields.sellerId);
     if (sellerId == null || sellerId.isEmpty) {
       throw OrignaBaseException('Seller not found for product');
     }
 
-    final result = await _ob.request('POST', '/api/chat/get-or-create', body: {
-      'userId': buyerId,
-      'otherUserId': sellerId,
-      Fields.productId: productId,
-    });
+    final result = await _ob.request(
+      'POST',
+      '/api/chat/get-or-create',
+      body: {'otherUserId': sellerId, Fields.productId: productId},
+    );
     return result[Fields.chatId] as String? ?? '';
   }
 
@@ -51,42 +54,54 @@ class OrignaBaseChatRepository {
     final messages = <String, ChatMessage>{};
 
     // Initial fetch
-    _fetchMessages(chatId).then((initial) {
-      for (final msg in initial) {
-        messages[msg.id] = msg;
-      }
-      controller.add(_sortedMessages(messages));
-    }).catchError((Object e, StackTrace st) {
-      AppError.log(e, stackTrace: st, context: 'ob_chat.messagesStream.init');
-      if (e is! OrignaBaseException) controller.addError(e);
-    });
+    _fetchMessages(chatId)
+        .then((initial) {
+          for (final msg in initial) {
+            messages[msg.id] = msg;
+          }
+          controller.add(_sortedMessages(messages));
+        })
+        .catchError((Object e, StackTrace st) {
+          AppError.log(
+            e,
+            stackTrace: st,
+            context: 'ob_chat.messagesStream.init',
+          );
+          if (e is! OrignaBaseException) controller.addError(e);
+        });
 
     // Realtime updates via subcollection
     final realtime = RealtimeClient(_ob);
     realtime.connect();
-    final subCollectionName = '${Collections.chats}__${Collections.chatMessages}';
-    final sub = realtime.subscribe(subCollectionName).listen(
-      (change) {
-        final doc = change.document;
-        // Only include messages for this chatId
-        final parentId = doc.data['parent_id'] as String?;
-        if (parentId != '${Collections.chats}:$chatId') return;
+    final subCollectionName =
+        '${Collections.chats}__${Collections.chatMessages}';
+    final sub = realtime
+        .subscribe(subCollectionName)
+        .listen(
+          (change) {
+            final doc = change.document;
+            // Only include messages for this chatId
+            final parentId = doc.data['parent_id'] as String?;
+            if (parentId != '${Collections.chats}:$chatId') return;
 
-        switch (change.type) {
-          case ChangeType.create:
-          case ChangeType.update:
-            messages[doc.id] = _docToMessage(doc);
-            controller.add(_sortedMessages(messages));
-          case ChangeType.delete:
-            messages.remove(doc.id);
-            controller.add(_sortedMessages(messages));
-        }
-      },
-      onError: (Object e, StackTrace st) {
-        AppError.log(e,
-            stackTrace: st, context: 'ob_chat.messagesStream.realtime');
-      },
-    );
+            switch (change.type) {
+              case ChangeType.create:
+              case ChangeType.update:
+                messages[doc.id] = _docToMessage(doc);
+                controller.add(_sortedMessages(messages));
+              case ChangeType.delete:
+                messages.remove(doc.id);
+                controller.add(_sortedMessages(messages));
+            }
+          },
+          onError: (Object e, StackTrace st) {
+            AppError.log(
+              e,
+              stackTrace: st,
+              context: 'ob_chat.messagesStream.realtime',
+            );
+          },
+        );
 
     controller.onCancel = () {
       sub.cancel();
@@ -129,20 +144,14 @@ class OrignaBaseChatRepository {
       controller.add(merged);
     }
 
-    final sub1 = userChatsStream(userId).listen(
-      (threads) {
-        buyerThreads = threads;
-        emit();
-      },
-      onError: controller.addError,
-    );
-    final sub2 = sellerChatsStream(userId).listen(
-      (threads) {
-        sellerThreads = threads;
-        emit();
-      },
-      onError: controller.addError,
-    );
+    final sub1 = userChatsStream(userId).listen((threads) {
+      buyerThreads = threads;
+      emit();
+    }, onError: controller.addError);
+    final sub2 = sellerChatsStream(userId).listen((threads) {
+      sellerThreads = threads;
+      emit();
+    }, onError: controller.addError);
 
     controller.onCancel = () {
       sub1.cancel();
@@ -159,11 +168,11 @@ class OrignaBaseChatRepository {
       throw OrignaBaseException('User not authenticated');
     }
 
-    await _ob.request('POST', '/api/chat/send', body: {
-      Fields.chatId: chatId,
-      'userId': senderId,
-      'text': text.trim(),
-    });
+    await _ob.request(
+      'POST',
+      '/api/chat/send',
+      body: {Fields.chatId: chatId, Fields.messageText: text.trim()},
+    );
   }
 
   /// Soft-delete a message — sets deleted flag to true.
@@ -172,11 +181,11 @@ class OrignaBaseChatRepository {
     if (userId == null || userId.isEmpty) {
       throw OrignaBaseException('User not authenticated');
     }
-    await _ob.request('POST', '/api/chat/delete-message', body: {
-      Fields.chatId: chatId,
-      Fields.messageId: messageId,
-      'userId': userId,
-    });
+    await _ob.request(
+      'POST',
+      '/api/chat/delete-message',
+      body: {Fields.chatId: chatId, Fields.messageId: messageId},
+    );
   }
 
   /// Mark all unread messages in a chat as read.
@@ -187,10 +196,11 @@ class OrignaBaseChatRepository {
     if (userId == null || userId.isEmpty) {
       throw OrignaBaseException('User not authenticated');
     }
-    await _ob.request('POST', '/api/chat/mark-read', body: {
-      Fields.chatId: chatId,
-      'userId': userId,
-    });
+    await _ob.request(
+      'POST',
+      '/api/chat/mark-read',
+      body: {Fields.chatId: chatId},
+    );
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────
@@ -243,40 +253,49 @@ class OrignaBaseChatRepository {
         .limit(50)
         .get()
         .then((snapshot) {
-      for (final doc in snapshot.docs) {
-        threads[doc.id] = _docToThread(doc);
-      }
-      controller.add(_sortedThreads(threads));
-    }).catchError((Object e, StackTrace st) {
-      AppError.log(e,
-          stackTrace: st, context: 'ob_chat._watchThreads.init');
-      controller.addError(e);
-    });
+          for (final doc in snapshot.docs) {
+            threads[doc.id] = _docToThread(doc);
+          }
+          controller.add(_sortedThreads(threads));
+        })
+        .catchError((Object e, StackTrace st) {
+          AppError.log(
+            e,
+            stackTrace: st,
+            context: 'ob_chat._watchThreads.init',
+          );
+          controller.addError(e);
+        });
 
     // Realtime updates
     final realtime = RealtimeClient(_ob);
     realtime.connect();
-    final sub = realtime.subscribe(Collections.chats).listen(
-      (change) {
-        final doc = change.document;
-        final matchesField = doc.data[field] as String?;
-        if (matchesField != userId) return;
+    final sub = realtime
+        .subscribe(Collections.chats)
+        .listen(
+          (change) {
+            final doc = change.document;
+            final matchesField = doc.data[field] as String?;
+            if (matchesField != userId) return;
 
-        switch (change.type) {
-          case ChangeType.create:
-          case ChangeType.update:
-            threads[doc.id] = _docToThread(doc);
-            controller.add(_sortedThreads(threads));
-          case ChangeType.delete:
-            threads.remove(doc.id);
-            controller.add(_sortedThreads(threads));
-        }
-      },
-      onError: (Object e, StackTrace st) {
-        AppError.log(e,
-            stackTrace: st, context: 'ob_chat._watchThreads.realtime');
-      },
-    );
+            switch (change.type) {
+              case ChangeType.create:
+              case ChangeType.update:
+                threads[doc.id] = _docToThread(doc);
+                controller.add(_sortedThreads(threads));
+              case ChangeType.delete:
+                threads.remove(doc.id);
+                controller.add(_sortedThreads(threads));
+            }
+          },
+          onError: (Object e, StackTrace st) {
+            AppError.log(
+              e,
+              stackTrace: st,
+              context: 'ob_chat._watchThreads.realtime',
+            );
+          },
+        );
 
     controller.onCancel = () {
       sub.cancel();

@@ -137,7 +137,7 @@ python audit/scripts/verify_infra.py --domain firestore
 python audit/scripts/verify_infra.py --domain functions
 python audit/scripts/verify_infra.py --domain secrets
 ```
-**Checks:** Cloud Functions deployed, Firestore rules/indexes, Stripe webhooks, GCP secrets, storage rules, hosting config.
+**Checks:** Cloud Functions deployed, Firestore rules/indexes, Stripe webhooks, GCP secrets, storage rules, VPS/Caddy web hosting.
 
 ### 🧪 QA Engineer Agent
 AI QA specialist — coverage analysis, gap detection, framework recommendations.

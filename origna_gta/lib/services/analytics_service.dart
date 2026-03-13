@@ -18,163 +18,157 @@ class AnalyticsEventItem {
   });
 
   Map<String, dynamic> toJson() => {
-        'item_id': itemId,
-        'item_name': itemName,
-        if (price != null) 'price': price,
-        if (quantity != null) 'quantity': quantity,
-      };
+    'item_id': itemId,
+    'item_name': itemName,
+    if (price != null) 'price': price,
+    if (quantity != null) 'quantity': quantity,
+  };
 }
 
 /// Backward-compatible analytics facade now backed by OrignaBase.
 class AnalyticsService {
-  static final OrignaBaseAnalyticsService _analytics =
-      OrignaBaseAnalyticsService(
-    OrignaBase.initialize(url: envConfig.orignabaseUrl),
-  );
+  static OrignaBaseAnalyticsService? _analytics;
+
+  static bool get _shouldInitializeClient =>
+      envConfig.isProduction || envConfig.shouldUseEmulators;
+
+  static OrignaBaseAnalyticsService get _client {
+    return _analytics ??= OrignaBaseAnalyticsService(
+      OrignaBase.initialize(
+        url: _shouldInitializeClient
+            ? envConfig.orignabaseUrl
+            : 'http://127.0.0.1:0',
+      ),
+    );
+  }
 
   static Future<void> logSignUp({required String method}) =>
-      _analytics.logSignUp(method: method);
+      _client.logSignUp(method: method);
 
   static Future<void> logLogin({required String method}) =>
-      _analytics.logLogin(method: method);
+      _client.logLogin(method: method);
 
   static Future<void> logViewItemList({
     required String listName,
     required List<AnalyticsEventItem> items,
-  }) =>
-      _analytics.logViewItemList(
-        listName: listName,
-        items: items.map((item) => item.toJson()).toList(),
-      );
+  }) => _client.logViewItemList(
+    listName: listName,
+    items: items.map((item) => item.toJson()).toList(),
+  );
 
   static Future<void> logSelectItem({
     required String productId,
     required String productName,
     required double priceCad,
     String listName = '',
-  }) =>
-      _analytics.logSelectItem(
-        productId: productId,
-        productName: productName,
-        priceCad: priceCad,
-        listName: listName,
-      );
+  }) => _client.logSelectItem(
+    productId: productId,
+    productName: productName,
+    priceCad: priceCad,
+    listName: listName,
+  );
 
   static Future<void> logViewItem({
     required String productId,
     required String productName,
     required double priceCad,
-  }) =>
-      _analytics.logViewItem(
-        productId: productId,
-        productName: productName,
-        priceCad: priceCad,
-      );
+  }) => _client.logViewItem(
+    productId: productId,
+    productName: productName,
+    priceCad: priceCad,
+  );
 
   static Future<void> logSearch({required String searchTerm}) =>
-      _analytics.logSearch(searchTerm: searchTerm);
+      _client.logSearch(searchTerm: searchTerm);
 
   static Future<void> logAddToCart({
     required String productId,
     required String productName,
     required double priceCad,
     int quantity = 1,
-  }) =>
-      _analytics.logAddToCart(
-        productId: productId,
-        productName: productName,
-        priceCad: priceCad,
-        quantity: quantity,
-      );
+  }) => _client.logAddToCart(
+    productId: productId,
+    productName: productName,
+    priceCad: priceCad,
+    quantity: quantity,
+  );
 
   static Future<void> logRemoveFromCart({
     required String productId,
     required String productName,
     required double priceCad,
     int quantity = 1,
-  }) =>
-      _analytics.logRemoveFromCart(
-        productId: productId,
-        productName: productName,
-        priceCad: priceCad,
-        quantity: quantity,
-      );
+  }) => _client.logRemoveFromCart(
+    productId: productId,
+    productName: productName,
+    priceCad: priceCad,
+    quantity: quantity,
+  );
 
   static Future<void> logAddToWishlist({
     required String productId,
     required String productName,
     required double priceCad,
-  }) =>
-      _analytics.logAddToWishlist(
-        productId: productId,
-        productName: productName,
-        priceCad: priceCad,
-      );
+  }) => _client.logAddToWishlist(
+    productId: productId,
+    productName: productName,
+    priceCad: priceCad,
+  );
 
   static Future<void> logRemoveFromWishlist({
     required String productId,
     required String productName,
-  }) =>
-      _analytics.logRemoveFromWishlist(
-        productId: productId,
-        productName: productName,
-      );
+  }) => _client.logRemoveFromWishlist(
+    productId: productId,
+    productName: productName,
+  );
 
   static Future<void> logBeginCheckout({
     required double valueCad,
     required int itemCount,
-  }) =>
-      _analytics.logBeginCheckout(valueCad: valueCad, itemCount: itemCount);
+  }) => _client.logBeginCheckout(valueCad: valueCad, itemCount: itemCount);
 
   static Future<void> logAddShippingInfo({
     required double valueCad,
     required double shippingCostCad,
     required String shippingTier,
-  }) =>
-      _analytics.logAddShippingInfo(
-        valueCad: valueCad,
-        shippingCostCad: shippingCostCad,
-        shippingTier: shippingTier,
-      );
+  }) => _client.logAddShippingInfo(
+    valueCad: valueCad,
+    shippingCostCad: shippingCostCad,
+    shippingTier: shippingTier,
+  );
 
   static Future<void> logAddPaymentInfo({
     required double valueCad,
     required String paymentType,
-  }) =>
-      _analytics.logAddPaymentInfo(
-        valueCad: valueCad,
-        paymentType: paymentType,
-      );
+  }) => _client.logAddPaymentInfo(valueCad: valueCad, paymentType: paymentType);
 
   static Future<void> logPurchase({
     required String orderId,
     required double valueCad,
     required int itemCount,
-  }) =>
-      _analytics.logPurchase(
-        orderId: orderId,
-        valueCad: valueCad,
-        itemCount: itemCount,
-      );
+  }) => _client.logPurchase(
+    orderId: orderId,
+    valueCad: valueCad,
+    itemCount: itemCount,
+  );
 
   static Future<void> logRefund({
     required String orderId,
     required double valueCad,
-  }) =>
-      _analytics.logRefund(orderId: orderId, valueCad: valueCad);
+  }) => _client.logRefund(orderId: orderId, valueCad: valueCad);
 
   static Future<void> logSubscriptionStarted({required double priceCad}) =>
-      _analytics.logSubscriptionStarted(priceCad: priceCad);
+      _client.logSubscriptionStarted(priceCad: priceCad);
 
   static Future<void> logSubscriptionCancelled() =>
-      _analytics.logSubscriptionCancelled();
+      _client.logSubscriptionCancelled();
 
   static Future<void> logReviewSubmitted({
     required String productId,
     required double rating,
-  }) =>
-      _analytics.logReviewSubmitted(productId: productId, rating: rating);
+  }) => _client.logReviewSubmitted(productId: productId, rating: rating);
 
   static Future<void> logScreenView({required String screenName}) =>
-      _analytics.logScreenView(screenName: screenName);
+      _client.logScreenView(screenName: screenName);
 }

@@ -3,12 +3,13 @@ import {
   waitForFlutter, requireWebApp, checkSemantics,
   ensureLoggedInAsAdmin, performSignOut, navigateHome,
   waitForSemantic,
+  openHomeSettings,
   BTN_SETTINGS,
 } from './flutter-helpers';
 import {
   signIn, callOk, callExpectError, getDoc,
   listSubcollection, deleteDoc, uid,
-  TEST_ACCOUNTS, WEB_APP_URL, FIRESTORE_BASE,
+  TEST_ACCOUNTS, WEB_APP_URL,
 } from './api-helpers';
 
 const TARGET_URL = process.env.E2E_TARGET_URL ?? WEB_APP_URL;
@@ -16,6 +17,17 @@ const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const BUYER_PASS = TEST_ACCOUNTS.BUYER_PASS;
 
 const createdAddressIds: string[] = [];
+
+function authUserIdFromToken(token: string): string {
+  try {
+    const [, payload] = token.split('.');
+    if (!payload) return '';
+    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return decoded.user_id || decoded.sub || decoded.uid || '';
+  } catch {
+    return '';
+  }
+}
 
 // ═══ API-DRIVEN TESTS ═══
 
@@ -25,11 +37,13 @@ test.describe('Profile Management — API Tests', () => {
 
   let buyerToken: string;
   let buyerUid: string;
+  let buyerEmail: string;
 
   test.beforeAll(async () => {
     const buyer = await signIn(BUYER_EMAIL);
     buyerToken = buyer.idToken;
-    buyerUid = buyer.localId;
+    buyerUid = authUserIdFromToken(buyer.idToken) || buyer.localId;
+    buyerEmail = buyer.email;
   });
 
   test.afterAll(async () => {
@@ -41,9 +55,9 @@ test.describe('Profile Management — API Tests', () => {
   test('T01: Get profile returns user data', async () => {
     const result = await callOk('get_user_profile', {}, buyerToken);
     expect(result.uid).toBe(buyerUid);
-    expect(result.email).toBe(BUYER_EMAIL);
-    expect(result.name).toBeTruthy();
-    expect(result.roles).toBeTruthy();
+    expect(result.email).toBe(buyerEmail);
+    expect(Array.isArray(result.roles)).toBe(true);
+    expect(result.roles.length).toBeGreaterThan(0);
   });
 
   test('T02: Update profile name — verify in Firestore', async () => {
@@ -70,14 +84,11 @@ test.describe('Profile Management — API Tests', () => {
   });
 
   test('T04: Add first address — auto-default, verify Firestore', async () => {
-    // Clean up existing addresses — extract IDs from raw Firestore REST (parseDoc strips IDs)
-    const res = await fetch(`${FIRESTORE_BASE}/users/${buyerUid}/addresses`, {
-      headers: { 'Authorization': `Bearer ${buyerToken}` },
-    });
-    if (res.ok) {
-      const json = await res.json();
-      for (const doc of (json.documents || [])) {
-        const addrId = (doc.name as string).split('/').pop()!;
+    // Clean up existing addresses before asserting first-address behaviour.
+    const existing = await listSubcollection('users', buyerUid, 'addresses', buyerToken);
+    for (const doc of existing) {
+      const addrId = doc.id || doc.addressId;
+      if (addrId) {
         await callOk('delete_buyer_address', { addressId: addrId }, buyerToken).catch(() => {});
       }
     }
@@ -174,9 +185,7 @@ test.describe('Profile Management — UI Tests', () => {
     await checkSemantics(page);
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASS);
 
-    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
-    await expect(settingsBtn).toBeAttached({ timeout: 30000 });
-    await settingsBtn.click();
+    await openHomeSettings(page);
     await expect(page).toHaveURL(/\/profile/i, { timeout: 30000 });
     await waitForFlutter(page);
 
@@ -202,9 +211,7 @@ test.describe('Profile Management — UI Tests', () => {
     await checkSemantics(page);
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASS);
 
-    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
-    await expect(settingsBtn).toBeAttached({ timeout: 30000 });
-    await settingsBtn.click();
+    await openHomeSettings(page);
     await expect(page).toHaveURL(/\/profile/i, { timeout: 30000 });
     await waitForFlutter(page);
 

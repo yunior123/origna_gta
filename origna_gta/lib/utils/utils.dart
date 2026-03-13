@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:origna_gta/core/compat/timestamp.dart';
 import 'package:orignabase/orignabase.dart' show OrignaBaseException;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -245,24 +246,47 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, WidgetRef ref) asy
   return false;
 }
 
+/// Robustly parse a dynamic value (Timestamp, String, DateTime, int) to DateTime?
+/// Handles both seconds and milliseconds for integer input.
+DateTime? parseDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  if (value is Timestamp) return value.toDate();
+  if (value is String) return DateTime.tryParse(value);
+  if (value is int) {
+    // Heuristic: if the value is in a range that looks like seconds for 
+    // recent/near-future dates (2010-2100), treat it as seconds.
+    // 1262304000 is 2010-01-01. 4102444800 is 2100-01-01.
+    if (value >= 1262304000 && value <= 4102444800) {
+      return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+    }
+    // Otherwise assume milliseconds (common in Dart/JS)
+    return DateTime.fromMillisecondsSinceEpoch(value);
+  }
+  try {
+    // Handle legacy or third-party timestamp-like objects
+    final converted = (value as dynamic).toDate();
+    if (converted is DateTime) return converted;
+  } catch (_) {
+    // Ignore objects that do not expose a toDate() method returning DateTime
+  }
+  return null;
+}
+
+/// Helper to convert dynamic date/timestamp to DateTime. Returns [fallback] (default: now) if null.
+DateTime parseDateTimeRequired(dynamic value, [DateTime? fallback]) {
+  return parseDateTime(value) ?? fallback ?? DateTime.now();
+}
+
 /// Helper to convert dynamic date/timestamp to DateTime
 DateTime dynamicToDateTime(dynamic value) {
-  if (value is DateTime) return value;
-  if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
-  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
-  return DateTime.now();
+  return parseDateTimeRequired(value);
 }
 
 /// Convert a dynamic date/timestamp value to DateTime.
 /// Kept for backward compatibility with tests that called the old Timestamp version.
 DateTime dynamicToTimestamp(dynamic value) {
-  if (value is DateTime) return value;
-  if (value is String) {
-    final parsed = DateTime.tryParse(value);
-    if (parsed != null) return parsed;
-  }
-  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
-  return DateTime.now();
+  return parseDateTimeRequired(value);
 }
 
 List<String> generateSearchKeywords(String name) {

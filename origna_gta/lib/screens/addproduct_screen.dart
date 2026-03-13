@@ -76,29 +76,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
+  ProviderSubscription<AddProductState>? _addProductSubscription;
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(addProductViewModelProvider);
     final viewModel = ref.read(addProductViewModelProvider.notifier);
-
-    ref.listen(addProductViewModelProvider, (previous, next) {
-      if (previous?.isSuccess == true) return; // prevent double-fire
-      if (next.isSuccess) {
-        _onSuccess();
-      } else if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            key: const Key('addproduct_error_snackbar'),
-            content: Text(next.errorMessage!),
-            backgroundColor: DesignTokens.error,
-            duration: const Duration(seconds: 5),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    });
 
     final maxWidth = ResponsiveBreakpoints.getValue<double>(context: context, mobile: double.infinity, mobilePlus: 540, tablet: 640, desktop: 720);
 
@@ -763,6 +746,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
   @override
   void dispose() {
+    _addProductSubscription?.close();
     _fadeController.dispose();
     _nameController.dispose();
     _nameFController.dispose();
@@ -805,6 +789,27 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   @override
   void initState() {
     super.initState();
+    _addProductSubscription = ref.listenManual(addProductViewModelProvider, (
+      previous,
+      next,
+    ) {
+      if (!mounted || previous?.isSuccess == true) return;
+      if (next.isSuccess) {
+        _onSuccess();
+      } else if (next.errorMessage != null &&
+          next.errorMessage != previous?.errorMessage) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            key: const Key('addproduct_error_snackbar'),
+            content: Text(next.errorMessage!),
+            backgroundColor: DesignTokens.error,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
     _fadeController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _fadeController.forward();

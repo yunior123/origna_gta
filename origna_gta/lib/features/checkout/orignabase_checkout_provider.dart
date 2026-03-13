@@ -338,7 +338,6 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
           _ref.read(deliveryInstructionsProvider);
 
       final orderData = {
-        Fields.userId: userId,
         Fields.items: items
             .map((item) => {
                   Fields.productId: item.productId,

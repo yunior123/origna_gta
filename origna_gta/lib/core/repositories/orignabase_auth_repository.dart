@@ -5,9 +5,11 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/services/orignabase_notification_service.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'auth_repository.dart';
 
@@ -36,6 +38,7 @@ class OrignaBaseAuthException implements Exception {
 ///
 class OrignaBaseAuthRepository implements AuthRepository {
   final OrignaBase _ob;
+  bool _googleSignInInitialized = false;
 
   OrignaBaseAuthRepository(this._ob);
 
@@ -126,7 +129,77 @@ class OrignaBaseAuthRepository implements AuthRepository {
   @override
   Future<void> signInWithGoogle() async {
     try {
+      if (kIsWeb) {
+        final webClientId = ConfigService().googleWebClientId.trim();
+
+        try {
+          final providers = await _ob.request('GET', '/auth/providers');
+          final google = providers['google'];
+          final enabled = google is Map && google['enabled'] == true;
+          if (enabled) {
+            final redirectTo = Uri.base.replace(fragment: '');
+            final startUrl = Uri.parse(
+              '${_ob.url}/auth/google/start',
+            ).replace(queryParameters: {'redirect_to': redirectTo.toString()});
+            final launched = await launchUrl(
+              startUrl,
+              webOnlyWindowName: '_self',
+            );
+            if (!launched) {
+              throw OrignaBaseAuthException(
+                code: 'operation-not-allowed',
+                message: 'Failed to start Google OAuth flow.',
+              );
+            }
+            return;
+          }
+        } catch (_) {
+          // Older deployed backends still use direct ID token verification.
+        }
+
+        if (webClientId.isEmpty) {
+          throw OrignaBaseAuthException(
+            code: 'operation-not-allowed',
+            message: 'Google OAuth is not configured for web.',
+          );
+        }
+
+        final googleSignIn = GoogleSignIn.instance;
+        if (!_googleSignInInitialized) {
+          await googleSignIn.initialize(
+            clientId: webClientId,
+            serverClientId: webClientId,
+          );
+          _googleSignInInitialized = true;
+        }
+
+        final account = await googleSignIn.authenticate();
+        final idToken = account.authentication.idToken;
+        if (idToken == null) {
+          throw OrignaBaseAuthException(
+            code: 'missing-id-token',
+            message: 'Failed to obtain Google ID token',
+          );
+        }
+
+        final authState = await _ob.auth.signInWithGoogle(idToken);
+
+        if (authState.isAuthenticated && authState.userId != null) {
+          await _createUserDocumentIfNeeded(
+            userId: authState.userId!,
+            email: authState.email ?? account.email,
+            name: account.displayName,
+            consentMethod: ConsentMethodValues.googleOauth,
+          );
+        }
+        return;
+      }
+
       final googleSignIn = GoogleSignIn.instance;
+      if (!_googleSignInInitialized) {
+        await googleSignIn.initialize();
+        _googleSignInInitialized = true;
+      }
       final account = await googleSignIn.authenticate();
       final idToken = account.authentication.idToken;
       if (idToken == null) {
@@ -261,9 +334,14 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
   @override
   Future<bool> isEmailVerified() async {
-    // Refresh the token to get latest auth state from OrignaBase.
-    // OrignaBase embeds email_verified in the JWT claims, so refreshing
-    // the token gives us the up-to-date verification status.
+    // Fast path: trust the current access-token claim when it already says the
+    // user is verified. This avoids hammering /auth/refresh during app boot and
+    // on verification-gated screens.
+    if (_ob.auth.isEmailVerified) {
+      return true;
+    }
+
+    // Otherwise refresh once to pick up any recent verification change.
     try {
       final authState = await _ob.auth.refreshToken();
       if (!authState.isAuthenticated) return false;
@@ -323,10 +401,11 @@ class OrignaBaseAuthRepository implements AuthRepository {
     final userId = _currentUserId;
     if (userId == null || userId.isEmpty) return;
 
-    await _ob.request('POST', '/api/auth/delete-account', body: {
-      'userId': userId,
-      'confirmation': 'DELETE_MY_ACCOUNT',
-    });
+    await _ob.request(
+      'POST',
+      '/api/auth/delete-account',
+      body: {'confirmation': 'DELETE_MY_ACCOUNT'},
+    );
     _ob.auth.signOut();
   }
 
@@ -411,9 +490,21 @@ class OrignaBaseAuthRepository implements AuthRepository {
         return null;
       }
       try {
-        final doc = await _ob.collection(Collections.users).doc(userId).get();
-        if (doc == null || !doc.exists) return null;
-        return UserModel.fromMap({...doc.data, Fields.uid: userId});
+        final response = await _ob.request(
+          'POST',
+          '/api/users/profile/get',
+          body: {'userId': userId},
+        );
+        final data = Map<String, dynamic>.from(response as Map);
+        if (data['success'] != true) return null;
+        final profile = Map<String, dynamic>.from(data)..remove('success');
+        if (profile.isEmpty) return null;
+        profile.putIfAbsent(Fields.uid, () => userId);
+        final address = profile[Fields.address];
+        if (address is Map<String, dynamic>) {
+          profile[Fields.address] = {...address, Fields.userId: userId};
+        }
+        return UserModel.fromMap(profile);
       } catch (e) {
         if (kDebugMode) debugPrint('Error watching profile: $e');
         return null;

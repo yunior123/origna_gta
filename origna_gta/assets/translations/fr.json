@@ -923,6 +923,10 @@
         "delivery_local_free": "Livraison locale gratuite",
         "delivery_free": "Livraison GRATUITE",
         "delivery_intl": "Expédition sous {min}–{max} jours",
+        "delivery_instant": "Livraison instantanée",
+        "delivery_business_days": "{min}–{max} jours ouvrables",
+        "delivery_local_business_days": "{min}–{max} jours ouvrables (local)",
+        "delivery_unknown_origin": "Inconnu",
         "low_stock_alert_subtitle": "Vous serez notifié lorsque ce produit sera de nouveau disponible.",
         "low_stock_threshold": "Stock bas — seulement {count} restant(s)",
         "pick_video_failed": "Impossible de sélectionner la vidéo. Veuillez réessayer.",
@@ -1689,6 +1693,7 @@
         "badge_unlock_premium": "DÉBLOQUER PREMIUM"
     },
     "chat": {
+        "title": "Clavardage",
         "message_copied": "Message copié",
         "empty_state_no_messages": "Aucun message pour le moment. Dites bonjour ! 👋",
         "send_message_cta": "Envoyer un message",

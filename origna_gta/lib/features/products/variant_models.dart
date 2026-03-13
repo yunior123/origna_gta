@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 @immutable
 /// A single product variant combination (e.g. Size=M + Color=Red).
@@ -17,17 +18,17 @@ class ProductVariantEntry {
   factory ProductVariantEntry.fromMap(Map<String, dynamic> map) {
     // Support both old 'price' (float) and new 'priceCents' (int)
     int? priceCents;
-    if (map['priceCents'] != null) {
-      priceCents = (map['priceCents'] as num).toInt();
-    } else if (map['price'] != null) {
-      priceCents = ((map['price'] as num).toDouble() * 100).round();
+    if (map[Fields.priceCents] != null) {
+      priceCents = (map[Fields.priceCents] as num).toInt();
+    } else if (map[Fields.price] != null) {
+      priceCents = ((map[Fields.price] as num).toDouble() * 100).round();
     }
     return ProductVariantEntry(
-      variantId: map['variantId'] as String? ?? '',
-      optionValues: (map['optionValues'] as Map).cast<String, String>(),
+      variantId: map[Fields.variantId] as String? ?? '',
+      optionValues: (map[Fields.optionValues] as Map).cast<String, String>(),
       priceCents: priceCents,
-      stockQuantity: (map['stockQuantity'] as int?) ?? 0,
-      sku: map['sku'] as String?,
+      stockQuantity: (map[Fields.stockQuantity] as int?) ?? 0,
+      sku: map[Fields.variantSku] as String?,
       isActive: (map['isActive'] as bool?) ?? true,
     );
   }
@@ -67,11 +68,11 @@ class ProductVariantEntry {
   }
 
   Map<String, dynamic> toMap() => {
-    'variantId': variantId,
-    'optionValues': optionValues,
-    'priceCents': priceCents,
-    'stockQuantity': stockQuantity,
-    'sku': sku,
+    Fields.variantId: variantId,
+    Fields.optionValues: optionValues,
+    Fields.priceCents: priceCents,
+    Fields.stockQuantity: stockQuantity,
+    Fields.variantSku: sku,
     'isActive': isActive,
   };
 }
@@ -85,7 +86,7 @@ class VariantOption {
   const VariantOption({required this.name, required this.values});
 
   factory VariantOption.fromMap(Map<String, dynamic> map) {
-    return VariantOption(name: map['name'] as String, values: (map['values'] as List).cast<String>());
+    return VariantOption(name: map[Fields.name] as String, values: (map['values'] as List).cast<String>());
   }
 
   @override
@@ -98,5 +99,5 @@ class VariantOption {
     return VariantOption(name: name ?? this.name, values: values ?? this.values);
   }
 
-  Map<String, dynamic> toMap() => {'name': name, 'values': values};
+  Map<String, dynamic> toMap() => {Fields.name: name, 'values': values};
 }

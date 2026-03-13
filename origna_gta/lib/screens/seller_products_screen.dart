@@ -20,11 +20,19 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:shimmer/shimmer.dart';
 
 /// Documentation for SellerProductsScreen
-class SellerProductsScreen extends ConsumerWidget {
+class SellerProductsScreen extends ConsumerStatefulWidget {
   const SellerProductsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SellerProductsScreen> createState() =>
+      _SellerProductsScreenState();
+}
+
+class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
+  ProviderSubscription<SellerProductsState>? _sellerProductsSubscription;
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(userProfileProvider).value;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -38,16 +46,6 @@ class SellerProductsScreen extends ConsumerWidget {
     final productsAsync = ref.watch(sellerProductsProvider);
     final bulkState = ref.watch(sellerProductsViewModelProvider);
     final bulkVm = ref.read(sellerProductsViewModelProvider.notifier);
-
-    // Listen for success/error messages
-    ref.listen(sellerProductsViewModelProvider, (prev, next) {
-      if (next.successMessage != null && next.successMessage != prev?.successMessage) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.successMessage!), backgroundColor: DesignTokens.success));
-      }
-      if (next.errorMessage != null && next.errorMessage != prev?.errorMessage) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error));
-      }
-    });
 
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
@@ -171,6 +169,41 @@ class SellerProductsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _sellerProductsSubscription = ref.listenManual(
+      sellerProductsViewModelProvider,
+      (prev, next) {
+        if (!mounted) return;
+        if (next.successMessage != null &&
+            next.successMessage != prev?.successMessage) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.successMessage!),
+              backgroundColor: DesignTokens.success,
+            ),
+          );
+        }
+        if (next.errorMessage != null &&
+            next.errorMessage != prev?.errorMessage) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.errorMessage!),
+              backgroundColor: DesignTokens.error,
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _sellerProductsSubscription?.close();
+    super.dispose();
   }
 }
 

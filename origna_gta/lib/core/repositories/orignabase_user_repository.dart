@@ -1,12 +1,14 @@
 // coverage:ignore-file
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
     show Collections, Fields, PolicyVersionValues;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:uuid/uuid.dart';
 
 /// OrignaBase implementation of [UserRepository].
 ///
@@ -36,25 +38,20 @@ class OrignaBaseUserRepository implements UserRepository {
     if (userId == null || userId.isEmpty) {
       throw Exception('Not authenticated');
     }
-    final response = await _ob.request(
-      'POST',
-      '/api/users/address/add',
-      body: {
-        Fields.userId: userId,
-        'street': address.street,
-        'city': address.city,
-        'province': address.state,
-        'postalCode': address.postalCode,
-        'country': address.country,
-        'label': address.label,
-        'isDefault': address.isDefault,
-      },
-    );
-    final data = Map<String, dynamic>.from(response as Map);
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Failed to add address');
+    
+    final addressId = const Uuid().v4();
+    final docRef = _ob.collection(Collections.addresses).doc(addressId);
+    
+    await docRef.set({
+      Fields.userId: userId,
+      ..._addressPayload(address),
+    });
+    
+    if (address.isDefault) {
+      await _clearOtherDefaultAddresses(userId, addressId);
     }
-    return data[Fields.addressId] as String? ?? '';
+    
+    return addressId;
   }
 
   @override
@@ -63,14 +60,14 @@ class OrignaBaseUserRepository implements UserRepository {
     if (userId == null || userId.isEmpty) {
       throw Exception('Not authenticated');
     }
-    final response = await _ob.request(
-      'POST',
-      '/api/users/address/delete',
-      body: {Fields.userId: userId, Fields.addressId: addressId},
-    );
-    final data = Map<String, dynamic>.from(response as Map);
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Failed to delete address');
+    
+    final docRef = _ob.collection(Collections.addresses).doc(addressId);
+    final doc = await docRef.get();
+    
+    if (doc != null && doc.exists && doc.data[Fields.userId] == userId) {
+      await docRef.delete();
+    } else {
+      throw Exception('Address not found or unauthorized');
     }
   }
 
@@ -133,14 +130,36 @@ class OrignaBaseUserRepository implements UserRepository {
     if (userId == null || userId.isEmpty) {
       throw Exception('Not authenticated');
     }
-    final response = await _ob.request(
-      'POST',
-      '/api/users/address/set-default',
-      body: {Fields.userId: userId, Fields.addressId: addressId},
-    );
-    final data = Map<String, dynamic>.from(response as Map);
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Failed to set default address');
+    
+    final docRef = _ob.collection(Collections.addresses).doc(addressId);
+    final doc = await docRef.get();
+    
+    if (doc != null && doc.exists && doc.data[Fields.userId] == userId) {
+      await docRef.update({Fields.isDefault: true});
+      await _clearOtherDefaultAddresses(userId, addressId);
+    } else {
+      throw Exception('Address not found or unauthorized');
+    }
+  }
+  
+  Future<void> _clearOtherDefaultAddresses(String userId, String exceptAddressId) async {
+    try {
+      final snapshot = await _ob
+          .collection(Collections.addresses)
+          .where(Fields.userId, isEqualTo: userId)
+          .where(Fields.isDefault, isEqualTo: true)
+          .get();
+          
+      for (final doc in snapshot.docs) {
+        if (doc.id != exceptAddressId) {
+          await _ob.collection(Collections.addresses).doc(doc.id).update({
+            Fields.isDefault: false,
+          });
+        }
+      }
+    } catch (e) {
+      // Best effort to clear other defaults
+      debugPrint('Warning: failed to clear other default addresses: $e');
     }
   }
 
@@ -173,18 +192,17 @@ class OrignaBaseUserRepository implements UserRepository {
     if (userId == null || userId.isEmpty) {
       throw Exception('Not authenticated');
     }
-    final response = await _ob.request(
-      'POST',
-      '/api/users/address/update',
-      body: {
-        Fields.userId: userId,
-        Fields.addressId: addressId,
-        ..._addressPayload(address),
-      },
-    );
-    final data = Map<String, dynamic>.from(response as Map);
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Failed to update address');
+    
+    final docRef = _ob.collection(Collections.addresses).doc(addressId);
+    final doc = await docRef.get();
+    
+    if (doc != null && doc.exists && doc.data[Fields.userId] == userId) {
+      await docRef.update(_addressPayload(address));
+      if (address.isDefault) {
+        await _clearOtherDefaultAddresses(userId, addressId);
+      }
+    } else {
+      throw Exception('Address not found or unauthorized');
     }
   }
 

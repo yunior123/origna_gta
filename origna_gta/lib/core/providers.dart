@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
@@ -12,7 +13,9 @@ import 'package:origna_gta/core/repositories/orignabase_product_repository.dart'
 import 'package:origna_gta/core/repositories/orignabase_user_repository.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';
+import 'package:origna_gta/services/orignabase_conf_service.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:orignabase/orignabase.dart';
@@ -21,6 +24,26 @@ class AppAuthProviderInfo {
   final String providerId;
 
   const AppAuthProviderInfo(this.providerId);
+}
+
+class PublicAuthProviderAvailability {
+  final bool enabled;
+  final bool clientIdConfigured;
+  final bool clientSecretConfigured;
+
+  const PublicAuthProviderAvailability({
+    required this.enabled,
+    required this.clientIdConfigured,
+    required this.clientSecretConfigured,
+  });
+
+  factory PublicAuthProviderAvailability.fromJson(Map<String, dynamic>? json) {
+    return PublicAuthProviderAvailability(
+      enabled: json?['enabled'] == true,
+      clientIdConfigured: json?['client_id_configured'] == true,
+      clientSecretConfigured: json?['client_secret_configured'] == true,
+    );
+  }
 }
 
 class AppAuthUser {
@@ -40,6 +63,7 @@ class AppAuthUser {
     return AppAuthUser(
       uid: state.userId ?? '',
       email: state.email,
+      emailVerified: state.emailVerified,
     );
   }
 
@@ -88,6 +112,18 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
 
 final authStateProvider = StreamProvider<AppAuthUser?>((ref) async* {
   final ob = ref.watch(orignabaseProvider);
+  final initialState = ob.auth.currentState;
+  if (initialState.isAuthenticated && initialState.userId != null) {
+    var user = AppAuthUser.fromAuthState(initialState);
+    try {
+      final verified = await ref.read(authRepositoryProvider).isEmailVerified();
+      user = user.copyWith(emailVerified: verified);
+    } catch (_) {}
+    yield user;
+  } else {
+    yield null;
+  }
+
   await for (final state in ob.auth.authStateChanges) {
     if (!state.isAuthenticated || state.userId == null) {
       yield null;
@@ -102,6 +138,39 @@ final authStateProvider = StreamProvider<AppAuthUser?>((ref) async* {
     yield user;
   }
 });
+
+final googleAuthAvailabilityProvider =
+    FutureProvider<PublicAuthProviderAvailability>((ref) async {
+      if (!kIsWeb) {
+        return const PublicAuthProviderAvailability(
+          enabled: true,
+          clientIdConfigured: true,
+          clientSecretConfigured: true,
+        );
+      }
+
+      final ob = ref.watch(orignabaseProvider);
+      try {
+        final response = await ob.request('GET', '/auth/providers');
+        final google = response['google'];
+        return PublicAuthProviderAvailability.fromJson(
+          google is Map<String, dynamic>
+              ? google
+              : google is Map
+              ? google.map((key, value) => MapEntry(key.toString(), value))
+              : null,
+        );
+      } catch (_) {
+        final clientId = (await OrignaBaseConfigService().getString(
+          RemoteConfigKeys.googleWebClientId,
+        )).trim();
+        return PublicAuthProviderAvailability(
+          enabled: clientId.isNotEmpty,
+          clientIdConfigured: clientId.isNotEmpty,
+          clientSecretConfigured: false,
+        );
+      }
+    });
 
 final currentUserProvider = Provider<AppAuthUser?>(
   (ref) => ref.watch(authStateProvider).valueOrNull,

@@ -28,7 +28,7 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
 
   try {
     final ob = ref.read(orignabaseProvider);
-    final result = await ob.request('POST', '/api/connect/status', body: {'userId': uid});
+    final result = await ob.request('POST', '/api/connect/status', body: {});
     final data = Map<String, dynamic>.from(result as Map);
 
     final chargesEnabled = data[Fields.chargesEnabled] == true;
