@@ -28,9 +28,11 @@ api.orignagta.ca {
 	import api_security_headers
 	encode zstd gzip
 
+	@cors_allowed header_regexp Origin ^https://(www|dev|staging)\.orignagta\.ca$
+
 	@preflight method OPTIONS
 	handle @preflight {
-		header Access-Control-Allow-Origin "https://www.orignagta.ca"
+		header Access-Control-Allow-Origin "{http.request.header.Origin}"
 		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 		header Access-Control-Allow-Headers "Authorization, Content-Type, Origin, Accept, X-Requested-With"
 		header Access-Control-Allow-Credentials "true"
@@ -38,22 +40,48 @@ api.orignagta.ca {
 		respond "" 204
 	}
 
-	header {
-		Access-Control-Allow-Origin "https://www.orignagta.ca"
-		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-		Access-Control-Allow-Headers "Authorization, Content-Type, Origin, Accept, X-Requested-With"
-		Access-Control-Allow-Credentials "true"
-		Vary "Origin"
+	handle @cors_allowed {
+		header Access-Control-Allow-Origin "{http.request.header.Origin}"
+		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		header Access-Control-Allow-Headers "Authorization, Content-Type, Origin, Accept, X-Requested-With"
+		header Access-Control-Allow-Credentials "true"
+		header Vary "Origin"
+		reverse_proxy orignabase:8080 {
+			header_down -Access-Control-Allow-Origin
+			header_down -Access-Control-Allow-Methods
+			header_down -Access-Control-Allow-Headers
+			header_down -Access-Control-Allow-Credentials
+			header_down -Access-Control-Max-Age
+			header_down -Vary
+		}
 	}
 
-	reverse_proxy localhost:8080
+	reverse_proxy orignabase:8080
 }
 
 orignagta.ca, www.orignagta.ca {
 	import site_security_headers
 	encode zstd gzip
 
-	root * /var/www/orignagta/current
+	root * /var/www/orignagta/production/current
+	try_files {path} {path}/ /index.html
+	file_server
+}
+
+dev.orignagta.ca {
+	import site_security_headers
+	encode zstd gzip
+
+	root * /var/www/orignagta/dev/current
+	try_files {path} {path}/ /index.html
+	file_server
+}
+
+staging.orignagta.ca {
+	import site_security_headers
+	encode zstd gzip
+
+	root * /var/www/orignagta/staging/current
 	try_files {path} {path}/ /index.html
 	file_server
 }
