@@ -2,8 +2,6 @@
 
 This repo contains:
 - Flutter app: origna_gta
-- Hosting/config artifacts at the repo root
-- Legacy backend/tests under `functions/` are not part of the active Flutter runtime path
 
 ## Backend contract
 - `orignabaseUrl` is the only primary backend for auth, data, and business logic in the active app path.
@@ -60,8 +58,6 @@ sequenceDiagram
 - Flutter analyze: (cd origna_gta) flutter analyze
 - Flutter tests: (cd origna_gta) flutter test
 - Playwright coverage target: (cd e2e) E2E_SKIP_GLOBAL_SETUP=true npx playwright test playwright_ui/coverage-gate.spec.ts --config=playwright.config.dev.ts --project=chromium
-- Functions tests: (cd functions) pytest
-- Configure Algolia index: Call `configure_algolia` Cloud Function (admin only)
 
 ## Flutter integration tests
 ```bash
@@ -139,27 +135,6 @@ Coverage-specific gate files:
 - `e2e/playwright_ui/coverage_gate.ts`
 - `e2e/playwright.config.dev.ts` skips `global-setup.ts` when `E2E_SKIP_GLOBAL_SETUP=true`, which keeps the coverage-only Playwright gate off the legacy Firebase-auth prewarm path.
 
-## origna_flows/ — AI Flow Context Bundles
-
-Source and test files bundled for Claude.ai per-flow auditing.
-
-```bash
-python3 scripts/collect_flow_files.py
-# → ~/Desktop/origna_flows/<flow_name>/  (62 flows, ≤20 files each)
-```
-
-| Type | Count | Purpose |
-|------|-------|---------|
-| Audit flows (`checkout_payment`, `security`, …) | 35 | Drop into Claude.ai → audit source code |
-| Test flows (`test_stripe_payment`, …) | 27 | Drop into Claude.ai → audit/extend E2E tests |
-
-Each test flow: spec file + `api-helpers.ts` + `flutter-helpers.ts` + `origna_flows/SEMANTICS.md` + supporting source.
-
-Repo docs (`origna_flows/`):
-- `SEMANTICS.md` — Flutter Key/label/role map for every screen
-- `FLOWS.md` — 15 user journeys with step-by-step test assertions
-- `INSTRUCTIONS.md` — Playwright patterns, selectors, coverage gaps, environments
-
 
 ## Flutter Web performance (release checklist)
 - Measure in profile mode:
@@ -173,23 +148,8 @@ Repo docs (`origna_flows/`):
   - large images (ensure resize/compress, cache headers)
   - expensive JSON parsing on UI thread (move to isolates if needed)
 
-## Search Architecture (Algolia)
-- **Primary Search**: Algolia for fast, typo-tolerant product search
-- **Fallback**: OrignaBase-backed keyword search if Algolia is unavailable
-- **Auto-Indexing**: Products are synced by backend services, not by the Flutter runtime
-- **Credentials**: Stored in backend-managed secrets/config, not in the Flutter runtime
-  - `ALGOLIA_APP_ID` (public)
-  - `ALGOLIA_SEARCH_API_KEY` (search-only, frontend-safe)
-  - `ALGOLIA_WRITE_API_KEY` (backend-only)
+## Search Architecture 
 
-**Algolia Features**:
-- Instant search with debouncing (500ms)
-- Category filtering
-- Searchable attributes: name, description, keywords
-- Firestore field name: keywords (array) for both Algolia and fallback
-- Custom ranking: rating → ratingCount → createdAt
-- Highlighting enabled
-- 20 results per page
 
 **Setup**:
 1. Add keys to the backend environment/config
@@ -205,7 +165,6 @@ Repo docs (`origna_flows/`):
 - **Development**: `flutter run -d chrome --dart-define=ENVIRONMENT=dev`
 - **Staging**: `flutter run -d chrome --dart-define=ENVIRONMENT=staging`
 - **Production**: `flutter run -d chrome --dart-define=ENVIRONMENT=production` (Default)
-- **Emulators**: `flutter run -d chrome --dart-define=ENVIRONMENT=emulator`
 
 ### Deployment
 Web hosting is now on Hetzner VPS (Caddy + staged releases in /var/www/orignagta/{env}/releases/<ts> with current symlink). Firebase hosting disabled.

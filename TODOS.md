@@ -6,4 +6,5 @@
 6. add more products to dev.orignagta.ca for testing, there should be about 2000 so that we can test filters for every category or subcategory, scrolling, loading products on demand, etc.
 7. now that we dont have the limitations of single page app of firebase we can now handle privacy policy and terms of service without html right? instead of opening a new tab we can handle it with the routes right?
 8. right now it shows: impossible the charger les avis. is that an error?. Also: in dev make sure to populate some products with avis and also questions and answers.
-9. 
+9. update tasks.json , settings.json, launch.json
+10. update hooks, all
