@@ -27,9 +27,3 @@
 1. Ensure all new UI strings have French (Quebec) translations.
 2. Run `flutter analyze` to check for style violations.
 3. Verify logic with at least one new unit/widget test.
-4. Check `origna_flows/SEMANTICS.md` for ARIA keys in new screens.
-
-## Avoid These Pitfalls
-- Do not use `SetState` in complex screens; use Riverpod.
-- Never hardcode API keys or URLs; use `--dart-define`.
-- Avoid "fat" ViewModels; decompose into smaller providers if needed.
