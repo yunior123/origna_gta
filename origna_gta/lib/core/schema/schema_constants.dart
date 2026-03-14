@@ -535,7 +535,7 @@ abstract final class Documents {
 
 /// Email and CASL compliance constants — Dart mirror of Python EmailConfig
 abstract final class EmailConfig {
-  static const supportEmail = 'support@orignaventures.ca';
+  static const supportEmail = 'support@orignagta.ca';
   static const senderName = 'Origna GTA';
   static const copyrightText = '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
   static const appTagline = "Canada's Modern Marketplace";

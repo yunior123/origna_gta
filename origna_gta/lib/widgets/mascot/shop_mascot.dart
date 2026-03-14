@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Documentation for MascotController
@@ -560,7 +561,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                   onTap: () => _launchUrl(
                     Uri(
                       scheme: 'mailto',
-                      path: 'support@orignaventures.ca',
+                      path: EmailConfig.supportEmail,
                       queryParameters: {'subject': 'Support Request - Origna GTA App', 'body': 'Hello Origna GTA Support Team,\n\n'},
                     ),
                   ),
@@ -573,7 +574,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                         Icon(Icons.email_outlined, color: DesignTokens.primary, size: 20),
                         const SizedBox(width: 12),
                         Text(
-                          'support@orignaventures.ca',
+                          EmailConfig.supportEmail,
                           style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -588,7 +589,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => _launchUrl(Uri.parse('https://orignaventures.ca')),
+                  onTap: () => _launchUrl(Uri.parse(EmailConfig.prodUrl)),
                   borderRadius: BorderRadius.circular(12),
                   splashColor: DesignTokens.primary.withValues(alpha: 0.1),
                   child: Padding(
@@ -598,7 +599,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                         Icon(Icons.language, color: DesignTokens.primary, size: 20),
                         const SizedBox(width: 12),
                         Text(
-                          'orignaventures.ca',
+                          'orignagta.ca',
                           style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
                         ),
                       ],

@@ -172,10 +172,15 @@ class OrignaBaseProductRepository implements ProductRepository {
         );
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
-      query = query.where(
-        Fields.keywords,
-        contains: searchQuery.toLowerCase().trim(),
-      );
+      final words = searchQuery.toLowerCase().trim().split(RegExp(r'\s+'));
+      for (final word in words) {
+        if (word.isNotEmpty) {
+          query = query.where(
+            Fields.keywords,
+            contains: word,
+          );
+        }
+      }
     }
 
     if (categoryId != null) {

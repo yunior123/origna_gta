@@ -75,25 +75,38 @@ class LoginScreenLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    Widget content = Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [DesignTokens.surface, DesignTokens.surface]
-                : [
-                    DesignTokens.primary.withValues(alpha: 0.05),
-                    DesignTokens.secondary.withValues(alpha: 0.05),
-                  ],
+    Widget content = PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+              AppRoutes.home, (route) => false);
+        }
+      },
+      child: Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [DesignTokens.surface, DesignTokens.surface]
+                  : [
+                      DesignTokens.primary.withValues(alpha: 0.05),
+                      DesignTokens.secondary.withValues(alpha: 0.05),
+                    ],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (_, constraints) {
-              final isDesktop = constraints.maxWidth >= 900;
-              final formPanel = SingleChildScrollView(
+          child: SafeArea(
+            child: Stack(
+              children: [
+                LayoutBuilder(
+                  builder: (_, constraints) {
+                    final isDesktop = constraints.maxWidth >= 900;
+                    final formPanel = SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: DesignTokens.spacing20,
                   vertical: DesignTokens.spacing24,
@@ -600,9 +613,30 @@ class LoginScreenLayout extends StatelessWidget {
               );
             },
           ),
-        ),
+          Positioned(
+            top: 4,
+            left: 4,
+            child: Semantics(
+              label: 'btn-back-to-home',
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: DesignTokens.textPrimary),
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                        AppRoutes.home, (route) => false);
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
       ),
-    );
+    ),
+  ),
+),
+);
 
     if (fadeAnimation != null && slideAnimation != null) {
       return FadeTransition(

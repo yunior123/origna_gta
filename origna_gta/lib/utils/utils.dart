@@ -357,29 +357,16 @@ bool isValidTaxCode(String? taxCode) {
   return RegExp(r'^txcd_\d{8}$').hasMatch(value);
 }
 
-/// Opens Privacy Policy page
-/// On web: navigates to /privacy-policy URL (required for OAuth verification)
-/// On mobile: shows in-app screen
+/// Opens Privacy Policy page in-app on all platforms.
 void openPrivacyPolicy(BuildContext context) {
-  if (kIsWeb) {
-    // Navigate to actual URL for OAuth compliance
-    _launchPath(AppRoutes.privacyPolicy);
-  } else {
-    Navigator.pushNamed(context, AppRoutes.privacyPolicy);
-  }
+  Navigator.pushNamed(context, AppRoutes.privacyPolicy);
 }
 
-/// Opens Terms of Service page
-/// On web: navigates to /terms-of-service URL (required for OAuth verification)
-/// On mobile: shows in-app screen
+/// Opens Terms of Service page in-app on all platforms.
 void openTermsOfService(BuildContext context) {
-  if (kIsWeb) {
-    // Navigate to actual URL for OAuth compliance
-    _launchPath(AppRoutes.termsOfService);
-  } else {
-    Navigator.pushNamed(context, AppRoutes.termsOfService);
-  }
+  Navigator.pushNamed(context, AppRoutes.termsOfService);
 }
+
 
 AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
   final props = suggestion['properties'] ?? {};

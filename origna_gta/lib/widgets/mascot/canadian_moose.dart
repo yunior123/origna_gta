@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Documentation for CanadianMoose
@@ -493,14 +494,14 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
   Future<void> _launchSupportEmail() async {
     final Uri emailUri = Uri(
       scheme: 'mailto',
-      path: 'support@orignaventures.ca',
+      path: EmailConfig.supportEmail,
       queryParameters: {'subject': 'Support Request - Origna GTA App', 'body': 'Hello Origna GTA Support Team,\n\n'},
     );
     try {
       if (await canLaunchUrl(emailUri)) {
         await launchUrl(emailUri);
       } else {
-        await launchUrl(Uri.parse('mailto:support@orignaventures.ca'));
+        await launchUrl(Uri.parse('mailto:${EmailConfig.supportEmail}'));
       }
     } catch (e) {
       debugPrint('Could not launch email: $e');

@@ -160,26 +160,31 @@ class DesignTokens {
 /// Glassmorphism Container Helper
 class GlassContainer extends StatelessWidget {
   final Widget child;
-  final Color color;
-  final double opacity;
+  final Color? color;
+  final double? opacity;
   final double blur;
   final BorderRadius borderRadius;
-  final List<BoxShadow> shadows;
+  final List<BoxShadow>? shadows;
   final EdgeInsets padding;
 
   const GlassContainer({
     super.key,
     required this.child,
-    this.color = const Color(0xFFFFFFFF),
-    this.opacity = DesignTokens.glassOpacity,
+    this.color,
+    this.opacity,
     this.blur = DesignTokens.gloopBlur,
     this.borderRadius = const BorderRadius.all(Radius.circular(DesignTokens.radius16)),
-    this.shadows = DesignTokens.shadowMd,
+    this.shadows,
     this.padding = const EdgeInsets.all(DesignTokens.spacing16),
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final resolvedColor = color ?? (isDark ? DesignTokens.darkCard : DesignTokens.surfaceVariant);
+    final resolvedOpacity = opacity ?? (isDark ? 0.7 : 0.92);
+    final resolvedShadows = shadows ?? (isDark ? [const BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))] : DesignTokens.shadowMd);
+
     return ClipRRect(
       borderRadius: borderRadius,
       child: BackdropFilter(
@@ -187,10 +192,13 @@ class GlassContainer extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: opacity),
+            color: resolvedColor.withValues(alpha: resolvedOpacity),
             borderRadius: borderRadius,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
-            boxShadow: shadows,
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.4), 
+              width: 1.5
+            ),
+            boxShadow: resolvedShadows,
           ),
           child: child,
         ),

@@ -92,7 +92,7 @@ These Terms are governed by the laws of Ontario, Canada. Any disputes shall be r
 14. CONTACT US
 
 For questions about these Terms, please contact us at:
-Email: support@orignaventures.ca
+Email: support@orignagta.ca
 
 By using OrignaGTA, you acknowledge that you have read and understood these Terms and Conditions and agree to be bound by them.
 ''';

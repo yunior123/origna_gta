@@ -682,7 +682,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 automaticallyImplyLeading: false,
                 pinned: true,
                 floating: true,
-                expandedHeight: 340,
+                expandedHeight: (MediaQuery.of(context).size.height * 0.40).clamp(280.0, 420.0),
                 backgroundColor: isDark
                     ? DesignTokens.darkSurface
                     : Colors.white,

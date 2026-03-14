@@ -801,6 +801,16 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
                   width: 2,
                 ),
               ),
+              labelStyle: const TextStyle(
+                color: DesignTokens.textSecondary,
+              ),
+              hintStyle: const TextStyle(
+                color: DesignTokens.textSecondary,
+              ),
+            ),
+            textSelectionTheme: const TextSelectionThemeData(
+              cursorColor: DesignTokens.primary,
+              selectionHandleColor: DesignTokens.primary,
             ),
             cardTheme: CardThemeData(
               elevation: 0,

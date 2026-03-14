@@ -276,31 +276,59 @@ class HomeViewModel extends StateNotifier<HomeState> {
   }
 
   void onSearchChanged(String value) {
-    // Update suggestions in parallel while debouncing the full search
+    // Update suggestions in parallel
     _fetchSuggestions(value);
 
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      state = state.copyWith(
-        searchQuery: value,
-        products: [],
-        lastDocumentId: null,
-        hasMore: true,
-        isLoading: false,
-        isLoadingMore: false,
-        errorMessage: null,
-      );
-      loadProducts();
-    });
+
+    if (value.trim().isEmpty) {
+      _debounce = Timer(const Duration(milliseconds: 300), () {
+        if (!mounted) return;
+        state = state.copyWith(
+          searchQuery: '',
+          products: [],
+          lastDocumentId: null,
+          hasMore: true,
+          isLoading: false,
+          isLoadingMore: false,
+          errorMessage: null,
+        );
+        loadProducts();
+      });
+    } else {
+      // Debounce product grid update while typing (500ms)
+      _debounce = Timer(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        state = state.copyWith(
+          searchQuery: value.trim(),
+          products: [],
+          lastDocumentId: null,
+          hasMore: true,
+          isLoading: false,
+          isLoadingMore: false,
+          errorMessage: null,
+        );
+        loadProducts();
+      });
+    }
   }
 
-  /// Called when user confirms a search (submits or taps suggestion).
   void onSearchSubmitted(String value) {
     if (value.trim().isEmpty) return;
     dismissSearchOverlay();
     addRecentSearch(value);
-    onSearchChanged(value);
+
+    if (!mounted) return;
+    state = state.copyWith(
+      searchQuery: value,
+      products: [],
+      lastDocumentId: null,
+      hasMore: true,
+      isLoading: false,
+      isLoadingMore: false,
+      errorMessage: null,
+    );
+    loadProducts();
   }
 
   Future<void> refresh() async {
