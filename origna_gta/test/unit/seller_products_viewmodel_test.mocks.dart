@@ -3,21 +3,22 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i16;
+import 'dart:async' as _i17;
 
 import 'package:http/http.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i15;
+import 'package:mockito/src/dummies.dart' as _i16;
 import 'package:orignabase/src/auth.dart' as _i3;
-import 'package:orignabase/src/batch.dart' as _i13;
-import 'package:orignabase/src/client.dart' as _i14;
-import 'package:orignabase/src/collection.dart' as _i12;
+import 'package:orignabase/src/batch.dart' as _i14;
+import 'package:orignabase/src/client.dart' as _i15;
+import 'package:orignabase/src/collection.dart' as _i13;
 import 'package:orignabase/src/config.dart' as _i6;
 import 'package:orignabase/src/links.dart' as _i8;
 import 'package:orignabase/src/metrics.dart' as _i10;
 import 'package:orignabase/src/offline.dart' as _i5;
 import 'package:orignabase/src/presence.dart' as _i7;
 import 'package:orignabase/src/push.dart' as _i9;
+import 'package:orignabase/src/realtime.dart' as _i12;
 import 'package:orignabase/src/storage.dart' as _i4;
 import 'package:orignabase/src/vector.dart' as _i11;
 
@@ -93,27 +94,33 @@ class _FakeVectorSearch_9 extends _i1.SmartFake implements _i11.VectorSearch {
     : super(parent, parentInvocation);
 }
 
-class _FakeCollectionRef_10 extends _i1.SmartFake
-    implements _i12.CollectionRef {
-  _FakeCollectionRef_10(Object parent, Invocation parentInvocation)
+class _FakeRealtimeClient_10 extends _i1.SmartFake
+    implements _i12.RealtimeClient {
+  _FakeRealtimeClient_10(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeWriteBatch_11 extends _i1.SmartFake implements _i13.WriteBatch {
-  _FakeWriteBatch_11(Object parent, Invocation parentInvocation)
+class _FakeCollectionRef_11 extends _i1.SmartFake
+    implements _i13.CollectionRef {
+  _FakeCollectionRef_11(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeWriteBatch_12 extends _i1.SmartFake implements _i14.WriteBatch {
+  _FakeWriteBatch_12(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
 /// A class which mocks [OrignaBase].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
+class MockOrignaBase extends _i1.Mock implements _i15.OrignaBase {
   @override
   String get url =>
       (super.noSuchMethod(
             Invocation.getter(#url),
-            returnValue: _i15.dummyValue<String>(this, Invocation.getter(#url)),
-            returnValueForMissingStub: _i15.dummyValue<String>(
+            returnValue: _i16.dummyValue<String>(this, Invocation.getter(#url)),
+            returnValueForMissingStub: _i16.dummyValue<String>(
               this,
               Invocation.getter(#url),
             ),
@@ -259,6 +266,21 @@ class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
           as _i11.VectorSearch);
 
   @override
+  _i12.RealtimeClient get realtime =>
+      (super.noSuchMethod(
+            Invocation.getter(#realtime),
+            returnValue: _FakeRealtimeClient_10(
+              this,
+              Invocation.getter(#realtime),
+            ),
+            returnValueForMissingStub: _FakeRealtimeClient_10(
+              this,
+              Invocation.getter(#realtime),
+            ),
+          )
+          as _i12.RealtimeClient);
+
+  @override
   set auth(_i3.OrignaBaseAuth? value) => super.noSuchMethod(
     Invocation.setter(#auth, value),
     returnValueForMissingStub: null,
@@ -313,53 +335,53 @@ class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
   );
 
   @override
-  _i12.CollectionRef collection(String? name) =>
+  _i13.CollectionRef collection(String? name) =>
       (super.noSuchMethod(
             Invocation.method(#collection, [name]),
-            returnValue: _FakeCollectionRef_10(
+            returnValue: _FakeCollectionRef_11(
               this,
               Invocation.method(#collection, [name]),
             ),
-            returnValueForMissingStub: _FakeCollectionRef_10(
+            returnValueForMissingStub: _FakeCollectionRef_11(
               this,
               Invocation.method(#collection, [name]),
             ),
           )
-          as _i12.CollectionRef);
+          as _i13.CollectionRef);
 
   @override
-  _i13.WriteBatch batch() =>
+  _i14.WriteBatch batch() =>
       (super.noSuchMethod(
             Invocation.method(#batch, []),
-            returnValue: _FakeWriteBatch_11(
+            returnValue: _FakeWriteBatch_12(
               this,
               Invocation.method(#batch, []),
             ),
-            returnValueForMissingStub: _FakeWriteBatch_11(
+            returnValueForMissingStub: _FakeWriteBatch_12(
               this,
               Invocation.method(#batch, []),
             ),
           )
-          as _i13.WriteBatch);
+          as _i14.WriteBatch);
 
   @override
-  _i16.Future<Map<String, dynamic>> graphql(
+  _i17.Future<Map<String, dynamic>> graphql(
     String? query, {
     Map<String, dynamic>? variables,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#graphql, [query], {#variables: variables}),
-            returnValue: _i16.Future<Map<String, dynamic>>.value(
+            returnValue: _i17.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i16.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i17.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i16.Future<Map<String, dynamic>>);
+          as _i17.Future<Map<String, dynamic>>);
 
   @override
-  _i16.Future<Map<String, dynamic>> request(
+  _i17.Future<Map<String, dynamic>> request(
     String? method,
     String? path, {
     Map<String, dynamic>? body,
@@ -371,17 +393,17 @@ class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
               [method, path],
               {#body: body, #headers: headers},
             ),
-            returnValue: _i16.Future<Map<String, dynamic>>.value(
+            returnValue: _i17.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i16.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i17.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i16.Future<Map<String, dynamic>>);
+          as _i17.Future<Map<String, dynamic>>);
 
   @override
-  _i16.Future<Map<String, dynamic>> search(
+  _i17.Future<Map<String, dynamic>> search(
     String? index,
     String? query, {
     int? limit,
@@ -394,14 +416,14 @@ class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
               [index, query],
               {#limit: limit, #offset: offset, #filter: filter},
             ),
-            returnValue: _i16.Future<Map<String, dynamic>>.value(
+            returnValue: _i17.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i16.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i17.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i16.Future<Map<String, dynamic>>);
+          as _i17.Future<Map<String, dynamic>>);
 
   @override
   void dispose() => super.noSuchMethod(

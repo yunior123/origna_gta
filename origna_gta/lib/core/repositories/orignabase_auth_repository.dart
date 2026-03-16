@@ -463,35 +463,43 @@ class OrignaBaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Stream<UserModel?> watchProfile(String userId) {
-    // OrignaBase doesn't have real-time snapshots natively.
-    // Use a polling stream or the OrignaBase realtime subscription if available.
-    // For now, use auth state changes to trigger profile reloads.
-    return _ob.auth.authStateChanges.asyncMap((authState) async {
-      if (!authState.isAuthenticated || authState.userId != userId) {
-        return null;
+  Stream<UserModel?> watchProfile(String userId) async* {
+    // Emit immediately from the current auth state so the provider resolves
+    // on page reload (localStorage restore does NOT fire authStateChanges).
+    yield await _fetchProfileForAuthState(userId, _ob.auth.currentState);
+    // Continue emitting on subsequent auth state changes (login/logout/refresh).
+    await for (final authState in _ob.auth.authStateChanges) {
+      yield await _fetchProfileForAuthState(userId, authState);
+    }
+  }
+
+  Future<UserModel?> _fetchProfileForAuthState(
+    String userId,
+    AuthState authState,
+  ) async {
+    if (!authState.isAuthenticated || authState.userId != userId) {
+      return null;
+    }
+    try {
+      final response = await _ob.request(
+        'POST',
+        ApiEndpoints.usersProfileGet,
+        body: {'userId': userId},
+      );
+      final data = Map<String, dynamic>.from(response as Map);
+      if (data['success'] != true) return null;
+      final profile = Map<String, dynamic>.from(data)..remove('success');
+      if (profile.isEmpty) return null;
+      profile.putIfAbsent(Fields.uid, () => userId);
+      final address = profile[Fields.address];
+      if (address is Map<String, dynamic>) {
+        profile[Fields.address] = {...address, Fields.userId: userId};
       }
-      try {
-        final response = await _ob.request(
-          'POST',
-          ApiEndpoints.usersProfileGet,
-          body: {'userId': userId},
-        );
-        final data = Map<String, dynamic>.from(response as Map);
-        if (data['success'] != true) return null;
-        final profile = Map<String, dynamic>.from(data)..remove('success');
-        if (profile.isEmpty) return null;
-        profile.putIfAbsent(Fields.uid, () => userId);
-        final address = profile[Fields.address];
-        if (address is Map<String, dynamic>) {
-          profile[Fields.address] = {...address, Fields.userId: userId};
-        }
-        return UserModel.fromMap(profile);
-      } catch (e) {
-        if (kDebugMode) debugPrint('Error watching profile: $e');
-        return null;
-      }
-    });
+      return UserModel.fromMap(profile);
+    } catch (e) {
+      if (kDebugMode) debugPrint('Error watching profile: $e');
+      return null;
+    }
   }
 
   // ---------------------------------------------------------------------------

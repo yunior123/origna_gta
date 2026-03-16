@@ -1401,6 +1401,16 @@ export async function callCallable(fn: string, data: any, token: string, timeout
         return { path: '/api/warehouses/update', body: { userId, warehouseId: payload?.warehouseId, ...payload } };
       case 'upload_product_images':
         return { path: '/api/products/upload-images', body: { userId, productId: payload?.productId, imageUrls: payload?.imageUrls } };
+      case 'add_to_cart':
+        return { path: '/api/cart/add', body: { userId, productId: payload?.productId, quantity: payload?.quantity ?? 1 } };
+      case 'remove_from_cart':
+        return { path: '/api/cart/remove', body: { userId, productId: payload?.productId } };
+      case 'get_cart':
+        return { path: '/api/cart/get', body: { userId } };
+      case 'clear_cart':
+        return { path: '/api/cart/clear', body: { userId } };
+      case 'update_cart_quantity':
+        return { path: '/api/cart/update', body: { userId, productId: payload?.productId, quantity: payload?.quantity } };
       case 'verify_cart_prices':
         return { path: '/api/cart/verify-prices', body: { userId, cartItems: payload?.cartItems } };
       case 'verify_license':
@@ -2200,17 +2210,35 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
   if (_cachedProducts) return _cachedProducts;
 
   if (useOrignaBaseAuth()) {
-    _cachedProducts = await Promise.all([
-      createDummyProduct(TEST_UIDS.ADMIN, 'A'),
-      createDummyProduct(TEST_UIDS.SELLER, 'B'),
-      createDummyProduct(TEST_UIDS.SELLER, 'C', undefined, {
-        street: 'Nanjing Rd',
-        city: 'Shanghai',
-        state: 'SH',
-        postalCode: '200001',
-        country: 'China',
-      }),
-    ]);
+    // Check if stable test products already exist before creating new ones.
+    // createDummyProduct calls create_product_atomic every time which hits rate limits.
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+    const obProducts: DiscoveredProduct[] = [];
+    for (const { id, sellerUid, prefix, country } of STABLE_TEST_PRODUCTS) {
+      let product: DiscoveredProduct | null = null;
+      try {
+        const fields = await getDoc(`products/${id}`, adminAuth.idToken);
+        if (fields && (fields.lifecycleStatus === 'active' || fields.status === 'active') && (fields.stockQuantity ?? 0) > 0) {
+          product = {
+            id,
+            name: fields.name || `E2E Product ${prefix}`,
+            price: fields.priceCents ? fields.priceCents / 100 : (fields.price ?? 0),
+            sellerId: fields.sellerId || sellerUid,
+            stockQuantity: fields.stockQuantity ?? 100,
+            lifecycleStatus: 'active',
+          };
+        }
+      } catch { /* will create below */ }
+
+      if (!product) {
+        const address = country === 'China'
+          ? { street: 'Nanjing Rd', city: 'Shanghai', state: 'SH', postalCode: '200001', country: 'China' }
+          : undefined;
+        product = await createDummyProduct(sellerUid, prefix, id, address);
+      }
+      obProducts.push(product);
+    }
+    _cachedProducts = obProducts;
     return _cachedProducts;
   }
 

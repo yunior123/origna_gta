@@ -84,25 +84,30 @@ test.describe('Auth Gates', () => {
 
   test('unverified users are blocked by the email verification gate', async ({ page }) => {
     const email = TEST_ACCOUNTS.BUYER3_EMAIL;
-    await setOrignaBaseUserEmailVerified(email, DEFAULT_PASS, false);
+    // Resolve to the UI alias so setOrignaBaseUserEmailVerified targets the same
+    // account that loginViaUi will actually sign in with.
+    const uiEmail = resolveUiEmail(email);
+    await setOrignaBaseUserEmailVerified(uiEmail, DEFAULT_PASS, false);
+    // Wait for OrignaBase to commit the patch before issuing a new JWT
+    await page.waitForTimeout(3000);
 
     try {
       await requireWebApp(page, TARGET_URL);
       await loginViaUi(page, email, DEFAULT_PASS);
 
-      // Navigate to a protected route to trigger AuthRequiredGate email verification check.
-      // AuthWrapper at '/' has a loading-state race; AuthRequiredGate at '/profile' is deterministic.
-      await page.goto(`${TARGET_URL}/profile`, { waitUntil: 'domcontentloaded' });
-      await waitForFlutter(page, 60000);
+      // Do NOT use page.goto() — full reload loses OrignaBase JWT from memory.
+      // AuthWrapper at '/' shows EmailVerificationRequiredScreen when emailVerified=false.
+      // The gate is visible immediately after login returns (same Flutter session).
+      await waitForFlutter(page, 30000);
 
       await expect(
-        page.getByText(/verify.*email|email.*verification|vérif/i).first(),
+        page.getByText(/Verify Your Email|verify.*email|vérifi/i).first(),
       ).toBeVisible({ timeout: 60000 });
       await expect(
-        page.getByRole('button', { name: /resend|renvoyer|send again/i }).first(),
+        page.getByRole('button', { name: /resend|renvoyer|Resend Verification/i }).first(),
       ).toBeVisible({ timeout: 30000 });
     } finally {
-      await setOrignaBaseUserEmailVerified(email, DEFAULT_PASS, true);
+      await setOrignaBaseUserEmailVerified(uiEmail, DEFAULT_PASS, true);
     }
   });
 
@@ -115,13 +120,12 @@ test.describe('Auth Gates', () => {
       await requireWebApp(page, TARGET_URL);
       await loginViaUi(page, email, DEFAULT_PASS);
 
-      // The terms gate is rendered by AuthWrapper at '/'.
-      // Force a fresh navigation to ensure the provider re-evaluates with updated DB state.
-      await page.goto(`${TARGET_URL}/`, { waitUntil: 'domcontentloaded' });
-      await waitForFlutter(page, 60000);
+      // Do NOT use page.goto() — full reload loses OrignaBase JWT from memory.
+      // AuthWrapper shows the terms gate immediately after login in the same Flutter session.
+      await waitForFlutter(page, 30000);
 
       await expect(
-        page.getByText(/terms.*updated|updated.*terms|conditions.*mise/i).first(),
+        page.getByText(/Our Terms Have Been Updated|terms.*updated|updated.*terms|conditions.*mise/i).first(),
       ).toBeVisible({ timeout: 60000 });
       await expect(
         page.locator('[aria-label="btn-terms-accept"]').first(),
@@ -140,7 +144,7 @@ test.describe('Auth Gates', () => {
       await requireWebApp(page, TARGET_URL);
       await loginViaUi(page, email, DEFAULT_PASS);
 
-      const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+      const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
       await expect(settingsBtn).toBeVisible({ timeout: 60000 });
       await settingsBtn.click({ force: true });
       await waitForFlutter(page, 60000);

@@ -3,26 +3,26 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i19;
+import 'dart:async' as _i20;
 
 import 'package:http/http.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i18;
+import 'package:mockito/src/dummies.dart' as _i19;
 import 'package:orignabase/src/auth.dart' as _i3;
-import 'package:orignabase/src/batch.dart' as _i13;
-import 'package:orignabase/src/client.dart' as _i14;
-import 'package:orignabase/src/collection.dart' as _i12;
+import 'package:orignabase/src/batch.dart' as _i14;
+import 'package:orignabase/src/client.dart' as _i15;
+import 'package:orignabase/src/collection.dart' as _i13;
 import 'package:orignabase/src/config.dart' as _i6;
-import 'package:orignabase/src/document.dart' as _i16;
+import 'package:orignabase/src/document.dart' as _i17;
 import 'package:orignabase/src/links.dart' as _i8;
 import 'package:orignabase/src/metrics.dart' as _i10;
 import 'package:orignabase/src/offline.dart' as _i5;
 import 'package:orignabase/src/presence.dart' as _i7;
 import 'package:orignabase/src/push.dart' as _i9;
-import 'package:orignabase/src/query.dart' as _i17;
-import 'package:orignabase/src/realtime.dart' as _i20;
+import 'package:orignabase/src/query.dart' as _i18;
+import 'package:orignabase/src/realtime.dart' as _i12;
 import 'package:orignabase/src/storage.dart' as _i4;
-import 'package:orignabase/src/subcollection.dart' as _i15;
+import 'package:orignabase/src/subcollection.dart' as _i16;
 import 'package:orignabase/src/vector.dart' as _i11;
 
 // ignore_for_file: type=lint
@@ -97,59 +97,65 @@ class _FakeVectorSearch_9 extends _i1.SmartFake implements _i11.VectorSearch {
     : super(parent, parentInvocation);
 }
 
-class _FakeCollectionRef_10 extends _i1.SmartFake
-    implements _i12.CollectionRef {
-  _FakeCollectionRef_10(Object parent, Invocation parentInvocation)
+class _FakeRealtimeClient_10 extends _i1.SmartFake
+    implements _i12.RealtimeClient {
+  _FakeRealtimeClient_10(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeWriteBatch_11 extends _i1.SmartFake implements _i13.WriteBatch {
-  _FakeWriteBatch_11(Object parent, Invocation parentInvocation)
+class _FakeCollectionRef_11 extends _i1.SmartFake
+    implements _i13.CollectionRef {
+  _FakeCollectionRef_11(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeOrignaBase_12 extends _i1.SmartFake implements _i14.OrignaBase {
-  _FakeOrignaBase_12(Object parent, Invocation parentInvocation)
+class _FakeWriteBatch_12 extends _i1.SmartFake implements _i14.WriteBatch {
+  _FakeWriteBatch_12(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeDocumentRef_13 extends _i1.SmartFake implements _i12.DocumentRef {
-  _FakeDocumentRef_13(Object parent, Invocation parentInvocation)
+class _FakeOrignaBase_13 extends _i1.SmartFake implements _i15.OrignaBase {
+  _FakeOrignaBase_13(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeSubcollectionRef_14 extends _i1.SmartFake
-    implements _i15.SubcollectionRef {
-  _FakeSubcollectionRef_14(Object parent, Invocation parentInvocation)
+class _FakeDocumentRef_14 extends _i1.SmartFake implements _i13.DocumentRef {
+  _FakeDocumentRef_14(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeDocument_15 extends _i1.SmartFake implements _i16.Document {
-  _FakeDocument_15(Object parent, Invocation parentInvocation)
+class _FakeSubcollectionRef_15 extends _i1.SmartFake
+    implements _i16.SubcollectionRef {
+  _FakeSubcollectionRef_15(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeQuery_16 extends _i1.SmartFake implements _i17.Query {
-  _FakeQuery_16(Object parent, Invocation parentInvocation)
+class _FakeDocument_16 extends _i1.SmartFake implements _i17.Document {
+  _FakeDocument_16(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeQuerySnapshot_17 extends _i1.SmartFake
-    implements _i16.QuerySnapshot {
-  _FakeQuerySnapshot_17(Object parent, Invocation parentInvocation)
+class _FakeQuery_17 extends _i1.SmartFake implements _i18.Query {
+  _FakeQuery_17(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeQuerySnapshot_18 extends _i1.SmartFake
+    implements _i17.QuerySnapshot {
+  _FakeQuerySnapshot_18(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
 /// A class which mocks [OrignaBase].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
+class MockOrignaBase extends _i1.Mock implements _i15.OrignaBase {
   @override
   String get url =>
       (super.noSuchMethod(
             Invocation.getter(#url),
-            returnValue: _i18.dummyValue<String>(this, Invocation.getter(#url)),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(this, Invocation.getter(#url)),
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#url),
             ),
@@ -295,6 +301,21 @@ class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
           as _i11.VectorSearch);
 
   @override
+  _i12.RealtimeClient get realtime =>
+      (super.noSuchMethod(
+            Invocation.getter(#realtime),
+            returnValue: _FakeRealtimeClient_10(
+              this,
+              Invocation.getter(#realtime),
+            ),
+            returnValueForMissingStub: _FakeRealtimeClient_10(
+              this,
+              Invocation.getter(#realtime),
+            ),
+          )
+          as _i12.RealtimeClient);
+
+  @override
   set auth(_i3.OrignaBaseAuth? value) => super.noSuchMethod(
     Invocation.setter(#auth, value),
     returnValueForMissingStub: null,
@@ -349,53 +370,53 @@ class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
   );
 
   @override
-  _i12.CollectionRef collection(String? name) =>
+  _i13.CollectionRef collection(String? name) =>
       (super.noSuchMethod(
             Invocation.method(#collection, [name]),
-            returnValue: _FakeCollectionRef_10(
+            returnValue: _FakeCollectionRef_11(
               this,
               Invocation.method(#collection, [name]),
             ),
-            returnValueForMissingStub: _FakeCollectionRef_10(
+            returnValueForMissingStub: _FakeCollectionRef_11(
               this,
               Invocation.method(#collection, [name]),
             ),
           )
-          as _i12.CollectionRef);
+          as _i13.CollectionRef);
 
   @override
-  _i13.WriteBatch batch() =>
+  _i14.WriteBatch batch() =>
       (super.noSuchMethod(
             Invocation.method(#batch, []),
-            returnValue: _FakeWriteBatch_11(
+            returnValue: _FakeWriteBatch_12(
               this,
               Invocation.method(#batch, []),
             ),
-            returnValueForMissingStub: _FakeWriteBatch_11(
+            returnValueForMissingStub: _FakeWriteBatch_12(
               this,
               Invocation.method(#batch, []),
             ),
           )
-          as _i13.WriteBatch);
+          as _i14.WriteBatch);
 
   @override
-  _i19.Future<Map<String, dynamic>> graphql(
+  _i20.Future<Map<String, dynamic>> graphql(
     String? query, {
     Map<String, dynamic>? variables,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#graphql, [query], {#variables: variables}),
-            returnValue: _i19.Future<Map<String, dynamic>>.value(
+            returnValue: _i20.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i19.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i20.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i19.Future<Map<String, dynamic>>);
+          as _i20.Future<Map<String, dynamic>>);
 
   @override
-  _i19.Future<Map<String, dynamic>> request(
+  _i20.Future<Map<String, dynamic>> request(
     String? method,
     String? path, {
     Map<String, dynamic>? body,
@@ -407,17 +428,17 @@ class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
               [method, path],
               {#body: body, #headers: headers},
             ),
-            returnValue: _i19.Future<Map<String, dynamic>>.value(
+            returnValue: _i20.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i19.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i20.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i19.Future<Map<String, dynamic>>);
+          as _i20.Future<Map<String, dynamic>>);
 
   @override
-  _i19.Future<Map<String, dynamic>> search(
+  _i20.Future<Map<String, dynamic>> search(
     String? index,
     String? query, {
     int? limit,
@@ -430,14 +451,14 @@ class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
               [index, query],
               {#limit: limit, #offset: offset, #filter: filter},
             ),
-            returnValue: _i19.Future<Map<String, dynamic>>.value(
+            returnValue: _i20.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i19.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i20.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i19.Future<Map<String, dynamic>>);
+          as _i20.Future<Map<String, dynamic>>);
 
   @override
   void dispose() => super.noSuchMethod(
@@ -449,28 +470,28 @@ class MockOrignaBase extends _i1.Mock implements _i14.OrignaBase {
 /// A class which mocks [CollectionRef].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockCollectionRef extends _i1.Mock implements _i12.CollectionRef {
+class MockCollectionRef extends _i1.Mock implements _i13.CollectionRef {
   @override
-  _i14.OrignaBase get client =>
+  _i15.OrignaBase get client =>
       (super.noSuchMethod(
             Invocation.getter(#client),
-            returnValue: _FakeOrignaBase_12(this, Invocation.getter(#client)),
-            returnValueForMissingStub: _FakeOrignaBase_12(
+            returnValue: _FakeOrignaBase_13(this, Invocation.getter(#client)),
+            returnValueForMissingStub: _FakeOrignaBase_13(
               this,
               Invocation.getter(#client),
             ),
           )
-          as _i14.OrignaBase);
+          as _i15.OrignaBase);
 
   @override
   String get collectionName =>
       (super.noSuchMethod(
             Invocation.getter(#collectionName),
-            returnValue: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collectionName),
             ),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collectionName),
             ),
@@ -478,59 +499,59 @@ class MockCollectionRef extends _i1.Mock implements _i12.CollectionRef {
           as String);
 
   @override
-  _i12.DocumentRef doc(String? id) =>
+  _i13.DocumentRef doc(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#doc, [id]),
-            returnValue: _FakeDocumentRef_13(
+            returnValue: _FakeDocumentRef_14(
               this,
               Invocation.method(#doc, [id]),
             ),
-            returnValueForMissingStub: _FakeDocumentRef_13(
+            returnValueForMissingStub: _FakeDocumentRef_14(
               this,
               Invocation.method(#doc, [id]),
             ),
           )
-          as _i12.DocumentRef);
+          as _i13.DocumentRef);
 
   @override
-  _i15.SubcollectionRef subcollection(String? docId, String? childCollection) =>
+  _i16.SubcollectionRef subcollection(String? docId, String? childCollection) =>
       (super.noSuchMethod(
             Invocation.method(#subcollection, [docId, childCollection]),
-            returnValue: _FakeSubcollectionRef_14(
+            returnValue: _FakeSubcollectionRef_15(
               this,
               Invocation.method(#subcollection, [docId, childCollection]),
             ),
-            returnValueForMissingStub: _FakeSubcollectionRef_14(
+            returnValueForMissingStub: _FakeSubcollectionRef_15(
               this,
               Invocation.method(#subcollection, [docId, childCollection]),
             ),
           )
-          as _i15.SubcollectionRef);
+          as _i16.SubcollectionRef);
 
   @override
-  _i19.Stream<_i20.DocumentChange> snapshots() =>
+  _i20.Stream<_i12.DocumentChange> snapshots() =>
       (super.noSuchMethod(
             Invocation.method(#snapshots, []),
-            returnValue: _i19.Stream<_i20.DocumentChange>.empty(),
-            returnValueForMissingStub: _i19.Stream<_i20.DocumentChange>.empty(),
+            returnValue: _i20.Stream<_i12.DocumentChange>.empty(),
+            returnValueForMissingStub: _i20.Stream<_i12.DocumentChange>.empty(),
           )
-          as _i19.Stream<_i20.DocumentChange>);
+          as _i20.Stream<_i12.DocumentChange>);
 
   @override
-  _i19.Future<_i16.Document> add(Map<String, dynamic>? data) =>
+  _i20.Future<_i17.Document> add(Map<String, dynamic>? data) =>
       (super.noSuchMethod(
             Invocation.method(#add, [data]),
-            returnValue: _i19.Future<_i16.Document>.value(
-              _FakeDocument_15(this, Invocation.method(#add, [data])),
+            returnValue: _i20.Future<_i17.Document>.value(
+              _FakeDocument_16(this, Invocation.method(#add, [data])),
             ),
-            returnValueForMissingStub: _i19.Future<_i16.Document>.value(
-              _FakeDocument_15(this, Invocation.method(#add, [data])),
+            returnValueForMissingStub: _i20.Future<_i17.Document>.value(
+              _FakeDocument_16(this, Invocation.method(#add, [data])),
             ),
           )
-          as _i19.Future<_i16.Document>);
+          as _i20.Future<_i17.Document>);
 
   @override
-  _i17.Query where(
+  _i18.Query where(
     String? field, {
     dynamic isEqualTo,
     dynamic isNotEqualTo,
@@ -558,7 +579,7 @@ class MockCollectionRef extends _i1.Mock implements _i12.CollectionRef {
                 #startsWith: startsWith,
               },
             ),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(
                 #where,
@@ -576,7 +597,7 @@ class MockCollectionRef extends _i1.Mock implements _i12.CollectionRef {
                 },
               ),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(
                 #where,
@@ -595,125 +616,125 @@ class MockCollectionRef extends _i1.Mock implements _i12.CollectionRef {
               ),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query orderBy(String? field, {bool? descending = false}) =>
+  _i18.Query orderBy(String? field, {bool? descending = false}) =>
       (super.noSuchMethod(
             Invocation.method(#orderBy, [field], {#descending: descending}),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#orderBy, [field], {#descending: descending}),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#orderBy, [field], {#descending: descending}),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query limit(int? count) =>
+  _i18.Query limit(int? count) =>
       (super.noSuchMethod(
             Invocation.method(#limit, [count]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#limit, [count]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#limit, [count]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query offset(int? count) =>
+  _i18.Query offset(int? count) =>
       (super.noSuchMethod(
             Invocation.method(#offset, [count]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#offset, [count]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#offset, [count]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query startAfter(_i16.Document? document) =>
+  _i18.Query startAfter(_i17.Document? document) =>
       (super.noSuchMethod(
             Invocation.method(#startAfter, [document]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#startAfter, [document]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#startAfter, [document]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query startAfterId(String? documentId) =>
+  _i18.Query startAfterId(String? documentId) =>
       (super.noSuchMethod(
             Invocation.method(#startAfterId, [documentId]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#startAfterId, [documentId]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#startAfterId, [documentId]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query select(List<String>? fields) =>
+  _i18.Query select(List<String>? fields) =>
       (super.noSuchMethod(
             Invocation.method(#select, [fields]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#select, [fields]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#select, [fields]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i19.Future<_i16.QuerySnapshot> get() =>
+  _i20.Future<_i17.QuerySnapshot> get() =>
       (super.noSuchMethod(
             Invocation.method(#get, []),
-            returnValue: _i19.Future<_i16.QuerySnapshot>.value(
-              _FakeQuerySnapshot_17(this, Invocation.method(#get, [])),
+            returnValue: _i20.Future<_i17.QuerySnapshot>.value(
+              _FakeQuerySnapshot_18(this, Invocation.method(#get, [])),
             ),
-            returnValueForMissingStub: _i19.Future<_i16.QuerySnapshot>.value(
-              _FakeQuerySnapshot_17(this, Invocation.method(#get, [])),
+            returnValueForMissingStub: _i20.Future<_i17.QuerySnapshot>.value(
+              _FakeQuerySnapshot_18(this, Invocation.method(#get, [])),
             ),
           )
-          as _i19.Future<_i16.QuerySnapshot>);
+          as _i20.Future<_i17.QuerySnapshot>);
 }
 
 /// A class which mocks [DocumentRef].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockDocumentRef extends _i1.Mock implements _i12.DocumentRef {
+class MockDocumentRef extends _i1.Mock implements _i13.DocumentRef {
   @override
   String get collection =>
       (super.noSuchMethod(
             Invocation.getter(#collection),
-            returnValue: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collection),
             ),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collection),
             ),
@@ -724,8 +745,8 @@ class MockDocumentRef extends _i1.Mock implements _i12.DocumentRef {
   String get id =>
       (super.noSuchMethod(
             Invocation.getter(#id),
-            returnValue: _i18.dummyValue<String>(this, Invocation.getter(#id)),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(this, Invocation.getter(#id)),
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#id),
             ),
@@ -733,79 +754,79 @@ class MockDocumentRef extends _i1.Mock implements _i12.DocumentRef {
           as String);
 
   @override
-  _i15.SubcollectionRef subcollection(String? childCollection) =>
+  _i16.SubcollectionRef subcollection(String? childCollection) =>
       (super.noSuchMethod(
             Invocation.method(#subcollection, [childCollection]),
-            returnValue: _FakeSubcollectionRef_14(
+            returnValue: _FakeSubcollectionRef_15(
               this,
               Invocation.method(#subcollection, [childCollection]),
             ),
-            returnValueForMissingStub: _FakeSubcollectionRef_14(
+            returnValueForMissingStub: _FakeSubcollectionRef_15(
               this,
               Invocation.method(#subcollection, [childCollection]),
             ),
           )
-          as _i15.SubcollectionRef);
+          as _i16.SubcollectionRef);
 
   @override
-  _i19.Future<_i16.Document?> get() =>
+  _i20.Future<_i17.Document?> get() =>
       (super.noSuchMethod(
             Invocation.method(#get, []),
-            returnValue: _i19.Future<_i16.Document?>.value(),
-            returnValueForMissingStub: _i19.Future<_i16.Document?>.value(),
+            returnValue: _i20.Future<_i17.Document?>.value(),
+            returnValueForMissingStub: _i20.Future<_i17.Document?>.value(),
           )
-          as _i19.Future<_i16.Document?>);
+          as _i20.Future<_i17.Document?>);
 
   @override
-  _i19.Future<_i16.Document?> update(Map<String, dynamic>? data) =>
+  _i20.Future<_i17.Document?> update(Map<String, dynamic>? data) =>
       (super.noSuchMethod(
             Invocation.method(#update, [data]),
-            returnValue: _i19.Future<_i16.Document?>.value(),
-            returnValueForMissingStub: _i19.Future<_i16.Document?>.value(),
+            returnValue: _i20.Future<_i17.Document?>.value(),
+            returnValueForMissingStub: _i20.Future<_i17.Document?>.value(),
           )
-          as _i19.Future<_i16.Document?>);
+          as _i20.Future<_i17.Document?>);
 
   @override
-  _i19.Future<_i16.Document?> set(Map<String, dynamic>? data) =>
+  _i20.Future<_i17.Document?> set(Map<String, dynamic>? data) =>
       (super.noSuchMethod(
             Invocation.method(#set, [data]),
-            returnValue: _i19.Future<_i16.Document?>.value(),
-            returnValueForMissingStub: _i19.Future<_i16.Document?>.value(),
+            returnValue: _i20.Future<_i17.Document?>.value(),
+            returnValueForMissingStub: _i20.Future<_i17.Document?>.value(),
           )
-          as _i19.Future<_i16.Document?>);
+          as _i20.Future<_i17.Document?>);
 
   @override
-  _i19.Future<void> delete() =>
+  _i20.Future<void> delete() =>
       (super.noSuchMethod(
             Invocation.method(#delete, []),
-            returnValue: _i19.Future<void>.value(),
-            returnValueForMissingStub: _i19.Future<void>.value(),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
           )
-          as _i19.Future<void>);
+          as _i20.Future<void>);
 
   @override
-  _i19.Stream<_i20.DocumentChange> snapshots() =>
+  _i20.Stream<_i12.DocumentChange> snapshots() =>
       (super.noSuchMethod(
             Invocation.method(#snapshots, []),
-            returnValue: _i19.Stream<_i20.DocumentChange>.empty(),
-            returnValueForMissingStub: _i19.Stream<_i20.DocumentChange>.empty(),
+            returnValue: _i20.Stream<_i12.DocumentChange>.empty(),
+            returnValueForMissingStub: _i20.Stream<_i12.DocumentChange>.empty(),
           )
-          as _i19.Stream<_i20.DocumentChange>);
+          as _i20.Stream<_i12.DocumentChange>);
 }
 
 /// A class which mocks [SubcollectionRef].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockSubcollectionRef extends _i1.Mock implements _i15.SubcollectionRef {
+class MockSubcollectionRef extends _i1.Mock implements _i16.SubcollectionRef {
   @override
   String get parentCollection =>
       (super.noSuchMethod(
             Invocation.getter(#parentCollection),
-            returnValue: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(
               this,
               Invocation.getter(#parentCollection),
             ),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#parentCollection),
             ),
@@ -816,11 +837,11 @@ class MockSubcollectionRef extends _i1.Mock implements _i15.SubcollectionRef {
   String get parentId =>
       (super.noSuchMethod(
             Invocation.getter(#parentId),
-            returnValue: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(
               this,
               Invocation.getter(#parentId),
             ),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#parentId),
             ),
@@ -831,11 +852,11 @@ class MockSubcollectionRef extends _i1.Mock implements _i15.SubcollectionRef {
   String get childCollection =>
       (super.noSuchMethod(
             Invocation.getter(#childCollection),
-            returnValue: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(
               this,
               Invocation.getter(#childCollection),
             ),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#childCollection),
             ),
@@ -846,11 +867,11 @@ class MockSubcollectionRef extends _i1.Mock implements _i15.SubcollectionRef {
   String get collectionPath =>
       (super.noSuchMethod(
             Invocation.getter(#collectionPath),
-            returnValue: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collectionPath),
             ),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collectionPath),
             ),
@@ -858,26 +879,26 @@ class MockSubcollectionRef extends _i1.Mock implements _i15.SubcollectionRef {
           as String);
 
   @override
-  _i14.OrignaBase get client =>
+  _i15.OrignaBase get client =>
       (super.noSuchMethod(
             Invocation.getter(#client),
-            returnValue: _FakeOrignaBase_12(this, Invocation.getter(#client)),
-            returnValueForMissingStub: _FakeOrignaBase_12(
+            returnValue: _FakeOrignaBase_13(this, Invocation.getter(#client)),
+            returnValueForMissingStub: _FakeOrignaBase_13(
               this,
               Invocation.getter(#client),
             ),
           )
-          as _i14.OrignaBase);
+          as _i15.OrignaBase);
 
   @override
   String get collectionName =>
       (super.noSuchMethod(
             Invocation.getter(#collectionName),
-            returnValue: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collectionName),
             ),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collectionName),
             ),
@@ -885,66 +906,66 @@ class MockSubcollectionRef extends _i1.Mock implements _i15.SubcollectionRef {
           as String);
 
   @override
-  _i12.DocumentRef doc(String? id) =>
+  _i13.DocumentRef doc(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#doc, [id]),
-            returnValue: _FakeDocumentRef_13(
+            returnValue: _FakeDocumentRef_14(
               this,
               Invocation.method(#doc, [id]),
             ),
-            returnValueForMissingStub: _FakeDocumentRef_13(
+            returnValueForMissingStub: _FakeDocumentRef_14(
               this,
               Invocation.method(#doc, [id]),
             ),
           )
-          as _i12.DocumentRef);
+          as _i13.DocumentRef);
 
   @override
-  _i19.Future<_i16.Document> add(Map<String, dynamic>? data) =>
+  _i20.Future<_i17.Document> add(Map<String, dynamic>? data) =>
       (super.noSuchMethod(
             Invocation.method(#add, [data]),
-            returnValue: _i19.Future<_i16.Document>.value(
-              _FakeDocument_15(this, Invocation.method(#add, [data])),
+            returnValue: _i20.Future<_i17.Document>.value(
+              _FakeDocument_16(this, Invocation.method(#add, [data])),
             ),
-            returnValueForMissingStub: _i19.Future<_i16.Document>.value(
-              _FakeDocument_15(this, Invocation.method(#add, [data])),
+            returnValueForMissingStub: _i20.Future<_i17.Document>.value(
+              _FakeDocument_16(this, Invocation.method(#add, [data])),
             ),
           )
-          as _i19.Future<_i16.Document>);
+          as _i20.Future<_i17.Document>);
 
   @override
-  _i19.Future<_i16.QuerySnapshot> get() =>
+  _i20.Future<_i17.QuerySnapshot> get() =>
       (super.noSuchMethod(
             Invocation.method(#get, []),
-            returnValue: _i19.Future<_i16.QuerySnapshot>.value(
-              _FakeQuerySnapshot_17(this, Invocation.method(#get, [])),
+            returnValue: _i20.Future<_i17.QuerySnapshot>.value(
+              _FakeQuerySnapshot_18(this, Invocation.method(#get, [])),
             ),
-            returnValueForMissingStub: _i19.Future<_i16.QuerySnapshot>.value(
-              _FakeQuerySnapshot_17(this, Invocation.method(#get, [])),
+            returnValueForMissingStub: _i20.Future<_i17.QuerySnapshot>.value(
+              _FakeQuerySnapshot_18(this, Invocation.method(#get, [])),
             ),
           )
-          as _i19.Future<_i16.QuerySnapshot>);
+          as _i20.Future<_i17.QuerySnapshot>);
 
   @override
-  _i15.SubcollectionRef subcollection(
+  _i16.SubcollectionRef subcollection(
     String? docId,
     String? nestedCollection,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#subcollection, [docId, nestedCollection]),
-            returnValue: _FakeSubcollectionRef_14(
+            returnValue: _FakeSubcollectionRef_15(
               this,
               Invocation.method(#subcollection, [docId, nestedCollection]),
             ),
-            returnValueForMissingStub: _FakeSubcollectionRef_14(
+            returnValueForMissingStub: _FakeSubcollectionRef_15(
               this,
               Invocation.method(#subcollection, [docId, nestedCollection]),
             ),
           )
-          as _i15.SubcollectionRef);
+          as _i16.SubcollectionRef);
 
   @override
-  _i17.Query where(
+  _i18.Query where(
     String? field, {
     dynamic isEqualTo,
     dynamic isNotEqualTo,
@@ -972,7 +993,7 @@ class MockSubcollectionRef extends _i1.Mock implements _i15.SubcollectionRef {
                 #startsWith: startsWith,
               },
             ),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(
                 #where,
@@ -990,7 +1011,7 @@ class MockSubcollectionRef extends _i1.Mock implements _i15.SubcollectionRef {
                 },
               ),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(
                 #where,
@@ -1009,133 +1030,133 @@ class MockSubcollectionRef extends _i1.Mock implements _i15.SubcollectionRef {
               ),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query orderBy(String? field, {bool? descending = false}) =>
+  _i18.Query orderBy(String? field, {bool? descending = false}) =>
       (super.noSuchMethod(
             Invocation.method(#orderBy, [field], {#descending: descending}),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#orderBy, [field], {#descending: descending}),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#orderBy, [field], {#descending: descending}),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query limit(int? count) =>
+  _i18.Query limit(int? count) =>
       (super.noSuchMethod(
             Invocation.method(#limit, [count]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#limit, [count]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#limit, [count]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query offset(int? count) =>
+  _i18.Query offset(int? count) =>
       (super.noSuchMethod(
             Invocation.method(#offset, [count]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#offset, [count]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#offset, [count]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i19.Stream<_i20.DocumentChange> snapshots() =>
+  _i20.Stream<_i12.DocumentChange> snapshots() =>
       (super.noSuchMethod(
             Invocation.method(#snapshots, []),
-            returnValue: _i19.Stream<_i20.DocumentChange>.empty(),
-            returnValueForMissingStub: _i19.Stream<_i20.DocumentChange>.empty(),
+            returnValue: _i20.Stream<_i12.DocumentChange>.empty(),
+            returnValueForMissingStub: _i20.Stream<_i12.DocumentChange>.empty(),
           )
-          as _i19.Stream<_i20.DocumentChange>);
+          as _i20.Stream<_i12.DocumentChange>);
 
   @override
-  _i17.Query startAfter(_i16.Document? document) =>
+  _i18.Query startAfter(_i17.Document? document) =>
       (super.noSuchMethod(
             Invocation.method(#startAfter, [document]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#startAfter, [document]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#startAfter, [document]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query startAfterId(String? documentId) =>
+  _i18.Query startAfterId(String? documentId) =>
       (super.noSuchMethod(
             Invocation.method(#startAfterId, [documentId]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#startAfterId, [documentId]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#startAfterId, [documentId]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query select(List<String>? fields) =>
+  _i18.Query select(List<String>? fields) =>
       (super.noSuchMethod(
             Invocation.method(#select, [fields]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#select, [fields]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#select, [fields]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 }
 
 /// A class which mocks [Query].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockQuery extends _i1.Mock implements _i17.Query {
+class MockQuery extends _i1.Mock implements _i18.Query {
   @override
-  _i14.OrignaBase get client =>
+  _i15.OrignaBase get client =>
       (super.noSuchMethod(
             Invocation.getter(#client),
-            returnValue: _FakeOrignaBase_12(this, Invocation.getter(#client)),
-            returnValueForMissingStub: _FakeOrignaBase_12(
+            returnValue: _FakeOrignaBase_13(this, Invocation.getter(#client)),
+            returnValueForMissingStub: _FakeOrignaBase_13(
               this,
               Invocation.getter(#client),
             ),
           )
-          as _i14.OrignaBase);
+          as _i15.OrignaBase);
 
   @override
   String get collectionName =>
       (super.noSuchMethod(
             Invocation.getter(#collectionName),
-            returnValue: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collectionName),
             ),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collectionName),
             ),
@@ -1143,7 +1164,7 @@ class MockQuery extends _i1.Mock implements _i17.Query {
           as String);
 
   @override
-  _i17.Query where(
+  _i18.Query where(
     String? field, {
     dynamic isEqualTo,
     dynamic isNotEqualTo,
@@ -1171,7 +1192,7 @@ class MockQuery extends _i1.Mock implements _i17.Query {
                 #startsWith: startsWith,
               },
             ),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(
                 #where,
@@ -1189,7 +1210,7 @@ class MockQuery extends _i1.Mock implements _i17.Query {
                 },
               ),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(
                 #where,
@@ -1208,124 +1229,124 @@ class MockQuery extends _i1.Mock implements _i17.Query {
               ),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query orderBy(String? field, {bool? descending = false}) =>
+  _i18.Query orderBy(String? field, {bool? descending = false}) =>
       (super.noSuchMethod(
             Invocation.method(#orderBy, [field], {#descending: descending}),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#orderBy, [field], {#descending: descending}),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#orderBy, [field], {#descending: descending}),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query limit(int? count) =>
+  _i18.Query limit(int? count) =>
       (super.noSuchMethod(
             Invocation.method(#limit, [count]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#limit, [count]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#limit, [count]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query offset(int? count) =>
+  _i18.Query offset(int? count) =>
       (super.noSuchMethod(
             Invocation.method(#offset, [count]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#offset, [count]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#offset, [count]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query startAfter(_i16.Document? document) =>
+  _i18.Query startAfter(_i17.Document? document) =>
       (super.noSuchMethod(
             Invocation.method(#startAfter, [document]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#startAfter, [document]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#startAfter, [document]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query startAfterId(String? documentId) =>
+  _i18.Query startAfterId(String? documentId) =>
       (super.noSuchMethod(
             Invocation.method(#startAfterId, [documentId]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#startAfterId, [documentId]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#startAfterId, [documentId]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i17.Query select(List<String>? fields) =>
+  _i18.Query select(List<String>? fields) =>
       (super.noSuchMethod(
             Invocation.method(#select, [fields]),
-            returnValue: _FakeQuery_16(
+            returnValue: _FakeQuery_17(
               this,
               Invocation.method(#select, [fields]),
             ),
-            returnValueForMissingStub: _FakeQuery_16(
+            returnValueForMissingStub: _FakeQuery_17(
               this,
               Invocation.method(#select, [fields]),
             ),
           )
-          as _i17.Query);
+          as _i18.Query);
 
   @override
-  _i19.Future<_i16.QuerySnapshot> get() =>
+  _i20.Future<_i17.QuerySnapshot> get() =>
       (super.noSuchMethod(
             Invocation.method(#get, []),
-            returnValue: _i19.Future<_i16.QuerySnapshot>.value(
-              _FakeQuerySnapshot_17(this, Invocation.method(#get, [])),
+            returnValue: _i20.Future<_i17.QuerySnapshot>.value(
+              _FakeQuerySnapshot_18(this, Invocation.method(#get, [])),
             ),
-            returnValueForMissingStub: _i19.Future<_i16.QuerySnapshot>.value(
-              _FakeQuerySnapshot_17(this, Invocation.method(#get, [])),
+            returnValueForMissingStub: _i20.Future<_i17.QuerySnapshot>.value(
+              _FakeQuerySnapshot_18(this, Invocation.method(#get, [])),
             ),
           )
-          as _i19.Future<_i16.QuerySnapshot>);
+          as _i20.Future<_i17.QuerySnapshot>);
 }
 
 /// A class which mocks [QuerySnapshot].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockQuerySnapshot extends _i1.Mock implements _i16.QuerySnapshot {
+class MockQuerySnapshot extends _i1.Mock implements _i17.QuerySnapshot {
   @override
-  List<_i16.Document> get docs =>
+  List<_i17.Document> get docs =>
       (super.noSuchMethod(
             Invocation.getter(#docs),
-            returnValue: <_i16.Document>[],
-            returnValueForMissingStub: <_i16.Document>[],
+            returnValue: <_i17.Document>[],
+            returnValueForMissingStub: <_i17.Document>[],
           )
-          as List<_i16.Document>);
+          as List<_i17.Document>);
 
   @override
   int get size =>
@@ -1367,13 +1388,13 @@ class MockQuerySnapshot extends _i1.Mock implements _i16.QuerySnapshot {
 /// A class which mocks [Document].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockDocument extends _i1.Mock implements _i16.Document {
+class MockDocument extends _i1.Mock implements _i17.Document {
   @override
   String get id =>
       (super.noSuchMethod(
             Invocation.getter(#id),
-            returnValue: _i18.dummyValue<String>(this, Invocation.getter(#id)),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(this, Invocation.getter(#id)),
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#id),
             ),
@@ -1384,11 +1405,11 @@ class MockDocument extends _i1.Mock implements _i16.Document {
   String get collection =>
       (super.noSuchMethod(
             Invocation.getter(#collection),
-            returnValue: _i18.dummyValue<String>(
+            returnValue: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collection),
             ),
-            returnValueForMissingStub: _i18.dummyValue<String>(
+            returnValueForMissingStub: _i19.dummyValue<String>(
               this,
               Invocation.getter(#collection),
             ),
@@ -1440,7 +1461,7 @@ class MockDocument extends _i1.Mock implements _i16.Document {
 /// A class which mocks [WriteBatch].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockWriteBatch extends _i1.Mock implements _i13.WriteBatch {
+class MockWriteBatch extends _i1.Mock implements _i14.WriteBatch {
   @override
   int get length =>
       (super.noSuchMethod(
@@ -1480,16 +1501,16 @@ class MockWriteBatch extends _i1.Mock implements _i13.WriteBatch {
   );
 
   @override
-  _i19.Future<List<Map<String, dynamic>>> commit() =>
+  _i20.Future<List<Map<String, dynamic>>> commit() =>
       (super.noSuchMethod(
             Invocation.method(#commit, []),
-            returnValue: _i19.Future<List<Map<String, dynamic>>>.value(
+            returnValue: _i20.Future<List<Map<String, dynamic>>>.value(
               <Map<String, dynamic>>[],
             ),
             returnValueForMissingStub:
-                _i19.Future<List<Map<String, dynamic>>>.value(
+                _i20.Future<List<Map<String, dynamic>>>.value(
                   <Map<String, dynamic>>[],
                 ),
           )
-          as _i19.Future<List<Map<String, dynamic>>>);
+          as _i20.Future<List<Map<String, dynamic>>>);
 }

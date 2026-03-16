@@ -20,7 +20,7 @@ mixin _$Order {
  List<String> get productIds; String? get stripeSessionId;// Shipping approval
  ShippingApprovalStatus get shippingApprovalStatus; bool get shippingApprovalRequired; int get actualShippingCents; int get pendingTotalCents;// Payout tracking
  List<SellerPayout> get sellerPayouts; bool get confirmedByClient; DateTime? get confirmedAt; int get platformFeeTotalCents; String get payoutStatus;// Ratings
- List<Ratings> get ratings;// === AUDIT FIX: 18 missing fields synced from backend schema ===
+ List<Ratings> get ratings;// === AUDIT FIX: 18 missing fields synced from Python/database ===
 // Payment capture tracking
  String? get stripePaymentIntentId; int get captureAttempts; DateTime? get capturedAt; DateTime? get expiresAt; bool get autoConfirmed; bool get autoCaptured;// Refund tracking
  int get refundAmountCents; DateTime? get refundedAt;// Cancellation tracking
@@ -372,7 +372,7 @@ class _Order extends Order {
   return EqualUnmodifiableListView(_ratings);
 }
 
-// === AUDIT FIX: 18 missing fields synced from backend schema ===
+// === AUDIT FIX: 18 missing fields synced from Python/database ===
 // Payment capture tracking
 @override final  String? stripePaymentIntentId;
 @override@JsonKey() final  int captureAttempts;

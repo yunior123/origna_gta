@@ -403,6 +403,21 @@ class MockConfigService extends _i1.Mock implements _i9.ConfigService {
           as String);
 
   @override
+  String get googleWebClientId =>
+      (super.noSuchMethod(
+            Invocation.getter(#googleWebClientId),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#googleWebClientId),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#googleWebClientId),
+            ),
+          )
+          as String);
+
+  @override
   _i3.Future<void> initialize({bool? skipFetch = false}) =>
       (super.noSuchMethod(
             Invocation.method(#initialize, [], {#skipFetch: skipFetch}),

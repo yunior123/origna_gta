@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 import {
   signIn, callOk, callExpectError,
   readDoc, parseDoc,
-  buildCheckoutPayload, getTestProduct,
+  buildCheckoutPayload,
   TEST_ACCOUNTS, TEST_UIDS, FUNCTIONS_URL,
 } from './api-helpers';
 
@@ -35,8 +35,8 @@ test.describe('Checkout Validation', () => {
   test.beforeAll(async () => {
     buyerAuth = await signIn(BUYER_EMAIL);
     sellerAuth = await signIn(SELLER_EMAIL);
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
-    productId = product.id;
+    // Use stable test product — avoids rate-limit from discoverProducts/createDummyProduct
+    productId = 'e2e_product_admin_seller';
   });
 
   test('Rejects unauthenticated checkout request', async () => {

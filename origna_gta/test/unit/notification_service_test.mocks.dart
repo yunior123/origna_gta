@@ -3,34 +3,35 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i21;
-import 'dart:ui' as _i24;
+import 'dart:async' as _i22;
+import 'dart:ui' as _i25;
 
 import 'package:flutter/foundation.dart' as _i4;
 import 'package:flutter/scheduler.dart' as _i7;
-import 'package:flutter/services.dart' as _i22;
-import 'package:flutter/src/material/banner.dart' as _i28;
+import 'package:flutter/services.dart' as _i23;
+import 'package:flutter/src/material/banner.dart' as _i29;
 import 'package:flutter/src/material/scaffold.dart' as _i8;
-import 'package:flutter/src/material/snack_bar.dart' as _i26;
-import 'package:flutter/src/widgets/basic.dart' as _i27;
+import 'package:flutter/src/material/snack_bar.dart' as _i27;
+import 'package:flutter/src/widgets/basic.dart' as _i28;
 import 'package:flutter/src/widgets/focus_manager.dart' as _i3;
 import 'package:flutter/src/widgets/framework.dart' as _i6;
-import 'package:flutter/src/widgets/restoration.dart' as _i25;
+import 'package:flutter/src/widgets/restoration.dart' as _i26;
 import 'package:flutter/widgets.dart' as _i5;
 import 'package:http/http.dart' as _i9;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i23;
+import 'package:mockito/src/dummies.dart' as _i24;
 import 'package:origna_gta/services/push_transport.dart' as _i2;
 import 'package:orignabase/src/auth.dart' as _i10;
-import 'package:orignabase/src/batch.dart' as _i20;
-import 'package:orignabase/src/client.dart' as _i29;
-import 'package:orignabase/src/collection.dart' as _i19;
+import 'package:orignabase/src/batch.dart' as _i21;
+import 'package:orignabase/src/client.dart' as _i30;
+import 'package:orignabase/src/collection.dart' as _i20;
 import 'package:orignabase/src/config.dart' as _i13;
 import 'package:orignabase/src/links.dart' as _i15;
 import 'package:orignabase/src/metrics.dart' as _i17;
 import 'package:orignabase/src/offline.dart' as _i12;
 import 'package:orignabase/src/presence.dart' as _i14;
 import 'package:orignabase/src/push.dart' as _i16;
+import 'package:orignabase/src/realtime.dart' as _i19;
 import 'package:orignabase/src/storage.dart' as _i11;
 import 'package:orignabase/src/vector.dart' as _i18;
 
@@ -187,19 +188,25 @@ class _FakeVectorSearch_19 extends _i1.SmartFake implements _i18.VectorSearch {
     : super(parent, parentInvocation);
 }
 
-class _FakeCollectionRef_20 extends _i1.SmartFake
-    implements _i19.CollectionRef {
-  _FakeCollectionRef_20(Object parent, Invocation parentInvocation)
+class _FakeRealtimeClient_20 extends _i1.SmartFake
+    implements _i19.RealtimeClient {
+  _FakeRealtimeClient_20(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeWriteBatch_21 extends _i1.SmartFake implements _i20.WriteBatch {
-  _FakeWriteBatch_21(Object parent, Invocation parentInvocation)
+class _FakeCollectionRef_21 extends _i1.SmartFake
+    implements _i20.CollectionRef {
+  _FakeCollectionRef_21(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakePushResult_22 extends _i1.SmartFake implements _i16.PushResult {
-  _FakePushResult_22(Object parent, Invocation parentInvocation)
+class _FakeWriteBatch_22 extends _i1.SmartFake implements _i21.WriteBatch {
+  _FakeWriteBatch_22(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakePushResult_23 extends _i1.SmartFake implements _i16.PushResult {
+  _FakePushResult_23(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -209,35 +216,35 @@ class _FakePushResult_22 extends _i1.SmartFake implements _i16.PushResult {
 class MockPushMessagingClient extends _i1.Mock
     implements _i2.PushMessagingClient {
   @override
-  _i21.Stream<String> get onTokenRefresh =>
+  _i22.Stream<String> get onTokenRefresh =>
       (super.noSuchMethod(
             Invocation.getter(#onTokenRefresh),
-            returnValue: _i21.Stream<String>.empty(),
-            returnValueForMissingStub: _i21.Stream<String>.empty(),
+            returnValue: _i22.Stream<String>.empty(),
+            returnValueForMissingStub: _i22.Stream<String>.empty(),
           )
-          as _i21.Stream<String>);
+          as _i22.Stream<String>);
 
   @override
-  _i21.Future<String?> getToken() =>
+  _i22.Future<String?> getToken() =>
       (super.noSuchMethod(
             Invocation.method(#getToken, []),
-            returnValue: _i21.Future<String?>.value(),
-            returnValueForMissingStub: _i21.Future<String?>.value(),
+            returnValue: _i22.Future<String?>.value(),
+            returnValueForMissingStub: _i22.Future<String?>.value(),
           )
-          as _i21.Future<String?>);
+          as _i22.Future<String?>);
 
   @override
-  _i21.Future<_i2.AppRemoteMessage?> getInitialMessage() =>
+  _i22.Future<_i2.AppRemoteMessage?> getInitialMessage() =>
       (super.noSuchMethod(
             Invocation.method(#getInitialMessage, []),
-            returnValue: _i21.Future<_i2.AppRemoteMessage?>.value(),
+            returnValue: _i22.Future<_i2.AppRemoteMessage?>.value(),
             returnValueForMissingStub:
-                _i21.Future<_i2.AppRemoteMessage?>.value(),
+                _i22.Future<_i2.AppRemoteMessage?>.value(),
           )
-          as _i21.Future<_i2.AppRemoteMessage?>);
+          as _i22.Future<_i2.AppRemoteMessage?>);
 
   @override
-  _i21.Future<_i2.AppNotificationSettings> requestPermission({
+  _i22.Future<_i2.AppNotificationSettings> requestPermission({
     bool? alert = true,
     bool? announcement = false,
     bool? badge = true,
@@ -256,7 +263,7 @@ class MockPushMessagingClient extends _i1.Mock
               #provisional: provisional,
               #sound: sound,
             }),
-            returnValue: _i21.Future<_i2.AppNotificationSettings>.value(
+            returnValue: _i22.Future<_i2.AppNotificationSettings>.value(
               _FakeAppNotificationSettings_0(
                 this,
                 Invocation.method(#requestPermission, [], {
@@ -271,7 +278,7 @@ class MockPushMessagingClient extends _i1.Mock
               ),
             ),
             returnValueForMissingStub:
-                _i21.Future<_i2.AppNotificationSettings>.value(
+                _i22.Future<_i2.AppNotificationSettings>.value(
                   _FakeAppNotificationSettings_0(
                     this,
                     Invocation.method(#requestPermission, [], {
@@ -286,7 +293,7 @@ class MockPushMessagingClient extends _i1.Mock
                   ),
                 ),
           )
-          as _i21.Future<_i2.AppNotificationSettings>);
+          as _i22.Future<_i2.AppNotificationSettings>);
 }
 
 /// A class which mocks [NavigatorState].
@@ -378,14 +385,14 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
   );
 
   @override
-  void restoreState(_i22.RestorationBucket? oldBucket, bool? initialRestore) =>
+  void restoreState(_i23.RestorationBucket? oldBucket, bool? initialRestore) =>
       super.noSuchMethod(
         Invocation.method(#restoreState, [oldBucket, initialRestore]),
         returnValueForMissingStub: null,
       );
 
   @override
-  void didToggleBucket(_i22.RestorationBucket? oldBucket) => super.noSuchMethod(
+  void didToggleBucket(_i23.RestorationBucket? oldBucket) => super.noSuchMethod(
     Invocation.method(#didToggleBucket, [oldBucket]),
     returnValueForMissingStub: null,
   );
@@ -421,16 +428,16 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
   );
 
   @override
-  _i21.Future<T?> pushNamed<T extends Object?>(
+  _i22.Future<T?> pushNamed<T extends Object?>(
     String? routeName, {
     Object? arguments,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#pushNamed, [routeName], {#arguments: arguments}),
-            returnValue: _i21.Future<T?>.value(),
-            returnValueForMissingStub: _i21.Future<T?>.value(),
+            returnValue: _i22.Future<T?>.value(),
+            returnValueForMissingStub: _i22.Future<T?>.value(),
           )
-          as _i21.Future<T?>);
+          as _i22.Future<T?>);
 
   @override
   String restorablePushNamed<T extends Object?>(
@@ -443,7 +450,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [routeName],
               {#arguments: arguments},
             ),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushNamed,
@@ -451,7 +458,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
                 {#arguments: arguments},
               ),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushNamed,
@@ -463,7 +470,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
           as String);
 
   @override
-  _i21.Future<T?> pushReplacementNamed<T extends Object?, TO extends Object?>(
+  _i22.Future<T?> pushReplacementNamed<T extends Object?, TO extends Object?>(
     String? routeName, {
     TO? result,
     Object? arguments,
@@ -474,10 +481,10 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [routeName],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i21.Future<T?>.value(),
-            returnValueForMissingStub: _i21.Future<T?>.value(),
+            returnValue: _i22.Future<T?>.value(),
+            returnValueForMissingStub: _i22.Future<T?>.value(),
           )
-          as _i21.Future<T?>);
+          as _i22.Future<T?>);
 
   @override
   String restorablePushReplacementNamed<T extends Object?, TO extends Object?>(
@@ -491,7 +498,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [routeName],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushReplacementNamed,
@@ -499,7 +506,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
                 {#result: result, #arguments: arguments},
               ),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushReplacementNamed,
@@ -511,7 +518,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
           as String);
 
   @override
-  _i21.Future<T?> popAndPushNamed<T extends Object?, TO extends Object?>(
+  _i22.Future<T?> popAndPushNamed<T extends Object?, TO extends Object?>(
     String? routeName, {
     TO? result,
     Object? arguments,
@@ -522,10 +529,10 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [routeName],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i21.Future<T?>.value(),
-            returnValueForMissingStub: _i21.Future<T?>.value(),
+            returnValue: _i22.Future<T?>.value(),
+            returnValueForMissingStub: _i22.Future<T?>.value(),
           )
-          as _i21.Future<T?>);
+          as _i22.Future<T?>);
 
   @override
   String restorablePopAndPushNamed<T extends Object?, TO extends Object?>(
@@ -539,7 +546,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [routeName],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePopAndPushNamed,
@@ -547,7 +554,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
                 {#result: result, #arguments: arguments},
               ),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePopAndPushNamed,
@@ -559,7 +566,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
           as String);
 
   @override
-  _i21.Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
+  _i22.Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
     String? newRouteName,
     _i5.RoutePredicate? predicate, {
     Object? arguments,
@@ -570,10 +577,10 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [newRouteName, predicate],
               {#arguments: arguments},
             ),
-            returnValue: _i21.Future<T?>.value(),
-            returnValueForMissingStub: _i21.Future<T?>.value(),
+            returnValue: _i22.Future<T?>.value(),
+            returnValueForMissingStub: _i22.Future<T?>.value(),
           )
-          as _i21.Future<T?>);
+          as _i22.Future<T?>);
 
   @override
   String restorablePushNamedAndRemoveUntil<T extends Object?>(
@@ -587,7 +594,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [newRouteName, predicate],
               {#arguments: arguments},
             ),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushNamedAndRemoveUntil,
@@ -595,7 +602,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
                 {#arguments: arguments},
               ),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushNamedAndRemoveUntil,
@@ -607,13 +614,13 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
           as String);
 
   @override
-  _i21.Future<T?> push<T extends Object?>(_i5.Route<T>? route) =>
+  _i22.Future<T?> push<T extends Object?>(_i5.Route<T>? route) =>
       (super.noSuchMethod(
             Invocation.method(#push, [route]),
-            returnValue: _i21.Future<T?>.value(),
-            returnValueForMissingStub: _i21.Future<T?>.value(),
+            returnValue: _i22.Future<T?>.value(),
+            returnValueForMissingStub: _i22.Future<T?>.value(),
           )
-          as _i21.Future<T?>);
+          as _i22.Future<T?>);
 
   @override
   String restorablePush<T extends Object?>(
@@ -626,7 +633,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [routeBuilder],
               {#arguments: arguments},
             ),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePush,
@@ -634,7 +641,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
                 {#arguments: arguments},
               ),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePush,
@@ -646,16 +653,16 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
           as String);
 
   @override
-  _i21.Future<T?> pushReplacement<T extends Object?, TO extends Object?>(
+  _i22.Future<T?> pushReplacement<T extends Object?, TO extends Object?>(
     _i5.Route<T>? newRoute, {
     TO? result,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#pushReplacement, [newRoute], {#result: result}),
-            returnValue: _i21.Future<T?>.value(),
-            returnValueForMissingStub: _i21.Future<T?>.value(),
+            returnValue: _i22.Future<T?>.value(),
+            returnValueForMissingStub: _i22.Future<T?>.value(),
           )
-          as _i21.Future<T?>);
+          as _i22.Future<T?>);
 
   @override
   String restorablePushReplacement<T extends Object?, TO extends Object?>(
@@ -669,7 +676,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [routeBuilder],
               {#result: result, #arguments: arguments},
             ),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushReplacement,
@@ -677,7 +684,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
                 {#result: result, #arguments: arguments},
               ),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushReplacement,
@@ -689,16 +696,16 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
           as String);
 
   @override
-  _i21.Future<T?> pushAndRemoveUntil<T extends Object?>(
+  _i22.Future<T?> pushAndRemoveUntil<T extends Object?>(
     _i5.Route<T>? newRoute,
     _i5.RoutePredicate? predicate,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#pushAndRemoveUntil, [newRoute, predicate]),
-            returnValue: _i21.Future<T?>.value(),
-            returnValueForMissingStub: _i21.Future<T?>.value(),
+            returnValue: _i22.Future<T?>.value(),
+            returnValueForMissingStub: _i22.Future<T?>.value(),
           )
-          as _i21.Future<T?>);
+          as _i22.Future<T?>);
 
   @override
   String restorablePushAndRemoveUntil<T extends Object?>(
@@ -712,7 +719,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               [newRouteBuilder, predicate],
               {#arguments: arguments},
             ),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushAndRemoveUntil,
@@ -720,7 +727,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
                 {#arguments: arguments},
               ),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(
                 #restorablePushAndRemoveUntil,
@@ -752,7 +759,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               #newRouteBuilder: newRouteBuilder,
               #arguments: arguments,
             }),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(#restorableReplace, [], {
                 #oldRoute: oldRoute,
@@ -760,7 +767,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
                 #arguments: arguments,
               }),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(#restorableReplace, [], {
                 #oldRoute: oldRoute,
@@ -795,7 +802,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
               #newRouteBuilder: newRouteBuilder,
               #arguments: arguments,
             }),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(#restorableReplaceRouteBelow, [], {
                 #anchorRoute: anchorRoute,
@@ -803,7 +810,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
                 #arguments: arguments,
               }),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(#restorableReplaceRouteBelow, [], {
                 #anchorRoute: anchorRoute,
@@ -824,13 +831,13 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
           as bool);
 
   @override
-  _i21.Future<bool> maybePop<T extends Object?>([T? result]) =>
+  _i22.Future<bool> maybePop<T extends Object?>([T? result]) =>
       (super.noSuchMethod(
             Invocation.method(#maybePop, [result]),
-            returnValue: _i21.Future<bool>.value(false),
-            returnValueForMissingStub: _i21.Future<bool>.value(false),
+            returnValue: _i22.Future<bool>.value(false),
+            returnValueForMissingStub: _i22.Future<bool>.value(false),
           )
-          as _i21.Future<bool>);
+          as _i22.Future<bool>);
 
   @override
   void pop<T extends Object?>([T? result]) => super.noSuchMethod(
@@ -909,7 +916,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
   );
 
   @override
-  void setState(_i24.VoidCallback? fn) => super.noSuchMethod(
+  void setState(_i25.VoidCallback? fn) => super.noSuchMethod(
     Invocation.method(#setState, [fn]),
     returnValueForMissingStub: null,
   );
@@ -929,11 +936,11 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
   String toStringShort() =>
       (super.noSuchMethod(
             Invocation.method(#toStringShort, []),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(#toStringShort, []),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(#toStringShort, []),
             ),
@@ -984,7 +991,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
 
   @override
   void registerForRestoration(
-    _i25.RestorableProperty<Object?>? property,
+    _i26.RestorableProperty<Object?>? property,
     String? restorationId,
   ) => super.noSuchMethod(
     Invocation.method(#registerForRestoration, [property, restorationId]),
@@ -992,7 +999,7 @@ class MockNavigatorState extends _i1.Mock implements _i5.NavigatorState {
   );
 
   @override
-  void unregisterFromRestoration(_i25.RestorableProperty<Object?>? property) =>
+  void unregisterFromRestoration(_i26.RestorableProperty<Object?>? property) =>
       super.noSuchMethod(
         Invocation.method(#unregisterFromRestoration, [property]),
         returnValueForMissingStub: null,
@@ -1053,10 +1060,10 @@ class MockScaffoldMessengerState extends _i1.Mock
   );
 
   @override
-  _i8.ScaffoldFeatureController<_i26.SnackBar, _i26.SnackBarClosedReason>
+  _i8.ScaffoldFeatureController<_i27.SnackBar, _i27.SnackBarClosedReason>
   showSnackBar(
-    _i26.SnackBar? snackBar, {
-    _i27.AnimationStyle? snackBarAnimationStyle,
+    _i27.SnackBar? snackBar, {
+    _i28.AnimationStyle? snackBarAnimationStyle,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
@@ -1066,8 +1073,8 @@ class MockScaffoldMessengerState extends _i1.Mock
             ),
             returnValue:
                 _FakeScaffoldFeatureController_9<
-                  _i26.SnackBar,
-                  _i26.SnackBarClosedReason
+                  _i27.SnackBar,
+                  _i27.SnackBarClosedReason
                 >(
                   this,
                   Invocation.method(
@@ -1078,8 +1085,8 @@ class MockScaffoldMessengerState extends _i1.Mock
                 ),
             returnValueForMissingStub:
                 _FakeScaffoldFeatureController_9<
-                  _i26.SnackBar,
-                  _i26.SnackBarClosedReason
+                  _i27.SnackBar,
+                  _i27.SnackBarClosedReason
                 >(
                   this,
                   Invocation.method(
@@ -1090,13 +1097,13 @@ class MockScaffoldMessengerState extends _i1.Mock
                 ),
           )
           as _i8.ScaffoldFeatureController<
-            _i26.SnackBar,
-            _i26.SnackBarClosedReason
+            _i27.SnackBar,
+            _i27.SnackBarClosedReason
           >);
 
   @override
   void removeCurrentSnackBar({
-    _i26.SnackBarClosedReason? reason = _i26.SnackBarClosedReason.remove,
+    _i27.SnackBarClosedReason? reason = _i27.SnackBarClosedReason.remove,
   }) => super.noSuchMethod(
     Invocation.method(#removeCurrentSnackBar, [], {#reason: reason}),
     returnValueForMissingStub: null,
@@ -1104,7 +1111,7 @@ class MockScaffoldMessengerState extends _i1.Mock
 
   @override
   void hideCurrentSnackBar({
-    _i26.SnackBarClosedReason? reason = _i26.SnackBarClosedReason.hide,
+    _i27.SnackBarClosedReason? reason = _i27.SnackBarClosedReason.hide,
   }) => super.noSuchMethod(
     Invocation.method(#hideCurrentSnackBar, [], {#reason: reason}),
     returnValueForMissingStub: null,
@@ -1118,38 +1125,38 @@ class MockScaffoldMessengerState extends _i1.Mock
 
   @override
   _i8.ScaffoldFeatureController<
-    _i28.MaterialBanner,
-    _i28.MaterialBannerClosedReason
+    _i29.MaterialBanner,
+    _i29.MaterialBannerClosedReason
   >
-  showMaterialBanner(_i28.MaterialBanner? materialBanner) =>
+  showMaterialBanner(_i29.MaterialBanner? materialBanner) =>
       (super.noSuchMethod(
             Invocation.method(#showMaterialBanner, [materialBanner]),
             returnValue:
                 _FakeScaffoldFeatureController_9<
-                  _i28.MaterialBanner,
-                  _i28.MaterialBannerClosedReason
+                  _i29.MaterialBanner,
+                  _i29.MaterialBannerClosedReason
                 >(
                   this,
                   Invocation.method(#showMaterialBanner, [materialBanner]),
                 ),
             returnValueForMissingStub:
                 _FakeScaffoldFeatureController_9<
-                  _i28.MaterialBanner,
-                  _i28.MaterialBannerClosedReason
+                  _i29.MaterialBanner,
+                  _i29.MaterialBannerClosedReason
                 >(
                   this,
                   Invocation.method(#showMaterialBanner, [materialBanner]),
                 ),
           )
           as _i8.ScaffoldFeatureController<
-            _i28.MaterialBanner,
-            _i28.MaterialBannerClosedReason
+            _i29.MaterialBanner,
+            _i29.MaterialBannerClosedReason
           >);
 
   @override
   void removeCurrentMaterialBanner({
-    _i28.MaterialBannerClosedReason? reason =
-        _i28.MaterialBannerClosedReason.remove,
+    _i29.MaterialBannerClosedReason? reason =
+        _i29.MaterialBannerClosedReason.remove,
   }) => super.noSuchMethod(
     Invocation.method(#removeCurrentMaterialBanner, [], {#reason: reason}),
     returnValueForMissingStub: null,
@@ -1157,8 +1164,8 @@ class MockScaffoldMessengerState extends _i1.Mock
 
   @override
   void hideCurrentMaterialBanner({
-    _i28.MaterialBannerClosedReason? reason =
-        _i28.MaterialBannerClosedReason.hide,
+    _i29.MaterialBannerClosedReason? reason =
+        _i29.MaterialBannerClosedReason.hide,
   }) => super.noSuchMethod(
     Invocation.method(#hideCurrentMaterialBanner, [], {#reason: reason}),
     returnValueForMissingStub: null,
@@ -1210,7 +1217,7 @@ class MockScaffoldMessengerState extends _i1.Mock
   );
 
   @override
-  void setState(_i24.VoidCallback? fn) => super.noSuchMethod(
+  void setState(_i25.VoidCallback? fn) => super.noSuchMethod(
     Invocation.method(#setState, [fn]),
     returnValueForMissingStub: null,
   );
@@ -1242,11 +1249,11 @@ class MockScaffoldMessengerState extends _i1.Mock
   String toStringShort() =>
       (super.noSuchMethod(
             Invocation.method(#toStringShort, []),
-            returnValue: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(
               this,
               Invocation.method(#toStringShort, []),
             ),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.method(#toStringShort, []),
             ),
@@ -1299,13 +1306,13 @@ class MockScaffoldMessengerState extends _i1.Mock
 /// A class which mocks [OrignaBase].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockOrignaBase extends _i1.Mock implements _i29.OrignaBase {
+class MockOrignaBase extends _i1.Mock implements _i30.OrignaBase {
   @override
   String get url =>
       (super.noSuchMethod(
             Invocation.getter(#url),
-            returnValue: _i23.dummyValue<String>(this, Invocation.getter(#url)),
-            returnValueForMissingStub: _i23.dummyValue<String>(
+            returnValue: _i24.dummyValue<String>(this, Invocation.getter(#url)),
+            returnValueForMissingStub: _i24.dummyValue<String>(
               this,
               Invocation.getter(#url),
             ),
@@ -1454,6 +1461,21 @@ class MockOrignaBase extends _i1.Mock implements _i29.OrignaBase {
           as _i18.VectorSearch);
 
   @override
+  _i19.RealtimeClient get realtime =>
+      (super.noSuchMethod(
+            Invocation.getter(#realtime),
+            returnValue: _FakeRealtimeClient_20(
+              this,
+              Invocation.getter(#realtime),
+            ),
+            returnValueForMissingStub: _FakeRealtimeClient_20(
+              this,
+              Invocation.getter(#realtime),
+            ),
+          )
+          as _i19.RealtimeClient);
+
+  @override
   set auth(_i10.OrignaBaseAuth? value) => super.noSuchMethod(
     Invocation.setter(#auth, value),
     returnValueForMissingStub: null,
@@ -1508,53 +1530,53 @@ class MockOrignaBase extends _i1.Mock implements _i29.OrignaBase {
   );
 
   @override
-  _i19.CollectionRef collection(String? name) =>
+  _i20.CollectionRef collection(String? name) =>
       (super.noSuchMethod(
             Invocation.method(#collection, [name]),
-            returnValue: _FakeCollectionRef_20(
+            returnValue: _FakeCollectionRef_21(
               this,
               Invocation.method(#collection, [name]),
             ),
-            returnValueForMissingStub: _FakeCollectionRef_20(
+            returnValueForMissingStub: _FakeCollectionRef_21(
               this,
               Invocation.method(#collection, [name]),
             ),
           )
-          as _i19.CollectionRef);
+          as _i20.CollectionRef);
 
   @override
-  _i20.WriteBatch batch() =>
+  _i21.WriteBatch batch() =>
       (super.noSuchMethod(
             Invocation.method(#batch, []),
-            returnValue: _FakeWriteBatch_21(
+            returnValue: _FakeWriteBatch_22(
               this,
               Invocation.method(#batch, []),
             ),
-            returnValueForMissingStub: _FakeWriteBatch_21(
+            returnValueForMissingStub: _FakeWriteBatch_22(
               this,
               Invocation.method(#batch, []),
             ),
           )
-          as _i20.WriteBatch);
+          as _i21.WriteBatch);
 
   @override
-  _i21.Future<Map<String, dynamic>> graphql(
+  _i22.Future<Map<String, dynamic>> graphql(
     String? query, {
     Map<String, dynamic>? variables,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#graphql, [query], {#variables: variables}),
-            returnValue: _i21.Future<Map<String, dynamic>>.value(
+            returnValue: _i22.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i21.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i22.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i21.Future<Map<String, dynamic>>);
+          as _i22.Future<Map<String, dynamic>>);
 
   @override
-  _i21.Future<Map<String, dynamic>> request(
+  _i22.Future<Map<String, dynamic>> request(
     String? method,
     String? path, {
     Map<String, dynamic>? body,
@@ -1566,17 +1588,17 @@ class MockOrignaBase extends _i1.Mock implements _i29.OrignaBase {
               [method, path],
               {#body: body, #headers: headers},
             ),
-            returnValue: _i21.Future<Map<String, dynamic>>.value(
+            returnValue: _i22.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i21.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i22.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i21.Future<Map<String, dynamic>>);
+          as _i22.Future<Map<String, dynamic>>);
 
   @override
-  _i21.Future<Map<String, dynamic>> search(
+  _i22.Future<Map<String, dynamic>> search(
     String? index,
     String? query, {
     int? limit,
@@ -1589,14 +1611,14 @@ class MockOrignaBase extends _i1.Mock implements _i29.OrignaBase {
               [index, query],
               {#limit: limit, #offset: offset, #filter: filter},
             ),
-            returnValue: _i21.Future<Map<String, dynamic>>.value(
+            returnValue: _i22.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
-            returnValueForMissingStub: _i21.Future<Map<String, dynamic>>.value(
+            returnValueForMissingStub: _i22.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i21.Future<Map<String, dynamic>>);
+          as _i22.Future<Map<String, dynamic>>);
 
   @override
   void dispose() => super.noSuchMethod(
@@ -1610,7 +1632,7 @@ class MockOrignaBase extends _i1.Mock implements _i29.OrignaBase {
 /// See the documentation for Mockito's code generation for more information.
 class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
   @override
-  _i21.Future<void> registerToken({
+  _i22.Future<void> registerToken({
     required String? userId,
     required String? token,
     required String? platform,
@@ -1621,22 +1643,22 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
               #token: token,
               #platform: platform,
             }),
-            returnValue: _i21.Future<void>.value(),
-            returnValueForMissingStub: _i21.Future<void>.value(),
+            returnValue: _i22.Future<void>.value(),
+            returnValueForMissingStub: _i22.Future<void>.value(),
           )
-          as _i21.Future<void>);
+          as _i22.Future<void>);
 
   @override
-  _i21.Future<void> unregisterToken(String? token) =>
+  _i22.Future<void> unregisterToken(String? token) =>
       (super.noSuchMethod(
             Invocation.method(#unregisterToken, [token]),
-            returnValue: _i21.Future<void>.value(),
-            returnValueForMissingStub: _i21.Future<void>.value(),
+            returnValue: _i22.Future<void>.value(),
+            returnValueForMissingStub: _i22.Future<void>.value(),
           )
-          as _i21.Future<void>);
+          as _i22.Future<void>);
 
   @override
-  _i21.Future<_i16.PushResult> sendToUser(
+  _i22.Future<_i16.PushResult> sendToUser(
     String? userId, {
     required String? title,
     required String? body,
@@ -1648,8 +1670,8 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
               [userId],
               {#title: title, #body: body, #data: data},
             ),
-            returnValue: _i21.Future<_i16.PushResult>.value(
-              _FakePushResult_22(
+            returnValue: _i22.Future<_i16.PushResult>.value(
+              _FakePushResult_23(
                 this,
                 Invocation.method(
                   #sendToUser,
@@ -1658,8 +1680,8 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
                 ),
               ),
             ),
-            returnValueForMissingStub: _i21.Future<_i16.PushResult>.value(
-              _FakePushResult_22(
+            returnValueForMissingStub: _i22.Future<_i16.PushResult>.value(
+              _FakePushResult_23(
                 this,
                 Invocation.method(
                   #sendToUser,
@@ -1669,10 +1691,10 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
               ),
             ),
           )
-          as _i21.Future<_i16.PushResult>);
+          as _i22.Future<_i16.PushResult>);
 
   @override
-  _i21.Future<_i16.PushResult> sendToToken(
+  _i22.Future<_i16.PushResult> sendToToken(
     String? token, {
     required String? title,
     required String? body,
@@ -1684,8 +1706,8 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
               [token],
               {#title: title, #body: body, #data: data},
             ),
-            returnValue: _i21.Future<_i16.PushResult>.value(
-              _FakePushResult_22(
+            returnValue: _i22.Future<_i16.PushResult>.value(
+              _FakePushResult_23(
                 this,
                 Invocation.method(
                   #sendToToken,
@@ -1694,8 +1716,8 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
                 ),
               ),
             ),
-            returnValueForMissingStub: _i21.Future<_i16.PushResult>.value(
-              _FakePushResult_22(
+            returnValueForMissingStub: _i22.Future<_i16.PushResult>.value(
+              _FakePushResult_23(
                 this,
                 Invocation.method(
                   #sendToToken,
@@ -1705,10 +1727,10 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
               ),
             ),
           )
-          as _i21.Future<_i16.PushResult>);
+          as _i22.Future<_i16.PushResult>);
 
   @override
-  _i21.Future<_i16.PushResult> sendToTopic(
+  _i22.Future<_i16.PushResult> sendToTopic(
     String? topic, {
     required String? title,
     required String? body,
@@ -1720,8 +1742,8 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
               [topic],
               {#title: title, #body: body, #data: data},
             ),
-            returnValue: _i21.Future<_i16.PushResult>.value(
-              _FakePushResult_22(
+            returnValue: _i22.Future<_i16.PushResult>.value(
+              _FakePushResult_23(
                 this,
                 Invocation.method(
                   #sendToTopic,
@@ -1730,8 +1752,8 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
                 ),
               ),
             ),
-            returnValueForMissingStub: _i21.Future<_i16.PushResult>.value(
-              _FakePushResult_22(
+            returnValueForMissingStub: _i22.Future<_i16.PushResult>.value(
+              _FakePushResult_23(
                 this,
                 Invocation.method(
                   #sendToTopic,
@@ -1741,23 +1763,23 @@ class MockOrignaBasePush extends _i1.Mock implements _i16.OrignaBasePush {
               ),
             ),
           )
-          as _i21.Future<_i16.PushResult>);
+          as _i22.Future<_i16.PushResult>);
 
   @override
-  _i21.Future<void> subscribeToTopic(String? token, String? topic) =>
+  _i22.Future<void> subscribeToTopic(String? token, String? topic) =>
       (super.noSuchMethod(
             Invocation.method(#subscribeToTopic, [token, topic]),
-            returnValue: _i21.Future<void>.value(),
-            returnValueForMissingStub: _i21.Future<void>.value(),
+            returnValue: _i22.Future<void>.value(),
+            returnValueForMissingStub: _i22.Future<void>.value(),
           )
-          as _i21.Future<void>);
+          as _i22.Future<void>);
 
   @override
-  _i21.Future<void> unsubscribeFromTopic(String? token, String? topic) =>
+  _i22.Future<void> unsubscribeFromTopic(String? token, String? topic) =>
       (super.noSuchMethod(
             Invocation.method(#unsubscribeFromTopic, [token, topic]),
-            returnValue: _i21.Future<void>.value(),
-            returnValueForMissingStub: _i21.Future<void>.value(),
+            returnValue: _i22.Future<void>.value(),
+            returnValueForMissingStub: _i22.Future<void>.value(),
           )
-          as _i21.Future<void>);
+          as _i22.Future<void>);
 }
