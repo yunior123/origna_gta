@@ -619,20 +619,24 @@ export async function setOrignaBaseUserTermsVersion(
   password: string,
   termsVersion: string,
 ): Promise<void> {
-  const auth = await signInOrignaBase(email, password);
-  const adminToken = await getBootstrapAdminAccessToken();
-  const ok = await writeDoc(
-    `users/${auth.localId}`,
-    {
-      termsVersion,
-      termsAcceptedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  // Resolve to the UI alias — same account that loginViaUi will use.
+  const uiEmail = resolveUiEmail(email);
+  // Use the profile update REST endpoint with the user's own token.
+  // The /api/users/profile/update handler accepts termsVersion directly.
+  const auth = await signInOrignaBase(uiEmail, password);
+  const res = await fetch(`${ORIGNABASE_URL}/api/users/profile/update`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${auth.idToken}`,
     },
-    adminToken,
-    true,
-  );
-  if (!ok) {
-    throw new Error(`Failed to set terms version for ${email}`);
+    body: JSON.stringify({ termsVersion }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({} as any));
+    throw new Error(
+      `Failed to set terms version for ${email}: ${body?.error?.message || body?.message || res.status}`,
+    );
   }
 }
 
@@ -641,7 +645,9 @@ export async function setOrignaBaseUserSuspended(
   password: string,
   suspended: boolean,
 ): Promise<void> {
-  const auth = await signInOrignaBase(email, password);
+  // Resolve to the UI alias — same account that loginViaUi will use.
+  const uiEmail = resolveUiEmail(email);
+  const auth = await signInOrignaBase(uiEmail, password);
   const adminToken = await getBootstrapAdminAccessToken();
   const ok = await writeDoc(
     `users/${auth.localId}`,
@@ -864,9 +870,10 @@ export async function writeDoc(path: string, fields: Record<string, any>, token?
   const incoming = normalizeFields(fields);
   const parentRef = toParentRef(info);
   const baseData = parentRef ? { ...incoming, parent_id: parentRef, parent_collection: info.parentCollection } : incoming;
-  const finalData = partial
-    ? { ...(await getDoc(path, token) || {}), ...baseData }
-    : baseData;
+  const existingDoc = partial ? (await getDoc(path, token) || {}) : {};
+  // Strip SurrealDB record ID field — merging `id: 'collection:xxx'` into a SET causes SurrealDB to reject it
+  const { id: _stripId, ...existingClean } = existingDoc as Record<string, any>;
+  const finalData = partial ? { ...existingClean, ...baseData } : baseData;
 
   const mutation = `
     mutation SetDoc($collection: String!, $id: String!, $data: JSON!) {
@@ -1021,8 +1028,12 @@ export async function callCallable(fn: string, data: any, token: string, timeout
   function portedRequest(fnName: string, payload: any): { path: string; body: any } | null {
     const userId = tokenUserId(token);
     switch (fnName) {
-      case 'create_checkout_session':
-        return { path: '/api/checkout/session', body: payload };
+      case 'create_checkout_session': {
+        // Strip userId from body — OrignaBase derives user identity from the JWT.
+        // Sending the short-form uid causes "Authorization denied: Cannot act on another user".
+        const { userId: _uid, ...checkoutRest } = payload ?? {};
+        return { path: '/api/checkout/session', body: checkoutRest };
+      }
       case 'get_user_profile':
         return { path: '/api/users/profile/get', body: { userId } };
       case 'update_user_profile':
@@ -1514,18 +1525,19 @@ export async function callCallable(fn: string, data: any, token: string, timeout
  * on rate-limit errors — those fail fast so tests don't hang.
  */
 export async function callOk(fn: string, data: any, token: string): Promise<any> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const MAX_ATTEMPTS = 5;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const body = await callCallable(fn, data, token);
     if (body.error) {
       const status = body.error.status;
       // Retry on transient 500s (cold start) and 429s (rate limit)
-      if (attempt < 2) {
+      if (attempt < MAX_ATTEMPTS - 1) {
         const errMsg = (body.error.message || '');
-        const is429 = status === 429 || errMsg.includes('429') || errMsg.toLowerCase().includes('too many');
+        const is429 = status === 429 || errMsg.includes('429') || errMsg.toLowerCase().includes('too many') || errMsg.toLowerCase().includes('rate limit') || errMsg.toLowerCase().includes('duplicate order');
         const is500 = status === 500;
         if (is500 || is429) {
-          const wait = is429 ? 3_000 : 5_000;
-          console.log(`⏳ ${is429 ? 'Rate limit' : 'Server error'} on ${fn}, waiting ${wait / 1000}s... (attempt ${attempt + 1}/3)`);
+          const wait = is429 ? 8_000 : 5_000;
+          console.log(`⏳ ${is429 ? 'Rate limit' : 'Server error'} on ${fn}, waiting ${wait / 1000}s... (attempt ${attempt + 1}/${MAX_ATTEMPTS})`);
           await new Promise(r => setTimeout(r, wait));
           continue;
         }
@@ -1534,7 +1546,7 @@ export async function callOk(fn: string, data: any, token: string): Promise<any>
     }
     return body.result || body;
   }
-  throw new Error(`${fn} failed after 3 retries`);
+  throw new Error(`${fn} failed after ${MAX_ATTEMPTS} retries`);
 }
 
 /**
@@ -1675,18 +1687,23 @@ export async function buildCheckoutPayload(
     };
   }
 
+  // OrignaBase stores price as priceCents (integer cents). Derive float price for
+  // the checkout payload and subtotalCents. Fall back to legacy 'price' float if present.
+  const productPriceCents: number = product.priceCents ?? Math.round((product.price ?? 0) * 100);
+  const productPriceFloat: number = product.price ?? (productPriceCents / 100);
+
   const data = {
     userId: buyerUid,
     items: [{
       productId: resolvedProductId,
-      name: product.name,
-      price: product.price,
+      name: product.name ?? product.title,
+      price: productPriceFloat,
       quantity,
       sellerId: product.sellerId,
       imageUrls: product.imageUrls || [`https://picsum.photos/seed/${product.id ?? 'default'}/400/400`],
       isDigital: product.isDigital || false,
     }],
-    subtotalCents: Math.round(product.price * quantity * 100),
+    subtotalCents: productPriceCents * quantity,
     shippingAddress: {
       street: address.street || fallbackAddress.street,
       apartment: address.apartment || '',
