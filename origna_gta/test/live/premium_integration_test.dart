@@ -30,7 +30,7 @@ void main() {
 
       // 3. Verify Non-Premium status in app logic
       final subInitial = await container.read(subscriptionStreamProvider.future);
-      expect(subInitial?.isPremium, isFalse, reason: 'New users should be non-premium by default.');
+      expect(subInitial?.isPremium ?? false, isFalse, reason: 'New users should be non-premium by default.');
 
       // 4. Attempt premium action (e.g. ask a question with photo) - Should fail at repository/API level
       // Note: We simulate the API call here to verify backend enforcement

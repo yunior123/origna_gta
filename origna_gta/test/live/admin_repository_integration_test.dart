@@ -116,7 +116,11 @@ void main() {
         final user = await adminRepo.fetchUserById(currentUserId!);
 
         if (user != null) {
-          expect(user.uid, currentUserId);
+          // uid field stores short ID, currentUserId is full path "users:xxx"
+          final shortId = currentUserId!.contains(':')
+              ? currentUserId.split(':').last
+              : currentUserId;
+          expect(user.uid, anyOf(currentUserId, shortId));
         }
       },
       skip: !runLive,

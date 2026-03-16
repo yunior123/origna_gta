@@ -39,7 +39,7 @@ void main() {
 
         final result = await obAdmin.request(
           'POST',
-          '/api/coupons/admin_create',
+          '/api/admin/coupons/create',
           body: {
             Fields.couponCode: createdCouponCode,
             'discountType': 'percent',

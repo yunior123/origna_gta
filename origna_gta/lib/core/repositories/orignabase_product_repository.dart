@@ -52,7 +52,8 @@ class OrignaBaseProductRepository implements ProductRepository {
       }
     }
 
-    data[Fields.productId] = doc.id;
+    // Strip collection prefix (e.g. "products:abc" → "abc")
+    data[Fields.productId] = doc.id.contains(':') ? doc.id.split(':').last : doc.id;
     return Product.fromJson(data);
   }
 

@@ -73,7 +73,10 @@ void main() {
 
         expect(addressSnapshot.docs, isNotEmpty, reason: 'Should have at least one address');
 
-        final addressIds = addressSnapshot.docs.map((doc) => doc.id).toList();
+        // doc.id may include collection prefix (e.g. "addresses:addr_xxx" → "addr_xxx")
+        final addressIds = addressSnapshot.docs
+            .map((doc) => doc.id.contains(':') ? doc.id.split(':').last : doc.id)
+            .toList();
         expect(addressIds.contains(createdAddressId), isTrue,
             reason: 'Created address should be in the list');
 
