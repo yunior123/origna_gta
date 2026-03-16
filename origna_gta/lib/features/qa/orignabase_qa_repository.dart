@@ -37,6 +37,7 @@ class OrignaBaseQARepository implements QARepository {
     await _ob.request('POST', ApiEndpoints.productsQuestionsAsk, body: {
       Fields.productId: productId,
       Fields.questionText: question.trim(),
+      Fields.userId: userId,
     });
   }
 

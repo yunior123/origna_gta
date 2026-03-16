@@ -43,15 +43,21 @@ class OrignaBaseCartRepository implements CartRepository {
       await cartRef.doc(docId).update({Fields.quantity: newQty});
     } else {
       final clampedQty = quantity.clamp(minCartItemQuantity, maxCartItemQuantity);
-      final data = CartModel(
-        productId: productId,
-        quantity: clampedQty,
-        createdAt: DateTime.now(),
-        variantId: variantId,
-        variantTitle: variantTitle,
-        variantOptions: variantOptions,
-        variantSku: variantSku,
-      ).toMap();
+      final data = <String, dynamic>{
+        ...CartModel(
+          productId: productId,
+          quantity: clampedQty,
+          createdAt: DateTime.now(),
+          variantId: variantId,
+          variantTitle: variantTitle,
+          variantOptions: variantOptions,
+          variantSku: variantSku,
+        ).toMap(),
+        // Required by SubcollectionRef.get() which filters by parent_id.
+        // doc().set() does not inject parent_id automatically (only add() does).
+        // Must match SubcollectionRef._parentFilterValue = '$parentCollection:$parentId'.
+        'parent_id': '${Collections.users}:$userId',
+      };
       await cartRef.doc(docId).set(data);
     }
   }

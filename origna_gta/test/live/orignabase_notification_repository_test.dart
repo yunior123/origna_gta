@@ -17,44 +17,38 @@ void main() {
     late ProviderContainer container;
     late OrignaBase ob;
     late OrignaBaseNotificationRepository notificationRepo;
-    late OrignaBaseAuthRepository authRepo;
+    late String userId;
 
-    setUp(() {
+    setUpAll(() async {
+      final env = EnvConfig();
+      expect(
+        env.orignabaseUrl,
+        isNotEmpty,
+        reason: 'ORIGNABASE_URL dart-define required for live tests',
+      );
+
       container = ProviderContainer();
       ob = container.read(orignabaseProvider);
       notificationRepo = OrignaBaseNotificationRepository(ob);
-      authRepo = OrignaBaseAuthRepository(ob);
+      final authRepo = OrignaBaseAuthRepository(ob);
+
+      await authRepo.signInWithEmail('e2e-admin@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      final uid = ob.auth.currentUserId;
+      expect(uid, isNotNull, reason: 'Admin sign-in failed');
+      userId = uid!;
     });
 
-    tearDown(() {
+    tearDownAll(() {
       container.dispose();
     });
 
     test(
       'markRead marks notification as read',
       () async {
-        final env = EnvConfig();
-        expect(
-          env.orignabaseUrl,
-          isNotEmpty,
-          reason: 'ORIGNABASE_URL dart-define required for live tests',
-        );
-
-        const email = 'e2e-admin@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        // Try to mark nonexistent notification as read (should not throw)
         try {
-          await notificationRepo.markRead(
-            userId!,
-            'nonexistent_notification_id',
-          );
+          await notificationRepo.markRead(userId, 'nonexistent_notification_id');
         } on OrignaBaseException {
-          // Expected for nonexistent notification, test still passes
+          // Expected for nonexistent notification
         }
       },
       skip: !runLive,
@@ -64,16 +58,7 @@ void main() {
     test(
       'markAllRead marks all notifications as read',
       () async {
-        const email = 'e2e-admin@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        // Mark all as read - should not throw
-        await notificationRepo.markAllRead(userId!);
-        // Test passes if no exception
+        await notificationRepo.markAllRead(userId);
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),

@@ -17,42 +17,37 @@ void main() {
     late ProviderContainer container;
     late OrignaBase ob;
     late OrignaBaseCartRepository cartRepo;
-    late OrignaBaseAuthRepository authRepo;
+    late String userId;
 
-    setUp(() {
+    setUpAll(() async {
+      final env = EnvConfig();
+      expect(
+        env.orignabaseUrl,
+        isNotEmpty,
+        reason: 'ORIGNABASE_URL dart-define required for live tests',
+      );
+
       container = ProviderContainer();
       ob = container.read(orignabaseProvider);
       cartRepo = OrignaBaseCartRepository(ob);
-      authRepo = OrignaBaseAuthRepository(ob);
+      final authRepo = OrignaBaseAuthRepository(ob);
+
+      await authRepo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      final uid = ob.auth.currentUserId;
+      expect(uid, isNotNull, reason: 'Sign-in failed — no userId returned');
+      userId = uid!;
     });
 
-    tearDown(() {
+    tearDownAll(() {
       container.dispose();
     });
 
     test(
       'watchCart returns stream of cart items',
       () async {
-        final env = EnvConfig();
-        expect(
-          env.orignabaseUrl,
-          isNotEmpty,
-          reason: 'ORIGNABASE_URL dart-define required for live tests',
-        );
-
-        const email = 'e2e-buyer@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        final cartStream = cartRepo.watchCart(userId!);
-
-        // Take first emission
+        final cartStream = cartRepo.watchCart(userId);
         final cartItems = await cartStream.first;
         expect(cartItems, isA<List>());
-        // Cart may be empty but should not throw
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -61,27 +56,13 @@ void main() {
     test(
       'addToCart adds item to user cart',
       () async {
-        const email = 'e2e-buyer@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
         const testProductId = 'e2e_product_test_seller';
         const quantity = 1;
 
-        // Add to cart - should not throw
         try {
-          await cartRepo.addToCart(
-            userId!,
-            testProductId,
-            quantity,
-          );
-          // Success - test passes
+          await cartRepo.addToCart(userId, testProductId, quantity);
         } on OrignaBaseException {
-          // Product may not exist in dev, but method should handle gracefully
-          // Test still passes as long as no unexpected exception
+          // Product may not exist in dev — graceful handling is acceptable
         }
       },
       skip: !runLive,
@@ -91,17 +72,8 @@ void main() {
     test(
       'clearCart empties user cart',
       () async {
-        const email = 'e2e-buyer@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
+        await cartRepo.clearCart(userId);
 
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        // Clear cart - should not throw
-        await cartRepo.clearCart(userId!);
-
-        // Verify cart is empty
         final cartStream = cartRepo.watchCart(userId);
         final cartItems = await cartStream.first;
         expect(cartItems, isEmpty);
@@ -113,21 +85,10 @@ void main() {
     test(
       'removeFromCart removes specific cart item',
       () async {
-        const email = 'e2e-buyer@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        // Try to remove nonexistent item (should not throw)
         try {
-          await cartRepo.removeFromCart(
-            userId!,
-            'nonexistent_cart_item_id',
-          );
+          await cartRepo.removeFromCart(userId, 'nonexistent_cart_item_id');
         } on OrignaBaseException {
-          // Expected for nonexistent item, test still passes
+          // Expected for nonexistent item
         }
       },
       skip: !runLive,
@@ -137,22 +98,10 @@ void main() {
     test(
       'updateQuantity updates cart item quantity',
       () async {
-        const email = 'e2e-buyer@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        // Try to update nonexistent item quantity (should not throw)
         try {
-          await cartRepo.updateQuantity(
-            userId!,
-            'nonexistent_cart_item_id',
-            5,
-          );
+          await cartRepo.updateQuantity(userId, 'nonexistent_cart_item_id', 5);
         } on OrignaBaseException {
-          // Expected for nonexistent item, test still passes
+          // Expected for nonexistent item
         }
       },
       skip: !runLive,

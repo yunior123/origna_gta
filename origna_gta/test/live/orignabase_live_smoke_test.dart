@@ -2,7 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart' show Collections, Fields, ProductLifecycleStatusValues;
+import 'package:origna_gta/core/schema/schema_constants.dart'
+    show Collections, Fields, ProductLifecycleStatusValues;
 import 'package:origna_gta/utils/env_config.dart';
 
 void main() {
@@ -13,37 +14,32 @@ void main() {
 
   group('OrignaBase live smoke', () {
     late ProviderContainer container;
+    late OrignaBase ob;
 
-    setUp(() {
+    setUpAll(() async {
+      final env = EnvConfig();
+      expect(
+        env.orignabaseUrl,
+        isNotEmpty,
+        reason: 'ORIGNABASE_URL dart-define should point tests at a live server.',
+      );
+
       container = ProviderContainer();
+      ob = container.read(orignabaseProvider);
+
+      await ob.auth.signInWithEmail(
+        'e2e-buyer@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
     });
 
-    tearDown(() {
+    tearDownAll(() {
       container.dispose();
     });
 
     test(
       'app provider can authenticate and search indexed products',
       () async {
-        final env = EnvConfig();
-        expect(
-          env.orignabaseUrl,
-          isNotEmpty,
-          reason:
-              'ORIGNABASE_URL dart-define should point tests at a live server.',
-        );
-
-        final ob = container.read(orignabaseProvider);
-
-        // Sign in as seller to have at least read access; products are indexed
-        // by the backend — we search existing active products rather than
-        // creating a new one (creation requires seller role + full product data
-        // and is tested separately in product_lifecycle_integration_test.dart).
-        await ob.auth.signInWithEmail(
-          'e2e-buyer@test.origna.ca',
-          'REDACTED_TEST_PASSWORD',
-        );
-
         Map<String, dynamic> result = {};
         for (var attempt = 0; attempt < 20; attempt++) {
           try {
@@ -60,7 +56,6 @@ void main() {
           }
           final hits = (result['hits'] as List?) ?? const [];
           if (hits.isNotEmpty) {
-            // Verify each hit is a valid map with the Meilisearch primary key
             for (final hit in hits) {
               expect(hit, isA<Map<String, dynamic>>());
               expect(

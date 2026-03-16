@@ -13,7 +13,9 @@ void main() {
 
   group('Coupons Integration', skip: !runLive ? 'live tests disabled' : null, () {
     late ProviderContainer container;
+    late ProviderContainer buyerContainer;
     late OrignaBase obAdmin;
+    late OrignaBase obBuyer;
     late String createdCouponCode;
     const adminEmail = 'e2e-admin@test.origna.ca';
     const adminPassword = 'REDACTED_TEST_PASSWORD';
@@ -24,11 +26,17 @@ void main() {
       container = ProviderContainer();
       obAdmin = container.read(orignabaseProvider);
       await obAdmin.auth.signInWithEmail(adminEmail, adminPassword);
+
+      buyerContainer = ProviderContainer();
+      obBuyer = buyerContainer.read(orignabaseProvider);
+      await obBuyer.auth.signInWithEmail(buyerEmail, buyerPassword);
     });
 
     tearDownAll(() async {
       obAdmin.auth.signOut();
       container.dispose();
+      obBuyer.auth.signOut();
+      buyerContainer.dispose();
     });
 
     test(
@@ -42,7 +50,7 @@ void main() {
             'POST',
             '/api/admin/coupons/create',
             body: {
-              Fields.couponCode: createdCouponCode,
+              Fields.code: createdCouponCode,
               'discountType': 'percent',
               'discountValue': 10,
               Fields.minOrderCents: 1000, // $10 minimum
@@ -70,26 +78,16 @@ void main() {
       () async {
         expect(createdCouponCode, isNotEmpty, reason: 'Coupon must be created first');
 
-        // Switch to buyer context
-        final buyerContainer = ProviderContainer();
-        final obBuyer = buyerContainer.read(orignabaseProvider);
-        await obBuyer.auth.signInWithEmail(buyerEmail, buyerPassword);
+        final result = await obBuyer.request('POST', ApiEndpoints.couponsApply, body: {
+          Fields.couponCode: createdCouponCode,
+          ApiKeys.cartSubtotalCents: 2000, // $20
+          Fields.sellerIds: [],
+        });
 
-        try {
-          final result = await obBuyer.request('POST', ApiEndpoints.couponsApply, body: {
-            Fields.couponCode: createdCouponCode,
-            ApiKeys.cartSubtotalCents: 2000, // $20
-            Fields.sellerIds: [],
-          });
-
-          expect(result, isA<Map<String, dynamic>>());
-          final discountCents = result[Fields.discountAmountCents] as int?;
-          expect(discountCents, isNotNull, reason: 'Should return discount amount');
-          expect(discountCents! > 0, isTrue, reason: 'Discount should be positive');
-        } finally {
-          obBuyer.auth.signOut();
-          buyerContainer.dispose();
-        }
+        expect(result, isA<Map<String, dynamic>>());
+        final discountCents = result[Fields.discountAmountCents] as int?;
+        expect(discountCents, isNotNull, reason: 'Should return discount amount');
+        expect(discountCents! > 0, isTrue, reason: 'Discount should be positive');
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );
@@ -99,35 +97,25 @@ void main() {
       () async {
         expect(createdCouponCode, isNotEmpty, reason: 'Coupon must be created first');
 
-        // Switch to buyer context
-        final buyerContainer = ProviderContainer();
-        final obBuyer = buyerContainer.read(orignabaseProvider);
-        await obBuyer.auth.signInWithEmail(buyerEmail, buyerPassword);
+        // First application should succeed
+        await obBuyer.request('POST', ApiEndpoints.couponsApply, body: {
+          Fields.couponCode: createdCouponCode,
+          ApiKeys.cartSubtotalCents: 2000,
+          Fields.sellerIds: [],
+        });
 
+        // Second application might succeed (idempotent) or fail depending on backend rules
         try {
-          // First application should succeed
           await obBuyer.request('POST', ApiEndpoints.couponsApply, body: {
             Fields.couponCode: createdCouponCode,
             ApiKeys.cartSubtotalCents: 2000,
             Fields.sellerIds: [],
           });
-
-          // Second application might succeed (idempotent) or fail depending on backend rules
-          try {
-            await obBuyer.request('POST', ApiEndpoints.couponsApply, body: {
-              Fields.couponCode: createdCouponCode,
-              ApiKeys.cartSubtotalCents: 2000,
-              Fields.sellerIds: [],
-            });
-            // If we get here, the API is idempotent (which is good)
-            expect(true, isTrue);
-          } on OrignaBaseException catch (e) {
-            // If it errors, that's also valid behavior
-            expect(e.message, isNotEmpty);
-          }
-        } finally {
-          obBuyer.auth.signOut();
-          buyerContainer.dispose();
+          // API is idempotent — acceptable
+          expect(true, isTrue);
+        } on OrignaBaseException catch (e) {
+          // Error on second apply is also valid
+          expect(e.message, isNotEmpty);
         }
       },
       timeout: const Timeout(Duration(minutes: 2)),
@@ -136,25 +124,15 @@ void main() {
     test(
       'applying invalid coupon code returns error',
       () async {
-        // Switch to buyer context
-        final buyerContainer = ProviderContainer();
-        final obBuyer = buyerContainer.read(orignabaseProvider);
-        await obBuyer.auth.signInWithEmail(buyerEmail, buyerPassword);
-
         try {
-          try {
-            await obBuyer.request('POST', ApiEndpoints.couponsApply, body: {
-              Fields.couponCode: 'INVALID_COUPON_ZZZZZZZ',
-              ApiKeys.cartSubtotalCents: 2000,
-              Fields.sellerIds: [],
-            });
-            fail('Should have thrown an error for invalid coupon');
-          } on OrignaBaseException catch (e) {
-            expect(e.message, isNotEmpty, reason: 'Should have error message');
-          }
-        } finally {
-          obBuyer.auth.signOut();
-          buyerContainer.dispose();
+          await obBuyer.request('POST', ApiEndpoints.couponsApply, body: {
+            Fields.couponCode: 'INVALID_COUPON_ZZZZZZZ',
+            ApiKeys.cartSubtotalCents: 2000,
+            Fields.sellerIds: [],
+          });
+          fail('Should have thrown an error for invalid coupon');
+        } on OrignaBaseException catch (e) {
+          expect(e.message, isNotEmpty, reason: 'Should have error message');
         }
       },
       timeout: const Timeout(Duration(minutes: 2)),
@@ -183,26 +161,17 @@ void main() {
             body: {'id': couponId},
           );
 
-          // Verify deletion - should get error on next apply
-          final buyerContainer = ProviderContainer();
-          final obBuyer = buyerContainer.read(orignabaseProvider);
-          await obBuyer.auth.signInWithEmail(buyerEmail, buyerPassword);
-
+          // Verify deletion - shared buyer should get error on next apply
           try {
-            try {
-              await obBuyer.request('POST', ApiEndpoints.couponsApply, body: {
-                Fields.couponCode: createdCouponCode,
-                ApiKeys.cartSubtotalCents: 2000,
-                Fields.sellerIds: [],
-              });
-              fail('Deleted coupon should not be applicable');
-            } on OrignaBaseException {
-              // Expected - coupon is deleted
-              expect(true, isTrue);
-            }
-          } finally {
-            obBuyer.auth.signOut();
-            buyerContainer.dispose();
+            await obBuyer.request('POST', ApiEndpoints.couponsApply, body: {
+              Fields.couponCode: createdCouponCode,
+              ApiKeys.cartSubtotalCents: 2000,
+              Fields.sellerIds: [],
+            });
+            fail('Deleted coupon should not be applicable');
+          } on OrignaBaseException {
+            // Expected - coupon is deleted
+            expect(true, isTrue);
           }
         } catch (_) {
           // Admin coupon management endpoint may not exist yet

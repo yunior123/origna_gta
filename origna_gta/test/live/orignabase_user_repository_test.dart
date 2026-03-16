@@ -5,7 +5,6 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/core/repositories/orignabase_user_repository.dart';
-import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/env_config.dart';
 
 void main() {
@@ -14,41 +13,40 @@ void main() {
     defaultValue: false,
   );
 
-  group('OrignaBaseUserRepository live', () {
+  // --- Admin-role tests -----------------------------------------------
+  group('OrignaBaseUserRepository live (admin)', () {
     late ProviderContainer container;
     late OrignaBase ob;
     late OrignaBaseUserRepository userRepo;
-    late OrignaBaseAuthRepository authRepo;
+    late String adminUserId;
 
-    setUp(() {
+    setUpAll(() async {
+      final env = EnvConfig();
+      expect(
+        env.orignabaseUrl,
+        isNotEmpty,
+        reason: 'ORIGNABASE_URL dart-define required for live tests',
+      );
+
       container = ProviderContainer();
       ob = container.read(orignabaseProvider);
       userRepo = OrignaBaseUserRepository(ob);
-      authRepo = OrignaBaseAuthRepository(ob);
+      final authRepo = OrignaBaseAuthRepository(ob);
+
+      await authRepo.signInWithEmail('e2e-admin@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      final uid = ob.auth.currentUserId;
+      expect(uid, isNotNull, reason: 'Admin sign-in failed');
+      adminUserId = uid!;
     });
 
-    tearDown(() {
+    tearDownAll(() {
       container.dispose();
     });
 
     test(
       'getUserProfile returns user data for valid user ID',
       () async {
-        final env = EnvConfig();
-        expect(
-          env.orignabaseUrl,
-          isNotEmpty,
-          reason: 'ORIGNABASE_URL dart-define required for live tests',
-        );
-
-        const email = 'e2e-admin@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        final profile = await userRepo.getUserProfile(userId!);
+        final profile = await userRepo.getUserProfile(adminUserId);
 
         if (profile != null) {
           expect(profile.uid, isNotEmpty);
@@ -62,21 +60,19 @@ void main() {
     test(
       'getUserProfile returns null for nonexistent user',
       () async {
-        // Requires auth token to query profiles
-        await authRepo.signInWithEmail(
-          'e2e-admin@test.origna.ca',
-          'REDACTED_TEST_PASSWORD',
-        );
-        // Backend may return 403 (no matching resource → rule denies) or null
-        // for a nonexistent user ID. Both outcomes indicate "no profile found".
         try {
           final profile = await userRepo.getUserProfile('nonexistent_user_id');
           expect(profile, isNull);
         } catch (e) {
-          // 403 = no resource found, rules deny access — treat as null (not found)
-          expect(e.toString().toLowerCase(),
-              anyOf(contains('403'), contains('permission'), contains('forbidden')),
-              reason: 'Expected null or 403 for nonexistent user, got: $e');
+          expect(
+            e.toString().toLowerCase(),
+            anyOf(
+              contains('403'),
+              contains('permission'),
+              contains('forbidden'),
+            ),
+            reason: 'Expected null or 403 for nonexistent user, got: $e',
+          );
         }
       },
       skip: !runLive,
@@ -86,38 +82,61 @@ void main() {
     test(
       'watchAddresses returns stream of user addresses',
       () async {
-        const email = 'e2e-admin@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        final addressesStream = userRepo.watchAddresses(userId!);
-
-        // Take first emission
+        final addressesStream = userRepo.watchAddresses(adminUserId);
         final addresses = await addressesStream.first;
-        // An empty list [] is List<dynamic> at runtime; verify it is iterable
         expect(addresses, isList);
-        // May be empty but should not throw
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
     test(
+      'updatePreferredLanguage updates user language preference',
+      () async {
+        await userRepo.updatePreferredLanguage(adminUserId, 'en');
+      },
+      skip: !runLive,
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
+
+    test(
+      'recordTermsAcceptance records user terms acceptance',
+      () async {
+        await userRepo.recordTermsAcceptance();
+      },
+      skip: !runLive,
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
+  }, skip: !runLive);
+
+  // --- Seller-role tests -----------------------------------------------
+  group('OrignaBaseUserRepository live (seller)', () {
+    late ProviderContainer container;
+    late OrignaBase ob;
+    late OrignaBaseUserRepository userRepo;
+    late String sellerUserId;
+
+    setUpAll(() async {
+      container = ProviderContainer();
+      ob = container.read(orignabaseProvider);
+      userRepo = OrignaBaseUserRepository(ob);
+      final authRepo = OrignaBaseAuthRepository(ob);
+
+      await authRepo.signInWithEmail(
+          'e2e-seller@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      final uid = ob.auth.currentUserId;
+      expect(uid, isNotNull, reason: 'Seller sign-in failed');
+      sellerUserId = uid!;
+    });
+
+    tearDownAll(() {
+      container.dispose();
+    });
+
+    test(
       'watchSellerAccountStatus returns stream of seller status',
       () async {
-        const email = 'e2e-seller@test.origna.ca'; // Seller account
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        final statusStream = userRepo.watchSellerAccountStatus(userId!);
-
-        // Take first emission
+        final statusStream = userRepo.watchSellerAccountStatus(sellerUserId);
         final status = await statusStream.first;
         expect(status, isNotNull);
       },
@@ -128,51 +147,8 @@ void main() {
     test(
       'getSellerAccountStatus returns seller status',
       () async {
-        const email = 'e2e-seller@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        final status = await userRepo.getSellerAccountStatus(userId!);
+        final status = await userRepo.getSellerAccountStatus(sellerUserId);
         expect(status, isNotNull);
-      },
-      skip: !runLive,
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
-
-    test(
-      'updatePreferredLanguage updates user language preference',
-      () async {
-        const email = 'e2e-admin@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        final userId = ob.auth.currentUserId;
-        expect(userId, isNotNull);
-
-        // Update language - should not throw
-        await userRepo.updatePreferredLanguage(
-          userId!,
-          'en',
-        );
-        // Test passes if no exception is thrown
-      },
-      skip: !runLive,
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
-
-    test(
-      'recordTermsAcceptance records user terms acceptance',
-      () async {
-        const email = 'e2e-admin@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
-        await authRepo.signInWithEmail(email, password);
-
-        // Record terms acceptance - should not throw
-        await userRepo.recordTermsAcceptance();
-        // Test passes if no exception
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
