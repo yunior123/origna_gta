@@ -25,7 +25,7 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Checkout includes tax calculation for Ontario address', async () => {
-    await invalidateProductCache();
+    invalidateProductCache();
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     // Use qty=4 to avoid 60s order dedup across repeated runs (unique subtotal for province tax tests)
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 4, buyerAuth.idToken);
@@ -48,7 +48,7 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Order total = subtotal + tax + shipping', async () => {
-    await invalidateProductCache();
+    invalidateProductCache();
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 2, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
@@ -62,7 +62,7 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Currency is always CAD', async () => {
-    await invalidateProductCache();
+    invalidateProductCache();
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
@@ -120,7 +120,7 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Quebec address applies QST+GST tax rate (~14.975%)', async () => {
-    await invalidateProductCache();
+    invalidateProductCache();
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     // Use qty=5 to avoid 60s order dedup with Ontario/other tests (unique subtotal for province tax tests)
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 5, buyerAuth.idToken);
@@ -138,7 +138,7 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Alberta address applies GST-only tax rate (5%)', async () => {
-    await invalidateProductCache();
+    invalidateProductCache();
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     // Use qty=6 to avoid 60s order dedup across repeated runs (unique subtotal for province tax tests)
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 6, buyerAuth.idToken);
@@ -208,8 +208,9 @@ test.describe('Shipping Calculation', () => {
     }
   });
 
-  test.fixme('Local-only item: checkout blocked for out-of-province buyer', async () => {
-    // TODO: Backend does not yet enforce isLocalDeliveryOnly province check in create_checkout_session
+  test.skip('Local-only item: checkout blocked for out-of-province buyer', async () => {
+    // SKIP: Backend does not yet enforce isLocalDeliveryOnly province check in create_checkout_session.
+    // Re-enable once OrignaBase validates buyer province against seller's local delivery radius.
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const productId = `test_local_only_block_${Date.now()}`;
 

@@ -74,7 +74,7 @@ function deriveOrignaBaseUrl(targetEnv: E2EEnvironment): string {
   }
 }
 
-function resolveBackendProvider(targetEnv: E2EEnvironment): BackendProvider {
+function resolveBackendProvider(_targetEnv: E2EEnvironment): BackendProvider {
   const explicit = process.env.E2E_AUTH_PROVIDER?.trim().toLowerCase();
   if (explicit === 'orignabase') {
     return explicit;
@@ -552,8 +552,6 @@ async function signInOrignaBase(email: string, password: string): Promise<AuthDa
 
   const rawUserId = String(loginBody.user.id);
   const localId = rawUserId.includes(':') ? rawUserId.split(':', 2)[1] : rawUserId;
-  const roles = rolesForEmail(normalizedEmail);
-
   const reloginRes = await fetchWithRetry(`${ORIGNABASE_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1359,7 +1357,8 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'get_connect_account_status':
         return { path: '/api/connect/status', body: { userId } };
       case 'get_or_create_chat':
-        return { path: '/api/chat/get-or-create', body: { userId, participantId: payload?.participantId } };
+        // Backend expects `otherUserId` — accept both field names from callers for backward compat
+        return { path: '/api/chat/get-or-create', body: { userId, otherUserId: payload?.otherUserId ?? payload?.participantId } };
       case 'get_order_detail': {
         // No REST endpoint — use GraphQL get
         const rawOid = String(payload?.orderId ?? '');
@@ -1721,7 +1720,12 @@ export async function buildCheckoutPayload(
     phoneNumber: '+14165550000',
   };
 
-  let resolvedProductId = productId;
+  // Strip SurrealDB collection prefix (e.g. "products:abc123" → "abc123") to avoid
+  // SurrealDB parse errors when the ID is used in a query: Unexpected token `:`.
+  const stripCollectionPrefix = (id: string): string =>
+    id.includes(':') ? id.split(':', 2)[1] : id;
+
+  let resolvedProductId = stripCollectionPrefix(productId);
   let prodDoc = await readDoc(`products/${resolvedProductId}`, token);
   let product = parseDoc(prodDoc);
   if (!product) {
@@ -1731,7 +1735,8 @@ export async function buildCheckoutPayload(
       ((p.lifecycleStatus ?? p.status) === 'active')
     ) ?? products.find((p) => (p.stockQuantity ?? 0) > 0) ?? products[0];
     if (fallback?.id) {
-      resolvedProductId = fallback.id;
+      // SurrealDB returns full record IDs like "products:abc123" — strip prefix before use
+      resolvedProductId = stripCollectionPrefix(String(fallback.id));
       prodDoc = await readDoc(`products/${resolvedProductId}`, token);
       product = parseDoc(prodDoc);
     }
@@ -1989,7 +1994,7 @@ export async function dismissStripeModals(page: Page): Promise<void> {
   }
 
   // Handle 3DS authentication test iframe
-  const threeDSFrame = page.frameLocator('iframe[name*="stripe-challenge"], iframe[name*="__privateStripeFrame"]').first();
+  const threeDSFrame = page.frameLocator('iframe[name*="stripe-challenge"], iframe[name*="__privateStripeFrame"]');
   try {
     const completeBtn = threeDSFrame.locator(
       'button:has-text("Complete"), button:has-text("Approve"), #test-source-authorize-3ds'
@@ -2097,7 +2102,7 @@ export async function fillStripeCheckout(
     let foundViaFrameLocator = false;
     for (const iframeSel of stripeIframeSelectors) {
       try {
-        const fl = page.frameLocator(iframeSel).first();
+        const fl = page.frameLocator(iframeSel);
         const cardInput = fl.locator(
           'input[name="cardnumber"], input[autocomplete="cc-number"], input[name="number"], ' +
           'input[data-elements-stable-field-name="cardNumber"], input[placeholder*="1234"]'

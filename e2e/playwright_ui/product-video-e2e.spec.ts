@@ -3,15 +3,20 @@ import {
     waitForFlutter,
     requireWebApp,
     ensureLoggedIn,
-    navigateHome,
     uniqueSuffix,
     BTN_ADD_PRODUCT,
 } from './flutter-helpers';
+import { existsSync } from 'fs';
 import * as path from 'path';
 
 const TARGET_URL = process.env.E2E_TARGET_URL ?? 'http://localhost:5005';
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? 'yr62813@gmail.com';
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
+
+// Paths for generated fixture videos (created by e2e/scripts/generate-test-videos.sh)
+const FIXTURE_VIDEOS_DIR = path.resolve(__dirname, '../../fixtures/videos');
+const OVERSIZED_VIDEO_PATH = path.join(FIXTURE_VIDEOS_DIR, 'oversized.mp4');
+const TOO_LONG_VIDEO_PATH = path.join(FIXTURE_VIDEOS_DIR, 'too-long.mp4');
 
 test.beforeEach(async ({ page }) => {
     await requireWebApp(page, TARGET_URL);
@@ -53,37 +58,51 @@ test.describe('Product Video Flow', () => {
         await expect(page.locator('flt-semantics:has-text("Video")')).toBeVisible();
     });
 
-    // T02 and T03 require test asset files > 100MB and > 1 minute duration respectively.
-    // The current stub assets (15KB, 57KB) are too small to trigger validation.
-    // TODO: Generate proper-sized test assets via a script before these tests can run.
-    test.fixme('T02: Validation - Oversized video', async ({ page }) => {
-        await page.getByRole('button', { name: BTN_ADD_PRODUCT }).click();
-        await waitForFlutter(page);
+    // T02 and T03 use generated fixture videos (run e2e/scripts/generate-test-videos.sh first).
+    // A beforeAll guard skips these tests gracefully if the fixtures are missing,
+    // so CI does not fail before the generation script has been run.
 
-        const videoPath = path.resolve(__dirname, '../assets/test_video_too_large.mp4');
-        const [fileChooser] = await Promise.all([
-            page.waitForEvent('filechooser'),
-            page.locator('[aria-label="btn-add-video"]').first().click(),
-        ]);
-        await fileChooser.setFiles(videoPath);
+    test.describe('Video validation — requires generated fixtures', () => {
+      test.beforeAll(async () => {
+        const oversizedExists = existsSync(OVERSIZED_VIDEO_PATH);
+        const tooLongExists = existsSync(TOO_LONG_VIDEO_PATH);
+        if (!oversizedExists || !tooLongExists) {
+          // Use test.skip on the suite level — individual tests will be skipped.
+          // We throw so Playwright marks the beforeAll as "skipped".
+          test.skip(
+            true,
+            'Fixture videos not found. Run e2e/scripts/generate-test-videos.sh (requires ffmpeg) to generate them.',
+          );
+        }
+      });
 
-        // Verify error snackbar content (English or French)
-        const errorText = page.locator('flt-semantics').filter({ hasText: /exceeds 100MB|dépasse la limite de 100 Mo/i });
-        await expect(errorText.first()).toBeVisible({ timeout: 15000 });
-    });
+      test('T02: Validation - Oversized video', async ({ page }) => {
+          await page.getByRole('button', { name: BTN_ADD_PRODUCT }).click();
+          await waitForFlutter(page);
 
-    test.fixme('T03: Validation - Overly long video', async ({ page }) => {
-        await page.getByRole('button', { name: BTN_ADD_PRODUCT }).click();
-        await waitForFlutter(page);
+          const [fileChooser] = await Promise.all([
+              page.waitForEvent('filechooser'),
+              page.locator('[aria-label="btn-add-video"]').first().click(),
+          ]);
+          await fileChooser.setFiles(OVERSIZED_VIDEO_PATH);
 
-        const videoPath = path.resolve(__dirname, '../assets/test_video_too_long.mp4');
-        const [fileChooser] = await Promise.all([
-            page.waitForEvent('filechooser'),
-            page.locator('[aria-label="btn-add-video"]').first().click(),
-        ]);
-        await fileChooser.setFiles(videoPath);
+          // Verify error snackbar content (English or French)
+          const errorText = page.locator('flt-semantics').filter({ hasText: /exceeds 100MB|dépasse la limite de 100 Mo/i });
+          await expect(errorText.first()).toBeVisible({ timeout: 15000 });
+      });
 
-        const errorText = page.locator('flt-semantics').filter({ hasText: /exceeds 1 minute|dépasse la limite de 1 minute/i });
-        await expect(errorText.first()).toBeVisible({ timeout: 15000 });
+      test('T03: Validation - Overly long video', async ({ page }) => {
+          await page.getByRole('button', { name: BTN_ADD_PRODUCT }).click();
+          await waitForFlutter(page);
+
+          const [fileChooser] = await Promise.all([
+              page.waitForEvent('filechooser'),
+              page.locator('[aria-label="btn-add-video"]').first().click(),
+          ]);
+          await fileChooser.setFiles(TOO_LONG_VIDEO_PATH);
+
+          const errorText = page.locator('flt-semantics').filter({ hasText: /exceeds 1 minute|dépasse la limite de 1 minute/i });
+          await expect(errorText.first()).toBeVisible({ timeout: 15000 });
+      });
     });
 });

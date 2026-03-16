@@ -1455,9 +1455,10 @@ test.describe('N. Reactivate Subscription', () => {
 test.describe('O. Webhook Edge Cases', () => {
   test.setTimeout(60_000);
 
-  // TODO: Requires active Stripe CLI listener forwarding to dev webhook endpoint.
-  // Run: stripe listen --forward-to <DEV_FUNCTIONS_URL>/stripe_webhook
-  test.fixme('O1: invoice.payment_failed → subscription status becomes past_due', async () => {
+  // Requires active Stripe CLI listener forwarding to the dev webhook endpoint.
+  // Run locally: stripe listen --forward-to https://api.dev.orignagta.ca/stripe/webhook
+  // Not set up in CI — skipped to prevent false failures.
+  test.skip('O1: invoice.payment_failed → subscription status becomes past_due', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
     // Trigger Stripe CLI test event
@@ -1476,9 +1477,10 @@ test.describe('O. Webhook Edge Cases', () => {
     expect(subDoc?.status).toBe('past_due');
   });
 
-  // TODO: Requires a real subscription advancing through a billing cycle in test mode.
+  // Requires a subscription advancing through a billing cycle in Stripe test mode.
   // Use Stripe test clocks (https://stripe.com/docs/billing/testing/test-clocks) to simulate renewal.
-  test.fixme('O2: invoice.payment_succeeded keeps isPremium=true and advances expiresAt', async () => {
+  // Not automated in CI — skipped until test-clock infrastructure is set up.
+  test.skip('O2: invoice.payment_succeeded keeps isPremium=true and advances expiresAt', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
     const beforeDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
@@ -1500,9 +1502,9 @@ test.describe('O. Webhook Edge Cases', () => {
     }
   });
 
-  // TODO: Requires seeding a user with past_due status in Firestore (or triggering it via CLI).
-  // Then verify premium-gated features (chat, fee waiver) are blocked.
-  test.fixme('O3: past_due user loses premium access to gated features', async () => {
+  // Requires seeding a user into past_due state via Stripe CLI or test-clock simulation.
+  // Not automated in CI — skipped until Stripe CLI webhook forwarding is configured in the pipeline.
+  test.skip('O3: past_due user loses premium access to gated features', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
     // Precondition: user must be in past_due state

@@ -32,13 +32,73 @@ test.describe('Cart Manipulation', () => {
   test.setTimeout(300_000);
   test.describe.configure({ mode: 'serial' });
 
-  // ── T01-T03: Cart CRUD via API — SKIPPED ─────────────────────────
-  // OrignaBase has no /api/cart/* HTTP endpoints. Cart is managed exclusively
-  // by the Flutter SDK through SurrealDB GraphQL (no standalone REST routes).
-  // Re-enable once OrignaBase exposes dedicated cart REST endpoints.
-  test.skip('T01: Add item to cart via API', async () => { /* no-op */ });
-  test.skip('T02: Update cart item quantity via API', async () => { /* no-op */ });
-  test.skip('T03: Remove item from cart via API', async () => { /* no-op */ });
+  // ── T01-T03: Cart CRUD via OrignaBase API ────────────────────────
+
+  let buyerToken: string;
+
+  test.beforeAll(async () => {
+    const buyer = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
+    buyerToken = buyer.idToken;
+    // Clear any leftover cart items from prior runs
+    await callCallable('clear_cart', {}, buyerToken).catch(() => {});
+  });
+
+  test.afterAll(async () => {
+    // Leave cart clean for next run
+    await callCallable('clear_cart', {}, buyerToken).catch(() => {});
+  });
+
+  test('T01: Add item to cart via API', async () => {
+    const result = await callOk('add_to_cart', {
+      productId: 'e2e_product_test_seller',
+      quantity: 2,
+    }, buyerToken);
+    // Backend returns success indicator or cart snapshot
+    expect(result).toBeTruthy();
+
+    // Verify the item appears in the cart
+    const cart = await callCallable('get_cart', {}, buyerToken);
+    const items: any[] = cart?.items ?? cart?.result?.items ?? [];
+    const added = items.find((i: any) =>
+      (i.productId === 'e2e_product_test_seller') ||
+      (typeof i.productId === 'string' && i.productId.endsWith('e2e_product_test_seller')),
+    );
+    expect(added, 'Added item should appear in cart').toBeTruthy();
+    expect(added.quantity).toBeGreaterThanOrEqual(1);
+  });
+
+  test('T02: Update cart item quantity via API', async () => {
+    const updated = await callOk('update_cart_quantity', {
+      productId: 'e2e_product_test_seller',
+      quantity: 3,
+    }, buyerToken);
+    expect(updated).toBeTruthy();
+
+    // Verify updated quantity
+    const cart = await callCallable('get_cart', {}, buyerToken);
+    const items: any[] = cart?.items ?? cart?.result?.items ?? [];
+    const item = items.find((i: any) =>
+      (i.productId === 'e2e_product_test_seller') ||
+      (typeof i.productId === 'string' && i.productId.endsWith('e2e_product_test_seller')),
+    );
+    expect(item, 'Item should still be in cart after quantity update').toBeTruthy();
+    expect(item.quantity).toBe(3);
+  });
+
+  test('T03: Remove item from cart via API', async () => {
+    await callOk('remove_from_cart', {
+      productId: 'e2e_product_test_seller',
+    }, buyerToken);
+
+    // Verify item is gone from cart
+    const cart = await callCallable('get_cart', {}, buyerToken);
+    const items: any[] = cart?.items ?? cart?.result?.items ?? [];
+    const still = items.find((i: any) =>
+      (i.productId === 'e2e_product_test_seller') ||
+      (typeof i.productId === 'string' && i.productId.endsWith('e2e_product_test_seller')),
+    );
+    expect(still, 'Removed item should not appear in cart').toBeFalsy();
+  });
 
   // ── T04: Cart screen loads correctly ─────────────────────────────
   test('T04: Cart screen loads for authenticated buyer', async ({ page }) => {
