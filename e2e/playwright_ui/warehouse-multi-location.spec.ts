@@ -59,7 +59,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // ────────────────────────────────────────────────────────────────────────────
   // T1: Seller can create a warehouse via Cloud Function callable
   // ────────────────────────────────────────────────────────────────────────────
-  test('T1: seller creates a warehouse and it is persisted in Firestore', async () => {
+  test('T1: seller creates a warehouse and it is persisted in SurrealDB', async () => {
 
     const { idToken: token, localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
@@ -71,7 +71,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
     expect(result).toHaveProperty('warehouseId');
     const wId: string = result.warehouseId;
 
-    // Verify persisted in Firestore (requires auth token — warehouse rules require isOwner)
+    // Verify persisted in SurrealDB (requires auth token — warehouse rules require isOwner)
     const doc = await getDoc(warehousePath(uid, wId), token);
     expect(doc).not.toBeNull();
     expect(doc.label).toBe('Toronto Warehouse T1');
@@ -149,7 +149,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
     await writeDoc(`products/${prodId2}`, { ...baseProduct, name: 'Duplicate SKU Product' }, adminToken, false);
 
     const doc2 = await getDoc(`products/${prodId2}`, adminToken);
-    // The sellerSku and sellerId are persisted (Firestore direct write),
+    // The sellerSku and sellerId are persisted (SurrealDB direct write),
     // but the on_product_created trigger will fire and set lifecycleStatus='draft' on the duplicate.
     // In emulator unit tests this is verified by the trigger logic — here we verify
     // the data integrity: two docs with same sellerId+sellerSku can be queried,

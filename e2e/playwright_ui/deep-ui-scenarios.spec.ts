@@ -213,7 +213,7 @@ test.describe('A. Full Buyer Journey', () => {
     }
   });
 
-  test('A3: Buyer can create checkout session via API and verify order in Firestore', async ({ page }) => {
+  test('A3: Buyer can create checkout session via API and verify order in SurrealDB', async ({ page }) => {
     await requireWebApp(page, TARGET_URL);
 
     const auth = await createFreshBuyerAuth();
@@ -235,7 +235,7 @@ test.describe('A. Full Buyer Journey', () => {
       expect(checkout.checkoutUrl).toContain('checkout.stripe.com');
     }
 
-    // Verify order was created in Firestore (pass auth token — orders require auth read)
+    // Verify order was created in SurrealDB (pass auth token — orders require auth read)
     const order = await waitForOrder(checkout.orderId, auth.idToken);
     expect(order).toBeTruthy();
     expect(order?.orderStatus).toBeTruthy();
@@ -255,7 +255,7 @@ test.describe('B. Seller Product Lifecycle', () => {
     await screenshotOnFailure(page, testInfo);
   });
 
-  test('B1: Seller creates product via API and verifies it exists in Firestore', async () => {
+  test('B1: Seller creates product via API and verifies it exists in SurrealDB', async () => {
     const auth = await signIn(SELLER_EMAIL);
     const productName = `E2E Deep Test ${uid()}`;
 
@@ -274,7 +274,7 @@ test.describe('B. Seller Product Lifecycle', () => {
 
     const productId = result.result?.productId || result.result?.id;
     if (productId) {
-      // Verify in Firestore
+      // Verify via OrignaBase API
       const product = await getDoc(`products/${productId}`, auth.idToken);
       expect(product).toBeTruthy();
       expect(product?.name).toBe(productName);
@@ -287,7 +287,7 @@ test.describe('B. Seller Product Lifecycle', () => {
     }
   });
 
-  test('B2: Seller updates product and verifies changes in Firestore', async () => {
+  test('B2: Seller updates product and verifies changes in SurrealDB', async () => {
     const auth = await signIn(SELLER_EMAIL);
 
     // Create a product first
@@ -310,7 +310,7 @@ test.describe('B. Seller Product Lifecycle', () => {
         description: 'Updated description via E2E',
       }, auth.idToken);
 
-      // Verify update in Firestore
+      // Verify update in SurrealDB
       const updated = await getDoc(`products/${productId}`, auth.idToken);
       expect(updated?.name).toBe('Updated Lifecycle Product');
       expect(updated?.price).toBe(29.99);
@@ -395,7 +395,7 @@ test.describe('C. Admin Panel Operations', () => {
     await performSignOut(page, TARGET_URL);
   });
 
-  test('C2: Admin can update product stock via API and verify Firestore', async () => {
+  test('C2: Admin can update product stock via API and verify SurrealDB', async () => {
     const auth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
 
     // Read current stock
@@ -419,7 +419,7 @@ test.describe('C. Admin Panel Operations', () => {
       throw new Error(`admin_update_product_stock failed: ${response.error.message}`);
     }
 
-    // Verify in Firestore
+    // Verify via OrignaBase API
     const after = await getDoc(`products/${TEST_PRODUCTS.HIGH_STOCK}`, auth.idToken);
     expect(after?.stockQuantity).toBe(originalStock + 5);
 
@@ -517,7 +517,7 @@ test.describe('E. Order Lifecycle Deep', () => {
     const orderId = checkout.orderId;
     expect(orderId).toBeTruthy();
 
-    // Verify order exists (must pass auth token — Firestore rules require auth read)
+    // Verify order exists (must pass auth token — OrignaBase rules require auth read)
     const order = await waitForOrder(orderId, buyerAuth.idToken);
     expect(order).toBeTruthy();
     expect(order?.orderStatus).toBeTruthy();
@@ -542,7 +542,7 @@ test.describe('E. Order Lifecycle Deep', () => {
       newStatus: 'delivered',
     }, adminAuth.idToken);
 
-    // Verify final state in Firestore (pass auth token)
+    // Verify final state in SurrealDB (pass auth token)
     const finalOrder = await waitForOrder(orderId, buyerAuth.idToken);
     if (finalOrder?.orderStatus === 'delivered') {
       expect(finalOrder.orderStatus).toBe('delivered');
@@ -604,7 +604,7 @@ test.describe('F. Favorites & Navigation', () => {
     await screenshotOnFailure(page, testInfo);
   });
 
-  test('F1: Toggle favorite via API and verify Firestore state', async () => {
+  test('F1: Toggle favorite via API and verify SurrealDB state', async () => {
     const auth = await signIn(BUYER_EMAIL);
     const { sellerAuth, productId } = await createCheckoutProduct();
 
@@ -615,7 +615,7 @@ test.describe('F. Favorites & Navigation', () => {
       }, auth.idToken);
       expect(addResult).toBeTruthy();
 
-      // Check Firestore for favorite doc
+      // Check SurrealDB for favorite doc
       const favDoc = await getDoc(
         `users/${auth.localId}/favorites/${productId}`,
         auth.idToken,

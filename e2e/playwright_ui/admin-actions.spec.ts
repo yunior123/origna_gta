@@ -1,7 +1,7 @@
 /**
  * OrignaGTA — Admin Actions E2E Tests
  * =====================================
- * Tests admin panel operations via UI against dev Firebase.
+ * Tests admin panel operations via UI against dev OrignaBase.
  */
 import { test, expect } from '@playwright/test';
 import {

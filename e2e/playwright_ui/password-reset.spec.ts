@@ -2,14 +2,14 @@ import { test, expect } from '@playwright/test';
 import { waitForFlutter } from './flutter-helpers';
 
 test.describe('Password Reset Routing', () => {
-  // Valid-format oobCode (10+ alphanumeric chars) — triggers routing but Firebase rejects it
+  // Valid-format oobCode (10+ alphanumeric chars) — triggers routing but OrignaBase rejects it
   const FAKE_OOB = 'fake_oob_code_123456789';
 
   test('should render ResetPasswordScreen when mode=resetPassword is in URL', async ({ page, baseURL }) => {
     await page.goto(`${baseURL}/?mode=resetPassword&oobCode=${FAKE_OOB}`);
     await waitForFlutter(page);
 
-    // Firebase rejects the fake oobCode immediately → error state shows "Go to Login"
+    // OrignaBase rejects the fake oobCode immediately → error state shows "Go to Login"
     // This confirms ResetPasswordScreen was rendered (routing worked)
     await expect(page.getByLabel('Go to Login'))
       .toBeVisible({ timeout: 25000 });
@@ -19,7 +19,7 @@ test.describe('Password Reset Routing', () => {
     await page.goto(`${baseURL}/?mode=resetPassword&oobCode=${FAKE_OOB}`);
     await waitForFlutter(page);
 
-    // After Firebase rejects the invalid code, error state shows "Go to Login" button
+    // After OrignaBase rejects the invalid code, error state shows "Go to Login" button
     const goToLoginBtn = page.getByLabel('Go to Login');
     await expect(goToLoginBtn).toBeVisible({ timeout: 25000 });
 

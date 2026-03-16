@@ -2,7 +2,7 @@
  * OrignaGTA — Edge Cases & Security E2E Tests
  * =============================================
  * Tests adversarial and boundary scenarios not covered by other spec files.
- * Targets dev Firebase (orignagta-dev) with real Stripe test mode.
+ * Targets dev OrignaBase (orignagta-dev) with real Stripe test mode.
  *
  * Scenarios covered:
  *  1. Self-purchase: seller cannot buy their own product
@@ -32,7 +32,7 @@ const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
 const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
 
-/** Build a raw checkout payload without reading from Firestore (for negative tests). */
+/** Build a raw checkout payload without reading from SurrealDB (for negative tests). */
 function rawCheckoutPayload(buyerUid: string, productId: string, quantity: number, sellerId = TEST_UIDS.SELLER) {
   return {
     userId: buyerUid,
@@ -74,12 +74,10 @@ test.describe('1. Self-Purchase Prevention', () => {
 
     const { data } = await buildCheckoutPayload(sellerAuth.localId, productB.id, 1, sellerAuth.idToken);
 
-    // Backend guard: sellerId == userId → invalid-argument or failed-precondition
+    // Backend guard: sellerId == userId → invalid-argument
     const error = await callExpectError('create_checkout_session', data, sellerAuth.idToken);
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
-    if (error.code === 'invalid-argument') {
-      expect(error.message.toLowerCase()).toContain('own');
-    }
+    expect(error.code).toBe('invalid-argument');
+    expect(error.message.toLowerCase()).toContain('own');
   });
 });
 
@@ -134,8 +132,8 @@ test.describe('2. Quantity Validation', () => {
     data.subtotalCents = 0;
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
-    // Backend validates: item_quantity <= 0 → invalid-argument; subtotalCents <= 0 → invalid-argument or failed-precondition
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
+    // Backend validates: item_quantity <= 0 → invalid-argument; subtotalCents <= 0 → invalid-argument
+    expect(error.code).toBe('invalid-argument');
   });
 
   test('Checkout rejected for quantity > 100 (max item cap)', async () => {
@@ -147,10 +145,8 @@ test.describe('2. Quantity Validation', () => {
     data.subtotalCents = Math.round(product.price * 101 * 100);
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
-    if (error.code === 'invalid-argument') {
-      expect(error.message.toLowerCase()).toContain('quantity');
-    }
+    expect(error.code).toBe('invalid-argument');
+    expect(error.message.toLowerCase()).toContain('quantity');
   });
 });
 
@@ -175,7 +171,7 @@ test.describe('3. Order Guards', () => {
     const error = await callExpectError('cancel_order', {
       orderId: 'e2e_nonexistent_order_cancel_guard',
     }, buyerAuth.idToken);
-    expect(['not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('not-found');
   });
 
   test('update_order_status on non-existent order returns not-found', async () => {
@@ -184,7 +180,7 @@ test.describe('3. Order Guards', () => {
       orderId: 'e2e_nonexistent_order_status_guard',
       newStatus: 'processing',
     }, adminAuth.idToken);
-    expect(['not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('not-found');
   });
 
   test('Buyer cannot call update_order_status (seller/admin only endpoint)', async () => {
@@ -225,7 +221,7 @@ test.describe('3. Order Guards', () => {
       orderId,
       newStatus: 'processing',
     }, sellerAuth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('permission-denied');
   });
 });
 
@@ -251,10 +247,8 @@ test.describe('4. Product Rating Security', () => {
       review: 'Too many stars!',
     }, buyerAuth.idToken);
 
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
-    if (error.code === 'invalid-argument') {
-      expect(error.message.toLowerCase()).toContain('rating');
-    }
+    expect(error.code).toBe('invalid-argument');
+    expect(error.message.toLowerCase()).toContain('rating');
   });
 
   test('Rating < 1 is rejected (range check fires before order lookup)', async () => {
@@ -268,10 +262,8 @@ test.describe('4. Product Rating Security', () => {
       review: 'Zero stars!',
     }, buyerAuth.idToken);
 
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
-    if (error.code === 'invalid-argument') {
-      expect(error.message.toLowerCase()).toContain('rating');
-    }
+    expect(error.code).toBe('invalid-argument');
+    expect(error.message.toLowerCase()).toContain('rating');
   });
 
   test('Rating rejected when orderId does not exist (order ownership enforced)', async () => {
@@ -286,8 +278,8 @@ test.describe('4. Product Rating Security', () => {
       review: 'Great product!',
     }, buyerAuth.idToken);
 
-    // Backend: order doesn't exist → not-found or failed-precondition
-    expect(['not-found', 'failed-precondition', 'invalid-argument']).toContain(error.code);
+    // Backend: order doesn't exist → not-found (ownership check never succeeds)
+    expect(error.code).toBe('not-found');
   });
 
   test('Rating rejected when a different user owns the order', async () => {
@@ -319,8 +311,8 @@ test.describe('4. Product Rating Security', () => {
       review: 'Nice!',
     }, sellerAuth.idToken);
 
-    // Backend: order.userId !== req.auth.uid → permission-denied or not-found
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    // Backend: order.userId !== req.auth.uid → permission-denied
+    expect(error.code).toBe('permission-denied');
   });
 });
 
@@ -379,11 +371,9 @@ test.describe('6. Non-Canadian Address Rejected', () => {
     };
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
-    if (error.code === 'invalid-argument') {
-      // Backend: "Shipping is only available within Canada"
-      expect(error.message.toLowerCase()).toContain('canada');
-    }
+    expect(error.code).toBe('invalid-argument');
+    // Backend: "Shipping is only available within Canada"
+    expect(error.message.toLowerCase()).toContain('canada');
   });
 
   test('Checkout with invalid Canadian postal code format is rejected', async () => {
@@ -396,10 +386,8 @@ test.describe('6. Non-Canadian Address Rejected', () => {
     data.shippingAddress.postalCode = '12345';
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
-    if (error.code === 'invalid-argument') {
-      expect(error.message.toLowerCase()).toContain('postal');
-    }
+    expect(error.code).toBe('invalid-argument');
+    expect(error.message.toLowerCase()).toContain('postal');
   });
 
   test('Checkout with missing country is rejected', async () => {
@@ -410,7 +398,7 @@ test.describe('6. Non-Canadian Address Rejected', () => {
     data.shippingAddress.country = '';
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
+    expect(error.code).toBe('invalid-argument');
   });
 });
 
@@ -424,13 +412,13 @@ test.describe('7. Non-Existent Product at Checkout', () => {
   test('Checkout with non-existent product ID is rejected', async () => {
     const buyerAuth = await signIn(BUYER_EMAIL);
 
-    // Build payload manually — buildCheckoutPayload reads Firestore and throws before
+    // Build payload manually — buildCheckoutPayload reads SurrealDB and throws before
     // the API call if the product doesn't exist. We need a raw payload here.
     const data = rawCheckoutPayload(buyerAuth.localId, 'e2e_nonexistent_product_xyz', 1);
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
-    // Backend: product_doc.exists is False → not-found or failed-precondition
-    expect(['not-found', 'failed-precondition', 'invalid-argument']).toContain(error.code);
+    // Backend: product_doc.exists is False → not-found
+    expect(error.code).toBe('not-found');
   });
 
   test('Checkout with subtotal of 0 is rejected', async () => {
@@ -438,11 +426,11 @@ test.describe('7. Non-Existent Product at Checkout', () => {
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
 
-    // Tamper: set subtotalCents to 0 — backend re-computes from Firestore, but subtotalCents guard fires first
+    // Tamper: set subtotalCents to 0 — backend re-computes from SurrealDB, but subtotalCents guard fires first
     data.subtotalCents = 0;
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
+    expect(error.code).toBe('invalid-argument');
   });
 });
 
@@ -459,14 +447,14 @@ test.describe('8. Permission Isolation', () => {
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
 
     const error = await callExpectError('create_checkout_session', data, 'invalid_token_xyz');
-    expect(['unauthenticated', 'failed-precondition', 'permission-denied']).toContain(error.code);
+    expect(error.code).toBe('unauthenticated');
   });
 
   test('Unauthenticated request to cancel_order is rejected', async () => {
     const error = await callExpectError('cancel_order', {
       orderId: 'e2e_any_order_id',
     }, 'invalid_token_xyz');
-    expect(['unauthenticated', 'failed-precondition', 'permission-denied']).toContain(error.code);
+    expect(error.code).toBe('unauthenticated');
   });
 
   test('Unauthenticated request to submit_product_rating is rejected', async () => {
@@ -475,7 +463,7 @@ test.describe('8. Permission Isolation', () => {
       orderId: 'e2e_any_order_id',
       rating: 5,
     }, 'invalid_token_xyz');
-    expect(['unauthenticated', 'failed-precondition', 'permission-denied']).toContain(error.code);
+    expect(error.code).toBe('unauthenticated');
   });
 
   test('Buyer cannot call update_order_status (requires seller or admin role)', async () => {
@@ -504,7 +492,7 @@ test.describe('8. Permission Isolation', () => {
       newStatus: 'processing',
     }, buyerAuth.idToken);
 
-    // Buyer is neither seller nor admin → permission-denied or not-found (if writeDoc was rejected)
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    // Buyer is neither seller nor admin → permission-denied
+    expect(error.code).toBe('permission-denied');
   });
 });

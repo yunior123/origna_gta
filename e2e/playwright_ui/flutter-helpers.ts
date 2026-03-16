@@ -245,7 +245,7 @@ export async function waitForFlutter(page: Page, timeout = 180000): Promise<void
 /**
  * Wait for a specific semantic element to appear after navigation.
  * Flutter Web rebuilds the semantic tree after route changes — this can take
- * several seconds if the new screen loads data from remote Firestore.
+ * several seconds if the new screen loads data from remote SurrealDB.
  * Returns the locator for further interaction.
  */
 export async function waitForSemantic(
@@ -261,7 +261,7 @@ export async function waitForSemantic(
 }
 
 /**
- * Wait for product cards to load from Firestore and appear in the semantic tree.
+ * Wait for product cards to load from SurrealDB and appear in the semantic tree.
  * Scrolls to trigger lazy loading and retries multiple times.
  */
 export async function waitForProductCards(
@@ -272,7 +272,7 @@ export async function waitForProductCards(
     // Product card groups use aria-label attribute (not textContent like buttons do).
     const cards = page.locator('[aria-label*="product-card-"]');
 
-    // First, wait for at least one card to appear (Firestore data loading)
+    // First, wait for at least one card to appear (SurrealDB data loading)
     await cards.first().waitFor({ state: 'attached', timeout }).catch(() => {});
 
     if ((await cards.count()) > 0) return cards.count();
@@ -449,7 +449,7 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
 
     // After login, Flutter rebuilds and shows the home screen in-place.
     // The URL may stay at /login but the content changes.
-    // IMPORTANT: Do NOT use page.goto() — Firebase Auth indexedDB
+    // IMPORTANT: Do NOT use page.goto() — OrignaBase Auth session storage
     // persistence does not survive full page reloads in Playwright's
     // isolated browser contexts. Use in-app navigation only.
 
@@ -566,7 +566,7 @@ export async function openHomeSettings(page: Page): Promise<void> {
 
 /**
  * Navigate to the home screen without page.goto() — which would kill
- * Firebase Auth state in Playwright's isolated browser contexts.
+ * OrignaBase Auth state in Playwright's isolated browser contexts.
  * Uses the app heading / logo click or browser back navigation.
  */
 export async function navigateHome(page: Page, targetUrl: string): Promise<void> {
@@ -640,7 +640,7 @@ export async function navigateHome(page: Page, targetUrl: string): Promise<void>
 /**
  * Navigate to the subscription screen in-app (auth-safe).
  * Route: home → settings → profile → premium menu item → subscription.
- * Never uses page.goto() which would kill Firebase Auth state.
+ * Never uses page.goto() which would kill OrignaBase Auth state.
  */
 export async function navigateToSubscription(page: Page): Promise<void> {
     // Go to profile screen via settings button
@@ -660,7 +660,7 @@ export async function navigateToSubscription(page: Page): Promise<void> {
 /**
  * Navigate to the admin panel in-app (auth-safe).
  * Route: home → settings → profile → admin panel menu item → /admin.
- * Never uses page.goto() which would kill Firebase Auth state.
+ * Never uses page.goto() which would kill OrignaBase Auth state.
  */
 export async function navigateToAdmin(page: Page): Promise<void> {
     // Go to profile screen via settings button

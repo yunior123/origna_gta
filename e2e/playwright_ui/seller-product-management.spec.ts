@@ -82,7 +82,7 @@ test.describe('Seller Product Management — API Tests', () => {
     }
   });
 
-  test('T02: Bulk pause products — verify lifecycleStatus in Firestore', async () => {
+  test('T02: Bulk pause products — verify lifecycleStatus in SurrealDB', async () => {
     const result = await callOk('bulk_update_products', {
       productIds: [testProductId],
       action: 'pause',
@@ -93,7 +93,7 @@ test.describe('Seller Product Management — API Tests', () => {
     expect(doc.lifecycleStatus).toBe('paused');
   });
 
-  test('T03: Bulk activate products — verify restore in Firestore', async () => {
+  test('T03: Bulk activate products — verify restore in SurrealDB', async () => {
     const result = await callOk('bulk_update_products', {
       productIds: [testProductId],
       action: 'activate',
@@ -187,7 +187,7 @@ test.describe('Seller Product Management — UI Tests', () => {
       await productCards.first().click();
       await page.waitForTimeout(3000);
       await waitForFlutter(page);
-      // Product detail loads data from Firestore — allow extra time after Flutter is ready
+      // Product detail loads data from SurrealDB — allow extra time after Flutter is ready
       await page.waitForTimeout(5000);
       // Scroll down to bring product action buttons into Flutter's accessibility tree
       // (Flutter only exposes off-screen Semantics nodes once they scroll into view)
@@ -217,7 +217,7 @@ test.describe('Seller Product Management — UI Tests', () => {
   });
 
   test('T08: UI — Seller sees rejection banner with Fix & Resubmit button for rejected products', async ({ page }) => {
-    // Create a product, force it to rejected state via Firestore, then verify the
+    // Create a product, force it to rejected state via SurrealDB, then verify the
     // rejection banner (_RejectionBanner widget) renders on the seller products screen.
     let testProductId: string | null = null;
 
@@ -242,7 +242,7 @@ test.describe('Seller Product Management — UI Tests', () => {
       testProductId = created.productId;
       expect(testProductId).toBeTruthy();
 
-      // Force product into rejected state with a rejection reason via Firestore
+      // Force product into rejected state with a rejection reason via SurrealDB
       const patched = await writeDoc(
         `products/${testProductId}`,
         {
@@ -252,7 +252,7 @@ test.describe('Seller Product Management — UI Tests', () => {
         admin.idToken,
         true,
       );
-      expect(patched, 'Failed to set product to rejected state in Firestore').toBe(true);
+      expect(patched, 'Failed to set product to rejected state in SurrealDB').toBe(true);
 
       // Navigate to seller products screen
       await requireWebApp(page, TARGET_URL);
@@ -294,9 +294,9 @@ test.describe('Seller Product Management — UI Tests', () => {
       }
 
       // Soft assertion: the rejection banner should be visible on the seller products screen.
-      // If the screen has not yet synced the Firestore write, log a warning rather than failing.
+      // If the screen has not yet synced the SurrealDB write, log a warning rather than failing.
       if (!foundFixBtn) {
-        console.log('   Warning: Fix & Resubmit button not found — Firestore propagation may be delayed');
+        console.log('   Warning: Fix & Resubmit button not found — SurrealDB propagation may be delayed');
       } else {
         console.log('   Rejection banner with Fix & Resubmit button confirmed on seller products screen');
       }

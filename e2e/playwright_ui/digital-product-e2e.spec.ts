@@ -47,11 +47,11 @@ const PHYSICAL_ID = 'product_001';
 test.describe('A. Digital Product Catalogue', () => {
   test.setTimeout(60_000);
 
-  test('A.1 Software product has correct Firestore fields (FXCleaner)', async () => {
+  test('A.1 Software product has correct SurrealDB fields (FXCleaner)', async () => {
     const doc = await readDoc(`products/${DIGITAL_SW_ID}`);
     const product = parseDoc(doc);
 
-    expect(product, 'Product should exist in Firestore').toBeTruthy();
+    expect(product, 'Product should exist in SurrealDB').toBeTruthy();
     expect(product.isDigital, 'isDigital must be true').toBe(true);
     expect(product.digitalType, 'digitalType must be software').toBe('software');
     expect(product.digitalBuilds, 'digitalBuilds must be present').toBeTruthy();
@@ -63,7 +63,7 @@ test.describe('A. Digital Product Catalogue', () => {
     expect(product.weightKg, 'Zero weight for digital').toBeFalsy();
   });
 
-  test('A.2 Book product has correct Firestore fields (eBook bundle)', async () => {
+  test('A.2 Book product has correct SurrealDB fields (eBook bundle)', async () => {
     const doc = await readDoc(`products/${DIGITAL_BOOK_ID}`);
     const product = parseDoc(doc);
 
@@ -142,7 +142,7 @@ test.describe('B. Digital-Only Checkout', () => {
     // License document must exist in /licenses collection
     const licDoc = await readDoc(`licenses/${digitalItem.licenseKey}`, auth.idToken);
     const lic = parseDoc(licDoc);
-    expect(lic, 'License doc must exist in Firestore').toBeTruthy();
+    expect(lic, 'License doc must exist in SurrealDB').toBeTruthy();
     expect(lic.status, 'License must be active').toBe('active');
     expect(lic.digitalType, 'License type must match product').toBe('software');
     expect(lic.userId, 'License must belong to buyer').toBe(auth.localId);
@@ -322,21 +322,11 @@ test.describe('D. License Activation & Book Download', () => {
     expect(softwareLicenseKey, 'Need a software license from beforeAll').toBeTruthy();
 
     const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
-    let result: any;
-    try {
-      result = await callOk('activate_license', {
-        licenseKey: softwareLicenseKey,
-        deviceId: 'e2e-device-mac-001',
-        platform: 'macos',
-      }, auth.idToken);
-    } catch (err: any) {
-      // activate_license endpoint not yet deployed — skip assertions gracefully
-      if (err?.message?.includes('404') || err?.message?.includes('Non-JSON response (404)')) {
-        console.log('   ⚠️ activate_license endpoint returned 404 — endpoint not yet deployed, skipping assertions');
-        return;
-      }
-      throw err;
-    }
+    const result = await callOk('activate_license', {
+      licenseKey: softwareLicenseKey,
+      deviceId: 'e2e-device-mac-001',
+      platform: 'macos',
+    }, auth.idToken);
 
     expect(result.approved, 'License activation must be approved').toBe(true);
     expect(result.licenseKey).toBe(softwareLicenseKey);
@@ -350,18 +340,10 @@ test.describe('D. License Activation & Book Download', () => {
     const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
 
     // Activate same device twice
-    try {
-      await callOk('activate_license', { licenseKey: softwareLicenseKey, deviceId: 'e2e-device-mac-idempotent', platform: 'macos' }, auth.idToken);
-      const result = await callOk('activate_license', { licenseKey: softwareLicenseKey, deviceId: 'e2e-device-mac-idempotent', platform: 'macos' }, auth.idToken);
-      expect(result.approved).toBe(true);
-    } catch (err: any) {
-      // activate_license endpoint not yet deployed — skip assertions gracefully
-      if (err?.message?.includes('404') || err?.message?.includes('Non-JSON response (404)')) {
-        console.log('   ⚠️ activate_license endpoint returned 404 — endpoint not yet deployed, skipping assertions');
-        return;
-      }
-      throw err;
-    }
+    await callOk('activate_license', { licenseKey: softwareLicenseKey, deviceId: 'e2e-device-mac-idempotent', platform: 'macos' }, auth.idToken);
+    const result = await callOk('activate_license', { licenseKey: softwareLicenseKey, deviceId: 'e2e-device-mac-idempotent', platform: 'macos' }, auth.idToken);
+
+    expect(result.approved).toBe(true);
 
     const licDoc = await readDoc(`licenses/${softwareLicenseKey}`, auth.idToken);
     const lic = parseDoc(licDoc);
@@ -525,7 +507,7 @@ test.describe('E. Security & Access Control', () => {
 test.describe('F. Seller UX — Digital Product Creation', () => {
   test.setTimeout(60_000);
 
-  test('F.1 Digital product schema is valid for Firestore after seeding', async () => {
+  test('F.1 Digital product schema is valid for SurrealDB after seeding', async () => {
     // Verify all 3 digital products have required fields
     const [swDoc, bookDoc, courseDoc] = await Promise.all([
       readDoc(`products/${DIGITAL_SW_ID}`),
@@ -608,14 +590,7 @@ test.describe('G. Software Download Session', () => {
       licenseKey: swLicenseKey,
       deviceId: 'e2e-g-device-mac',
       platform: 'macos',
-    }, buyerAuth.idToken).catch((err: any) => {
-      // activate_license endpoint not yet deployed — beforeAll continues gracefully
-      if (err?.message?.includes('404') || err?.message?.includes('Non-JSON response (404)')) {
-        console.log('   ⚠️ activate_license 404 in beforeAll — endpoint not yet deployed');
-        return;
-      }
-      throw err;
-    });
+    }, buyerAuth.idToken);
   });
 
   test.afterAll(async () => {
@@ -802,7 +777,7 @@ test.describe('H. License Management — Deactivate, Verify, Device Limit, Revok
     expect(deactivateResult.deactivated, 'deactivated flag must be true').toBe(true);
     expect(deactivateResult.remainingActivations, 'remaining activations must be 0').toBe(0);
 
-    // Verify Firestore reflects the removal
+    // Verify SurrealDB reflects the removal
     const licDoc = await readDoc(`licenses/${manageLicenseKey}`, auth.idToken);
     const lic = parseDoc(licDoc);
     const activations: any[] = lic.activations || [];
@@ -876,7 +851,7 @@ test.describe('H. License Management — Deactivate, Verify, Device Limit, Revok
     const verifyBody = await verifyResult.json();
     expect(verifyBody.approved, 'verify response must have approved=true').toBe(true);
 
-    // Verify no duplicate entry in Firestore
+    // Verify no duplicate entry in SurrealDB
     const licDoc = await readDoc(`licenses/${manageLicenseKey}`, auth.idToken);
     const lic = parseDoc(licDoc);
     const entries = (lic.activations || []).filter((a: any) => a.deviceId === 'e2e-h-verify-device');
@@ -989,7 +964,7 @@ test.describe('I. Digital Business Rules', () => {
   });
 
   test('I.3 Digital-only order has zero shippingCostCents', async () => {
-    // Confirm the Firestore order created for a digital-only checkout
+    // Confirm the SurrealDB order created for a digital-only checkout
     // has shippingCostCents=0 (address is still required by backend validation).
     const auth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);

@@ -13,7 +13,7 @@
  *   7. UI — Variant-level OOS: Notify Me shown when variant stock = 0
  *   8. UI — Stock restored → Notify Me button disappears (product back in stock)
  *   9. API — subscribe_stock_notification Cloud Function: happy path
- *  10. API — Duplicate subscribe is idempotent (no duplicate Firestore doc)
+ *  10. API — Duplicate subscribe is idempotent (no duplicate SurrealDB record)
  *  11. API — unsubscribe_stock_notification Cloud Function: happy path
  *  12. API — Product-level subscribe (no variantKey) works
  *  13. API — Unauthenticated subscribe is rejected (unauthenticated error)
@@ -53,7 +53,7 @@ const SCREENSHOTS_DIR = `${process.env.HOME}/Desktop/origna-screenshots/dev`;
 
 /**
  * Dedicated out-of-stock product for stock-notif tests ONLY.
- * Always has stockQuantity=0 in Firestore. NOT shared with any other test file.
+ * Always has stockQuantity=0 in SurrealDB. NOT shared with any other test file.
  * Owner: ADMIN (RU9MI8vYFkQCakMrJfG8iGTuc012). Seeded by mega_seed_dev.py.
  */
 const OOS_PRODUCT_ID = 'e2e_product_oos';
@@ -99,7 +99,7 @@ async function navigateToProduct(page: Page, baseURL: string, productId: string)
 
     await page.goto(`${baseURL}/product/${productId}`, { waitUntil: 'load' });
     await waitForFlutter(page);
-    // Wait for Firebase Auth to restore from IndexedDB before widgets check auth state
+    // Wait for OrignaBase Auth to restore from IndexedDB before widgets check auth state
     await page.waitForTimeout(5_000);
 
     // Scroll down: Flutter only adds off-screen Semantics nodes to the DOM once they enter
@@ -129,7 +129,7 @@ async function navigateToProduct(page: Page, baseURL: string, productId: string)
  * Login (in-app, auth stored in IndexedDB) THEN navigate to the product page.
  * ensureLoggedInAsAdmin runs first (ends at home), then page.goto() to product.
  * Flutter re-reads auth from IndexedDB on reload — the 5s settle in navigateToProduct handles
- * the async Firebase Auth restore timing.
+ * the async OrignaBase Auth restore timing.
  */
 async function loginAndNavigate(page: Page, baseURL: string, productId: string) {
   await ensureLoggedInAsAdmin(page, baseURL, TEST_ACCOUNTS.BUYER_EMAIL, 'REDACTED_TEST_PASSWORD');
@@ -144,7 +144,7 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
   test.setTimeout(300_000); // Flutter Web on 8GB RAM takes 90-180s to initialize
 
   test.beforeAll(async () => {
-    // Seed e2e_product_oos in dev Firestore (idempotent — safe to run every time)
+    // Seed e2e_product_oos in dev SurrealDB (idempotent — safe to run every time)
     await ensureOosProduct();
   });
 
@@ -199,7 +199,7 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
     await page.waitForTimeout(3_000);
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-1-3-after-subscribe.png` });
 
-    // Verify via Firestore that subscription was created
+    // Verify via SurrealDB that subscription was created
     const snap = await getDoc(`stock_notifications/${OOS_PRODUCT_ID}_${auth.localId}`, auth.idToken)
       .catch(() => null);
     // Subscription doc may be keyed differently; assert via re-subscribe being idempotent
@@ -221,7 +221,7 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
 
     await loginAndNavigate(page, baseURL!, OOS_PRODUCT_ID);
 
-    // Provider init fetches Firestore state — wait for it to settle
+    // Provider init fetches SurrealDB state — wait for it to settle
     await page.waitForTimeout(4_000);
 
     const notifyBtn = page.locator('[aria-label="product_notify_me_button"]');
@@ -289,7 +289,7 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
     await clearServiceWorkers(page);
     await page.goto(`${baseURL}/product/${OOS_PRODUCT_ID}`, { waitUntil: 'load' });
     await waitForFlutter(page);
-    // Wait for Firebase Auth to restore from IndexedDB after page reload
+    // Wait for OrignaBase Auth to restore from IndexedDB after page reload
     await page.waitForTimeout(5_000);
 
     // Scroll down to bring product action buttons into Flutter's accessibility tree
@@ -318,7 +318,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
   test.setTimeout(300_000); // Flutter Web on 8GB RAM takes 90-180s to initialize
 
   /**
-   * This test uses a temporary product created in Firestore with stockQuantity=0,
+   * This test uses a temporary product created in SurrealDB with stockQuantity=0,
    * then updates it to stockQuantity=10. The product detail screen should reflect
    * the change on re-navigation (eventual consistency via FutureProvider re-fetch).
    */
@@ -355,8 +355,8 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
       isInternational: false,
       createdAt: new Date(),
     }, adminToken, false);
-    if (!ok) throw new Error('Suite 2 beforeAll: failed to seed TEMP_PRODUCT_ID in Firestore');
-    // Give Firestore a moment to propagate the write
+    if (!ok) throw new Error('Suite 2 beforeAll: failed to seed TEMP_PRODUCT_ID in SurrealDB');
+    // Give SurrealDB a moment to propagate the write
     await new Promise(resolve => setTimeout(resolve, 2_000));
   });
 
@@ -374,12 +374,12 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
     ).toBeVisible({ timeout: 15_000 });
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-2-1a-oos-before.png` });
 
-    // Restore stock via Firestore write (simulates admin restoring stock)
+    // Restore stock via SurrealDB write (simulates admin restoring stock)
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
     await writeDoc(`products/${TEMP_PRODUCT_ID}`, { stockQuantity: 10 }, adminAuth.idToken, true);
 
     // Re-navigate to force provider re-fetch — clear SW first to avoid stale routing
-    // Use 'load' not 'networkidle' — Flutter Web has persistent Firebase connections
+    // Use 'load' not 'networkidle' — Flutter Web has persistent OrignaBase connections
     await clearServiceWorkers(page);
     await page.goto(`${baseURL}/product/${TEMP_PRODUCT_ID}`, { waitUntil: 'load' });
     await waitForFlutter(page);
@@ -411,7 +411,7 @@ test.describe('3. API — subscribe_stock_notification / unsubscribe_stock_notif
   let buyerUid: string;
 
   test.beforeAll(async () => {
-    // Ensure OOS product exists in dev Firestore
+    // Ensure OOS product exists in dev SurrealDB
     await ensureOosProduct();
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
@@ -568,7 +568,7 @@ test.describe('4. Security — Adversarial Scenarios', () => {
   let sellerToken: string;
 
   test.beforeAll(async () => {
-    // Ensure OOS product exists in dev Firestore
+    // Ensure OOS product exists in dev SurrealDB
     await ensureOosProduct();
     const buyerAuth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = buyerAuth.idToken;
@@ -626,7 +626,7 @@ test.describe('4. Security — Adversarial Scenarios', () => {
     expect(err.code).toMatch(/invalid-argument/i);
   });
 
-  test('4.5 Firestore direct write to stock_notifications is blocked by rules', async () => {
+  test('4.5 SurrealDB direct write to stock_notifications is blocked by rules', async () => {
     // Attempt a direct document write with a user token (not backend callable path).
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
 

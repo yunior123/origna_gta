@@ -163,49 +163,22 @@ test.describe('Auth Gates', () => {
   });
 
   test('shareable product slug links resolve to product detail pages', async ({ page }) => {
-    // Try to find a product with a slug in the DB. Fall back to the stable
-    // e2e_product_test_seller product which is always present in dev.
-    const STABLE_PRODUCT_ID = 'e2e_product_test_seller';
-
     const products = await listCollection('products');
     const withSlug = products.find(product => typeof product?.slug === 'string' && product.slug.length > 0);
-
-    // Determine which URL pattern to test:
-    // - If a real slug exists, navigate to /p/<slug>
-    // - Otherwise navigate to /product/<stableId> (ID-based detail route)
-    let navigatePath: string;
-    let expectedUrlPattern: RegExp;
-    let productNamePattern: RegExp | null = null;
-
-    if (withSlug) {
-      navigatePath = `/p/${encodeURIComponent(withSlug.slug)}`;
-      expectedUrlPattern = new RegExp(`/p/${withSlug.slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
-      productNamePattern = new RegExp(String(withSlug.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    } else {
-      // No slugs in DB — use the stable product's ID-based route
-      navigatePath = `/product/${STABLE_PRODUCT_ID}`;
-      expectedUrlPattern = new RegExp(`/product/${STABLE_PRODUCT_ID}`);
-      // Accept any product detail page content
-      productNamePattern = null;
+    if (!withSlug) {
+      test.skip(true, 'No products with slug in dev DB — seed a product with a slug to enable');
+      return;
     }
 
     await requireWebApp(page, TARGET_URL);
-    await page.goto(`${TARGET_URL}${navigatePath}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${TARGET_URL}/p/${encodeURIComponent(withSlug.slug)}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForFlutter(page, 120000);
 
-    // Verify we landed on a product detail page (slug or ID route)
-    const currentUrl = page.url();
-    expect(currentUrl).toMatch(expectedUrlPattern);
-
-    // Verify product content rendered
-    if (productNamePattern) {
-      await expect(
-        page.getByText(productNamePattern).first(),
-      ).toBeVisible({ timeout: 60000 });
-    } else {
-      // Just confirm Flutter semantics rendered (product detail loaded)
-      const semanticsCount = await page.locator('flt-semantics').count();
-      expect(semanticsCount).toBeGreaterThan(0);
-    }
+    await expect(page).toHaveURL(new RegExp(`/p/${withSlug.slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    await expect(
+      page.getByText(new RegExp(String(withSlug.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')).first(),
+    ).toBeVisible({ timeout: 60000 });
   });
 });

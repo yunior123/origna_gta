@@ -20,7 +20,7 @@ import {
 
 test.describe('OrignaBase — UI Integration Flows', () => {
   
-  test('O1: Profile Update reflects in OrignaBase Firestore', async ({ page }) => {
+  test('O1: Profile Update reflects in OrignaBase SurrealDB', async ({ page }) => {
     // 1. Sign in via UI
     await page.goto('/login');
     await page.fill('input[type="email"]', TEST_ACCOUNTS.BUYER_EMAIL);

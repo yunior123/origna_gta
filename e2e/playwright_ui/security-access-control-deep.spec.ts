@@ -17,12 +17,13 @@
  * 10. Stock manipulation — Seller attempts to set competitor's stock
  * 11. Price manipulation at checkout (client-side price tampering)
  * 12. Address isolation — Buyer cannot set another user's address as default
- * 13. Firestore direct read — private subcollections blocked for wrong user
+ * 13. SurrealDB direct read — private subcollections blocked for wrong user
  */
 
 import { test, expect } from '@playwright/test';
 import {
   signIn,
+  callOk,
   callExpectError,
   callCallable,
   writeDoc,
@@ -32,6 +33,7 @@ import {
   ensureTwoSellerProducts,
   TEST_ACCOUNTS,
   TEST_UIDS,
+  DEFAULT_PASS,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
@@ -62,8 +64,8 @@ test.describe('1. IDOR — Order Access Control', () => {
 
     // buyer1 tries to cancel it
     const error = await callExpectError('cancel_order', { orderId }, buyerAuth.idToken);
-    // Backend: order.userId !== caller uid → permission-denied or not-found (if OrignaBase write was rejected)
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    // Backend: order.userId !== caller uid → permission-denied
+    expect(error.code).toBe('permission-denied');
   });
 
   test('Buyer cannot read another buyer\'s order via direct document read', async () => {
@@ -101,7 +103,7 @@ test.describe('1. IDOR — Order Access Control', () => {
       orderId,
       newStatus: 'delivered',
     }, buyerAuth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('permission-denied');
   });
 });
 
@@ -172,7 +174,7 @@ test.describe('3. Seller IDOR — Product Isolation', () => {
       productId: adminProduct.id,
       price: 1.00, // Try to slash price
     }, sellerAuth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('permission-denied');
   });
 
   test('Seller cannot delete a product owned by another seller', async () => {
@@ -184,7 +186,7 @@ test.describe('3. Seller IDOR — Product Isolation', () => {
     const error = await callExpectError('delete_product', {
       productId: adminProduct.id,
     }, sellerAuth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('permission-denied');
   });
 
   test('Seller cannot update stock of a product they do not own', async () => {
@@ -213,7 +215,7 @@ test.describe('4. Privilege Escalation Attempts', () => {
   test('Buyer cannot access admin_get_users (admin-only endpoint)', async () => {
     const auth = await signIn(BUYER_EMAIL);
     const error = await callExpectError('admin_get_users', {}, auth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('permission-denied');
   });
 
   test('Buyer cannot access admin_flag_review (admin-only endpoint)', async () => {
@@ -222,7 +224,7 @@ test.describe('4. Privilege Escalation Attempts', () => {
       reviewId: 'some_review_id',
       flagged: true,
     }, auth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('permission-denied');
   });
 
   test('Buyer cannot suspend another user (admin_suspend_user)', async () => {
@@ -231,13 +233,13 @@ test.describe('4. Privilege Escalation Attempts', () => {
       targetUserId: TEST_UIDS.SELLER,
       suspended: true,
     }, auth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('permission-denied');
   });
 
   test('Seller cannot access admin_get_reviews (admin-only endpoint)', async () => {
     const auth = await signIn(SELLER_EMAIL);
     const error = await callExpectError('admin_get_reviews', { limit: 10 }, auth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(error.code);
+    expect(error.code).toBe('permission-denied');
   });
 
   test('Buyer cannot call create_product_atomic without seller role', async () => {
@@ -278,11 +280,9 @@ test.describe('5. Price Tampering at Checkout', () => {
     data.subtotalCents = 1; // $0.01
 
     const error = await callExpectError('create_checkout_session', data, auth.idToken);
-    // Backend re-fetches price from Firestore — subtotalCents mismatch → invalid-argument or failed-precondition
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
-    if (error.code === 'invalid-argument') {
-      expect(error.message.toLowerCase()).toMatch(/price|total|mismatch|subtotal/);
-    }
+    // Backend re-fetches price from SurrealDB — subtotalCents mismatch → invalid-argument
+    expect(error.code).toBe('invalid-argument');
+    expect(error.message.toLowerCase()).toMatch(/price|total|mismatch|subtotal/);
   });
 
   test('Checkout with subtotalCents 100x inflated is rejected', async () => {
@@ -294,7 +294,7 @@ test.describe('5. Price Tampering at Checkout', () => {
     data.subtotalCents = data.subtotalCents * 100;
 
     const error = await callExpectError('create_checkout_session', data, auth.idToken);
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
+    expect(error.code).toBe('invalid-argument');
   });
 
   test('Checkout with negative subtotalCents is rejected', async () => {
@@ -305,7 +305,7 @@ test.describe('5. Price Tampering at Checkout', () => {
     data.subtotalCents = -999;
 
     const error = await callExpectError('create_checkout_session', data, auth.idToken);
-    expect(error.code).toMatch(/invalid-argument|failed-precondition/);
+    expect(error.code).toBe('invalid-argument');
   });
 });
 
@@ -331,7 +331,7 @@ test.describe('6. JWT Token Manipulation', () => {
     }, tamperedToken);
 
     expect(result.error).toBeTruthy();
-    expect(['unauthenticated', 'failed-precondition', 'permission-denied']).toContain(result.error?.code);
+    expect(result.error?.code).toBe('unauthenticated');
   });
 
   test('Completely invalid token is rejected', async () => {
@@ -340,7 +340,7 @@ test.describe('6. JWT Token Manipulation', () => {
     }, 'REDACTED_SECRET');
 
     expect(result.error).toBeTruthy();
-    expect(['unauthenticated', 'failed-precondition', 'permission-denied']).toContain(result.error?.code);
+    expect(result.error?.code).toBe('unauthenticated');
   });
 
   test('Empty bearer token is rejected', async () => {
@@ -349,7 +349,7 @@ test.describe('6. JWT Token Manipulation', () => {
     }, '');
 
     expect(result.error).toBeTruthy();
-    expect(['unauthenticated', 'failed-precondition', 'permission-denied']).toContain(result.error?.code);
+    expect(result.error?.code).toBe('unauthenticated');
   });
 
   test('SQL injection as bearer token is rejected', async () => {
@@ -358,7 +358,7 @@ test.describe('6. JWT Token Manipulation', () => {
     }, "' OR '1'='1");
 
     expect(result.error).toBeTruthy();
-    expect(['unauthenticated', 'failed-precondition', 'permission-denied']).toContain(result.error?.code);
+    expect(result.error?.code).toBe('unauthenticated');
   });
 });
 
@@ -404,7 +404,7 @@ test.describe('7. Race Condition — Last Item in Stock', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 8. FIRESTORE DIRECT WRITE PREVENTION (Client cannot bypass Cloud Functions)
 // ─────────────────────────────────────────────────────────────────────────────
-test.describe('8. Firestore Direct Write Prevention', () => {
+test.describe('8. SurrealDB Direct Write Prevention', () => {
   test.setTimeout(60_000);
 
   test('Client cannot directly write to products collection (must use Cloud Function)', async () => {

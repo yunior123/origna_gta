@@ -84,7 +84,7 @@ test.describe('Search & Discovery — UI Tests', () => {
     await waitForFlutter(page);
     await checkSemantics(page);
 
-    // Products load async from remote Firestore — wait generously
+    // Products load async from remote SurrealDB — wait generously
     const count = await waitForProductCards(page, 60000);
     expect(count).toBeGreaterThan(0);
   });
@@ -135,7 +135,7 @@ test.describe('Search & Discovery — UI Tests', () => {
     await waitForFlutter(page);
     await checkSemantics(page);
 
-    // Wait for products to load from remote Firestore
+    // Wait for products to load from remote SurrealDB
     const count = await waitForProductCards(page, 60000);
     expect(count).toBeGreaterThan(0);
 
@@ -167,7 +167,7 @@ test.describe('Search & Discovery — UI Tests', () => {
     await waitForFlutter(page);
     await checkSemantics(page);
 
-    // Wait for initial products to load from remote Firestore
+    // Wait for initial products to load from remote SurrealDB
     const initialCount = await waitForProductCards(page, 60000);
     expect(initialCount).toBeGreaterThan(0);
 

@@ -1,7 +1,7 @@
 /**
  * OrignaGTA — Admin Security E2E Tests
  * =======================================
- * Tests permission enforcement and MFA against dev Firebase.
+ * Tests permission enforcement and MFA against dev OrignaBase.
  */
 import { test, expect } from '@playwright/test';
 import {

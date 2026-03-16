@@ -77,7 +77,7 @@ test.describe('Add Product — API Tests', () => {
     }
   });
 
-  test('T01: Create product via callable — verify Firestore doc', async () => {
+  test('T01: Create product via callable — verify SurrealDB record', async () => {
     const testName = `E2E Product ${uid()}`;
     // Use ebook digital type to avoid geocoding timeout on address verification
     const result = await callOk('create_product_atomic', {
@@ -98,7 +98,7 @@ test.describe('Add Product — API Tests', () => {
     expect(result.productId).toBeTruthy();
     createdProductIds.push(result.productId);
 
-    // Verify Firestore doc
+    // Verify SurrealDB record
     const doc = await getDoc(`products/${result.productId}`, sellerToken);
     expect(doc).toBeTruthy();
     expect(doc.name).toBe(testName);
@@ -110,7 +110,7 @@ test.describe('Add Product — API Tests', () => {
     expect(doc.imageUrls.length).toBeGreaterThan(0);
   });
 
-  test('T02: Create digital product — verify digital fields in Firestore', async () => {
+  test('T02: Create digital product — verify digital fields in SurrealDB', async () => {
     const testName = `E2E Digital ${uid()}`;
     const result = await callOk('create_product_atomic', {
       productData: {
@@ -217,7 +217,7 @@ test.describe('Add Product — API Tests', () => {
     expect(['already-exists', 'invalid-argument']).toContain(error.code);
   });
 
-  test('T07: Update product name — verify change in Firestore', async () => {
+  test('T07: Update product name — verify change in SurrealDB', async () => {
     const result = await callOk('create_product_atomic', {
       productData: {
         name: `Update Test ${uid()}`,
@@ -246,7 +246,7 @@ test.describe('Add Product — API Tests', () => {
     expect(doc.name).toBe(newName);
   });
 
-  test('T08: Delete product — verify soft delete in Firestore', async () => {
+  test('T08: Delete product — verify soft delete in SurrealDB', async () => {
     const result = await callOk('create_product_atomic', {
       productData: {
         name: `Delete Test ${uid()}`,

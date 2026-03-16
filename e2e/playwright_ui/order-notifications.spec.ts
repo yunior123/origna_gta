@@ -59,7 +59,7 @@ test.describe('Order Notifications', () => {
     }, adminAuth.idToken);
 
     // 3. Verify notification in mail_logs — allow 30s for async email pipeline
-    // (Firestore trigger → Cloud Task queue → Mailjet → _mail_logs write)
+    // (OrignaBase trigger → Cloud Task queue → Mailjet → _mail_logs write)
     await page.waitForTimeout(30000);
 
     const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: BUYER_EMAIL }, adminAuth.idToken);
@@ -114,7 +114,7 @@ test.describe('Order Notifications', () => {
     const adminAuth = await signIn(ADMIN_EMAIL);
 
     // We manually build the payload to specify 'pickup' delivery speed
-    // Use actual product price (backend rejects if it doesn't match Firestore price)
+    // Use actual product price (backend rejects if it doesn't match SurrealDB price)
     const actualPrice = (productA as any).price ?? 9.99;
     const payload = {
       userId: auth.localId,

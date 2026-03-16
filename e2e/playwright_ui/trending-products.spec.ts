@@ -85,16 +85,16 @@ test.describe('Trending Products flows', () => {
         await waitForFlutter(page);
 
         // 5. Go to Premium Subscription using the semantics label.
-        // First visit: allows Firestore to fetch server data and update IndexedDB cache.
+        // First visit: allows SurrealDB to fetch server data and update IndexedDB cache.
         // subscriptionStreamProvider (autoDispose) creates a fresh stream on each mount.
-        // On first mount the IndexedDB cache may be stale/empty → non-premium. We let Firestore
+        // On first mount the IndexedDB cache may be stale/empty → non-premium. We let SurrealDB
         // sync for 8s, then navigate away, then come back. Second mount uses the cached
         // 'active' value as the FIRST emission → isPremium=true immediately.
         const premiumBtn = page.getByRole('button', { name: /menu-premium/i }).first();
         await premiumBtn.click();
         await expect(page).toHaveURL(/\/subscription/i, { timeout: 20000 });
         await waitForFlutter(page);
-        // Let Firestore establish connection and cache the server value in IndexedDB
+        // Let SurrealDB establish connection and cache the server value in IndexedDB
         await page.waitForTimeout(8_000);
         // Navigate back to profile (disposes subscriptionStreamProvider, IndexedDB now has 'active')
         await page.goBack();
@@ -130,7 +130,7 @@ test.describe('Trending Products flows', () => {
         const cfResult = await callCallable('update_notification_preferences', { notifyTrending: true }, buyerAuth.idToken);
         expect(cfResult?.result?.success ?? cfResult?.success).toBeTruthy();
 
-        // 8. Verify Firestore reflects the change
+        // 8. Verify SurrealDB reflects the change
         let updatedDoc;
         for (let i = 0; i < 15; i++) {
             updatedDoc = await getDoc(`users/${userId}`, adminToken);

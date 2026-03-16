@@ -9,7 +9,7 @@
  * Rules:
  *   - Never fails if a route redirects — it captures whatever is shown.
  *   - Auth routes attempt sign-in first via the in-app flow (no page.goto for
- *     auth screens — Firebase Auth indexedDB state survives only within a
+ *     auth screens — OrignaBase Auth session storage state survives only within a
  *     browser session, not across full page reloads).
  *   - 3-second settle wait after each navigation.
  *   - Target runtime: ~5 minutes (serial, single worker).
@@ -52,7 +52,7 @@ const SETTLE_MS = 3000;
  * All screens to capture.
  * `requireAuth: true` means we must be signed in before navigating there.
  * Navigation strategy is always in-app (via in-app back / forward) to preserve
- * Firebase Auth state — except for public routes where page.goto() is safe
+ * OrignaBase Auth state — except for public routes where page.goto() is safe
  * because we have not yet established an auth session.
  */
 const SCREENS: Array<{
@@ -208,7 +208,7 @@ async function captureScreen(
 
     } else {
         // Public route — safe to use page.goto() directly.
-        // NOTE: after a public goto(), Firebase Auth state may be lost.
+        // NOTE: after a public goto(), OrignaBase Auth state may be lost.
         // We only do this for screens that appear before auth is needed.
         await page.goto(`${TARGET_URL}${screen.route}`, { waitUntil: 'commit' });
         await waitForFlutter(page, 60_000);

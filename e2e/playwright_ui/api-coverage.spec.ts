@@ -5,7 +5,7 @@
  * Headless API tests (no browser needed) — verifies DB state after mutations.
  *
  * Coverage: 65 previously-uncovered callable functions across 14 domains.
- * Every mutation verifies Firestore state. Every permission boundary is tested.
+ * Every mutation verifies SurrealDB state. Every permission boundary is tested.
  *
  * Run: cd e2e && npx playwright test api-coverage.spec.ts --config=playwright.config.dev.ts
  */
@@ -56,14 +56,14 @@ test.describe('A. User Profile', () => {
     expect(['unauthenticated', 'internal', 'not-found', 'failed-precondition']).toContain(err.code);
   });
 
-  test('A3: update_user_profile updates display name and verifies in Firestore', async () => {
+  test('A3: update_user_profile updates display name and verifies via OrignaBase API', async () => {
     const auth = await signIn(BUYER_EMAIL);
     const newName = `Test User ${uid()}`;
     const updateResult = await callCallable('update_user_profile', { name: newName }, auth.idToken);
     // The update should succeed (no error)
     expect(updateResult.error).toBeFalsy();
 
-    // Verify by re-fetching profile via the API (not Firestore directly)
+    // Verify by re-fetching profile via the API (not SurrealDB directly)
     const profile = await callOk('get_user_profile', {}, auth.idToken);
     // OrignaBase may return name or displayName field
     const returnedName = profile?.name || profile?.displayName || profile?.user?.name || profile?.user?.displayName;
@@ -73,7 +73,7 @@ test.describe('A. User Profile', () => {
     }
   });
 
-  test('A4: update_email_consent toggles consent and verifies Firestore', async () => {
+  test('A4: update_email_consent toggles consent and verifies SurrealDB', async () => {
     const auth = await signIn(BUYER_EMAIL);
     const updateResult = await callCallable('update_email_consent', { emailConsent: false }, auth.idToken);
     // The update should succeed (no error)
@@ -115,7 +115,7 @@ test.describe('B. Address CRUD', () => {
     label: 'E2E Test',
   };
 
-  test('B1: add_buyer_address creates address and verifies in Firestore', async () => {
+  test('B1: add_buyer_address creates address and verifies via OrignaBase API', async () => {
     const auth = await signIn(BUYER_EMAIL);
     let result = await callCallable('add_buyer_address', TEST_ADDRESS, auth.idToken);
 
@@ -132,7 +132,7 @@ test.describe('B. Address CRUD', () => {
 
     const r = result.result || result;
     if (r.addressId || r.id) {
-      // Verify address exists in Firestore
+      // Verify address exists in SurrealDB
       const doc = await readDoc(`users/${auth.localId}/addresses/${r.addressId || r.id}`, auth.idToken);
       if (doc) {
         const addr = parseDoc(doc);
@@ -404,7 +404,7 @@ test.describe('F. Admin Operations', () => {
     }, adminAuth.idToken);
     expect(suspendResult).toBeTruthy();
 
-    // Verify in Firestore
+    // Verify via OrignaBase API
     const doc = await readDoc(`users/${sellerAuth.localId}`);
     const user = parseDoc(doc);
     if (user?.suspended) {
@@ -423,7 +423,7 @@ test.describe('F. Admin Operations', () => {
       sellerId: 'some-uid',
       reason: 'test',
     }, auth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(err.code);
+    expect(err.code).toBe('permission-denied');
   });
 
   test('F4: admin_approve_product with nonexistent product', async () => {
@@ -991,7 +991,7 @@ test.describe('P. Product Mutations', () => {
     expect(['permission-denied', 'failed-precondition', 'not-found', 'unknown', 'internal', 'invalid-argument']).toContain(err.code);
   });
 
-  test('P4: create_product_atomic creates product and verifies Firestore', async () => {
+  test('P4: create_product_atomic creates product and verifies SurrealDB', async () => {
     const auth = await signIn(SELLER_EMAIL);
     const productData = {
       name: `E2E Test Product ${uid()}`,
@@ -1008,7 +1008,7 @@ test.describe('P. Product Mutations', () => {
     const result = await callCallable('create_product_atomic', productData, auth.idToken);
     if (result.result?.productId || result.result?.id) {
       const productId = result.result.productId || result.result.id;
-      // Verify in Firestore (need token in dev)
+      // Verify via OrignaBase API (need token in dev)
       const doc = await readDoc(`products/${productId}`, auth.idToken);
       const product = parseDoc(doc);
       expect(product?.name).toContain('E2E Test Product');
@@ -1103,7 +1103,7 @@ test.describe('Q. Permission Boundaries', () => {
       provider: 'stripe',
       enabled: false,
     }, auth.idToken);
-    expect(['permission-denied', 'not-found', 'failed-precondition']).toContain(err.code);
+    expect(err.code).toBe('permission-denied');
   });
 });
 

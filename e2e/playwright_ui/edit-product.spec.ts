@@ -51,7 +51,7 @@ test.describe('Edit Product Flow', () => {
     const originalDoc = await getDoc(`products/${SELLER_PRODUCT_ID}`, sellerAuth.idToken);
 
     if (!originalDoc) {
-      console.warn(`⚠️ Product ${SELLER_PRODUCT_ID} not found in dev Firestore`);
+      console.warn(`⚠️ Product ${SELLER_PRODUCT_ID} not found in dev SurrealDB`);
       return;
     }
 
@@ -85,7 +85,7 @@ test.describe('Edit Product Flow', () => {
       return;
     }
 
-    // Verify subcategory is preserved in Firestore
+    // Verify subcategory is preserved in SurrealDB
     const updatedDoc = await getDoc(`products/${SELLER_PRODUCT_ID}`, sellerAuth.idToken);
     expect(updatedDoc).toBeTruthy();
 
@@ -104,7 +104,7 @@ test.describe('Edit Product Flow', () => {
     const originalDoc = await getDoc(`products/${SELLER_PRODUCT_ID}`, sellerAuth.idToken);
 
     if (!originalDoc) {
-      console.warn(`⚠️ Product ${SELLER_PRODUCT_ID} not found in dev Firestore`);
+      console.warn(`⚠️ Product ${SELLER_PRODUCT_ID} not found in dev SurrealDB`);
       return;
     }
 
@@ -137,7 +137,7 @@ test.describe('Edit Product Flow', () => {
       return;
     }
 
-    // Verify in Firestore
+    // Verify via OrignaBase API
     const updatedDoc = await getDoc(`products/${SELLER_PRODUCT_ID}`, sellerAuth.idToken);
     expect(updatedDoc).toBeTruthy();
     expect(updatedDoc?.name || updatedDoc?.title).toBe(newName);

@@ -1,7 +1,7 @@
 /**
  * OrignaGTA — Multi-Seller Orders E2E Tests
  * ============================================
- * Tests orders with items from multiple sellers against dev Firebase.
+ * Tests orders with items from multiple sellers against dev OrignaBase.
  * Skips multi-seller-specific tests if dev only has products from one seller.
  */
 import { test, expect } from '@playwright/test';

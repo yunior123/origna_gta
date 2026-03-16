@@ -122,7 +122,7 @@ test.describe('2. Digital Product Purchase → License Generation', () => {
 
     // License document in /licenses collection
     const lic = await getDoc(`licenses/${digitalItem.licenseKey}`, auth.idToken);
-    expect(lic, 'license doc must exist in Firestore').toBeTruthy();
+    expect(lic, 'license doc must exist in SurrealDB').toBeTruthy();
     expect(lic.status).toBe('active');
     expect(lic.userId).toBe(auth.localId);
   });

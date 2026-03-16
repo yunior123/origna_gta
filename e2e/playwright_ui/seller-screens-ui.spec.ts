@@ -5,7 +5,7 @@
  * by a user with seller+admin roles (admin account has both).
  *
  * Navigation strategy: In-app navigation via profile menu items.
- * NEVER use page.goto() for authenticated routes — it kills Firebase
+ * NEVER use page.goto() for authenticated routes — it kills OrignaBase
  * Auth state in Playwright's isolated browser contexts.
  *
  * Routes tested:

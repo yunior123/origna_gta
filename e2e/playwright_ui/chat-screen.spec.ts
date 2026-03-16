@@ -79,7 +79,7 @@ test.describe('Chat Screen — Premium Gate', () => {
 
   // ─── T02: Premium user can open chat screen ─────────────────────
   test('T02: Premium user can open chat screen after seeding premium subscription', async () => {
-    // Seed premium subscription for admin user via Firestore REST
+    // Seed premium subscription for admin user via OrignaBase REST
     const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
     const subscriptionPath = `subscriptions/${TEST_UIDS.ADMIN}`;
 

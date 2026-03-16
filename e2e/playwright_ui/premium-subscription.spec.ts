@@ -3,7 +3,7 @@
  * =============================================================
  * All Stripe tests go through the real Stripe hosted Checkout page
  * using test card numbers. Webhook events are received by the deployed
- * dev Cloud Function (`stripe_webhook`) and synced to Firestore.
+ * dev Cloud Function (`stripe_webhook`) and synced to SurrealDB.
  *
  * Test suites:
  *   A. Subscription Status API
@@ -12,7 +12,7 @@
  *   D. Full Stripe Checkout — Success (4242 card)
  *   E. Stripe Checkout — Declined Card Scenarios
  *   F. Stripe Checkout — 3DS Authentication
- *   G. Webhook Sync — Firestore State After Payment
+ *   G. Webhook Sync — SurrealDB State After Payment
  *   H. Double-Subscribe Guard
  *   I. Cancel Subscription Flow
  *   J. Platform Fee Waiver
@@ -23,7 +23,7 @@
  *   O. Webhook Edge Cases (payment_failed, renewal, past_due gate)
  *
  * Prerequisites:
- *   - Dev Firebase running (orignagta-dev)
+ *   - Dev OrignaBase running (orignagta-dev)
  *   - Stripe webhook endpoint registered for dev
  *     (customer.subscription.created / updated / deleted + invoice.payment_failed)
  *   - Buyer account NOT currently premium (or tests will skip/adapt)
@@ -306,7 +306,7 @@ test.describe('A. Subscription Status API', () => {
       adminAuth.idToken,
       false,
     );
-    // Brief pause for Firestore writes to propagate before tests read
+    // Brief pause for SurrealDB writes to propagate before tests read
     await new Promise(resolve => setTimeout(resolve, 1_000));
   });
 
@@ -550,7 +550,7 @@ test.describe('C. Create Subscription API + Session Integrity', () => {
 test.describe('D. Full Stripe Checkout — Success Flow', () => {
   test.setTimeout(180_000);
 
-  test('D1: 4242 card → successful subscription → Firestore isPremium=true within 60s', async ({ page }) => {
+  test('D1: 4242 card → successful subscription → SurrealDB isPremium=true within 60s', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
     const status = await callCallable('get_subscription_status', {}, auth.idToken);
     const initial = status.result ?? status;
@@ -574,7 +574,7 @@ test.describe('D. Full Stripe Checkout — Success Flow', () => {
       // Still check: if we got an error-free response, assume webhook will arrive
     }
 
-    // Poll Firestore for up to 60s — webhook fires customer.subscription.created
+    // Poll SurrealDB for up to 60s — webhook fires customer.subscription.created
     const becamePremium = await pollForPremiumStatus(auth.localId, auth.idToken, true, 60_000);
     expect(becamePremium).toBe(true);
 
@@ -707,7 +707,7 @@ test.describe('E. Stripe Checkout — Declined Card Scenarios', () => {
     // Still on Stripe page (no redirect to success URL)
     expect(page.url()).toContain('stripe.com');
 
-    // Firestore: isPremium must still be false
+    // SurrealDB: isPremium must still be false
     await page.waitForTimeout(5_000); // Let any errant webhook settle
     const afterStatus = await callCallable('get_subscription_status', {}, auth.idToken);
     expect((afterStatus.result ?? afterStatus).isPremium).toBe(false);
@@ -894,10 +894,10 @@ test.describe('F. 3DS Authentication for Subscription', () => {
 });
 
 // ════════════════════════════════════════════════════════════════════
-// G. Webhook Sync — Firestore State After Stripe Events
+// G. Webhook Sync — SurrealDB State After Stripe Events
 // ════════════════════════════════════════════════════════════════════
 
-test.describe('G. Webhook Sync — Firestore State', () => {
+test.describe('G. Webhook Sync — SurrealDB State', () => {
   test.setTimeout(60_000);
 
   test('G1: customer.subscription.created webhook sets isPremium=true on user doc', async () => {
@@ -952,7 +952,7 @@ test.describe('G. Webhook Sync — Firestore State', () => {
     // Subscriptions are keyed by UID — one doc per user (set + merge, not add)
     // Verify the doc ID is the UID
     const subDocRaw = await readDoc(`subscriptions/${auth.localId}`, auth.idToken);
-    // Document name ends with the UID (Firestore REST returns full resource name)
+    // Document name ends with the UID (OrignaBase REST returns full resource name)
     const docName = subDocRaw?.name ?? '';
     expect(docName).toContain(auth.localId);
   });
@@ -1186,7 +1186,7 @@ test.describe('J. Platform Fee Waiver', () => {
     const data = result.result ?? result;
 
     if (data.platformFeeTotalCents !== undefined) {
-      // Backend re-fetches isPremium from Firestore — must NOT be 0
+      // Backend re-fetches isPremium from SurrealDB — must NOT be 0
       expect(data.platformFeeTotalCents).toBeGreaterThan(0);
     }
   });
@@ -1275,7 +1275,7 @@ test.describe('L. Security Adversarial', () => {
   });
 
   test('L3: Stripe webhook rejects requests without valid signature', async () => {
-    // Use OrignaBase webhook endpoint (Firebase Cloud Functions are gone)
+    // Use OrignaBase webhook endpoint (OrignaBase Cloud Functions are gone)
     const webhookUrl = `${ORIGNABASE_URL}/stripe/webhook`;
     let res: Response;
     try {
@@ -1294,7 +1294,7 @@ test.describe('L. Security Adversarial', () => {
   });
 
   test('L4: Stripe webhook rejects tampered signature', async () => {
-    // Use OrignaBase webhook endpoint (Firebase Cloud Functions are gone)
+    // Use OrignaBase webhook endpoint (OrignaBase Cloud Functions are gone)
     const webhookUrl = `${ORIGNABASE_URL}/stripe/webhook`;
     let res: Response;
     try {
@@ -1418,7 +1418,7 @@ test.describe('N. Reactivate Subscription', () => {
     const data = result.result ?? result;
     expect(data.success).toBe(true);
 
-    // Verify Firestore subscription doc has cancelAtPeriodEnd=false
+    // Verify SurrealDB subscription doc has cancelAtPeriodEnd=false
     let subDoc: any = null;
     for (let i = 0; i < 10; i++) {
       subDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
@@ -1455,10 +1455,9 @@ test.describe('N. Reactivate Subscription', () => {
 test.describe('O. Webhook Edge Cases', () => {
   test.setTimeout(60_000);
 
-  // Requires active Stripe CLI listener forwarding to the dev webhook endpoint.
-  // Run locally: stripe listen --forward-to https://api.dev.orignagta.ca/stripe/webhook
-  // Not set up in CI — skipped to prevent false failures.
-  test.skip('O1: invoice.payment_failed → subscription status becomes past_due', async () => {
+  // TODO: Requires active Stripe CLI listener forwarding to dev webhook endpoint.
+  // Run: stripe listen --forward-to <DEV_FUNCTIONS_URL>/stripe_webhook
+  test.fixme('O1: invoice.payment_failed → subscription status becomes past_due', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
     // Trigger Stripe CLI test event
@@ -1467,7 +1466,7 @@ test.describe('O. Webhook Edge Cases', () => {
     // Wait 3s for webhook processing
     await new Promise(r => setTimeout(r, 3_000));
 
-    // Poll Firestore until status is past_due (up to 20s)
+    // Poll SurrealDB until status is past_due (up to 20s)
     let subDoc: any = null;
     for (let i = 0; i < 10; i++) {
       subDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
@@ -1477,10 +1476,9 @@ test.describe('O. Webhook Edge Cases', () => {
     expect(subDoc?.status).toBe('past_due');
   });
 
-  // Requires a subscription advancing through a billing cycle in Stripe test mode.
+  // TODO: Requires a real subscription advancing through a billing cycle in test mode.
   // Use Stripe test clocks (https://stripe.com/docs/billing/testing/test-clocks) to simulate renewal.
-  // Not automated in CI — skipped until test-clock infrastructure is set up.
-  test.skip('O2: invoice.payment_succeeded keeps isPremium=true and advances expiresAt', async () => {
+  test.fixme('O2: invoice.payment_succeeded keeps isPremium=true and advances expiresAt', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
     const beforeDoc = await getDoc(`subscriptions/${auth.localId}`, auth.idToken);
@@ -1502,9 +1500,9 @@ test.describe('O. Webhook Edge Cases', () => {
     }
   });
 
-  // Requires seeding a user into past_due state via Stripe CLI or test-clock simulation.
-  // Not automated in CI — skipped until Stripe CLI webhook forwarding is configured in the pipeline.
-  test.skip('O3: past_due user loses premium access to gated features', async () => {
+  // TODO: Requires seeding a user with past_due status in SurrealDB (or triggering it via CLI).
+  // Then verify premium-gated features (chat, fee waiver) are blocked.
+  test.fixme('O3: past_due user loses premium access to gated features', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
     // Precondition: user must be in past_due state

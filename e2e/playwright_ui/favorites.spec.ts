@@ -35,7 +35,7 @@ test.describe('Favorites — API Tests', () => {
     await deleteDoc(`users/${buyerUid}/favorites/${PRODUCT_ID}`, buyerToken).catch(() => {});
   });
 
-  test('T01: Toggle favorite ON via callable — verify Firestore doc created', async () => {
+  test('T01: Toggle favorite ON via callable — verify SurrealDB record created', async () => {
     const result = await callOk('toggle_favorite', { productId: PRODUCT_ID }, buyerToken);
     expect(result.success).toBe(true);
     expect(result.favorited).toBe(true);
@@ -44,7 +44,7 @@ test.describe('Favorites — API Tests', () => {
     expect(favDoc).toBeTruthy();
   });
 
-  test('T02: Toggle favorite OFF — verify Firestore doc deleted', async () => {
+  test('T02: Toggle favorite OFF — verify SurrealDB record deleted', async () => {
     const result = await callOk('toggle_favorite', { productId: PRODUCT_ID }, buyerToken);
     expect(result.success).toBe(true);
     expect(result.favorited).toBe(false);
@@ -90,7 +90,7 @@ test.describe('Favorites — UI Tests', () => {
     await checkSemantics(page);
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
 
-    // Wait for product cards to load (login gives Firestore time to warm up)
+    // Wait for product cards to load (login gives SurrealDB time to warm up)
     const count = await waitForProductCards(page, 60000);
     expect(count).toBeGreaterThan(0);
 

@@ -104,7 +104,7 @@ export const STRIPE_CARD = {
 };
 
 // ════════════════════════════════════════════════════════════════════
-// TEST ACCOUNTS (Dev Firebase — real accounts)
+// TEST ACCOUNTS (Dev OrignaBase — real accounts)
 // ════════════════════════════════════════════════════════════════════
 
 export const TEST_ACCOUNTS = {
@@ -448,7 +448,7 @@ export interface AuthData {
   [key: string]: any;
 }
 
-// Auth token cache — avoids redundant signIn calls that hit Firebase quota
+// Auth token cache — avoids redundant signIn calls that hit OrignaBase quota
 const _authCache = new Map<string, { data: AuthData; expiresAt: number }>();
 
 // Disk-based token cache path (shared across all Playwright workers)
@@ -663,7 +663,7 @@ export async function setOrignaBaseUserSuspended(
 }
 
 /**
- * Sign in to Firebase Auth via Identity Toolkit REST API.
+ * Sign in to OrignaBase Auth via Identity Toolkit REST API.
  * Caches tokens in memory AND on disk (shared across workers) for 50 minutes.
  */
 export async function signIn(email: string, password: string = DEFAULT_PASS): Promise<AuthData> {
@@ -702,7 +702,7 @@ export async function signIn(email: string, password: string = DEFAULT_PASS): Pr
 
 
 // ════════════════════════════════════════════════════════════════════
-// ORIGNABASE GRAPHQL — Firestore-compatible helpers for E2E specs
+// ORIGNABASE GRAPHQL — OrignaBase-compatible helpers for E2E specs
 // ════════════════════════════════════════════════════════════════════
 
 type PathInfo = {
@@ -755,7 +755,7 @@ function toParentRef(info: PathInfo): string | undefined {
 
 function normalizeFields(fields: Record<string, any>): Record<string, any> {
   const entries = Object.entries(fields || {});
-  const looksFirestore =
+  const looksSurrealDB =
     entries.length > 0 &&
     entries.every(([, value]) =>
       value &&
@@ -774,18 +774,18 @@ function normalizeFields(fields: Record<string, any>): Record<string, any> {
       )
     );
 
-  if (!looksFirestore) return fields;
+  if (!looksSurrealDB) return fields;
 
   const normalized: Record<string, any> = {};
   for (const [k, v] of entries) normalized[k] = parseVal(v);
   return normalized;
 }
 
-function wrapFirestoreDoc(path: string, data: Record<string, any> | null): any {
+function wrapSurrealDBDoc(path: string, data: Record<string, any> | null): any {
   if (!data) return null;
   return {
     name: path,
-    fields: toFirestoreFields(data),
+    fields: toSurrealDBFields(data),
   };
 }
 
@@ -825,7 +825,7 @@ async function obGraphQL(query: string, variables: Record<string, any> = {}, tok
 }
 
 /**
- * Read a document by Firestore-style path (e.g. "orders/abc123").
+ * Read a document by OrignaBase-style path (e.g. "orders/abc123").
  * Under the hood this uses OrignaBase GraphQL only.
  */
 export async function readDoc(path: string, token?: string): Promise<any> {
@@ -845,11 +845,11 @@ export async function readDoc(path: string, token?: string): Promise<any> {
     return null;
   }
 
-  return wrapFirestoreDoc(path, raw as Record<string, any>);
+  return wrapSurrealDBDoc(path, raw as Record<string, any>);
 }
 
 /**
- * Read and parse a Firestore document. Returns parsed JS object or null.
+ * Read and parse a SurrealDB record. Returns parsed JS object or null.
  */
 export async function getDoc(path: string, token?: string): Promise<any> {
   const doc = await readDoc(path, token);
@@ -857,7 +857,7 @@ export async function getDoc(path: string, token?: string): Promise<any> {
 }
 
 /**
- * Write a Firestore document via REST API.
+ * Write a SurrealDB record via REST API.
  * Uses PATCH. If updateMask is provided via fields, it does a partial update.
  * If no field selection is needed, it performs a set (create/overwrite).
  */
@@ -887,7 +887,7 @@ export async function writeDoc(path: string, fields: Record<string, any>, token?
 }
 
 /**
- * Delete a Firestore document via REST API.
+ * Delete a SurrealDB record via REST API.
  */
 export async function deleteDoc(path: string, token?: string): Promise<boolean> {
   const info = pathInfo(path);
@@ -902,7 +902,7 @@ export async function deleteDoc(path: string, token?: string): Promise<boolean> 
 }
 
 /**
- * List all documents in a Firestore collection path (REST list endpoint).
+ * List all documents in a SurrealDB collection path (REST list endpoint).
  * Returns an array of parsed document objects. Returns [] if collection is empty.
  */
 export async function listCollection(collectionPath: string, token?: string): Promise<any[]> {
@@ -957,7 +957,7 @@ export function parseDoc(doc: any): any {
   return r;
 }
 
-export function toFirestoreFields(obj: Record<string, any>): any {
+export function toSurrealDBFields(obj: Record<string, any>): any {
   const f: Record<string, any> = {};
   for (const [k, v] of Object.entries(obj)) f[k] = toFsVal(v);
   return f;
@@ -970,7 +970,7 @@ export function toFsVal(v: any): any {
   if (typeof v === 'boolean') return { booleanValue: v };
   if (v instanceof Date) return { timestampValue: v.toISOString() };
   if (Array.isArray(v)) return { arrayValue: { values: v.map(toFsVal) } };
-  if (typeof v === 'object') return { mapValue: { fields: toFirestoreFields(v) } };
+  if (typeof v === 'object') return { mapValue: { fields: toSurrealDBFields(v) } };
   return { stringValue: String(v) };
 }
 
@@ -979,7 +979,7 @@ export function toFsVal(v: any): any {
 // ════════════════════════════════════════════════════════════════════
 
 /**
- * Call a Firebase Callable Function on the deployed dev environment.
+ * Call a OrignaBase Callable Function on the deployed dev environment.
  * Returns the raw response body.
  */
 /**
@@ -1562,7 +1562,7 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       const body = JSON.parse(text);
       if (!res.ok) {
         const rawErr = body?.error ?? { code: res.status, status: res.status, message: body?.message || text.substring(0, 200) };
-        // Normalize numeric HTTP status codes to Firebase-style string codes
+        // Normalize numeric HTTP status codes to OrignaBase-style string codes
         const normalizedCode = (() => {
           const c = rawErr.code ?? res.status;
           if (typeof c === 'string' && isNaN(Number(c))) return c; // already a string code
@@ -1643,7 +1643,7 @@ export async function verifyEmailSent(email: string, adminToken?: string): Promi
 }
 
 /**
- * Normalize Firebase/gRPC error codes to Firebase SDK style.
+ * Normalize OrignaBase/gRPC error codes to OrignaBase SDK style.
  */
 function normalizeErrorCode(error: any): { code: string; message: string } {
   const STATUS_TO_CODE: Record<string, string> = {
@@ -1696,11 +1696,11 @@ export async function callExpectError(fn: string, data: any, token: string): Pro
 }
 
 // ════════════════════════════════════════════════════════════════════
-// CHECKOUT HELPERS — Build payloads from live Firestore data
+// CHECKOUT HELPERS — Build payloads from live SurrealDB data
 // ════════════════════════════════════════════════════════════════════
 
 /**
- * Build a valid checkout payload from live Firestore product + buyer data.
+ * Build a valid checkout payload from live SurrealDB product + buyer data.
  * Reads product and buyer docs to construct the payload.
  */
 export async function buildCheckoutPayload(
@@ -1820,7 +1820,7 @@ export async function buildMultiSellerPayload(
   for (const { productId, quantity } of items) {
     const prodDoc = await readDoc(`products/${productId}`, token);
     const product = parseDoc(prodDoc);
-    if (!product) throw new Error(`Product ${productId} not found in Firestore.`);
+    if (!product) throw new Error(`Product ${productId} not found in SurrealDB.`);
     cartItems.push({
       productId,
       name: product.name,
@@ -1880,7 +1880,7 @@ export async function getProductStock(productId: string, token?: string): Promis
 }
 
 /**
- * Poll until a Firestore doc field matches expected value.
+ * Poll until a SurrealDB record field matches expected value.
  */
 export async function pollDocField(
   path: string,
@@ -1921,7 +1921,7 @@ export async function simulateConcurrent(
 }
 
 /**
- * Poll Firestore until condition is true (eventual consistency helper).
+ * Poll SurrealDB until condition is true (eventual consistency helper).
  * Throws if condition is not met within timeout.
  */
 export async function pollDoc<T>(
@@ -2272,7 +2272,7 @@ export async function fullMultiSellerCheckoutAndPay(
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PRODUCT DISCOVERY — Dev Firestore has auto-generated product IDs
+// PRODUCT DISCOVERY — Dev SurrealDB has auto-generated product IDs
 // ════════════════════════════════════════════════════════════════════
 
 interface DiscoveredProduct {
@@ -2286,7 +2286,7 @@ interface DiscoveredProduct {
 
 let _cachedProducts: DiscoveredProduct[] | null = null;
 
-/** Clear the product cache so the next call re-fetches from Firestore. */
+/** Clear the product cache so the next call re-fetches from SurrealDB. */
 export function invalidateProductCache(): void {
   _cachedProducts = null;
 }
@@ -2294,7 +2294,7 @@ export function invalidateProductCache(): void {
 /**
  * Stable product IDs used across E2E test runs.
  * Using fixed IDs + getDoc (single-document GET) avoids runQuery (list) permission
- * issues — Firestore rules evaluate `resource.data` reliably for individual GETs.
+ * issues — OrignaBase rules evaluate `resource.data` reliably for individual GETs.
  */
 const STABLE_TEST_PRODUCTS: Array<{ id: string; sellerUid: string; prefix: string; country?: string }> = [
   { id: 'e2e_product_admin_seller', sellerUid: TEST_UIDS.ADMIN, prefix: 'A' },
@@ -2303,9 +2303,9 @@ const STABLE_TEST_PRODUCTS: Array<{ id: string; sellerUid: string; prefix: strin
 ];
 
 /**
- * Discover available products in dev Firestore.
+ * Discover available products in dev SurrealDB.
  * Uses stable product IDs + individual getDoc calls instead of runQuery to avoid
- * Firestore list-operation permission issues. Creates products if they don't exist.
+ * SurrealDB list-operation permission issues. Creates products if they don't exist.
  * Results are cached for the test run (call invalidateProductCache() to refresh).
  */
 export async function discoverProducts(_token?: string): Promise<DiscoveredProduct[]> {
@@ -2355,7 +2355,7 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
         // Auto-restore stock if too low (tests decrement stock with each checkout)
         const currentStock = fields.stockQuantity ?? 0;
         if (currentStock < 10) {
-          await writeDoc(`products/${id}`, toFirestoreFields({ stockQuantity: 200 }), adminAuth.idToken, true);
+          await writeDoc(`products/${id}`, toSurrealDBFields({ stockQuantity: 200 }), adminAuth.idToken, true);
           fields.stockQuantity = 200;
         }
 
@@ -2371,7 +2371,7 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
             fields.isInternational = true;
           }
           if (Object.keys(patches).length > 0) {
-            await writeDoc(`products/${id}`, toFirestoreFields(patches), adminAuth.idToken, true);
+            await writeDoc(`products/${id}`, toSurrealDBFields(patches), adminAuth.idToken, true);
           }
         }
 
@@ -2436,7 +2436,7 @@ export async function getTestProduct(token: string, excludeSellerId?: string): P
     : fresh;
 
   if (freshCandidates.length === 0) {
-    throw new Error('All products are out of stock. Restock dev Firestore.');
+    throw new Error('All products are out of stock. Restock dev SurrealDB.');
   }
   return freshCandidates[0];
 }
@@ -2541,7 +2541,7 @@ export async function createDummyProduct(
     isInternational: customAddress ? customAddress.country !== 'Canada' : false,
   };
 
-  const ok = await writeDoc(`products/${id}`, toFirestoreFields(productData), adminAuth.idToken, true);
+  const ok = await writeDoc(`products/${id}`, toSurrealDBFields(productData), adminAuth.idToken, true);
   if (!ok) throw new Error(`Failed to create dummy product for ${sellerUid}`);
 
   return {
@@ -2619,7 +2619,7 @@ export async function setProductTrending(productId: string, isTrending: boolean,
     trendingAt: isTrending ? new Date() : null
   };
 
-  return writeDoc(`products/${productId}`, toFirestoreFields(updates), token, true);
+  return writeDoc(`products/${productId}`, toSurrealDBFields(updates), token, true);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -2634,7 +2634,7 @@ export const TEST_PRODUCTS = {
 };
 
 /**
- * Ensure the dedicated OOS (out-of-stock) product exists in dev Firestore.
+ * Ensure the dedicated OOS (out-of-stock) product exists in dev SurrealDB.
  * stockQuantity is always forced to 0. Owner is ADMIN so seller-owns tests work correctly.
  * This product must NEVER have its stock restored — it is permanently OOS for UI tests.
  */
@@ -2647,12 +2647,12 @@ export async function ensureOosProduct(): Promise<void> {
     exists = !!(fields && (fields.lifecycleStatus === 'active' || fields.status === 'active'));
     if (exists && (fields.stockQuantity ?? 1) !== 0) {
       // Force stock to 0 if someone accidentally restored it
-      await writeDoc(`products/${id}`, toFirestoreFields({ stockQuantity: 0 }), adminAuth.idToken, true);
+      await writeDoc(`products/${id}`, toSurrealDBFields({ stockQuantity: 0 }), adminAuth.idToken, true);
     }
   } catch { /* not found — will create */ }
 
   if (!exists) {
-    await writeDoc(`products/${id}`, toFirestoreFields({
+    await writeDoc(`products/${id}`, toSurrealDBFields({
       productId: id,
       sellerId: TEST_UIDS.ADMIN,
       sellerSku: 'OOS-E2E-STABLE',
@@ -2683,11 +2683,11 @@ export async function ensureOosProduct(): Promise<void> {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// COLLECTION LISTING — List/query Firestore collections
+// COLLECTION LISTING — List/query SurrealDB collections
 // ════════════════════════════════════════════════════════════════════
 
 /**
- * List all documents in a Firestore collection.
+ * List all documents in a SurrealDB collection.
  * Alias for listCollection for compatibility.
  */
 export async function listDocs(collectionPath: string, token?: string): Promise<any[]> {
@@ -2695,7 +2695,7 @@ export async function listDocs(collectionPath: string, token?: string): Promise<
 }
 
 /**
- * List documents in a Firestore subcollection.
+ * List documents in a SurrealDB subcollection.
  */
 export async function listSubcollection(
   parentCollection: string,
@@ -2736,9 +2736,9 @@ export async function listUserAddresses(userId: string, token?: string): Promise
 }
 
 /**
- * Run a structured query against Firestore REST API.
+ * Run a structured query against OrignaBase REST API.
  */
-export async function queryFirestore(structuredQuery: any, token?: string): Promise<any[]> {
+export async function querySurrealDB(structuredQuery: any, token?: string): Promise<any[]> {
   const from = structuredQuery?.from?.[0]?.collectionId;
   if (!from) return [];
   return listCollection(from, token);

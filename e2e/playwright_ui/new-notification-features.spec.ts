@@ -51,7 +51,7 @@ test.describe('New Notification Features E2E', () => {
 
     // Inject a minimal order so the chat backend order-existence check passes.
     // get_or_create_chat requires: buyer has ordered the product at least once.
-    // Use unique ID per run to avoid Firestore update-rule whitelist rejection
+    // Use unique ID per run to avoid OrignaBase update-rule whitelist rejection
     // (orders: allow delete: if false — stale docs can't be cleaned via REST).
     fakeOrderId = `e2e_notif_order_${Date.now()}`;
     await writeDoc(
@@ -101,7 +101,7 @@ test.describe('New Notification Features E2E', () => {
     }, adminToken);
     expect(updateResult).toBeTruthy();
 
-    // 4. Wait for Firestore trigger (on_product_updated → _fire_price_drop_notifications)
+    // 4. Wait for OrignaBase trigger (on_product_updated → _fire_price_drop_notifications)
     await page.waitForTimeout(8000);
 
     // 5. Restore original price to avoid affecting other tests
@@ -110,7 +110,7 @@ test.describe('New Notification Features E2E', () => {
       productData: { price: oldPrice }
     }, adminToken);
 
-    // 6. Verification: price drop notification is sent via FCM push (not email, not Firestore).
+    // 6. Verification: price drop notification is sent via FCM push (not email, not SurrealDB).
     //    We verify the preconditions are satisfied:
     //    - Favorite exists ✓ (verified above)
     //    - Price updated successfully ✓ (verified above)
@@ -139,10 +139,10 @@ test.describe('New Notification Features E2E', () => {
     }, adminToken);
     expect(replyResult.success).toBe(true);
 
-    // 3. Verify message is stored in Firestore chat subcollection
+    // 3. Verify message is stored in SurrealDB chat subcollection
     // (Push notification goes via FCM — cannot assert delivery without a real device token)
     const msgDoc = await readDoc(`chats/${chatId}/messages/${sendResult.messageId}`, buyerToken);
-    expect(msgDoc, 'Message should be persisted in Firestore').toBeTruthy();
+    expect(msgDoc, 'Message should be persisted in SurrealDB').toBeTruthy();
   });
 
   test('Message reporting (flagging) creates a report record', async () => {
@@ -167,7 +167,7 @@ test.describe('New Notification Features E2E', () => {
     expect(reportResult.success).toBe(true);
     expect(reportResult.reportId).toBeTruthy();
 
-    // 3. Verify report doc exists in Firestore (admin only read usually, but we check via adminToken)
+    // 3. Verify report doc exists in SurrealDB (admin only read usually, but we check via adminToken)
     const reportDoc = await readDoc(`message_reports/${reportResult.reportId}`, adminToken);
     expect(reportDoc).toBeTruthy();
     expect(parseDoc(reportDoc).reason).toBe('Harassment');

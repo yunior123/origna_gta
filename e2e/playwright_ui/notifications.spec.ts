@@ -66,7 +66,7 @@ test.describe('Notifications E2E Tests', () => {
   });
 
   test('SnackBar foreground message — logic verified via push_service.py audit', async () => {
-    // FCM on web is skipped by flutter_firebase_messaging — verified at push_service.py L47
+    // FCM on web is skipped by flutter_orignabase_messaging — verified at push_service.py L47
     // which explicitly returns False when pushEnabled is not True.
     // Manual verification only; no automated assertion needed.
     expect(true).toBe(true);

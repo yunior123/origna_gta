@@ -79,7 +79,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
     const returnId = returnResult.returnId;
     expect(returnId).toBeTruthy();
 
-    // 6. Verify return request exists in Firestore
+    // 6. Verify return request exists in SurrealDB
     const returnDoc = await readDoc(`return_requests/${returnId}`, adminAuth.idToken);
     const returnData = parseDoc(returnDoc);
     expect(returnData.returnStatus).toBe('requested');

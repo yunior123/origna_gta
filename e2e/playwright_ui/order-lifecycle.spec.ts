@@ -1,7 +1,7 @@
 /**
  * OrignaGTA — Order Lifecycle E2E Tests
  * =======================================
- * Tests order status transitions against dev Firebase.
+ * Tests order status transitions against dev OrignaBase.
  * Uses real checkout → payment → webhook flow (no forceOrderStatus).
  */
 import { test, expect } from '@playwright/test';

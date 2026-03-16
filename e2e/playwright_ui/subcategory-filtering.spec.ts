@@ -144,7 +144,7 @@ test.describe('Subcategory Filtering — API', () => {
     expect(result.products.length).toBe(0);
   });
 
-  test('T03: create_product_atomic with valid subcategory stores it in Firestore', async () => {
+  test('T03: create_product_atomic with valid subcategory stores it in SurrealDB', async () => {
     const productName = `E2E Subcat Test ${uid()}`;
     const result = await callOk('create_product_atomic', {
       productData: {
@@ -165,7 +165,7 @@ test.describe('Subcategory Filtering — API', () => {
     expect(result.productId).toBeTruthy();
     createdProductIds.push(result.productId);
 
-    // Verify subcategory persisted in Firestore
+    // Verify subcategory persisted in SurrealDB
     const doc = await getDoc(`products/${result.productId}`, sellerToken);
     expect(doc).toBeTruthy();
     expect(doc.name).toBe(productName);
@@ -227,7 +227,7 @@ test.describe('Subcategory Filtering — API', () => {
     }, sellerToken);
     expect(updateResult.success).toBe(true);
 
-    // Verify the subcategory was updated in Firestore
+    // Verify the subcategory was updated in SurrealDB
     const after = await getDoc(`products/${result.productId}`, sellerToken);
     expect(after.subcategory).toBe(newSubcategory);
   });
