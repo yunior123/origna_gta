@@ -1274,7 +1274,9 @@ export async function callCallable(fn: string, data: any, token: string, timeout
           },
         };
       case 'activate_license':
-        return { path: '/api/licenses/activate', body: { userId, ...payload } };
+        return { path: '/api/digital/activate-license', body: { userId, ...payload } };
+      case 'e2e_seed_license':
+        return { path: '/api/admin/e2e/seed-license', body: { adminId: userId, ...payload } };
       case 'admin_create_coupon':
         return { path: '/api/admin/create-coupon', body: { adminId: userId, ...payload } };
       case 'admin_delete_product_question':
@@ -1357,8 +1359,11 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'get_connect_account_status':
         return { path: '/api/connect/status', body: { userId } };
       case 'get_or_create_chat':
-        // Backend expects `otherUserId` — accept both field names from callers for backward compat
-        return { path: '/api/chat/get-or-create', body: { userId, otherUserId: payload?.otherUserId ?? payload?.participantId } };
+        return { path: '/api/chat/get-or-create', body: {
+          userId,
+          otherUserId: payload?.otherUserId ?? payload?.other_user_id ?? payload?.participantId,
+          other_user_id: payload?.otherUserId ?? payload?.other_user_id ?? payload?.participantId,
+        }};
       case 'get_order_detail': {
         // No REST endpoint — use GraphQL get
         const rawOid = String(payload?.orderId ?? '');

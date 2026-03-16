@@ -172,9 +172,6 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
 
     await loginAndNavigate(page, baseURL!, OOS_PRODUCT_ID);
 
-    const btn = page.locator('flt-semantics[role="button"]').filter({
-      has: page.locator('[aria-label="product_notify_me_button"]'),
-    });
     // Use Key-based selector as per SEMANTICS.md
     const notifyBtn = page.locator('[aria-label="product_notify_me_button"]');
     await expect(notifyBtn).toBeVisible({ timeout: 15_000 });
@@ -200,9 +197,9 @@ test.describe('1. UI — Notify Me Button on OOS Product', () => {
     await page.screenshot({ path: `${SCREENSHOTS_DIR}/stock-notif-1-3-after-subscribe.png` });
 
     // Verify via SurrealDB that subscription was created
-    const snap = await getDoc(`stock_notifications/${OOS_PRODUCT_ID}_${auth.localId}`, auth.idToken)
-      .catch(() => null);
     // Subscription doc may be keyed differently; assert via re-subscribe being idempotent
+    await getDoc(`stock_notifications/${OOS_PRODUCT_ID}_${auth.localId}`, auth.idToken)
+      .catch(() => null); // ignore if doc key differs — idempotent subscribe check below is the real assert
     const result = await callOk(
       'subscribe_stock_notification',
       { productId: OOS_PRODUCT_ID },
@@ -336,7 +333,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
     const ok = await writeDoc(`products/${TEMP_PRODUCT_ID}`, {
       name: 'Test Stock Restore Product',
       description: 'Temporary product for stock restore test — E2E only',
-      price: 19.99,
+      priceCents: 1999,
       stockQuantity: 0,
       lifecycleStatus: 'active',
       isDigital: false,
@@ -365,7 +362,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
   });
 
   test('2.1 OOS product shows Notify Me, then after stock restored shows Add to Cart', async ({ page, baseURL }) => {
-    const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
+    await signIn(TEST_ACCOUNTS.BUYER_EMAIL); // warm token cache
     await loginAndNavigate(page, baseURL!, TEMP_PRODUCT_ID);
 
     // Must show Notify Me
@@ -408,14 +405,12 @@ test.describe('3. API — subscribe_stock_notification / unsubscribe_stock_notif
   test.setTimeout(60_000);
 
   let buyerToken: string;
-  let buyerUid: string;
 
   test.beforeAll(async () => {
     // Ensure OOS product exists in dev SurrealDB
     await ensureOosProduct();
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
-    buyerUid = auth.localId;
     // Ensure clean subscription state before API suite
     await callOk('unsubscribe_stock_notification', { productId: OOS_PRODUCT_ID }, buyerToken)
       .catch(() => {});

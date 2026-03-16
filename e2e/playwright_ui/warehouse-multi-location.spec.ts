@@ -14,11 +14,9 @@ import { test, expect } from '@playwright/test';
 import {
   signIn,
   callOk,
-  readDoc,
   getDoc,
   writeDoc,
   deleteDoc,
-  parseDoc,
   TEST_ACCOUNTS,
   DEFAULT_PASS,
 } from './api-helpers';
@@ -47,8 +45,10 @@ async function createWarehouse(
   }, token);
 }
 
-function warehousePath(sellerId: string, warehouseId: string) {
-  return `users/${sellerId}/warehouses/${warehouseId}`;
+function warehousePath(_sellerId: string, warehouseId: string) {
+  // OrignaBase stores warehouses in a flat `warehouses` collection, not as a
+  // subcollection of users. The sellerId param is kept for call-site compatibility.
+  return `warehouses/${warehouseId}`;
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -263,8 +263,8 @@ test.describe('Warehouse: multi-location seller flow', () => {
     expect(doc.warehouseStock).toBeUndefined();
 
     // Verify each inventoryLevels subdoc has correct quantity (admin token required by rules)
-    const inv1 = parseDoc(await readDoc(`products/${productId}/inventoryLevels/${wId1}`, adminToken));
-    const inv2 = parseDoc(await readDoc(`products/${productId}/inventoryLevels/${wId2}`, adminToken));
+    const inv1 = await getDoc(`products/${productId}/inventoryLevels/${wId1}`, adminToken);
+    const inv2 = await getDoc(`products/${productId}/inventoryLevels/${wId2}`, adminToken);
     expect(inv1.availableQuantity).toBe(stock1);
     expect(inv2.availableQuantity).toBe(stock2);
     expect(inv1.availableQuantity + inv2.availableQuantity).toBe(doc.stockQuantity);

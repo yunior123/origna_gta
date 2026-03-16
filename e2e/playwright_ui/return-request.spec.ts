@@ -11,7 +11,7 @@ import {
   getSellerAuth,
   TEST_ACCOUNTS,
   writeDoc,
-  readDoc, parseDoc,
+  getDoc,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
@@ -25,9 +25,9 @@ test.describe('Return Request Flow (Flow 6)', () => {
   test.beforeAll(async () => {
     // We need a physical product for returns
     await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-    productId = 'product_001'; // Organic Maple Syrup (physical)
-    const prod = await readDoc(`products/${productId}`);
-    productSellerId = parseDoc(prod).sellerId;
+    productId = 'e2e_product_test_seller'; // stable E2E product
+    const prod = await getDoc(`products/${productId}`);
+    productSellerId = prod.sellerId;
   });
 
   test('Buyer can request return and seller can approve', async ({ page }) => {
@@ -64,8 +64,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
       newStatus: 'delivered',
     }, adminAuth.idToken);
 
-    const orderDoc = await readDoc(`orders/${orderId}`, adminAuth.idToken);
-    const orderData = parseDoc(orderDoc);
+    const orderData = await getDoc(`orders/${orderId}`, adminAuth.idToken);
     console.log('Order Items:', JSON.stringify(orderData?.items, null, 2));
 
     // 5. Buyer requests return
@@ -80,8 +79,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
     expect(returnId).toBeTruthy();
 
     // 6. Verify return request exists in SurrealDB
-    const returnDoc = await readDoc(`return_requests/${returnId}`, adminAuth.idToken);
-    const returnData = parseDoc(returnDoc);
+    const returnData = await getDoc(`return_requests/${returnId}`, adminAuth.idToken);
     expect(returnData.returnStatus).toBe('requested');
 
     // 7. Seller approves return
@@ -91,8 +89,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
     }, sellerAuth.idToken);
 
     // 8. Verify approved status
-    const returnDocApproved = await readDoc(`return_requests/${returnId}`, adminAuth.idToken);
-    const returnDataApproved = parseDoc(returnDocApproved);
+    const returnDataApproved = await getDoc(`return_requests/${returnId}`, adminAuth.idToken);
     expect(returnDataApproved.returnStatus).toBe('approved');
   });
 

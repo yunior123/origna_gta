@@ -28,7 +28,8 @@ test.describe('Trending Products flows', () => {
 
     let userEmail = TEST_ACCOUNTS.BUYER_EMAIL;
     let userPass = DEFAULT_PASS;
-    let userId = TEST_UIDS.BUYER;
+    // TEST_UIDS stores full SurrealDB paths ("users:xxx") — strip prefix for writeDoc/getDoc paths
+    const userId = TEST_UIDS.BUYER.includes(':') ? TEST_UIDS.BUYER.split(':')[1] : TEST_UIDS.BUYER;
 
     test.beforeEach(async () => {
         // Authenticate once as admin for the data setup

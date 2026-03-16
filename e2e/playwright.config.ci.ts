@@ -16,6 +16,8 @@ export default defineConfig({
     '**/order-cancellation-refund.spec.ts',
     '**/order-lifecycle.spec.ts',
     '**/shipping-approval.spec.ts',
+    '**/preview-screenshots.spec.ts',   // requires localhost:5555 widget preview server
+    '**/visual-regression.spec.ts',     // snapshot baselines are machine-specific
   ],
   fullyParallel: true,
   forbidOnly: true,
