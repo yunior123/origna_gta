@@ -14,7 +14,7 @@ import {
   fullCheckoutAndPay,
   waitForOrderStatus, getOrder, getProductStock,
   getSellerAuth,
-  TEST_ACCOUNTS, TEST_UIDS, writeDoc, toFirestoreFields, createDummyProduct,
+  TEST_ACCOUNTS, TEST_UIDS, writeDoc, createDummyProduct,
 } from './api-helpers';
 
 // ── No magic strings (CLAUDE.md Rule 11) ────────────────────────────────────
@@ -51,7 +51,7 @@ test.describe('Order Cancellation & Refund', () => {
     // Reset seller product (used in tests 1-5, 7)
     const sellerOk = await writeDoc(
       `products/e2e_product_test_seller`,
-      toFirestoreFields({ stockQuantity: 200 }),
+      { stockQuantity: 200 },
       adminAuth.idToken, true,
     );
     if (!sellerOk) await createDummyProduct(TEST_UIDS.SELLER, 'B', 'e2e_product_test_seller');
@@ -59,7 +59,7 @@ test.describe('Order Cancellation & Refund', () => {
     // Reset admin product (used in test 6 — unauthorized cancel scenario)
     const adminOk = await writeDoc(
       `products/e2e_product_admin_seller`,
-      toFirestoreFields({ stockQuantity: 200 }),
+      { stockQuantity: 200 },
       adminAuth.idToken, true,
     );
     if (!adminOk) await createDummyProduct(TEST_UIDS.ADMIN, 'A', 'e2e_product_admin_seller');

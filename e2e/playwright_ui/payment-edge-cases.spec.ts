@@ -8,8 +8,7 @@ import { test, expect } from '@playwright/test';
 import {
   signIn, callOk,
   buildCheckoutPayload, readDoc, parseDoc,
-  fillStripeCheckout, dismissStripeModals,
-  getTestProduct, invalidateProductCache, getProductStock,
+  dismissStripeModals, getProductStock,
   TEST_ACCOUNTS, STRIPE_CARD,
 } from './api-helpers';
 
@@ -24,12 +23,11 @@ test.describe('Payment Edge Cases', () => {
   let buyerAuth: Awaited<ReturnType<typeof signIn>>;
 
   test.beforeAll(async () => {
-    buyerAuth = await signIn(BUYER_EMAIL);
+    buyerAuth = await signIn(BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
   });
 
   test('Declined card shows error on Stripe page', async ({ page }) => {
-    await invalidateProductCache();
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const product = { id: 'e2e_product_test_seller' };
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
@@ -88,8 +86,7 @@ test.describe('Payment Edge Cases', () => {
   });
 
   test('3D Secure card triggers authentication challenge', async ({ page }) => {
-    await invalidateProductCache();
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const product = { id: 'e2e_product_test_seller' };
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
@@ -155,8 +152,7 @@ test.describe('Payment Edge Cases', () => {
   });
 
   test('Currency is always CAD for Canadian buyers', async () => {
-    await invalidateProductCache();
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const product = { id: 'e2e_product_test_seller' };
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
@@ -166,8 +162,7 @@ test.describe('Payment Edge Cases', () => {
   });
 
   test('Declined card does not decrement stock', async ({ page }) => {
-    await invalidateProductCache();
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const product = { id: 'e2e_product_test_seller' };
     const stockBefore = await getProductStock(product.id, buyerAuth.idToken);
 
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
