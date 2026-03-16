@@ -113,20 +113,20 @@ jobs:
           echo "Dev site did not become ready in time" && exit 1
 
   # ────────────────────────────────────────────────────────────
-  # Job 3: Playwright E2E (4 parallel shards)
-  # Each shard runs ~14 specs with 2 workers = ~16 parallel contexts
+  # Job 3: Playwright E2E (8 parallel shards)
+  # 144 tests / 8 shards = ~18 tests per shard, 2 workers each
   # ────────────────────────────────────────────────────────────
   e2e:
     name: E2E Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     needs: deploy-dev
 
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        shardIndex: [1, 2, 3, 4, 5, 6, 7, 8]
+        shardTotal: [8]
 
     steps:
       - uses: actions/checkout@v4
@@ -159,7 +159,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results-shard-${{ matrix.shardIndex }}
+          name: playwright-results-shard-${{ matrix.shardIndex }}-of-${{ matrix.shardTotal }}
           path: e2e/test-results/
           retention-days: 7
 
