@@ -8,13 +8,10 @@
 import { test, expect } from '@playwright/test';
 import {
   signIn,
-  callOk,
   getDoc,
-  writeDoc,
   discoverProducts,
   TEST_ACCOUNTS,
   TEST_UIDS,
-  STRIPE_CARD,
   fillStripeCheckout,
 } from './api-helpers';
 

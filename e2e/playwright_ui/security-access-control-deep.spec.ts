@@ -23,7 +23,6 @@
 import { test, expect } from '@playwright/test';
 import {
   signIn,
-  callOk,
   callExpectError,
   callCallable,
   writeDoc,
@@ -33,7 +32,6 @@ import {
   ensureTwoSellerProducts,
   TEST_ACCOUNTS,
   TEST_UIDS,
-  DEFAULT_PASS,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 import {
   waitForFlutter, requireWebApp, checkSemantics,
-  waitForProductCards, waitForSemantic,
+  waitForProductCards,
 } from './flutter-helpers';
 import {
-  signIn, callOk, callExpectError,
+  signIn, callOk,
   TEST_ACCOUNTS, WEB_APP_URL,
 } from './api-helpers';
 

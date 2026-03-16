@@ -18,26 +18,18 @@ import {
   performSignOut,
   navigateHome,
   navigateToAdmin,
-  uniqueSuffix,
-  BTN_SETTINGS,
-  BTN_ADD_PRODUCT,
-  BTN_CART,
 } from './flutter-helpers';
 import {
   signIn,
   callOk,
   callCallable,
-  callExpectError,
-  readDoc,
   writeDoc,
-  parseDoc,
   getDoc,
   getOrder,
   TEST_ACCOUNTS,
   TEST_PRODUCTS,
   WEB_APP_URL,
   DEFAULT_PASS,
-  fullCheckoutAndPay,
   uid,
   ensureOrignaBaseUiAccount,
 } from './api-helpers';
@@ -502,7 +494,7 @@ test.describe('D. Profile & Address Management', () => {
 test.describe('E. Order Lifecycle Deep', () => {
   test.setTimeout(300_000);
 
-  test('E1: Full order state machine — pending → confirmed → processing → shipped → delivered', async ({ page }) => {
+  test('E1: Full order state machine — pending → confirmed → processing → shipped → delivered', async () => {
     const buyerAuth = await createFreshBuyerAuth();
     const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
     const { sellerAuth, productId, price } = await createCheckoutProduct();
@@ -528,7 +520,7 @@ test.describe('E. Order Lifecycle Deep', () => {
     expect(order?.orderStatus).toBeTruthy();
 
     // Transition: confirmed → processing (by seller)
-    const updateResult = await callCallable('update_order_status', {
+    const _updateResult = await callCallable('update_order_status', {
       orderId,
       newStatus: 'processing',
     }, sellerAuth.idToken);
