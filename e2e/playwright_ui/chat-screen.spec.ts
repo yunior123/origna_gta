@@ -17,13 +17,11 @@ import { test, expect } from '@playwright/test';
 import {
   signIn,
   callCallable,
-  callOk,
   TEST_ACCOUNTS,
   TEST_UIDS,
   WEB_APP_URL,
   getDoc,
   writeDoc,
-  toFirestoreFields,
 } from './api-helpers';
 import {
   waitForFlutter,
@@ -87,14 +85,14 @@ test.describe('Chat Screen — Premium Gate', () => {
 
     const seedResult = await writeDoc(
       subscriptionPath,
-      toFirestoreFields({
+      {
         status: 'active',
         isPremium: true,
         planId: 'premium_monthly',
         userId: TEST_UIDS.ADMIN,
         createdAt: new Date().toISOString(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      }),
+      },
       adminAuth.idToken,
     );
 
@@ -130,13 +128,13 @@ test.describe('Chat Screen — Premium Gate', () => {
     // Ensure premium subscription is active
     await writeDoc(
       `subscriptions/${TEST_UIDS.ADMIN}`,
-      toFirestoreFields({
+      {
         status: 'active',
         isPremium: true,
         planId: 'premium_monthly',
         userId: TEST_UIDS.ADMIN,
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      }),
+      },
       adminAuth.idToken,
     );
 
@@ -195,13 +193,13 @@ test.describe('Chat Screen — Premium Gate', () => {
     // Ensure premium
     await writeDoc(
       `subscriptions/${TEST_UIDS.ADMIN}`,
-      toFirestoreFields({
+      {
         status: 'active',
         isPremium: true,
         planId: 'premium_monthly',
         userId: TEST_UIDS.ADMIN,
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      }),
+      },
       adminAuth.idToken,
     );
 

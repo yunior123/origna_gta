@@ -21,7 +21,6 @@ import {
   callExpectError,
   readDoc,
   writeDoc,
-  toFirestoreFields,
   parseDoc,
   buildCheckoutPayload,
   discoverProducts,
@@ -100,7 +99,7 @@ test.describe('2. Quantity Validation', () => {
     // Create a product with a known stock level to prevent skips when stock is >= 98
     const liveStock = 50;
     const productId = `test_stock_${Date.now()}`;
-    await writeDoc(`products/${productId}`, toFirestoreFields({
+    await writeDoc(`products/${productId}`, {
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `STOCK-TEST-${Date.now()}`,
       name: 'Stock Limited Product',
@@ -208,7 +207,7 @@ test.describe('3. Order Guards', () => {
     const sellerAuth = await signIn(SELLER_EMAIL);
     const orderId = `test_order_unrelated_${Date.now()}`;
 
-    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+    await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.BUYER,
       orderStatus: 'pending', // Must be pending to transition to processing
       totalAmount: 50.00,
@@ -295,7 +294,7 @@ test.describe('4. Product Rating Security', () => {
     const orderId = `test_order_rating_${Date.now()}`;
     const productId = `test_rating_prod_${Date.now()}`;
 
-    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+    await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.BUYER, // Belongs to buyer
       orderStatus: 'delivered',
       totalAmount: 10.00,
@@ -478,7 +477,7 @@ test.describe('8. Permission Isolation', () => {
     const buyerAuth = await signIn(BUYER_EMAIL);
 
     const orderId = `test_order_buyer_perms_${Date.now()}`;
-    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+    await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.BUYER,
       orderStatus: 'pending', // Must be pending to transition to processing
       totalAmount: 10.00,

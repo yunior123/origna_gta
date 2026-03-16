@@ -18,7 +18,6 @@ import {
   getDoc,
   writeDoc,
   deleteDoc,
-  toFirestoreFields,
   parseDoc,
   TEST_ACCOUNTS,
   DEFAULT_PASS,
@@ -138,7 +137,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
 
     // Write first product with this SKU using admin token (bypasses field whitelist)
     const prodId1 = `test_sku_1_${Date.now()}`;
-    const ok1 = await writeDoc(`products/${prodId1}`, toFirestoreFields(baseProduct), adminToken, false);
+    const ok1 = await writeDoc(`products/${prodId1}`, baseProduct, adminToken, false);
     expect(ok1).toBe(true);
 
     const doc1 = await getDoc(`products/${prodId1}`, adminToken);
@@ -147,7 +146,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
 
     // Write second product with identical sellerId+sellerSku
     const prodId2 = `test_sku_2_${Date.now()}`;
-    await writeDoc(`products/${prodId2}`, toFirestoreFields({ ...baseProduct, name: 'Duplicate SKU Product' }), adminToken, false);
+    await writeDoc(`products/${prodId2}`, { ...baseProduct, name: 'Duplicate SKU Product' }), adminToken, false);
 
     const doc2 = await getDoc(`products/${prodId2}`, adminToken);
     // The sellerSku and sellerId are persisted (Firestore direct write),
@@ -188,7 +187,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
 
     // Write a product doc simulating what the repo writes (post denormalization)
     const productId = `test_ship_from_${Date.now()}`;
-    await writeDoc(`products/${productId}`, toFirestoreFields({
+    await writeDoc(`products/${productId}`, {
       sellerId: uid,
       name: 'Calgary Maple Syrup',
       description: 'Premium Canadian maple syrup from Calgary.',
@@ -237,7 +236,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
 
     // Write product doc (warehouseStock map is gone — stockQuantity is the only product-level field)
     const productId = `test_wh_stock_${Date.now()}`;
-    await writeDoc(`products/${productId}`, toFirestoreFields({
+    await writeDoc(`products/${productId}`, {
       sellerId: uid,
       name: 'Multi-Warehouse Widget',
       description: 'A widget stocked across multiple warehouses.',
@@ -254,8 +253,8 @@ test.describe('Warehouse: multi-location seller flow', () => {
 
     // Write inventoryLevels subcollection docs (one per warehouse)
     await Promise.all([
-      writeDoc(`products/${productId}/inventoryLevels/${wId1}`, toFirestoreFields({ availableQuantity: stock1, warehouseId: wId1 }), adminToken, false),
-      writeDoc(`products/${productId}/inventoryLevels/${wId2}`, toFirestoreFields({ availableQuantity: stock2, warehouseId: wId2 }), adminToken, false),
+      writeDoc(`products/${productId}/inventoryLevels/${wId1}`, { availableQuantity: stock1, warehouseId: wId1 }), adminToken, false),
+      writeDoc(`products/${productId}/inventoryLevels/${wId2}`, { availableQuantity: stock2, warehouseId: wId2 }), adminToken, false),
     ]);
 
     const doc = await getDoc(`products/${productId}`, adminToken);

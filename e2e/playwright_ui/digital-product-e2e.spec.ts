@@ -24,8 +24,7 @@ import {
   verifyEmailSent,
   writeDoc,
   deleteDoc,
-  toFirestoreFields,
-  FUNCTIONS_URL,
+  ORIGNABASE_URL,
   TEST_ACCOUNTS,
   TEST_UIDS,
 } from './api-helpers';
@@ -283,7 +282,7 @@ test.describe('D. License Activation & Book Download', () => {
 
     // Seed software license (FXCleaner — macOS only)
     softwareLicenseKey = 'REDACTED_SECRET';
-    await writeDoc(`licenses/${softwareLicenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${softwareLicenseKey}`, {
       licenseKey: softwareLicenseKey,
       productId: DIGITAL_SW_ID,
       orderId: 'e2e-test-order-d-sw',
@@ -300,7 +299,7 @@ test.describe('D. License Activation & Book Download', () => {
 
     // Seed book license (eBook)
     bookLicenseKey = 'REDACTED_SECRET';
-    await writeDoc(`licenses/${bookLicenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${bookLicenseKey}`, {
       licenseKey: bookLicenseKey,
       productId: DIGITAL_BOOK_ID,
       orderId: 'e2e-test-order-d-book',
@@ -399,7 +398,7 @@ test.describe('E. Security & Access Control', () => {
     const buyerAuth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
 
     buyerLicenseKey = 'E2EE-SW01-ABCD-9999';
-    await writeDoc(`licenses/${buyerLicenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${buyerLicenseKey}`, {
       licenseKey: buyerLicenseKey,
       productId: DIGITAL_SW_ID,
       orderId: 'e2e-test-order-e-sw',
@@ -415,7 +414,7 @@ test.describe('E. Security & Access Control', () => {
     }), adminAuth.idToken, false);
 
     buyerBookLicenseKey = 'E2EE-BK01-ABCD-8888';
-    await writeDoc(`licenses/${buyerBookLicenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${buyerBookLicenseKey}`, {
       licenseKey: buyerBookLicenseKey,
       productId: DIGITAL_BOOK_ID,
       orderId: 'e2e-test-order-e-book',
@@ -489,13 +488,13 @@ test.describe('E. Security & Access Control', () => {
     expect(token, 'Token must be in downloadUrl query param').toBeTruthy();
 
     // Simulate "using" the token by calling the public redirect endpoint
-    const firstUse = await fetch(`${FUNCTIONS_URL}/get_book_redirect?t=${token}`, { redirect: 'manual' });
+    const firstUse = await fetch(`${ORIGNABASE_URL}/api/digital/book-redirect?t=${token}`, { redirect: 'manual' });
     // Should redirect (302) or succeed; the token is now marked used.
     expect([200, 302, 410].includes(firstUse.status), 'First use: valid response code').toBe(true);
 
     if (firstUse.status === 302) {
       // Token was used — second call must return 410
-      const secondUse = await fetch(`${FUNCTIONS_URL}/get_book_redirect?t=${token}`, { redirect: 'manual' });
+      const secondUse = await fetch(`${ORIGNABASE_URL}/api/digital/book-redirect?t=${token}`, { redirect: 'manual' });
       expect(secondUse.status, 'Second use of same token must return 410').toBe(410);
     }
   });
@@ -568,7 +567,7 @@ test.describe('G. Software Download Session', () => {
     const buyerAuth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
 
     swLicenseKey = 'E2EG-SW01-ABCD-7777';
-    await writeDoc(`licenses/${swLicenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${swLicenseKey}`, {
       licenseKey: swLicenseKey,
       productId: DIGITAL_SW_ID,
       orderId: 'e2e-test-order-g-sw',
@@ -622,11 +621,11 @@ test.describe('G. Software Download Session', () => {
     const token = new URL(session.downloadUrl).searchParams.get('t');
     expect(token, 'Token param must be present').toBeTruthy();
 
-    const firstUse = await fetch(`${FUNCTIONS_URL}/get_software_redirect?t=${token}`, { redirect: 'manual' });
+    const firstUse = await fetch(`${ORIGNABASE_URL}/api/digital/software-redirect?t=${token}`, { redirect: 'manual' });
     expect([200, 302, 410].includes(firstUse.status), 'First use must succeed or redirect').toBe(true);
 
     if (firstUse.status === 302) {
-      const secondUse = await fetch(`${FUNCTIONS_URL}/get_software_redirect?t=${token}`, { redirect: 'manual' });
+      const secondUse = await fetch(`${ORIGNABASE_URL}/api/digital/software-redirect?t=${token}`, { redirect: 'manual' });
       expect(secondUse.status, 'Second use of software token must return 410').toBe(410);
     }
   });
@@ -655,7 +654,7 @@ test.describe('G. Software Download Session', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const buyerAuth = await signIn(BUYER_EMAIL, DIGITAL_PASS);
     const bookKey = 'E2EG-BK01-ABCD-6666';
-    await writeDoc(`licenses/${bookKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${bookKey}`, {
       licenseKey: bookKey,
       productId: DIGITAL_BOOK_ID,
       orderId: 'e2e-test-order-g-book',
@@ -697,7 +696,7 @@ test.describe('H. License Management — Deactivate, Verify, Device Limit, Revok
 
     // License for deactivate / verify tests (pre-activated on one device)
     manageLicenseKey = 'E2EH-SW01-MGMT-1111';
-    await writeDoc(`licenses/${manageLicenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${manageLicenseKey}`, {
       licenseKey: manageLicenseKey,
       productId: DIGITAL_SW_ID,
       orderId: 'e2e-test-order-h-manage',
@@ -721,7 +720,7 @@ test.describe('H. License Management — Deactivate, Verify, Device Limit, Revok
 
     // Revoked license — status=revoked
     revokedLicenseKey = 'E2EH-SW01-REVK-2222';
-    await writeDoc(`licenses/${revokedLicenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${revokedLicenseKey}`, {
       licenseKey: revokedLicenseKey,
       productId: DIGITAL_SW_ID,
       orderId: 'e2e-test-order-h-revoked',
@@ -739,7 +738,7 @@ test.describe('H. License Management — Deactivate, Verify, Device Limit, Revok
 
     // License with deviceLimit=2, already at 2 activations
     limitedLicenseKey = 'E2EH-SW01-LIMT-3333';
-    await writeDoc(`licenses/${limitedLicenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${limitedLicenseKey}`, {
       licenseKey: limitedLicenseKey,
       productId: DIGITAL_SW_ID,
       orderId: 'e2e-test-order-h-limit',
@@ -838,7 +837,7 @@ test.describe('H. License Management — Deactivate, Verify, Device Limit, Revok
     }, auth.idToken);
 
     // Call verify_license (public, no auth token needed)
-    const verifyResult = await fetch(`${FUNCTIONS_URL}/verify_license`, {
+    const verifyResult = await fetch(`${ORIGNABASE_URL}/api/digital/verify-license`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -886,7 +885,7 @@ test.describe('I. Digital Business Rules', () => {
       deliveredAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
     };
 
-    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+    await writeDoc(`orders/${orderId}`, {
       orderId,
       userId: buyerAuth.localId,
       items: [digitalItem],
@@ -921,7 +920,7 @@ test.describe('I. Digital Business Rules', () => {
     const licenseKey = 'E2EI-SW01-RVKR-4444';
     const stripePaymentIntentId = 'pi_test_e2e_i2_captured'; // placeholder — refund will fail gracefully
 
-    await writeDoc(`licenses/${licenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${licenseKey}`, {
       licenseKey,
       productId: DIGITAL_SW_ID,
       orderId,
@@ -943,7 +942,7 @@ test.describe('I. Digital Business Rules', () => {
     // Trigger license revocation via the internal function (simulated by admin writing revoked status
     // since we cannot call _revoke_digital_licenses_for_order directly without a real Stripe capture).
     // We test the revocation by verifying the activation fails after revoking.
-    await writeDoc(`licenses/${licenseKey}`, toFirestoreFields({
+    await writeDoc(`licenses/${licenseKey}`, {
       status: 'revoked',
       revokedAt: new Date(),
       revokedReason: 'refunded',

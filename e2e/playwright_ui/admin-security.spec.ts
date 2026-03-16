@@ -6,7 +6,7 @@
 import { test, expect } from '@playwright/test';
 import {
   signIn, callCallable, callExpectError,
-  TEST_ACCOUNTS, FUNCTIONS_URL,
+  TEST_ACCOUNTS, ORIGNABASE_URL,
 } from './api-helpers';
 
 const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
@@ -38,13 +38,12 @@ test.describe('Admin Security', () => {
   });
 
   test('Unauthenticated requests to admin endpoints are rejected', async () => {
-    const res = await fetch(`${FUNCTIONS_URL}/admin_mfa_enroll`, {
+    const res = await fetch(`${ORIGNABASE_URL}/api/admin/mfa/enroll`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: {} }),
+      body: JSON.stringify({}),
     });
-    const body = await res.json();
-    expect(body.error || res.status !== 200).toBeTruthy();
+    expect(res.status === 401 || res.status === 403 || res.status >= 400).toBeTruthy();
   });
 
   test('Non-seller cannot access seller-only endpoints via API', async () => {

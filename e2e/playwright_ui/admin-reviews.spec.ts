@@ -18,7 +18,6 @@ import {
   WEB_APP_URL,
   getDoc,
   writeDoc,
-  toFirestoreFields,
 } from './api-helpers';
 import {
   waitForFlutter,

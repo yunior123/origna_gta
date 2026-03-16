@@ -5,7 +5,7 @@ import {
   BTN_ADD_PRODUCT, BTN_SETTINGS, waitForSemantic,
 } from './flutter-helpers';
 import {
-  signIn, callOk, callExpectError, getDoc, writeDoc, toFirestoreFields, uid,
+  signIn, callOk, callExpectError, getDoc, writeDoc, uid,
   TEST_ACCOUNTS, WEB_APP_URL, TEST_PRODUCTS,
 } from './api-helpers';
 
@@ -247,7 +247,7 @@ test.describe('Seller Product Management — UI Tests', () => {
       // Force product into rejected state with a rejection reason via Firestore
       const patched = await writeDoc(
         `products/${testProductId}`,
-        toFirestoreFields({
+        {
           lifecycleStatus: 'rejected',
           approvalRejectionReason: 'E2E: image quality too low',
         }),

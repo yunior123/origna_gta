@@ -62,6 +62,11 @@ void main() {
     test(
       'getUserProfile returns null for nonexistent user',
       () async {
+        // Requires auth token to query profiles
+        await authRepo.signInWithEmail(
+          'e2e-admin@test.origna.ca',
+          'REDACTED_TEST_PASSWORD',
+        );
         final profile = await userRepo.getUserProfile('nonexistent_user_id');
         expect(profile, isNull);
       },

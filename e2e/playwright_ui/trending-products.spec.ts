@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
     signIn,
     writeDoc,
-    toFirestoreFields,
+
     getDoc,
     callCallable,
     TEST_UIDS,
@@ -35,7 +35,7 @@ test.describe('Trending Products flows', () => {
         const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
 
         // Force the buyer to be a premium member so they can access the notification preferences
-        await writeDoc(`users/${userId}`, toFirestoreFields({
+        await writeDoc(`users/${userId}`({
             email: userEmail,
             isPremium: true,
             notifyTrending: false // Start with it off to test toggling
@@ -44,7 +44,7 @@ test.describe('Trending Products flows', () => {
         // Also create an active subscription doc so the subscription screen shows the premium view
         const now = new Date();
         const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
-        await writeDoc(`subscriptions/${userId}`, toFirestoreFields({
+        await writeDoc(`subscriptions/${userId}`({
             status: 'active',
             customerId: 'cus_test_e2e',
             subscriptionId: 'sub_test_e2e',
@@ -57,8 +57,8 @@ test.describe('Trending Products flows', () => {
     test.afterAll(async () => {
         const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
         // Reset buyer premium state to avoid polluting subsequent test suites
-        await writeDoc(`users/${userId}`, toFirestoreFields({ isPremium: false }), adminAuth.idToken, true);
-        await writeDoc(`subscriptions/${userId}`, toFirestoreFields({ status: 'canceled' }), adminAuth.idToken, false);
+        await writeDoc(`users/${userId}`({ isPremium: false }), adminAuth.idToken, true);
+        await writeDoc(`subscriptions/${userId}`({ status: 'canceled' }), adminAuth.idToken, false);
     });
 
     test('Premium user can toggle Trending Products notifications', async ({ page }) => {

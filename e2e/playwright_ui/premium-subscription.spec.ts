@@ -52,11 +52,9 @@ import {
   fillStripeCheckout,
   dismissStripeModals,
   writeDoc,
-  toFirestoreFields,
   TEST_ACCOUNTS,
   TEST_UIDS,
   WEB_APP_URL,
-  FUNCTIONS_URL,
   ORIGNABASE_URL,
   DEFAULT_PASS,
   STRIPE_CARD,
@@ -315,13 +313,13 @@ test.describe('A. Subscription Status API', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     await writeDoc(
       `users/${TEST_UIDS.BUYER}`,
-      toFirestoreFields({ isPremium: false }),
+      { isPremium: false }),
       adminAuth.idToken,
       true,
     );
     await writeDoc(
       `subscriptions/${TEST_UIDS.BUYER}`,
-      toFirestoreFields({ status: 'canceled' }),
+      { status: 'canceled' }),
       adminAuth.idToken,
       false,
     );

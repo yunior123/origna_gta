@@ -25,7 +25,6 @@ import {
   fullCheckoutAndPay,
   fullMultiSellerCheckoutAndPay,
   buildCheckoutPayload,
-  FUNCTIONS_URL,
   TEST_ACCOUNTS,
   TEST_UIDS,
 } from './api-helpers';

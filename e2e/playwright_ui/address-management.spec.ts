@@ -114,8 +114,12 @@ test.describe('Address Management — UI', () => {
     await page.waitForURL(/\/profile/i, { timeout: 30_000 }).catch(() => {});
     await waitForFlutter(page, 30_000);
 
-    // menu-address is below the fold — scroll down so Flutter includes it in the semantics tree
-    await page.evaluate(() => window.scrollTo({ top: 600, behavior: 'instant' }));
+    // Wait for the profile to be fully loaded — menu-my-orders is the first item and
+    // appears once user data is loaded from OrignaBase. Use it as a loading gate.
+    await expect(page.locator('[aria-label="menu-my-orders"]')).toBeAttached({ timeout: 30_000 });
+
+    // Scroll within the Flutter view using wheel events (window.scrollTo doesn't work in Flutter Web)
+    await page.mouse.wheel(0, 600);
     await page.waitForTimeout(500);
 
     const addressesLink = page.locator('[aria-label="menu-addresses"], [aria-label="menu-my-addresses"], [aria-label="menu-address"]')

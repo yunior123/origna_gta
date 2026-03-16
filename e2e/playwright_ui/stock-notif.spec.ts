@@ -39,10 +39,8 @@ import {
   getDoc,
   writeDoc,
   deleteDoc,
-  toFirestoreFields,
   TEST_ACCOUNTS,
   TEST_UIDS,
-  FUNCTIONS_URL,
   ensureOosProduct,
 } from './api-helpers';
 import { waitForFlutter, ensureLoggedInAsAdmin, clearServiceWorkers } from './flutter-helpers';
@@ -335,7 +333,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
     await deleteDoc(`products/${TEMP_PRODUCT_ID}`, adminToken).catch(() => {});
     await new Promise(resolve => setTimeout(resolve, 1_000));
     // Seed a temporary OOS product (full write — not partial — to ensure correct state)
-    const ok = await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({
+    const ok = await writeDoc(`products/${TEMP_PRODUCT_ID}`, {
       name: 'Test Stock Restore Product',
       description: 'Temporary product for stock restore test — E2E only',
       price: 19.99,
@@ -378,7 +376,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
 
     // Restore stock via Firestore write (simulates admin restoring stock)
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-    await writeDoc(`products/${TEMP_PRODUCT_ID}`, toFirestoreFields({ stockQuantity: 10 }), adminAuth.idToken, true);
+    await writeDoc(`products/${TEMP_PRODUCT_ID}`, { stockQuantity: 10 }), adminAuth.idToken, true);
 
     // Re-navigate to force provider re-fetch — clear SW first to avoid stale routing
     // Use 'load' not 'networkidle' — Flutter Web has persistent Firebase connections
@@ -633,7 +631,7 @@ test.describe('4. Security — Adversarial Scenarios', () => {
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
 
     const path = `stock_notifications/${OOS_PRODUCT_ID}_bypass_${auth.localId}`;
-    const ok = await writeDoc(path, toFirestoreFields({
+    const ok = await writeDoc(path, {
       productId: OOS_PRODUCT_ID,
       userId: auth.localId,
       variantKey: null,

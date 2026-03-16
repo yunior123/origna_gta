@@ -1495,6 +1495,21 @@ export async function callCallable(fn: string, data: any, token: string, timeout
         const order = body?.data?.get ?? body;
         return { success: true, ...order };
       }
+      case 'get_connect_account_status':
+        // Normalize accountId → stripeAccountId for test compatibility
+        return {
+          ...body,
+          stripeAccountId: body?.stripeAccountId ?? body?.accountId ?? body?.account_id,
+          onboardingCompleted: body?.onboardingCompleted ?? body?.onboarding_completed ?? false,
+          chargesEnabled: body?.chargesEnabled ?? body?.charges_enabled ?? false,
+          payoutsEnabled: body?.payoutsEnabled ?? body?.payouts_enabled ?? false,
+        };
+      case 'get_seller_metrics': {
+        // GraphQL list response for seller_metrics collection
+        const rawMetrics = body?.data?.list ?? [];
+        const metrics = Array.isArray(rawMetrics) ? rawMetrics : [];
+        return { success: true, metrics };
+      }
       case 'get_products_paginated':
       case 'get_seller_products_paginated':
         return {

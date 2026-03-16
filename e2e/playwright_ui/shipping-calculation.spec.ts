@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 import {
   signIn, callOk, callCallable,
   buildCheckoutPayload,
-  readDoc, parseDoc, writeDoc, deleteDoc, toFirestoreFields,
+  readDoc, parseDoc, writeDoc, deleteDoc,
   getTestProduct, invalidateProductCache, discoverProducts,
   TEST_ACCOUNTS, TEST_UIDS,
 } from './api-helpers';
@@ -76,7 +76,7 @@ test.describe('Shipping Calculation', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
 
     const productId = `test_ship_stock_${Date.now()}`;
-    await writeDoc(`products/${productId}`, toFirestoreFields({
+    await writeDoc(`products/${productId}`({
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `SHIP-TEST-${Date.now()}`,
       name: 'Shipping Test Product',
@@ -159,7 +159,7 @@ test.describe('Shipping Calculation', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const productId = `test_perishable_local_${Date.now()}`;
 
-    await writeDoc(`products/${productId}`, toFirestoreFields({
+    await writeDoc(`products/${productId}`({
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `PERISH-LOCAL-${Date.now()}`,
       name: 'Fresh Local Produce',
@@ -213,7 +213,7 @@ test.describe('Shipping Calculation', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const productId = `test_local_only_block_${Date.now()}`;
 
-    await writeDoc(`products/${productId}`, toFirestoreFields({
+    await writeDoc(`products/${productId}`({
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `LOCAL-BLOCK-${Date.now()}`,
       name: 'Local Only Product',
@@ -261,7 +261,7 @@ test.describe('Shipping Calculation', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const productId = `test_perishable_invalid_${Date.now()}`;
 
-    await writeDoc(`products/${productId}`, toFirestoreFields({
+    await writeDoc(`products/${productId}`({
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `PERISH-INVALID-${Date.now()}`,
       name: 'Bad Perishable Product',

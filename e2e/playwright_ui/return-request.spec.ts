@@ -10,7 +10,7 @@ import {
   waitForOrderStatus, getOrder,
   getSellerAuth,
   TEST_ACCOUNTS,
-  writeDoc, toFirestoreFields,
+  writeDoc,
   readDoc, parseDoc,
 } from './api-helpers';
 
@@ -106,7 +106,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
     // Create minimal order doc with a delivered digital item (use admin token for write access)
     await writeDoc(
       `orders/${fakeOrderId}`,
-      toFirestoreFields({
+      {
         userId: buyerAuth.uid,
         status: 'completed',
         paymentStatus: 'paid',

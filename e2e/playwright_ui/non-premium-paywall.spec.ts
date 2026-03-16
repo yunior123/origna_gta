@@ -23,7 +23,6 @@ import {
   WEB_APP_URL,
   getDoc,
   writeDoc,
-  toFirestoreFields,
 } from './api-helpers';
 import {
   waitForFlutter,
@@ -53,7 +52,7 @@ test.describe('Non-Premium Paywall', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     await writeDoc(
       `users/${TEST_UIDS.BUYER}`,
-      toFirestoreFields({ isPremium: false }),
+      { isPremium: false }),
       adminAuth.idToken,
       true,
     );

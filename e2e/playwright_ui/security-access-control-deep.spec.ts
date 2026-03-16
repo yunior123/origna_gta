@@ -28,7 +28,6 @@ import {
   callCallable,
   writeDoc,
   getDoc,
-  toFirestoreFields,
   buildCheckoutPayload,
   getTestProduct,
   ensureTwoSellerProducts,
@@ -55,7 +54,7 @@ test.describe('1. IDOR — Order Access Control', () => {
 
     // Create an order owned by BUYER2
     const orderId = `test_idor_order_${Date.now()}`;
-    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+    await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.ADMIN,  // Belongs to admin/buyer2, NOT buyer
       orderStatus: 'pending',
       totalAmount: 20.00,
@@ -75,7 +74,7 @@ test.describe('1. IDOR — Order Access Control', () => {
 
     // Create order owned by admin uid
     const orderId = `test_idor_read_${Date.now()}`;
-    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+    await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.ADMIN,
       orderStatus: 'pending',
       totalAmount: 5.00,
@@ -92,7 +91,7 @@ test.describe('1. IDOR — Order Access Control', () => {
     const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
 
     const orderId = `test_idor_update_${Date.now()}`;
-    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+    await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.BUYER,
       orderStatus: 'pending',
       totalAmount: 10.00,
@@ -411,7 +410,7 @@ test.describe('8. Firestore Direct Write Prevention', () => {
   test('Client cannot directly write to products collection (must use Cloud Function)', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
-    const ok = await writeDoc(`products/e2e_direct_write_attack`, toFirestoreFields({
+    const ok = await writeDoc(`products/e2e_direct_write_attack`, {
       name: 'Injected Product',
       price: 0.01,
       sellerId: auth.localId,
@@ -424,7 +423,7 @@ test.describe('8. Firestore Direct Write Prevention', () => {
   test('Client cannot directly write to orders collection', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
-    const ok = await writeDoc(`orders/e2e_fake_delivered_order`, toFirestoreFields({
+    const ok = await writeDoc(`orders/e2e_fake_delivered_order`, {
       orderStatus: 'delivered',
       paymentStatus: 'captured',
     }), auth.idToken);
@@ -435,7 +434,7 @@ test.describe('8. Firestore Direct Write Prevention', () => {
   test('Client cannot elevate own role in users collection', async () => {
     const auth = await signIn(BUYER_EMAIL);
 
-    const ok = await writeDoc(`users/${auth.localId}`, toFirestoreFields({
+    const ok = await writeDoc(`users/${auth.localId}`, {
       roles: ['buyer', 'seller', 'admin'],
     }), auth.idToken);
 
@@ -489,7 +488,7 @@ test.describe('10. Return Request Abuse', () => {
 
     // Create order owned by admin
     const orderId = `test_return_idor_${Date.now()}`;
-    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+    await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.ADMIN,
       orderStatus: 'delivered',
       paymentStatus: 'captured',
@@ -513,7 +512,7 @@ test.describe('10. Return Request Abuse', () => {
 
     // Create order in 'pending' state
     const orderId = `test_return_pending_${Date.now()}`;
-    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+    await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.BUYER,
       orderStatus: 'pending',
       paymentStatus: 'pending',
