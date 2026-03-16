@@ -3,6 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_card.dart';
 
+// Golden tests require platform-specific rendering — skip in CI (Ubuntu renders differently from macOS).
+// Run locally to regenerate: flutter test test/golden/ --update-goldens
+@Tags(['golden'])
+library;
+
 void main() {
   group('Golden Tests', () {
     testWidgets('ModernButton primary golden', (tester) async {

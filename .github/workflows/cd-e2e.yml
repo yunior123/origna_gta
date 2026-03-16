@@ -40,7 +40,7 @@ jobs:
         run: cd origna_gta && flutter analyze --no-fatal-infos
 
       - name: Flutter tests
-        run: cd origna_gta && flutter test --reporter=compact
+        run: cd origna_gta && flutter test --reporter=compact --exclude-tags golden
 
   # ────────────────────────────────────────────────────────────
   # Job 2: Build Flutter web + deploy to dev VPS

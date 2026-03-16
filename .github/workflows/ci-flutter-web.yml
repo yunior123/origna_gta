@@ -43,7 +43,7 @@ jobs:
         run: cd origna_gta && flutter analyze --no-fatal-infos
 
       - name: Flutter tests
-        run: cd origna_gta && flutter test --reporter=compact
+        run: cd origna_gta && flutter test --reporter=compact --exclude-tags golden
 
       # Requires MAIL_USERNAME and MAIL_PASSWORD secrets to be configured in GitHub repository settings
       - name: Notify on failure
