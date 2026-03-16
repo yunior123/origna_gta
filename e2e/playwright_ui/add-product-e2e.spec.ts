@@ -138,10 +138,9 @@ test.describe('Add Product — API Tests', () => {
     expect(doc.shipFromProvince).toBeFalsy();
   });
 
-  // Known backend issue: OrignaBase currently accepts empty productData without error.
-  // Expected: invalid-argument. Actual: unexpected-success.
-  // Marked fixme so downstream serial tests (T04-T09) are not blocked.
-  test.fixme('T03: Validation — missing required fields returns invalid-argument', async () => {
+  // Backend validation: empty productData should return invalid-argument.
+  // If the backend has not yet enforced this, the test will fail and track the gap.
+  test('T03: Validation — missing required fields returns invalid-argument', async () => {
     const error = await callExpectError('create_product_atomic', {
       productData: {},
       testImageUrls: ['https://picsum.photos/400/400'],
@@ -149,9 +148,8 @@ test.describe('Add Product — API Tests', () => {
     expect(error.code).toBe('invalid-argument');
   });
 
-  // Known backend issue: OrignaBase currently accepts negative price without error.
-  // Expected: invalid-argument. Actual: unexpected-success.
-  test.fixme('T04: Validation — negative price returns invalid-argument', async () => {
+  // Backend validation: negative price should return invalid-argument.
+  test('T04: Validation — negative price returns invalid-argument', async () => {
     const error = await callExpectError('create_product_atomic', {
       productData: {
         name: 'Negative Price Product',
@@ -165,9 +163,8 @@ test.describe('Add Product — API Tests', () => {
     expect(error.code).toBe('invalid-argument');
   });
 
-  // Known backend issue: OrignaBase allows buyers to create products (missing role check).
-  // Expected: permission-denied. Actual: unexpected-success. Security fix needed in backend.
-  test.fixme('T05: Buyer cannot create products — permission-denied', async () => {
+  // Security: buyers must not be allowed to create products (role check).
+  test('T05: Buyer cannot create products — permission-denied', async () => {
     const error = await callExpectError('create_product_atomic', {
       productData: {
         name: 'Buyer Trying Product',
@@ -181,9 +178,8 @@ test.describe('Add Product — API Tests', () => {
     expect(error.code).toBe('permission-denied');
   });
 
-  // Known backend issue: OrignaBase allows duplicate SKUs without error.
-  // Expected: already-exists or invalid-argument. Actual: unexpected-success.
-  test.fixme('T06: Duplicate SKU rejected', async () => {
+  // Duplicate SKU must be rejected to prevent inventory confusion.
+  test('T06: Duplicate SKU rejected', async () => {
     const skuVal = `sku-dup-test-${uid()}`;
     // Create first product with SKU (digital to avoid geocoding)
     const result = await callOk('create_product_atomic', {

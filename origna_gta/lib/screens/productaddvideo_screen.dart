@@ -82,7 +82,7 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.video_library_rounded, color: Colors.white, size: 22),
+                            child: const Icon(Icons.video_library_rounded, color: DesignTokens.textOnPrimary, size: 22),
                           ),
                           const SizedBox(height: 6),
                           Text(
@@ -238,11 +238,11 @@ class _VideoTile extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 12),
+                const Icon(Icons.play_circle_fill_rounded, color: DesignTokens.textOnDark, size: 12),
                 const SizedBox(width: 4),
                 Text(
                   'product.video_badge'.tr(),
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                  style: const TextStyle(color: DesignTokens.textOnDark, fontSize: 10, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -264,7 +264,7 @@ class _VideoTile extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4)],
                 ),
-                child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+                child: const Icon(Icons.close_rounded, color: DesignTokens.textOnPrimary, size: 14),
               ),
             ),
           ),

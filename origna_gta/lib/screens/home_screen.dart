@@ -284,7 +284,7 @@ class _CategoryChips extends ConsumerWidget {
     final unselectedBg = isDark
         ? DesignTokens.darkSurface
         : DesignTokens.surface;
-    final unselectedText = isDark ? Colors.white : DesignTokens.textPrimary;
+    final unselectedText = isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary;
     final unselectedBorder = isDark
         ? DesignTokens.primary.withValues(alpha: 0.25)
         : DesignTokens.textSecondary.withValues(alpha: 0.3);
@@ -761,7 +761,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     }
                   },
                   style: TextStyle(
-                    color: isDark ? Colors.white : DesignTokens.textPrimary,
+                    color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
                   ),
                   cursorColor: DesignTokens.primary,
                   decoration: InputDecoration(
@@ -1100,7 +1100,7 @@ class _RecentlyViewedSectionState
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : DesignTokens.textPrimary,
+              color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
             ),
           ),
         ),
@@ -1282,7 +1282,7 @@ class _SearchOverlay extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               color: isDark
-                                  ? Colors.white
+                                  ? DesignTokens.textOnDark
                                   : DesignTokens.textPrimary,
                             ),
                             maxLines: 1,
@@ -1332,7 +1332,7 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton>
               child: IconButton(
                 key: const Key('home_settings_button'),
                 tooltip: 'home.settings'.tr(),
-                icon: const Icon(Icons.settings_outlined, color: Colors.white),
+                icon: const Icon(Icons.settings_outlined, color: DesignTokens.textOnPrimary),
                 onPressed: () {
                   _triggerAnimation();
                   if (user == null) {

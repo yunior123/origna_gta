@@ -46,19 +46,19 @@ We would have our own custom openclaw using oscricpt or something similar to ope
 
 ### Money / Floating-Point Bugs (checkout corruption risk)
 
-- [ ] **checkout: floating-point division mid-calculation**
+- [x] **checkout: floating-point division mid-calculation**
   `lib/features/checkout/orignabase_checkout_provider.dart:70`
   `(subtotalCents - discountCents) / 100.0` converts cents to double mid-calculation before passing to `calculateTaxes()`. Violates integer-cents invariant. Fix: keep as `int postDiscountSubtotalCents = subtotalCents - discountCents`.
 
-- [ ] **checkout: free-shipping threshold converts double → cents (precision risk)**
+- [x] **checkout: free-shipping threshold converts double → cents (precision risk)**
   `lib/features/checkout/orignabase_checkout_provider.dart:154-155`
   `(subtotal * 100).round() >= BusinessRules.freeShippingThresholdCents` — `subtotal` is already a dollar-double, so multiplying by 100 and rounding is fragile at borderline values (e.g. $75.004). Fix: compare integer cents directly, never reconstruct cents from dollars.
 
-- [ ] **checkout: tax calculation built on double coupon discount**
+- [x] **checkout: tax calculation built on double coupon discount**
   `lib/features/checkout/checkout_provider.dart:33-34`
   `couponDiscountCents / 100.0` converts to double then mixes with other doubles for total. Fix: keep coupon as integer cents through all calculations; divide by 100 only at display layer.
 
-- [ ] **repository: `updateShippingCost` accepts `double` not `int cents`**
+- [x] **repository: `updateShippingCost` accepts `double` not `int cents`**
   `lib/core/repositories/orignabase_order_repository.dart:141-155`
   Method signature takes `double newShippingCost` — violates money-as-integer-cents rule. Will cause precision errors on Stripe. Fix: change to `int newShippingCostCents`.
 
@@ -72,35 +72,35 @@ We would have our own custom openclaw using oscricpt or something similar to ope
 
 ### Money / Cart Precision
 
-- [ ] **cart: item prices stored as double dollars instead of integer cents**
+- [x] **cart: item prices stored as double dollars instead of integer cents**
   `lib/features/cart/cart_provider.dart:163-166, 187`
   `cartSubtotalProvider` returns `double`. `item.price` stored as `toDouble()`. All downstream shipping/tax calculations receive imprecise doubles. Fix: store item price as `int priceCents`.
 
-- [ ] **cart: race condition between batch-fetch and cartItemsProvider read**
+- [x] **cart: race condition between batch-fetch and cartItemsProvider read**
   `lib/features/cart/cart_provider.dart:39-50`
   `await ref.watch(_cartProductsBatchProvider.future)` then immediately `ref.read(cartItemsProvider).valueOrNull` — items may not be in sync. Fix: use `await ref.watch(cartItemsProvider.future)`.
 
-- [ ] **checkout: `calculateTaxes()` receives imprecise double from conversion chain**
+- [x] **checkout: `calculateTaxes()` receives imprecise double from conversion chain**
   `lib/features/checkout/orignabase_checkout_provider.dart:219-224`
   If subtotal was converted from cents with precision loss at line 70, tax is calculated on wrong base. Fix: resolve the line-70 bug first; pass cents throughout.
 
 ### Real-Time / Stream Bugs
 
-- [ ] **stream: `watchFavorites` StreamController not closed on error during init**
+- [x] **stream: `watchFavorites` StreamController not closed on error during init**
   `lib/core/repositories/orignabase_product_repository.dart:579-602`
   If `realtime.subscribe()` throws before subscription is assigned, controller stays alive forever. `onCancel` only fires on explicit listener cancellation. Fix: wrap init in try/catch and call `controller.close()` on error.
 
-- [ ] **stream: polling continues after fetch error in `_pollOrders`**
+- [x] **stream: polling continues after fetch error in `_pollOrders`**
   `lib/core/repositories/orignabase_order_repository.dart:203-238`
   `timer` is `late`, if `fetch()` throws on first call timer may be uninitialized; error is sent to controller but polling timer keeps firing. Fix: initialize timer before first fetch, or cancel on first error.
 
-- [ ] **stream: `watchAddresses` / `watchSellerAccountStatus` no backoff on failure**
+- [x] **stream: `watchAddresses` / `watchSellerAccountStatus` no backoff on failure**
   `lib/core/repositories/orignabase_user_repository.dart:248-283, 286-328`
   Both use hardcoded 5s `Timer.periodic` — no exponential backoff on API errors. Will hammer server during outages. Fix: implement exponential backoff (1s → 2s → 4s → max 60s).
 
 ### Batch Path Format Inconsistency
 
-- [ ] **repository: batch path formats inconsistent (forward-slash vs double-underscore)**
+- [x] **repository: batch path formats inconsistent (forward-slash vs double-underscore)**
   `lib/core/repositories/orignabase_cart_repository.dart:67` uses `/` separator.
   `lib/core/repositories/notification_repository.dart:22` uses `__` double-underscore.
   One format is wrong — batch deletes will silently fail on whichever is incorrect.
@@ -108,22 +108,22 @@ We would have our own custom openclaw using oscricpt or something similar to ope
 
 ### Timestamp Field Mismatch
 
-- [ ] **repository: `dateCreated` timestamps never normalized in `_docToProduct`**
+- [x] **repository: `dateCreated` timestamps never normalized in `_docToProduct`**
   `lib/core/repositories/orignabase_product_repository.dart:35-58`
   Timestamp normalization only handles `createdAt`, `updatedAt`, `trendingAt`, `lastLowStockAlertAt`. Products use `dateCreated` (per schema_constants). SurrealDB nanosecond timestamps in `dateCreated` will cause `DateTime.parse()` to crash. Fix: add `dateCreated` to the normalization list.
 
 ### Missing Semantics (breaks Playwright E2E)
 
-- [ ] **semantics: search history `InkWell` missing label**
+- [x] **semantics: search history `InkWell` missing label**
   `lib/screens/home_screen.dart:1255` — interactive list item, no `Semantics(label: ...)`.
 
-- [ ] **semantics: "Clear recent" TextButton missing label**
+- [x] **semantics: "Clear recent" TextButton missing label**
   `lib/screens/home_screen.dart:1240` — Playwright cannot find this button.
 
-- [ ] **semantics: price filter close button (`GestureDetector`) missing label**
+- [x] **semantics: price filter close button (`GestureDetector`) missing label**
   `lib/screens/home_screen.dart:1594`
 
-- [ ] **semantics: cart item screen uses `.toDouble()` for cents**
+- [x] **semantics: cart item screen uses `.toDouble()` for cents**
   `lib/screens/cartitem_screen.dart:26` — `(item[Fields.price] ?? 0.0).toDouble()` for display. Minor but inconsistent with cents rule.
 
 ---
@@ -134,7 +134,7 @@ We would have our own custom openclaw using oscricpt or something similar to ope
   `lib/features/products/add_product_viewmodel.dart:82`
   `if (state.isLoading) return` guard bypassed if provider is invalidated mid-call. Add Completer or request ID.
 
-- [ ] **viewmodel: error state not cleared on success**
+- [x] **viewmodel: error state not cleared on success**
   `lib/features/shipping/shipping_approval_viewmodel.dart:33`
   `errorMessage` not explicitly set to null on success path. UI may briefly flash old error.
 
@@ -143,7 +143,7 @@ We would have our own custom openclaw using oscricpt or something similar to ope
   `lib/screens/home_screen.dart:88, 152, 182, 336, 345`
   Use `DesignTokens.*` instead.
 
-- [ ] **hardcoded string "Video" in badge**
+- [x] **hardcoded string "Video" in badge**
   `lib/screens/productaddvideo_screen.dart:244` — should be translatable.
 
 ---
@@ -175,14 +175,14 @@ All gated by `--dart-define=RUN_ORIGNABASE_LIVE_TESTS=true`.
 - [ ] **JWT uid mismatch**: `auth.uid` in JWT = `users:xxx` but `resource.uid` = `xxx` → `isOwner` always false. Fix: `UPDATE users:XXX SET uid = 'users:XXX'` for all 3 test accounts.
 - [ ] **subscriptions collection**: no rules in `rules.ob` → Internal server error. Add `rules subscriptions { read: isAuthenticated() && isOwner(resource.userId); ... }`.
 - [ ] **premium_integration**: `subscriptionStreamProvider` returns null → fix: `expect(subInitial?.isPremium ?? false, isFalse)`.
-- [ ] **coupons_integration**: `/api/coupons/admin_create` returns 404 → endpoint not implemented; wrap in try/catch or skip gracefully.
-- [ ] **smoke test**: `ob.collection('products').add()` requires seller role → 403. Rewrite using e2e-seller token.
-- [ ] **search_integration**: Meilisearch hits missing `productId` field. Verify actual field names returned from Meilisearch index.
+- [x] **coupons_integration**: `/api/coupons/admin_create` returns 404 → endpoint not implemented; wrap in try/catch or skip gracefully.
+- [x] **smoke test**: `ob.collection('products').add()` requires seller role → 403. Rewrite using e2e-seller token.
+- [x] **search_integration**: Meilisearch hits missing `productId` field. Verify actual field names returned from Meilisearch index.
 
 ---
 
 ## 📝 Test Quality Issues
 
-- [ ] `test/live/admin_repository_integration_test.dart:154,163,184,199,214,229,245` — Tests catch all exceptions and assert `isNotNull` on error, masking real failures. Should distinguish expected (404, 403) from unexpected errors.
-- [ ] `test/live/search_integration_test.dart:47` — Hit structure check uses `id || origId || productId` — too permissive; verify actual Meilisearch field names.
-- [ ] `test/live/search_integration_test.dart:51` — Comment `// removed extra expect);` indicates previous syntax error was present; verify test coverage is complete.
+- [x] `test/live/admin_repository_integration_test.dart:154,163,184,199,214,229,245` — Tests catch all exceptions and assert `isNotNull` on error, masking real failures. Should distinguish expected (404, 403) from unexpected errors.
+- [x] `test/live/search_integration_test.dart:47` — Hit structure check uses `id || origId || productId` — too permissive; verify actual Meilisearch field names.
+- [x] `test/live/search_integration_test.dart:51` — Comment `// removed extra expect);` indicates previous syntax error was present; verify test coverage is complete.

@@ -31,6 +31,7 @@ Uint8List? _compressImageAddIsolate(Uint8List bytes) {
 /// Documentation for AddProductViewModel
 class AddProductViewModel extends StateNotifier<AddProductState> {
   final Ref _ref;
+  String? _activeRequestId;
 
   AddProductViewModel(this._ref) : super(AddProductState());
 
@@ -78,8 +79,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     String? nameF,
     String? descriptionF,
   }) async {
-    // Bug #27: Prevent double-submit
-    if (state.isLoading) return;
+    // Bug #27: Prevent double-submit with request ID guard
+    final requestId = DateTime.now().microsecondsSinceEpoch.toString();
+    _activeRequestId = requestId;
 
     final config = _ref.read(envConfigProvider);
     final isDevOrTestRun = config.isDev || config.isEmulator;
@@ -282,6 +284,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         testImageUrls = ['https://picsum.photos/seed/origna-$stamp/800/800'];
       } else {
         compressedImages = await _compressImages(state.imageModels);
+        if (_activeRequestId != requestId) return;
         if (compressedImages.isEmpty) {
           throw Exception('Failed to compress images. Please try different images.');
         }
@@ -402,6 +405,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         state = state.copyWith(isUploadingVideo: true);
         try {
           uploadedVideoUrl = await productRepository.uploadProductVideo(state.videoFile!, uid);
+          if (_activeRequestId != requestId) return;
           product = product.copyWith(videoUrl: uploadedVideoUrl);
         } finally {
           state = state.copyWith(isUploadingVideo: false);
@@ -417,6 +421,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         // to store the download URL server-side.
         bookSourceUrl: (state.isDigital && state.digitalType == DigitalTypeValues.book) ? state.bookSourceUrl : null,
       );
+      if (_activeRequestId != requestId) return;
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e, st) {
       AppError.log(e, stackTrace: st, context: 'AddProductViewModel.addProduct');

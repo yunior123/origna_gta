@@ -55,12 +55,12 @@ void main() {
       expect(config.orignabaseUrl, 'https://api.orignagta.ca');
     });
 
-    test('dev requires explicit OrignaBase URL', () {
-      expect(EnvConfig.orignabaseUrlFor(AppEnvironment.dev), '');
+    test('dev returns dev OrignaBase URL', () {
+      expect(EnvConfig.orignabaseUrlFor(AppEnvironment.dev), 'https://api.dev.orignagta.ca');
     });
 
-    test('staging requires explicit OrignaBase URL', () {
-      expect(EnvConfig.orignabaseUrlFor(AppEnvironment.staging), '');
+    test('staging returns staging OrignaBase URL', () {
+      expect(EnvConfig.orignabaseUrlFor(AppEnvironment.staging), 'https://api.staging.orignagta.ca');
     });
 
     test('production routes to shared OrignaBase host', () {

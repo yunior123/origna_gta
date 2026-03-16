@@ -23,7 +23,7 @@ class CartItemScreen extends StatelessWidget {
     // Extract item fields using schema constants (static - won't rebuild on quantity change)
     final imageUrlsList = (item[Fields.imageUrls] as List<dynamic>?)?.cast<String>() ?? [];
     final name = item[Fields.name] as String? ?? 'product.product_fallback'.tr();
-    final unitPriceCents = item[Fields.price] as int? ?? 0;
+    final unitPriceCents = item[Fields.priceCents] as int? ?? (((item[Fields.price] as num?)?.toDouble() ?? 0.0) * 100).round();
     final isDigital = item[Fields.isDigital] as bool? ?? false;
     final buyerNote = item[Fields.buyerNote] as String?;
 
