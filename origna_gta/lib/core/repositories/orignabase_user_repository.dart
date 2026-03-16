@@ -49,18 +49,21 @@ class OrignaBaseUserRepository implements UserRepository {
       throw Exception('Not authenticated');
     }
     
-    final addressId = const Uuid().v4();
+    final addressId = const Uuid().v4().replaceAll('-', '');
     final docRef = _ob.collection(Collections.addresses).doc(addressId);
-    
-    await docRef.set({
+
+    final created = await docRef.set({
       Fields.userId: userId,
       ..._addressPayload(address),
     });
-    
+    if (created == null) {
+      throw OrignaBaseException('Failed to create address — permission denied or internal error');
+    }
+
     if (address.isDefault) {
       await _clearOtherDefaultAddresses(userId, addressId);
     }
-    
+
     return addressId;
   }
 
@@ -159,10 +162,16 @@ class OrignaBaseUserRepository implements UserRepository {
           .where(Fields.userId, isEqualTo: userId)
           .where(Fields.isDefault, isEqualTo: true)
           .get();
-          
+
+      // doc.id may include collection prefix (e.g., "addresses:abc123").
+      // Strip it so comparison works regardless of whether exceptAddressId
+      // was passed as a bare ID or a full path.
+      final bareExcept = _bareId(exceptAddressId).replaceAll('`', '');
+
       for (final doc in snapshot.docs) {
-        if (doc.id != exceptAddressId) {
-          await _ob.collection(Collections.addresses).doc(doc.id).update({
+        final bareDocId = _bareId(doc.id).replaceAll('`', '');
+        if (bareDocId != bareExcept) {
+          await _ob.collection(Collections.addresses).doc(bareDocId).update({
             Fields.isDefault: false,
           });
         }
@@ -186,14 +195,18 @@ class OrignaBaseUserRepository implements UserRepository {
   }
 
   Address _parseAddressDocument(Map<String, dynamic> doc, {String? docId}) {
+    // Strip collection prefix from docId (e.g., "addresses:abc123" → "abc123")
+    // and backticks that SurrealDB adds around UUIDs (e.g., "`abc-123`" → "abc-123").
+    final bareDocId = docId != null ? _bareId(docId).replaceAll('`', '') : null;
+
     final rawAddress = doc[Fields.address];
     if (rawAddress is Map<String, dynamic>) {
       final merged = <String, dynamic>{...rawAddress};
       if (doc.containsKey('label')) merged['label'] = doc['label'];
       if (doc.containsKey('isDefault')) merged[Fields.isDefault] = doc['isDefault'];
-      return Address.fromMap(merged, docId: docId);
+      return Address.fromMap(merged, docId: bareDocId);
     }
-    return Address.fromMap(doc, docId: docId);
+    return Address.fromMap(doc, docId: bareDocId);
   }
 
   @override
@@ -259,7 +272,6 @@ class OrignaBaseUserRepository implements UserRepository {
     late StreamController<List<Address>> controller;
     Timer? timer;
     var delay = const Duration(seconds: 5);
-
     // ignore: prefer_function_declarations_over_variables
     late void Function() schedule;
     schedule = () {

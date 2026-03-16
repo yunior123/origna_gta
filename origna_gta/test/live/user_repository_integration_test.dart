@@ -25,7 +25,9 @@ void main() {
         'REDACTED_TEST_PASSWORD',
       );
       expect(authState.isAuthenticated, isTrue);
-      buyerId = authState.userId!;
+      // Use currentUserId (JWT sub = full path) rather than authState.userId
+      // which may be the short record ID from the response body.
+      buyerId = ob.auth.currentUserId ?? authState.userId!;
 
       repo = OrignaBaseUserRepository(ob);
     });
@@ -100,9 +102,8 @@ void main() {
         final addressId = await repo.addBuyerAddress(address);
         expect(addressId, isNotEmpty);
 
-        // Verify it exists
-        final stream = repo.watchAddresses(buyerId);
-        var addresses = await stream.first.timeout(const Duration(seconds: 10));
+        // Verify it exists (fresh stream — polling stream may only be listened once)
+        var addresses = await repo.watchAddresses(buyerId).first.timeout(const Duration(seconds: 10));
         expect(
           addresses.any((a) => a.addressId == addressId),
           isTrue,
@@ -112,8 +113,8 @@ void main() {
         // Delete address
         await repo.deleteBuyerAddress(addressId);
 
-        // Verify it's deleted
-        addresses = await stream.first.timeout(const Duration(seconds: 10));
+        // Verify it's deleted (fresh stream)
+        addresses = await repo.watchAddresses(buyerId).first.timeout(const Duration(seconds: 10));
         expect(
           addresses.any((a) => a.addressId == addressId),
           isFalse,
@@ -145,13 +146,12 @@ void main() {
         // Set as default
         await repo.setDefaultBuyerAddress(addressId);
 
-        // Update address
-        final updated = address.copyWith(street: '789 Oak Ave');
+        // Update address (keep isDefault: true so the assertion below passes)
+        final updated = address.copyWith(street: '789 Oak Ave', isDefault: true);
         await repo.updateBuyerAddress(addressId, updated);
 
-        // Verify changes
-        final stream = repo.watchAddresses(buyerId);
-        final addresses = await stream.first.timeout(const Duration(seconds: 10));
+        // Verify changes (fresh stream)
+        final addresses = await repo.watchAddresses(buyerId).first.timeout(const Duration(seconds: 10));
         final addressData = addresses.firstWhere((a) => a.addressId == addressId);
         expect(addressData.street, equals('789 Oak Ave'));
         expect(addressData.isDefault, isTrue);

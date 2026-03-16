@@ -16,8 +16,13 @@ class OrignaBaseCartRepository implements CartRepository {
 
   OrignaBaseCartRepository(this._ob);
 
-  SubcollectionRef _cartRef(String userId) =>
-      _ob.collection(Collections.users).subcollection(userId, Collections.cart);
+  /// Returns the cart subcollection reference using the bare record ID
+  /// (stripping any collection prefix like "users:") so it matches the
+  /// SurrealDB parent_id filter format: `users:<bareId>`.
+  SubcollectionRef _cartRef(String userId) {
+    final bareId = userId.contains(':') ? userId.split(':').last : userId;
+    return _ob.collection(Collections.users).subcollection(bareId, Collections.cart);
+  }
 
   @override
   Future<void> addToCart(
@@ -36,30 +41,43 @@ class OrignaBaseCartRepository implements CartRepository {
     // Read-then-write: OrignaBase does not have client-side transactions yet.
     // Use deterministic doc ID to avoid duplicates.
     final existing = await cartRef.doc(docId).get();
+    final bareUserId = userId.contains(':') ? userId.split(':').last : userId;
+    // Reconstruct full userId for rule check: auth.uid == incoming.userId.
+    // auth.uid = JWT sub = 'users:bareId'. incoming.userId must match.
+    final fullUserId = userId.contains(':') ? userId : '${Collections.users}:$userId';
+    final parentId = '${Collections.users}:$bareUserId';
 
-    if (existing != null && existing.exists) {
-      final currentQty = (existing.get<num>(Fields.quantity))?.toInt() ?? 0;
-      final newQty = (currentQty + quantity).clamp(minCartItemQuantity, maxCartItemQuantity);
-      await cartRef.doc(docId).update({Fields.quantity: newQty});
-    } else {
-      final clampedQty = quantity.clamp(minCartItemQuantity, maxCartItemQuantity);
-      final data = <String, dynamic>{
-        ...CartModel(
-          productId: productId,
-          quantity: clampedQty,
-          createdAt: DateTime.now(),
-          variantId: variantId,
-          variantTitle: variantTitle,
-          variantOptions: variantOptions,
-          variantSku: variantSku,
-        ).toMap(),
-        // Required by SubcollectionRef.get() which filters by parent_id.
-        // doc().set() does not inject parent_id automatically (only add() does).
-        // Must match SubcollectionRef._parentFilterValue = '$parentCollection:$parentId'.
-        'parent_id': '${Collections.users}:$userId',
-      };
-      await cartRef.doc(docId).set(data);
-    }
+    // Compute quantity: accumulate if valid existing doc (has parent_id from this user).
+    final bool hasValidExisting = existing != null &&
+        existing.exists &&
+        existing.data['parent_id'] == parentId;
+    final currentQty = hasValidExisting
+        ? (existing!.get<num>(Fields.quantity))?.toInt() ?? 0
+        : 0;
+    final newQty = (currentQty + quantity).clamp(minCartItemQuantity, maxCartItemQuantity);
+
+    // Always use set (upsert) to ensure parent_id and userId are written.
+    // update() would 403 on stale docs that lack userId/parent_id.
+    final data = <String, dynamic>{
+      ...CartModel(
+        productId: productId,
+        quantity: newQty,
+        createdAt: hasValidExisting
+            ? (CartItemModel.fromMap(existing!.data, docId: docId).createdAt)
+            : DateTime.now(),
+        variantId: variantId,
+        variantTitle: variantTitle,
+        variantOptions: variantOptions,
+        variantSku: variantSku,
+      ).toMap(),
+      // userId required by cart create rule: auth.uid == incoming.userId.
+      Fields.userId: fullUserId,
+      // parent_id required by SubcollectionRef.get() which filters by it.
+      // doc().set() does not inject parent_id automatically (only add() does).
+      // Must match SubcollectionRef._parentFilterValue = '$parentCollection:$parentId'.
+      'parent_id': parentId,
+    };
+    await cartRef.doc(docId).set(data);
   }
 
   @override
@@ -69,8 +87,12 @@ class OrignaBaseCartRepository implements CartRepository {
     if (snapshot.docs.isEmpty) return;
 
     final batch = _ob.batch();
+    final collectionName = '${Collections.users}__${Collections.cart}';
     for (final doc in snapshot.docs) {
-      batch.delete('${Collections.users}__${Collections.cart}', doc.id);
+      // doc.id is the full record path e.g. "users__cart:itemId".
+      // batch.delete expects only the bare record ID part.
+      final bareId = doc.id.contains(':') ? doc.id.split(':').last : doc.id;
+      batch.delete(collectionName, bareId);
     }
     await batch.commit();
   }

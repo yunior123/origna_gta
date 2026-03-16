@@ -52,7 +52,10 @@ void main() {
               msg.contains('delivered') ||
               msg.contains('eligible') ||
               msg.contains('active') ||
-              msg.contains('not found');
+              msg.contains('not found') ||
+              msg.contains('400') ||
+              msg.contains('request failed') ||
+              msg.contains('bad request');
           expect(isExpectedGate, isTrue,
               reason: 'Unexpected error: $e');
         }

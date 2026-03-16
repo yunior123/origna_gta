@@ -24,7 +24,9 @@ void main() {
         'REDACTED_TEST_PASSWORD',
       );
       expect(authState.isAuthenticated, isTrue);
-      buyerId = authState.userId!;
+      // Use currentUserId (JWT sub = full path) rather than authState.userId
+      // which may be the short record ID from the response body.
+      buyerId = ob.auth.currentUserId ?? authState.userId!;
 
       repo = OrignaBaseCartRepository(ob);
     });
@@ -63,9 +65,8 @@ void main() {
         // Add to cart
         await repo.addToCart(buyerId, productId, quantity);
 
-        // Verify it's in the cart
-        final stream = repo.watchCart(buyerId);
-        final cartItems = await stream.first.timeout(const Duration(seconds: 10));
+        // Verify it's in the cart (fresh stream each time — async* is single-listen)
+        final cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
         expect(cartItems, isNotEmpty);
         expect(
           cartItems.any((item) => item.productId == productId),
@@ -91,16 +92,15 @@ void main() {
         await repo.addToCart(buyerId, productId, quantity);
 
         // Get the cart item ID (same as productId for products without variants)
-        final stream = repo.watchCart(buyerId);
-        final cartItems = await stream.first.timeout(const Duration(seconds: 10));
+        final cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
         final cartItem = cartItems.firstWhere((item) => item.productId == productId);
         final cartItemId = cartItem.productId;
 
         // Remove from cart
         await repo.removeFromCart(buyerId, cartItemId);
 
-        // Verify it's removed
-        final updatedItems = await stream.first.timeout(const Duration(seconds: 10));
+        // Verify it's removed (fresh stream)
+        final updatedItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
         expect(
           updatedItems.any((item) => item.productId == productId),
           isFalse,
@@ -123,17 +123,16 @@ void main() {
         // Add to cart with quantity 1
         await repo.addToCart(buyerId, productId, 1);
 
-        // Get the cart item ID
-        final stream = repo.watchCart(buyerId);
-        final cartItems = await stream.first.timeout(const Duration(seconds: 10));
+        // Get the cart item ID (fresh stream)
+        final cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
         final cartItem = cartItems.firstWhere((item) => item.productId == productId);
         final cartItemId = cartItem.productId;
 
         // Update quantity to 3
         await repo.updateQuantity(buyerId, cartItemId, 3);
 
-        // Verify quantity changed
-        final updatedItems = await stream.first.timeout(const Duration(seconds: 10));
+        // Verify quantity changed (fresh stream)
+        final updatedItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
         final updated = updatedItems.firstWhere((item) => item.productId == productId);
         expect(updated.quantity, equals(3));
 
@@ -153,16 +152,15 @@ void main() {
         // Add to cart
         await repo.addToCart(buyerId, productId, 1);
 
-        // Verify it's there
-        final stream = repo.watchCart(buyerId);
-        var cartItems = await stream.first.timeout(const Duration(seconds: 10));
+        // Verify it's there (fresh stream)
+        var cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
         expect(cartItems, isNotEmpty);
 
         // Clear cart
         await repo.clearCart(buyerId);
 
-        // Verify it's empty
-        cartItems = await stream.first.timeout(const Duration(seconds: 10));
+        // Verify it's empty (fresh stream)
+        cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
         expect(cartItems, isEmpty);
       },
       skip: !runLive,
