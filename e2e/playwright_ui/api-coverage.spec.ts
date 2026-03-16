@@ -16,16 +16,10 @@ import {
   callCallable,
   callExpectError,
   readDoc,
-  writeDoc,
-  deleteDoc,
   parseDoc,
-  listDocs,
-  listSubcollection,
-  queryFirestore,
   uid,
   TEST_ACCOUNTS,
   TEST_PRODUCTS,
-  DEFAULT_PASS,
   buildCheckoutPayload,
 } from './api-helpers';
 

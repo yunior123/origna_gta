@@ -20,19 +20,15 @@
 import { test, expect } from '@playwright/test';
 import {
   signIn,
-  callOk,
   callExpectError,
   callCallable,
   getTestProduct,
   TEST_ACCOUNTS,
   TEST_UIDS,
-  FUNCTIONS_URL,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
-const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
-const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
 
 // ── Shared XSS / injection payloads ──────────────────────────────────────────
 const XSS_PAYLOADS = [
