@@ -41,16 +41,21 @@ async function loginViaUi(page: Page, email: string, password: string): Promise<
   const emailInput = page.locator(
     'input[aria-label="you@example.com"], input[aria-label="login_email_field"]',
   ).last();
+  // Wait for the login form to be ready
+  await emailInput.waitFor({ state: 'visible', timeout: 60000 });
   await replaceFlutterInputValue(page, emailInput, resolvedEmail);
 
   const passInput = page.locator(
     'input[aria-label="••••••••"], input[aria-label="login_password_field"]',
   ).last();
   await replaceFlutterInputValue(page, passInput, password);
+  // Tab out of the password field — same as ensureLoggedInAsAdmin which is known to work
+  await passInput.press('Tab').catch(() => {});
+  await page.waitForTimeout(500);
 
-  // Flutter 3.41.3: button labels are in textContent, not aria-label.
-  // Use Enter key first (most reliable), then fall back to click.
-  const visibleSubmit = page.locator('text=/^(Sign In|Se connecter|Connexion)$/i').last();
+  const submitBtn = page.locator('[aria-label="login_submit_button"]').first();
+  // Wait for the submit button to be visible before clicking
+  await submitBtn.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
   await passInput.press('Enter').catch(() => {});
   await page.waitForTimeout(1500);
 
@@ -59,12 +64,18 @@ async function loginViaUi(page: Page, email: string, password: string): Promise<
     await emailInput.isVisible().catch(() => false) ||
     await passInput.isVisible().catch(() => false);
   if (loginStillVisible) {
-    await visibleSubmit.click({ force: true }).catch(async () => {
-      await passInput.press('Enter').catch(() => {});
+    await submitBtn.click({ force: true }).catch(async () => {
+      await page.keyboard.press('Enter').catch(() => {});
     });
     await page.waitForTimeout(1500);
   }
-  await waitForFlutter(page, 60000);
+
+  // Wait for any post-login signal (URL change, verification screen, or home screen)
+  await Promise.race([
+    page.waitForURL(url => !/\/login/i.test(url.toString()), { timeout: 30000 }).catch(() => null),
+    page.getByText(/verify.*email|email.*verif|vérif/i).first().waitFor({ state: 'visible', timeout: 30000 }).catch(() => null),
+    page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first().waitFor({ state: 'attached', timeout: 30000 }).catch(() => null),
+  ]);
 }
 
 test.describe('Auth Gates', () => {
@@ -78,6 +89,11 @@ test.describe('Auth Gates', () => {
     try {
       await requireWebApp(page, TARGET_URL);
       await loginViaUi(page, email, DEFAULT_PASS);
+
+      // Navigate to a protected route to trigger AuthRequiredGate email verification check.
+      // AuthWrapper at '/' has a loading-state race; AuthRequiredGate at '/profile' is deterministic.
+      await page.goto(`${TARGET_URL}/profile`, { waitUntil: 'domcontentloaded' });
+      await waitForFlutter(page, 60000);
 
       await expect(
         page.getByText(/verify.*email|email.*verification|vérif/i).first(),
@@ -98,6 +114,11 @@ test.describe('Auth Gates', () => {
     try {
       await requireWebApp(page, TARGET_URL);
       await loginViaUi(page, email, DEFAULT_PASS);
+
+      // The terms gate is rendered by AuthWrapper at '/'.
+      // Force a fresh navigation to ensure the provider re-evaluates with updated DB state.
+      await page.goto(`${TARGET_URL}/`, { waitUntil: 'domcontentloaded' });
+      await waitForFlutter(page, 60000);
 
       await expect(
         page.getByText(/terms.*updated|updated.*terms|conditions.*mise/i).first(),
