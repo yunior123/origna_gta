@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:origna_gta/core/errors/error_codes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -184,10 +185,14 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
         final validation = validateVideoFile(sizeInBytes: length, durationInSeconds: durationSeconds);
 
         if (validation == VideoValidationError.tooLarge) {
-          messenger.showSnackBar(SnackBar(content: Text('product.video_too_large'.tr()), backgroundColor: DesignTokens.error));
+          if (!mounted) return;
+          final msg = AppError.getMessage(null, 'product.video_too_large'.tr(), ErrorCodes.prodVideoTooLarge);
+          AppError.show(context, msg);
           return;
         } else if (validation == VideoValidationError.tooLong) {
-          messenger.showSnackBar(SnackBar(content: Text('product.video_too_long'.tr()), backgroundColor: DesignTokens.error));
+          if (!mounted) return;
+          final msg = AppError.getMessage(null, 'product.video_too_long'.tr(), ErrorCodes.prodVideoTooLong);
+          AppError.show(context, msg);
           return;
         }
 

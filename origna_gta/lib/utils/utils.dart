@@ -712,32 +712,54 @@ class AppError {
     );
   }
 
-  /// Show error to user via SnackBar and log it
+  /// Show error to user via SnackBar and log it.
+  ///
+  /// If [userMessage] contains an embedded `[ORIGNA-*]` code the code is
+  /// extracted and rendered as a small monospace subtitle so users can quote
+  /// it when contacting support@orignagta.ca.
   static void show(
     BuildContext context,
     String userMessage, {
     dynamic error,
     StackTrace? stackTrace,
     String? logContext,
-    Duration duration = const Duration(seconds: 4),
+    Duration duration = const Duration(seconds: 5),
   }) {
     // Log the error
     if (error != null) {
       log(error, stackTrace: stackTrace, context: logContext);
     }
 
-    // Show user-friendly message
+    // Extract embedded error code, e.g. "Card declined [ORIGNA-PAY-001]"
+    final codeMatch = RegExp(r'\[ORIGNA-[A-Z]+-\d+\]').firstMatch(userMessage);
+    final String? displayCode = codeMatch?.group(0);
+    final String mainText = displayCode != null
+        ? userMessage.replaceFirst(displayCode, '').trimRight()
+        : userMessage;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(userMessage),
         backgroundColor: DesignTokens.error,
         duration: duration,
+        behavior: SnackBarBehavior.floating,
+        content: displayCode != null
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(mainText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$displayCode · support@orignagta.ca',
+                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.white70),
+                  ),
+                ],
+              )
+            : Text(userMessage),
         action: SnackBarAction(
           label: 'common.dismiss'.tr(),
           textColor: Colors.white,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
+          onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
         ),
       ),
     );
@@ -747,21 +769,36 @@ class AppError {
   /// from the exception type.  Returns null when no mapping exists.
   static String? _inferCode(dynamic error) {
     if (error is OrignaBaseException) {
-      return null; // Backend already appends codes; no client-side inference needed.
+      // Backend already appends ORIGNA-* codes in the message body;
+      // no client-side inference needed — avoid double-coding.
+      return null;
     }
     if (error is OrignaBaseAuthException) {
       return switch (error.code) {
-        'email-already-in-use' => ErrorCodes.authEmailInUse,
-        'wrong-password' => ErrorCodes.authWrongPassword,
-        'user-not-found' => ErrorCodes.authUserNotFound,
-        'weak-password' => ErrorCodes.authWeakPassword,
-        'too-many-requests' => ErrorCodes.authTooManyRequests,
-        'session-cookie-expired' || 'user-token-expired' => ErrorCodes.authSessionExpired,
-        _ => ErrorCodes.sysUnknown,
+        'email-already-in-use'                             => ErrorCodes.authEmailInUse,
+        'wrong-password'                                   => ErrorCodes.authWrongPassword,
+        'user-not-found'                                   => ErrorCodes.authUserNotFound,
+        'weak-password'                                    => ErrorCodes.authWeakPassword,
+        'too-many-requests'                                => ErrorCodes.authTooManyRequests,
+        'session-cookie-expired' || 'user-token-expired'   => ErrorCodes.authSessionExpired,
+        'invalid-credential' || 'invalid-email'            => ErrorCodes.authInvalidCredential,
+        'user-disabled'                                    => ErrorCodes.authAccountDisabled,
+        'mfa-required'                                     => ErrorCodes.authMfaRequired,
+        'network-request-failed'                           => ErrorCodes.sysNetworkError,
+        _                                                  => ErrorCodes.sysUnknown,
       };
     }
-    if (error is OrignaBaseException) {
-      return ErrorCodes.sysServerError;
+    // CircuitBreakerOpenException — service temporarily degraded
+    if (error.runtimeType.toString() == 'CircuitBreakerOpenException') {
+      return ErrorCodes.sysServiceDegraded;
+    }
+    // PremiumRequiredException — feature gate
+    if (error.runtimeType.toString() == 'PremiumRequiredException') {
+      return ErrorCodes.premFeatureGated;
+    }
+    // Dart TimeoutException
+    if (error.runtimeType.toString() == 'TimeoutException') {
+      return ErrorCodes.sysTimeout;
     }
     return null;
   }
