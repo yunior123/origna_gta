@@ -9,8 +9,6 @@
  */
 import { test, expect } from '@playwright/test';
 import {
-  signIn,
-  callCallable,
   TEST_ACCOUNTS,
   WEB_APP_URL,
 } from './api-helpers';
@@ -19,7 +17,6 @@ import {
   requireWebApp,
   checkSemantics,
   ensureLoggedInAsAdmin,
-  BTN_SETTINGS,
 } from './flutter-helpers';
 
 // ════════════════════════════════════════════════════════════════════
@@ -27,50 +24,18 @@ import {
 // ════════════════════════════════════════════════════════════════════
 
 const TARGET_URL = WEB_APP_URL;
-const PRODUCT_ID = 'e2e_product_test_seller';
 
 test.describe('Cart Manipulation', () => {
   test.setTimeout(300_000);
   test.describe.configure({ mode: 'serial' });
 
-  let buyerToken: string;
-  let buyerUid: string;
-
-  test.beforeAll(async () => {
-    const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
-    buyerToken = auth.idToken;
-    buyerUid = auth.localId;
-  });
-
-  // ── T01: Add item to cart via OrignaBase API ──────────────────────
-  // SKIPPED: OrignaBase does not expose /api/cart/add, /api/cart/remove, /api/cart/update
-  // as standalone HTTP endpoints. Cart CRUD is handled exclusively by the Flutter SDK
-  // through SurrealDB GraphQL. These routes return 404. Re-enable once OrignaBase
-  // exposes dedicated REST cart endpoints.
-  test.skip('T01: Add item to cart via API', async () => {
-    await callCallable('remove_from_cart', { productId: PRODUCT_ID }, buyerToken).catch(() => {});
-    const result = await callCallable('add_to_cart', { productId: PRODUCT_ID, quantity: 1 }, buyerToken);
-    const hasError = result?.error && !String(result?.error?.message ?? '').toLowerCase().includes('already');
-    expect(hasError, 'add_to_cart should succeed').toBeFalsy();
-  });
-
-  // ── T02: Update cart quantity via OrignaBase API ──────────────────
-  // SKIPPED: Same reason as T01 — no /api/cart/update endpoint.
-  test.skip('T02: Update cart item quantity via API', async () => {
-    const result = await callCallable('update_cart_quantity', { productId: PRODUCT_ID, quantity: 3 }, buyerToken)
-      .catch(() => callCallable('add_to_cart', { productId: PRODUCT_ID, quantity: 3 }, buyerToken));
-    const errorMsg = String(result?.error?.message ?? '').toLowerCase();
-    const isTerminalError = result?.error && !errorMsg.includes('already') && !errorMsg.includes('not found');
-    expect(isTerminalError, 'update cart quantity should not fail with terminal error').toBeFalsy();
-  });
-
-  // ── T03: Remove item from cart via OrignaBase API ─────────────────
-  // SKIPPED: Same reason as T01 — no /api/cart/remove endpoint.
-  test.skip('T03: Remove item from cart via API', async () => {
-    const result = await callCallable('remove_from_cart', { productId: PRODUCT_ID }, buyerToken);
-    const hasError = result?.error && !String(result?.error?.message ?? '').toLowerCase().includes('not found');
-    expect(hasError, 'remove_from_cart should succeed').toBeFalsy();
-  });
+  // ── T01-T03: Cart CRUD via API — SKIPPED ─────────────────────────
+  // OrignaBase has no /api/cart/* HTTP endpoints. Cart is managed exclusively
+  // by the Flutter SDK through SurrealDB GraphQL (no standalone REST routes).
+  // Re-enable once OrignaBase exposes dedicated cart REST endpoints.
+  test.skip('T01: Add item to cart via API', async () => { /* no-op */ });
+  test.skip('T02: Update cart item quantity via API', async () => { /* no-op */ });
+  test.skip('T03: Remove item from cart via API', async () => { /* no-op */ });
 
   // ── T04: Cart screen loads correctly ─────────────────────────────
   test('T04: Cart screen loads for authenticated buyer', async ({ page }) => {
