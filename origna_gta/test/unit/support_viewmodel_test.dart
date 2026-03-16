@@ -20,7 +20,7 @@ class _FakeOb implements OrignaBase {
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('SupportViewModel — initial state and basic validation', () {
+  group('SupportViewModel - initial state and basic validation', () {
     late ProviderContainer container;
 
     setUp(() {
@@ -326,6 +326,122 @@ void main() {
       const state = SupportState(errorMessage: 'error');
       final cleared = state.copyWith(clearError: true);
       expect(cleared.errorMessage, isNull);
+    });
+  });
+
+  group('Extended state tests', () {
+    late ProviderContainer container;
+
+    setUp(() {
+      container = ProviderContainer(
+        overrides: [
+          orignabaseProvider.overrideWithValue(_FakeOb()),
+          currentUserProvider.overrideWithValue(null),
+        ],
+      );
+      addTearDown(container.dispose);
+    });
+
+    test('SupportCategory.orderStatus value exists', () {
+      expect(SupportCategory.orderStatus, isNotNull);
+    });
+
+    test('SupportCategory.refundRequest value exists', () {
+      expect(SupportCategory.refundRequest, isNotNull);
+    });
+
+    test('SupportCategory.accountIssue value exists', () {
+      expect(SupportCategory.accountIssue, isNotNull);
+    });
+
+    test('SupportCategory.billingDispute value exists', () {
+      expect(SupportCategory.billingDispute, isNotNull);
+    });
+
+    test('SupportCategory.other value exists', () {
+      expect(SupportCategory.other, isNotNull);
+    });
+
+    test('MessageRole.user value exists', () {
+      expect(MessageRole.user, isNotNull);
+    });
+
+    test('MessageRole.agent value exists', () {
+      expect(MessageRole.agent, isNotNull);
+    });
+
+    test('SupportMessage preserves all fields', () {
+      final now = DateTime(2026, 3, 15);
+      final msg = SupportMessage(
+        role: MessageRole.user,
+        text: 'Test message',
+        timestamp: now,
+      );
+      expect(msg.role, MessageRole.user);
+      expect(msg.text, 'Test message');
+      expect(msg.timestamp, now);
+    });
+
+    test('SupportState all fields have correct defaults', () {
+      const state = SupportState();
+      expect(state.messages, isEmpty);
+      expect(state.isLoading, isFalse);
+      expect(state.isEscalated, isFalse);
+      expect(state.errorMessage, isNull);
+    });
+
+    test('SupportState copyWith with clearError true removes message', () {
+      const state = SupportState(errorMessage: 'error');
+      final updated = state.copyWith(clearError: true);
+      expect(updated.errorMessage, isNull);
+    });
+
+    test('SupportState copyWith preserves non-updated fields', () {
+      const state = SupportState(
+        isLoading: true,
+        isEscalated: true,
+        errorMessage: 'test',
+      );
+      final updated = state.copyWith(isLoading: false);
+      expect(updated.isLoading, isFalse);
+      expect(updated.isEscalated, isTrue);
+      expect(updated.errorMessage, 'test');
+    });
+
+    test('SupportMessage with different roles', () {
+      final now = DateTime.now();
+      final userMsg = SupportMessage(
+        role: MessageRole.user,
+        text: 'User text',
+        timestamp: now,
+      );
+      final agentMsg = SupportMessage(
+        role: MessageRole.agent,
+        text: 'Agent text',
+        timestamp: now,
+      );
+      expect(userMsg.role, MessageRole.user);
+      expect(agentMsg.role, MessageRole.agent);
+      expect(userMsg.text, isNot(agentMsg.text));
+    });
+
+    test('SupportState with custom values', () {
+      final msg = SupportMessage(
+        role: MessageRole.user,
+        text: 'Custom',
+        timestamp: DateTime.now(),
+      );
+      const state = SupportState(
+        messages: [],
+        isLoading: true,
+        isEscalated: true,
+        errorMessage: 'Custom error',
+      );
+      final updated = state.copyWith(messages: [msg]);
+      expect(updated.messages.length, 1);
+      expect(updated.isLoading, isTrue);
+      expect(updated.isEscalated, isTrue);
+      expect(updated.errorMessage, 'Custom error');
     });
   });
 }

@@ -127,8 +127,10 @@ test.describe('Auth Gates', () => {
       await expect(
         page.getByText(/Our Terms Have Been Updated|terms.*updated|updated.*terms|conditions.*mise/i).first(),
       ).toBeVisible({ timeout: 60000 });
+      // Confirm the gate is in initial (not-yet-scrolled) state: the scroll hint is visible.
+      // Disabled buttons are omitted from Flutter Web semantics, so we check the hint text instead.
       await expect(
-        page.locator('[aria-label="btn-terms-accept"]').first(),
+        page.getByText(/Scroll to the bottom to enable|Faites défiler/i).first(),
       ).toBeVisible({ timeout: 30000 });
     } finally {
       await setOrignaBaseUserTermsVersion(email, DEFAULT_PASS, '1.0');
