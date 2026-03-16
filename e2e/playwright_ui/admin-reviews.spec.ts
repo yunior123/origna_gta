@@ -12,12 +12,8 @@ import { test, expect } from '@playwright/test';
 import {
   signIn,
   callCallable,
-  callOk,
   TEST_ACCOUNTS,
-  TEST_UIDS,
   WEB_APP_URL,
-  getDoc,
-  writeDoc,
 } from './api-helpers';
 import {
   waitForFlutter,
@@ -121,7 +117,7 @@ test.describe('Admin Reviews Tab', () => {
     const hasEmpty = await emptyState.isVisible({ timeout: 5_000 }).catch(() => false);
     // Wait longer for loading to complete
     await page.waitForTimeout(3000);
-    const isLoading = await loadingIndicator.isVisible({ timeout: 1_000 }).catch(() => false);
+    await loadingIndicator.isVisible({ timeout: 1_000 }).catch(() => false);
 
     if (reviewCount > 0) {
       console.log(`Found ${reviewCount} review items in admin panel`);

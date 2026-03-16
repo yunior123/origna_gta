@@ -3,15 +3,15 @@ import {
     waitForFlutter,
     requireWebApp,
     ensureLoggedIn,
-    navigateHome,
     uniqueSuffix,
     BTN_ADD_PRODUCT,
 } from './flutter-helpers';
+import { WEB_APP_URL, TEST_ACCOUNTS, DEFAULT_PASS } from './api-helpers';
 import * as path from 'path';
 
-const TARGET_URL = process.env.E2E_TARGET_URL ?? 'http://localhost:5005';
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? 'yr62813@gmail.com';
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
+const TARGET_URL = WEB_APP_URL;
+const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
+const ADMIN_PASSWORD = DEFAULT_PASS;
 
 test.beforeEach(async ({ page }) => {
     await requireWebApp(page, TARGET_URL);

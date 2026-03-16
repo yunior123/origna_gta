@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
 import {
   signIn, callOk, callExpectError, callCallable,
   fullCheckoutAndPay,
-  waitForOrderStatus, getOrder,
+  waitForOrderStatus,
   getTestProduct, getSellerAuth,
   TEST_ACCOUNTS,
 } from './api-helpers';

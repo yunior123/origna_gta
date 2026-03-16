@@ -13,12 +13,8 @@ import { test, expect } from '@playwright/test';
 import {
   signIn,
   callCallable,
-  callOk,
   TEST_ACCOUNTS,
-  TEST_UIDS,
   WEB_APP_URL,
-  getDoc,
-  writeDoc,
 } from './api-helpers';
 import {
   waitForFlutter,

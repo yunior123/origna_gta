@@ -9,7 +9,7 @@ import {
   signIn, callOk, callExpectError,
   fullCheckoutAndPay, fullMultiSellerCheckoutAndPay,
   waitForOrderStatus, getOrder,
-  getTestProduct, ensureTwoSellerProducts, getSellerAuth, discoverProducts,
+  getTestProduct, getSellerAuth, discoverProducts,
   TEST_ACCOUNTS,
 } from './api-helpers';
 
@@ -76,10 +76,9 @@ test.describe('Multi-Seller Orders', () => {
     
     // Verify item countries if they are in the order doc
     // (Assuming backend denormalizes shipFromCountry)
-    const itemA = order.items.find((i: any) => i.productId === productA!.id);
-    const itemC = order.items.find((i: any) => i.productId === productC!.id);
-    
     // If the backend stores shipFromCountry, we can assert it here
+    // const itemA = order.items.find((i: any) => i.productId === productA!.id);
+    // const itemC = order.items.find((i: any) => i.productId === productC!.id);
     // expect(itemA.shipFromCountry).toBe('Canada');
     // expect(itemC.shipFromCountry).toBe('China');
   });
@@ -97,7 +96,7 @@ test.describe('Multi-Seller Orders', () => {
 
     // Seller B marks their item as shipped
     const sellerAuth = await getSellerAuth(productB!.sellerId);
-    const updateResult = await callOk('update_item_status', {
+    await callOk('update_item_status', {
       orderId: result.orderId,
       productId: productB!.id,
       newStatus: 'shipped',

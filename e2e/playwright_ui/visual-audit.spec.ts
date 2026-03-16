@@ -23,7 +23,6 @@ import {
     waitForFlutter,
     requireWebApp,
     ensureLoggedInAsAdmin,
-    navigateHome,
     clearServiceWorkers,
 } from './flutter-helpers';
 import { TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';

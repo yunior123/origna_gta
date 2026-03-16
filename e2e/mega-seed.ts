@@ -164,8 +164,6 @@ function makeSellerProfile(name: string, prov: string, idx: number, onboarded = 
 
 // Build the 75 users
 const USERS: SeedUser[] = [];
-let emailCounter = 0;
-const nextEmail = (prefix: string) => `${prefix}${++emailCounter}@test.origna.ca`;
 
 // 1. ADMIN
 USERS.push({

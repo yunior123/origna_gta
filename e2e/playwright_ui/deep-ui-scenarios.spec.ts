@@ -520,7 +520,7 @@ test.describe('E. Order Lifecycle Deep', () => {
     expect(order?.orderStatus).toBeTruthy();
 
     // Transition: confirmed → processing (by seller)
-    const _updateResult = await callCallable('update_order_status', {
+    await callCallable('update_order_status', {
       orderId,
       newStatus: 'processing',
     }, sellerAuth.idToken);

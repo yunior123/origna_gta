@@ -130,13 +130,11 @@ test.describe('Payment Edge Cases', () => {
 
     // Try to complete 3DS challenge if it appears
     const threeDSFrame = page.frameLocator('iframe[name*="stripe-challenge"], iframe[name*="__privateStripeFrame"]').first();
-    let challengeAppeared = false;
     try {
       const completeBtn = threeDSFrame.locator(
         'button:has-text("Complete"), button:has-text("Approve"), #test-source-authorize-3ds'
       ).first();
       if (await completeBtn.isVisible({ timeout: 10_000 }).catch(() => false)) {
-        challengeAppeared = true;
         await completeBtn.click();
         await page.waitForTimeout(5_000);
       }

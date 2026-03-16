@@ -168,8 +168,8 @@ test.describe('Search & Discovery — UI Tests', () => {
     // Verify product detail content — check for add-to-cart button or own-product message
     const addToCartBtn = page.locator('[aria-label^="product_add_to_cart_button"]').first();
     const ownProductMsg = page.locator('[aria-label="product_own_product_message"]').first();
-    const hasCart = await addToCartBtn.isVisible({ timeout: 10000 }).catch(() => false);
-    const hasOwnMsg = await ownProductMsg.isVisible({ timeout: 5000 }).catch(() => false);
+    await addToCartBtn.isVisible({ timeout: 10000 }).catch(() => false);
+    await ownProductMsg.isVisible({ timeout: 5000 }).catch(() => false);
     // At minimum, navigation away from home confirms product detail loaded
     expect(page.url()).not.toBe(homeUrl);
 

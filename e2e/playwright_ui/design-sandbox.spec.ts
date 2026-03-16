@@ -171,9 +171,8 @@ async function captureScreen(
     page: import('@playwright/test').Page,
     screen: (typeof SCREENS)[number],
     vpName: string,
-    vpWidth: number,
+    _vpWidth: number,
 ): Promise<void> {
-    const label = `${screen.name}-${vpName}-${vpWidth}`;
     const outputPath = path.join(SANDBOX_DIR, `${screen.name}-${vpName}.png`);
 
     console.log(`   [${vpName}] navigating...`);

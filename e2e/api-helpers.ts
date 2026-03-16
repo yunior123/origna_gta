@@ -749,7 +749,7 @@ export async function waitForOrderStatus(
  */
 export async function fillStripeCheckout(
   page: any,
-  email: string,
+  _email: string,
   card = STRIPE_CARD
 ): Promise<void> {
   await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
@@ -1222,7 +1222,7 @@ let _productCache: any[] | null = null;
  * Discover available products from Firestore (cached).
  * Returns an array of parsed product objects with their IDs.
  */
-export async function discoverProducts(token?: string): Promise<any[]> {
+export async function discoverProducts(_token?: string): Promise<any[]> {
   if (_productCache) return _productCache;
 
   const results = await queryFirestore({
