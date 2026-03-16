@@ -22,7 +22,7 @@ void main() {
 
       // Sign in as seller
       await ob.auth.signInWithEmail(
-        'yuniorrodriguezo4601@yahoo.com',
+        'e2e-seller@test.origna.ca',
         'REDACTED_TEST_PASSWORD',
       );
     });

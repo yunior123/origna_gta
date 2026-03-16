@@ -15,7 +15,7 @@ void main() {
     late ProviderContainer container;
     late OrignaBase ob;
     late String createdAddressId;
-    const buyerEmail = 'yuniorrodriguezo460@gmail.com';
+    const buyerEmail = 'e2e-buyer@test.origna.ca';
     const buyerPassword = 'REDACTED_TEST_PASSWORD';
 
     setUpAll(() async {

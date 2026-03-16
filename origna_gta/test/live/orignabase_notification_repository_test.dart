@@ -40,7 +40,7 @@ void main() {
           reason: 'ORIGNABASE_URL dart-define required for live tests',
         );
 
-        const email = 'yr62813@gmail.com';
+        const email = 'e2e-admin@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -64,7 +64,7 @@ void main() {
     test(
       'markAllRead marks all notifications as read',
       () async {
-        const email = 'yr62813@gmail.com';
+        const email = 'e2e-admin@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 

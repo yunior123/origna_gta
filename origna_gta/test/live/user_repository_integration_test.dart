@@ -22,7 +22,7 @@ void main() {
 
       // Sign in as buyer
       final authState = await ob.auth.signInWithEmail(
-        'yuniorrodriguezo460@gmail.com',
+        'e2e-buyer@test.origna.ca',
         'REDACTED_TEST_PASSWORD',
       );
       expect(authState.isAuthenticated, isTrue);

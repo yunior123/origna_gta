@@ -21,7 +21,7 @@ void main() {
 
       // Sign in as buyer
       await ob.auth.signInWithEmail(
-        'yuniorrodriguezo460@gmail.com',
+        'e2e-buyer@test.origna.ca',
         'REDACTED_TEST_PASSWORD',
       );
     });

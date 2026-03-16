@@ -14,7 +14,7 @@ void main() {
       skip: !runLive ? 'live tests disabled' : null, () {
     late ProviderContainer container;
     late OrignaBase ob;
-    const buyerEmail = 'yuniorrodriguezo460@gmail.com';
+    const buyerEmail = 'e2e-buyer@test.origna.ca';
     const buyerPassword = 'REDACTED_TEST_PASSWORD';
     const productId = 'e2e_product_test_seller';
 

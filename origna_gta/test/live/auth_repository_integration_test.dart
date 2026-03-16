@@ -31,7 +31,7 @@ void main() {
       () async {
         if (!runLive) return;
         expect(
-          repo.signInWithEmail('yuniorrodriguezo460@gmail.com', 'REDACTED_TEST_PASSWORD'),
+          repo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD'),
           completes,
           reason: 'signInWithEmail should succeed with valid credentials',
         );
@@ -59,7 +59,7 @@ void main() {
       () async {
         if (!runLive) return;
         // Sign in first
-        await repo.signInWithEmail('yuniorrodriguezo460@gmail.com', 'REDACTED_TEST_PASSWORD');
+        await repo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
         final result = await repo.isEmailVerified();
         expect(result, isA<bool>());
       },
@@ -72,7 +72,7 @@ void main() {
       () async {
         if (!runLive) return;
         // Sign in first
-        await repo.signInWithEmail('yuniorrodriguezo460@gmail.com', 'REDACTED_TEST_PASSWORD');
+        await repo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
         expect(
           repo.signOut(),
           completes,
@@ -88,7 +88,7 @@ void main() {
       () async {
         if (!runLive) return;
         // Sign in first
-        await repo.signInWithEmail('yuniorrodriguezo460@gmail.com', 'REDACTED_TEST_PASSWORD');
+        await repo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
         final result = await repo.validateCurrentUser();
         expect(result, isTrue);
       },
@@ -101,7 +101,7 @@ void main() {
       () async {
         if (!runLive) return;
         // Sign in first
-        await repo.signInWithEmail('yuniorrodriguezo460@gmail.com', 'REDACTED_TEST_PASSWORD');
+        await repo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
         expect(
           repo.ensureUserDocumentExists(),
           completes,
@@ -117,7 +117,7 @@ void main() {
       () async {
         if (!runLive) return;
         // Sign in first
-        await repo.signInWithEmail('yuniorrodriguezo460@gmail.com', 'REDACTED_TEST_PASSWORD');
+        await repo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
         final userId = ob.auth.currentUserId;
         expect(userId, isNotNull);
 

@@ -15,9 +15,9 @@ void main() {
     late ProviderContainer container;
     late OrignaBase obAdmin;
     late String createdCouponCode;
-    const adminEmail = 'yr62813@gmail.com';
+    const adminEmail = 'e2e-admin@test.origna.ca';
     const adminPassword = 'REDACTED_TEST_PASSWORD';
-    const buyerEmail = 'yuniorrodriguezo460@gmail.com';
+    const buyerEmail = 'e2e-buyer@test.origna.ca';
     const buyerPassword = 'REDACTED_TEST_PASSWORD';
 
     setUpAll(() async {

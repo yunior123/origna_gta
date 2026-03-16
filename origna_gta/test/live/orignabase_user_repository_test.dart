@@ -41,7 +41,7 @@ void main() {
           reason: 'ORIGNABASE_URL dart-define required for live tests',
         );
 
-        const email = 'yr62813@gmail.com';
+        const email = 'e2e-admin@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -72,7 +72,7 @@ void main() {
     test(
       'watchAddresses returns stream of user addresses',
       () async {
-        const email = 'yr62813@gmail.com';
+        const email = 'e2e-admin@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -93,7 +93,7 @@ void main() {
     test(
       'watchSellerAccountStatus returns stream of seller status',
       () async {
-        const email = 'yuniorrodriguezo4601@yahoo.com'; // Seller account
+        const email = 'e2e-seller@test.origna.ca'; // Seller account
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -113,7 +113,7 @@ void main() {
     test(
       'getSellerAccountStatus returns seller status',
       () async {
-        const email = 'yuniorrodriguezo4601@yahoo.com';
+        const email = 'e2e-seller@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -130,7 +130,7 @@ void main() {
     test(
       'updatePreferredLanguage updates user language preference',
       () async {
-        const email = 'yr62813@gmail.com';
+        const email = 'e2e-admin@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -151,7 +151,7 @@ void main() {
     test(
       'recordTermsAcceptance records user terms acceptance',
       () async {
-        const email = 'yr62813@gmail.com';
+        const email = 'e2e-admin@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 

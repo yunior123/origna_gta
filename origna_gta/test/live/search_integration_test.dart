@@ -17,7 +17,7 @@ void main() {
     setUpAll(() async {
       container = ProviderContainer();
       ob = container.read(orignabaseProvider);
-      await ob.auth.signInWithEmail('yuniorrodriguezo460@gmail.com', 'REDACTED_TEST_PASSWORD');
+      await ob.auth.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
     });
 
     tearDownAll(() async {

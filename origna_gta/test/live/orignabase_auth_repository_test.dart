@@ -62,7 +62,7 @@ void main() {
     test(
       'signInWithEmail authenticates with valid credentials',
       () async {
-        const email = 'yr62813@gmail.com'; // Admin test account
+        const email = 'e2e-admin@test.origna.ca'; // Admin test account
         const password = 'REDACTED_TEST_PASSWORD';
 
         await authRepo.signInWithEmail(email, password);
@@ -114,7 +114,7 @@ void main() {
     test(
       'signOut clears current user',
       () async {
-        const email = 'yr62813@gmail.com';
+        const email = 'e2e-admin@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
 
         await authRepo.signInWithEmail(email, password);
@@ -130,7 +130,7 @@ void main() {
     test(
       'validateCurrentUser returns true for authenticated user',
       () async {
-        const email = 'yr62813@gmail.com';
+        const email = 'e2e-admin@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
 
         await authRepo.signInWithEmail(email, password);

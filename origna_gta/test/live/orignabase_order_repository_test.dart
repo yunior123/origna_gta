@@ -41,7 +41,7 @@ void main() {
         );
 
         // Sign in as buyer to check their orders
-        const email = 'yuniorrodriguezo460@gmail.com';
+        const email = 'e2e-buyer@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -57,7 +57,7 @@ void main() {
     test(
       'watchBuyerOrders returns stream of orders',
       () async {
-        const email = 'yuniorrodriguezo460@gmail.com';
+        const email = 'e2e-buyer@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -78,7 +78,7 @@ void main() {
     test(
       'watchSellerOrders returns stream of orders',
       () async {
-        const email = 'yuniorrodriguezo4601@yahoo.com';
+        const email = 'e2e-seller@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -99,7 +99,7 @@ void main() {
     test(
       'updateLastSession updates order session timestamp',
       () async {
-        const email = 'yr62813@gmail.com';
+        const email = 'e2e-admin@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 

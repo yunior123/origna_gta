@@ -23,7 +23,7 @@ void main() {
 
       // Sign in as admin
       await ob.auth.signInWithEmail(
-        'yr62813@gmail.com',
+        'e2e-admin@test.origna.ca',
         'REDACTED_TEST_PASSWORD',
       );
     });

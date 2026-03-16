@@ -40,7 +40,7 @@ void main() {
           reason: 'ORIGNABASE_URL dart-define required for live tests',
         );
 
-        const email = 'yuniorrodriguezo460@gmail.com';
+        const email = 'e2e-buyer@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -61,7 +61,7 @@ void main() {
     test(
       'addToCart adds item to user cart',
       () async {
-        const email = 'yuniorrodriguezo460@gmail.com';
+        const email = 'e2e-buyer@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -91,7 +91,7 @@ void main() {
     test(
       'clearCart empties user cart',
       () async {
-        const email = 'yuniorrodriguezo460@gmail.com';
+        const email = 'e2e-buyer@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -113,7 +113,7 @@ void main() {
     test(
       'removeFromCart removes specific cart item',
       () async {
-        const email = 'yuniorrodriguezo460@gmail.com';
+        const email = 'e2e-buyer@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 
@@ -137,7 +137,7 @@ void main() {
     test(
       'updateQuantity updates cart item quantity',
       () async {
-        const email = 'yuniorrodriguezo460@gmail.com';
+        const email = 'e2e-buyer@test.origna.ca';
         const password = 'REDACTED_TEST_PASSWORD';
         await authRepo.signInWithEmail(email, password);
 

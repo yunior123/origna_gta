@@ -24,7 +24,7 @@ void main() {
 
       // Sign in as buyer
       await ob.auth.signInWithEmail(
-        'yuniorrodriguezo460@gmail.com',
+        'e2e-buyer@test.origna.ca',
         'REDACTED_TEST_PASSWORD',
       );
     });
@@ -111,7 +111,7 @@ void main() {
         // Sign out and sign in as seller
         ob.auth.signOut();
         await ob.auth.signInWithEmail(
-          'yuniorrodriguezo4601@yahoo.com',
+          'e2e-seller@test.origna.ca',
           'REDACTED_TEST_PASSWORD',
         );
 
@@ -137,7 +137,7 @@ void main() {
         // Sign back in as buyer for other tests
         ob.auth.signOut();
         await ob.auth.signInWithEmail(
-          'yuniorrodriguezo460@gmail.com',
+          'e2e-buyer@test.origna.ca',
           'REDACTED_TEST_PASSWORD',
         );
       },
