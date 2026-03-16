@@ -81,7 +81,7 @@ test.describe('Order Notifications', () => {
 
     const auth = await signIn(BUYER_EMAIL);
     const adminAuth = await signIn(ADMIN_EMAIL);
-    const order = await waitForOrderStatus(orderId, ['confirmed', 'shipped', 'delivered'], auth.idToken, 90_000);
+    await waitForOrderStatus(orderId, ['confirmed', 'shipped', 'delivered'], auth.idToken, 90_000);
 
     // 2a. Must ship before buyer can confirm receipt
     await callOk('update_item_status', {
@@ -92,14 +92,10 @@ test.describe('Order Notifications', () => {
       carrier: 'Canada Post',
     }, adminAuth.idToken);
 
-    // 2b. Mark Item as DELIVERED via confirm_item_receipt (requires cartItemId, not productId)
-    const item = order.items?.find((i: any) => i.productId === productA!.id);
-    const cartItemId = item?.cartItemId;
-    if (!cartItemId) throw new Error('cartItemId not found for productA in order');
-
+    // 2b. Mark Item as DELIVERED via confirm_item_receipt
     await callOk('confirm_item_receipt', {
       orderId,
-      cartItemId,
+      productId: productA!.id,
     }, auth.idToken);
 
     await page.waitForTimeout(10000);
@@ -191,7 +187,7 @@ test.describe('Order Notifications', () => {
     await page.waitForTimeout(10000);
 
     // 2. Verify Seller receives "New Order" email
-    const sellerAuth = await signIn(TEST_ACCOUNTS.SELLER_EMAIL);
+    await signIn(TEST_ACCOUNTS.SELLER_EMAIL);
     const mailLogsResult = await callOk('e2e_get_mail_logs', { orderId, to: TEST_ACCOUNTS.SELLER_EMAIL }, adminAuth.idToken);
     const logs = mailLogsResult.logs;
 
@@ -211,7 +207,7 @@ test.describe('Order Notifications', () => {
     const auth = await signIn(BUYER_EMAIL);
     const adminAuth = await signIn(ADMIN_EMAIL);
 
-    const order = await waitForOrderStatus(orderId, ['confirmed', 'shipped', 'delivered'], auth.idToken, 90_000);
+    await waitForOrderStatus(orderId, ['confirmed', 'shipped', 'delivered'], auth.idToken, 90_000);
 
     // Ship first (confirm_item_receipt requires SHIPPED status)
     await callOk('update_item_status', {
@@ -222,11 +218,8 @@ test.describe('Order Notifications', () => {
       carrier: 'Canada Post',
     }, adminAuth.idToken);
 
-    // Mark as delivered (requires cartItemId, not productId)
-    const item = order.items?.find((i: any) => i.productId === productA!.id);
-    const cartItemId = item?.cartItemId;
-    if (!cartItemId) throw new Error('cartItemId not found for productA in order');
-    await callOk('confirm_item_receipt', { orderId, cartItemId }, auth.idToken);
+    // Mark as delivered
+    await callOk('confirm_item_receipt', { orderId, productId: productA!.id }, auth.idToken);
 
     // 2. Create return request
     await callOk('create_return_request', {

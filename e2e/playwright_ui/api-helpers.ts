@@ -1391,17 +1391,17 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'submit_product_rating_atomic':
         return { path: '/api/products/submit-rating-atomic', body: { userId, productId: payload?.productId, rating: payload?.rating, review: payload?.review } };
       case 'subscribe_stock_notification':
-        return { path: '/api/products/stock-subscribe', body: { userId, productId: payload?.productId } };
+        return { path: '/api/products/stock-notify/subscribe', body: { userId, productId: payload?.productId, variantKey: payload?.variantKey } };
       case 'suspend_seller':
         return { path: '/api/admin/suspend-seller', body: { adminId: userId, sellerId: payload?.sellerId, reason: payload?.reason } };
       case 'unsubscribe_email':
         return { path: '/api/users/unsubscribe', body: { email: payload?.email, token: payload?.token } };
       case 'unsubscribe_stock_notification':
-        return { path: '/api/products/stock-unsubscribe', body: { userId, productId: payload?.productId } };
+        return { path: '/api/products/stock-notify/unsubscribe', body: { userId, productId: payload?.productId, variantKey: payload?.variantKey } };
       case 'unsuspend_seller':
         return { path: '/api/admin/unsuspend-seller', body: { adminId: userId, sellerId: payload?.sellerId } };
       case 'update_item_status':
-        return { path: '/api/orders/update-item-status', body: { userId, orderId: payload?.orderId, itemId: payload?.itemId, status: payload?.status } };
+        return { path: '/api/orders/update-item-status', body: { userId, orderId: payload?.orderId, productId: payload?.productId ?? payload?.itemId, newStatus: payload?.newStatus ?? payload?.status, trackingNumber: payload?.trackingNumber, carrier: payload?.carrier } };
       case 'update_payment_provider':
         return { path: '/api/payments/update-provider', body: { userId, ...payload } };
       case 'update_shipping_cost':
@@ -1499,7 +1499,22 @@ export async function callCallable(fn: string, data: any, token: string, timeout
     try {
       const body = JSON.parse(text);
       if (!res.ok) {
-        return { error: body?.error ?? { code: res.status, status: res.status, message: body?.message || text.substring(0, 200) } };
+        const rawErr = body?.error ?? { code: res.status, status: res.status, message: body?.message || text.substring(0, 200) };
+        // Normalize numeric HTTP status codes to Firebase-style string codes
+        const normalizedCode = (() => {
+          const c = rawErr.code ?? res.status;
+          if (typeof c === 'string' && isNaN(Number(c))) return c; // already a string code
+          const n = typeof c === 'number' ? c : Number(c);
+          if (n === 401) return 'unauthenticated';
+          if (n === 403) return 'permission-denied';
+          if (n === 404) return 'not-found';
+          if (n === 400 || n === 422) return 'invalid-argument';
+          if (n === 409) return 'already-exists';
+          if (n === 429) return 'resource-exhausted';
+          if (n >= 500) return 'internal';
+          return String(c);
+        })();
+        return { error: { ...rawErr, code: normalizedCode } };
       }
       if (ported) {
         return await normalizePortedResponse(fn, body);

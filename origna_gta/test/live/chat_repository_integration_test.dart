@@ -5,7 +5,6 @@ import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/features/chat/orignabase_chat_repository.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
   const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
   group('OrignaBaseChatRepository integration', () {

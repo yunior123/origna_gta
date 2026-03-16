@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
-  waitForFlutter, requireWebApp,
-  waitForProductCards,
+  waitForProductCards, ensureLoggedInAsBuyer,
 } from './flutter-helpers';
 import {
   signIn, callOk,
@@ -77,16 +76,7 @@ test.describe('Search Filters & Sort — UI', () => {
   test.setTimeout(300_000);
 
   async function loginAsBuyer(page: import('@playwright/test').Page) {
-    await requireWebApp(page, TARGET_URL);
-    await page.goto(TARGET_URL);
-    await waitForFlutter(page);
-    const emailField = page.getByRole('textbox', { name: 'you@example.com' });
-    if (await emailField.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await emailField.fill(TEST_ACCOUNTS.BUYER_EMAIL);
-      await page.getByRole('textbox', { name: '••••••••' }).fill(TEST_ACCOUNTS.BUYER_PASS);
-      await page.locator('[aria-label^="login_submit_button"]').click();
-      await waitForFlutter(page, 60_000);
-    }
+    await ensureLoggedInAsBuyer(page, TARGET_URL, TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
     await waitForProductCards(page);
   }
 

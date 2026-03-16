@@ -1,8 +1,8 @@
 /**
  * OrignaGTA — Stripe Payment E2E Tests
  * ======================================
- * Full Stripe Checkout flow against dev Firebase with real Stripe test mode.
- * Each test discovers its own product to avoid stale IDs and stock exhaustion.
+ * Full Stripe Checkout flow against dev OrignaBase with real Stripe test mode.
+ * Uses stable products to avoid auth failures from seller-only product creation.
  */
 import { test, expect } from '@playwright/test';
 import {
@@ -10,12 +10,14 @@ import {
   buildCheckoutPayload,
   fillStripeCheckout,
   fullCheckoutAndPay,
-  readDoc, parseDoc, listCollection,
+  listCollection,
   waitForOrderStatus,
-  getOrder, getProductStock,
-  getTestProduct, invalidateProductCache,
-  TEST_ACCOUNTS, STRIPE_CARD, uid,
+  getProductStock,
+  TEST_ACCOUNTS,
 } from './api-helpers';
+
+// Stable product owned by SELLER (not BUYER) — always exists, buyer can purchase
+const STABLE_PRODUCT_ID = 'e2e_product_test_seller';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 
@@ -24,8 +26,7 @@ test.describe('Stripe Payment Flow', () => {
 
   test('Full checkout → Stripe payment → order confirmed', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    await invalidateProductCache();
-    const product = await getTestProduct(auth.idToken, auth.localId);
+    const product = { id: STABLE_PRODUCT_ID };
 
     const result = await fullCheckoutAndPay(page, BUYER_EMAIL, product.id, 1);
     expect(result.orderId).toBeTruthy();
@@ -39,8 +40,7 @@ test.describe('Stripe Payment Flow', () => {
 
   test('Order document has correct structure after payment', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    await invalidateProductCache();
-    const product = await getTestProduct(auth.idToken, auth.localId);
+    const product = { id: STABLE_PRODUCT_ID };
 
     const { data } = await buildCheckoutPayload(auth.localId, product.id, 1, auth.idToken);
     const result = await callOk('create_checkout_session', data, auth.idToken);
@@ -65,8 +65,7 @@ test.describe('Stripe Payment Flow', () => {
 
   test('Stock decremented by exact ordered quantity after payment', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    await invalidateProductCache();
-    const product = await getTestProduct(auth.idToken, auth.localId);
+    const product = { id: STABLE_PRODUCT_ID };
 
     const stockBefore = await getProductStock(product.id, auth.idToken);
 
@@ -89,8 +88,7 @@ test.describe('Stripe Payment Flow', () => {
 
   test('Checkout URL redirects to Stripe hosted page', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    await invalidateProductCache();
-    const product = await getTestProduct(auth.idToken, auth.localId);
+    const product = { id: STABLE_PRODUCT_ID };
 
     const { data } = await buildCheckoutPayload(auth.localId, product.id, 1, auth.idToken);
     const result = await callOk('create_checkout_session', data, auth.idToken);
@@ -103,8 +101,7 @@ test.describe('Stripe Payment Flow', () => {
 
   test('Duplicate checkout with same idempotency key returns same order', async () => {
     const auth = await signIn(BUYER_EMAIL);
-    await invalidateProductCache();
-    const product = await getTestProduct(auth.idToken, auth.localId);
+    const product = { id: STABLE_PRODUCT_ID };
     const { data } = await buildCheckoutPayload(auth.localId, product.id, 1, auth.idToken);
 
     // Pass an explicit idempotency key so the backend can match this specific request
@@ -119,8 +116,7 @@ test.describe('Stripe Payment Flow', () => {
 
   test('[BONUS] Order expiresAt is within 6-day authorization window', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    await invalidateProductCache();
-    const product = await getTestProduct(auth.idToken, auth.localId);
+    const product = { id: STABLE_PRODUCT_ID };
 
     const result = await fullCheckoutAndPay(page, BUYER_EMAIL, product.id, 1);
     const order = await waitForOrderStatus(result.orderId, ['confirmed', 'processing'], auth.idToken, 90_000);
@@ -141,8 +137,7 @@ test.describe('Stripe Payment Flow', () => {
 
   test('[BONUS] Cart is cleared after successful order creation', async ({ page }) => {
     const auth = await signIn(BUYER_EMAIL);
-    await invalidateProductCache();
-    const product = await getTestProduct(auth.idToken, auth.localId);
+    const product = { id: STABLE_PRODUCT_ID };
 
     const result = await fullCheckoutAndPay(page, BUYER_EMAIL, product.id, 1);
     await waitForOrderStatus(result.orderId, ['confirmed', 'processing'], auth.idToken, 90_000);

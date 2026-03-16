@@ -6,7 +6,6 @@ import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/models/models.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
   const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
 
   group('OrignaBaseAuthRepository integration', () {
