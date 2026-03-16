@@ -23,7 +23,7 @@ class CartItemScreen extends StatelessWidget {
     // Extract item fields using schema constants (static - won't rebuild on quantity change)
     final imageUrlsList = (item[Fields.imageUrls] as List<dynamic>?)?.cast<String>() ?? [];
     final name = item[Fields.name] as String? ?? 'product.product_fallback'.tr();
-    final unitPrice = (item[Fields.price] ?? 0.0).toDouble();
+    final unitPriceCents = item[Fields.price] as int? ?? 0;
     final isDigital = item[Fields.isDigital] as bool? ?? false;
     final buyerNote = item[Fields.buyerNote] as String?;
 
@@ -109,11 +109,11 @@ class CartItemScreen extends StatelessWidget {
                         builder: (context, ref, _) {
                           final quantityAsync = ref.watch(cartItemQuantityProvider(cartItemId));
                           final quantity = quantityAsync.valueOrNull ?? 1;
-                          final totalPrice = unitPrice * quantity;
+                          final totalCents = unitPriceCents * quantity;
                           return ShaderMask(
                             shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
                             child: Text(
-                              '\$${totalPrice.toStringAsFixed(2)}',
+                              '\$${(totalCents / 100).toStringAsFixed(2)}',
                               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white),
                             ),
                           );
@@ -128,7 +128,7 @@ class CartItemScreen extends StatelessWidget {
                           return Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
-                              '\$${unitPrice.toStringAsFixed(2)} ${'cart.each_suffix'.tr()}',
+                              '\$${(unitPriceCents / 100).toStringAsFixed(2)} ${'cart.each_suffix'.tr()}',
                               style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                             ),
                           );

@@ -67,8 +67,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
           couponCode: trimmed,
           couponDiscountCents: discountCents,
           isCouponLoading: false);
-      final postDiscountSubtotal = (subtotalCents - discountCents) / 100.0;
-      calculateTaxes(postDiscountSubtotal, shippingCost: state.shippingCost);
+      final int postDiscountSubtotalCents = subtotalCents - discountCents;
+      calculateTaxes(postDiscountSubtotalCents / 100.0, shippingCost: state.shippingCost);
     } on OrignaBaseException catch (e) {
       state = state.copyWith(
           isCouponLoading: false,
@@ -144,15 +144,18 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         isCalculatingShipping: true, clearShippingError: true);
 
     try {
-      final subtotal = _ref.read(cartSubtotalProvider);
+      // cartSubtotalProvider returns INTEGER CENTS — divide by 100.0 to get dollars for analytics/tax/biometric.
+      final subtotal = _ref.read(cartSubtotalProvider) / 100.0;
       final sellerCosts = await _shippingCircuitBreaker.execute(
           () => calculateShippingCost(items, state.address,
               chosenSpeed: state.deliverySpeed));
 
       final double rawCost =
           sellerCosts.values.fold(0.0, (sum, cost) => sum + cost);
-      final isFree = (subtotal * 100).round() >=
-          BusinessRules.freeShippingThresholdCents;
+      // Use priceCents (integer cents) — no floating-point rounding errors.
+      final int subtotalCents =
+          items.fold(0, (sum, item) => sum + item.priceCents * item.quantity);
+      final isFree = subtotalCents >= BusinessRules.freeShippingThresholdCents;
       final cost = isFree ? 0.0 : rawCost;
       final adjustedSellerCosts =
           isFree ? sellerCosts.map((k, v) => MapEntry(k, 0.0)) : sellerCosts;

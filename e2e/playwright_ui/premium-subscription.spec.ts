@@ -43,13 +43,9 @@ import { test, expect, type Page } from '@playwright/test';
 import {
   signIn,
   callCallable,
-  callOk,
   callExpectError,
   readDoc,
   getDoc,
-  parseDoc,
-  pollDocField,
-  fillStripeCheckout,
   dismissStripeModals,
   writeDoc,
   TEST_ACCOUNTS,
@@ -57,7 +53,6 @@ import {
   WEB_APP_URL,
   ORIGNABASE_URL,
   DEFAULT_PASS,
-  STRIPE_CARD,
 } from './api-helpers';
 import {
   waitForFlutter,
@@ -72,7 +67,6 @@ const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const CARD_SUCCESS       = { number: '4242 4242 4242 4242', exp: '12/34', cvc: '123', name: 'Test Buyer', postalCode: 'M5V 3A8' };
 const CARD_DECLINED      = { number: '4000 0000 0000 0002', exp: '12/34', cvc: '123', name: 'Test Buyer', postalCode: 'M5V 3A8' };
 const CARD_INSUFFICIENT  = { number: '4000 0000 0000 9995', exp: '12/34', cvc: '123', name: 'Test Buyer', postalCode: 'M5V 3A8' };
-const CARD_EXPIRED       = { number: '4000 0000 0000 0069', exp: '12/34', cvc: '123', name: 'Test Buyer', postalCode: 'M5V 3A8' };
 const CARD_WRONG_CVC     = { number: '4000 0000 0000 0127', exp: '12/34', cvc: '999', name: 'Test Buyer', postalCode: 'M5V 3A8' };
 const CARD_3DS           = { number: '4000 0025 0000 3155', exp: '12/34', cvc: '123', name: 'Test Buyer', postalCode: 'M5V 3A8' };
 
@@ -114,7 +108,7 @@ async function fillStripeCardFields(page: Page, card: typeof CARD_SUCCESS): Prom
  * Poll until subscriptions/{uid}.isPremium matches expected value, or timeout.
  */
 async function pollForPremiumStatus(
-  uid: string,
+  _uid: string,
   token: string,
   expected: boolean,
   maxMs = 60_000
@@ -127,17 +121,6 @@ async function pollForPremiumStatus(
     await new Promise(r => setTimeout(r, 3_000));
   }
   return false;
-}
-
-/**
- * Cancel any active subscription for a user via the cancel_subscription API.
- * Silently ignores "not-found" errors (no active subscription).
- */
-async function cancelSubscriptionIfActive(token: string): Promise<void> {
-  const statusResult = await callCallable('get_subscription_status', {}, token);
-  const data = statusResult.result ?? statusResult;
-  if (!data.isPremium) return;
-  await callCallable('cancel_subscription', {}, token).catch(() => {});
 }
 
 /**
@@ -200,7 +183,7 @@ async function fillSubscriptionCheckout(
   const cardFilled = await fillStripeCardFields(page, card);
   if (!cardFilled) {
     // Last resort: frameLocator approach
-    const stripeFrame = page.frameLocator('iframe[src*="stripe"]').first();
+    const stripeFrame = page.frameLocator('iframe[src*="stripe"]');
     const fi = stripeFrame.locator('input[name="cardnumber"], input[autocomplete="cc-number"]').first();
     if (await fi.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await fi.fill(card.number);
@@ -279,7 +262,7 @@ async function expandAndFillStripeCard(page: Page, card: typeof CARD_SUCCESS): P
   return filled;
 }
 async function handle3DS(page: Page, approve: boolean): Promise<void> {
-  const frame = page.frameLocator('iframe[name*="stripe-challenge"], iframe[src*="3ds2"]').first();
+  const frame = page.frameLocator('iframe[name*="stripe-challenge"], iframe[src*="3ds2"]');
   try {
     const approveBtn = frame.locator('#test-source-authorize-3ds, button:has-text("Complete"), button:has-text("Authorize")').first();
     const denyBtn    = frame.locator('#test-source-fail-3ds, button:has-text("Fail"), button:has-text("Cancel")').first();

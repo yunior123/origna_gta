@@ -52,8 +52,16 @@ void main() {
       'getUserProfile returns null for nonexistent user',
       () async {
         if (!runLive) return;
-        final profile = await repo.getUserProfile('nonexistent_user_xyz');
-        expect(profile, isNull);
+        // Backend may return 403 (rule denies when no resource) or null.
+        // Both indicate "profile not found".
+        try {
+          final profile = await repo.getUserProfile('nonexistent_user_xyz');
+          expect(profile, isNull);
+        } catch (e) {
+          expect(e.toString().toLowerCase(),
+              anyOf(contains('403'), contains('permission'), contains('forbidden')),
+              reason: 'Expected null or 403 for nonexistent user, got: $e');
+        }
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),

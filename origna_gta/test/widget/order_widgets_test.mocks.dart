@@ -124,13 +124,13 @@ class MockOrderRepository extends _i1.Mock implements _i2.OrderRepository {
   @override
   _i3.Future<void> updateShippingCost(
     String? orderId,
-    double? newShippingCost,
+    int? newShippingCostCents,
     String? reason,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateShippingCost, [
               orderId,
-              newShippingCost,
+              newShippingCostCents,
               reason,
             ]),
             returnValue: _i3.Future<void>.value(),

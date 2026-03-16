@@ -5,6 +5,14 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/features/admin/orignabase_admin_repository.dart';
 
+/// Returns true if [e] is an expected server-side rejection (not-found or
+/// permission-denied). Any other exception is unexpected and should fail.
+bool _isExpectedError(Object e) =>
+    e is NotFoundException ||
+    e is ForbiddenException ||
+    e is AuthException ||
+    e is ValidationException;
+
 void main() {
   const runLive = bool.fromEnvironment(
     'RUN_ORIGNABASE_LIVE_TESTS',
@@ -117,7 +125,7 @@ void main() {
 
         if (user != null) {
           // uid field stores short ID, currentUserId is full path "users:xxx"
-          final shortId = currentUserId!.contains(':')
+          final shortId = currentUserId.contains(':')
               ? currentUserId.split(':').last
               : currentUserId;
           expect(user.uid, anyOf(currentUserId, shortId));
@@ -150,8 +158,7 @@ void main() {
           await adminRepo.setUserSuspended(testSellerId, true);
           expect(true, isTrue);
         } catch (e) {
-          // May fail if seller doesn't exist or already suspended
-          expect(e, isNotNull);
+          if (!_isExpectedError(e)) fail('Unexpected error suspending user: $e');
         }
 
         // Unsuspend
@@ -159,8 +166,7 @@ void main() {
           await adminRepo.setUserSuspended(testSellerId, false);
           expect(true, isTrue);
         } catch (e) {
-          // May fail due to state or permissions
-          expect(e, isNotNull);
+          if (!_isExpectedError(e)) fail('Unexpected error unsuspending user: $e');
         }
       },
       skip: !runLive,
@@ -180,8 +186,7 @@ void main() {
             reason: 'Integration test',
           );
         } catch (e) {
-          // Server may reject, which is fine
-          expect(e, isNotNull);
+          if (!_isExpectedError(e)) fail('Unexpected error updating roles: $e');
         }
       },
       skip: !runLive,
@@ -195,8 +200,9 @@ void main() {
           final mfaInfo = await adminRepo.enableAdminMfa();
           expect(mfaInfo, isA<Map<String, dynamic>>());
         } catch (e) {
-          // MFA may already be enabled or other constraints
-          expect(e, isNotNull);
+          if (!_isExpectedError(e) && e is! ValidationException && e is! ConflictException) {
+            fail('Unexpected error enabling MFA: $e');
+          }
         }
       },
       skip: !runLive,
@@ -210,8 +216,10 @@ void main() {
           await adminRepo.verifyAdminMfa('000000');
           // May succeed or fail depending on actual MFA setup
         } catch (e) {
-          // Expected to fail with invalid code
-          expect(e, isNotNull);
+          // Invalid MFA code — expect auth/validation/forbidden rejection
+          if (!_isExpectedError(e) && e is! ValidationException) {
+            fail('Unexpected error verifying MFA: $e');
+          }
         }
       },
       skip: !runLive,
@@ -224,9 +232,8 @@ void main() {
         // Try with a nonexistent product ID
         try {
           await adminRepo.approveProduct('nonexistent_product_id');
-          // May fail but should not throw unexpected errors
         } catch (e) {
-          expect(e, isNotNull);
+          if (!_isExpectedError(e)) fail('Unexpected error approving product: $e');
         }
       },
       skip: !runLive,
@@ -242,7 +249,7 @@ void main() {
             'Quality issues',
           );
         } catch (e) {
-          expect(e, isNotNull);
+          if (!_isExpectedError(e)) fail('Unexpected error rejecting product: $e');
         }
       },
       skip: !runLive,

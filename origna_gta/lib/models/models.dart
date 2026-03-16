@@ -161,6 +161,8 @@ class CartItemDetailModel {
   final String name;
   final String description;
   final double price;
+  /// Price in integer cents — authoritative for arithmetic (never use [price] for sums).
+  final int priceCents;
   final List<String> imageUrls;
   final int quantity;
   final DateTime createdAt;
@@ -196,6 +198,7 @@ class CartItemDetailModel {
     required this.name,
     required this.description,
     required this.price,
+    int? priceCents,
     required this.imageUrls,
     required this.quantity,
     required this.createdAt,
@@ -225,7 +228,7 @@ class CartItemDetailModel {
     this.variantId,
     this.variantTitle,
     this.variantOptions,
-  });
+  }) : priceCents = priceCents ?? (price * 100).round();
 
   // Convert a backend document map to CartItemDetailModel.
   factory CartItemDetailModel.fromMap(Map<String, dynamic> map) {
@@ -234,6 +237,9 @@ class CartItemDetailModel {
       name: map[Fields.name] ?? '',
       description: map[Fields.description] ?? '',
       price: (map[Fields.price] ?? 0).toDouble(),
+      priceCents: map[Fields.priceCents] != null
+          ? (map[Fields.priceCents] as num).toInt()
+          : ((map[Fields.price] ?? 0) as num).toDouble() * 100 ~/ 1,
       imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
       createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
@@ -279,6 +285,7 @@ class CartItemDetailModel {
       Fields.name: name,
       Fields.description: description,
       Fields.price: price,
+      Fields.priceCents: priceCents,
       Fields.imageUrls: imageUrls,
       Fields.quantity: quantity,
       Fields.createdAt: createdAt,

@@ -918,7 +918,6 @@ test.describe('I. Digital Business Rules', () => {
 
     const orderId = 'e2e-test-i2-revoke-on-refund';
     const licenseKey = 'E2EI-SW01-RVKR-4444';
-    const stripePaymentIntentId = 'pi_test_e2e_i2_captured'; // placeholder — refund will fail gracefully
 
     await writeDoc(`licenses/${licenseKey}`, {
       licenseKey,

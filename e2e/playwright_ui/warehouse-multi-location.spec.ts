@@ -59,7 +59,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // ────────────────────────────────────────────────────────────────────────────
   // T1: Seller can create a warehouse via Cloud Function callable
   // ────────────────────────────────────────────────────────────────────────────
-  test('T1: seller creates a warehouse and it is persisted in Firestore', async ({ request }) => {
+  test('T1: seller creates a warehouse and it is persisted in Firestore', async () => {
 
     const { idToken: token, localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
@@ -86,7 +86,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // ────────────────────────────────────────────────────────────────────────────
   // T2: Seller with multiple warehouses — both returned by get_seller_warehouses
   // ────────────────────────────────────────────────────────────────────────────
-  test('T2: seller can have multiple warehouses and list them all', async ({ request }) => {
+  test('T2: seller can have multiple warehouses and list them all', async () => {
 
     const { idToken: token, localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
@@ -116,7 +116,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
   //     When two products share the same sellerId+sellerSku, the second one
   //     gets lifecycleStatus='draft' immediately (reactive safety net).
   // ────────────────────────────────────────────────────────────────────────────
-  test('T3: duplicate sellerSku products cannot coexist — one is blocked on write', async ({ request }) => {
+  test('T3: duplicate sellerSku products cannot coexist — one is blocked on write', async () => {
 
     const { localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
     const { idToken: adminToken } = await signIn(ADMIN_EMAIL, DEFAULT_PASS);
@@ -165,7 +165,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // T4: Product with shipFromCity/Province fields has correct denormalized data
   //     (simulates what the product card reads)
   // ────────────────────────────────────────────────────────────────────────────
-  test('T4: product document has shipFromCity and shipFromProvince after warehouse-based creation', async ({ request }) => {
+  test('T4: product document has shipFromCity and shipFromProvince after warehouse-based creation', async () => {
 
     const { idToken: token, localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
     const { idToken: adminToken } = await signIn(ADMIN_EMAIL, DEFAULT_PASS);
@@ -216,7 +216,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // T5: inventoryLevels subcollection is the single truth for warehouse stock
   //     stockQuantity on the product doc = sum across all inventoryLevels docs
   // ────────────────────────────────────────────────────────────────────────────
-  test('T5: inventoryLevels subcollection stores per-warehouse stock; stockQuantity equals sum', async ({ request }) => {
+  test('T5: inventoryLevels subcollection stores per-warehouse stock; stockQuantity equals sum', async () => {
 
     const { idToken: token, localId: uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
     const { idToken: adminToken } = await signIn(ADMIN_EMAIL, DEFAULT_PASS);

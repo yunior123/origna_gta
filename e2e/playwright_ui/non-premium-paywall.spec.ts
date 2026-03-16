@@ -17,11 +17,9 @@ import { test, expect } from '@playwright/test';
 import {
   signIn,
   callCallable,
-  callOk,
   TEST_ACCOUNTS,
   TEST_UIDS,
   WEB_APP_URL,
-  getDoc,
   writeDoc,
 } from './api-helpers';
 import {
@@ -29,7 +27,6 @@ import {
   requireWebApp,
   checkSemantics,
   ensureLoggedInAsAdmin,
-  BTN_SETTINGS,
 } from './flutter-helpers';
 
 // ════════════════════════════════════════════════════════════════════
@@ -40,7 +37,6 @@ const TARGET_URL = WEB_APP_URL;
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const BUYER_PASS = TEST_ACCOUNTS.BUYER_PASS;
 const PRODUCT_ID = 'mseed_prod_electronics_1';
-const PRODUCT_TITLE = 'Sony Headphones';
 
 test.describe('Non-Premium Paywall', () => {
   test.setTimeout(300_000);

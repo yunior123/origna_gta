@@ -85,7 +85,7 @@ class _AddProductButton extends ConsumerWidget {
     return IconButton(
       key: const Key('home_add_product_button'),
       tooltip: 'home.add_product'.tr(),
-      icon: const Icon(Icons.add_box_outlined, color: Colors.white),
+      icon: const Icon(Icons.add_box_outlined, color: DesignTokens.textOnPrimary),
       onPressed: () {
         if (isSuspended) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -149,7 +149,7 @@ class _CartBadgeState extends ConsumerState<_CartBadge>
                   tooltip: 'home.shopping_cart'.tr(),
                   icon: const Icon(
                     Icons.shopping_cart_outlined,
-                    color: Colors.white,
+                    color: DesignTokens.textOnPrimary,
                   ),
                   onPressed: () async {
                     _triggerAnimation();
@@ -179,7 +179,7 @@ class _CartBadgeState extends ConsumerState<_CartBadge>
                     child: Container(
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: DesignTokens.textOnPrimary,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: DesignTokens.primary,
@@ -342,7 +342,7 @@ class _CategoryChips extends ConsumerWidget {
                 child: Text(
                   isAll ? 'home.category_all'.tr() : category!.name.tr(),
                   style: TextStyle(
-                    color: isSelected ? Colors.white : unselectedText,
+                    color: isSelected ? DesignTokens.textOnPrimary : unselectedText,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     fontSize: 13,
                   ),
@@ -1237,52 +1237,60 @@ class _SearchOverlay extends StatelessWidget {
                     ),
                   ),
                   if (showRecent)
-                    TextButton(
-                      onPressed: onClearRecent,
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        minimumSize: Size.zero,
-                        foregroundColor: DesignTokens.primary,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        textStyle: const TextStyle(fontSize: 11),
+                    Semantics(
+                      label: 'btn-clear-recent-searches',
+                      button: true,
+                      child: TextButton(
+                        onPressed: onClearRecent,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: Size.zero,
+                          foregroundColor: DesignTokens.primary,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(fontSize: 11),
+                        ),
+                        child: Text('home.clear_recent'.tr()),
                       ),
-                      child: Text('home.clear_recent'.tr()),
                     ),
                 ],
               ),
             ),
             for (final item in items)
-              InkWell(
-                onTap: () => onTap(item),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        showRecent
-                            ? Icons.history_rounded
-                            : Icons.search_rounded,
-                        size: 16,
-                        color: DesignTokens.textSecondary,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          item,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark
-                                ? Colors.white
-                                : DesignTokens.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+              Semantics(
+                label: 'btn-search-history-item',
+                button: true,
+                child: InkWell(
+                  onTap: () => onTap(item),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          showRecent
+                              ? Icons.history_rounded
+                              : Icons.search_rounded,
+                          size: 16,
+                          color: DesignTokens.textSecondary,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            item,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark
+                                  ? Colors.white
+                                  : DesignTokens.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1591,12 +1599,16 @@ class _SortAndFilterRow extends ConsumerWidget {
                     ),
                     if (hasPriceFilter) ...[
                       const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: homeNotifier.clearPriceFilter,
-                        child: Icon(
-                          Icons.close_rounded,
-                          size: 12,
-                          color: DesignTokens.secondary,
+                      Semantics(
+                        label: 'btn-close-price-filter',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: homeNotifier.clearPriceFilter,
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 12,
+                            color: DesignTokens.secondary,
+                          ),
                         ),
                       ),
                     ],

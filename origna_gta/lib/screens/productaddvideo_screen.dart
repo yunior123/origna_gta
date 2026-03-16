@@ -235,14 +235,14 @@ class _VideoTile extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(8)),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 12),
-                SizedBox(width: 4),
+                const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 12),
+                const SizedBox(width: 4),
                 Text(
-                  'Video',
-                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                  'product.video_badge'.tr(),
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
                 ),
               ],
             ),

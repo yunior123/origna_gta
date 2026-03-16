@@ -43,12 +43,12 @@ void main() {
         for (final hit in hits.take(3)) {
           expect(hit, isA<Map<String, dynamic>>());
           final hitMap = hit as Map<String, dynamic>;
+          // Meilisearch returns 'id' as the document primary key
           expect(
-            hitMap.containsKey('id') || hitMap.containsKey('origId') || hitMap.containsKey(Fields.productId),
+            hitMap.containsKey('id'),
             isTrue,
-              reason: 'Hit should have an id field'
+            reason: 'Hit should have an id field (Meilisearch objectId)',
           );
-          // removed extra expect);
         }
       },
       timeout: const Timeout(Duration(minutes: 2)),

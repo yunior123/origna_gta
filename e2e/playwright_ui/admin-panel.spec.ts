@@ -2,14 +2,11 @@ import { test, expect } from '@playwright/test';
 import {
     waitForFlutter,
     requireWebApp,
-    checkSemantics,
     ensureLoggedInAsAdmin,
     performSignOut,
     navigateHome,
     navigateToAdmin,
     BTN_SETTINGS,
-    BTN_CART,
-    BTN_ADD_PRODUCT,
 } from './flutter-helpers';
 import { TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';
 
@@ -72,7 +69,7 @@ test.describe('PW IT Replica — Admin Panel Flow', () => {
         });
 
         test.afterEach(async ({ page }) => {
-            // Use in-app navigation to preserve Firebase Auth state for sign-out
+            // Use in-app navigation to preserve OrignaBase SDK JWT state for sign-out
             await navigateHome(page, TARGET_URL);
             await performSignOut(page, TARGET_URL);
         });

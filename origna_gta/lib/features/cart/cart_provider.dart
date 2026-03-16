@@ -49,8 +49,8 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
   final productData = productCache[productId];
   if (productData == null) return null;
 
-  // Find the exact cart item to get variant info
-  final cartItems = ref.read(cartItemsProvider).valueOrNull ?? [];
+  // Find the exact cart item to get variant info — await to ensure state is fully resolved
+  final cartItems = await ref.watch(cartItemsProvider.future);
   final cartItem = cartItems.where((i) => i.cartItemId == cartItemDocId).firstOrNull;
 
   return CartItemDetailModel(
@@ -58,6 +58,9 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
     name: productData[Fields.name] ?? '',
     description: productData[Fields.description] ?? '',
     price: (productData[Fields.price] ?? 0).toDouble(),
+    priceCents: productData[Fields.priceCents] != null
+        ? (productData[Fields.priceCents] as num).toInt()
+        : ((productData[Fields.price] ?? 0) as num).toDouble() * 100 ~/ 1,
     imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
     quantity: cartItem?.quantity ?? 1,
     createdAt: createdAt,
@@ -159,10 +162,14 @@ final cartShippingValidationProvider = FutureProvider.autoDispose<List<String>>(
   return unshippable;
 });
 
-/// Cart subtotal - computed from cartWithDetailsProvider
-final cartSubtotalProvider = Provider.autoDispose<double>((ref) {
+/// Cart subtotal in integer cents — use for all arithmetic and threshold checks.
+/// Display: `'\$${(subtotal / 100).toStringAsFixed(2)}'`
+final cartSubtotalProvider = Provider.autoDispose<int>((ref) {
   final cartDetails = ref.watch(cartWithDetailsProvider);
-  return cartDetails.maybeWhen(data: (items) => items.fold(0.0, (total, item) => total + (item.price * item.quantity)), orElse: () => 0.0);
+  return cartDetails.maybeWhen(
+    data: (items) => items.fold(0, (total, item) => total + (item.priceCents * item.quantity)),
+    orElse: () => 0,
+  );
 });
 
 /// Fetches cart items with full product details using the shared batch-fetch cache.
@@ -185,6 +192,9 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
               name: productData[Fields.name] ?? '',
               description: productData[Fields.description] ?? '',
               price: (productData[Fields.price] ?? 0).toDouble(),
+              priceCents: productData[Fields.priceCents] != null
+                  ? (productData[Fields.priceCents] as num).toInt()
+                  : ((productData[Fields.price] ?? 0) as num).toDouble() * 100 ~/ 1,
               imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
               quantity: cartItem.quantity,
               createdAt: cartItem.createdAt,

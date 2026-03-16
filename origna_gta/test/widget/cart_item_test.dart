@@ -25,7 +25,7 @@ void main() {
   final testItem = {
     Fields.productId: 'prod_123',
     Fields.name: 'Test Product',
-    Fields.price: 99.99,
+    Fields.price: 9999,
     Fields.imageUrls: ['https://example.com/image.jpg'],
     Fields.isDigital: false,
     Fields.buyerNote: 'Test note',

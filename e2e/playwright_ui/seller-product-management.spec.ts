@@ -22,7 +22,6 @@ test.describe('Seller Product Management — API Tests', () => {
   test.describe.configure({ mode: 'serial' });
 
   let sellerToken: string;
-  let sellerUid: string;
   let sellerRecordId: string;
   let adminToken: string;
   let testProductId: string;
@@ -30,7 +29,6 @@ test.describe('Seller Product Management — API Tests', () => {
   test.beforeAll(async () => {
     const seller = await signIn(SELLER_EMAIL);
     sellerToken = seller.idToken;
-    sellerUid = seller.localId;
     sellerRecordId = (() => {
       try {
         const [, payload] = seller.idToken.split('.');

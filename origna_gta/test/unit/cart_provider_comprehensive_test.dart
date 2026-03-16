@@ -706,7 +706,7 @@ void main() {
       addTearDown(container.dispose);
 
       await container.read(cartWithDetailsProvider.future);
-      expect(container.read(cartSubtotalProvider), 0.0);
+      expect(container.read(cartSubtotalProvider), 0);
     });
 
     test('calculates subtotal from price * quantity', () async {
@@ -722,11 +722,11 @@ void main() {
 
       await container.read(cartWithDetailsProvider.future);
       final subtotal = container.read(cartSubtotalProvider);
-      // 10*2 + 25.50*3 = 20 + 76.50 = 96.50
-      expect(subtotal, closeTo(96.50, 0.01));
+      // 10*2 + 25.50*3 = 20 + 76.50 = 96.50 → 9650 cents
+      expect(subtotal, 9650);
     });
 
-    test('returns 0.0 when provider is loading', () {
+    test('returns 0 when provider is loading', () {
       final container = ProviderContainer(
         overrides: [
           cartWithDetailsProvider.overrideWith(
@@ -738,7 +738,7 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      expect(container.read(cartSubtotalProvider), 0.0);
+      expect(container.read(cartSubtotalProvider), 0);
     });
 
     test('handles single item', () async {
@@ -751,7 +751,7 @@ void main() {
       addTearDown(container.dispose);
 
       await container.read(cartWithDetailsProvider.future);
-      expect(container.read(cartSubtotalProvider), closeTo(99.99, 0.01));
+      expect(container.read(cartSubtotalProvider), 9999);
     });
 
     test('handles large quantities', () async {
@@ -764,7 +764,7 @@ void main() {
       addTearDown(container.dispose);
 
       await container.read(cartWithDetailsProvider.future);
-      expect(container.read(cartSubtotalProvider), closeTo(495.00, 0.01));
+      expect(container.read(cartSubtotalProvider), 49500);
     });
   });
 

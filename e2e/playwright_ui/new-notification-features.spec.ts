@@ -9,7 +9,6 @@ import {
   TEST_ACCOUNTS,
   TEST_UIDS,
   discoverProducts,
-  getDoc,
   parseDoc,
 } from './api-helpers';
 
@@ -120,7 +119,7 @@ test.describe('New Notification Features E2E', () => {
     expect(updateResult).toBeTruthy();
   });
 
-  test('Chat message notification is triggered', async ({ page }) => {
+  test('Chat message notification is triggered', async () => {
     // 1. Buyer sends message to seller (Admin owns product[0])
     const chatResult = await callOk('get_or_create_chat', { productId: product.id }, buyerToken);
     const chatId = chatResult.chatId;

@@ -62,7 +62,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
         if (widget.label != null) ...[
           Text(
             widget.label!,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary, letterSpacing: 0.3),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary, letterSpacing: 0.3),
           ),
           const SizedBox(height: DesignTokens.spacing8),
         ],
@@ -128,7 +128,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
               contentPadding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16, vertical: DesignTokens.spacing12),
               counterText: widget.showCounter ? null : '',
             ),
-            style: TextStyle(fontSize: 15, color: isDark ? Colors.white : DesignTokens.textPrimary),
+            style: TextStyle(fontSize: 15, color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
           ),
         ),
       ],

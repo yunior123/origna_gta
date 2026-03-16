@@ -29,9 +29,10 @@ final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
 /// charge. Stripe PaymentIntent amount = discounted_subtotal + shipping + tax only.
 final checkoutTotalProvider = Provider.autoDispose<double>((ref) {
   final checkoutState = ref.watch(checkoutStateProvider);
-  final subtotal = ref.watch(cartSubtotalProvider);
-  final couponDiscount = checkoutState.couponDiscountCents / 100.0;
-  return (subtotal - couponDiscount).clamp(0.0, double.infinity) + checkoutState.taxAmount + checkoutState.shippingCost;
+  // cartSubtotalProvider returns INTEGER CENTS — divide by 100.0 to get dollars.
+  final subtotalDollars = ref.watch(cartSubtotalProvider) / 100.0;
+  final couponDiscountDollars = checkoutState.couponDiscountCents / 100.0;
+  return (subtotalDollars - couponDiscountDollars).clamp(0.0, double.infinity) + checkoutState.taxAmount + checkoutState.shippingCost;
 });
 
 /// Backward-compatible typedef so screens can reference CheckoutNotifier.

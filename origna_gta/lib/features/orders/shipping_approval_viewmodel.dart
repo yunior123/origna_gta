@@ -30,7 +30,7 @@ class ShippingApprovalViewModel extends StateNotifier<ShippingApprovalState> {
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
     try {
       await _ref.read(orderRepositoryProvider).approveShippingCost(orderId, approved);
-      state = state.copyWith(isLoading: false, isSuccess: true);
+      state = state.copyWith(isLoading: false, isSuccess: true, errorMessage: null);
       return true;
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to process shipping approval'));

@@ -593,6 +593,7 @@ abstract final class ExternalUrls {
 abstract final class Fields {
   // === COMMON TIMESTAMPS (used across multiple collections) ===
   static const createdAt = 'createdAt';
+  static const dateCreated = 'dateCreated'; // products + cart timestamp field
   static const updatedAt = 'updatedAt';
   static const version = 'version'; // Optimistic concurrency version, starts at 1
   static const schemaVersion = 'schemaVersion'; // Schema layout version for migration tracking

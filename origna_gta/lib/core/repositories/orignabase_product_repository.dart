@@ -40,6 +40,7 @@ class OrignaBaseProductRepository implements ProductRepository {
     // cannot handle (only supports up to microseconds). Truncate to 6 decimal places.
     for (final key in [
       Fields.createdAt,
+      Fields.dateCreated,
       Fields.updatedAt,
       'trendingAt',
       'lastLowStockAlertAt',
@@ -578,20 +579,27 @@ class OrignaBaseProductRepository implements ProductRepository {
 
     final realtime = RealtimeClient(_ob);
     realtime.connect();
-    final sub = realtime.subscribe(Collections.favorites).listen((change) {
-      final data = change.document.data;
-      if (data[Fields.userId] != userId) return;
-      final productId = data[Fields.productId] as String?;
-      if (productId == null || productId.isEmpty) return;
-      switch (change.type) {
-        case ChangeType.create:
-        case ChangeType.update:
-          favorites.add(productId);
-        case ChangeType.delete:
-          favorites.remove(productId);
-      }
-      controller.add(Set<String>.from(favorites));
-    }, onError: controller.addError);
+    late final StreamSubscription<DocumentChange> sub;
+    try {
+      sub = realtime.subscribe(Collections.favorites).listen((change) {
+        final data = change.document.data;
+        if (data[Fields.userId] != userId) return;
+        final productId = data[Fields.productId] as String?;
+        if (productId == null || productId.isEmpty) return;
+        switch (change.type) {
+          case ChangeType.create:
+          case ChangeType.update:
+            favorites.add(productId);
+          case ChangeType.delete:
+            favorites.remove(productId);
+        }
+        controller.add(Set<String>.from(favorites));
+      }, onError: controller.addError);
+    } catch (e, st) {
+      controller.addError(e, st);
+      controller.close();
+      return controller.stream;
+    }
 
     controller.onCancel = () {
       sub.cancel();

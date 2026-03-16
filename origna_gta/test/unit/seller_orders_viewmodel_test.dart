@@ -43,13 +43,13 @@ void main() {
           .thenAnswer((_) async => Future.value());
 
       final viewModel = container.read(sellerOrdersViewModelProvider.notifier);
-      await viewModel.updateShippingAndCapture('order_123', 15.0, 'TRK123', carrier: 'FedEx');
+      await viewModel.updateShippingAndCapture('order_123', 1500, 'TRK123', carrier: 'FedEx');
 
       final state = container.read(sellerOrdersViewModelProvider);
       expect(state.isLoading, isFalse);
       expect(state.isSuccess, isTrue);
-      
-      verify(mockRepo.updateShippingCost('order_123', 15.0, any)).called(1);
+
+      verify(mockRepo.updateShippingCost('order_123', 1500, any)).called(1);
       verify(mockRepo.updateItemStatus('order_123', OrderItemIdValues.all, DeliveryStatusValues.shipped, trackingNumber: 'TRK123', carrier: 'FedEx', carrierNote: anyNamed('carrierNote'))).called(1);
     });
 
@@ -69,7 +69,7 @@ void main() {
       when(mockRepo.updateShippingCost(any, any, any)).thenThrow(Exception('Failed'));
 
       final viewModel = container.read(sellerOrdersViewModelProvider.notifier);
-      await viewModel.updateShippingAndCapture('order_123', 15.0, 'TRK123');
+      await viewModel.updateShippingAndCapture('order_123', 1500, 'TRK123');
 
       final state = container.read(sellerOrdersViewModelProvider);
       expect(state.isLoading, isFalse);

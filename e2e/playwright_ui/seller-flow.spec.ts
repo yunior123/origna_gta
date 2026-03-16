@@ -11,14 +11,15 @@ import {
     BTN_CART,
     BTN_ADD_PRODUCT,
 } from './flutter-helpers';
+import { TEST_ACCOUNTS } from './api-helpers';
 
 /**
  * REPLICA of integration_test/flows/seller_flow_test.dart
  */
 
 const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca';
-const SELLER_EMAIL = process.env.E2E_SELLER_EMAIL ?? 'yuniorrodriguezo4601@yahoo.com';
-const SELLER_PASSWORD = process.env.E2E_SELLER_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
+const SELLER_EMAIL = process.env.E2E_SELLER_EMAIL ?? TEST_ACCOUNTS.SELLER_EMAIL;
+const SELLER_PASSWORD = process.env.E2E_SELLER_PASSWORD ?? TEST_ACCOUNTS.SELLER_PASS;
 
 test.describe('PW IT Replica — Seller Flow', () => {
     test.setTimeout(300_000);

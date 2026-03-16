@@ -1,5 +1,6 @@
 // coverage:ignore-file
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart';
@@ -26,6 +27,15 @@ class OrignaBaseUserRepository implements UserRepository {
 
   String? get _currentUserId {
     return _ob.auth.currentUserId;
+  }
+
+  /// Strip SurrealDB collection prefix from an ID so it can be used as a
+  /// document key in a *different* collection.
+  ///
+  /// `"users:abc123"` → `"abc123"`;  `"abc123"` → `"abc123"`.
+  static String _bareId(String id) {
+    final idx = id.indexOf(':');
+    return idx >= 0 ? id.substring(idx + 1) : id;
   }
 
   // ---------------------------------------------------------------------------
@@ -76,7 +86,7 @@ class OrignaBaseUserRepository implements UserRepository {
     final userDoc = await _ob.collection(Collections.users).doc(userId).get();
     final spDoc = await _ob
         .collection(Collections.sellerProfiles)
-        .doc(userId)
+        .doc(_bareId(userId))
         .get();
     return _parseSellerStatus(
       userDoc?.exists == true ? userDoc!.data : null,
@@ -248,8 +258,32 @@ class OrignaBaseUserRepository implements UserRepository {
   Stream<List<Address>> watchAddresses(String userId) {
     late StreamController<List<Address>> controller;
     Timer? timer;
+    var delay = const Duration(seconds: 5);
 
-    Future<void> fetch() async {
+    // ignore: prefer_function_declarations_over_variables
+    late void Function() schedule;
+    schedule = () {
+      timer = Timer(delay, () async {
+        try {
+          final snapshot = await _ob
+              .collection(Collections.addresses)
+              .where(Fields.userId, isEqualTo: userId)
+              .get();
+          final values = snapshot.docs
+              .map((doc) => _parseAddressDocument(doc.data, docId: doc.id))
+              .toList();
+          values.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
+          delay = const Duration(seconds: 5); // reset on success
+          if (!controller.isClosed) controller.add(values);
+        } catch (e) {
+          delay = Duration(seconds: min(delay.inSeconds * 2, 60));
+          if (!controller.isClosed) controller.addError(e);
+        }
+        if (!controller.isClosed) schedule();
+      });
+    };
+
+    Future<void> fetchOnce() async {
       try {
         final snapshot = await _ob
             .collection(Collections.addresses)
@@ -259,24 +293,18 @@ class OrignaBaseUserRepository implements UserRepository {
             .map((doc) => _parseAddressDocument(doc.data, docId: doc.id))
             .toList();
         values.sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
-        if (!controller.isClosed) {
-          controller.add(values);
-        }
+        delay = const Duration(seconds: 5);
+        if (!controller.isClosed) controller.add(values);
       } catch (e) {
-        if (!controller.isClosed) {
-          controller.addError(e);
-        }
+        delay = Duration(seconds: min(delay.inSeconds * 2, 60));
+        if (!controller.isClosed) controller.addError(e);
       }
+      if (!controller.isClosed) schedule();
     }
 
     controller = StreamController<List<Address>>(
-      onListen: () {
-        fetch();
-        timer = Timer.periodic(const Duration(seconds: 5), (_) => fetch());
-      },
-      onCancel: () {
-        timer?.cancel();
-      },
+      onListen: () => fetchOnce(),
+      onCancel: () => timer?.cancel(),
     );
 
     return controller.stream;
@@ -289,8 +317,36 @@ class OrignaBaseUserRepository implements UserRepository {
     // to watch two separate top-level collections.
     late StreamController<SellerAccountStatus> controller;
     Timer? timer;
+    var delay = const Duration(seconds: 5);
 
-    Future<void> fetch() async {
+    // ignore: prefer_function_declarations_over_variables
+    late void Function() schedule;
+    schedule = () {
+      timer = Timer(delay, () async {
+        try {
+          final userDoc = await _ob
+              .collection(Collections.users)
+              .doc(userId)
+              .get();
+          final spDoc = await _ob
+              .collection(Collections.sellerProfiles)
+              .doc(_bareId(userId))
+              .get();
+          final status = _parseSellerStatus(
+            userDoc?.exists == true ? userDoc!.data : null,
+            spDoc?.exists == true ? spDoc!.data : null,
+          );
+          delay = const Duration(seconds: 5); // reset on success
+          if (!controller.isClosed) controller.add(status);
+        } catch (e) {
+          delay = Duration(seconds: min(delay.inSeconds * 2, 60));
+          if (!controller.isClosed) controller.addError(e);
+        }
+        if (!controller.isClosed) schedule();
+      });
+    };
+
+    Future<void> fetchOnce() async {
       try {
         final userDoc = await _ob
             .collection(Collections.users)
@@ -298,30 +354,24 @@ class OrignaBaseUserRepository implements UserRepository {
             .get();
         final spDoc = await _ob
             .collection(Collections.sellerProfiles)
-            .doc(userId)
+            .doc(_bareId(userId))
             .get();
         final status = _parseSellerStatus(
           userDoc?.exists == true ? userDoc!.data : null,
           spDoc?.exists == true ? spDoc!.data : null,
         );
-        if (!controller.isClosed) {
-          controller.add(status);
-        }
+        delay = const Duration(seconds: 5);
+        if (!controller.isClosed) controller.add(status);
       } catch (e) {
-        if (!controller.isClosed) {
-          controller.addError(e);
-        }
+        delay = Duration(seconds: min(delay.inSeconds * 2, 60));
+        if (!controller.isClosed) controller.addError(e);
       }
+      if (!controller.isClosed) schedule();
     }
 
     controller = StreamController<SellerAccountStatus>(
-      onListen: () {
-        fetch();
-        timer = Timer.periodic(const Duration(seconds: 5), (_) => fetch());
-      },
-      onCancel: () {
-        timer?.cancel();
-      },
+      onListen: () => fetchOnce(),
+      onCancel: () => timer?.cancel(),
     );
 
     return controller.stream;

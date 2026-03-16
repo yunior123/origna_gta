@@ -856,14 +856,15 @@ class _SellerOrderCard extends ConsumerWidget {
               child: ModernButton(
                 label: 'common.confirm'.tr(),
                 onPressed: () {
-                  final cost = double.tryParse(shippingController.text);
+                  final costDollars = double.tryParse(shippingController.text);
                   final tracking = trackingController.text.trim();
-                  if (cost != null && tracking.isNotEmpty) {
+                  if (costDollars != null && tracking.isNotEmpty) {
+                    final costCents = (costDollars * 100).round();
                     final note = selectedCarrier == CarrierValues.other ? carrierNoteController.text.trim() : null;
                     Navigator.pop(context);
                     ref
                         .read(sellerOrdersViewModelProvider.notifier)
-                        .updateShippingAndCapture(order.orderId, cost, tracking, carrier: selectedCarrier, carrierNote: note);
+                        .updateShippingAndCapture(order.orderId, costCents, tracking, carrier: selectedCarrier, carrierNote: note);
                   }
                 },
                 height: 42,

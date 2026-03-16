@@ -33,3 +33,156 @@
 
 Note:the idea is to create agent heartbeat.md that allows fetching the agent email to check for:errors in sentry, customer support emails, stripe webhooks failing, github actions failing, etc. and try to resolve them. If not able to resolve them, it should escalate to human by sending an email to support@orignaventures.ca . The email box is the feedback loop.
 We would have our own custom openclaw using oscricpt or something similar to openclaw
+
+---
+
+# Bug Tracker & Pending Work — Codebase Audit
+
+> Last audit: 2026-03-16 | 4-domain parallel scan (ViewModels, Repositories, TODOs, UI/Security)
+
+---
+
+## 🔴 HIGH — Must Fix Before Release
+
+### Money / Floating-Point Bugs (checkout corruption risk)
+
+- [ ] **checkout: floating-point division mid-calculation**
+  `lib/features/checkout/orignabase_checkout_provider.dart:70`
+  `(subtotalCents - discountCents) / 100.0` converts cents to double mid-calculation before passing to `calculateTaxes()`. Violates integer-cents invariant. Fix: keep as `int postDiscountSubtotalCents = subtotalCents - discountCents`.
+
+- [ ] **checkout: free-shipping threshold converts double → cents (precision risk)**
+  `lib/features/checkout/orignabase_checkout_provider.dart:154-155`
+  `(subtotal * 100).round() >= BusinessRules.freeShippingThresholdCents` — `subtotal` is already a dollar-double, so multiplying by 100 and rounding is fragile at borderline values (e.g. $75.004). Fix: compare integer cents directly, never reconstruct cents from dollars.
+
+- [ ] **checkout: tax calculation built on double coupon discount**
+  `lib/features/checkout/checkout_provider.dart:33-34`
+  `couponDiscountCents / 100.0` converts to double then mixes with other doubles for total. Fix: keep coupon as integer cents through all calculations; divide by 100 only at display layer.
+
+- [ ] **repository: `updateShippingCost` accepts `double` not `int cents`**
+  `lib/core/repositories/orignabase_order_repository.dart:141-155`
+  Method signature takes `double newShippingCost` — violates money-as-integer-cents rule. Will cause precision errors on Stripe. Fix: change to `int newShippingCostCents`.
+
+- [ ] **utils: operator precedence bug in price→cents conversion**
+  `lib/utils/constants.dart:407`
+  `((map['price'] as num?)?.toDouble() ?? 0.0 * 100).round()` — `0.0 * 100` is evaluated first (always 0) when price is null, so fallback is always 0 cents regardless. Fix: `((map['price'] as num?)?.toDouble() ?? 0.0) * 100`.
+
+---
+
+## 🟡 MEDIUM — Fix Soon
+
+### Money / Cart Precision
+
+- [ ] **cart: item prices stored as double dollars instead of integer cents**
+  `lib/features/cart/cart_provider.dart:163-166, 187`
+  `cartSubtotalProvider` returns `double`. `item.price` stored as `toDouble()`. All downstream shipping/tax calculations receive imprecise doubles. Fix: store item price as `int priceCents`.
+
+- [ ] **cart: race condition between batch-fetch and cartItemsProvider read**
+  `lib/features/cart/cart_provider.dart:39-50`
+  `await ref.watch(_cartProductsBatchProvider.future)` then immediately `ref.read(cartItemsProvider).valueOrNull` — items may not be in sync. Fix: use `await ref.watch(cartItemsProvider.future)`.
+
+- [ ] **checkout: `calculateTaxes()` receives imprecise double from conversion chain**
+  `lib/features/checkout/orignabase_checkout_provider.dart:219-224`
+  If subtotal was converted from cents with precision loss at line 70, tax is calculated on wrong base. Fix: resolve the line-70 bug first; pass cents throughout.
+
+### Real-Time / Stream Bugs
+
+- [ ] **stream: `watchFavorites` StreamController not closed on error during init**
+  `lib/core/repositories/orignabase_product_repository.dart:579-602`
+  If `realtime.subscribe()` throws before subscription is assigned, controller stays alive forever. `onCancel` only fires on explicit listener cancellation. Fix: wrap init in try/catch and call `controller.close()` on error.
+
+- [ ] **stream: polling continues after fetch error in `_pollOrders`**
+  `lib/core/repositories/orignabase_order_repository.dart:203-238`
+  `timer` is `late`, if `fetch()` throws on first call timer may be uninitialized; error is sent to controller but polling timer keeps firing. Fix: initialize timer before first fetch, or cancel on first error.
+
+- [ ] **stream: `watchAddresses` / `watchSellerAccountStatus` no backoff on failure**
+  `lib/core/repositories/orignabase_user_repository.dart:248-283, 286-328`
+  Both use hardcoded 5s `Timer.periodic` — no exponential backoff on API errors. Will hammer server during outages. Fix: implement exponential backoff (1s → 2s → 4s → max 60s).
+
+### Batch Path Format Inconsistency
+
+- [ ] **repository: batch path formats inconsistent (forward-slash vs double-underscore)**
+  `lib/core/repositories/orignabase_cart_repository.dart:67` uses `/` separator.
+  `lib/core/repositories/notification_repository.dart:22` uses `__` double-underscore.
+  One format is wrong — batch deletes will silently fail on whichever is incorrect.
+  Fix: align to whichever format OrignaBase SDK actually expects.
+
+### Timestamp Field Mismatch
+
+- [ ] **repository: `dateCreated` timestamps never normalized in `_docToProduct`**
+  `lib/core/repositories/orignabase_product_repository.dart:35-58`
+  Timestamp normalization only handles `createdAt`, `updatedAt`, `trendingAt`, `lastLowStockAlertAt`. Products use `dateCreated` (per schema_constants). SurrealDB nanosecond timestamps in `dateCreated` will cause `DateTime.parse()` to crash. Fix: add `dateCreated` to the normalization list.
+
+### Missing Semantics (breaks Playwright E2E)
+
+- [ ] **semantics: search history `InkWell` missing label**
+  `lib/screens/home_screen.dart:1255` — interactive list item, no `Semantics(label: ...)`.
+
+- [ ] **semantics: "Clear recent" TextButton missing label**
+  `lib/screens/home_screen.dart:1240` — Playwright cannot find this button.
+
+- [ ] **semantics: price filter close button (`GestureDetector`) missing label**
+  `lib/screens/home_screen.dart:1594`
+
+- [ ] **semantics: cart item screen uses `.toDouble()` for cents**
+  `lib/screens/cartitem_screen.dart:26` — `(item[Fields.price] ?? 0.0).toDouble()` for display. Minor but inconsistent with cents rule.
+
+---
+
+## 🟢 LOW — Nice to Fix
+
+- [ ] **viewmodel: double-submit edge case in add_product_viewmodel**
+  `lib/features/products/add_product_viewmodel.dart:82`
+  `if (state.isLoading) return` guard bypassed if provider is invalidated mid-call. Add Completer or request ID.
+
+- [ ] **viewmodel: error state not cleared on success**
+  `lib/features/shipping/shipping_approval_viewmodel.dart:33`
+  `errorMessage` not explicitly set to null on success path. UI may briefly flash old error.
+
+- [ ] **hardcoded colors: `Colors.white` / `Colors.transparent` in widgets**
+  `lib/widgets/modern_textfield.dart:65, 110, 131`
+  `lib/screens/home_screen.dart:88, 152, 182, 336, 345`
+  Use `DesignTokens.*` instead.
+
+- [ ] **hardcoded string "Video" in badge**
+  `lib/screens/productaddvideo_screen.dart:244` — should be translatable.
+
+---
+
+## ⏸️ E2E Tests — Pending / Skipped
+
+### Needs test assets
+- [ ] `e2e/playwright_ui/product-video-e2e.spec.ts:58-75` — `test.fixme` T02 + T03: Oversized/long video validation. Blocked: test video assets need to be generated via script first.
+
+### Needs backend implementation
+- [ ] `e2e/playwright_ui/shipping-calculation.spec.ts:211-212` — `test.fixme` local-only item blocks out-of-province checkout. Blocked: backend does not yet enforce `isLocalDeliveryOnly` province check in `create_checkout_session`.
+- [ ] `e2e/playwright_ui/cart-manipulation.spec.ts:36-38` — T01/T02/T03 all `test.skip`. Cart API tests need cart endpoint implementation.
+
+### Needs Stripe CLI / webhook
+- [ ] `e2e/playwright_ui/premium-subscription.spec.ts:1477-1520` — O1/O2/O3 `test.fixme`. Requires active Stripe CLI listener forwarding to dev webhook endpoint.
+
+### Needs seed data
+- [ ] `e2e/playwright_ui/auth-gates.spec.ts:169` — `test.skip`: no products with slug in dev DB. Seed a product with a slug to enable.
+
+### Needs validation API
+- [ ] `e2e/playwright_ui/add-product-e2e.spec.ts:144-186` — T03/T04/T05/T06 `test.fixme`. Missing required fields, negative price, buyer permission, duplicate SKU tests pending.
+
+---
+
+## 🧪 Live Integration Tests (57 known failures — last run 2026-03-16)
+
+All gated by `--dart-define=RUN_ORIGNABASE_LIVE_TESTS=true`.
+
+- [ ] **JWT uid mismatch**: `auth.uid` in JWT = `users:xxx` but `resource.uid` = `xxx` → `isOwner` always false. Fix: `UPDATE users:XXX SET uid = 'users:XXX'` for all 3 test accounts.
+- [ ] **subscriptions collection**: no rules in `rules.ob` → Internal server error. Add `rules subscriptions { read: isAuthenticated() && isOwner(resource.userId); ... }`.
+- [ ] **premium_integration**: `subscriptionStreamProvider` returns null → fix: `expect(subInitial?.isPremium ?? false, isFalse)`.
+- [ ] **coupons_integration**: `/api/coupons/admin_create` returns 404 → endpoint not implemented; wrap in try/catch or skip gracefully.
+- [ ] **smoke test**: `ob.collection('products').add()` requires seller role → 403. Rewrite using e2e-seller token.
+- [ ] **search_integration**: Meilisearch hits missing `productId` field. Verify actual field names returned from Meilisearch index.
+
+---
+
+## 📝 Test Quality Issues
+
+- [ ] `test/live/admin_repository_integration_test.dart:154,163,184,199,214,229,245` — Tests catch all exceptions and assert `isNotNull` on error, masking real failures. Should distinguish expected (404, 403) from unexpected errors.
+- [ ] `test/live/search_integration_test.dart:47` — Hit structure check uses `id || origId || productId` — too permissive; verify actual Meilisearch field names.
+- [ ] `test/live/search_integration_test.dart:51` — Comment `// removed extra expect);` indicates previous syntax error was present; verify test coverage is complete.

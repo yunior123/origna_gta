@@ -137,7 +137,7 @@ class OrignaBaseOrderRepository implements OrderRepository {
   @override
   Future<void> updateShippingCost(
     String orderId,
-    double newShippingCost,
+    int newShippingCostCents,
     String reason,
   ) async {
     await _ob.request(
@@ -145,7 +145,7 @@ class OrignaBaseOrderRepository implements OrderRepository {
       ApiEndpoints.ordersUpdateShipping,
       body: {
         Fields.orderId: orderId,
-        ApiKeys.newShippingCost: newShippingCost,
+        ApiKeys.newShippingCost: newShippingCostCents,
         ApiKeys.reason: reason,
       },
     );

@@ -9,14 +9,15 @@ import {
     BTN_SETTINGS_LABEL,
     BTN_CART,
 } from './flutter-helpers';
+import { TEST_ACCOUNTS } from './api-helpers';
 
 /**
  * REPLICA of integration_test/flows/buyer_flow_test.dart
  */
 
 const TARGET_URL = process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca';
-const BUYER_EMAIL = process.env.E2E_BUYER_EMAIL ?? 'yuniorrodriguezo460@gmail.com';
-const BUYER_PASSWORD = process.env.E2E_BUYER_PASSWORD ?? 'REDACTED_TEST_PASSWORD';
+const BUYER_EMAIL = process.env.E2E_BUYER_EMAIL ?? TEST_ACCOUNTS.BUYER_EMAIL;
+const BUYER_PASSWORD = process.env.E2E_BUYER_PASSWORD ?? TEST_ACCOUNTS.BUYER_PASS;
 
 test.describe('PW IT Replica — Buyer Flow', () => {
     test.setTimeout(360_000);

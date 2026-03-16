@@ -64,7 +64,7 @@ void main() {
         userIdProvider.overrideWithValue('user_123'),
         userAddressesProvider.overrideWith((ref) => Stream.value([])),
         cartItemsProvider.overrideWith((ref) => Stream.value(const [])),
-        cartSubtotalProvider.overrideWith((ref) => items.fold(0.0, (total, i) => total + (i.price * i.quantity))),
+        cartSubtotalProvider.overrideWith((ref) => items.fold(0, (total, i) => total + (i.priceCents * i.quantity))),
         cartWithDetailsProvider.overrideWith((ref) => items),
         subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
         deliveryInstructionsProvider.overrideWith((ref) => ''),

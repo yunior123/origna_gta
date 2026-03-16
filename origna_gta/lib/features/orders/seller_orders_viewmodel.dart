@@ -16,7 +16,7 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
 
   Future<void> updateShippingAndCapture(
     String orderId,
-    double actualShipping,
+    int actualShippingCents,
     String trackingNumber, {
     String? carrier,
     String? carrierNote,
@@ -28,7 +28,7 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
 
     try {
       // Step 1: Update shipping cost
-      await repository.updateShippingCost(orderId, actualShipping, 'Actual carrier cost');
+      await repository.updateShippingCost(orderId, actualShippingCents, 'Actual carrier cost');
 
       // Step 2: Store tracking number if provided
       if (trackingNumber.isNotEmpty) {

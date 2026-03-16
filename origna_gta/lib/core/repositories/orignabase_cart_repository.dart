@@ -64,7 +64,7 @@ class OrignaBaseCartRepository implements CartRepository {
 
     final batch = _ob.batch();
     for (final doc in snapshot.docs) {
-      batch.delete('${Collections.users}/$userId/${Collections.cart}', doc.id);
+      batch.delete('${Collections.users}__${Collections.cart}', doc.id);
     }
     await batch.commit();
   }

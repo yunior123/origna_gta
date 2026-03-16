@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
 import {
   signIn, callOk,
   fullCheckoutAndPay,
-  waitForOrderStatus, getOrder,
+  waitForOrderStatus,
   getSellerAuth,
   TEST_ACCOUNTS,
   writeDoc,
@@ -24,7 +24,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
 
   test.beforeAll(async () => {
     // We need a physical product for returns
-    const auth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+    await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
     productId = 'product_001'; // Organic Maple Syrup (physical)
     const prod = await readDoc(`products/${productId}`);
     productSellerId = parseDoc(prod).sellerId;

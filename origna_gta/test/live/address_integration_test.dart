@@ -80,9 +80,11 @@ void main() {
         expect(addressIds.contains(createdAddressId), isTrue,
             reason: 'Created address should be in the list');
 
-        // Verify address data
-        final createdDoc =
-            addressSnapshot.docs.firstWhere((doc) => doc.id == createdAddressId);
+        // Verify address data — doc.id may include collection prefix (e.g. "addresses:addr_xxx")
+        final createdDoc = addressSnapshot.docs.firstWhere((doc) {
+          final shortId = doc.id.contains(':') ? doc.id.split(':').last : doc.id;
+          return shortId == createdAddressId || doc.id == createdAddressId;
+        });
         expect(createdDoc.data['street'], equals('123 Test St'));
         expect(createdDoc.data['city'], equals('Toronto'));
       },

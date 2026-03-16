@@ -111,7 +111,7 @@ class MockSellerOrdersViewModel extends _i1.Mock
   @override
   _i4.Future<void> updateShippingAndCapture(
     String? orderId,
-    double? actualShipping,
+    int? actualShippingCents,
     String? trackingNumber, {
     String? carrier,
     String? carrierNote,
@@ -119,7 +119,7 @@ class MockSellerOrdersViewModel extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(
               #updateShippingAndCapture,
-              [orderId, actualShipping, trackingNumber],
+              [orderId, actualShippingCents, trackingNumber],
               {#carrier: carrier, #carrierNote: carrierNote},
             ),
             returnValue: _i4.Future<void>.value(),

@@ -31,7 +31,7 @@ abstract class OrderRepository {
   Future<void> updateLastSession(String userId, String sessionId, String orderId);
 
   /// Submits a revised shipping cost for [orderId] with an audit [reason].
-  Future<void> updateShippingCost(String orderId, double newShippingCost, String reason);
+  Future<void> updateShippingCost(String orderId, int newShippingCostCents, String reason);
 
   /// Real-time stream of all orders placed by [userId] in terminal or active payment states.
   Stream<List<models.Order>> watchBuyerOrders(String userId);
