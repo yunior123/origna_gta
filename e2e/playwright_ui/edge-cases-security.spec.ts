@@ -178,7 +178,7 @@ test.describe('3. Order Guards', () => {
     const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
     const error = await callExpectError('update_order_status', {
       orderId: 'e2e_nonexistent_order_status_guard',
-      newStatus: 'processing',
+      newStatus: 'SHIPPED',
     }, adminAuth.idToken);
     expect(error.code).toBe('not-found');
   });
@@ -191,7 +191,7 @@ test.describe('3. Order Guards', () => {
     const buyerAuth = await signIn(BUYER_EMAIL);
     const error = await callExpectError('update_order_status', {
       orderId: 'e2e_buyer_permission_test_order',
-      newStatus: 'processing',
+      newStatus: 'SHIPPED',
     }, buyerAuth.idToken);
     // not-found (order missing) or permission-denied (if real order found and buyer not seller)
     expect(['not-found', 'permission-denied']).toContain(error.code);
@@ -205,7 +205,7 @@ test.describe('3. Order Guards', () => {
 
     await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.BUYER,
-      orderStatus: 'pending', // Must be pending to transition to processing
+      orderStatus: 'PENDING',
       totalAmount: 50.00,
       createdAt: new Date().toISOString(),
       items: [{
@@ -219,7 +219,7 @@ test.describe('3. Order Guards', () => {
 
     const error = await callExpectError('update_order_status', {
       orderId,
-      newStatus: 'processing',
+      newStatus: 'SHIPPED',
     }, sellerAuth.idToken);
     expect(error.code).toBe('permission-denied');
   });

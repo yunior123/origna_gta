@@ -996,3 +996,7 @@ These tests were blocked from running (likely due to upstream test failures in s
 - [ ] **[did-not-run]** `warehouse-multi-location.spec.ts` — `Warehouse: multi-location seller flow › T3: duplicate sellerSku products cannot coexist — one is blocked on write`
 - [ ] **[did-not-run]** `warehouse-multi-location.spec.ts` — `Warehouse: multi-location seller flow › T4: product document has shipFromCity and shipFromProvince after warehouse-based creation`
 - [ ] **[did-not-run]** `warehouse-multi-location.spec.ts` — `Warehouse: multi-location seller flow › T5: inventoryLevels subcollection stores per-warehouse stock; stockQuantity equals sum`
+
+
+-to solve this: // e2e-admin-staging-ui@test.origna.ca has an incompatible legacy user record (500 on login)  . clean the db and seed       
+  again with cleaned data once u are done 

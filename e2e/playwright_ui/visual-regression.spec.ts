@@ -34,7 +34,9 @@ test.describe('Visual Regression', () => {
         await page.goto(TARGET_URL);
         await waitForFlutter(page);
         await ensureLoggedInAsBuyer(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-        const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+        // Flutter 3.41.3: btn-home-settings label is in textContent, not aria-label attribute.
+        // Must use getByRole (Chrome AOM reads textContent) instead of [aria-label=...].
+        const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
         await settingsBtn.waitFor({ state: 'attached', timeout: 120_000 });
         await settingsBtn.click();
         await waitForFlutter(page);

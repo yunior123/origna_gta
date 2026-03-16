@@ -17,6 +17,14 @@ const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
 const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 
 /**
+ * NOTE — Known failure modes (2026-03-16):
+ * 1. [auth] "Authentication required" — All tests that call create_checkout_session fail when
+ *    global-setup hasn't run. This is blocked on playwright.config.ci.ts globalSetup fix.
+ *    Once global-setup is restored, all auth failures here will resolve automatically.
+ * 2. [db-parse-error] SurrealDB double-prefix bug in checkout.rs — `orders:orders:xxx` is
+ *    written instead of `orders:xxx` in some edge paths. This is a backend bug, not a test bug.
+ *    Tracked separately; tests are correct and should pass once the backend fix is deployed.
+ *
  * Error codes OrignaBase returns for checkout validation failures.
  * OrignaBase may return 'not-found', 'invalid-argument', or 'failed-precondition'
  * depending on where validation fails in the pipeline. All mean "rejected".

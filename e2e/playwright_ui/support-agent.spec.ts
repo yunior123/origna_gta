@@ -32,7 +32,8 @@ test.describe('Customer Support Agent', () => {
   });
 
   test('T01 — unauthenticated user redirected to login from /support', async ({ page }) => {
-    await page.goto(`${TARGET_URL}/#/support`);
+    // App uses usePathUrlStrategy() — path-based URLs, NOT hash-based.
+    await page.goto(`${TARGET_URL}/support`);
     await waitForFlutter(page);
     // Should end up on login
     await expect(page).toHaveURL(/login/, { timeout: 15000 });
@@ -40,7 +41,7 @@ test.describe('Customer Support Agent', () => {
 
   test('T02 — authenticated buyer sees category picker', async ({ page }) => {
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASS);
-    await page.goto(`${TARGET_URL}/#/support`);
+    await page.goto(`${TARGET_URL}/support`);
     await waitForFlutter(page);
 
     // Category picker should be visible
@@ -54,7 +55,7 @@ test.describe('Customer Support Agent', () => {
 
   test('T03 — selecting category reveals chat input', async ({ page }) => {
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASS);
-    await page.goto(`${TARGET_URL}/#/support`);
+    await page.goto(`${TARGET_URL}/support`);
     await waitForFlutter(page);
 
     // Click "Other" category
@@ -62,14 +63,14 @@ test.describe('Customer Support Agent', () => {
     await expect(other).toBeVisible({ timeout: 20000 });
     await other.click();
 
-    // Chat input should appear (AI response may take up to 30s)
+    // Chat input should appear after category selection (AI response may take up to 30s)
     const input = flutterByLabel(page, 'support-input');
     await expect(input).toBeVisible({ timeout: 35000 });
   });
 
   test('T04 — user can type and attempt to send message', async ({ page }) => {
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASS);
-    await page.goto(`${TARGET_URL}/#/support`);
+    await page.goto(`${TARGET_URL}/support`);
     await waitForFlutter(page);
 
     const other = flutterByLabel(page, /other/i);

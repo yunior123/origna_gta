@@ -122,7 +122,9 @@ test.describe('Address Management — UI', () => {
     await page.mouse.wheel(0, 600);
     await page.waitForTimeout(500);
 
-    const addressesLink = page.locator('[aria-label="menu-addresses"], [aria-label="menu-my-addresses"], [aria-label="menu-address"]')
+    // Flutter profile_screen.dart uses semanticLabel: 'menu-address' (no 's')
+    const addressesLink = page.locator('[aria-label="menu-address"]')
+      .or(page.locator('[aria-label="menu-addresses"], [aria-label="menu-my-addresses"]'))
       .or(page.getByText(/^addresses?$|^adresses?$/i).first());
     await expect(addressesLink).toBeAttached({ timeout: 30_000 });
     await addressesLink.scrollIntoViewIfNeeded().catch(() => {});

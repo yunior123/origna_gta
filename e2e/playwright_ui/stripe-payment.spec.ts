@@ -3,6 +3,12 @@
  * ======================================
  * Full Stripe Checkout flow against dev OrignaBase with real Stripe test mode.
  * Uses stable products to avoid auth failures from seller-only product creation.
+ *
+ * NOTE: All 7 tests currently fail with "Authentication required" because
+ * global-setup does not pre-warm auth tokens for e2e-buyer@test.origna.ca.
+ * The /api/checkout/session endpoint itself is healthy (returns 422 for bad
+ * payloads, 401 for missing auth — no SurrealDB parse errors observed).
+ * Tests will pass once global-setup pre-warms the buyer token.
  */
 import { test, expect } from '@playwright/test';
 import {

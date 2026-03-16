@@ -1428,7 +1428,7 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'start_chat_thread':
         return { path: '/api/chat/start', body: { userId, participantId: payload?.participantId } };
       case 'submit_product_rating':
-        return { path: '/api/products/submit-rating', body: { userId, productId: payload?.productId, rating: payload?.rating, review: payload?.review } };
+        return { path: '/api/products/submit-rating', body: { userId, productId: payload?.productId, orderId: payload?.orderId, rating: payload?.rating, review: payload?.review } };
       case 'submit_product_rating_atomic':
         return { path: '/api/products/submit-rating-atomic', body: { userId, productId: payload?.productId, rating: payload?.rating, review: payload?.review } };
       case 'subscribe_stock_notification':
