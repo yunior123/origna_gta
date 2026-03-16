@@ -1053,13 +1053,20 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'submit_rating':
         return { path: '/api/products/submit-rating', body: payload };
       case 'ask_question':
-        return { path: '/api/qa/ask-question', body: payload };
+        return { path: '/api/products/questions/ask', body: { userId, ...payload } };
       case 'answer_question':
-        return { path: '/api/qa/answer-question', body: payload };
+        return { path: '/api/products/questions/answer', body: { userId, ...payload } };
       case 'vote_review_helpful':
-        return { path: '/api/products/vote-helpful', body: payload };
+        return { path: '/api/products/review-vote', body: { userId, ...payload } };
       case 'get_seller_metrics':
-        return { path: '/api/users/seller-metrics', body: payload };
+        // seller_metrics is a cron-computed collection — use GraphQL list
+        return {
+          path: '/graphql',
+          body: {
+            query: `query ListDocs($collection: String!, $filters: JSON) { list(collection: $collection, filters: $filters, limit: 50) }`,
+            variables: { collection: 'seller_metrics', filters: { sellerId: { _eq: userId } } },
+          },
+        };
       case 'update_notification_preferences':
         return { path: '/api/users/notification-preferences', body: { userId, ...payload } };
       case 'add_buyer_address':
@@ -1315,23 +1322,24 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'capture_payment':
         return { path: '/api/payments/capture', body: { userId, paymentIntentId: payload?.paymentIntentId } };
       case 'cleanup_fcm_token':
-        return { path: '/api/notifications/cleanup-fcm', body: { userId } };
+        return { path: '/api/users/cleanup-fcm-token', body: { userId } };
       case 'configure_algolia':
         return { path: '/api/admin/configure-algolia', body: { adminId: userId } };
       case 'create_account_link':
-        return { path: '/api/payments/account-link', body: { userId } };
+        return { path: '/api/connect/account-link', body: { userId } };
       case 'create_connect_account':
-        return { path: '/api/payments/create-connect', body: { userId } };
+        return { path: '/api/connect/create-account', body: { userId } };
       case 'create_stripe_login_link':
-        return { path: '/api/payments/stripe-login-link', body: { userId } };
+        // No dedicated endpoint — use connect account-link as fallback
+        return { path: '/api/connect/account-link', body: { userId } };
       case 'create_subscription':
         return { path: '/api/subscriptions/create', body: { userId, ...payload } };
       case 'create_warehouse':
         return { path: '/api/warehouses/create', body: { userId, ...payload } };
       case 'deactivate_license':
-        return { path: '/api/licenses/deactivate', body: { userId, ...payload } };
+        return { path: '/api/digital/deactivate-license', body: { userId, ...payload } };
       case 'deactivate_supplier_platform':
-        return { path: '/api/suppliers/deactivate', body: { userId } };
+        return { path: '/api/admin/deactivate-supplier-platform', body: { userId } };
       case 'delete_message':
         return { path: '/api/chat/delete-message', body: { userId, messageId: payload?.messageId } };
       case 'delete_product_images':
@@ -1339,33 +1347,62 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'delete_warehouse':
         return { path: '/api/warehouses/delete', body: { userId, warehouseId: payload?.warehouseId } };
       case 'export_my_data':
-        return { path: '/api/users/export-data', body: { userId } };
+        return { path: '/api/admin/export-data', body: { userId } };
       case 'generate_book_download_session':
-        return { path: '/api/downloads/book-session', body: { userId, productId: payload?.productId } };
+        return { path: '/api/digital/book-download', body: { userId, productId: payload?.productId } };
       case 'generate_software_download_session':
-        return { path: '/api/downloads/software-session', body: { userId, productId: payload?.productId } };
+        return { path: '/api/digital/software-download', body: { userId, productId: payload?.productId } };
       case 'get_address_suggestions':
         return { path: '/api/addresses/suggestions', body: { query: payload?.query } };
       case 'get_chat_threads':
         return { path: '/api/chat/threads', body: { userId, ...payload } };
       case 'get_connect_account_status':
-        return { path: '/api/payments/connect-status', body: { userId } };
+        return { path: '/api/connect/status', body: { userId } };
       case 'get_or_create_chat':
         return { path: '/api/chat/get-or-create', body: { userId, participantId: payload?.participantId } };
-      case 'get_order_detail':
-        return { path: '/api/orders/detail', body: { userId, orderId: payload?.orderId } };
-      case 'get_orders':
-        return { path: '/api/orders/list', body: { userId, ...payload } };
+      case 'get_order_detail': {
+        // No REST endpoint — use GraphQL get
+        const rawOid = String(payload?.orderId ?? '');
+        const oid = rawOid.includes(':') ? rawOid.split(':', 2)[1] : rawOid;
+        return {
+          path: '/graphql',
+          body: {
+            query: `query GetDoc($collection: String!, $id: String!) { get(collection: $collection, id: $id) }`,
+            variables: { collection: 'orders', id: oid },
+          },
+        };
+      }
+      case 'get_orders': {
+        // No REST endpoint — use GraphQL list with buyerId filter (field is 'buyerId' in SurrealDB)
+        const filters: Record<string, any> = { buyerId: { _eq: userId } };
+        if (payload?.status) {
+          const s = String(payload.status).toLowerCase();
+          if (s === 'completed' || s === 'delivered') {
+            filters.status = { _in: ['delivered', 'DELIVERED', 'completed', 'COMPLETED'] };
+          } else if (s === 'cancelled' || s === 'canceled') {
+            filters.status = { _in: ['cancelled', 'CANCELLED', 'canceled'] };
+          } else {
+            filters.status = { _eq: payload.status };
+          }
+        }
+        return {
+          path: '/graphql',
+          body: {
+            query: `query ListOrders($collection: String!, $filters: JSON, $limit: Int) { list(collection: $collection, filters: $filters, limit: $limit) }`,
+            variables: { collection: 'orders', filters, limit: payload?.limit ?? 50 },
+          },
+        };
+      }
       case 'get_payment_providers':
-        return { path: '/api/payments/providers', body: { ...payload } };
+        return { path: '/api/payments/providers/list', body: { ...payload } };
       case 'get_product_questions':
-        return { path: '/api/qa/list', body: { productId: payload?.productId, ...payload } };
+        return { path: '/api/products/questions/list', body: { productId: payload?.productId, ...payload } };
       case 'get_product_ratings_paginated':
         return { path: '/api/products/ratings', body: { productId: payload?.productId, page: payload?.page ?? 1, limit: payload?.limit ?? 20 } };
       case 'get_provider_status':
-        return { path: '/api/payments/provider-status', body: { providerId: payload?.providerId } };
+        return { path: '/api/payments/providers/status', body: { providerId: payload?.providerId } };
       case 'get_seller_warehouses':
-        return { path: '/api/warehouses/seller-list', body: { userId, ...payload } };
+        return { path: '/api/warehouses/list', body: { userId, ...payload } };
       case 'get_subscription_status':
         return { path: '/api/subscriptions/status', body: { userId, subscriptionId: payload?.subscriptionId } };
       case 'mark_messages_read':
@@ -1383,7 +1420,7 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'send_chat_message':
         return { path: '/api/chat/send', body: { userId, threadId: payload?.threadId, message: payload?.message } };
       case 'send_message':
-        return { path: '/api/messages/send', body: { userId, ...payload } };
+        return { path: '/api/chat/send', body: { userId, ...payload } };
       case 'start_chat_thread':
         return { path: '/api/chat/start', body: { userId, participantId: payload?.participantId } };
       case 'submit_product_rating':
@@ -1395,7 +1432,7 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'suspend_seller':
         return { path: '/api/admin/suspend-seller', body: { adminId: userId, sellerId: payload?.sellerId, reason: payload?.reason } };
       case 'unsubscribe_email':
-        return { path: '/api/users/unsubscribe', body: { email: payload?.email, token: payload?.token } };
+        return { path: '/api/admin/unsubscribe-email', body: { email: payload?.email, token: payload?.token } };
       case 'unsubscribe_stock_notification':
         return { path: '/api/products/stock-notify/unsubscribe', body: { userId, productId: payload?.productId, variantKey: payload?.variantKey } };
       case 'unsuspend_seller':
@@ -1405,7 +1442,7 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'update_payment_provider':
         return { path: '/api/payments/update-provider', body: { userId, ...payload } };
       case 'update_shipping_cost':
-        return { path: '/api/shipping/update', body: { userId, ...payload } };
+        return { path: '/api/orders/update-shipping', body: { userId, ...payload } };
       case 'update_user_roles':
         return { path: '/api/admin/update-roles', body: { adminId: userId, targetUserId: payload?.userId ?? payload?.targetUserId, roles: payload?.roles } };
       case 'update_warehouse':
@@ -1425,7 +1462,7 @@ export async function callCallable(fn: string, data: any, token: string, timeout
       case 'verify_cart_prices':
         return { path: '/api/cart/verify-prices', body: { userId, cartItems: payload?.cartItems } };
       case 'verify_license':
-        return { path: '/api/licenses/verify', body: { licenseKey: payload?.licenseKey, email: payload?.email } };
+        return { path: '/api/digital/verify-license', body: { licenseKey: payload?.licenseKey, email: payload?.email } };
 
       default:
         return null;
@@ -1446,6 +1483,17 @@ export async function callCallable(fn: string, data: any, token: string, timeout
           sessionId,
           checkoutUrl,
         };
+      }
+      case 'get_orders': {
+        // GraphQL list response: { data: { list: [...] } } or already parsed
+        const rawList = body?.data?.list ?? body?.orders ?? [];
+        const orders = Array.isArray(rawList) ? rawList : (typeof rawList === 'string' ? JSON.parse(rawList) : []);
+        return { success: true, orders };
+      }
+      case 'get_order_detail': {
+        // GraphQL get response: { data: { get: {...} } }
+        const order = body?.data?.get ?? body;
+        return { success: true, ...order };
       }
       case 'get_products_paginated':
       case 'get_seller_products_paginated':
@@ -1540,7 +1588,9 @@ export async function callCallable(fn: string, data: any, token: string, timeout
  * on rate-limit errors — those fail fast so tests don't hang.
  */
 export async function callOk(fn: string, data: any, token: string): Promise<any> {
-  const MAX_ATTEMPTS = 5;
+  const MAX_ATTEMPTS = 7;
+  // Exponential backoff for rate limits: 15, 30, 60, 90, 90, 90s
+  const RATE_LIMIT_WAITS = [15_000, 30_000, 60_000, 90_000, 90_000, 90_000];
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const body = await callCallable(fn, data, token);
     if (body.error) {
@@ -1551,7 +1601,7 @@ export async function callOk(fn: string, data: any, token: string): Promise<any>
         const is429 = status === 429 || errMsg.includes('429') || errMsg.toLowerCase().includes('too many') || errMsg.toLowerCase().includes('rate limit') || errMsg.toLowerCase().includes('duplicate order');
         const is500 = status === 500;
         if (is500 || is429) {
-          const wait = is429 ? 8_000 : 5_000;
+          const wait = is429 ? (RATE_LIMIT_WAITS[attempt] ?? 90_000) : 5_000;
           console.log(`⏳ ${is429 ? 'Rate limit' : 'Server error'} on ${fn}, waiting ${wait / 1000}s... (attempt ${attempt + 1}/${MAX_ATTEMPTS})`);
           await new Promise(r => setTimeout(r, wait));
           continue;
