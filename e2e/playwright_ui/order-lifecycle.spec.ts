@@ -9,24 +9,22 @@ import {
   signIn, callOk, callExpectError,
   fullCheckoutAndPay,
   waitForOrderStatus, getOrder,
-  getTestProduct, getSellerAuth,
-  TEST_ACCOUNTS,
+  getSellerAuth,
+  TEST_ACCOUNTS, TEST_UIDS,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 
+// Use the stable seller product — always exists in dev, sold by SELLER (not BUYER).
+// Avoids create_product_atomic calls in beforeAll which require a live seller token.
+const STABLE_PRODUCT_ID = 'e2e_product_test_seller';
+const STABLE_SELLER_UID = TEST_UIDS.SELLER;
+
 test.describe('Order Lifecycle', () => {
   test.setTimeout(180_000);
 
-  let productId: string;
-  let productSellerId: string;
-
-  test.beforeAll(async () => {
-    const auth = await signIn(BUYER_EMAIL);
-    const product = await getTestProduct(auth.idToken, auth.localId);
-    productId = product.id;
-    productSellerId = product.sellerId;
-  });
+  const productId: string = STABLE_PRODUCT_ID;
+  const productSellerId: string = STABLE_SELLER_UID;
 
   test('Order created after payment has confirmed status', async ({ page }) => {
     // qty=1 — unique per test to avoid 60s order dedup

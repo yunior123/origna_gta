@@ -32,13 +32,11 @@ test.describe('1. Stock Notification Subscribe/Unsubscribe', () => {
   test.setTimeout(60_000);
 
   let buyerToken: string;
-  let _buyerUid: string;
   let productId: string;
 
   test.beforeAll(async () => {
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     buyerToken = auth.idToken;
-    _buyerUid = auth.localId;
     // product_oos_001 has no variants — use product-level subscriptions throughout
     productId = 'product_oos_001';
   });

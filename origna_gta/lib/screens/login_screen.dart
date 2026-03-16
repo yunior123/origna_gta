@@ -771,7 +771,8 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton>
     return Semantics(
       button: true,
       enabled: !isDisabled,
-      label: widget.label,
+      // 'login_google_button' is the stable E2E selector; widget.label is the human-readable text.
+      label: 'login_google_button',
       excludeSemantics: true,
       child: GestureDetector(
         onTapDown: isDisabled ? null : (_) => _scaleController.forward(),

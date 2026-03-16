@@ -21,7 +21,6 @@ import {
 import {
   waitForFlutter,
   requireWebApp,
-  checkSemantics,
 } from './flutter-helpers';
 
 // ════════════════════════════════════════════════════════════════════

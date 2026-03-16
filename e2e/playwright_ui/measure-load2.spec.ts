@@ -12,7 +12,7 @@ test('measure with global setup', async ({ page }) => {
   console.log(`1-domContent: ${Date.now()-t0}ms`);
   
   // Exactly what smoke test does
-  const h = await page.waitForFunction(() => !!document.querySelector('flt-glass-pane'), {timeout: 90000});
+  await page.waitForFunction(() => !!document.querySelector('flt-glass-pane'), {timeout: 90000});
   console.log(`1-flt-glass-pane: ${Date.now()-t0}ms`);
   
   await page.locator('flt-semantics-placeholder').first().waitFor({state:'attached', timeout: 5000}).catch(() => {});

@@ -15,12 +15,11 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { test, expect, Page } from '@playwright/test';
+import { test, Page } from '@playwright/test';
 import {
   waitForFlutter,
   ensureLoggedInAsAdmin,
   ensureLoggedInAsBuyer,
-  clearServiceWorkers,
   requireWebApp,
 } from './flutter-helpers';
 import { TEST_ACCOUNTS } from './api-helpers';
@@ -337,7 +336,7 @@ test.describe('Design Token Verification', () => {
     await goTo(page, '/');
 
     // Bottom navigation should be visible
-    const nav = page.locator('[aria-label="bottom-nav"], [role="navigation"]').first();
+    page.locator('[aria-label="bottom-nav"], [role="navigation"]').first();
     const cartBtn = page.getByRole('button', { name: /cart|panier/i }).first();
     const hasCart = await cartBtn.isVisible({ timeout: 5000 }).catch(() => false);
     console.log(`  ${hasCart ? '✅' : '❌'} Cart button in bottom nav`);

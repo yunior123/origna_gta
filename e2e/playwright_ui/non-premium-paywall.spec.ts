@@ -128,7 +128,8 @@ test.describe('Non-Premium Paywall', () => {
         const buyerAuth = await signIn(BUYER_EMAIL, BUYER_PASS);
         const result = await callCallable(
           'get_or_create_chat',
-          { otherUserId: SELLER_BARE_ID },
+          // productId is required by OrignaBase before the premium gate check is reached
+          { otherUserId: SELLER_BARE_ID, productId: PRODUCT_ID },
           buyerAuth.idToken,
         );
         // Non-premium user should get a premium/permission error
@@ -151,7 +152,8 @@ test.describe('Non-Premium Paywall', () => {
       const buyerAuth = await signIn(BUYER_EMAIL, BUYER_PASS);
       const result = await callCallable(
         'get_or_create_chat',
-        { otherUserId: SELLER_BARE_ID },
+        // productId is required by OrignaBase before the premium gate check is reached
+        { otherUserId: SELLER_BARE_ID, productId: PRODUCT_ID },
         buyerAuth.idToken,
       );
       const errMsg2 = (result.error?.message || '').toLowerCase();
@@ -177,7 +179,8 @@ test.describe('Non-Premium Paywall', () => {
     const buyerAuth = await signIn(BUYER_EMAIL, BUYER_PASS);
     const chatResult = await callCallable(
       'get_or_create_chat',
-      { otherUserId: SELLER_BARE_ID },
+      // productId is required by OrignaBase before the premium gate check is reached
+      { otherUserId: SELLER_BARE_ID, productId: PRODUCT_ID },
       buyerAuth.idToken,
     );
 

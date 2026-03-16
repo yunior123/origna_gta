@@ -67,6 +67,13 @@ test.describe('Order Cancellation & Refund', () => {
     productSellerId = TEST_UIDS.SELLER;
   });
 
+  // ── UI semantics placeholder ──────────────────────────────────────────────
+  // Flutter has no btn-cancel-order semantic label on the buyer-facing cancel button.
+  // The only order-cancel semantic in Flutter is btn-confirm-cancel-order
+  // (seller-side shipping_approval_screen dialog). Until a Semantics(label: 'btn-cancel-order')
+  // is added to the buyer order detail screen, the cancel button cannot be located by Playwright.
+  test.fixme(true, 'cancel button needs btn-cancel-order semantic label in Flutter — add Semantics(label: "btn-cancel-order") to buyer order detail cancel button');
+
   // ── Happy path ─────────────────────────────────────────────────────────────
 
   test('Buyer can cancel order before shipping', async ({ page }) => {

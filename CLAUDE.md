@@ -24,3 +24,6 @@ Flutter e-commerce app. Backend: OrignaBase (Rust VPS, **Firebase is COMPLETELY 
 - `lib/utils/design_tokens.dart` — all design constants
 - `lib/core/schema_constants.dart` — field names, routes, constants
 - `e2e/playwright.config.dev.ts` — E2E config (workers: 2, 8GB constraint)
+
+Rules:
+-use many subagents in each session to keep main context window as clean as possible. more than 10+ agents

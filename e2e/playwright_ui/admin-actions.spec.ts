@@ -13,7 +13,7 @@ import {
   navigateHome,
   BTN_SETTINGS,
 } from './flutter-helpers';
-import { signIn, callOk, callCallable, TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';
+import { signIn, callCallable, TEST_ACCOUNTS, WEB_APP_URL } from './api-helpers';
 
 const TARGET_URL = process.env.E2E_TARGET_URL ?? WEB_APP_URL;
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? TEST_ACCOUNTS.ADMIN_EMAIL;

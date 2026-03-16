@@ -107,22 +107,25 @@ test.describe('Trending Products flows', () => {
         await waitForFlutter(page);
 
         // 6. Verify premium UI shows the notification prefs (switch is visible → isPremium=true).
-        // Flutter Web: Semantics(label: 'switch-notify-trending') creates an flt-semantics node
-        // with aria-label. The inner Switch.adaptive creates a child flt-semantics with role="switch"
-        // and aria-checked. getByRole('switch', { name }) fails because the label and role are on
-        // separate DOM nodes. Use the inner [role="switch"] descendant of the labelled container.
+        // Flutter Web: Semantics(label: 'switch-notify-trending') wraps a SizedBox that wraps
+        // Switch.adaptive. This creates TWO separate flt-semantics DOM nodes:
+        //   - parent: aria-label="switch-notify-trending" (no role)
+        //   - child:  role="switch" + aria-checked (no label)
+        // Selectors that require both attributes on the same element will NEVER match.
         //
+        // Strategy: find the labelled container, then locate the [role="switch"] descendant inside it.
         // The switch is below the fold — scroll progressively until it appears in Flutter's
         // accessibility tree (Flutter only adds off-screen Semantics nodes when scrolled into view).
-        // Flutter merges the Semantics label and Switch role onto the SAME DOM element.
-        // Selector: [role="switch"][aria-label^="switch-notify-trending"] (same element, not descendant)
-        const trendingSwitch = page.locator('[role="switch"][aria-label^="switch-notify-trending"]').first();
+        const trendingSwitchContainer = page.locator('[aria-label^="switch-notify-trending"]').first();
+        const trendingSwitch = trendingSwitchContainer.locator('[role="switch"]').first();
+        // Scroll until the labelled container is in Flutter's accessibility tree.
         let switchFound = false;
         for (let i = 0; i < 25 && !switchFound; i++) {
             await page.mouse.wheel(0, 200);
             await page.waitForTimeout(1_200);
-            switchFound = await trendingSwitch.isVisible({ timeout: 300 }).catch(() => false);
+            switchFound = await trendingSwitchContainer.isVisible({ timeout: 300 }).catch(() => false);
         }
+        await expect(trendingSwitchContainer).toBeVisible({ timeout: 5_000 });
         await expect(trendingSwitch).toBeVisible({ timeout: 5_000 });
         // Verify it starts unchecked (notifyTrending: false from beforeEach)
         await expect(trendingSwitch).toHaveAttribute('aria-checked', 'false');

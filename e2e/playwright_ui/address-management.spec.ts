@@ -140,8 +140,9 @@ test.describe('Address Management — UI', () => {
     await page.waitForURL(/\/profile/i, { timeout: 30_000 }).catch(() => {});
     await waitForFlutter(page, 30_000);
 
+    // Flutter profile_screen.dart uses semanticLabel: 'menu-address' (no 's')
     const addressesLinkAttached = await page
-      .locator('[aria-label="menu-addresses"], [aria-label="menu-my-addresses"]')
+      .locator('[aria-label="menu-address"], [aria-label="menu-addresses"], [aria-label="menu-my-addresses"]')
       .waitFor({ state: 'attached', timeout: 10_000 })
       .catch(() => false);
 
@@ -150,7 +151,7 @@ test.describe('Address Management — UI', () => {
       return;
     }
 
-    await page.locator('[aria-label="menu-addresses"], [aria-label="menu-my-addresses"]').click();
+    await page.locator('[aria-label="menu-address"], [aria-label="menu-addresses"], [aria-label="menu-my-addresses"]').click();
 
     const addBtn = page.locator('[aria-label^="btn-add-address"]')
       .or(page.getByRole('button', { name: /add address|ajouter/i }).first());

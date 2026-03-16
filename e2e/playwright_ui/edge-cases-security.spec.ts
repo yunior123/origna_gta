@@ -51,7 +51,7 @@ function rawCheckoutPayload(buyerUid: string, productId: string, quantity: numbe
       street: '100 King St W',
       apartment: '',
       city: 'Toronto',
-      state: 'ON',
+      province: 'ON',
       postalCode: 'M5X 1A9',
       country: 'Canada',
       phoneNumber: '+14165550000',
@@ -364,7 +364,7 @@ test.describe('6. Non-Canadian Address Rejected', () => {
       street: '123 Main St',
       apartment: '',
       city: 'New York',
-      state: 'NY',
+      province: 'NY',
       postalCode: '10001',
       country: 'United States',
       phoneNumber: '+12125550000',
@@ -475,7 +475,7 @@ test.describe('8. Permission Isolation', () => {
     const orderId = `test_order_buyer_perms_${Date.now()}`;
     await writeDoc(`orders/${orderId}`, {
       userId: TEST_UIDS.BUYER,
-      orderStatus: 'pending', // Must be pending to transition to processing
+      orderStatus: 'PENDING',
       totalAmount: 10.00,
       createdAt: new Date().toISOString(),
       items: [{
@@ -489,7 +489,7 @@ test.describe('8. Permission Isolation', () => {
 
     const error = await callExpectError('update_order_status', {
       orderId,
-      newStatus: 'processing',
+      newStatus: 'SHIPPED',
     }, buyerAuth.idToken);
 
     // Buyer is neither seller nor admin → permission-denied

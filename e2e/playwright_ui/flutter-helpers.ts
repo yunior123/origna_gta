@@ -16,9 +16,8 @@
  *  - Admin tabs            → locator('[aria-label="admin-tab-sellers"]') etc.
  */
 
-import { Page, Locator, test, expect } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
 import {
-    WEB_APP_URL,
     ensureOrignaBaseUiAccount,
     useOrignaBaseAuth,
 } from './api-helpers';

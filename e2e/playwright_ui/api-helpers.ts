@@ -126,7 +126,9 @@ export const TEST_ACCOUNTS = {
 };
 
 export const TEST_UIDS = {
-  ADMIN: 'users:9w0xa6lkt9f4oglea65c',
+  // These must match the JWT `sub` of the corresponding e2e accounts in dev SurrealDB.
+  // If the accounts are recreated, update these AND the sellerId of all e2e stable products.
+  ADMIN: 'users:3y681c490rcvrlcm1wwz',
   SELLER: 'users:lvoqmdam21bhaxd2fjgi',
   BUYER: 'users:itdb9cyp3nu45owy4bo1',
 };
@@ -1126,6 +1128,7 @@ export async function callCallable(fn: string, data: any, token: string, timeout
             page: payload?.page ?? 1,
             limit: payload?.limit ?? 20,
             category: payload?.category,
+            subcategory: payload?.subcategory,
             sellerId: payload?.sellerId,
             orderBy: remapSort(payload?.sortBy) ?? payload?.orderBy,
             orderDirection:
@@ -1135,6 +1138,8 @@ export async function callCallable(fn: string, data: any, token: string, timeout
                   ? 'desc'
                   : (payload?.orderDirection ?? 'desc'),
             startAfter: payload?.startAfter,
+            minPriceCents: payload?.minPriceCents,
+            maxPriceCents: payload?.maxPriceCents,
           },
         };
       case 'get_seller_products_paginated':
@@ -1363,6 +1368,8 @@ export async function callCallable(fn: string, data: any, token: string, timeout
           userId,
           otherUserId: payload?.otherUserId ?? payload?.other_user_id ?? payload?.participantId,
           other_user_id: payload?.otherUserId ?? payload?.other_user_id ?? payload?.participantId,
+          // product_id required by OrignaBase endpoint before premium gate check is reached
+          product_id: payload?.productId ?? payload?.product_id ?? null,
         }};
       case 'get_order_detail': {
         // No REST endpoint — use GraphQL get
@@ -1522,6 +1529,13 @@ export async function callCallable(fn: string, data: any, token: string, timeout
           nextCursor: body?.nextCursor ?? body?.next_cursor ?? null,
           hasMore: Boolean(body?.hasMore ?? body?.has_more),
           totalFetched: body?.totalFetched ?? body?.total_fetched ?? 0,
+        };
+      case 'toggle_favorite':
+        // Backend returns { success, favorite } — normalize to { success, favorited }
+        // so callers can rely on the stable `favorited` field name.
+        return {
+          success: Boolean(body?.success),
+          favorited: body?.favorited ?? body?.favorite ?? false,
         };
       default:
         return body;
@@ -2327,7 +2341,7 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
 
   if (useOrignaBaseAuth()) {
     // Check if stable test products already exist before creating new ones.
-    // createDummyProduct calls create_product_atomic every time which hits rate limits.
+    // createDummyProduct with writeDoc uses the stable productId (never random IDs).
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
     const obProducts: DiscoveredProduct[] = [];
     for (const { id, sellerUid, prefix, country } of STABLE_TEST_PRODUCTS) {
@@ -2335,11 +2349,16 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
       try {
         const fields = await getDoc(`products/${id}`, adminAuth.idToken);
         if (fields && (fields.lifecycleStatus === 'active' || fields.status === 'active') && (fields.stockQuantity ?? 0) > 0) {
+          // Auto-fix sellerId if it doesn't match expected e2e account (accounts may be recreated).
+          if (fields.sellerId !== sellerUid) {
+            await writeDoc(`products/${id}`, toSurrealDBFields({ sellerId: sellerUid }), adminAuth.idToken, true);
+            fields.sellerId = sellerUid;
+          }
           product = {
             id,
             name: fields.name || `E2E Product ${prefix}`,
             price: fields.priceCents ? fields.priceCents / 100 : (fields.price ?? 0),
-            sellerId: fields.sellerId || sellerUid,
+            sellerId: sellerUid,
             stockQuantity: fields.stockQuantity ?? 100,
             lifecycleStatus: 'active',
           };
@@ -2389,12 +2408,18 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
           }
         }
 
+        // Auto-fix sellerId if it doesn't match expected e2e account (accounts may be recreated).
+        if (fields.sellerId !== sellerUid) {
+          await writeDoc(`products/${id}`, toSurrealDBFields({ sellerId: sellerUid }), adminAuth.idToken, true);
+          fields.sellerId = sellerUid;
+        }
+
         if ((fields.stockQuantity ?? 0) > 0) {
           product = {
             id,
             name: fields.name || `E2E Product ${prefix}`,
             price: fields.price || 0,
-            sellerId: fields.sellerId || sellerUid,
+            sellerId: sellerUid,
             stockQuantity: fields.stockQuantity,
             lifecycleStatus: 'active',
           };
@@ -2494,19 +2519,24 @@ export async function createDummyProduct(
     `https://picsum.photos/seed/${prefix}b/400/400`,
   ];
 
+  // For OrignaBase auth, use writeDoc with the stable productId (same as non-OB path).
+  // create_product_atomic generates a random ID and ignores productId, breaking stable-ID lookups.
   if (useOrignaBaseAuth()) {
-    const sellerAuth = sellerUid === TEST_UIDS.ADMIN
-      ? await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS)
-      : await signIn(TEST_ACCOUNTS.SELLER_EMAIL, TEST_ACCOUNTS.SELLER_PASS);
-    const result = await callOk('create_product_atomic', {
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    const id = productId ?? `test_dummy_${prefix}_${Date.now()}`;
+    const productData = {
+      sellerId: sellerUid,
+      sellerSku: `DUMMY-${prefix}-STABLE`,
       name: `Dummy Test Product ${prefix}`,
       title: `Dummy Test Product ${prefix}`,
       description: 'A high-quality test product created for E2E testing purposes.',
+      priceCents: 1599,
       price: 15.99,
+      lifecycleStatus: 'active',
       stockQuantity: 100,
       categoryId: 1,
-      lifecycleStatus: 'active',
       imageUrls: sampleImageUrls,
+      keywords: ['dummy', prefix],
       sellerAddress: customAddress || {
         street: '100 University Ave',
         city: 'Toronto',
@@ -2515,18 +2545,14 @@ export async function createDummyProduct(
         country: 'Canada',
       },
       isInternational: customAddress ? customAddress.country !== 'Canada' : false,
-      shippingConfig: {
-        standardDelivery: true,
-        expressDelivery: false,
-        weightKg: 1,
-      },
-    }, sellerAuth.idToken);
-
+    };
+    const ok = await writeDoc(`products/${id}`, toSurrealDBFields(productData), adminAuth.idToken, true);
+    if (!ok) throw new Error(`createDummyProduct: writeDoc failed for ${id}`);
     return {
-      id: result.productId,
-      name: `Dummy Test Product ${prefix}`,
-      price: 15.99,
-      sellerId: sellerAuth.localId,
+      id,
+      name: productData.name,
+      price: productData.price,
+      sellerId: sellerUid,
       stockQuantity: 100,
       lifecycleStatus: 'active',
     };
