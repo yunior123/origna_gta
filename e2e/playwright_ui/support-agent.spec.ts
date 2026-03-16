@@ -87,9 +87,11 @@ test.describe('Customer Support Agent', () => {
   test('T05 — Profile → Get Help navigates to support screen', async ({ page }) => {
     await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASS);
 
-    // Navigate to profile via bottom nav
-    const profileNav = flutterByLabel(page, 'nav-profile');
-    await expect(profileNav).toBeVisible({ timeout: 15000 });
+    // Navigate to profile via settings button (home screen nav)
+    await page.goto(`${TARGET_URL}`);
+    await waitForFlutter(page);
+    const profileNav = page.getByRole('button', { name: 'btn-home-settings' }).first();
+    await expect(profileNav).toBeAttached({ timeout: 15000 });
     await profileNav.click();
     await waitForFlutter(page);
 

@@ -108,27 +108,27 @@ export const STRIPE_CARD = {
 // ════════════════════════════════════════════════════════════════════
 
 export const TEST_ACCOUNTS = {
-  ADMIN_EMAIL: 'yr62813@gmail.com',               // roles: buyer+seller+admin, chargesEnabled, onboardingCompleted
+  ADMIN_EMAIL: 'e2e-admin@test.origna.ca',         // roles: buyer+seller+admin, chargesEnabled, onboardingCompleted
   ADMIN_PASS: 'REDACTED_TEST_PASSWORD',
-  SELLER_EMAIL: 'yuniorrodriguezo4601@yahoo.com',  // roles: buyer+seller, chargesEnabled
+  SELLER_EMAIL: 'e2e-seller@test.origna.ca',       // roles: buyer+seller, chargesEnabled
   SELLER_PASS: 'REDACTED_TEST_PASSWORD',
-  BUYER_EMAIL: 'yuniorrodriguezo460@gmail.com',    // roles: buyer+admin, NOT a seller-approved account
+  BUYER_EMAIL: 'e2e-buyer@test.origna.ca',         // roles: buyer
   BUYER_PASS: 'REDACTED_TEST_PASSWORD',
-  BUYER2_EMAIL: 'yuniorrodriguezo4601@yahoo.com',  // Seller account; also has buyer role — used for adversarial tests
+  BUYER2_EMAIL: 'e2e-seller@test.origna.ca',       // Seller account; also has buyer role — used for adversarial tests
   BUYER2_PASS: 'REDACTED_TEST_PASSWORD',
-  // Aliases for compatibility with emulator-based spec files
-  SELLER1_EMAIL: 'yuniorrodriguezo4601@yahoo.com',
-  SELLER2_EMAIL: 'yr62813@gmail.com',             // Admin also has seller role — acts as second seller in dev
-  BUYER1_EMAIL: 'yuniorrodriguezo460@gmail.com',
-  BUYER3_EMAIL: 'yuniorrodriguezo460@gmail.com',   // Same as buyer1 in dev
-  SUSPENDED_EMAIL: 'yuniorrodriguezo460@gmail.com', // No real suspended user in dev — tests check error codes
-  NON_ONBOARDED_SELLER: 'yuniorrodriguezo460@gmail.com', // Buyer has no seller role — acts as non-onboarded
+  // Aliases for compatibility with spec files
+  SELLER1_EMAIL: 'e2e-seller@test.origna.ca',
+  SELLER2_EMAIL: 'e2e-admin@test.origna.ca',       // Admin also has seller role — acts as second seller in dev
+  BUYER1_EMAIL: 'e2e-buyer@test.origna.ca',
+  BUYER3_EMAIL: 'e2e-buyer@test.origna.ca',        // Same as buyer1 in dev
+  SUSPENDED_EMAIL: 'e2e-buyer@test.origna.ca',     // No real suspended user in dev — tests check error codes
+  NON_ONBOARDED_SELLER: 'e2e-buyer@test.origna.ca', // Buyer has no seller role — acts as non-onboarded
 };
 
 export const TEST_UIDS = {
-  ADMIN: 'RU9MI8vYFkQCakMrJfG8iGTuc012',
-  SELLER: 'eVxwL5SfEATPnw1zhWYaUdGx8MD2',
-  BUYER: 'smy7bq6BXfeTuXKSTZJoOQ9a6K42',
+  ADMIN: 'users:9w0xa6lkt9f4oglea65c',
+  SELLER: 'users:lvoqmdam21bhaxd2fjgi',
+  BUYER: 'users:itdb9cyp3nu45owy4bo1',
 };
 
 const _orignabaseUiAccountCache = new Map<string, { email: string; password: string }>();
@@ -1668,13 +1668,22 @@ function normalizeErrorCode(error: any): { code: string; message: string } {
     401: 'unauthenticated',
     403: 'permission-denied',
     404: 'not-found',
+    405: 'unimplemented',
     409: 'already-exists',
+    410: 'not-found',
     422: 'invalid-argument',
     429: 'resource-exhausted',
     500: 'internal',
+    502: 'unavailable',
     503: 'unavailable',
+    504: 'deadline-exceeded',
   };
-  const rawCode = error.code || error.status;
+  // OrignaBase (Rust) may return { "code": "permission_denied", "message": "..." }
+  // Extract the code from the body first, then fall back to status code.
+  const bodyCode = error.code;
+  const rawCode = typeof bodyCode === 'string' && isNaN(Number(bodyCode))
+    ? bodyCode
+    : (bodyCode ?? error.status);
   const code = typeof rawCode === 'number'
     ? (HTTP_TO_CODE[rawCode] ?? String(rawCode))
     : (STATUS_TO_CODE[rawCode] ?? rawCode?.toLowerCase()?.replace(/_/g, '-') ?? 'unknown');
