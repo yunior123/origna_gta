@@ -187,6 +187,15 @@ function isStableMappedAccount(email: string): boolean {
   ].map(v => v.toLowerCase()).includes(normalized);
 }
 
+/**
+ * Resolve the stable UI alias email for a test account without touching the account state.
+ * Safe to call even when email_verified=false (unlike ensureOrignaBaseUiAccount which repairs it).
+ */
+export function resolveUiEmail(email: string): string {
+  if (!isStableMappedAccount(email)) return email.trim().toLowerCase();
+  return uiAliasForRoles(rolesForEmail(email.trim().toLowerCase()));
+}
+
 function bootstrapAdminEmail(): string {
   const explicit = process.env.E2E_ORIGNABASE_ADMIN_EMAIL?.trim();
   if (explicit) return explicit.toLowerCase();
@@ -204,7 +213,7 @@ function hasRequiredRoles(actualRoles: string[] | undefined, requiredRoles: stri
   return requiredRoles.every(role => actual.has(role.toLowerCase()));
 }
 
-async function getBootstrapAdminAccessToken(): Promise<string> {
+export async function getBootstrapAdminAccessToken(): Promise<string> {
   if (_orignabaseBootstrapAdminToken !== undefined && _orignabaseBootstrapAdminToken !== null) {
     return _orignabaseBootstrapAdminToken;
   }
@@ -298,12 +307,16 @@ function getStripeCliLiveApiKey(): string | null {
 }
 
 async function fetchWithRetry(url: string, init: RequestInit, attempts = 4): Promise<Response> {
+  // Exponential backoff for 429 rate limits — OrignaBase rate windows are 10-60s.
+  const delays429 = [5_000, 10_000, 20_000, 30_000];
   let lastResponse: Response | null = null;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const response = await fetch(url, init);
     lastResponse = response;
     if (response.status !== 429) return response;
-    await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+    const wait = delays429[attempt] ?? 30_000;
+    console.log(`⏳ Rate limit on ${url}, waiting ${wait / 1000}s... (attempt ${attempt + 1}/${attempts})`);
+    await new Promise(resolve => setTimeout(resolve, wait));
   }
   return lastResponse!;
 }
@@ -579,10 +592,24 @@ export async function setOrignaBaseUserEmailVerified(
       }),
     },
   );
-  const patchBody = await patchRes.json().catch(() => ({} as any));
-  if (!patchRes.ok) {
+  let lastRes = patchRes;
+  const delays = [5_000, 10_000, 20_000];
+  for (let i = 0; !lastRes.ok && lastRes.status === 429 && i < delays.length; i++) {
+    console.log(`⏳ Rate limit on PATCH email_verified for ${email}, waiting ${delays[i] / 1000}s... (retry ${i + 1}/${delays.length})`);
+    await new Promise(r => setTimeout(r, delays[i]));
+    lastRes = await fetch(
+      `${ORIGNABASE_URL}/admin/users/${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ email_verified: emailVerified }),
+      },
+    );
+  }
+  const patchBody = await lastRes.json().catch(() => ({} as any));
+  if (!lastRes.ok) {
     throw new Error(
-      `Failed to set email verification for ${email}: ${patchBody?.error?.message || patchBody?.message || patchRes.status}`,
+      `Failed to set email verification for ${email}: ${patchBody?.error?.message || patchBody?.message || lastRes.status}`,
     );
   }
 }
@@ -1233,6 +1260,155 @@ export async function callCallable(fn: string, data: any, token: string, timeout
             returnAdminNote: payload?.returnAdminNote ?? payload?.adminNote,
           },
         };
+      case 'activate_license':
+        return { path: '/api/licenses/activate', body: { userId, ...payload } };
+      case 'admin_create_coupon':
+        return { path: '/api/admin/create-coupon', body: { adminId: userId, ...payload } };
+      case 'admin_delete_product_question':
+        return { path: '/api/admin/delete-question', body: { adminId: userId, questionId: payload?.questionId } };
+      case 'admin_delete_product_rating':
+        return { path: '/api/admin/delete-rating', body: { adminId: userId, ratingId: payload?.ratingId } };
+      case 'admin_delete_review':
+        return { path: '/api/admin/delete-review', body: { adminId: userId, reviewId: payload?.reviewId } };
+      case 'admin_flag_review':
+        return { path: '/api/admin/flag-review', body: { adminId: userId, reviewId: payload?.reviewId, reason: payload?.reason } };
+      case 'admin_get_reviews':
+        return { path: '/api/admin/reviews', body: { adminId: userId, ...payload } };
+      case 'admin_get_users':
+        return { path: '/api/admin/users', body: { adminId: userId, ...payload } };
+      case 'admin_mfa_enroll':
+        return { path: '/api/admin/mfa-enroll', body: { adminId: userId, ...payload } };
+      case 'admin_mfa_verify':
+        return { path: '/api/admin/mfa-verify', body: { adminId: userId, ...payload } };
+      case 'admin_mfa_verify_backup':
+        return { path: '/api/admin/mfa-verify-backup', body: { adminId: userId, ...payload } };
+      case 'admin_refund_order':
+        return { path: '/api/admin/refund-order', body: { adminId: userId, orderId: payload?.orderId, reason: payload?.reason } };
+      case 'admin_reject_product':
+        return { path: '/api/admin/reject-product', body: { adminId: userId, productId: payload?.productId, reason: payload?.reason } };
+      case 'admin_suspend_user':
+        return { path: '/api/admin/suspend-user', body: { adminId: userId, targetUserId: payload?.userId ?? payload?.targetUserId, reason: payload?.reason } };
+      case 'admin_update_product_stock':
+        return { path: '/api/admin/update-stock', body: { adminId: userId, productId: payload?.productId, quantity: payload?.quantity } };
+      case 'answer_product_question':
+        return { path: '/api/qa/answer', body: { userId, questionId: payload?.questionId, answer: payload?.answer } };
+      case 'answer_review':
+        return { path: '/api/products/answer-review', body: { userId, reviewId: payload?.reviewId, answer: payload?.answer } };
+      case 'apply_coupon':
+        return { path: '/api/checkout/apply-coupon', body: { userId, couponCode: payload?.couponCode } };
+      case 'approve_shipping_cost':
+        return { path: '/api/shipping/approve', body: { userId, orderId: payload?.orderId, shippingCost: payload?.shippingCost } };
+      case 'ask_product_question':
+        return { path: '/api/qa/ask', body: { userId, productId: payload?.productId, question: payload?.question } };
+      case 'calculate_shipping_cost':
+        return { path: '/api/shipping/calculate', body: { ...payload } };
+      case 'cancel_subscription':
+        return { path: '/api/subscriptions/cancel', body: { userId, subscriptionId: payload?.subscriptionId } };
+      case 'capture_payment':
+        return { path: '/api/payments/capture', body: { userId, paymentIntentId: payload?.paymentIntentId } };
+      case 'cleanup_fcm_token':
+        return { path: '/api/notifications/cleanup-fcm', body: { userId } };
+      case 'configure_algolia':
+        return { path: '/api/admin/configure-algolia', body: { adminId: userId } };
+      case 'create_account_link':
+        return { path: '/api/payments/account-link', body: { userId } };
+      case 'create_connect_account':
+        return { path: '/api/payments/create-connect', body: { userId } };
+      case 'create_stripe_login_link':
+        return { path: '/api/payments/stripe-login-link', body: { userId } };
+      case 'create_subscription':
+        return { path: '/api/subscriptions/create', body: { userId, ...payload } };
+      case 'create_warehouse':
+        return { path: '/api/warehouses/create', body: { userId, ...payload } };
+      case 'deactivate_license':
+        return { path: '/api/licenses/deactivate', body: { userId, ...payload } };
+      case 'deactivate_supplier_platform':
+        return { path: '/api/suppliers/deactivate', body: { userId } };
+      case 'delete_message':
+        return { path: '/api/chat/delete-message', body: { userId, messageId: payload?.messageId } };
+      case 'delete_product_images':
+        return { path: '/api/products/delete-images', body: { userId, productId: payload?.productId, imageUrls: payload?.imageUrls } };
+      case 'delete_warehouse':
+        return { path: '/api/warehouses/delete', body: { userId, warehouseId: payload?.warehouseId } };
+      case 'export_my_data':
+        return { path: '/api/users/export-data', body: { userId } };
+      case 'generate_book_download_session':
+        return { path: '/api/downloads/book-session', body: { userId, productId: payload?.productId } };
+      case 'generate_software_download_session':
+        return { path: '/api/downloads/software-session', body: { userId, productId: payload?.productId } };
+      case 'get_address_suggestions':
+        return { path: '/api/addresses/suggestions', body: { query: payload?.query } };
+      case 'get_chat_threads':
+        return { path: '/api/chat/threads', body: { userId, ...payload } };
+      case 'get_connect_account_status':
+        return { path: '/api/payments/connect-status', body: { userId } };
+      case 'get_or_create_chat':
+        return { path: '/api/chat/get-or-create', body: { userId, participantId: payload?.participantId } };
+      case 'get_order_detail':
+        return { path: '/api/orders/detail', body: { userId, orderId: payload?.orderId } };
+      case 'get_orders':
+        return { path: '/api/orders/list', body: { userId, ...payload } };
+      case 'get_payment_providers':
+        return { path: '/api/payments/providers', body: { ...payload } };
+      case 'get_product_questions':
+        return { path: '/api/qa/list', body: { productId: payload?.productId, ...payload } };
+      case 'get_product_ratings_paginated':
+        return { path: '/api/products/ratings', body: { productId: payload?.productId, page: payload?.page ?? 1, limit: payload?.limit ?? 20 } };
+      case 'get_provider_status':
+        return { path: '/api/payments/provider-status', body: { providerId: payload?.providerId } };
+      case 'get_seller_warehouses':
+        return { path: '/api/warehouses/seller-list', body: { userId, ...payload } };
+      case 'get_subscription_status':
+        return { path: '/api/subscriptions/status', body: { userId, subscriptionId: payload?.subscriptionId } };
+      case 'mark_messages_read':
+        return { path: '/api/chat/mark-read', body: { userId, messageIds: payload?.messageIds } };
+      case 'reactivate_subscription':
+        return { path: '/api/subscriptions/reactivate', body: { userId, subscriptionId: payload?.subscriptionId } };
+      case 'refund_order_item':
+        return { path: '/api/orders/refund-item', body: { userId, orderId: payload?.orderId, itemId: payload?.itemId } };
+      case 'reject_return_request':
+        return { path: '/api/returns/reject', body: { userId, returnId: payload?.returnId } };
+      case 'report_message':
+        return { path: '/api/chat/report', body: { userId, messageId: payload?.messageId, reason: payload?.reason } };
+      case 'search_products':
+        return { path: '/api/products/search', body: { ...payload } };
+      case 'send_chat_message':
+        return { path: '/api/chat/send', body: { userId, threadId: payload?.threadId, message: payload?.message } };
+      case 'send_message':
+        return { path: '/api/messages/send', body: { userId, ...payload } };
+      case 'start_chat_thread':
+        return { path: '/api/chat/start', body: { userId, participantId: payload?.participantId } };
+      case 'submit_product_rating':
+        return { path: '/api/products/submit-rating', body: { userId, productId: payload?.productId, rating: payload?.rating, review: payload?.review } };
+      case 'submit_product_rating_atomic':
+        return { path: '/api/products/submit-rating-atomic', body: { userId, productId: payload?.productId, rating: payload?.rating, review: payload?.review } };
+      case 'subscribe_stock_notification':
+        return { path: '/api/products/stock-subscribe', body: { userId, productId: payload?.productId } };
+      case 'suspend_seller':
+        return { path: '/api/admin/suspend-seller', body: { adminId: userId, sellerId: payload?.sellerId, reason: payload?.reason } };
+      case 'unsubscribe_email':
+        return { path: '/api/users/unsubscribe', body: { email: payload?.email, token: payload?.token } };
+      case 'unsubscribe_stock_notification':
+        return { path: '/api/products/stock-unsubscribe', body: { userId, productId: payload?.productId } };
+      case 'unsuspend_seller':
+        return { path: '/api/admin/unsuspend-seller', body: { adminId: userId, sellerId: payload?.sellerId } };
+      case 'update_item_status':
+        return { path: '/api/orders/update-item-status', body: { userId, orderId: payload?.orderId, itemId: payload?.itemId, status: payload?.status } };
+      case 'update_payment_provider':
+        return { path: '/api/payments/update-provider', body: { userId, ...payload } };
+      case 'update_shipping_cost':
+        return { path: '/api/shipping/update', body: { userId, ...payload } };
+      case 'update_user_roles':
+        return { path: '/api/admin/update-roles', body: { adminId: userId, targetUserId: payload?.userId ?? payload?.targetUserId, roles: payload?.roles } };
+      case 'update_warehouse':
+        return { path: '/api/warehouses/update', body: { userId, warehouseId: payload?.warehouseId, ...payload } };
+      case 'upload_product_images':
+        return { path: '/api/products/upload-images', body: { userId, productId: payload?.productId, imageUrls: payload?.imageUrls } };
+      case 'verify_cart_prices':
+        return { path: '/api/cart/verify-prices', body: { userId, cartItems: payload?.cartItems } };
+      case 'verify_license':
+        return { path: '/api/licenses/verify', body: { licenseKey: payload?.licenseKey, email: payload?.email } };
+
       default:
         return null;
     }
@@ -1334,14 +1510,18 @@ export async function callOk(fn: string, data: any, token: string): Promise<any>
   for (let attempt = 0; attempt < 3; attempt++) {
     const body = await callCallable(fn, data, token);
     if (body.error) {
-      const msg = (body.error.message || '').toLowerCase();
       const status = body.error.status;
-      // Only retry on transient 500s (cold start); fail fast on rate limit
-      if (status === 500 && attempt < 2) {
-        const wait = 5_000;
-        console.log(`⏳ Server error on ${fn}, waiting ${wait / 1000}s... (attempt ${attempt + 1}/3)`);
-        await new Promise(r => setTimeout(r, wait));
-        continue;
+      // Retry on transient 500s (cold start) and 429s (rate limit)
+      if (attempt < 2) {
+        const errMsg = (body.error.message || '');
+        const is429 = status === 429 || errMsg.includes('429') || errMsg.toLowerCase().includes('too many');
+        const is500 = status === 500;
+        if (is500 || is429) {
+          const wait = is429 ? 3_000 : 5_000;
+          console.log(`⏳ ${is429 ? 'Rate limit' : 'Server error'} on ${fn}, waiting ${wait / 1000}s... (attempt ${attempt + 1}/3)`);
+          await new Promise(r => setTimeout(r, wait));
+          continue;
+        }
       }
       throw new Error(`${fn} failed: ${body.error.message || JSON.stringify(body.error)}`);
     }
@@ -1385,7 +1565,21 @@ function normalizeErrorCode(error: any): { code: string; message: string } {
     'DATA_LOSS': 'data-loss',
     'ABORTED': 'aborted',
   };
-  const code = error.code || STATUS_TO_CODE[error.status] || error.status?.toLowerCase()?.replace(/_/g, '-') || 'unknown';
+  const HTTP_TO_CODE: Record<number, string> = {
+    400: 'invalid-argument',
+    401: 'unauthenticated',
+    403: 'permission-denied',
+    404: 'not-found',
+    409: 'already-exists',
+    422: 'invalid-argument',
+    429: 'resource-exhausted',
+    500: 'internal',
+    503: 'unavailable',
+  };
+  const rawCode = error.code || error.status;
+  const code = typeof rawCode === 'number'
+    ? (HTTP_TO_CODE[rawCode] ?? String(rawCode))
+    : (STATUS_TO_CODE[rawCode] ?? rawCode?.toLowerCase()?.replace(/_/g, '-') ?? 'unknown');
   return { code, message: error.message || error.details || '' };
 }
 
@@ -2383,6 +2577,35 @@ export async function listSubcollection(
   token?: string
 ): Promise<any[]> {
   return listCollection(`${parentCollection}/${parentId}/${subcollection}`, token);
+}
+
+/**
+ * List buyer addresses directly from the 'addresses' collection (OrignaBase).
+ * OrignaBase stores addresses in a flat 'addresses' collection with a 'userId' field,
+ * NOT as a subcollection of 'users'. Use this instead of listSubcollection for addresses.
+ */
+export async function listUserAddresses(userId: string, token?: string): Promise<any[]> {
+  const query = `
+    query ListAddresses($collection: String!, $filters: JSON) {
+      list(collection: $collection, filters: $filters, limit: 200)
+    }
+  `;
+  const result = await obGraphQL(query, {
+    collection: 'addresses',
+    filters: { userId: { _eq: userId } },
+  }, token);
+  if (!result.ok) return [];
+  const raw = parseGraphQLValue(result.body?.data?.list);
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((doc: any) => doc && typeof doc === 'object')
+    .map((doc: any) => {
+      const { id, _id, _rev, _created, _updated, ...rest } = doc;
+      // Strip SurrealDB record prefix (e.g. 'addresses:abc123' → 'abc123')
+      // so the id matches what add_buyer_address returns as addressId.
+      const strippedId = typeof id === 'string' && id.includes(':') ? id.split(':', 2)[1] : id;
+      return strippedId ? { id: strippedId, ...rest } : rest;
+    });
 }
 
 /**

@@ -1,6 +1,6 @@
 # Origna GTA — Repo Map
 
-Last updated: 2026-03-15 (updated: schema constants, API endpoints, widgets, E2E specs)
+Last updated: 2026-03-16 (updated: CI globalSetup fix, E2E callCallable routing, origna_gta/CLAUDE.md added)
 
 ## Overview
 
@@ -227,9 +227,14 @@ Key conventions:
 ## E2E Tests
 
 Config files:
-- `e2e/playwright.config.dev.ts` — target: `https://dev.orignagta.ca`
+- `e2e/playwright.config.dev.ts` — target: `https://dev.orignagta.ca`, workers:1, globalSetup enabled, WebGL args
 - `e2e/playwright.config.staging.ts` — staging
-- `e2e/playwright.config.ci.ts` — CI (GitHub Actions)
+- `e2e/playwright.config.ci.ts` — CI (GitHub Actions), workers:2, **globalSetup enabled** (fixed 2026-03-16), 8 shards
+
+Key E2E helpers (`e2e/playwright_ui/`):
+- `api-helpers.ts` — All API calls, `callCallable` routes Firebase fn names → OrignaBase REST, `signIn`, `readDoc`, `writeDoc`, `listUserAddresses`
+- `flutter-helpers.ts` — Flutter/Playwright bridge, `waitForFlutter`, `requireWebApp`, `ensureLoggedIn*`
+- `global-setup.ts` — Pre-warms auth tokens for all test accounts before workers start (avoids quota)
 
 Run instructions: `e2e/README.md`
 

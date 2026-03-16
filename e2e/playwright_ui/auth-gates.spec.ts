@@ -7,6 +7,7 @@ import {
   setOrignaBaseUserEmailVerified,
   setOrignaBaseUserSuspended,
   setOrignaBaseUserTermsVersion,
+  resolveUiEmail,
 } from './api-helpers';
 import { BTN_SETTINGS_LABEL, clearServiceWorkers, requireWebApp, waitForFlutter } from './flutter-helpers';
 
@@ -29,6 +30,10 @@ async function replaceFlutterInputValue(page: Page, input: Locator, value: strin
 }
 
 async function loginViaUi(page: Page, email: string, password: string): Promise<void> {
+  // Resolve OrignaBase alias — stable test emails are remapped to e2e-* aliases.
+  // Use resolveUiEmail (pure mapping) to avoid repairing email_verified state.
+  const resolvedEmail = resolveUiEmail(email);
+
   await clearServiceWorkers(page);
   await page.goto(`${TARGET_URL}/login`, { waitUntil: 'domcontentloaded' });
   await waitForFlutter(page, 120000);
@@ -36,16 +41,29 @@ async function loginViaUi(page: Page, email: string, password: string): Promise<
   const emailInput = page.locator(
     'input[aria-label="you@example.com"], input[aria-label="login_email_field"]',
   ).last();
-  await replaceFlutterInputValue(page, emailInput, email);
+  await replaceFlutterInputValue(page, emailInput, resolvedEmail);
 
   const passInput = page.locator(
     'input[aria-label="••••••••"], input[aria-label="login_password_field"]',
   ).last();
   await replaceFlutterInputValue(page, passInput, password);
 
-  const submitBtn = page.locator('[aria-label="login_submit_button"]').first();
-  await submitBtn.click({ force: true });
-  await page.waitForTimeout(2000);
+  // Flutter 3.41.3: button labels are in textContent, not aria-label.
+  // Use Enter key first (most reliable), then fall back to click.
+  const visibleSubmit = page.locator('text=/^(Sign In|Se connecter|Connexion)$/i').last();
+  await passInput.press('Enter').catch(() => {});
+  await page.waitForTimeout(1500);
+
+  // If form still visible, click the submit button directly
+  const loginStillVisible =
+    await emailInput.isVisible().catch(() => false) ||
+    await passInput.isVisible().catch(() => false);
+  if (loginStillVisible) {
+    await visibleSubmit.click({ force: true }).catch(async () => {
+      await passInput.press('Enter').catch(() => {});
+    });
+    await page.waitForTimeout(1500);
+  }
   await waitForFlutter(page, 60000);
 }
 
