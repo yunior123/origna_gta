@@ -1,3 +1,6 @@
+# Local dev overrides — never commit (contains absolute paths)
+pubspec_overrides.yaml
+
 # Miscellaneous
 *.class
 *.log

@@ -10,7 +10,7 @@ jobs:
   build:
     name: Flutter Web Build Check
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +40,11 @@ jobs:
           FLUTTER_WEB_USE_SKIA: "true"
 
       - name: Flutter analyze
-        run: cd origna_gta && flutter analyze --no-fatal-warnings
+        run: cd origna_gta && flutter analyze --no-fatal-infos
+
+      - name: Flutter tests
+        run: cd origna_gta && flutter test --reporter=compact
+
       # Requires MAIL_USERNAME and MAIL_PASSWORD secrets to be configured in GitHub repository settings
       - name: Notify on failure
         if: failure()
@@ -51,7 +55,7 @@ jobs:
           secure: true
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "❌ CI Failed: ${{ github.workflow }} on ${{ github.ref }}"
+          subject: "❌ CI Failed: Flutter Web Build on ${{ github.ref }}"
           to: support@orignagta.ca
           cc: yuniorrodriguezo460@gmail.com
           from: GitHub Actions <${{ secrets.MAIL_USERNAME }}>

@@ -20,16 +20,17 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: true,
   retries: 1,
-  workers: 1,
+  workers: 2,
   reporter: 'list',
   timeout: 300 * 1000,
   expect: { timeout: 15 * 1000 },
   use: {
     actionTimeout: 15 * 1000,
-    baseURL: process.env.E2E_TARGET_URL ?? 'http://localhost:5005',
+    baseURL: process.env.E2E_TARGET_URL ?? 'https://dev.orignagta.ca',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     bypassCSP: true,
+    serviceWorkers: 'block',
   },
   projects: [
     {
