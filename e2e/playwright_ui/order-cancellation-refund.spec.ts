@@ -1,7 +1,7 @@
 /**
  * OrignaGTA — Order Cancellation & Refund E2E Tests
  * ===================================================
- * Tests cancellation and refund flows against dev Firebase.
+ * Tests cancellation and refund flows against dev OrignaBase (api.dev.orignagta.ca).
  *
  * CLAUDE.md compliance:
  *  - Rule 8:  50+ adversarial scenarios (unauthorized cancel, already-cancelled, race)
@@ -21,7 +21,6 @@ import {
 // These must mirror OrderStatusValues in schema_constants.py / schema_constants.dart
 const STATUS = {
   CONFIRMED:   'confirmed',
-  PROCESSING:  'processing',
   SHIPPED:     'shipped',
   CANCELLED:   'cancelled',
   DELIVERED:   'delivered',
@@ -91,7 +90,6 @@ test.describe('Order Cancellation & Refund', () => {
     await waitForOrderStatus(result.orderId, [STATUS.CONFIRMED], buyerAuth.idToken, 90_000);
 
     const sellerAuth = await getSellerAuth(productSellerId);
-    await callOk('update_order_status', { orderId: result.orderId, newStatus: STATUS.PROCESSING }, sellerAuth.idToken);
     await callOk('update_order_status', {
       orderId:        result.orderId,
       newStatus:      STATUS.SHIPPED,
@@ -112,7 +110,6 @@ test.describe('Order Cancellation & Refund', () => {
     await waitForOrderStatus(result.orderId, [STATUS.CONFIRMED], buyerAuth.idToken, 90_000);
 
     const sellerAuth = await getSellerAuth(productSellerId);
-    await callOk('update_order_status', { orderId: result.orderId, newStatus: STATUS.PROCESSING  }, sellerAuth.idToken);
     await callOk('update_order_status', {
       orderId:        result.orderId,
       newStatus:      STATUS.SHIPPED,

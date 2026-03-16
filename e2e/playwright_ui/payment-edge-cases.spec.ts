@@ -1,13 +1,13 @@
 /**
  * OrignaGTA — Payment Edge Cases E2E Tests
  * ==========================================
- * Tests declined cards, 3DS, and edge cases against dev Firebase + real Stripe test mode.
+ * Tests declined cards, 3DS, and edge cases against dev OrignaBase (api.dev.orignagta.ca) + real Stripe test mode.
  * Each test discovers its own product to avoid stock exhaustion.
  */
 import { test, expect } from '@playwright/test';
 import {
   signIn, callOk,
-  buildCheckoutPayload, readDoc, parseDoc,
+  buildCheckoutPayload, getOrder,
   dismissStripeModals, getProductStock,
   TEST_ACCOUNTS, STRIPE_CARD,
 } from './api-helpers';
@@ -156,8 +156,7 @@ test.describe('Payment Edge Cases', () => {
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
-    const doc = await readDoc(`orders/${result.orderId}`, buyerAuth.idToken);
-    const order = parseDoc(doc);
+    const order = await getOrder(result.orderId, buyerAuth.idToken);
     expect(order.currency).toBe('cad');
   });
 
@@ -217,8 +216,7 @@ test.describe('Payment Edge Cases', () => {
     expect(stockAfter, 'Stock must be restored (or at most 1 unit short) after declined card').toBeGreaterThanOrEqual(stockBefore - 1);
 
     // Order paymentStatus must NOT be 'captured'
-    const doc = await readDoc(`orders/${result.orderId}`, buyerAuth.idToken);
-    const order = parseDoc(doc);
+    const order = await getOrder(result.orderId, buyerAuth.idToken);
     expect(order.paymentStatus).not.toBe('captured');
   });
 });
