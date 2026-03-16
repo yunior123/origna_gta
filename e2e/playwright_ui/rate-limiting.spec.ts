@@ -7,11 +7,14 @@ import { test, expect } from '@playwright/test';
 import {
   signIn, callCallable,
   buildCheckoutPayload,
-  getTestProduct,
   TEST_ACCOUNTS,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
+
+// Use stable seeded product — avoids calling create_product_atomic which is rate-limited
+// and causes cascading failures when 8 CI shards run beforeAll simultaneously.
+const STABLE_PRODUCT_ID = 'e2e_product_test_seller';
 
 test.describe('Rate Limiting', () => {
   test.setTimeout(120_000); // 10 parallel checkout requests + rate limit check can exceed 60s under dev load
@@ -21,8 +24,7 @@ test.describe('Rate Limiting', () => {
 
   test.beforeAll(async () => {
     buyerAuth = await signIn(BUYER_EMAIL);
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
-    productId = product.id;
+    productId = STABLE_PRODUCT_ID;
   });
 
   test('Rapid checkout requests trigger rate limiting', async () => {

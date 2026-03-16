@@ -177,6 +177,7 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
                       ),
                     ModernButton(
                       key: const Key('btn-terms-accept'),
+                      semanticsLabel: 'btn-terms-accept',
                       label: _accepting ? 'common.loading'.tr() : 'legal.terms_accept_button'.tr(),
                       onPressed: (_accepting || !_hasScrolledToBottom) ? null : _acceptTerms,
                       isPrimary: true,

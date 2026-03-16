@@ -620,22 +620,19 @@ export async function setOrignaBaseUserTermsVersion(
   termsVersion: string,
 ): Promise<void> {
   const auth = await signInOrignaBase(email, password);
-  const response = await fetch(`${ORIGNABASE_URL}/api/users/profile/update`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${auth.idToken}`,
-    },
-    body: JSON.stringify({
+  const adminToken = await getBootstrapAdminAccessToken();
+  const ok = await writeDoc(
+    `users/${auth.localId}`,
+    {
       termsVersion,
-      termsAcceptedAt: true,
-    }),
-  });
-  const body = await response.json().catch(() => ({} as any));
-  if (!response.ok || body?.success !== true) {
-    throw new Error(
-      `Failed to set terms version for ${email}: ${body?.error?.message || body?.message || response.status}`,
-    );
+      termsAcceptedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    adminToken,
+    true,
+  );
+  if (!ok) {
+    throw new Error(`Failed to set terms version for ${email}`);
   }
 }
 
