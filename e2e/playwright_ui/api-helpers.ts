@@ -199,9 +199,9 @@ export function resolveUiEmail(email: string): string {
 function bootstrapAdminEmail(): string {
   const explicit = process.env.E2E_ORIGNABASE_ADMIN_EMAIL?.trim();
   if (explicit) return explicit.toLowerCase();
-  if (TARGET_ENV === 'staging') return 'e2e-admin-staging-ui@test.origna.ca';
-  if (TARGET_ENV === 'dev') return 'e2e-admin-staging-ui@test.origna.ca';
-  return 'e2e-admin-staging-ui@test.origna.ca';
+  // e2e-admin@test.origna.ca is the canonical dev/staging admin (clean schema-compatible record)
+  // e2e-admin-staging-ui@test.origna.ca has an incompatible legacy user record (500 on login)
+  return 'e2e-admin@test.origna.ca';
 }
 
 function bootstrapAdminPassword(): string {

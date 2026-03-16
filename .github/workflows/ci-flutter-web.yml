@@ -35,7 +35,8 @@ jobs:
         run: |
           cd origna_gta
           flutter build web --debug \
-            --dart-define=ENVIRONMENT=dev
+            --dart-define=ENVIRONMENT=dev \
+            --dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca
         env:
           FLUTTER_WEB_USE_SKIA: "true"
 
