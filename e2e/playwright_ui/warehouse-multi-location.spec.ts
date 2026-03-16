@@ -146,7 +146,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
 
     // Write second product with identical sellerId+sellerSku
     const prodId2 = `test_sku_2_${Date.now()}`;
-    await writeDoc(`products/${prodId2}`, { ...baseProduct, name: 'Duplicate SKU Product' }), adminToken, false);
+    await writeDoc(`products/${prodId2}`, { ...baseProduct, name: 'Duplicate SKU Product' }, adminToken, false);
 
     const doc2 = await getDoc(`products/${prodId2}`, adminToken);
     // The sellerSku and sellerId are persisted (Firestore direct write),
@@ -200,7 +200,7 @@ test.describe('Warehouse: multi-location seller flow', () => {
       warehouseIds: [wId],
       shipFromCity: 'Calgary',
       shipFromProvince: 'AB',
-    }), adminToken, false);
+    }, adminToken, false);
 
     const doc = await getDoc(`products/${productId}`, adminToken);
     expect(doc.shipFromCity).toBe('Calgary');
@@ -249,12 +249,12 @@ test.describe('Warehouse: multi-location seller flow', () => {
       warehouseIds: [wId1, wId2],
       shipFromCity: 'Winnipeg',
       shipFromProvince: 'MB',
-    }), adminToken, false);
+    }, adminToken, false);
 
     // Write inventoryLevels subcollection docs (one per warehouse)
     await Promise.all([
-      writeDoc(`products/${productId}/inventoryLevels/${wId1}`, { availableQuantity: stock1, warehouseId: wId1 }), adminToken, false),
-      writeDoc(`products/${productId}/inventoryLevels/${wId2}`, { availableQuantity: stock2, warehouseId: wId2 }), adminToken, false),
+      writeDoc(`products/${productId}/inventoryLevels/${wId1}`, { availableQuantity: stock1, warehouseId: wId1 }, adminToken, false),
+      writeDoc(`products/${productId}/inventoryLevels/${wId2}`, { availableQuantity: stock2, warehouseId: wId2 }, adminToken, false),
     ]);
 
     const doc = await getDoc(`products/${productId}`, adminToken);

@@ -60,7 +60,7 @@ test.describe('1. IDOR — Order Access Control', () => {
       totalAmount: 20.00,
       createdAt: new Date().toISOString(),
       items: [{ productId: 'some_prod', sellerId: TEST_UIDS.SELLER, name: 'Item', price: 20.00, quantity: 1 }],
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     // buyer1 tries to cancel it
     const error = await callExpectError('cancel_order', { orderId }, buyerAuth.idToken);
@@ -80,7 +80,7 @@ test.describe('1. IDOR — Order Access Control', () => {
       totalAmount: 5.00,
       createdAt: new Date().toISOString(),
       items: [],
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     const doc = await getDoc(`orders/${orderId}`, buyerAuth.idToken);
     expect(doc).toBeNull();
@@ -97,7 +97,7 @@ test.describe('1. IDOR — Order Access Control', () => {
       totalAmount: 10.00,
       createdAt: new Date().toISOString(),
       items: [{ productId: 'p', sellerId: TEST_UIDS.SELLER, name: 'i', price: 10.00, quantity: 1 }],
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     const error = await callExpectError('update_order_status', {
       orderId,
@@ -415,7 +415,7 @@ test.describe('8. Firestore Direct Write Prevention', () => {
       price: 0.01,
       sellerId: auth.localId,
       lifecycleStatus: 'active',
-    }), auth.idToken);
+    }, auth.idToken);
 
     expect(ok).toBe(false);
   });
@@ -426,7 +426,7 @@ test.describe('8. Firestore Direct Write Prevention', () => {
     const ok = await writeDoc(`orders/e2e_fake_delivered_order`, {
       orderStatus: 'delivered',
       paymentStatus: 'captured',
-    }), auth.idToken);
+    }, auth.idToken);
 
     expect(ok).toBe(false);
   });
@@ -436,7 +436,7 @@ test.describe('8. Firestore Direct Write Prevention', () => {
 
     const ok = await writeDoc(`users/${auth.localId}`, {
       roles: ['buyer', 'seller', 'admin'],
-    }), auth.idToken);
+    }, auth.idToken);
 
     expect(ok).toBe(false);
   });
@@ -495,7 +495,7 @@ test.describe('10. Return Request Abuse', () => {
       totalAmount: 50.00,
       createdAt: new Date().toISOString(),
       items: [{ productId: 'p', sellerId: TEST_UIDS.SELLER, name: 'Item', price: 50.00, quantity: 1 }],
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     const error = await callExpectError('create_return_request', {
       orderId,
@@ -519,7 +519,7 @@ test.describe('10. Return Request Abuse', () => {
       totalAmount: 25.00,
       createdAt: new Date().toISOString(),
       items: [{ productId: 'p', sellerId: TEST_UIDS.SELLER, name: 'Item', price: 25.00, quantity: 1 }],
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     const error = await callExpectError('create_return_request', {
       orderId,

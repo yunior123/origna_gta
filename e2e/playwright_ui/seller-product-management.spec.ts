@@ -250,7 +250,7 @@ test.describe('Seller Product Management — UI Tests', () => {
         {
           lifecycleStatus: 'rejected',
           approvalRejectionReason: 'E2E: image quality too low',
-        }),
+        },
         admin.idToken,
         true,
       );

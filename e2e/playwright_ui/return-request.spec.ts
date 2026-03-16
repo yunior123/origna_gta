@@ -124,7 +124,7 @@ test.describe('Return Request Flow (Flow 6)', () => {
           },
         ],
         createdAt: new Date().toISOString(),
-      }),
+      },
       adminAuth.idToken
     );
 

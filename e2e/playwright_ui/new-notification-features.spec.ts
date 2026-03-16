@@ -37,7 +37,7 @@ test.describe('New Notification Features E2E', () => {
     // subscriptions/{uid} allow write: if isAdmin() — admin token is used.
     const subWriteOk = await writeDoc(
       `subscriptions/${buyerUid}`,
-      { status: 'active', isPremium: true }),
+      { status: 'active', isPremium: true },
       adminToken,
       false, // full overwrite
     );
@@ -62,7 +62,7 @@ test.describe('New Notification Features E2E', () => {
         productIds: [product.id],
         status: 'confirmed',
         sellerId: TEST_UIDS.ADMIN,
-      }),
+      },
       adminToken,
       false,
     );
@@ -72,7 +72,7 @@ test.describe('New Notification Features E2E', () => {
     // Revoke premium after the suite
     await writeDoc(
       `subscriptions/${buyerUid}`,
-      { status: 'inactive' }),
+      { status: 'inactive' },
       adminToken,
       false,
     );
@@ -83,10 +83,10 @@ test.describe('New Notification Features E2E', () => {
   test('Price drop notification is triggered for favorited products', async ({ page }) => {
     // 1. Buyer favorites the product
     const favPath = `users/${buyerUid}/favorites/${product.id}`;
-    await writeDoc(favPath({
+    await writeDoc(favPath, {
       productId: product.id,
       dateFavorited: new Date(),
-    }), buyerToken, false);
+    }, buyerToken, false);
 
     // 2. Verify favorited
     const favDoc = await readDoc(favPath, buyerToken);

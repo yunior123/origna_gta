@@ -76,7 +76,7 @@ test.describe('Shipping Calculation', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
 
     const productId = `test_ship_stock_${Date.now()}`;
-    await writeDoc(`products/${productId}`({
+    await writeDoc(`products/${productId}`, {
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `SHIP-TEST-${Date.now()}`,
       name: 'Shipping Test Product',
@@ -99,7 +99,7 @@ test.describe('Shipping Calculation', () => {
       sellerAddress: { street: '1 Yonge St', city: 'Toronto', state: 'ON', postalCode: 'M5E 1W7', country: 'Canada' },
       deliveryOptions: [{ type: 'standard', national: true }],
       dateCreated: new Date().toISOString(),
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     try {
       const { data: data1 } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
@@ -159,7 +159,7 @@ test.describe('Shipping Calculation', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const productId = `test_perishable_local_${Date.now()}`;
 
-    await writeDoc(`products/${productId}`({
+    await writeDoc(`products/${productId}`, {
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `PERISH-LOCAL-${Date.now()}`,
       name: 'Fresh Local Produce',
@@ -184,7 +184,7 @@ test.describe('Shipping Calculation', () => {
       deliveryOptions: [{ type: 'same_day', national: false, estimatedDays: 0 }],
       estimatedShipDays: 0,
       dateCreated: new Date().toISOString(),
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     try {
       const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
@@ -213,7 +213,7 @@ test.describe('Shipping Calculation', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const productId = `test_local_only_block_${Date.now()}`;
 
-    await writeDoc(`products/${productId}`({
+    await writeDoc(`products/${productId}`, {
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `LOCAL-BLOCK-${Date.now()}`,
       name: 'Local Only Product',
@@ -236,7 +236,7 @@ test.describe('Shipping Calculation', () => {
       sellerAddress: { street: '1 King St W', city: 'Toronto', state: 'ON', postalCode: 'M5H 1A1', country: 'Canada' },
       deliveryOptions: [{ type: 'local_delivery', national: false }],
       dateCreated: new Date().toISOString(),
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     try {
       const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
@@ -261,7 +261,7 @@ test.describe('Shipping Calculation', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     const productId = `test_perishable_invalid_${Date.now()}`;
 
-    await writeDoc(`products/${productId}`({
+    await writeDoc(`products/${productId}`, {
       sellerId: TEST_UIDS.SELLER,
       sellerSku: `PERISH-INVALID-${Date.now()}`,
       name: 'Bad Perishable Product',
@@ -285,7 +285,7 @@ test.describe('Shipping Calculation', () => {
       // Standard shipping only — CFIA violation for perishables
       deliveryOptions: [{ type: 'standard', national: true }],
       dateCreated: new Date().toISOString(),
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     try {
       // Trigger on_product_created should deactivate this product

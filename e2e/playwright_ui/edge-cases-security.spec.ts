@@ -110,7 +110,7 @@ test.describe('2. Quantity Validation', () => {
       imageUrls: [],
       keywords: [],
       rating: 0,
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     // Request exactly one more than available
     const excessQty = liveStock + 1;
@@ -219,7 +219,7 @@ test.describe('3. Order Guards', () => {
         price: 50.00,
         quantity: 1
       }]
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     const error = await callExpectError('update_order_status', {
       orderId,
@@ -306,7 +306,7 @@ test.describe('4. Product Rating Security', () => {
         price: 10.00,
         quantity: 1
       }]
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     const error = await callExpectError('submit_product_rating', {
       productId,
@@ -489,7 +489,7 @@ test.describe('8. Permission Isolation', () => {
         price: 10.00,
         quantity: 1
       }]
-    }), adminAuth.idToken);
+    }, adminAuth.idToken);
 
     const error = await callExpectError('update_order_status', {
       orderId,

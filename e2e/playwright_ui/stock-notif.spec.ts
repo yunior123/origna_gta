@@ -354,7 +354,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
       },
       isInternational: false,
       createdAt: new Date(),
-    }), adminToken, false);
+    }, adminToken, false);
     if (!ok) throw new Error('Suite 2 beforeAll: failed to seed TEMP_PRODUCT_ID in Firestore');
     // Give Firestore a moment to propagate the write
     await new Promise(resolve => setTimeout(resolve, 2_000));
@@ -376,7 +376,7 @@ test.describe('2. UI — Stock Restored Removes Notify Me', () => {
 
     // Restore stock via Firestore write (simulates admin restoring stock)
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-    await writeDoc(`products/${TEMP_PRODUCT_ID}`, { stockQuantity: 10 }), adminAuth.idToken, true);
+    await writeDoc(`products/${TEMP_PRODUCT_ID}`, { stockQuantity: 10 }, adminAuth.idToken, true);
 
     // Re-navigate to force provider re-fetch — clear SW first to avoid stale routing
     // Use 'load' not 'networkidle' — Flutter Web has persistent Firebase connections
@@ -636,7 +636,7 @@ test.describe('4. Security — Adversarial Scenarios', () => {
       userId: auth.localId,
       variantKey: null,
       createdAt: new Date().toISOString(),
-    }), auth.idToken);
+    }, auth.idToken);
 
     expect(ok, 'Expected direct stock_notification write to be rejected').toBe(false);
   });

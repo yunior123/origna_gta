@@ -295,7 +295,7 @@ test.describe('D. License Activation & Book Download', () => {
       digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-mac-test.dmg' },
       productName: 'FXCleaner',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
 
     // Seed book license (eBook)
     bookLicenseKey = 'REDACTED_SECRET';
@@ -309,7 +309,7 @@ test.describe('D. License Activation & Book Download', () => {
       bookSourceUrl: 'https://cdn.example.com/test-ebook.pdf',
       productName: 'Canadian History eBook Bundle',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
   });
 
   test.afterAll(async () => {
@@ -411,7 +411,7 @@ test.describe('E. Security & Access Control', () => {
       digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-mac-test.dmg' },
       productName: 'FXCleaner',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
 
     buyerBookLicenseKey = 'E2EE-BK01-ABCD-8888';
     await writeDoc(`licenses/${buyerBookLicenseKey}`, {
@@ -424,7 +424,7 @@ test.describe('E. Security & Access Control', () => {
       bookSourceUrl: 'https://cdn.example.com/test-ebook-e4.pdf',
       productName: 'Canadian History eBook Bundle',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
   });
 
   test.afterAll(async () => {
@@ -583,7 +583,7 @@ test.describe('G. Software Download Session', () => {
       },
       productName: 'FXCleaner',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
 
     // Pre-activate one device so the license is usable
     await callOk('activate_license', {
@@ -664,7 +664,7 @@ test.describe('G. Software Download Session', () => {
       bookSourceUrl: 'https://cdn.example.com/test-g.pdf',
       productName: 'Canadian History eBook Bundle',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
 
     try {
       const result = await callExpectError('generate_software_download_session', {
@@ -716,7 +716,7 @@ test.describe('H. License Management — Deactivate, Verify, Device Limit, Revok
       digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-h.dmg' },
       productName: 'FXCleaner',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
 
     // Revoked license — status=revoked
     revokedLicenseKey = 'E2EH-SW01-REVK-2222';
@@ -734,7 +734,7 @@ test.describe('H. License Management — Deactivate, Verify, Device Limit, Revok
       digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-revoked.dmg' },
       productName: 'FXCleaner',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
 
     // License with deviceLimit=2, already at 2 activations
     limitedLicenseKey = 'E2EH-SW01-LIMT-3333';
@@ -754,7 +754,7 @@ test.describe('H. License Management — Deactivate, Verify, Device Limit, Revok
       digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-limited.dmg' },
       productName: 'FXCleaner',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
   });
 
   test.afterAll(async () => {
@@ -897,7 +897,7 @@ test.describe('I. Digital Business Rules', () => {
       totalAmountCents: 3149,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
 
     try {
       const result = await callExpectError('create_return_request', {
@@ -933,7 +933,7 @@ test.describe('I. Digital Business Rules', () => {
       digitalBuilds: { macos: 'https://cdn.example.com/fxcleaner-i2.dmg' },
       productName: 'FXCleaner',
       createdAt: new Date(),
-    }), adminAuth.idToken, false);
+    }, adminAuth.idToken, false);
 
     // Verify license is active before refund
     const licBefore = parseDoc(await readDoc(`licenses/${licenseKey}`, buyerAuth.idToken));
@@ -947,7 +947,7 @@ test.describe('I. Digital Business Rules', () => {
       revokedAt: new Date(),
       revokedReason: 'refunded',
       updatedAt: new Date(),
-    }), adminAuth.idToken, true /* merge */);
+    }, adminAuth.idToken, true /* merge */);
 
     const licAfter = parseDoc(await readDoc(`licenses/${licenseKey}`, buyerAuth.idToken));
     expect(licAfter.status, 'License must be revoked after refund').toBe('revoked');

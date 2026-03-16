@@ -53,9 +53,9 @@ String _orignabaseUrlForEnvironment(AppEnvironment environment) {
     case AppEnvironment.emulator:
       return 'http://localhost:8080';
     case AppEnvironment.dev:
-      return '';
+      return 'https://api.dev.orignagta.ca';
     case AppEnvironment.staging:
-      return '';
+      return 'https://api.staging.orignagta.ca';
     case AppEnvironment.production:
       return 'https://api.orignagta.ca';
   }
