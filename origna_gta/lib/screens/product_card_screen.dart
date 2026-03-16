@@ -23,6 +23,10 @@ class ProductCard extends ConsumerStatefulWidget {
   final UserModel? userModel;
   // 1–3 → show gold/silver/bronze rank badge; null → no badge
   final int? trendingRank;
+  // Prefix for the Hero tag — must be unique per render context to avoid
+  // duplicate-Hero assertion when the same product appears in multiple lists
+  // (e.g., product grid AND recently-viewed horizontal row).
+  final String heroTagPrefix;
 
   const ProductCard({
     super.key,
@@ -30,6 +34,7 @@ class ProductCard extends ConsumerStatefulWidget {
     required this.product,
     required this.userModel,
     this.trendingRank,
+    this.heroTagPrefix = 'product_image',
   });
 
   @override
@@ -74,6 +79,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
 
     return Semantics(
       label: 'product-card-${widget.productId}',
+      container: true,
       child: GestureDetector(
         onTap: () {
           Navigator.pushNamed(
@@ -116,9 +122,10 @@ class _ProductCardState extends ConsumerState<ProductCard>
               Expanded(
                 flex: 5,
                 child: Stack(
+                  fit: StackFit.expand,
                   children: [
                     Hero(
-                      tag: 'product_image_${widget.productId}',
+                      tag: '${widget.heroTagPrefix}_${widget.productId}',
                       child: ClipRRect(
                         borderRadius: BorderRadius.vertical(
                           top: Radius.circular(isCompact ? 12 : 16),

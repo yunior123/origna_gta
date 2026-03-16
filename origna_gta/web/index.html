@@ -7,6 +7,15 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Origna GTA – Your marketplace for buying and selling across the Greater Toronto Area and all of Canada. Discover products, connect with sellers, and shop securely.">
 
+  <!-- Required by google_sign_in_web (GIS SDK) for Google Sign-In on web.
+       The client ID is injected at build time by CI/CD (sed placeholder replacement).
+       For local dev: replace __GOOGLE_WEB_CLIENT_ID__ with your actual OAuth 2.0 Web Client ID
+       from https://console.cloud.google.com/apis/credentials
+       Authorized JS origins must include: https://orignagta-dev.web.app, https://dev.orignagta.ca, http://localhost -->
+  <meta name="google-signin-client_id" content="__GOOGLE_WEB_CLIENT_ID__">
+  <!-- Referrer policy required for Google OAuth redirect flows -->
+  <meta name="referrer" content="no-referrer-when-downgrade">
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -130,5 +139,15 @@
   </nav>
 
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    (function () {
+      function hideSplash() {
+        var el = document.getElementById('loading');
+        if (el) el.style.display = 'none';
+      }
+      window.addEventListener('flutter-first-frame', hideSplash);
+      setTimeout(hideSplash, 8000); // 8s fallback for slow cold loads
+    })();
+  </script>
 </body>
 </html>

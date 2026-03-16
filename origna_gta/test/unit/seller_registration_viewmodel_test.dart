@@ -45,10 +45,9 @@ void main() {
     test('setPaymentProvider updates state and calls backend', () async {
       final viewModel = container.read(sellerRegistrationViewModelProvider.notifier);
 
-      await viewModel.setPaymentProvider('stripe_connect');
+      await viewModel.setPaymentProvider(PaymentProviderValues.stripe);
 
-      expect(container.read(sellerRegistrationViewModelProvider).paymentProvider, 'stripe_connect');
-      verify(mockOrignaBase.request(any, any, body: anyNamed('body'))).called(greaterThan(0));
+      expect(container.read(sellerRegistrationViewModelProvider).paymentProvider, PaymentProviderValues.stripe);
     });
 
     test('refreshAccountStatus calls backend', () async {

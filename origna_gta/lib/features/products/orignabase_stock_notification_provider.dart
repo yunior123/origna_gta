@@ -72,7 +72,7 @@ class OrignaBaseStockNotificationNotifier
       if (variantKey != null) payload[Fields.variantKey] = variantKey!;
       await _ob.request(
         'POST',
-        '/api/products/stock-notify/subscribe',
+        ApiEndpoints.productsStockNotifySubscribe,
         body: payload,
       );
       state = const AsyncValue.data(true);
@@ -88,7 +88,7 @@ class OrignaBaseStockNotificationNotifier
       if (variantKey != null) payload[Fields.variantKey] = variantKey!;
       await _ob.request(
         'POST',
-        '/api/products/stock-notify/unsubscribe',
+        ApiEndpoints.productsStockNotifyUnsubscribe,
         body: payload,
       );
       state = const AsyncValue.data(false);

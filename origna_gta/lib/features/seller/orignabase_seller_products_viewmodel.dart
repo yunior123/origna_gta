@@ -33,7 +33,7 @@ class OrignaBaseSellerProductsViewModel
 
     try {
       final result =
-          await _ob.request('POST', '/api/products/bulk-update', body: {
+          await _ob.request('POST', ApiEndpoints.productsBulkUpdate, body: {
         Fields.productIds: state.selectedIds.toList(),
         Fields.action: action,
       });

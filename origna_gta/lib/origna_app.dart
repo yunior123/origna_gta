@@ -30,6 +30,8 @@ import 'package:origna_gta/screens/editproduct_screen.dart'
 import 'package:origna_gta/screens/favorites_screen.dart';
 import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/screens/notifications_screen.dart';
+import 'package:origna_gta/features/support/support_screen.dart'
+    deferred as support_chat;
 import 'package:origna_gta/screens/order_detail_screen.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
@@ -65,6 +67,7 @@ import 'package:origna_gta/utils/animations.dart';
 import 'package:origna_gta/utils/deferred_widget.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/widgets/env_preview_banner.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -86,8 +89,8 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   }
 
   // Handle auth action URLs (like password reset)
-  if (uri != null && uri.queryParameters['mode'] == 'resetPassword') {
-    final oobCode = uri.queryParameters['oobCode'];
+  if (uri != null && uri.queryParameters[DeepLinkParams.mode] == DeepLinkParams.modeResetPassword) {
+    final oobCode = uri.queryParameters[DeepLinkParams.oobCode];
     final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
     if (oobCode != null && validOobCode.hasMatch(oobCode)) {
       return [
@@ -129,7 +132,7 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   if (uri != null &&
       (uri.path == AppRoutes.paymentSuccess ||
           uri.path.endsWith(AppRoutes.paymentSuccess))) {
-    final sessionId = uri.queryParameters['session_id'];
+    final sessionId = uri.queryParameters[DeepLinkParams.sessionId];
     if (sessionId != null && sessionId.isNotEmpty) {
       return [
         SlidePageRoute(page: const AuthWrapper()),
@@ -258,8 +261,8 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri == null) return null;
 
   // Handle auth action URLs (like password reset) dynamically via deep links
-  if (uri.queryParameters['mode'] == 'resetPassword') {
-    final oobCode = uri.queryParameters['oobCode'];
+  if (uri.queryParameters[DeepLinkParams.mode] == DeepLinkParams.modeResetPassword) {
+    final oobCode = uri.queryParameters[DeepLinkParams.oobCode];
     final validOobCode = RegExp(r'^[A-Za-z0-9\-_]{10,512}$');
     if (oobCode != null && validOobCode.hasMatch(oobCode)) {
       return SlidePageRoute(
@@ -297,7 +300,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Handle payment success deep link
   if (uri.path == AppRoutes.paymentSuccess) {
-    final sessionId = uri.queryParameters['session_id'];
+    final sessionId = uri.queryParameters[DeepLinkParams.sessionId];
 
     if (sessionId == null || sessionId.isEmpty) {
       return SlidePageRoute(
@@ -386,7 +389,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.orderDetail) {
     // Accept orderId from typed args or query params (for deep-links)
     final args = settings.arguments as OrderDetailArgs?;
-    final orderId = args?.orderId ?? uri.queryParameters['orderId'];
+    final orderId = args?.orderId ?? uri.queryParameters[DeepLinkParams.orderId];
     if (orderId == null || orderId.isEmpty) {
       return SlidePageRoute(
         settings: settings,
@@ -634,10 +637,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     // Support deep-link via URL query params: /chat?productId=X&productTitle=Y
     final resolvedArgs =
         args ??
-        (uri.queryParameters.containsKey('productId')
+        (uri.queryParameters.containsKey(DeepLinkParams.productId)
             ? ChatArgs(
-                productId: uri.queryParameters['productId']!,
-                productTitle: uri.queryParameters['productTitle'] ?? '',
+                productId: uri.queryParameters[DeepLinkParams.productId]!,
+                productTitle: uri.queryParameters[DeepLinkParams.productTitle] ?? '',
               )
             : null);
     if (resolvedArgs == null) {
@@ -668,6 +671,19 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return SlidePageRoute(
       settings: settings,
       page: const AuthRequiredGate(child: NotificationsScreen()),
+    );
+  }
+
+  // Customer Support screen
+  if (uri.path == AppRoutes.support) {
+    return SlidePageRoute(
+      settings: settings,
+      page: AuthRequiredGate(
+        child: DeferredWidget(
+          loader: support_chat.loadLibrary,
+          builder: () => support_chat.SupportScreen(),
+        ),
+      ),
     );
   }
 

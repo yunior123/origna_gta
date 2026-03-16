@@ -830,7 +830,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       key: const Key('addproduct_address_suggestions'),
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
-        color: DesignTokens.textOnPrimary,
+        color: DesignTokens.darkCard,
         borderRadius: BorderRadius.circular(14),
         boxShadow: DesignTokens.shadowLg,
         border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.2)),
@@ -934,7 +934,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       key: key,
       duration: DesignTokens.durationNormal,
       decoration: BoxDecoration(
-        color: DesignTokens.textOnPrimary,
+        color: DesignTokens.darkCard,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: DesignTokens.outlineVariant),
         boxShadow: DesignTokens.shadowSm,
@@ -954,7 +954,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           ),
           title: Text(
             title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary, letterSpacing: -0.3),
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 2),
@@ -1177,7 +1177,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ),
         if (state.digitalType == DigitalTypeValues.software) ...[
           const SizedBox(height: 16),
-          Text('product.download_links'.tr(), style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary)),
+          Text('product.download_links'.tr(), style: Theme.of(context).textTheme.titleSmall?.copyWith(color: DesignTokens.textPrimary)),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'product.mac_os_label'.tr(),
@@ -1207,7 +1207,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ],
         if (state.digitalType == DigitalTypeValues.book) ...[
           const SizedBox(height: 16),
-          Text('product.book_download_url'.tr(), style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary)),
+          Text('product.book_download_url'.tr(), style: Theme.of(context).textTheme.titleSmall?.copyWith(color: DesignTokens.textPrimary)),
           const SizedBox(height: 4),
           _buildUrlField(
             label: 'product.download_source_url_label'.tr(),
@@ -1225,7 +1225,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       key: const Key('addproduct_section_french'),
       duration: DesignTokens.durationNormal,
       decoration: BoxDecoration(
-        color: DesignTokens.textOnPrimary,
+        color: DesignTokens.darkCard,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: DesignTokens.outlineVariant),
         boxShadow: DesignTokens.shadowSm,
@@ -1252,7 +1252,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     children: [
                       Text(
                         'product.french_section_title'.tr(),
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3),
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary, letterSpacing: -0.3),
                       ),
                       const SizedBox(height: 2),
                       Text('product.french_section_subtitle'.tr(), style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
@@ -1663,7 +1663,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       child: AnimatedContainer(
         duration: DesignTokens.durationNormal,
         decoration: BoxDecoration(
-          color: DesignTokens.textOnPrimary,
+          color: DesignTokens.darkCard,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: state.activeStep == index ? DesignTokens.primary.withValues(alpha: 0.3) : DesignTokens.outlineVariant,
@@ -1692,7 +1692,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3),
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary, letterSpacing: -0.3),
                         ),
                         const SizedBox(height: 2),
                         Text(subtitle, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
@@ -1740,7 +1740,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               suffixText: 'product.percent_off'.tr(),
               isDense: true,
               filled: true,
-              fillColor: DesignTokens.surface,
+              fillColor: DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -1937,7 +1937,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary),
         ),
       ],
     );
@@ -2455,7 +2455,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: DesignTokens.textOnPrimary,
+            color: DesignTokens.darkCard,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
           ),
@@ -2474,7 +2474,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary),
                     ),
                   ),
                   GestureDetector(
@@ -2802,11 +2802,10 @@ class _VariantRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: DesignTokens.textOnPrimary,
+        color: DesignTokens.darkCard,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.15)),
       ),
-      // FIX [HIGH] Design inconsistency: _VariantRow fields now match glass styling used everywhere else.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2821,7 +2820,7 @@ class _VariantRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: DesignTokens.darkSurface),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: DesignTokens.textPrimary),
                 ),
               ),
             ],

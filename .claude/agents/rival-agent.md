@@ -1,10 +1,10 @@
 ---
 name: rival-agent
-description: Competitive intelligence agent. Fetches known features, patterns, and UX flows from Amazon, AliExpress, Shopify, eBay, Etsy, Walmart, Temu, Shein, Mercado Libre, Wish, Rakuten, Instacart and Flipkart — then compares against our app to suggest critical fixes and high-value features. Github repos for open source e-commerce like Spree, Saleor, Reaction Commerce, Medusa, Vendure, Sylius, Bagisto, OpenCart, WooCommerce, Magento, PrestaShop, nopCommerce, osCommerce, Zen Cart can be analyzed thoroughly for backend logic, frontend logic and data models. Focus on actionable insights that can be implemented within 1-2 sprints.
-argument-hint: "Run this agent to get a comprehensive competitive analysis report."
+description: Competitive intelligence agent for origna_gta. Use when asked to find missing features, compare against competitors, do a market gap analysis, or "what would Amazon do here". Compares origna_gta against Amazon, AliExpress, Shopify, eBay, Etsy, Walmart, Temu, and open-source platforms (Medusa, Saleor, WooCommerce). Returns actionable P0-P3 findings implementable in 1-2 sprints.
 tools: Read, Grep, Glob, Bash, WebSearch
 model: opus
 memory: project
+maxTurns: 20
 ---
 
 # Rival Agent — Competitive Intelligence

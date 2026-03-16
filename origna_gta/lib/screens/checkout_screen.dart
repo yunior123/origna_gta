@@ -9,6 +9,7 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
@@ -943,20 +944,15 @@ class _NoAddressView extends StatelessWidget {
               style: TextStyle(color: DesignTokens.textSecondary),
             ),
             const SizedBox(height: 32),
-            Semantics(
-              button: true,
-              label: 'btn-add-address',
-              child: ElevatedButton.icon(
+            SizedBox(
+              width: 280,
+              child: ModernButton(
+                semanticsLabel: 'btn-add-address',
+                label: 'checkout.add_address'.tr(),
+                icon: Icons.add_location,
                 onPressed: () {
                   Navigator.pushNamed(context, AppRoutes.addressManagement).then((_) => onRefreshShipping());
                 },
-                icon: const Icon(Icons.add_location),
-                label: Text('checkout.add_address'.tr()),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: DesignTokens.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                ),
               ),
             ),
           ],
@@ -1339,11 +1335,15 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
                     },
                     child: Text('common.remove'.tr(), style: TextStyle(color: DesignTokens.error)),
                   )
-                : ElevatedButton(
-                    key: const Key('checkout_apply_coupon_button'),
-                    onPressed: (isLoading || isProcessing) ? null : () => _apply(notifier),
-                    style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: isLoading ? const SizedBox(width: 18, height: 18, child: ModernLoadingIndicator(strokeWidth: 2)) : Text('common.apply'.tr()),
+                : SizedBox(
+                    width: 100,
+                    child: ModernButton(
+                      key: const Key('checkout_apply_coupon_button'),
+                      label: 'common.apply'.tr(),
+                      height: 48,
+                      isLoading: isLoading,
+                      onPressed: (isLoading || isProcessing) ? null : () => _apply(notifier),
+                    ),
                   ),
           ],
         ),
@@ -1436,7 +1436,7 @@ class _BuyerProtectionBanner extends StatelessWidget {
                   link: true,
                   label: 'link-buyer-protection',
                   child: GestureDetector(
-                    onTap: () => launchUrl(Uri.parse('https://www.orignagta.ca/buyer-protection'), mode: LaunchMode.externalApplication),
+                    onTap: () => launchUrl(Uri.parse(ExternalUrls.buyerProtectionUrl), mode: LaunchMode.externalApplication),
                     child: Text(
                       'checkout.buyer_protection_link'.tr(),
                       style: TextStyle(

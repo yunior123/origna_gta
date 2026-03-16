@@ -20,31 +20,49 @@ const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASSWORD = TEST_ACCOUNTS.ADMIN_PASS;
 
 test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
-    test.setTimeout(300_000);
+    test.setTimeout(600_000);
 
     test('replica', async ({ page }) => {
         await requireWebApp(page, TARGET_URL);
         page.setDefaultTimeout(60_000);
 
         const ensureOnHome = async () => {
-            for (let attempt = 0; attempt < 4; attempt++) {
-                const currentSettingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
-                if (await currentSettingsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-                    return currentSettingsBtn;
-                }
+            // Use URL to determine actual current route — Flutter Web keeps background
+            // routes alive in the semantic tree, so element visibility alone is not
+            // sufficient to confirm we are on the home screen.
+            const homeUrl = `${TARGET_URL}/`;
+            const isOnHome = () => page.url() === homeUrl || page.url() === TARGET_URL;
 
-                const backBtn = page.getByRole('button', { name: /back/i }).first();
-                if (await backBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
-                    await backBtn.click({ force: true }).catch(() => {});
-                    await waitForFlutter(page);
-                    continue;
-                }
+            // Flutter Web 3.41.3: semantic labels are in textContent, not aria-label.
+            // getByRole uses Chrome's AOM (reads textContent) — works correctly.
+            const settingsLocator = () => page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
 
-                await page.goto(`${TARGET_URL}/`, { waitUntil: 'domcontentloaded' });
-                await waitForFlutter(page);
+            if (isOnHome()) {
+                const btn = settingsLocator();
+                const attached = await btn.waitFor({ state: 'attached', timeout: 30000 })
+                    .then(() => true).catch(() => false);
+                if (attached) return btn;
             }
 
-            return page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
+            // Not on home URL — navigate there via in-app back navigation.
+            await navigateHome(page, TARGET_URL);
+            await waitForFlutter(page);
+
+            // If navigateHome fell back to page.goto, auth state may be cleared.
+            const homeAttached = await settingsLocator().waitFor({ state: 'attached', timeout: 10000 })
+                .then(() => true).catch(() => false);
+            if (!homeAttached) {
+                await page.waitForTimeout(3000);
+                const stillGone = !(await settingsLocator().waitFor({ state: 'attached', timeout: 5000 })
+                    .then(() => true).catch(() => false));
+                if (stillGone) {
+                    await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
+                    await navigateHome(page, TARGET_URL);
+                    await waitForFlutter(page);
+                }
+            }
+
+            return settingsLocator();
         };
 
         // C001/C002: App renders Flutter Web with semantics
@@ -92,17 +110,32 @@ test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
         await waitForFlutter(page);
 
         // C008: Seeded product search loop
-        const productCards = page.locator('[aria-label^="product-card-"]');
+        // Product card groups use aria-label attribute (unlike buttons which use textContent).
+        // [aria-label*="product-card-"] correctly selects flt-semantics[role="group"] elements.
+        const productCards = page.locator('[aria-label*="product-card-"]');
         for (let i = 0; i < 12; i++) {
             if ((await productCards.count()) > 0) break;
             await page.mouse.wheel(0, 220);
             await page.waitForTimeout(500);
         }
-        if ((await productCards.count()) > 0) {
+        const productCardCount = await productCards.count();
+        expect(productCardCount, 'At least one product card should be visible on home').toBeGreaterThan(0);
+        // Navigate into a product card and back.
+        // Use navigateHome() for the return trip — it handles Flutter's "Go back"
+        // tooltip button (product-details uses replaceState so browser goBack may
+        // go to /login instead of home, wiping in-memory auth).
+        if (productCardCount > 0) {
             await productCards.first().click();
-            await page.waitForTimeout(1500);
-            await page.goBack();
+            // Wait for URL to reach product-details (confirms in-app SPA navigation).
+            const reachedProduct = await page.waitForURL(/\/product-details/i, { timeout: 10000 })
+                .then(() => true).catch(() => false);
+            console.log(`   ℹ️  C008 product nav — URL after click: ${page.url()} (reachedProduct=${reachedProduct})`);
+            await page.waitForTimeout(1000);
+            // Use navigateHome — handles "Go Back"/"Retour" tooltips on product-details
+            // back button; does NOT return early on background home route elements.
+            await navigateHome(page, TARGET_URL);
             await waitForFlutter(page);
+            console.log(`   ℹ️  C008 after navigateHome — URL: ${page.url()}`);
         }
 
         // A08: Home scroll interaction + pull-to-refresh coverage
@@ -123,8 +156,14 @@ test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
         expect(afterRefreshSemCount, 'Semantic tree must survive pull-to-refresh overscroll').toBeGreaterThan(0);
 
         // C009: Profile navigation via settings button
+        // Wait for Flutter semantic tree to stabilize after A08 overscroll interactions.
+        // Overscroll can trigger RefreshIndicator rebuild, temporarily clearing flt-semantics.
+        await waitForFlutter(page);
+        console.log(`   ℹ️  C009 pre-click URL: ${page.url()}`);
+
+
         const profileSettingsBtn = await ensureOnHome();
-        await expect(profileSettingsBtn).toBeVisible({ timeout: 30000 });
+        await expect(profileSettingsBtn).toBeAttached({ timeout: 30000 });
         await profileSettingsBtn.click({ force: true });
         await expect(page).toHaveURL(/\/profile/i, { timeout: 20000 });
         await waitForFlutter(page);

@@ -84,9 +84,12 @@ class _ModernTextFieldState extends State<ModernTextField> {
             cursorColor: DesignTokens.primary,
             decoration: InputDecoration(
               hintText: widget.hint,
-              hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
+              hintStyle: TextStyle(
+                color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textDisabled,
+                fontSize: 14,
+              ),
               filled: true,
-              fillColor: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.surfaceVariant.withValues(alpha: 0.7),
+              fillColor: isDark ? DesignTokens.darkCard : DesignTokens.surfaceVariant.withValues(alpha: 0.7),
               prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon, color: DesignTokens.primary, size: 20) : null,
               suffixIcon: widget.suffixIcon != null
                   ? Semantics(

@@ -65,7 +65,9 @@ function deriveOrignaBaseUrl(targetEnv: E2EEnvironment): string {
     case 'prod':
       return 'https://api.orignagta.ca';
     case 'dev':
+      return 'https://api.dev.orignagta.ca';
     case 'staging':
+      return 'https://api.staging.orignagta.ca';
     case 'unknown':
     default:
       return '';

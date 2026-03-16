@@ -564,6 +564,23 @@
         "items_unavailable": "{count} saved item(s) are currently unavailable",
         "items_count": "{count} saved"
     },
+    "support": {
+        "title": "Customer Support",
+        "get_help_title": "Get Help",
+        "get_help_subtitle": "Chat with our AI support agent",
+        "agent_name": "Origna Support",
+        "agent_tagline": "AI-powered · Available 24/7",
+        "choose_category": "What can we help you with today?",
+        "category_order_status": "Order Status",
+        "category_refund": "Refund Request",
+        "category_account": "Account Issue",
+        "category_billing": "Billing Dispute",
+        "category_other": "Other",
+        "input_hint": "Type your message...",
+        "error_generic": "Something went wrong. Please try again.",
+        "escalated_banner": "Your case has been escalated to our human support team. We'll contact you within 24 business hours at support@orignaventures.ca.",
+        "sign_in_required": "Please sign in to access support."
+    },
     "nav": {
         "home": "Home",
         "explore": "Explore",

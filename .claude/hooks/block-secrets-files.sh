@@ -26,12 +26,12 @@ BASENAME=$(basename "$FILE")
 BLOCKED_PATTERNS=(
   "\.env$"
   "\.env\..*"
-  "google-services\.json$"
-  "GoogleService-Info\.plist$"
-  "firebase_options\.dart$"
   "\.pem$"
   "\.key$"
   "service-account.*\.json$"
+  "orignabase.*secret.*\.json$"
+  "stripe.*secret.*"
+  "turnstile.*secret.*"
 )
 
 for PATTERN in "${BLOCKED_PATTERNS[@]}"; do

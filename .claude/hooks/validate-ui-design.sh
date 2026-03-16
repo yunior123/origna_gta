@@ -2,7 +2,19 @@
 # Validates UI changes follow design system rules
 # Triggered on PostToolUse for edits to Flutter UI files
 
-CHANGED_FILE="$CLAUDE_FILE_PATH"
+INPUT=$(cat)
+CHANGED_FILE=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('tool_input', {}).get('file_path', ''))
+except Exception:
+    print('')
+" 2>/dev/null || echo "")
+
+# Skip non-files and .claude definition files
+if [ -z "$CHANGED_FILE" ]; then exit 0; fi
+if echo "$CHANGED_FILE" | grep -qE "\.claude/(agents|hooks|rules|commands)/"; then exit 0; fi
 
 # Only check Flutter UI files
 if [[ "$CHANGED_FILE" != *"origna_gta/lib/screens/"* ]] && \

@@ -12,6 +12,7 @@ import 'package:origna_gta/features/orders/buyer_orders_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/modern_card.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -246,9 +247,10 @@ class DigitalItemActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(8)),
+    return ModernCard(
+      padding: const EdgeInsets.all(DesignTokens.spacing12),
+      borderRadius: const BorderRadius.all(Radius.circular(DesignTokens.radius8)),
+      enableHoverScale: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -569,7 +571,7 @@ class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
     setState(() => _loading = true);
     try {
       final ob = ref.read(orignabaseProvider);
-      final result = await ob.request('POST', '/api/digital/download/book', body: {
+      final result = await ob.request('POST', ApiEndpoints.digitalDownloadBook, body: {
         Fields.licenseKey: widget.item.licenseKey,
       });
       final downloadUrl = (result as Map<String, dynamic>?)?[ApiKeys.downloadUrl] as String?;
@@ -1077,12 +1079,10 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       ),
     );
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: (isDark ? Colors.white : DesignTokens.textPrimary).withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(DesignTokens.radius12),
-      ),
+    return ModernCard(
+      padding: const EdgeInsets.all(DesignTokens.spacing12),
+      borderRadius: const BorderRadius.all(Radius.circular(DesignTokens.radius12)),
+      enableHoverScale: false,
       child: Column(
         children: [
           row('orders.subtotal'.tr(), '\$${order.subtotal.toStringAsFixed(2)}'),
@@ -1635,7 +1635,7 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
     setState(() => _loading[platform] = true);
     try {
       final ob = ref.read(orignabaseProvider);
-      final result = await ob.request('POST', '/api/digital/download/software', body: {
+      final result = await ob.request('POST', ApiEndpoints.digitalDownloadSoftware, body: {
         Fields.licenseKey: widget.item.licenseKey,
         Fields.platform: platform,
       });

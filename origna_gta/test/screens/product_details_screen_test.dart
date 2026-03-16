@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
+import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/qa/qa_provider.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import '../test_utils.dart';
 
 void main() {
@@ -45,8 +49,15 @@ void main() {
       await tester.pumpWidget(
         TestWrapper(
           overrides: [
+            obUserIdProvider.overrideWithValue(null),
+            obAuthStateProvider.overrideWith((ref) => const Stream.empty()),
+            sellerMetricsProvider('seller_123').overrideWith((ref) => const Stream.empty()),
             currentUserProvider.overrideWithValue(signedInUser),
+            authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
             productByIdProvider('prod_123').overrideWith((ref) => Future.value(testProduct)),
+            productRatingsProvider('prod_123').overrideWith((ref) => const Stream.empty()),
+            qaListProvider('prod_123').overrideWith((ref) => const Stream.empty()),
+            subscriptionStreamProvider.overrideWith((ref) => const Stream.empty()),
           ],
           child: const ProductDetailScreen(productId: 'prod_123'),
         ),

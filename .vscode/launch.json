@@ -2,99 +2,65 @@
     "version": "0.2.0",
     "configurations": [
         // =====================================================================
-        // 🎯 DEFAULT: FULL STACK DEVELOPMENT (Firebase + Stripe + R2)
+        // FLUTTER — DEV (api.dev.orignagta.ca)
         // =====================================================================
         {
-            "name": "🚀 Full Stack Dev (Default)",
+            "name": "🔬 Flutter Dev (Debug)",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart",
             "cwd": "${workspaceFolder}/origna_gta",
-            "preLaunchTask": "Start All Emulator Services",
-            "postDebugTask": "Stop All Emulator Services",
             "toolArgs": [
                 "-d", "chrome",
                 "--web-port", "3000",
-                "--dart-define=ENVIRONMENT=emulator",
-                "--dart-define=USE_EMULATORS=true"
-            ],
-            "env": {
-                "ENVIRONMENT": "emulator"
-            }
+                "--dart-define=ENVIRONMENT=dev",
+                "--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca"
+            ]
         },
         {
-            "name": "🚀 Full Stack Dev (Release)",
+            "name": "🔬 Flutter Dev (Release)",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart",
             "cwd": "${workspaceFolder}/origna_gta",
-            "preLaunchTask": "Start All Emulator Services",
-            "postDebugTask": "Stop All Emulator Services",
             "flutterMode": "release",
             "toolArgs": [
                 "-d", "chrome",
                 "--web-port", "3000",
-                "--dart-define=ENVIRONMENT=emulator",
-                "--dart-define=USE_EMULATORS=true"
-            ],
-            "env": {
-                "ENVIRONMENT": "emulator"
-            }
+                "--dart-define=ENVIRONMENT=dev",
+                "--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca"
+            ]
+        },
+        {
+            "name": "📱 Flutter Dev (iOS Simulator)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "cwd": "${workspaceFolder}/origna_gta",
+            "toolArgs": [
+                "--dart-define=ENVIRONMENT=dev",
+                "--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca"
+            ]
         },
         // =====================================================================
-        // FLUTTER CONFIGURATIONS
+        // FLUTTER — STAGING (api.staging.orignagta.ca)
         // =====================================================================
         {
-            "name": "🔧 Flutter Emulator (Debug)",
+            "name": "🧪 Flutter Staging (Debug)",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart",
             "cwd": "${workspaceFolder}/origna_gta",
-            "preLaunchTask": "Start Firebase Emulators",
-            "postDebugTask": "Stop All Emulator Services",
             "toolArgs": [
                 "-d", "chrome",
-                "--dart-define=ENVIRONMENT=emulator",
-                "--dart-define=USE_EMULATORS=true"
-            ],
-            "env": {
-                "ENVIRONMENT": "emulator"
-            }
+                "--web-port", "3001",
+                "--dart-define=ENVIRONMENT=staging",
+                "--dart-define=ORIGNABASE_URL=https://api.staging.orignagta.ca"
+            ]
         },
-        {
-            "name": "🔧 Flutter Emulator (Release)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "cwd": "${workspaceFolder}/origna_gta",
-            "preLaunchTask": "Start Firebase Emulators",
-            "postDebugTask": "Stop All Emulator Services",
-            "flutterMode": "release",
-            "toolArgs": [
-                "-d", "chrome",
-                "--dart-define=ENVIRONMENT=emulator",
-                "--dart-define=USE_EMULATORS=true"
-            ],
-            "env": {
-                "ENVIRONMENT": "emulator"
-            }
-        },
-        {
-            "name": "📱 Flutter Emulator (iOS Simulator)",
-            "type": "dart",
-            "request": "launch",
-            "program": "lib/main.dart",
-            "cwd": "${workspaceFolder}/origna_gta",
-            "preLaunchTask": "Start Firebase Emulators",
-            "postDebugTask": "Stop All Emulator Services",
-            "toolArgs": [
-                "--dart-define=ENVIRONMENT=emulator",
-                "--dart-define=USE_EMULATORS=true"
-            ],
-            "env": {
-                "ENVIRONMENT": "emulator"
-            }
-        },
+        // =====================================================================
+        // FLUTTER — PRODUCTION (api.orignagta.ca)
+        // =====================================================================
         {
             "name": "🌐 Flutter Production (Debug)",
             "type": "dart",
@@ -104,11 +70,8 @@
             "toolArgs": [
                 "-d", "chrome",
                 "--dart-define=ENVIRONMENT=production",
-                "--dart-define=USE_EMULATORS=false"
-            ],
-            "env": {
-                "ENVIRONMENT": "production"
-            }
+                "--dart-define=ORIGNABASE_URL=https://api.orignagta.ca"
+            ]
         },
         {
             "name": "🌐 Flutter Production (Release)",
@@ -120,54 +83,20 @@
             "toolArgs": [
                 "-d", "chrome",
                 "--dart-define=ENVIRONMENT=production",
-                "--dart-define=USE_EMULATORS=false"
-            ],
-            "env": {
-                "ENVIRONMENT": "production"
-            }
+                "--dart-define=ORIGNABASE_URL=https://api.orignagta.ca"
+            ]
         },
         // =====================================================================
-        // PYTHON FUNCTIONS CONFIGURATIONS
+        // ORIGNABASE — Rust backend (local dev)
         // =====================================================================
         {
-            "name": "🐍 Python: Run All Tests",
-            "type": "debugpy",
+            "name": "🦀 OrignaBase (cargo run)",
+            "type": "lldb",
             "request": "launch",
-            "module": "pytest",
-            "args": [
-                "functions/tests/",
-                "-v",
-                "--tb=short"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "FUNCTIONS_EMULATOR": "true",
-                "PYTHONPATH": "${workspaceFolder}/functions",
-                "PYTEST_ADDOPTS": "-p no:warnings"
-            },
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "🐍 Python: Current Test File",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "${file}",
-                "-v",
-                "--tb=short"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "FUNCTIONS_EMULATOR": "true",
-                "PYTHONPATH": "${workspaceFolder}/functions",
-                "PYTEST_ADDOPTS": "-p no:warnings"
-            },
-            "console": "integratedTerminal",
-            "autoFocusTerminal": true
+            "program": "${workspaceFolder}/../orignabase/target/debug/orignabase",
+            "args": [],
+            "cwd": "${workspaceFolder}/../orignabase",
+            "preLaunchTask": "OrignaBase: Build (Debug)"
         }
-    ],
-    "compounds": [
-        // Les compounds sont gardés pour référence mais la config par défaut est maintenant en premier
     ]
 }

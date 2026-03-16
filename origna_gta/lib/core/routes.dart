@@ -47,6 +47,7 @@ class AppRoutes {
   static const String chat = '/chat';
   static const String chatInbox = '/chat/inbox';
   static const String notifications = '/notifications';
+  static const String support = '/support';
   AppRoutes._(); // Prevent instantiation
 }
 

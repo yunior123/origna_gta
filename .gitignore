@@ -97,6 +97,9 @@ functions/visual_audit/
 *.swp
 *~
 
+# --- Credentials / secrets ---
+TOOLS.md
+
 # --- Telegram bot (contains secrets) ---
 telegram_bot/
 telegram_bot.py
@@ -104,3 +107,4 @@ telegram_bot.py
 # --- IDE ---
 # .vscode/ is kept for shared tasks/settings
 .worktrees/
+.playwright-mcp/

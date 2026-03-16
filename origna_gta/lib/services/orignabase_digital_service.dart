@@ -14,7 +14,7 @@ class OrignaBaseDigitalService {
   Future<Map<String, dynamic>> generateBookDownloadSession(
       String licenseKey) async {
     final result =
-        await _ob.request('POST', '/api/digital/download/book', body: {
+        await _ob.request('POST', ApiEndpoints.digitalDownloadBook, body: {
       Fields.licenseKey: licenseKey,
     });
     return Map<String, dynamic>.from(result as Map);
@@ -25,7 +25,7 @@ class OrignaBaseDigitalService {
   Future<Map<String, dynamic>> generateSoftwareDownloadSession(
       String licenseKey, String platform) async {
     final result =
-        await _ob.request('POST', '/api/digital/download/software', body: {
+        await _ob.request('POST', ApiEndpoints.digitalDownloadSoftware, body: {
       Fields.licenseKey: licenseKey,
       Fields.platform: platform,
     });

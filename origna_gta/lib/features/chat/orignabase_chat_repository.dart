@@ -42,7 +42,7 @@ class OrignaBaseChatRepository {
 
     final result = await _ob.request(
       'POST',
-      '/api/chat/get-or-create',
+      ApiEndpoints.chatGetOrCreate,
       body: {'otherUserId': sellerId, Fields.productId: productId},
     );
     return result[Fields.chatId] as String? ?? '';
@@ -170,7 +170,7 @@ class OrignaBaseChatRepository {
 
     await _ob.request(
       'POST',
-      '/api/chat/send',
+      ApiEndpoints.chatSend,
       body: {Fields.chatId: chatId, Fields.messageText: text.trim()},
     );
   }
@@ -183,7 +183,7 @@ class OrignaBaseChatRepository {
     }
     await _ob.request(
       'POST',
-      '/api/chat/delete-message',
+      ApiEndpoints.chatDeleteMessage,
       body: {Fields.chatId: chatId, Fields.messageId: messageId},
     );
   }
@@ -198,7 +198,7 @@ class OrignaBaseChatRepository {
     }
     await _ob.request(
       'POST',
-      '/api/chat/mark-read',
+      ApiEndpoints.chatMarkRead,
       body: {Fields.chatId: chatId},
     );
   }

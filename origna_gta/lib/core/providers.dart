@@ -114,12 +114,11 @@ final authStateProvider = StreamProvider<AppAuthUser?>((ref) async* {
   final ob = ref.watch(orignabaseProvider);
   final initialState = ob.auth.currentState;
   if (initialState.isAuthenticated && initialState.userId != null) {
-    var user = AppAuthUser.fromAuthState(initialState);
-    try {
-      final verified = await ref.read(authRepositoryProvider).isEmailVerified();
-      user = user.copyWith(emailVerified: verified);
-    } catch (_) {}
-    yield user;
+    // Use emailVerified directly from the JWT claim (already present in AuthState).
+    // Calling isEmailVerified() here would invoke refreshToken() on every auth event
+    // for unverified users, causing an infinite loop: stream event → refreshToken →
+    // new stream event → refreshToken → ...
+    yield AppAuthUser.fromAuthState(initialState);
   } else {
     yield null;
   }
@@ -130,12 +129,12 @@ final authStateProvider = StreamProvider<AppAuthUser?>((ref) async* {
       continue;
     }
 
-    var user = AppAuthUser.fromAuthState(state);
-    try {
-      final verified = await ref.read(authRepositoryProvider).isEmailVerified();
-      user = user.copyWith(emailVerified: verified);
-    } catch (_) {}
-    yield user;
+    // Use emailVerified directly from the JWT claim embedded in AuthState.
+    // The EmailVerificationRequiredScreen._checkVerification() explicitly calls
+    // isEmailVerified() (which calls refreshToken()) when the user taps
+    // "I've Verified My Email", triggering a fresh authStateChanges event with
+    // the updated claim — no polling needed here.
+    yield AppAuthUser.fromAuthState(state);
   }
 });
 

@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
@@ -67,9 +69,12 @@ void main() {
 
   Widget createTestApp({required Widget child, List<Override> overrides = const []}) {
     final mockCartController = MockCartController();
-    
+
     return TestWrapper(
       overrides: [
+        obUserIdProvider.overrideWithValue(null),
+        obAuthStateProvider.overrideWith((ref) => const Stream.empty()),
+        sellerMetricsProvider('s1').overrideWith((ref) => const Stream.empty()),
         cartControllerProvider.overrideWithValue(mockCartController),
         authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
         subscriptionStreamProvider.overrideWith((ref) => Stream.value(const SubscriptionInfo(status: 'active', isPremium: true))),
@@ -87,6 +92,7 @@ void main() {
         createTestApp(
           overrides: [
             productByIdProvider('p1').overrideWith((ref) => baseProduct.copyWith(sellerId: 'u1')),
+            sellerMetricsProvider('u1').overrideWith((ref) => const Stream.empty()),
             currentUserProvider.overrideWithValue(mockUser),
             userProfileProvider.overrideWith(
               (ref) => Stream.value(models.UserModel(uid: 'u1', email: 'test@example.com', name: 'Test User', roles: ['seller'], createdAt: DateTime.now())),

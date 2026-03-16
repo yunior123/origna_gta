@@ -1,12 +1,31 @@
 # OrignaGTA Monorepo
 
+Origna GTA is a Canada-first multi-vendor e-commerce platform where buyers browse, and local sellers list physical, digital, and perishable products with integrated shipping, payments, and seller payouts.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Flutter 3.x + Dart, Riverpod, Freezed |
+| Backend API | OrignaBase (Rust, VPS `204.168.137.16`) |
+| Database | SurrealDB v2 (via OrignaBase) |
+| Search | Meilisearch v1.12 (via OrignaBase) |
+| Payments | Stripe (Checkout + Connect + webhooks) |
+| Bot protection | Cloudflare Turnstile |
+| Web proxy | Caddy (on VPS) |
+| E2E tests | Playwright (TypeScript) |
+
+No Firebase. No Cloud Functions. No Firestore.
+
 This repo contains:
-- Flutter app: origna_gta
+- Flutter app: `origna_gta/`
+- Playwright E2E suite: `e2e/`
+- VPS deploy scripts: `scripts/`
 
 ## Backend contract
 - `orignabaseUrl` is the only primary backend for auth, data, and business logic in the active app path.
 - `baseUrl` is the public web host used for browser routes and share links.
-- No Firebase hosting; all web hosting on Hetzner VPS with Caddy. Firebase not used for hosting.
+- All web hosting on VPS with Caddy (staged releases).
 
 ## Architecture overview
 - MVVM in Flutter
@@ -133,7 +152,7 @@ Coverage-specific gate files:
 - `origna_gta/integration_test/coverage_gate_integration_test.dart`
 - `e2e/playwright_ui/coverage-gate.spec.ts`
 - `e2e/playwright_ui/coverage_gate.ts`
-- `e2e/playwright.config.dev.ts` skips `global-setup.ts` when `E2E_SKIP_GLOBAL_SETUP=true`, which keeps the coverage-only Playwright gate off the legacy Firebase-auth prewarm path.
+- `e2e/playwright.config.dev.ts` skips `global-setup.ts` when `E2E_SKIP_GLOBAL_SETUP=true`, which keeps the coverage-only Playwright gate off the auth prewarm path.
 
 
 ## Flutter Web performance (release checklist)

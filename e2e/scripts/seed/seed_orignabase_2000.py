@@ -16,7 +16,7 @@ import requests
 from datetime import datetime, timedelta, timezone
 import concurrent.futures
 
-BASE_URL = "https://api.dev.orignagta.ca"
+BASE_URL = "https://api.orignagta.ca"
 
 CITIES = ["Toronto", "Vancouver", "Montreal", "Calgary", "Ottawa", "Edmonton", "Winnipeg", "Quebec City", "Hamilton", "Halifax"]
 PROVINCES = ["ON", "BC", "QC", "AB", "ON", "AB", "MB", "QC", "ON", "NS"]
@@ -116,44 +116,63 @@ def generate_product(seller_id):
     }
 
 def register_or_login(base_url, email, password, name):
-    for _ in range(3):
+    for attempt in range(5):
         try:
-            r = requests.post(f"{base_url}/auth/register", json={"email": email, "password": password, "display_name": name}, timeout=10)
-            if r.status_code in (200, 201):
+            r = requests.post(f"{base_url}/auth/login", json={"email": email, "password": password}, timeout=10)
+            if r.status_code == 200:
                 data = r.json()
-                print(f"Registered dummy seller: {email}")
+                print(f"Logged in dummy seller: {email}")
                 return data.get("access_token"), data.get("user", {}).get("id")
-            elif r.status_code == 409 or (r.status_code == 400 and "failed" in r.text.lower()):
-                login_r = requests.post(f"{base_url}/auth/login", json={"email": email, "password": password}, timeout=10)
-                if login_r.status_code == 200:
-                    data = login_r.json()
-                    print(f"Logged in dummy seller: {email}")
-                    return data.get("access_token"), data.get("user", {}).get("id")
             elif r.status_code == 429:
-                time.sleep(2)
+                print(f"Login rate limited, HTTP 429 Response: {r.headers} - {r.text}")
+                print(f"Waiting 5 seconds... (Attempt {attempt+1})")
+                time.sleep(5)
+                continue
+            elif r.status_code in (401, 404):
+                # Try register
+                reg_r = requests.post(f"{base_url}/auth/register", json={"email": email, "password": password, "display_name": name}, timeout=10)
+                if reg_r.status_code in (200, 201):
+                    data = reg_r.json()
+                    print(f"Registered dummy seller: {email}")
+                    return data.get("access_token"), data.get("user", {}).get("id")
+                elif reg_r.status_code == 429:
+                    print(f"Register rate limited, waiting 5 seconds...")
+                    time.sleep(5)
+                    continue
+                else:
+                    print(f"Register failed: {reg_r.status_code} - {reg_r.text}")
+                    return None, None
+            else:
+                print(f"Login failed: {r.status_code} - {r.text}")
+                return None, None
         except Exception as e:
             print(f"Auth error: {e}")
-            time.sleep(1)
+            time.sleep(5)
     return None, None
 
 def create_product(args):
     base_url, token, product_data = args
-    query = "mutation CreateDoc($collection: String!, $data: JSON!) { create(collection: $collection, data: $data) }"
-    variables = {"collection": "products", "data": product_data}
     
-    for _ in range(5): # retries
+    # Extract images and remove from productData (following Orignabase SDK pattern)
+    test_image_urls = product_data.pop("imageUrls", [])
+    uid = product_data.get("sellerId")
+    
+    payload = {
+        "userId": uid,
+        "productData": product_data,
+        "testImageUrls": test_image_urls,
+    }
+    
+    for attempt in range(5):
         try:
             r = requests.post(
-                f"{base_url}/graphql",
-                json={"query": query, "variables": variables},
+                f"{base_url}/api/products/create-atomic",
+                json=payload,
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                 timeout=15
             )
-            if r.status_code == 200:
-                data = r.json()
-                if "errors" in data:
-                    print(f"GraphQL error: {data['errors']}")
-                    return False
+            print(f"create-atomic attempt {attempt+1} status: {r.status_code}")
+            if r.status_code == 200 or r.status_code == 201:
                 return True
             elif r.status_code == 429:
                 time.sleep(2)
@@ -161,6 +180,7 @@ def create_product(args):
                 print(f"Failed to create product: {r.status_code} - {r.text[:100]}")
                 time.sleep(1)
         except Exception as e:
+            print(f"create-atomic error: {e}")
             time.sleep(1)
     return False
 
@@ -170,36 +190,17 @@ def main():
     print(f"   Target: {BASE_URL}")
     print(f"===========================================================")
 
-    seller_email = "seed.orignabase.2000@orignagta.ca"
-    seller_pass = "REDACTED_TEST_PASSWORD"
+    seller_email = "seller1@example.com"
+    seller_pass = "TestPass123"
     
-    token, uid = register_or_login(BASE_URL, seller_email, seller_pass, "Mega Seed Seller")
+    token, uid = register_or_login(BASE_URL, seller_email, seller_pass, "Test Seller 1")
     if not token or not uid:
         print("Failed to authenticate with Orignabase. Aborting.")
         return
 
-    # Create seller profile document
-    seller_doc = {
-        "uid": uid,
-        "email": seller_email,
-        "name": "Mega Seed Seller",
-        "roles": ["buyer", "seller"],
-        "createdAt": int(time.time()),
-        "suspended": False,
-        "onboardingCompleted": True,
-        "payoutsEnabled": True,
-        "chargesEnabled": True,
-        "stripeAccountId": "acct_test_seed_2000",
-        "commissionRate": 0.025,
-    }
+
     
-    create_args = (BASE_URL, token, seller_doc)
-    # Using 'users' instead of products for the seller info
-    query = "mutation CreateDoc($collection: String!, $id: String!, $data: JSON!) { createWithId(collection: $collection, id: $id, data: $data) }"
-    variables = {"collection": "users", "id": uid, "data": seller_doc}
-    requests.post(f"{BASE_URL}/graphql", json={"query": query, "variables": variables}, headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
-    
-    TOTAL_PRODUCTS = 2000
+    TOTAL_PRODUCTS = 2
     print(f"\n📦 Generating {TOTAL_PRODUCTS} products...")
     
     products_to_create = [generate_product(uid) for _ in range(TOTAL_PRODUCTS)]

@@ -5,7 +5,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/services/orignabase_notification_service.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -130,68 +129,51 @@ class OrignaBaseAuthRepository implements AuthRepository {
   Future<void> signInWithGoogle() async {
     try {
       if (kIsWeb) {
-        final webClientId = ConfigService().googleWebClientId.trim();
-
+        // On web, google_sign_in_web (GIS SDK) does NOT support authenticate().
+        // The primary path is the OrignaBase server-side OAuth redirect via
+        // /auth/google/start. We first check /auth/providers to confirm Google
+        // is enabled; if that endpoint is unavailable (e.g. 404 on backends
+        // that don't implement it), we attempt the redirect directly.
+        // See: https://pub.dev/packages/google_sign_in_web — "authenticate is not supported on the web"
+        bool? googleEnabledOnBackend;
         try {
           final providers = await _ob.request('GET', '/auth/providers');
           final google = providers['google'];
-          final enabled = google is Map && google['enabled'] == true;
-          if (enabled) {
-            final redirectTo = Uri.base.replace(fragment: '');
-            final startUrl = Uri.parse(
-              '${_ob.url}/auth/google/start',
-            ).replace(queryParameters: {'redirect_to': redirectTo.toString()});
-            final launched = await launchUrl(
-              startUrl,
-              webOnlyWindowName: '_self',
-            );
-            if (!launched) {
-              throw OrignaBaseAuthException(
-                code: 'operation-not-allowed',
-                message: 'Failed to start Google OAuth flow.',
-              );
-            }
-            return;
-          }
+          googleEnabledOnBackend = google is Map && google['enabled'] == true;
+        } on OrignaBaseAuthException {
+          rethrow;
         } catch (_) {
-          // Older deployed backends still use direct ID token verification.
+          // /auth/providers is unavailable (404 or network error) — treat as
+          // unknown; attempt the redirect directly and let it fail there if
+          // Google OAuth is not configured on the backend.
+          googleEnabledOnBackend = null;
         }
 
-        if (webClientId.isEmpty) {
+        if (googleEnabledOnBackend == false) {
+          // Backend explicitly said Google is disabled.
           throw OrignaBaseAuthException(
             code: 'operation-not-allowed',
-            message: 'Google OAuth is not configured for web.',
+            message: 'Google Sign-In is not enabled on this server.',
           );
         }
 
-        final googleSignIn = GoogleSignIn.instance;
-        if (!_googleSignInInitialized) {
-          await googleSignIn.initialize(
-            clientId: webClientId,
-            serverClientId: webClientId,
-          );
-          _googleSignInInitialized = true;
-        }
-
-        final account = await googleSignIn.authenticate();
-        final idToken = account.authentication.idToken;
-        if (idToken == null) {
+        // googleEnabledOnBackend is true (provider check passed) or null
+        // (/auth/providers endpoint missing). Either way, attempt the redirect.
+        final redirectTo = Uri.base.replace(fragment: '');
+        final startUrl = Uri.parse(
+          '${_ob.url}/auth/google/start',
+        ).replace(queryParameters: {'redirect_to': redirectTo.toString()});
+        final launched = await launchUrl(
+          startUrl,
+          webOnlyWindowName: '_self',
+        );
+        if (!launched) {
           throw OrignaBaseAuthException(
-            code: 'missing-id-token',
-            message: 'Failed to obtain Google ID token',
+            code: 'operation-not-allowed',
+            message: 'Failed to start Google OAuth flow.',
           );
         }
-
-        final authState = await _ob.auth.signInWithGoogle(idToken);
-
-        if (authState.isAuthenticated && authState.userId != null) {
-          await _createUserDocumentIfNeeded(
-            userId: authState.userId!,
-            email: authState.email ?? account.email,
-            name: account.displayName,
-            consentMethod: ConsentMethodValues.googleOauth,
-          );
-        }
+        // Navigation initiated — method returns; auth state updated on redirect-back.
         return;
       }
 
@@ -403,7 +385,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
     await _ob.request(
       'POST',
-      '/api/auth/delete-account',
+      ApiEndpoints.authDeleteAccount,
       body: {'confirmation': 'DELETE_MY_ACCOUNT'},
     );
     _ob.auth.signOut();
@@ -492,7 +474,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
       try {
         final response = await _ob.request(
           'POST',
-          '/api/users/profile/get',
+          ApiEndpoints.usersProfileGet,
           body: {'userId': userId},
         );
         final data = Map<String, dynamic>.from(response as Map);
@@ -567,7 +549,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
       await _ob.request(
         'POST',
-        '/api/users/create-profile',
+        ApiEndpoints.usersCreateProfile,
         body: {
           Fields.userId: userId,
           Fields.email: email ?? '',

@@ -59,9 +59,16 @@ class OrderDetailScreenLayout extends StatelessWidget {
                   children: [
                     Icon(Icons.search_off_rounded, size: 64, color: DesignTokens.textSecondary),
                     const SizedBox(height: 16),
-                    Text('orders.not_found'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+                    Semantics(
+                      label: 'text-order-not-found',
+                      child: Text('orders.not_found'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+                    ),
                     const SizedBox(height: 24),
-                    ModernButton(onPressed: onBack, label: 'common.back'.tr(), icon: Icons.arrow_back),
+                    Semantics(
+                      button: true,
+                      label: 'btn-back',
+                      child: ModernButton(onPressed: onBack, label: 'common.back'.tr(), icon: Icons.arrow_back),
+                    ),
                   ],
                 ),
               );
@@ -97,7 +104,10 @@ class OrderDetailScreenLayout extends StatelessWidget {
           children: [
             Icon(Icons.error_outline_rounded, size: 60, color: DesignTokens.error),
             const SizedBox(height: 16),
-            Text('orders.unable_to_load'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Semantics(
+              label: 'text-order-load-error',
+              child: Text('orders.unable_to_load'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
             const SizedBox(height: 8),
             Text(
               message,
@@ -105,7 +115,11 @@ class OrderDetailScreenLayout extends StatelessWidget {
               style: TextStyle(color: DesignTokens.textSecondary),
             ),
             const SizedBox(height: 24),
-            ModernButton(onPressed: onRefresh, label: 'orders.retry'.tr(), icon: Icons.refresh),
+            Semantics(
+              button: true,
+              label: 'btn-retry-load-order',
+              child: ModernButton(onPressed: onRefresh, label: 'orders.retry'.tr(), icon: Icons.refresh),
+            ),
           ],
         ),
       ),

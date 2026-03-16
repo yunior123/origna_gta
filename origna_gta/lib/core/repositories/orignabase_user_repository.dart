@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
-    show Collections, Fields, PolicyVersionValues;
+    show ApiEndpoints, Collections, Fields, PolicyVersionValues;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:uuid/uuid.dart';
@@ -88,7 +88,7 @@ class OrignaBaseUserRepository implements UserRepository {
   Future<UserModel?> getUserProfile(String userId) async {
     final response = await _ob.request(
       'POST',
-      '/api/users/profile/get',
+      ApiEndpoints.usersProfileGet,
       body: {Fields.userId: userId},
     );
     final data = Map<String, dynamic>.from(response as Map);
@@ -111,7 +111,7 @@ class OrignaBaseUserRepository implements UserRepository {
     }
     final response = await _ob.request(
       'POST',
-      '/api/users/profile/update',
+      ApiEndpoints.usersProfileUpdate,
       body: {
         Fields.userId: userId,
         Fields.termsAcceptedAt: true,
@@ -220,7 +220,7 @@ class OrignaBaseUserRepository implements UserRepository {
     if (updates.length == 1) return;
     final response = await _ob.request(
       'POST',
-      '/api/users/notification-preferences',
+      ApiEndpoints.usersNotificationPreferences,
       body: updates,
     );
     final data = Map<String, dynamic>.from(response as Map);
@@ -235,7 +235,7 @@ class OrignaBaseUserRepository implements UserRepository {
   Future<void> updatePreferredLanguage(String userId, String lang) async {
     final response = await _ob.request(
       'POST',
-      '/api/users/profile/update',
+      ApiEndpoints.usersProfileUpdate,
       body: {Fields.userId: userId, Fields.preferredLanguage: lang},
     );
     final data = Map<String, dynamic>.from(response as Map);

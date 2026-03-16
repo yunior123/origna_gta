@@ -47,46 +47,10 @@ void main() {
         }
       }
 
-      // Initialize the OrignaBase-backed config service.
+      // Initialize OrignaBase SDK (sync — no network call).
       final ob = OrignaBase.initialize(url: envConfig.orignabaseUrl);
-      await OrignaBaseConfigService().initialize(ob);
 
-      await SentryFlutter.init((options) {
-        options.dsn = OrignaBaseConfigService().sentryDnsKey;
-        // Use env_config for environment naming (dev/staging must not be labeled 'emulator')
-        options.environment = envConfig.isProduction
-            ? 'production'
-            : envConfig.isStaging
-                ? 'staging'
-                : envConfig.isDev
-                    ? 'dev'
-                    : 'emulator';
-        options.tracesSampleRate = 0.1; // 10% of transactions
-        options.beforeSend = (event, hint) {
-          // Filter sensitive data - strip emails before sending
-          if (event.user != null) {
-            final user = event.user!;
-            event.user = SentryUser(
-              id: user.id,
-              username: user.username,
-              ipAddress: null, // F-286: IP is PII under PIPEDA — never forward to Sentry
-              data: user.data,
-            );
-          }
-          return event;
-        };
-        // On web, disable frame tracking & auto performance
-        if (kIsWeb) {
-          options.enableAutoPerformanceTracing = false;
-          options.enableFramesTracking = false;
-          options.enableAutoSessionTracking = false;
-        } else {
-          // Mobile: 100% only in production; 10% in dev/staging to avoid noise + quota burn
-          options.tracesSampleRate = envConfig.isProduction ? 1.0 : 0.1;
-        }
-      });
-
-      // Set global Flutter error handler
+      // Set global Flutter error handler before runApp.
       FlutterError.onError = (FlutterErrorDetails details) {
         final message = details.exceptionAsString();
         // Ignore the disposed Web engine view error
@@ -99,6 +63,8 @@ void main() {
         FlutterError.presentError(details);
       };
 
+      // Start runApp immediately so Flutter renders at the earliest possible moment.
+      // Config and Sentry are initialized in background — the app handles "not ready" state.
       runApp(
         EasyLocalization(
           supportedLocales: const [Locale('en'), Locale('fr')],
@@ -106,6 +72,60 @@ void main() {
           fallbackLocale: const Locale('en'),
           child: const ProviderScope(child: OrignaApp()),
         ),
+      );
+
+      // Background: fetch remote config (safe defaults already set).
+      // 10s timeout — slow network should not block the rendered app.
+      unawaited(
+        OrignaBaseConfigService()
+            .initialize(ob)
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () =>
+                  debugPrint('⚠️ Config init timed out — proceeding with defaults'),
+            )
+            .catchError((_) {}),
+      );
+
+      // Background: initialize Sentry after config is likely populated.
+      // Short delay gives config a head-start before reading sentryDnsKey.
+      unawaited(
+        Future.delayed(const Duration(seconds: 2)).then((_) async {
+          try {
+            await SentryFlutter.init((options) {
+              options.dsn = OrignaBaseConfigService().sentryDnsKey;
+              options.environment = envConfig.isProduction
+                  ? 'production'
+                  : envConfig.isStaging
+                      ? 'staging'
+                      : envConfig.isDev
+                          ? 'dev'
+                          : 'emulator';
+              options.tracesSampleRate = 0.1;
+              options.beforeSend = (event, hint) {
+                if (event.user != null) {
+                  final user = event.user!;
+                  event.user = SentryUser(
+                    id: user.id,
+                    username: user.username,
+                    ipAddress: null,
+                    data: user.data,
+                  );
+                }
+                return event;
+              };
+              if (kIsWeb) {
+                options.enableAutoPerformanceTracing = false;
+                options.enableFramesTracking = false;
+                options.enableAutoSessionTracking = false;
+              } else {
+                options.tracesSampleRate = envConfig.isProduction ? 1.0 : 0.1;
+              }
+            }).timeout(const Duration(seconds: 10));
+          } catch (_) {
+            debugPrint('⚠️ Sentry init failed — continuing without error tracking');
+          }
+        }),
       );
     },
     (exception, stackTrace) async {

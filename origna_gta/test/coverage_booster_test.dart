@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
+import 'package:origna_gta/core/repositories/notification_repository.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
@@ -49,8 +51,19 @@ import 'package:origna_gta/utils/env_config.dart';
   MockSpec<AuthRepository>(),
   MockSpec<EnvConfig>(),
 ])
+import 'package:orignabase/orignabase.dart' show OrignaBase;
 import 'coverage_booster_test.mocks.dart';
 import 'test_utils.dart';
+
+/// Fake notification repository that returns empty streams without connecting.
+class _FakeNotificationRepository extends NotificationRepository {
+  _FakeNotificationRepository()
+      : super(OrignaBase.initialize(url: 'http://localhost:9999'));
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchNotifications(String uid) =>
+      const Stream.empty();
+}
 
 void main() {
   late AppAuthUser mockUser;
@@ -95,6 +108,9 @@ void main() {
   Widget boosterWrapper(Widget child) {
     return TestWrapper(
       overrides: [
+        obUserIdProvider.overrideWithValue(null),
+        obAuthStateProvider.overrideWith((ref) => const Stream.empty()),
+        notificationRepositoryProvider.overrideWithValue(_FakeNotificationRepository()),
         currentUserProvider.overrideWithValue(mockUser),
         userProfileProvider.overrideWith(
           (ref) => Stream.value(

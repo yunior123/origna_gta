@@ -1,5 +1,6 @@
 // coverage:ignore-file
 import 'package:orignabase/orignabase.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart' show ApiEndpoints;
 
 import 'location_repository.dart';
 
@@ -14,7 +15,7 @@ class OrignaBaseLocationRepository implements LocationRepository {
       String query) async {
     try {
       final result = await _ob
-          .request('POST', '/api/addresses/suggestions', body: {
+          .request('POST', ApiEndpoints.addressesSuggestions, body: {
         'query': query,
         'limit': 5,
       });

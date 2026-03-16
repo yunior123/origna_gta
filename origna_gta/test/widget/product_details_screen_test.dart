@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
@@ -101,7 +103,16 @@ void main() {
   final fakeAuthRepository = FakeAuthRepository();
 
   Widget createTestApp({required Widget child, List<Override> overrides = const []}) {
-    return TestWrapper(overrides: overrides, child: child);
+    return TestWrapper(
+      overrides: [
+        obUserIdProvider.overrideWithValue(null),
+        obAuthStateProvider.overrideWith((ref) => const Stream.empty()),
+        sellerMetricsProvider('s1').overrideWith((ref) => const Stream.empty()),
+        sellerMetricsProvider('seller_123').overrideWith((ref) => const Stream.empty()),
+        ...overrides,
+      ],
+      child: child,
+    );
   }
 
   group('ProductDetailScreen Comprehensive Tests', () {

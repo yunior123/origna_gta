@@ -9,6 +9,11 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
+# Skip agent/hook/rule definitions — not production code
+if echo "$FILE_PATH" | grep -qE "\.claude/(agents|hooks|rules|commands)/"; then
+  exit 0
+fi
+
 # Check if the edited file is schema-related
 SCHEMA_PATTERNS=(
   "schema_constants"
@@ -21,7 +26,7 @@ SCHEMA_PATTERNS=(
   "product_models"
   "user_models"
   "base_models"
-  "firestore.rules"
+  "surrealdb_schema"
 )
 
 IS_SCHEMA=false

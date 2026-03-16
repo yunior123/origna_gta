@@ -22,6 +22,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'on',
     bypassCSP: true,
+    serviceWorkers: 'block', // Prevent Flutter SW from causing delays on page navigation
   },
   outputDir: `${process.env.HOME}/Desktop/origna-screenshots/dev`,
   projects: [

@@ -13,6 +13,7 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/widgets/modern_textfield.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../core/theme_provider.dart';
@@ -181,20 +182,14 @@ class ProfileScreenLayout extends StatelessWidget {
                     const SizedBox(height: 16),
                     Text('profile.sign_in_prompt'.tr(), style: TextStyle(fontSize: 18, color: DesignTokens.textPrimary)),
                     const SizedBox(height: 16),
-                    Semantics(
-                      button: true,
-                      label: 'btn-sign-in',
-                      child: ElevatedButton.icon(
+                    SizedBox(
+                      width: 220,
+                      child: ModernButton(
                         key: const Key('profile_sign_in_button'),
+                        label: 'auth.sign_in'.tr(),
+                        icon: Icons.login_rounded,
                         onPressed: onSignIn,
-                        icon: const Icon(Icons.login_rounded),
-                        label: Text('auth.sign_in'.tr()),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: DesignTokens.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
+                        semanticsLabel: 'btn-sign-in',
                       ),
                     ),
                   ],
@@ -373,7 +368,19 @@ class ProfileScreenLayout extends StatelessWidget {
                         delay: const Duration(milliseconds: 125),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [_buildSectionHeader(context, 'profile.section_support'.tr()), _buildAppInfoSection(context, isDark)],
+                          children: [
+                            _buildSectionHeader(context, 'profile.section_support'.tr()),
+                            _buildMenuItem(
+                              context,
+                              key: const Key('profile_get_help_button'),
+                              icon: Icons.support_agent_rounded,
+                              semanticLabel: 'menu-get-help',
+                              title: 'support.get_help_title'.tr(),
+                              subtitle: 'support.get_help_subtitle'.tr(),
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.support),
+                            ),
+                            _buildAppInfoSection(context, isDark),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -995,13 +1002,10 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
             const SizedBox(height: 16),
             Text('profile.type_delete'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
             const SizedBox(height: 12),
-            TextField(
+            ModernTextField(
               controller: confirmController,
-              decoration: InputDecoration(
-                hintText: 'profile.type_delete_hint'.tr(),
-                prefixIcon: const Icon(Icons.lock_outline),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-              ),
+              hint: 'profile.type_delete_hint'.tr(),
+              prefixIcon: Icons.lock_outline,
               onChanged: (value) => setState(() {}),
             ),
           ],
@@ -1010,7 +1014,8 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('common.cancel'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
+          style: TextButton.styleFrom(foregroundColor: DesignTokens.textSecondary),
+          child: Text('common.cancel'.tr()),
         ),
         ModernButton(
           onPressed: confirmController.text == 'profile.type_delete_keyword'.tr() && !profileState.isLoading
@@ -1162,18 +1167,16 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
               const SizedBox(height: 20),
               FadeSlideIn(
                 delay: const Duration(milliseconds: 200),
-                child: TextButton.icon(
+                child: ModernButton(
+                  label: 'profile.sign_in_different'.tr(),
+                  icon: Icons.logout,
+                  isPrimary: false,
                   onPressed: () async {
                     await ref.read(authRepositoryProvider).signOut();
                     if (context.mounted) {
                       Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
                     }
                   },
-                  icon: Icon(Icons.logout, size: 16, color: DesignTokens.textSecondary),
-                  label: Text(
-                    'profile.sign_in_different'.tr(),
-                    style: TextStyle(color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
-                  ),
                 ),
               ),
               const SizedBox(height: 40),

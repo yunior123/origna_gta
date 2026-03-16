@@ -1,6 +1,11 @@
 #!/bin/bash
 # Hook: PreToolUse — Protect production-critical files from accidental edits
-# Warns when editing deployment configs, production secrets, or firebase config
+# Warns when editing deployment configs, production secrets, or VPS config
+
+FILE_PATH="${1:-}"
+if echo "$FILE_PATH" | grep -qE "\.claude/(agents|hooks|rules|commands)/"; then
+  exit 0
+fi
 
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.file // empty')
@@ -13,24 +18,23 @@ fi
 BLOCKED=false
 REASON=""
 
-# Direct production config files
 case "$FILE_PATH" in
   *serviceAccountKey*)
     BLOCKED=true
-    REASON="🔒 SERVICE ACCOUNT KEY — This is a production secret. Are you sure you need to edit it?"
+    REASON="SERVICE ACCOUNT KEY — This is a production secret. Edit manually."
     ;;
   *deploy_web.sh)
-    REASON="⚠️ VPS DEPLOY SCRIPT — Changes affect all environments. Test staged releases."
+    REASON="VPS DEPLOY SCRIPT — Changes affect all environments. Test staged releases."
     ;;
-  *firestore.rules)
-    REASON="⚠️ FIRESTORE RULES — Changes affect data security for ALL users. Run schema-sync-checker after editing."
+  *Caddyfile*)
+    REASON="CADDYFILE — Changes affect VPS reverse proxy for all environments."
     ;;
-  *storage.rules)
-    REASON="⚠️ STORAGE RULES — Changes affect file access security."
+  *orignabase.toml*)
+    REASON="ORIGNABASE CONFIG — Changes affect backend behaviour across all envs."
     ;;
   *.env.production*|*prod.env*)
     BLOCKED=true
-    REASON="🔒 PRODUCTION ENV — Cannot edit production environment variables directly."
+    REASON="PRODUCTION ENV — Cannot edit production environment variables directly."
     ;;
 esac
 

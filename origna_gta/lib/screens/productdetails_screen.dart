@@ -26,8 +26,11 @@ import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/gradient_badge.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_card.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/widgets/modern_textfield.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 import 'package:origna_gta/widgets/rating_histogram.dart';
 import 'package:share_plus/share_plus.dart';
@@ -36,6 +39,8 @@ import 'package:shimmer/shimmer.dart';
 import 'package:video_player/video_player.dart';
 
 /// Stream of up to 10 most recent product ratings, ordered by createdAt desc.
+/// On backend errors, emits an empty list so the UI shows "no reviews yet"
+/// instead of a hard error — ratings are non-critical display data.
 final productRatingsProvider = StreamProvider.autoDispose
     .family<List<Map<String, dynamic>>, String>((ref, productId) {
       final ob = ref.watch(orignabaseProvider);
@@ -58,13 +63,30 @@ final productRatingsProvider = StreamProvider.autoDispose
         try {
           controller.add(await fetchRatings());
         } catch (error, stackTrace) {
-          controller.addError(error, stackTrace);
+          // Log the error but emit an empty list — ratings are display-only.
+          // The UI will show "no reviews yet" rather than a hard error state.
+          AppError.log(
+            error,
+            stackTrace: stackTrace,
+            context: 'productRatingsProvider[$productId]',
+          );
+          controller.add(const []);
         }
 
         final subscription = ratings
             .snapshots()
             .asyncMap((_) => fetchRatings())
-            .listen(controller.add, onError: controller.addError);
+            .listen(
+              controller.add,
+              onError: (Object e, StackTrace st) {
+                AppError.log(
+                  e,
+                  stackTrace: st,
+                  context: 'productRatingsProvider.realtime[$productId]',
+                );
+                // Do not propagate realtime errors — keep the last known data.
+              },
+            );
 
         controller.onCancel = () => subscription.cancel();
       });
@@ -590,11 +612,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       ),
                       child: Row(
                         children: [
-                          IconButton(
-                            key: const Key('productdetail_back_button'),
-                            tooltip: 'product.go_back'.tr(),
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () => Navigator.pop(context),
+                          Semantics(
+                            button: true,
+                            label: 'btn-back-product-details',
+                            child: IconButton(
+                              key: const Key('productdetail_back_button'),
+                              tooltip: 'product.go_back'.tr(),
+                              icon: const Icon(Icons.arrow_back),
+                              onPressed: () => Navigator.pop(context),
+                            ),
                           ),
                           const Spacer(),
                           if (product.slug != null)
@@ -717,14 +743,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               width: 1,
                             ),
                           ),
-                          child: IconButton(
-                            key: const Key('productdetail_back_button'),
-                            tooltip: 'product.go_back'.tr(),
-                            icon: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
+                          child: Semantics(
+                            button: true,
+                            label: 'btn-back-product-details',
+                            child: IconButton(
+                              key: const Key('productdetail_back_button'),
+                              tooltip: 'product.go_back'.tr(),
+                              icon: const Icon(
+                                Icons.arrow_back,
+                                color: Colors.white,
+                              ),
+                              onPressed: () => Navigator.pop(context),
                             ),
-                            onPressed: () => Navigator.pop(context),
                           ),
                         ),
                       ),
@@ -1314,17 +1344,9 @@ class _DeliveryInfoCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final deliveryInfo = product.deliveryInfo;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
-        borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        border: Border.all(
-          color: isDark
-              ? DesignTokens.darkOutline
-              : DesignTokens.outlineVariant,
-        ),
-      ),
+    return ModernCard(
+      padding: const EdgeInsets.all(DesignTokens.spacing16),
+      borderRadius: const BorderRadius.all(Radius.circular(DesignTokens.radius12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1380,30 +1402,12 @@ class _DeliveryInfoCard extends StatelessWidget {
           ),
           if (product.freeShipping) ...[
             const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: DesignTokens.success.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.local_offer_rounded,
-                    size: 16,
-                    color: DesignTokens.success,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'product.free_shipping'.tr(),
-                    style: TextStyle(
-                      color: DesignTokens.success,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+            GradientBadge(
+              label: 'product.free_shipping'.tr(),
+              gradient: const LinearGradient(
+                colors: [DesignTokens.success, Color(0xFF059669)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
           ],
@@ -1982,10 +1986,14 @@ class _QACard extends ConsumerWidget {
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton.icon(
+              child: ModernButton(
+                label: 'qa.your_answer'.tr(),
+                icon: Icons.reply,
+                isPrimary: false,
+                isOutlined: true,
+                fullWidth: false,
+                height: 40,
                 onPressed: () => _showAnswerDialog(context, ref),
-                icon: const Icon(Icons.reply, size: 18),
-                label: Text('qa.your_answer'.tr()),
               ),
             ),
           ],
@@ -2000,17 +2008,23 @@ class _QACard extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('qa.your_answer'.tr()),
-        content: TextField(
+        content: ModernTextField(
           controller: controller,
-          decoration: InputDecoration(hintText: 'qa.answer_hint'.tr()),
+          hint: 'qa.answer_hint'.tr(),
+          isMultiline: true,
           maxLines: 3,
+          minLines: 2,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(foregroundColor: DesignTokens.textSecondary),
             child: Text('common.cancel'.tr()),
           ),
-          ElevatedButton(
+          ModernButton(
+            label: 'qa.submit_answer'.tr(),
+            fullWidth: false,
+            height: 40,
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
                 ref
@@ -2022,7 +2036,6 @@ class _QACard extends ConsumerWidget {
                 );
               }
             },
-            child: Text('qa.submit_answer'.tr()),
           ),
         ],
       ),
@@ -2089,6 +2102,7 @@ class _QASectionState extends ConsumerState<_QASection> {
                 if (qaList.length > 3 && !_showAll)
                   TextButton(
                     onPressed: () => setState(() => _showAll = true),
+                    style: TextButton.styleFrom(foregroundColor: DesignTokens.primary),
                     child: Text(
                       'qa.see_all'.tr(
                         namedArgs: {'count': qaList.length.toString()},
@@ -2097,54 +2111,14 @@ class _QASectionState extends ConsumerState<_QASection> {
                   ),
                 const SizedBox(height: 16),
                 if (!isSeller && currentUserId != null)
-                  ElevatedButton.icon(
+                  ModernButton(
+                    label: 'qa.ask_question'.tr(),
+                    icon: isPremium ? Icons.help_outline : Icons.lock_rounded,
+                    isPrimary: isPremium,
+                    isOutlined: !isPremium,
                     onPressed: () => isPremium
                         ? _showAskDialog(context)
                         : _showPremiumPaywall(context),
-                    icon: Icon(
-                      isPremium ? Icons.help_outline : Icons.lock_rounded,
-                    ),
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('qa.ask_question'.tr()),
-                        if (!isPremium) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: DesignTokens.primaryGradient,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'subscription.premium_label'.tr(),
-                              style: const TextStyle(
-                                fontSize: 9,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark
-                          ? Colors.grey.shade900
-                          : Colors.white,
-                      foregroundColor: isPremium
-                          ? DesignTokens.primary
-                          : DesignTokens.textSecondary,
-                      elevation: 0,
-                      side: BorderSide(
-                        color: isPremium
-                            ? DesignTokens.primary
-                            : DesignTokens.outline,
-                      ),
-                    ),
                   )
                 else if (currentUserId == null)
                   Center(
@@ -2196,41 +2170,14 @@ class _QASectionState extends ConsumerState<_QASection> {
           ),
           if (!isSeller && currentUserId != null) ...[
             const SizedBox(height: 16),
-            ElevatedButton.icon(
+            ModernButton(
+              label: 'qa.ask_question'.tr(),
+              icon: isPremium ? Icons.help_outline : Icons.lock_rounded,
+              isPrimary: isPremium,
+              isOutlined: !isPremium,
               onPressed: () => isPremium
                   ? _showAskDialog(context)
                   : _showPremiumPaywall(context),
-              icon: Icon(
-                isPremium ? Icons.help_outline : Icons.lock_rounded,
-                size: 18,
-              ),
-              label: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('qa.ask_question'.tr()),
-                  if (!isPremium) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: DesignTokens.primaryGradient,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'subscription.premium_label'.tr(),
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
             ),
           ] else if (currentUserId == null) ...[
             const SizedBox(height: 16),
@@ -2253,18 +2200,23 @@ class _QASectionState extends ConsumerState<_QASection> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('qa.ask_question'.tr()),
-        content: TextField(
+        content: ModernTextField(
           controller: controller,
-          decoration: InputDecoration(hintText: 'qa.question_hint'.tr()),
+          hint: 'qa.question_hint'.tr(),
+          isMultiline: true,
           maxLines: 3,
-          autofocus: true,
+          minLines: 2,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(foregroundColor: DesignTokens.textSecondary),
             child: Text('common.cancel'.tr()),
           ),
-          ElevatedButton(
+          ModernButton(
+            label: 'qa.ask_question'.tr(),
+            fullWidth: false,
+            height: 40,
             onPressed: () async {
               final text = controller.text.trim();
               if (text.isEmpty) return;
@@ -2288,7 +2240,6 @@ class _QASectionState extends ConsumerState<_QASection> {
                 );
               }
             },
-            child: Text('qa.submit_question'.tr()),
           ),
         ],
       ),
@@ -2718,6 +2669,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                     : TextButton(
                         style: TextButton.styleFrom(
                           minimumSize: Size.zero,
+                          foregroundColor: DesignTokens.primary,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 4,
@@ -2928,9 +2880,32 @@ class _ReviewsSection extends ConsumerWidget {
             );
           },
           loading: () => const Center(child: ModernLoadingIndicator()),
-          error: (e, _) => Text(
-            'product.reviews_load_error'.tr(),
-            style: TextStyle(color: DesignTokens.error, fontSize: 13),
+          error: (e, _) => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: DesignTokens.outlineVariant),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'product.reviews_load_error'.tr(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: DesignTokens.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () =>
+                      ref.invalidate(productRatingsProvider(productId)),
+                  child: Text('common.retry'.tr()),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -2958,15 +2933,8 @@ class _SellerInfoCard extends ConsumerWidget {
     final currentUserId = ref.watch(obUserIdProvider);
     final isOwnProduct = currentUserId == product.sellerId;
 
-    return Container(
+    return ModernCard(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark
-            ? DesignTokens.surface.withValues(alpha: 0.8)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.18)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3001,7 +2969,13 @@ class _SellerInfoCard extends ConsumerWidget {
                 Flexible(
                   child: Align(
                     alignment: Alignment.centerRight,
-                    child: TextButton.icon(
+                    child: ModernButton(
+                      label: 'chat.title'.tr(),
+                      icon: Icons.chat_bubble_outline_rounded,
+                      isPrimary: false,
+                      isOutlined: true,
+                      fullWidth: false,
+                      height: 40,
                       onPressed: () {
                         if (currentUserId == null) {
                           Navigator.pushNamed(context, AppRoutes.login);
@@ -3037,25 +3011,6 @@ class _SellerInfoCard extends ConsumerWidget {
                           );
                         }
                       },
-                      label: Text(
-                        'chat.title'.tr(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      icon: const Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: 16,
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: DesignTokens.primary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
                     ),
                   ),
                 ),
@@ -3585,7 +3540,7 @@ class _VideoPlayerDialog extends StatefulWidget {
 }
 
 class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
-  late VideoPlayerController _videoPlayerController;
+  VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   bool _hasError = false;
 
@@ -3619,7 +3574,7 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
                               .value
                               .isInitialized
                       ? AspectRatio(
-                          aspectRatio: _videoPlayerController.value.aspectRatio,
+                          aspectRatio: _videoPlayerController!.value.aspectRatio,
                           child: Chewie(controller: _chewieController!),
                         )
                       : const ModernLoadingIndicator()),
@@ -3646,7 +3601,7 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
 
   @override
   void dispose() {
-    _videoPlayerController.dispose();
+    _videoPlayerController?.dispose();
     _chewieController?.dispose();
     super.dispose();
   }
@@ -3659,15 +3614,17 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
 
   Future<void> _initializePlayer() async {
     try {
-      _videoPlayerController = VideoPlayerController.networkUrl(
+      final controller = VideoPlayerController.networkUrl(
         Uri.parse(widget.videoUrl),
       );
-      await _videoPlayerController.initialize();
+      _videoPlayerController = controller;
+      await controller.initialize();
+      if (!mounted) return;
       _chewieController = ChewieController(
-        videoPlayerController: _videoPlayerController,
+        videoPlayerController: controller,
         autoPlay: true,
         looping: false,
-        aspectRatio: _videoPlayerController.value.aspectRatio,
+        aspectRatio: controller.value.aspectRatio,
         placeholder: const Center(child: ModernLoadingIndicator()),
         autoInitialize: true,
         errorBuilder: (context, errorMessage) {

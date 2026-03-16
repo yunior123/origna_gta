@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
+import 'package:origna_gta/features/seller/warehouses_viewmodel.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
@@ -103,6 +105,9 @@ void main() {
   Widget boosterWrapper(Widget child, {List<Override> extraOverrides = const [], ThemeMode themeMode = ThemeMode.light}) {
     return TestWrapper(
       overrides: [
+        obUserIdProvider.overrideWithValue(null),
+        obAuthStateProvider.overrideWith((ref) => const Stream.empty()),
+        sellerWarehousesStreamProvider.overrideWith((ref) => Stream.value([])),
         currentUserProvider.overrideWithValue(mockUser),
         userProfileProvider.overrideWith(
           (ref) => Stream.value(

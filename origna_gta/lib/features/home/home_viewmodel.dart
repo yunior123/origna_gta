@@ -102,7 +102,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
   // ---------------------------------------------------------------------------
 
   void _fetchSuggestions(String query) {
-    if (_suggestionDebounce?.isActive ?? false) _suggestionDebounce!.cancel();
+    _suggestionDebounce?.cancel();
     if (query.length < 2) {
       if (!mounted) return;
       state = state.copyWith(searchSuggestions: []);
@@ -279,9 +279,12 @@ class HomeViewModel extends StateNotifier<HomeState> {
     // Update suggestions in parallel
     _fetchSuggestions(value);
 
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce?.cancel();
 
     if (value.trim().isEmpty) {
+      // Show loading immediately so the grid doesn't flash an empty state
+      if (!mounted) return;
+      state = state.copyWith(isLoading: true, errorMessage: null);
       _debounce = Timer(const Duration(milliseconds: 300), () {
         if (!mounted) return;
         state = state.copyWith(
@@ -296,6 +299,10 @@ class HomeViewModel extends StateNotifier<HomeState> {
         loadProducts();
       });
     } else {
+      // Show loading immediately while debouncing so the grid shows shimmer
+      // instead of an "empty" state during the 500ms keystroke delay.
+      if (!mounted) return;
+      state = state.copyWith(isLoading: true, errorMessage: null);
       // Debounce product grid update while typing (500ms)
       _debounce = Timer(const Duration(milliseconds: 500), () {
         if (!mounted) return;

@@ -12,11 +12,11 @@ import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/services/conf_services.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 export 'package:origna_gta/models/models.dart';
 
@@ -158,7 +158,7 @@ Future<Map<String, double>> calculateShippingCost(
 
     if (seller.latitude != null && seller.longitude != null && apiKey.isNotEmpty) {
       try {
-        final url = Uri.parse("https://api.geoapify.com/v1/routematrix?apiKey=$apiKey");
+        final url = Uri.parse("${ExternalUrls.geoapifyBase}/routematrix?apiKey=$apiKey");
         final response = await http
             .post(
               url,
@@ -635,18 +635,6 @@ _FixedPriceResult _hasFixedPriceForSpeed(List<CartItemDetailModel> items, Delive
   return _FixedPriceResult(isEnabled: true, total: total);
 }
 
-// ============================================================================
-// LEGAL PAGE NAVIGATION - OAuth Compliance
-// ============================================================================
-
-Future<void> _launchPath(String path) async {
-  // Ensure you use https://
-  final Uri url = Uri.parse('https://orignagta.ca$path');
-
-  if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-    throw Exception('Could not launch $url');
-  }
-}
 
 /// Centralized error handler - logs to console and Sentry
 /// Use this for all caught errors to ensure visibility

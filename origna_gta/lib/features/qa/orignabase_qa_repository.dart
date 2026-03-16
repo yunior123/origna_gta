@@ -21,7 +21,7 @@ class OrignaBaseQARepository implements QARepository {
       throw OrignaBaseException('User not authenticated');
     }
 
-    await _ob.request('POST', '/api/products/questions/answer', body: {
+    await _ob.request('POST', ApiEndpoints.productsQuestionsAnswer, body: {
       Fields.questionId: qaId,
       Fields.answerText: answer.trim(),
     });
@@ -34,7 +34,7 @@ class OrignaBaseQARepository implements QARepository {
       throw OrignaBaseException('User not authenticated');
     }
 
-    await _ob.request('POST', '/api/products/questions/ask', body: {
+    await _ob.request('POST', ApiEndpoints.productsQuestionsAsk, body: {
       Fields.productId: productId,
       Fields.questionText: question.trim(),
     });

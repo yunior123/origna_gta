@@ -27,14 +27,14 @@ class OrignaBaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> approveProduct(String productId) async {
-    await _ob.request('POST', '/api/admin/approve-product', body: {
+    await _ob.request('POST', ApiEndpoints.adminApproveProduct, body: {
       Fields.productId: productId,
     });
   }
 
   @override
   Future<void> deleteProduct(String productId) async {
-    await _ob.request('POST', '/api/products/delete', body: {
+    await _ob.request('POST', ApiEndpoints.productsDelete, body: {
       Fields.productId: productId,
     });
   }
@@ -42,7 +42,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
   @override
   Future<void> disableAdminMfa(String code) async {
     _requireCurrentUserId();
-    await _ob.request('POST', '/api/admin/mfa/disable', body: {
+    await _ob.request('POST', ApiEndpoints.adminMfaDisable, body: {
       ApiKeys.code: code,
     });
   }
@@ -50,7 +50,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
   @override
   Future<Map<String, dynamic>> enableAdminMfa() async {
     _requireCurrentUserId();
-    final result = await _ob.request('POST', '/api/admin/mfa/enroll', body: {});
+    final result = await _ob.request('POST', ApiEndpoints.adminMfaEnroll, body: {});
     return Map<String, dynamic>.from(result as Map);
   }
 
@@ -65,7 +65,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
   Future<Map<String, dynamic>> getPaymentProviders() async {
     _requireCurrentUserId();
     final result =
-        await _ob.request('POST', '/api/payments/providers/list', body: {});
+        await _ob.request('POST', ApiEndpoints.paymentsProvidersList, body: {});
     final data = Map<String, dynamic>.from(result as Map);
     final providers = data[ApiKeys.providers];
     if (providers is List) {
@@ -90,7 +90,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> flagReview(String reviewId, {required bool flagged}) async {
-    await _ob.request('POST', '/api/admin/flag-review', body: {
+    await _ob.request('POST', ApiEndpoints.adminFlagReview, body: {
       Fields.reviewId: reviewId,
       Fields.flagged: flagged,
     });
@@ -99,7 +99,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
   @override
   Future<void> refundOrder(String orderId,
       {String reason = 'Admin refund'}) async {
-    await _ob.request('POST', '/api/orders/refunds/item', body: {
+    await _ob.request('POST', ApiEndpoints.ordersRefundsItem, body: {
       Fields.orderId: orderId,
       Fields.reason: reason,
     });
@@ -107,7 +107,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> rejectProduct(String productId, String reason) async {
-    await _ob.request('POST', '/api/admin/reject-product', body: {
+    await _ob.request('POST', ApiEndpoints.adminRejectProduct, body: {
       Fields.productId: productId,
       Fields.reason: reason,
     });
@@ -116,12 +116,12 @@ class OrignaBaseAdminRepository implements AdminRepository {
   @override
   Future<void> setUserSuspended(String userId, bool suspended) async {
     if (suspended) {
-      await _ob.request('POST', '/api/admin/suspend-seller', body: {
+      await _ob.request('POST', ApiEndpoints.adminSuspendSeller, body: {
         Fields.sellerId: userId,
         ApiKeys.reason: 'Suspended by admin',
       });
     } else {
-      await _ob.request('POST', '/api/admin/unsuspend-seller', body: {
+      await _ob.request('POST', ApiEndpoints.adminUnsuspendSeller, body: {
         Fields.sellerId: userId,
         ApiKeys.reason: 'Unsuspended by admin',
       });
@@ -132,7 +132,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
   Future<void> updatePaymentProvider(String provider, bool enabled,
       {String? reason}) async {
     _requireCurrentUserId();
-    await _ob.request('POST', '/api/payments/providers/update', body: {
+    await _ob.request('POST', ApiEndpoints.paymentsProvidersUpdate, body: {
       'providerName': provider,
       ApiKeys.enabled: enabled,
     });
@@ -140,7 +140,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> updateProductStock(String productId, int quantity) async {
-    await _ob.request('POST', '/api/admin/update-stock', body: {
+    await _ob.request('POST', ApiEndpoints.adminUpdateStock, body: {
       Fields.productId: productId,
       Fields.stockQuantity: quantity,
     });
@@ -151,7 +151,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
       {List<String> add = const [],
       List<String> remove = const [],
       String? reason}) async {
-    await _ob.request('POST', '/api/admin/update-roles', body: {
+    await _ob.request('POST', ApiEndpoints.adminUpdateRoles, body: {
       Fields.targetUserId: userId,
       ApiKeys.add: add,
       ApiKeys.remove: remove,
@@ -162,7 +162,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
   @override
   Future<Map<String, dynamic>> verifyAdminMfa(String code) async {
     _requireCurrentUserId();
-    final result = await _ob.request('POST', '/api/admin/mfa/verify', body: {
+    final result = await _ob.request('POST', ApiEndpoints.adminMfaVerify, body: {
       ApiKeys.code: code,
     });
     return Map<String, dynamic>.from(result as Map);
@@ -170,7 +170,7 @@ class OrignaBaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> deleteReview(String reviewId) async {
-    await _ob.request('POST', '/api/admin/delete-review', body: {
+    await _ob.request('POST', ApiEndpoints.adminDeleteReview, body: {
       Fields.reviewId: reviewId,
     });
   }

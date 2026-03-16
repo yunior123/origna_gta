@@ -23,6 +23,7 @@ import 'package:origna_gta/widgets/mascot/canadian_moose.dart';
 import 'package:origna_gta/widgets/mascot/mascot_provider.dart';
 import 'package:origna_gta/widgets/mascot/moose_provider.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
@@ -503,13 +504,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         // On mobile: shows in-app screen
                                         openPrivacyPolicy(context);
                                       },
-                                      child: Text(
-                                        'home.privacy_policy'.tr(),
-                                        style: TextStyle(
-                                          color: DesignTokens.primary,
-                                          fontSize: 13,
-                                        ),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: DesignTokens.primary,
+                                        textStyle: const TextStyle(fontSize: 13),
                                       ),
+                                      child: Text('home.privacy_policy'.tr()),
                                     ),
                                   ),
                                   Text(
@@ -530,13 +529,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         // On mobile: shows in-app screen
                                         openTermsOfService(context);
                                       },
-                                      child: Text(
-                                        'home.terms_of_service'.tr(),
-                                        style: TextStyle(
-                                          color: DesignTokens.primary,
-                                          fontSize: 13,
-                                        ),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: DesignTokens.primary,
+                                        textStyle: const TextStyle(fontSize: 13),
                                       ),
+                                      child: Text('home.terms_of_service'.tr()),
                                     ),
                                   ),
                                 ],
@@ -754,6 +751,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onSubmitted: (v) {
                     homeNotifier.onSearchSubmitted(v);
                     _searchFocusNode.unfocus();
+                    // Scroll to top so search results in product grid are visible
+                    if (_scrollController.hasClients) {
+                      _scrollController.animateTo(
+                        0,
+                        duration: DesignTokens.durationNormal,
+                        curve: Curves.easeOut,
+                      );
+                    }
                   },
                   style: TextStyle(
                     color: isDark ? Colors.white : DesignTokens.textPrimary,
@@ -837,6 +842,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
               homeNotifier.onSearchSubmitted(value);
               _searchFocusNode.unfocus();
+              // Scroll to top so the product grid results are visible
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  0,
+                  duration: DesignTokens.durationNormal,
+                  curve: Curves.easeOut,
+                );
+              }
             },
             onClearRecent: homeNotifier.clearRecentSearches,
           ),
@@ -873,6 +886,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Guard: controller must be attached and not already paginating
     if (_isPaginating) return;
     if (!_scrollController.hasClients) return;
+
+    // Dismiss search overlay and unfocus keyboard when the user scrolls —
+    // this ensures product card taps are never eaten by the focus system on
+    // mobile web (first-tap-unfocuses-then-second-tap-navigates issue).
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+      ref.read(homeViewModelProvider.notifier).dismissSearchOverlay();
+    }
 
     try {
       final position = _scrollController.position;
@@ -964,11 +985,13 @@ class _ProductGrid extends ConsumerWidget {
           icon: Icons.cloud_off_rounded,
           title: 'home.error_loading_products'.tr(),
           subtitle: errorMessage,
-          action: TextButton.icon(
+          action: ModernButton(
+            label: 'common.retry'.tr(),
+            icon: Icons.refresh,
+            fullWidth: false,
+            height: 44,
             onPressed: () =>
                 ref.read(homeViewModelProvider.notifier).loadProducts(),
-            icon: const Icon(Icons.refresh),
-            label: Text('common.retry'.tr()),
           ),
         ),
       );
@@ -1097,6 +1120,7 @@ class _RecentlyViewedSectionState
                   productId: product.productId,
                   product: product,
                   userModel: null,
+                  heroTagPrefix: 'recently_viewed_image',
                 ),
               );
             },
@@ -1218,15 +1242,11 @@ class _SearchOverlay extends StatelessWidget {
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         minimumSize: Size.zero,
+                        foregroundColor: DesignTokens.primary,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        textStyle: const TextStyle(fontSize: 11),
                       ),
-                      child: Text(
-                        'home.clear_recent'.tr(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: DesignTokens.primary,
-                        ),
-                      ),
+                      child: Text('home.clear_recent'.tr()),
                     ),
                 ],
               ),
@@ -1680,13 +1700,11 @@ class _SortAndFilterRow extends ConsumerWidget {
                         Navigator.pop(ctx);
                         homeNotifier.clearPriceFilter();
                       },
-                      child: Text(
-                        'home.filter_price_any'.tr(),
-                        style: TextStyle(
-                          color: DesignTokens.primary,
-                          fontSize: 13,
-                        ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: DesignTokens.primary,
+                        textStyle: const TextStyle(fontSize: 13),
                       ),
+                      child: Text('home.filter_price_any'.tr()),
                     ),
                   ],
                 ),

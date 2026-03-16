@@ -53,7 +53,7 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
       if (userId == null) {
         throw StateError('unauthenticated');
       }
-      await _ob.request('POST', '/api/warehouses/create', body: {
+      await _ob.request('POST', ApiEndpoints.warehousesCreate, body: {
         'label': trimmedLabel,
         Fields.type: type,
         'address': _addressToMap(address),
@@ -88,7 +88,7 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
       if (type != null) payload[Fields.type] = type;
       if (address != null) payload['address'] = _addressToMap(address);
       if (isDefault != null) payload['isDefault'] = isDefault;
-      await _ob.request('POST', '/api/warehouses/update', body: payload);
+      await _ob.request('POST', ApiEndpoints.warehousesUpdate, body: payload);
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _parseError(e));
@@ -105,7 +105,7 @@ class OrignaBaseWarehousesViewModel extends StateNotifier<WarehousesState> {
       if (userId == null) {
         throw StateError('unauthenticated');
       }
-      await _ob.request('POST', '/api/warehouses/delete', body: {
+      await _ob.request('POST', ApiEndpoints.warehousesDelete, body: {
         'warehouseId': warehouseId,
       });
       state = state.copyWith(isLoading: false, isSuccess: true);

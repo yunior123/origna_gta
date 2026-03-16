@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart' show ApiEndpoints;
 import 'package:origna_gta/utils/utils.dart';
 
 import 'profile_state.dart';
@@ -56,7 +57,7 @@ class OrignaBaseProfileViewModel extends StateNotifier<ProfileState> {
     state = state.copyWith(
         isLoading: true, errorMessage: null, successMessage: null);
     try {
-      await _ob.request('POST', '/api/admin/export-data', body: {});
+      await _ob.request('POST', ApiEndpoints.adminExportData, body: {});
       state = state.copyWith(
           isLoading: false,
           successMessage: 'profile.export_started'.tr());
@@ -82,7 +83,8 @@ class OrignaBaseProfileViewModel extends StateNotifier<ProfileState> {
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required');
       }
-      await _ob.request('POST', '/api/auth/delete-account', body: {
+      await _ob.request('POST', ApiEndpoints.authDeleteAccount, body: {
+        'userId': userId,
         'confirmation': 'DELETE_MY_ACCOUNT',
       });
       _ob.auth.signOut();

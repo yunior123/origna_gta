@@ -36,5 +36,4 @@ cost_reduction:
 - ✅ Convert loops to batch operations
 - ✅ Add limit() to unbounded queries
 - ✅ Implement cursor-based pagination
-- ✅ Add composite indexes to firestore.indexes.json
 - ✅ Add caching layer

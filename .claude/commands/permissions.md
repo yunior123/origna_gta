@@ -28,7 +28,6 @@ safe_operations:
     - "pytest *"
     - "flutter test *"
     - "flutter build *"
-    - "firebase deploy"
     - "npm install *"
     - "pip install *"
   

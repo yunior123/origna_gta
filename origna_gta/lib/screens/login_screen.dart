@@ -79,12 +79,15 @@ class LoginScreenLayout extends StatelessWidget {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        } else {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-              AppRoutes.home, (route) => false);
-        }
+        // Always navigate to home when back is pressed on login — covers both
+        // in-app back and browser back button on Flutter Web. Using
+        // pushNamedAndRemoveUntil ensures the browser URL updates to '/' and
+        // clears the Flutter route stack, preventing the tab-close bug where
+        // Navigator.pop() pops the widget but the browser back stays on /login.
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.home,
+          (route) => false,
+        );
       },
       child: Scaffold(
         body: Container(
@@ -93,7 +96,7 @@ class LoginScreenLayout extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: isDark
-                  ? [DesignTokens.surface, DesignTokens.surface]
+                  ? [DesignTokens.darkBackground, DesignTokens.darkSurface]
                   : [
                       DesignTokens.primary.withValues(alpha: 0.05),
                       DesignTokens.secondary.withValues(alpha: 0.05),
@@ -284,7 +287,7 @@ class LoginScreenLayout extends StatelessWidget {
                                         text: TextSpan(
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: DesignTokens.textPrimary,
+                                            color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
                                             height: 1.4,
                                           ),
                                           children: [
@@ -394,14 +397,14 @@ class LoginScreenLayout extends StatelessWidget {
                                     'login_forgot_password_button',
                                   ),
                                   onPressed: onForgotPassword,
-                                  child: Text(
-                                    'auth.forgot_password'.tr(),
-                                    style: TextStyle(
-                                      color: DesignTokens.primary,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: DesignTokens.primary,
+                                    textStyle: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
                                     ),
                                   ),
+                                  child: Text('auth.forgot_password'.tr()),
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -1043,6 +1046,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   excludeSemantics: true,
                   child: TextButton(
                     onPressed: () => Navigator.pop(dialogContext),
+                    style: TextButton.styleFrom(foregroundColor: DesignTokens.textSecondary),
                     child: Text('common.cancel'.tr()),
                   ),
                 ),
@@ -1050,7 +1054,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   label: 'btn-forgot-send',
                   button: true,
                   excludeSemantics: true,
-                  child: ElevatedButton(
+                  child: ModernButton(
+                    label: 'auth.send'.tr(),
+                    isLoading: isSending,
+                    fullWidth: false,
+                    height: 44,
                     onPressed: isSending
                         ? null
                         : () async {
@@ -1087,15 +1095,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               if (mounted) setState(() => isSending = false);
                             }
                           },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: DesignTokens.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: isSending
-                        ? const ModernLoadingIndicator.small(
-                            color: Colors.white,
-                          )
-                        : Text('auth.send'.tr()),
                   ),
                 ),
               ],

@@ -15,6 +15,7 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/widgets/modern_textfield.dart';
 
 /// Cart screen using optimized Riverpod patterns
 /// - Main screen only watches cart item IDs (lightweight)
@@ -321,6 +322,7 @@ class _CartItemWidget extends ConsumerWidget {
               Expanded(child: Text('cart.item_load_error'.tr(), style: TextStyle(color: DesignTokens.error, fontSize: 13))),
               TextButton(
                 onPressed: () => ref.invalidate(cartItemDetailProvider(cartItemDocId)),
+                style: TextButton.styleFrom(foregroundColor: DesignTokens.primary),
                 child: Text('common.retry'.tr()),
               ),
             ],
@@ -348,7 +350,8 @@ class _CartItemWidget extends ConsumerWidget {
                   Expanded(child: Text('cart.item_no_longer_available'.tr(), style: TextStyle(color: DesignTokens.warningText, fontSize: 13))),
                   TextButton(
                     onPressed: () => ref.read(cartControllerProvider).removeFromCart(cartItemDocId),
-                    child: Text('common.remove'.tr(), style: TextStyle(color: DesignTokens.warning, fontSize: 12)),
+                    style: TextButton.styleFrom(foregroundColor: DesignTokens.warning, textStyle: const TextStyle(fontSize: 12)),
+                    child: Text('common.remove'.tr()),
                   ),
                 ],
               ),
@@ -889,18 +892,9 @@ class _CartTotalDisplay extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text('common.understood'.tr(), style: const TextStyle(fontSize: 16)),
-              ),
+            ModernButton(
+              label: 'common.understood'.tr(),
+              onPressed: () => Navigator.pop(context),
             ),
           ],
         ),
@@ -940,58 +934,31 @@ class _CartTotalDisplay extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
+            ModernTextField(
               controller: controller,
+              hint: 'cart.delivery_hint'.tr(),
+              isMultiline: true,
               maxLines: 4,
+              minLines: 3,
               maxLength: 500,
-              decoration: InputDecoration(
-                hintText: 'cart.delivery_hint'.tr(),
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? DesignTokens.textSecondary : DesignTokens.textDisabled,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: DesignTokens.primary),
-                ),
-                filled: true,
-                fillColor: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : DesignTokens.surface,
-              ),
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark ? Colors.white : DesignTokens.textPrimary,
-              ),
+              showCounter: true,
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(foregroundColor: DesignTokens.textSecondary),
             child: Text('common.cancel'.tr()),
           ),
-          ElevatedButton(
+          ModernButton(
+            label: 'common.save'.tr(),
+            fullWidth: false,
+            height: 40,
             onPressed: () {
-              ref.read(deliveryInstructionsProvider.notifier).state = controller
-                  .text
-                  .trim();
+              ref.read(deliveryInstructionsProvider.notifier).state = controller.text.trim();
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DesignTokens.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Text('common.save'.tr()),
           ),
         ],
       ),

@@ -47,7 +47,7 @@ class OrignaBaseOrderRepository implements OrderRepository {
   Future<void> approveShippingCost(String orderId, bool approved) async {
     await _ob.request(
       'POST',
-      '/api/orders/approve-shipping',
+      ApiEndpoints.ordersApproveShipping,
       body: {Fields.orderId: orderId, ApiKeys.approved: approved},
     );
   }
@@ -56,7 +56,7 @@ class OrignaBaseOrderRepository implements OrderRepository {
   Future<void> capturePayment(String orderId) async {
     await _ob.request(
       'POST',
-      '/api/payments/capture',
+      ApiEndpoints.paymentsCapture,
       body: {Fields.orderId: orderId},
     );
   }
@@ -67,14 +67,14 @@ class OrignaBaseOrderRepository implements OrderRepository {
       // Per-item receipt confirmation — triggers partial payout for that seller
       await _ob.request(
         'POST',
-        '/api/orders/confirm-receipt',
+        ApiEndpoints.ordersConfirmReceipt,
         body: {Fields.orderId: orderId, Fields.productId: productId},
       );
     } else {
       // Whole-order payment capture (single-seller path)
       await _ob.request(
         'POST',
-        '/api/payments/capture',
+        ApiEndpoints.paymentsCapture,
         body: {Fields.orderId: orderId},
       );
     }
@@ -86,7 +86,7 @@ class OrignaBaseOrderRepository implements OrderRepository {
   ) async {
     final response = await _ob.request(
       'POST',
-      '/api/checkout/session',
+      ApiEndpoints.checkoutSession,
       body: orderData,
     );
     return Map<String, dynamic>.from(response as Map);
@@ -110,7 +110,7 @@ class OrignaBaseOrderRepository implements OrderRepository {
   }) async {
     await _ob.request(
       'POST',
-      '/api/orders/update-item-status',
+      ApiEndpoints.ordersUpdateItemStatus,
       body: {
         Fields.orderId: orderId,
         Fields.productId: itemId,
@@ -145,7 +145,7 @@ class OrignaBaseOrderRepository implements OrderRepository {
   ) async {
     await _ob.request(
       'POST',
-      '/api/orders/update-shipping',
+      ApiEndpoints.ordersUpdateShipping,
       body: {
         Fields.orderId: orderId,
         ApiKeys.newShippingCost: newShippingCost,

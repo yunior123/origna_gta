@@ -61,6 +61,25 @@ jobs:
           echo "### Android Test Lab Results" >> $GITHUB_STEP_SUMMARY
           echo "Device: Pixel 6 (API 33)" >> $GITHUB_STEP_SUMMARY
           echo "Test: Flutter integration tests (random flow)" >> $GITHUB_STEP_SUMMARY
+      # Requires MAIL_USERNAME and MAIL_PASSWORD secrets to be configured in GitHub repository settings
+      - name: Notify on failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "❌ CI Failed: ${{ github.workflow }} on ${{ github.ref }}"
+          to: support@orignagta.ca
+          cc: yuniorrodriguezo460@gmail.com
+          from: GitHub Actions <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            Workflow: ${{ github.workflow }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   ios-test-lab:
     name: iOS — Robo Crawl (Test Lab)
@@ -123,3 +142,22 @@ jobs:
           echo "### iOS Test Lab Results" >> $GITHUB_STEP_SUMMARY
           echo "Device: iPhone 14 (iOS 16.6)" >> $GITHUB_STEP_SUMMARY
           echo "Test: Robo crawl" >> $GITHUB_STEP_SUMMARY
+      # Requires MAIL_USERNAME and MAIL_PASSWORD secrets to be configured in GitHub repository settings
+      - name: Notify on failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "❌ CI Failed: ${{ github.workflow }} on ${{ github.ref }}"
+          to: support@orignagta.ca
+          cc: yuniorrodriguezo460@gmail.com
+          from: GitHub Actions <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            Workflow: ${{ github.workflow }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

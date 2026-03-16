@@ -12,7 +12,7 @@
  *  - Login password        → getByRole('textbox', { name: '••••••••' })
  *  - Login submit          → locator('[aria-label^="login_submit_button"]')
  *  - Home search bar       → locator('[aria-label="input-home-search"]')
- *  - Product cards         → locator('[aria-label^="product-card-"]')
+ *  - Product cards         → locator('[aria-label*="product-card-"]')  (groups use aria-label, not textContent)
  *  - Admin tabs            → locator('[aria-label="admin-tab-sellers"]') etc.
  */
 
@@ -95,88 +95,144 @@ export async function clearServiceWorkers(page: Page): Promise<void> {
 export async function waitForFlutter(page: Page, timeout = 180000): Promise<void> {
     const t0 = Date.now();
 
-    // Fast path: if Flutter is already loaded (canvas exists + semantics present),
-    // skip all expensive checks. This makes subsequent calls near-instant.
-    const readiness = await page.evaluate(() => {
-        const isLoaded = !!(
-            document.querySelector('flt-glass-pane') ||
-            document.querySelector('flutter-view') ||
-            document.querySelector('canvas')
-        );
-        const hasInteractiveUi = !!(
-            document.querySelector('[aria-label="btn-home-settings"]') ||
+    // ── Fast path ──────────────────────────────────────────────────────────────
+    // If semantics are already active or interactive UI is present, bail out.
+    const hasSemFast = await page.locator('flt-semantics').count().catch(() => 0);
+    const hasInteractiveUiFast = await page.evaluate(() => {
+        // Flutter Web 3.41.3: button labels are in textContent, not aria-label.
+        // Use textContent check for flt-semantics buttons; keep aria-label for inputs/groups.
+        // Flutter Web 3.41.3: button labels (e.g. btn-home-settings) are in textContent,
+        // not aria-label. Group labels (e.g. product-card-*) still use aria-label attribute.
+        // Inputs (<input> elements) always use aria-label HTML attribute.
+        const hasBtnHomeSettings = Array.from(document.querySelectorAll('flt-semantics[role="button"]'))
+            .some(el => el.textContent?.trim() === 'btn-home-settings');
+        return !!(
+            hasBtnHomeSettings ||
+            document.querySelector('[aria-label*="product-card-"]') ||
             document.querySelector('[aria-label="input-home-search"]') ||
-            document.querySelector('[aria-label^="product-card-"]') ||
             document.querySelector('input[aria-label="you@example.com"]') ||
             document.querySelector('input[aria-label="login_email_field"]') ||
             document.querySelector('[aria-label="menu-my-orders"]') ||
             document.querySelector('[aria-label="btn-sign-out"]') ||
-            Array.from(document.querySelectorAll('button')).some(
-                button => (button.textContent || '').trim().toLowerCase() === 'back',
+            Array.from(document.querySelectorAll('flt-semantics[role="button"]')).some(
+                el => el.textContent?.trim().toLowerCase() === 'back',
             )
         );
-        return { isLoaded, hasInteractiveUi };
-    });
-    const hasSem = await page.locator('flt-semantics').count();
-    if ((readiness.isLoaded && hasSem > 0) || readiness.hasInteractiveUi) {
-        // Flutter is fully loaded with semantics — no work needed.
-        await page.waitForTimeout(500); // minimal settle
+    }).catch(() => false);
+    if (hasSemFast > 0 || hasInteractiveUiFast) {
+        await page.waitForTimeout(500);
         return;
     }
 
-    // Step 1: Wait for Flutter's rendering host element (first load only).
-    if (!readiness.isLoaded) {
+    // ── Concurrent placeholder watcher ─────────────────────────────────────────
+    // The flt-semantics-placeholder appears at ~2s on the FIRST page load and is
+    // quickly replaced by flt-semantics once clicked. If we wait for engine load
+    // (step 1) sequentially first, we miss it. Launch a concurrent task that clicks
+    // the placeholder the moment it appears, so activation happens at ~2s regardless
+    // of how long steps 1-2 take.
+    // NOTE: Do NOT use document.querySelector('canvas') for isLoaded — Cloudflare
+    // Turnstile renders a small canvas that would create a false positive before
+    // Flutter initialises.
+    const watchPlaceholder = async () => {
+        try {
+            const placeholder = page.locator('flt-semantics-placeholder');
+            // Timeout = full budget: 17MB debug builds can take 40s+ to load over network.
+            const found = await placeholder.first()
+                .waitFor({ state: 'attached', timeout: timeout })
+                .then(() => true)
+                .catch(() => false);
+            if (found) {
+                await placeholder.first().click({ force: true }).catch(() => { });
+            }
+        } catch { /* page may navigate away */ }
+    };
+    const placeholderTask = watchPlaceholder(); // intentionally not awaited here
+
+    // ── Step 1: Wait for Flutter engine render host ────────────────────────────
+    const isLoaded = await page.evaluate(() => {
+        const flutterCanvas = Array.from(document.querySelectorAll('canvas')).find(c => {
+            const rect = c.getBoundingClientRect();
+            return rect.width > 200 && rect.height > 200;
+        });
+        return !!(
+            document.querySelector('flt-glass-pane') ||
+            document.querySelector('flutter-view') ||
+            flutterCanvas
+        );
+    }).catch(() => false);
+    if (!isLoaded) {
         await page.waitForFunction(() => {
-            const glasspane = document.querySelector('flt-glass-pane');
-            const flutterView = document.querySelector('flutter-view');
-            const canvas = document.querySelector('canvas');
-            return (
-                !!glasspane ||
-                !!flutterView ||
-                (canvas instanceof HTMLCanvasElement && canvas.getBoundingClientRect().width > 0)
+            const flutterCanvas = Array.from(document.querySelectorAll('canvas')).find(c => {
+                const rect = c.getBoundingClientRect();
+                return rect.width > 200 && rect.height > 200;
+            });
+            return !!(
+                document.querySelector('flt-glass-pane') ||
+                document.querySelector('flutter-view') ||
+                flutterCanvas
             );
         }, { timeout }).catch(() => { });
     }
 
-    // Step 2: Wait for loading indicator — short timeout only.
-    // Flutter paints OVER #loading div; it may never get display:none.
+    // ── Step 2: Wait for loading indicator to clear ────────────────────────────
     await page.waitForFunction(() => {
         const loading = document.getElementById('loading');
         return !loading || loading.style.display === 'none' || loading.getAttribute('hidden') !== null;
     }, { timeout: 5000 }).catch(() => { });
 
-    // Step 3: Activate semantics if not already active (FORCE_SEMANTICS build skips this).
-    if (hasSem === 0) {
-        const semanticsTimeout = Math.min(timeout, 15000);
+    // ── Step 3: Ensure semantics are active ────────────────────────────────────
+    // Allow a moment for the concurrent placeholder task to complete (it may have
+    // clicked the placeholder at ~2s, causing flt-semantics to already be present).
+    await Promise.race([placeholderTask, page.waitForTimeout(200)]).catch(() => { });
 
-        const enableA11yBtn = page.locator('button:has-text("Enable accessibility")');
-        if ((await enableA11yBtn.count()) > 0) {
-            await enableA11yBtn.first().click({ force: true }).catch(() => { });
+    // ── Step 3: Wait for flt-semantics using the remaining timeout budget ─────
+    // flt-semantics only appears after the full widget tree renders (can be 30-40s
+    // on a cold 17MB debug build). Use remaining time, not a fixed 20s cap.
+    const remainingForSem = Math.max(20000, timeout - (Date.now() - t0) - 2000);
+    const hasSemAfterPlaceholder = await page.locator('flt-semantics').count().catch(() => 0);
+    if (hasSemAfterPlaceholder === 0) {
+        // flt-semantics-placeholder is a custom element (not a <button>).
+        // Some Flutter versions render it with a visible "Enable accessibility" text
+        // but it must be selected by element name, not CSS button selector.
+        const placeholder2 = page.locator('flt-semantics-placeholder');
+        if ((await placeholder2.count().catch(() => 0)) > 0) {
+            await placeholder2.first().click({ force: true }).catch(() => { });
+        } else {
+            // Older builds or different rendering: try dispatchEvent directly.
+            await page.evaluate(() => {
+                const el = document.querySelector('flt-semantics-placeholder') as HTMLElement | null;
+                if (el) el.click();
+            }).catch(() => { });
         }
 
-        const placeholder = page.locator('flt-semantics-placeholder');
-        await placeholder.first().waitFor({ state: 'attached', timeout: semanticsTimeout }).catch(() => { });
-        if ((await placeholder.count()) > 0) {
-            await placeholder.first().click({ force: true }).catch(() => { });
-        }
-
+        // Tab key as a last-resort activation trigger.
         await page.keyboard.press('Tab');
 
+        // Wait using the remaining budget — don't give up after a fixed 20s.
         await page.locator('flt-semantics').first()
-            .waitFor({ state: 'attached', timeout: semanticsTimeout })
+            .waitFor({ state: 'attached', timeout: remainingForSem })
             .catch(() => {
                 console.log('   ⚠️  flt-semantics not found after activation attempts');
             });
     }
 
     // Settle time for semantic tree flush.
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
+    // Flutter Web 3.41.3: button labels are in textContent (use getByRole);
+    // group/input labels still use aria-label attribute.
     if (
-        await page.locator(
-            '[aria-label="btn-home-settings"], [aria-label="input-home-search"], [aria-label^="product-card-"]',
-        ).first().isVisible().catch(() => false)
+        await page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first().isVisible().catch(() => false) ||
+        await page.locator('[aria-label="input-home-search"], [aria-label*="product-card-"]').first().isVisible().catch(() => false)
     ) {
+        // Re-check semantics once app-level elements are visible — ensures the
+        // semantic tree has also flushed by the time we return.
+        if ((await page.locator('flt-semantics').count().catch(() => 0)) === 0) {
+            await page.keyboard.press('Tab');
+            await page.locator('flt-semantics').first()
+                .waitFor({ state: 'attached', timeout: 10000 })
+                .catch(() => { });
+        }
         return;
     }
 
@@ -213,7 +269,8 @@ export async function waitForProductCards(
     timeout = 45000,
 ): Promise<number> {
     const startTime = Date.now();
-    const cards = page.locator('[aria-label^="product-card-"]');
+    // Product card groups use aria-label attribute (not textContent like buttons do).
+    const cards = page.locator('[aria-label*="product-card-"]');
 
     // First, wait for at least one card to appear (Firestore data loading)
     await cards.first().waitFor({ state: 'attached', timeout }).catch(() => {});
@@ -249,9 +306,11 @@ export async function checkSemantics(page: Page): Promise<void> {
     let sems = await page.locator('flt-semantics').count();
     if (sems > 0) return;
 
-    const hasInteractiveUi = await page.locator(
-        '[aria-label="btn-home-settings"], [aria-label="input-home-search"], [aria-label^="product-card-"], input[aria-label="you@example.com"], input[aria-label="login_email_field"], [aria-label="menu-my-orders"], [aria-label="btn-sign-out"]',
-    ).first().isVisible().catch(() => false);
+    // Flutter Web 3.41.3: button labels use textContent; use getByRole for btn-home-settings.
+    const hasInteractiveUi = await page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first().isVisible().catch(() => false) ||
+        await page.locator(
+            '[aria-label="input-home-search"], [aria-label*="product-card-"], input[aria-label="you@example.com"], input[aria-label="login_email_field"], [aria-label="menu-my-orders"], [aria-label="btn-sign-out"]',
+        ).first().isVisible().catch(() => false);
     if (hasInteractiveUi) {
         return;
     }
@@ -265,7 +324,7 @@ export async function checkSemantics(page: Page): Promise<void> {
     }
     await page.keyboard.press('Tab');
     await page.locator('flt-semantics').first()
-        .waitFor({ state: 'attached', timeout: 15000 })
+        .waitFor({ state: 'attached', timeout: 45000 })
         .catch(() => { });
 
     sems = await page.locator('flt-semantics').count();
@@ -312,11 +371,16 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
         await waitForFlutter(page, 120000);
     }
 
+    // NOTE: btn-home-settings is visible in BOTH guest and authenticated modes.
+    // Do NOT use it as an auth indicator — it would always fire a false positive.
+    // Use only profile-page elements that are exclusively shown when logged in.
+    // These selectors intentionally return false on the home page; the redirect
+    // detection below handles the "already authenticated" case via page.goto.
     const authenticatedShellNow = page.locator(
-        `[aria-label="${BTN_SETTINGS_LABEL}"], [aria-label="menu-my-orders"], [aria-label="btn-sign-out"], [aria-label="menu-admin-panel"]`,
+        '[aria-label="menu-my-orders"], [aria-label="btn-sign-out"], [aria-label="menu-admin-panel"]',
     ).first();
     if (await authenticatedShellNow.isVisible({ timeout: 3000 }).catch(() => false)) {
-        console.log(`   ✅ Already logged in. Skipping login.`);
+        console.log(`   ✅ Already logged in (profile shell visible). Skipping login.`);
         await navigateHome(page, targetUrl);
         return;
     }
@@ -324,6 +388,15 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     // Directly opening /login is more stable than routing through the settings dialog.
     await page.goto(`${targetUrl}/login`, { waitUntil: 'domcontentloaded' });
     await waitForFlutter(page, 120000);
+
+    // If Flutter already has a valid JWT in localStorage, it will redirect away from
+    // /login immediately (before the login form renders). Detect this redirect and bail out.
+    const afterGotoUrl = page.url();
+    const isStillOnLogin = /\/login/i.test(afterGotoUrl) || afterGotoUrl.endsWith('/login');
+    if (!isStillOnLogin) {
+        console.log(`   ✅ Already authenticated (Flutter redirected /login → ${afterGotoUrl}). Skipping login.`);
+        return;
+    }
     // Wait for the login form to appear — more robust than URL check because
     // some Flutter Web routing setups (nested navigators) may not update the URL.
     // rootNavigator: true in utils.dart ensures the URL updates, but we also
@@ -384,8 +457,8 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     // fields to fully unmount. Staging sometimes keeps the form mounted longer
     // even after auth succeeds and navigation begins.
     const postLoginSignals = await Promise.race([
-        page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first()
-            .waitFor({ state: 'visible', timeout: 60000 })
+        page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first()
+            .waitFor({ state: 'attached', timeout: 60000 })
             .then(() => 'home')
             .catch(() => null),
         page.locator('[aria-label^="btn-sign-out"], [aria-label="menu-my-orders"]').first()
@@ -418,7 +491,7 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     // We already observed a positive post-login signal above. Do not add another
     // hard gate here: Flutter semantics can continue rebinding after auth even
     // though the authenticated shell is already present.
-    const verifySettingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
+    const verifySettingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
     const signInCheck = page.getByRole('button', { name: BTN_SIGN_IN }).first();
     if (await verifySettingsBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await verifySettingsBtn.click({ timeout: 30000 });
@@ -462,12 +535,9 @@ export async function openHomeSettings(page: Page): Promise<void> {
     }
 
     for (let attempt = 0; attempt < 4; attempt++) {
-        const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
-        const hasSettingsUi =
-            await settingsBtn.isVisible({ timeout: 3000 }).catch(() => false) ||
-            await page.evaluate((label) => {
-                return Boolean(document.querySelector(`[aria-label="${label}"]`));
-            }, BTN_SETTINGS_LABEL).catch(() => false);
+        // Flutter Web 3.41.3: btn-home-settings uses textContent, not aria-label → getByRole.
+        const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first();
+        const hasSettingsUi = await settingsBtn.waitFor({ state: 'attached', timeout: 3000 }).then(() => true).catch(() => false);
         if (!hasSettingsUi) {
             await page.waitForTimeout(1000);
             await waitForFlutter(page, 15000).catch(() => { });
@@ -478,10 +548,7 @@ export async function openHomeSettings(page: Page): Promise<void> {
                 .then(() => true)
                 .catch(() => false);
             if (!clicked) {
-                await page.evaluate((label) => {
-                    const element = document.querySelector(`[aria-label="${label}"]`) as HTMLElement | null;
-                    element?.click();
-                }, BTN_SETTINGS_LABEL).catch(() => { });
+                await settingsBtn.dispatchEvent('click').catch(() => { });
             }
             const profileLoading = page.getByText(/setting up your profile/i).first();
             await profileLoading.waitFor({ state: 'hidden', timeout: 60000 }).catch(() => { });
@@ -492,8 +559,7 @@ export async function openHomeSettings(page: Page): Promise<void> {
             await waitForFlutter(page, 15000);
         }
     }
-    const settingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
-    await settingsBtn.dispatchEvent('click').catch(() => { });
+    await page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first().dispatchEvent('click').catch(() => { });
 }
 
 // ─── NAVIGATE HOME (auth-safe, no full page reload) ────────────────
@@ -504,102 +570,70 @@ export async function openHomeSettings(page: Page): Promise<void> {
  * Uses the app heading / logo click or browser back navigation.
  */
 export async function navigateHome(page: Page, targetUrl: string): Promise<void> {
-    const url = page.url();
-    const hasHomeUi = async () => {
-        return page.evaluate(() => {
-            return Boolean(
-                document.querySelector('[aria-label="btn-home-settings"]') ||
-                document.querySelector('[aria-label="input-home-search"]') ||
-                document.querySelector('[aria-label^="product-card-"]'),
-            );
-        }).catch(() => false);
-    };
-    const hasNonHomeUi = async () => {
-        return page.evaluate(() => {
-            return Boolean(
-                document.querySelector('[aria-label="menu-my-orders"]') ||
-                document.querySelector('[aria-label="btn-sign-out"]') ||
-                document.querySelector('[aria-label="menu-admin-panel"]') ||
-                Array.from(document.querySelectorAll('button')).some(
-                    button => (button.textContent || '').trim().toLowerCase() === 'back',
-                ),
-            );
-        }).catch(() => false);
-    };
-    const homeSettingsBtn = page.locator(`[aria-label="${BTN_SETTINGS_LABEL}"]`).first();
-    if (
-        await homeSettingsBtn.isVisible({ timeout: 2000 }).catch(() => false) ||
-        await hasHomeUi()
-    ) {
-        return;
-    }
-    const nonHomeMarkers = [
-        page.getByRole('button', { name: /^back$/i }).first(),
-        page.locator('[aria-label="menu-my-orders"]').first(),
-        page.locator('[aria-label="btn-sign-out"]').first(),
-        page.locator('[aria-label="menu-admin-panel"]').first(),
-        page.locator('[aria-label^="product-card-"]').first(),
-        page.locator('flt-semantics').filter({ hasText: /your cart|votre panier|unable to load cart/i }).first(),
-    ];
-    const onNonHomeScreen = async () => {
-        for (const marker of nonHomeMarkers) {
-            if (await marker.isVisible({ timeout: 500 }).catch(() => false)) {
-                return true;
-            }
-        }
-        return false;
+    // URL is the PRIMARY ground truth for Flutter Web SPA navigation.
+    // Flutter keeps background routes alive in the DOM — do NOT use element
+    // visibility to decide "are we on home?" when the URL says otherwise.
+    const isHomeUrl = () => {
+        const u = page.url();
+        return u === `${targetUrl}/` || u === targetUrl ||
+            u.endsWith(':5005/') || u.endsWith(':5005');
     };
 
-    // Only trust the URL if the home UI is actually visible and no stronger
-    // screen markers are present. Flutter navigation sometimes leaves the URL
-    // unchanged while the app is still on profile/detail routes.
-    if (
-        (url === `${targetUrl}/` || url === targetUrl || url.endsWith(':5005/') || url.endsWith(':5005')) &&
-        !(await onNonHomeScreen()) &&
-        !(await hasNonHomeUi())
-    ) {
+    // Fast path: URL is already home.
+    if (isHomeUrl()) {
+        // Flutter Web 3.41.3: semantic labels are in textContent, not aria-label.
+        // Use getByRole (Chrome AOM reads textContent) instead of [aria-label=...].
+        // Use 'attached' not 'visible': flt-semantics elements are in DOM but may have
+        // zero dimensions while Flutter's layout pass is still running after navigation.
+        await page.getByRole('button', { name: BTN_SETTINGS_LABEL }).first()
+            .waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
         return;
     }
+
+    // URL is NOT home — navigate there via Flutter in-app back buttons.
+    // IMPORTANT: Do NOT check DOM element visibility for early-return here.
+    // Flutter Web keeps background home route elements in the DOM even when
+    // product-details or another foreground route is active. Those background
+    // elements look "visible" but clicking them fires events on the wrong route.
+
     for (let i = 0; i < 5; i++) {
+        // Cast a wide net for back buttons across all Flutter screen patterns:
+        //   - btn-back-* (Semantics label convention)
+        //   - "Back" text (English default for arrow_back icon)
+        //   - "Go Back" / "Go back" (product-details tooltip in English)
+        //   - "Retour" (product-details tooltip in French)
         const backCandidates = [
-            page.getByRole('button', { name: /^back$/i }).first(),
-            page.locator('[aria-label^="btn-back"], [aria-label="back"]').first(),
-            page.locator('button:has-text("Back")').first(),
+            page.locator('[aria-label^="btn-back"]').first(),
+            page.getByRole('button', { name: /^(back|go\s*back|retour)$/i }).first(),
         ];
 
+        let clicked = false;
         for (const backBtn of backCandidates) {
-            const hasBack = await backBtn.isVisible({ timeout: 1500 }).catch(() => false);
-            if (!hasBack) {
-                continue;
-            }
-            await backBtn.click({ force: true }).catch(() => { });
-            await waitForFlutter(page, 15000).catch(() => { });
-            if (await homeSettingsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-                return;
-            }
-            if (!(await onNonHomeScreen())) {
-                return;
+            if (await backBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+                await backBtn.click({ force: true }).catch(() => { });
+                clicked = true;
+                // Wait for URL to reach home.
+                await page.waitForURL(() => isHomeUrl(), { timeout: 10000 }).catch(() => { });
+                await waitForFlutter(page, 10000).catch(() => { });
+                if (isHomeUrl()) return;
+                break;
             }
         }
-        await page.goBack();
-        await page.waitForTimeout(1000);
-        await waitForFlutter(page, 15000).catch(() => { });
-        if (
-            await homeSettingsBtn.isVisible({ timeout: 1000 }).catch(() => false) ||
-            await hasHomeUi()
-        ) {
-            return;
+
+        if (!clicked) {
+            // No back button found — try browser back as a fallback.
+            await page.goBack().catch(() => { });
+            await page.waitForTimeout(1500);
+            await waitForFlutter(page, 10000).catch(() => { });
+            if (isHomeUrl()) return;
         }
     }
-    
-    if (
-        !(await homeSettingsBtn.isVisible({ timeout: 1000 }).catch(() => false)) &&
-        !(await hasHomeUi())
-    ) {
+
+    if (!isHomeUrl()) {
         console.log('   ⚠️ navigateHome fallback: using page.goto');
         await page.goto(`${targetUrl}/`, { waitUntil: 'domcontentloaded' });
     }
-    
+
     await waitForFlutter(page, 15000);
 }
 
@@ -704,6 +738,35 @@ export async function performSignOut(page: Page, targetUrl: string): Promise<voi
     await cancelBtn.click().catch(() => { });
     await page.waitForTimeout(500);
     console.log('   ✅ Sign-out confirmed');
+}
+
+/**
+ * Navigate to /add-product via in-app navigation (auth-safe).
+ * IMPORTANT: Never use page.goto('/add-product') — that causes a Flutter cold-start
+ * which loses the OrignaBase SDK's in-memory JWT. Always click the Add Product
+ * button from the home screen instead.
+ * Must be called after ensureLoggedIn (requires authenticated admin/seller role).
+ */
+export async function navigateToAddProduct(page: Page, targetUrl: string): Promise<void> {
+    // Ensure we are on the home screen first
+    await navigateHome(page, targetUrl);
+
+    // Look for the "Add Product" FAB / button on the home screen
+    const addBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
+    const found = await addBtn.waitFor({ state: 'attached', timeout: 20_000 })
+        .then(() => true)
+        .catch(() => false);
+
+    if (found) {
+        await addBtn.click({ force: true });
+    } else {
+        // The button wasn't found — the user may not have the right role,
+        // or the layout changed. Log and fall through to the URL check below.
+        console.warn('   ⚠️  navigateToAddProduct: Add Product button not found');
+    }
+
+    await page.waitForURL(/\/add-product/i, { timeout: 30_000 }).catch(() => { });
+    await waitForFlutter(page, 30_000);
 }
 
 // ─── UNIQUE SUFFIX ──────────────────────────────────────────────────

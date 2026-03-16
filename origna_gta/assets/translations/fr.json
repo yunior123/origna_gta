@@ -564,6 +564,23 @@
         "items_unavailable": "{count} article(s) sauvegardé(s) sont actuellement indisponibles",
         "items_count": "{count} sauvegardé(s)"
     },
+    "support": {
+        "title": "Assistance clientèle",
+        "get_help_title": "Obtenir de l'aide",
+        "get_help_subtitle": "Discutez avec notre agent d'assistance IA",
+        "agent_name": "Assistance Origna",
+        "agent_tagline": "Propulsé par IA · Disponible 24h/24",
+        "choose_category": "Comment pouvons-nous vous aider aujourd'hui?",
+        "category_order_status": "Statut de commande",
+        "category_refund": "Demande de remboursement",
+        "category_account": "Problème de compte",
+        "category_billing": "Litige de facturation",
+        "category_other": "Autre",
+        "input_hint": "Tapez votre message...",
+        "error_generic": "Une erreur est survenue. Veuillez réessayer.",
+        "escalated_banner": "Votre dossier a été transmis à notre équipe d'assistance humaine. Nous vous contacterons dans les 24 heures ouvrables à support@orignaventures.ca.",
+        "sign_in_required": "Veuillez vous connecter pour accéder à l'assistance."
+    },
     "nav": {
         "home": "Accueil",
         "explore": "Explorer",

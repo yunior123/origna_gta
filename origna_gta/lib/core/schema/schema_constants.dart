@@ -571,6 +571,10 @@ abstract final class ErrorCodeValues {
 
 abstract final class ExternalUrls {
   static const stripeDashboard = 'https://dashboard.stripe.com/express';
+  static const buyerProtectionUrl = 'https://www.orignagta.ca/buyer-protection';
+
+  /// Geoapify geocoding API base — used for address autocomplete and route matrix
+  static const geoapifyBase = 'https://api.geoapify.com/v1';
 }
 
 // =============================================================================
@@ -1932,4 +1936,135 @@ abstract final class WebhookStatusValues {
   static const failed = 'failed';
 
   static const all = {processing, completed, failed};
+}
+
+// =============================================================================
+// API ENDPOINTS — OrignaBase backend REST paths (eliminates magic strings)
+// =============================================================================
+
+/// All OrignaBase backend API paths, grouped by domain.
+/// Use these instead of raw string literals in repository/viewmodel request calls.
+abstract final class ApiEndpoints {
+  // --- Auth ---
+  static const authDeleteAccount = '/api/auth/delete-account';
+
+  // --- Users ---
+  static const usersProfileGet = '/api/users/profile/get';
+  static const usersProfileUpdate = '/api/users/profile/update';
+  static const usersCreateProfile = '/api/users/create-profile';
+  static const usersNotificationPreferences = '/api/users/notification-preferences';
+
+  // --- Products ---
+  static const productsCreateAtomic = '/api/products/create-atomic';
+  static const productsUploadImages = '/api/products/upload-images';
+  static const productsDelete = '/api/products/delete';
+  static const productsUpdate = '/api/products/update';
+  static const productsBulkUpdate = '/api/products/bulk-update';
+  static const productsSubmitRating = '/api/products/submit-rating';
+  static const productsSubmitRatingAtomic = '/api/products/submit-rating-atomic';
+  static const productsToggleFavorite = '/api/products/toggle-favorite';
+  static const productsReviewVote = '/api/products/review-vote';
+  static const productsStockNotifySubscribe = '/api/products/stock-notify/subscribe';
+  static const productsStockNotifyUnsubscribe = '/api/products/stock-notify/unsubscribe';
+  static const productsQuestionsAsk = '/api/products/questions/ask';
+  static const productsQuestionsAnswer = '/api/products/questions/answer';
+
+  // --- Orders ---
+  static const ordersApproveShipping = '/api/orders/approve-shipping';
+  static const ordersConfirmReceipt = '/api/orders/confirm-receipt';
+  static const ordersUpdateItemStatus = '/api/orders/update-item-status';
+  static const ordersUpdateShipping = '/api/orders/update-shipping';
+  static const ordersRefundsItem = '/api/orders/refunds/item';
+
+  // --- Checkout ---
+  static const checkoutSession = '/api/checkout/session';
+  static const checkoutVerifyPrices = '/api/checkout/verify-prices';
+
+  // --- Payments ---
+  static const paymentsCapture = '/api/payments/capture';
+  static const paymentsProvidersList = '/api/payments/providers/list';
+  static const paymentsProvidersUpdate = '/api/payments/providers/update';
+
+  // --- Coupons ---
+  static const couponsApply = '/api/coupons/apply';
+
+  // --- Connect (Stripe Connect / Seller) ---
+  static const connectStatus = '/api/connect/status';
+  static const connectCreateAccount = '/api/connect/create-account';
+  static const connectAccountLink = '/api/connect/account-link';
+
+  // --- Warehouses ---
+  static const warehousesCreate = '/api/warehouses/create';
+  static const warehousesUpdate = '/api/warehouses/update';
+  static const warehousesDelete = '/api/warehouses/delete';
+
+  // --- Subscriptions ---
+  static const subscriptionsCreate = '/api/subscriptions/create';
+  static const subscriptionsCancel = '/api/subscriptions/cancel';
+  static const subscriptionsReactivate = '/api/subscriptions/reactivate';
+  static const subscriptionsNotificationPreferences = '/api/subscriptions/notification-preferences';
+
+  // --- Chat ---
+  static const chatGetOrCreate = '/api/chat/get-or-create';
+  static const chatSend = '/api/chat/send';
+  static const chatDeleteMessage = '/api/chat/delete-message';
+  static const chatMarkRead = '/api/chat/mark-read';
+
+  // --- Admin ---
+  static const adminApproveProduct = '/api/admin/approve-product';
+  static const adminRejectProduct = '/api/admin/reject-product';
+  static const adminDeleteReview = '/api/admin/delete-review';
+  static const adminFlagReview = '/api/admin/flag-review';
+  static const adminSuspendSeller = '/api/admin/suspend-seller';
+  static const adminUnsuspendSeller = '/api/admin/unsuspend-seller';
+  static const adminUpdateStock = '/api/admin/update-stock';
+  static const adminUpdateRoles = '/api/admin/update-roles';
+  static const adminStripeLoginLink = '/api/admin/stripe-login-link';
+  static const adminExportData = '/api/admin/export-data';
+  static const adminMfaEnroll = '/api/admin/mfa/enroll';
+  static const adminMfaDisable = '/api/admin/mfa/disable';
+  static const adminMfaVerify = '/api/admin/mfa/verify';
+
+  // --- Addresses ---
+  static const addressesSuggestions = '/api/addresses/suggestions';
+
+  // --- Digital ---
+  static const digitalDownloadBook = '/api/digital/download/book';
+  static const digitalDownloadSoftware = '/api/digital/download/software';
+
+  // --- Support ---
+  /// Order lookup by ID — GET /api/orders/{orderId}
+  static const ordersBase = '/api/orders';
+  /// Human escalation endpoint — POST body: customer_email, customer_id, summary, conversation
+  static const supportEscalate = '/api/support/escalate';
+}
+
+// =============================================================================
+// DEEP LINK PARAMS — URL query parameter names used in incoming deep links
+// =============================================================================
+
+/// Query parameter key names used when parsing deep links (password reset,
+/// Stripe redirect, product share links, etc.).
+abstract final class DeepLinkParams {
+  /// Firebase Auth action mode (e.g. 'resetPassword')
+  static const mode = 'mode';
+
+  /// Firebase Auth out-of-band code for password reset
+  static const oobCode = 'oobCode';
+
+  /// Stripe Checkout session ID returned on success redirect
+  static const sessionId = 'session_id';
+
+  /// Order ID embedded in deep link for order-success screen
+  static const orderId = 'orderId';
+
+  /// Product ID embedded in deep link for product detail screen
+  static const productId = 'productId';
+
+  /// Product title embedded in deep link for product detail screen
+  static const productTitle = 'productTitle';
+
+  // --- Mode values ---
+  /// Value of [mode] when the link is a password-reset action
+  static const modeResetPassword = 'resetPassword';
 }

@@ -49,7 +49,9 @@ class _AdminOrderCard extends StatelessWidget {
         statusColor = DesignTokens.warning;
     }
 
-    return Card(
+    return Semantics(
+      label: 'card-admin-order-${order.orderId.substring(0, 8).toUpperCase()}',
+      child: Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -73,18 +75,24 @@ class _AdminOrderCard extends StatelessWidget {
         title: Row(
           children: [
             Expanded(
-              child: Text(
-                'orders.order_id_prefix'.tr(
-                  namedArgs: {
-                    'id': order.orderId.substring(0, 8).toUpperCase(),
-                  },
+              child: Semantics(
+                label: 'text-order-id-${order.orderId.substring(0, 8).toUpperCase()}',
+                child: Text(
+                  'orders.order_id_prefix'.tr(
+                    namedArgs: {
+                      'id': order.orderId.substring(0, 8).toUpperCase(),
+                    },
+                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            Text(
-              '\$${total.toStringAsFixed(2)}',
-              style: TextStyle(fontWeight: FontWeight.bold, color: statusColor),
+            Semantics(
+              label: 'text-order-total-${total.toStringAsFixed(2)}',
+              child: Text(
+                '\$${total.toStringAsFixed(2)}',
+                style: TextStyle(fontWeight: FontWeight.bold, color: statusColor),
+              ),
             ),
           ],
         ),
@@ -160,18 +168,26 @@ class _AdminOrderCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     if (paymentStatus == PaymentStatus.paid)
-                      TextButton.icon(
-                        onPressed: () => _showRefundDialog(context),
-                        icon: const Icon(Icons.undo, size: 18),
-                        label: Text('orders.refund'.tr()),
-                        style: TextButton.styleFrom(
-                          foregroundColor: DesignTokens.error,
+                      Semantics(
+                        button: true,
+                        label: 'btn-refund-order',
+                        child: TextButton.icon(
+                          onPressed: () => _showRefundDialog(context),
+                          icon: const Icon(Icons.undo, size: 18),
+                          label: Text('orders.refund'.tr()),
+                          style: TextButton.styleFrom(
+                            foregroundColor: DesignTokens.error,
+                          ),
                         ),
                       ),
-                    TextButton.icon(
-                      onPressed: () => _viewOrderDetails(context),
-                      icon: const Icon(Icons.open_in_new, size: 18),
-                      label: Text('orders.full_details'.tr()),
+                    Semantics(
+                      button: true,
+                      label: 'btn-view-order-details',
+                      child: TextButton.icon(
+                        onPressed: () => _viewOrderDetails(context),
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        label: Text('orders.full_details'.tr()),
+                      ),
                     ),
                   ],
                 ),
@@ -179,6 +195,7 @@ class _AdminOrderCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -473,35 +490,40 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
     final isSelected = _statusFilter == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: () => setState(() => _statusFilter = value),
-        child: AnimatedContainer(
-          duration: DesignTokens.durationFast,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? DesignTokens.primary : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected
-                  ? DesignTokens.primary
-                  : DesignTokens.outlineVariant.withValues(alpha: 0.5),
+      child: Semantics(
+        label: 'tab-admin-order-filter-$label',
+        button: true,
+        selected: isSelected,
+        child: GestureDetector(
+          onTap: () => setState(() => _statusFilter = value),
+          child: AnimatedContainer(
+            duration: DesignTokens.durationFast,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? DesignTokens.primary : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected
+                    ? DesignTokens.primary
+                    : DesignTokens.outlineVariant.withValues(alpha: 0.5),
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: DesignTokens.primary.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : [],
             ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: DesignTokens.primary.withValues(alpha: 0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : [],
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : DesignTokens.textSecondary,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              fontSize: 13,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : DesignTokens.textSecondary,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                fontSize: 13,
+              ),
             ),
           ),
         ),

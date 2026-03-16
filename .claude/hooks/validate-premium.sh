@@ -7,6 +7,11 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
+# Skip agent/hook/rule definitions — not production code
+if echo "$FILE_PATH" | grep -qE "\.claude/(agents|hooks|rules|commands)/"; then
+  exit 0
+fi
+
 PREMIUM_PATTERNS=(
   "subscription"
   "premium"

@@ -171,7 +171,7 @@ class ProductDetailViewModel extends StateNotifier<ProductDetailState> {
       }
       await ob.request(
         'POST',
-        '/api/products/review-vote',
+        ApiEndpoints.productsReviewVote,
         body: {
           Fields.reviewId: ratingId,
           'vote': helpful ? 'helpful' : 'unhelpful',

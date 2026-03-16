@@ -145,17 +145,20 @@ class OrignaBaseNotificationService {
           _saveTokenToOrignaBase(token: fcmToken);
         });
 
-        _authSubscription =
-            _container!.listen(obUserIdProvider, (previous, next) {
-          if (next != null && next != previous) {
-            _saveTokenToOrignaBase();
-          }
-        });
+        if (_container != null) {
+          _authSubscription =
+              _container!.listen(obUserIdProvider, (previous, next) {
+            if (next != null && next != previous) {
+              _saveTokenToOrignaBase();
+            }
+          });
+        }
       } else {
         debugPrint(
             'User declined or has not accepted notification permissions');
 
         Future<void> saveOptOut() async {
+          if (_container == null) return;
           final userId = _container!.read(obUserIdProvider);
           if (userId != null) {
             try {
@@ -171,12 +174,14 @@ class OrignaBaseNotificationService {
 
         await saveOptOut();
 
-        _authSubscription =
-            _container!.listen(obUserIdProvider, (previous, next) {
-          if (next != null && next != previous) {
-            saveOptOut();
-          }
-        });
+        if (_container != null) {
+          _authSubscription =
+              _container!.listen(obUserIdProvider, (previous, next) {
+            if (next != null && next != previous) {
+              saveOptOut();
+            }
+          });
+        }
       }
 
       (onMessageOpenedAppOverride ?? const Stream.empty())

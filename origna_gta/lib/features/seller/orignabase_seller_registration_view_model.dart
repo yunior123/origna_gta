@@ -79,7 +79,7 @@ class OrignaBaseSellerRegistrationViewModel
       }
       final result = await _ob.request(
         'POST',
-        '/api/admin/stripe-login-link',
+        ApiEndpoints.adminStripeLoginLink,
         body: {Fields.userId: userId},
       );
       final data = Map<String, dynamic>.from(result as Map);
@@ -109,7 +109,7 @@ class OrignaBaseSellerRegistrationViewModel
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required.');
       }
-      await _ob.request('POST', '/api/connect/status', body: {});
+      await _ob.request('POST', ApiEndpoints.connectStatus, body: {});
     } on OrignaBaseException catch (e) {
       state = state.copyWith(
         error: _cleanErrorMessage(e, 'Failed to refresh account status'),
@@ -148,7 +148,7 @@ class OrignaBaseSellerRegistrationViewModel
       if (userId == null || userId.isEmpty) {
         throw StateError('Authentication required.');
       }
-      await _ob.request('POST', '/api/connect/create-account', body: {});
+      await _ob.request('POST', ApiEndpoints.connectCreateAccount, body: {});
       await _continueOnboarding();
     } on OrignaBaseException catch (e) {
       state = state.copyWith(
@@ -185,7 +185,7 @@ class OrignaBaseSellerRegistrationViewModel
       }
       final result = await _ob.request(
         'POST',
-        '/api/connect/account-link',
+        ApiEndpoints.connectAccountLink,
         body: {},
       );
       final data = Map<String, dynamic>.from(result as Map);

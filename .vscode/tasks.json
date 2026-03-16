@@ -2,122 +2,176 @@
 	"version": "2.0.0",
 	"tasks": [
 		// =====================================================================
-		// COMBINED DEV ENVIRONMENT (Recommended)
+		// FLUTTER TASKS
 		// =====================================================================
 		{
-			"label": "🚀 Start Dev Environment (Emulators + Stripe)",
+			"label": "Flutter: Run Web (Dev)",
 			"type": "shell",
-			"command": "./start-dev.sh",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"isBackground": true,
-			"problemMatcher": {
-				"pattern": {
-					"regexp": "^.*$"
-				},
-				"background": {
-					"activeOnStart": true,
-					"beginsPattern": "^.*Origna GTA Development Environment.*$",
-					"endsPattern": "^.*Development Environment Ready.*$"
-				}
-			},
-			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"group": "dev"
-			}
-		},
-		// =====================================================================
-		// FIREBASE EMULATOR TASKS
-		// =====================================================================
-		{
-			"label": "Start Firebase Emulators",
-			"type": "shell",
-			"command": "firebase",
+			"command": "flutter",
 			"args": [
-				"emulators:start",
-				"--import=./emulator-data",
-				"--export-on-exit=./emulator-data"
+				"run",
+				"-d", "chrome",
+				"--web-port", "3000",
+				"--dart-define=ENVIRONMENT=dev",
+				"--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca",
+				"--dart-define=FORCE_SEMANTICS=true"
 			],
 			"options": {
-				"cwd": "${workspaceFolder}"
+				"cwd": "${workspaceFolder}/origna_gta"
 			},
 			"isBackground": true,
-			"problemMatcher": {
-				"pattern": {
-					"regexp": "^.*$",
-					"file": 1,
-					"location": 2,
-					"message": 3
-				},
-				"background": {
-					"activeOnStart": true,
-					"beginsPattern": "^.*Starting emulators.*$",
-					"endsPattern": "^.*All emulators ready.*$"
-				}
-			},
+			"problemMatcher": [],
 			"presentation": {
 				"reveal": "always",
 				"panel": "dedicated",
-				"group": "emulators"
+				"group": "flutter"
 			}
 		},
 		{
-			"label": "Start Firebase Emulators (No Data)",
+			"label": "Flutter: Run Web (Staging)",
 			"type": "shell",
-			"command": "firebase",
+			"command": "flutter",
 			"args": [
-				"emulators:start"
+				"run",
+				"-d", "chrome",
+				"--web-port", "3001",
+				"--dart-define=ENVIRONMENT=staging",
+				"--dart-define=ORIGNABASE_URL=https://api.staging.orignagta.ca",
+				"--dart-define=FORCE_SEMANTICS=true"
 			],
 			"options": {
-				"cwd": "${workspaceFolder}"
+				"cwd": "${workspaceFolder}/origna_gta"
 			},
 			"isBackground": true,
-			"problemMatcher": {
-				"pattern": {
-					"regexp": "^.*$"
-				},
-				"background": {
-					"activeOnStart": true,
-					"beginsPattern": "^.*Starting emulators.*$",
-					"endsPattern": "^.*All emulators ready.*$"
-				}
-			},
+			"problemMatcher": [],
 			"presentation": {
 				"reveal": "always",
 				"panel": "dedicated",
-				"group": "emulators"
+				"group": "flutter"
 			}
 		},
 		{
-			"label": "Stop Firebase Emulators",
+			"label": "Flutter: Build Web (Dev)",
 			"type": "shell",
-			"command": "pkill -9 -f 'firebase' || pkill -9 -f 'java.*emulator' || true",
+			"command": "flutter",
+			"args": [
+				"build", "web",
+				"--debug",
+				"--dart-define=ENVIRONMENT=dev",
+				"--dart-define=ORIGNABASE_URL=https://api.dev.orignagta.ca",
+				"--dart-define=FORCE_SEMANTICS=true"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/origna_gta"
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Flutter: Build Web (Production)",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build", "web",
+				"--release",
+				"--dart-define=ENVIRONMENT=production",
+				"--dart-define=ORIGNABASE_URL=https://api.orignagta.ca"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/origna_gta"
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Flutter: Analyze",
+			"type": "shell",
+			"command": "flutter analyze --no-fatal-infos",
+			"options": {
+				"cwd": "${workspaceFolder}/origna_gta"
+			},
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Flutter: Test (Unit + Widget)",
+			"type": "shell",
+			"command": "flutter test",
+			"options": {
+				"cwd": "${workspaceFolder}/origna_gta"
+			},
+			"problemMatcher": [],
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
+		},
+		// =====================================================================
+		// ORIGNABASE — Rust backend
+		// =====================================================================
+		{
+			"label": "OrignaBase: Build (Debug)",
+			"type": "shell",
+			"command": "cargo build",
+			"options": {
+				"cwd": "${workspaceFolder}/../orignabase"
+			},
+			"problemMatcher": "$rustc",
+			"group": "build"
+		},
+		{
+			"label": "OrignaBase: Test",
+			"type": "shell",
+			"command": "cargo test --lib",
+			"options": {
+				"cwd": "${workspaceFolder}/../orignabase"
+			},
+			"problemMatcher": "$rustc",
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "OrignaBase: SSH Deploy (Dev)",
+			"type": "shell",
+			"command": "bash ${workspaceFolder}/scripts/deploy_web.sh dev",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
 			"problemMatcher": [],
+			"group": "build",
 			"presentation": {
-				"reveal": "silent",
-				"panel": "shared"
+				"reveal": "always",
+				"panel": "dedicated"
 			}
 		},
-		// =====================================================================
-		// STRIPE WEBHOOK FORWARDING
-		// =====================================================================
 		{
-			"label": "Stripe: Forward Webhooks to Emulator",
+			"label": "OrignaBase: SSH Deploy (Production)",
 			"type": "shell",
-			"command": "stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_reinstated,transfer.reversed,payout.failed,refund.failed,account.updated",
+			"command": "bash ${workspaceFolder}/scripts/deploy_web.sh production",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
+		},
+		// =====================================================================
+		// STRIPE WEBHOOK FORWARDING (local dev only)
+		// =====================================================================
+		{
+			"label": "Stripe: Forward Webhooks (Dev — port 8080)",
+			"type": "shell",
+			"command": "stripe listen --forward-to localhost:8080/stripe/webhook --events checkout.session.completed,checkout.session.expired,payment_intent.succeeded,payment_intent.payment_failed,charge.refunded,charge.dispute.created,charge.dispute.closed,transfer.reversed,payout.failed,refund.failed,account.updated",
 			"isBackground": true,
 			"problemMatcher": {
-				"pattern": {
-					"regexp": "^$"
-				},
+				"pattern": { "regexp": "^$" },
 				"background": {
 					"activeOnStart": true,
 					"beginsPattern": ".",
@@ -131,575 +185,95 @@
 			}
 		},
 		{
-			"label": "Stripe: Forward Webhooks (with signing secret)",
-			"type": "shell",
-			"command": "stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_reinstated,transfer.reversed,payout.failed,refund.failed,account.updated --print-secret",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"isBackground": true,
-			"problemMatcher": {
-				"pattern": {
-					"regexp": "^.*$"
-				},
-				"background": {
-					"activeOnStart": true,
-					"beginsPattern": "^.",
-					"endsPattern": "^.*Ready!.*|^.*webhook signing secret.*$"
-				}
-			},
-			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"group": "stripe"
-			}
-		},
-		{
-			"label": "Stop Stripe Listener",
+			"label": "Stripe: Stop Listener",
 			"type": "shell",
 			"command": "pkill -9 -f 'stripe' || true",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
 			"problemMatcher": [],
-			"presentation": {
-				"reveal": "silent",
-				"panel": "shared"
-			}
+			"presentation": { "reveal": "silent", "panel": "shared" }
 		},
 		// =====================================================================
-		// PYTHON TESTS
+		// E2E PLAYWRIGHT
 		// =====================================================================
 		{
-			"label": "Run Unit Tests (Python)",
+			"label": "E2E: Run All Tests (Dev)",
 			"type": "shell",
-			"command": "cd functions && source venv/bin/activate && python3 -m pytest tests/ -v --tb=short",
+			"command": "npx playwright test --config=playwright.config.dev.ts",
 			"options": {
-				"cwd": "${workspaceFolder}",
-				"env": {
-					"FUNCTIONS_EMULATOR": "true"
-				}
+				"cwd": "${workspaceFolder}/e2e"
 			},
-			"isBackground": false,
-			"group": "test",
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Run Integration Tests (API)",
-			"type": "shell",
-			"command": "python3",
-			"args": [
-				"functions/scripts/run_api_tests.py"
-			],
-			"options": {
-				"cwd": "${workspaceFolder}",
-				"env": {
-					"FUNCTIONS_EMULATOR": "true"
-				}
-			},
-			"isBackground": false,
-			"group": "test"
-		},
-		// =====================================================================
-		// FLUTTER TASKS
-		// =====================================================================
-		{
-			"label": "Flutter: Run Web (Emulator)",
-			"type": "shell",
-			"command": "flutter",
-			"args": [
-				"run",
-				"-d", "chrome",
-				"--dart-define=ENVIRONMENT=emulator",
-				"--dart-define=USE_EMULATORS=true"
-			],
-			"options": {
-				"cwd": "${workspaceFolder}/origna_gta"
-			},
-			"isBackground": true,
-			"dependsOn": "Start Firebase Emulators",
-			"problemMatcher": [],
-			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"group": "flutter"
-			}
-		},
-		{
-			"label": "Flutter: Run Web (Production)",
-			"type": "shell",
-			"command": "flutter",
-			"args": [
-				"run",
-				"-d", "chrome",
-				"--dart-define=ENVIRONMENT=production",
-				"--dart-define=USE_EMULATORS=false"
-			],
-			"options": {
-				"cwd": "${workspaceFolder}/origna_gta"
-			},
-			"isBackground": true,
-			"problemMatcher": [],
-			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"group": "flutter"
-			}
-		},
-		{
-			"label": "Flutter: Build Web (Release)",
-			"type": "shell",
-			"command": "flutter",
-			"args": [
-				"build",
-				"web",
-				"--release",
-				"--dart-define=ENVIRONMENT=production",
-				"--dart-define=USE_EMULATORS=false"
-			],
-			"options": {
-				"cwd": "${workspaceFolder}/origna_gta"
-			},
-			"problemMatcher": [],
-			"group": "build"
-		},
-		{
-			"label": "Flutter: Integration Test (Hard Timeout 15m)",
-			"type": "shell",
-			"command": "python3 ${workspaceFolder}/scripts/run_flutter_integration_with_timeout.py --timeout 900",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test",
 			"presentation": {
 				"reveal": "always",
-				"panel": "dedicated",
-				"group": "flutter"
+				"panel": "dedicated"
 			}
 		},
-		// =====================================================================
-		// DEPLOYMENT
-		// =====================================================================
 		{
-			"label": "Deploy Functions (Production)",
+			"label": "E2E: Run Tests (UI Mode)",
 			"type": "shell",
-			"command": "firebase",
-			"args": [
-				"deploy",
-				"--only", "functions"
-			],
+			"command": "npx playwright test --config=playwright.config.dev.ts --ui",
 			"options": {
-				"cwd": "${workspaceFolder}"
+				"cwd": "${workspaceFolder}/e2e"
 			},
 			"problemMatcher": [],
-			"group": "build"
-		},
-		// =====================================================================
-		// COMPOUND TASKS - Start multiple services together
-		// =====================================================================
-		{
-			"label": "Start All Emulator Services",
-			"dependsOn": [
-				"Start Firebase Emulators",
-				"Stripe: Forward Webhooks to Emulator"
-			],
-			"dependsOrder": "parallel",
-			"problemMatcher": [],
-			"runOptions": {
-				"runOn": "default"
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
 			}
 		},
 		// =====================================================================
-		// CODE AUDIT (Kimi 2.5 via NVIDIA NIM)
+		// SEED DATA
+		// =====================================================================
+		{
+			"label": "Seed: All States (Dev)",
+			"type": "shell",
+			"command": "python3 seed_all_states.py",
+			"options": {
+				"cwd": "${workspaceFolder}/e2e/scripts/seed"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "Seed: Products Only (2000)",
+			"type": "shell",
+			"command": "python3 seed_orignabase_2000.py",
+			"options": {
+				"cwd": "${workspaceFolder}/e2e/scripts/seed"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
+		},
+		// =====================================================================
+		// CODE AUDIT
 		// =====================================================================
 		{
 			"label": "Run Kimi Code Audit",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit.py",
+			"command": "python audit/runners/audit.py",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
 			"problemMatcher": [],
 			"group": "build",
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			}
+			"presentation": { "reveal": "always", "panel": "shared" }
 		},
-		// =====================================================================
-		// CODE AUDIT (Qwen3 Coder 480B via NVIDIA NIM)
-		// =====================================================================
 		{
 			"label": "Run Qwen3 Coder Audit",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_qwen.py",
+			"command": "python audit/runners/audit_qwen.py",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
 			"problemMatcher": [],
 			"group": "build",
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			}
-		},
-		// =====================================================================
-		// TARGETED WORKFLOW AUDITS (Kimi 2.5)
-		// =====================================================================
-		{
-			"label": "🔍 Audit: Product Lifecycle",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_product.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
 			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "💳 Audit: Payment System",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_payment.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "📋 Audit: Order Lifecycle",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_orders.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "🏪 Audit: Seller Onboarding",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_seller.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "🔐 Audit: Auth & Security",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_auth.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		// =====================================================================
-		// NEW ENRICHED AUDITS (with doc crawling)
-		// =====================================================================
-		{
-			"label": "🔄 Audit: Data Flow & Schema",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_dataflow.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "🛡️ Audit: Error Handling",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_error_handling.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "⚡ Audit: Performance & Scaling",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_performance.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "🧠 Audit: State Management",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_state_mgmt.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "🔒 Audit: API Security",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_api_security.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "Stop All Emulator Services",
-			"type": "shell",
-			"command": "pkill -9 -f 'firebase' || true; pkill -9 -f 'java.*emulator' || true; pkill -9 -f 'stripe' || true; echo '✅ All services stopped'",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"problemMatcher": []
-		},
-		// =====================================================================
-		// CLAUDE AUDIT HOOKS (Improved — composable, git-aware, auto-fix)
-		// =====================================================================
-		{
-			"label": "🪝 Claude: Run All Audit Hooks",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝 Claude: Audit Changed Files Only",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --changed",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝 Claude: Pre-commit Check",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --pre-commit",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝💳 Claude: Payment Audit",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook payment",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝🔐 Claude: Auth & Security Audit",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook auth",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝📦 Claude: Product Lifecycle Audit",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook product",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝🔄 Claude: Schema Sync Check",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook schema-sync",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝🛡️ Claude: Security Audit",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook security",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝⚡ Claude: Performance Audit",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook performance",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝📋 Claude: Order Lifecycle Audit",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook orders",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝🧠 Claude: State Management Audit",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook state-mgmt",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝🏪 Claude: Seller Onboarding Audit",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook seller",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝🧾 Claude: Tax & Compliance Audit",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook tax",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝 Claude: List Available Hooks",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --list",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "shared" }
-		},
-		{
-			"label": "🪝🔧 Claude: Audit & Auto-Fix (All Hooks)",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --fix",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝🔧 Claude: Audit & Auto-Fix (Changed Files)",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --changed --fix",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🪝🔧 Claude: Auto-Fix Dry Run (Preview)",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --changed --fix --dry-run",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
-		},
-		{
-			"label": "🏗️ Infra: Full Verification (CLI + LLM)",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook infra",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
-		},
-		{
-			"label": "🏗️ Infra: Quick CLI Check (Free)",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
-		},
-		{
-			"label": "🏗️ Infra: Verify Stripe Only",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py --domain stripe",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
-		},
-		{
-			"label": "🏗️ Infra: Verify Firestore Only",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py --domain firestore",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
-		},
-		{
-			"label": "🏗️ Infra: Verify Cloud Functions Only",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py --domain functions",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
-		},
-		{
-			"label": "🏗️ Infra: Verify GCP Secrets Only",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py --domain secrets",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
-		},
-		{
-			"label": "🧪 QA: Full Analysis (Local + LLM)",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook qa",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "qa" }
-		},
-		{
-			"label": "🧪 QA: Quick Coverage Scan (Free)",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/qa_scanner.py",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "qa" }
-		},
-		{
-			"label": "🧪 QA: Scan + Run All Tests",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/qa_scanner.py --run-tests",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "test",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "qa" }
-		},
-		{
-			"label": "🧪 QA: Generate Test Plan",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/qa_scanner.py --generate-plan",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "qa" }
-		},
-		{
-			"label": "🏗️🧪 Pre-Deploy: Full Verification (Infra + QA)",
-			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py && python audit/scripts/qa_scanner.py --run-tests",
-			"options": { "cwd": "${workspaceFolder}" },
-			"problemMatcher": [],
-			"group": "build",
-			"presentation": { "reveal": "always", "panel": "dedicated", "group": "deploy" }
 		}
 	]
 }

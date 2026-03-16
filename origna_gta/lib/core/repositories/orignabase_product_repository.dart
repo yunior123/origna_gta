@@ -103,7 +103,7 @@ class OrignaBaseProductRepository implements ProductRepository {
 
     final result = await _ob.request(
       'POST',
-      '/api/products/create-atomic',
+      ApiEndpoints.productsCreateAtomic,
       body: {
         Fields.userId: userId,
         'productData': productJson,
@@ -121,7 +121,7 @@ class OrignaBaseProductRepository implements ProductRepository {
       imageUrls = await uploadImages(imageBytes, productId);
       await _ob.request(
         'POST',
-        '/api/products/upload-images',
+        ApiEndpoints.productsUploadImages,
         body: {Fields.productId: productId, Fields.imageUrls: imageUrls},
       );
     }
@@ -137,7 +137,7 @@ class OrignaBaseProductRepository implements ProductRepository {
     }
     await _ob.request(
       'POST',
-      '/api/products/delete',
+      ApiEndpoints.productsDelete,
       body: {Fields.productId: productId, Fields.userId: userId},
     );
   }
@@ -290,7 +290,7 @@ class OrignaBaseProductRepository implements ProductRepository {
     final encodedQuery = Uri.encodeQueryComponent(query);
     final response = await _httpClient.get(
       Uri.parse(
-        'https://api.geoapify.com/v1/geocode/autocomplete?text=$encodedQuery&filter=countrycode:ca&apiKey=$apiKey',
+        '${ExternalUrls.geoapifyBase}/geocode/autocomplete?text=$encodedQuery&filter=countrycode:ca&apiKey=$apiKey',
       ),
     );
     if (response.statusCode == 200) {
@@ -377,7 +377,7 @@ class OrignaBaseProductRepository implements ProductRepository {
 
     await _ob.request(
       'POST',
-      '/api/products/submit-rating',
+      ApiEndpoints.productsSubmitRating,
       body: {
         Fields.orderId: orderId,
         Fields.productId: productId,
@@ -407,7 +407,7 @@ class OrignaBaseProductRepository implements ProductRepository {
         : await uploadReviewImages(reviewImages, userId);
     await _ob.request(
       'POST',
-      '/api/products/submit-rating-atomic',
+      ApiEndpoints.productsSubmitRatingAtomic,
       body: {
         Fields.orderId: orderId,
         Fields.productId: productId,
@@ -424,7 +424,7 @@ class OrignaBaseProductRepository implements ProductRepository {
   Future<void> toggleFavorite(String userId, String productId) async {
     await _ob.request(
       'POST',
-      '/api/products/toggle-favorite',
+      ApiEndpoints.productsToggleFavorite,
       body: {Fields.userId: userId, Fields.productId: productId},
     );
   }
@@ -440,7 +440,7 @@ class OrignaBaseProductRepository implements ProductRepository {
     }
     await _ob.request(
       'POST',
-      '/api/products/update',
+      ApiEndpoints.productsUpdate,
       body: {
         Fields.productId: productId,
         Fields.userId: userId,

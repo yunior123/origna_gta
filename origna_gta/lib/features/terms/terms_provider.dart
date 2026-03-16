@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/services/orignabase_conf_service.dart';
 
-const String _defaultTermsContent = '''
+// ignore: prefer_interpolation_to_compose_strings — interpolation needed for constant reference in multiline string
+final String _defaultTermsContent = '''
 Welcome to OrignaGTA. By accessing or using our platform, you agree to be bound by these Terms and Conditions.
 
 1. ACCEPTANCE OF TERMS
@@ -92,7 +94,7 @@ These Terms are governed by the laws of Ontario, Canada. Any disputes shall be r
 14. CONTACT US
 
 For questions about these Terms, please contact us at:
-Email: support@orignagta.ca
+Email: ${EmailConfig.supportEmail}
 
 By using OrignaGTA, you acknowledge that you have read and understood these Terms and Conditions and agree to be bound by them.
 ''';

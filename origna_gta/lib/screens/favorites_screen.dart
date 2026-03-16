@@ -91,6 +91,7 @@ class FavoritesScreen extends ConsumerWidget {
                 child: RefreshIndicator(
                   color: DesignTokens.primary,
                   onRefresh: () async => ref.invalidate(favoritedProductsProvider),
+                  semanticsLabel: 'btn-refresh-favorites',
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
@@ -109,9 +110,12 @@ class FavoritesScreen extends ConsumerWidget {
                                 Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.warning),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: Text(
-                                    'favorites.items_unavailable'.tr(namedArgs: {'count': '${unavailable.length}'}),
-                                    style: TextStyle(color: DesignTokens.warning, fontSize: 13, fontWeight: FontWeight.w500),
+                                  child: Semantics(
+                                    label: 'text-unavailable-items-warning',
+                                    child: Text(
+                                      'favorites.items_unavailable'.tr(namedArgs: {'count': '${unavailable.length}'}),
+                                      style: TextStyle(color: DesignTokens.warning, fontSize: 13, fontWeight: FontWeight.w500),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -133,9 +137,12 @@ class FavoritesScreen extends ConsumerWidget {
                               final isUnavailable = product.lifecycleStatus != ProductLifecycleStatusValues.active;
                               return FadeSlideIn(
                                 delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
-                                child: Opacity(
-                                  opacity: isUnavailable ? 0.60 : 1.0,
-                                  child: ProductCard(productId: product.productId, product: product, userModel: userModel),
+                                child: Semantics(
+                                  label: 'card-favorite-product-${product.productId}',
+                                  child: Opacity(
+                                    opacity: isUnavailable ? 0.60 : 1.0,
+                                    child: ProductCard(productId: product.productId, product: product, userModel: userModel),
+                                  ),
                                 ),
                               );
                             },

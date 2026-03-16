@@ -79,24 +79,29 @@ class _OrderFilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: selected
-            ? const BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.all(Radius.circular(20)))
-            : BoxDecoration(
-                border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outline),
-                borderRadius: const BorderRadius.all(Radius.circular(20)),
-                color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
-              ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            color: selected ? DesignTokens.textOnPrimary : (isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary),
+    return Semantics(
+      label: 'tab-order-filter-$label',
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: selected
+              ? const BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.all(Radius.circular(20)))
+              : BoxDecoration(
+                  border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outline),
+                  borderRadius: const BorderRadius.all(Radius.circular(20)),
+                  color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
+                ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: selected ? DesignTokens.textOnPrimary : (isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary),
+            ),
           ),
         ),
       ),
@@ -263,7 +268,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           children: [
             Icon(Icons.error_outline_rounded, size: 60, color: DesignTokens.error),
             const SizedBox(height: 16),
-            Text('orders.unable_to_load'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Semantics(
+              label: 'text-orders-load-error',
+              child: Text('orders.unable_to_load'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
             const SizedBox(height: 8),
             Text(
               message,
@@ -271,7 +279,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               style: TextStyle(color: DesignTokens.textSecondary),
             ),
             const SizedBox(height: 24),
-            ModernButton(onPressed: () => ref.invalidate(buyerOrdersProvider), label: 'orders.retry'.tr(), icon: Icons.refresh),
+            Semantics(
+              button: true,
+              label: 'btn-retry-load-orders',
+              child: ModernButton(onPressed: () => ref.invalidate(buyerOrdersProvider), label: 'orders.retry'.tr(), icon: Icons.refresh),
+            ),
           ],
         ),
       ),

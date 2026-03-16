@@ -114,9 +114,14 @@ test.describe('Address Management — UI', () => {
     await page.waitForURL(/\/profile/i, { timeout: 30_000 }).catch(() => {});
     await waitForFlutter(page, 30_000);
 
-    const addressesLink = page.locator('[aria-label="menu-addresses"], [aria-label="menu-my-addresses"]')
-      .or(page.getByText(/addresses|adresses/i).first());
+    // menu-address is below the fold — scroll down so Flutter includes it in the semantics tree
+    await page.evaluate(() => window.scrollTo({ top: 600, behavior: 'instant' }));
+    await page.waitForTimeout(500);
+
+    const addressesLink = page.locator('[aria-label="menu-addresses"], [aria-label="menu-my-addresses"], [aria-label="menu-address"]')
+      .or(page.getByText(/^addresses?$|^adresses?$/i).first());
     await expect(addressesLink).toBeAttached({ timeout: 30_000 });
+    await addressesLink.scrollIntoViewIfNeeded().catch(() => {});
     await addressesLink.click();
 
     await expect(page.getByText(/address|adresse/i).first()).toBeVisible({ timeout: 30_000 });

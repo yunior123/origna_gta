@@ -55,7 +55,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     state = state.copyWith(isCouponLoading: true, clearCouponError: true);
     try {
       final result =
-          await _ob.request('POST', '/api/coupons/apply', body: {
+          await _ob.request('POST', ApiEndpoints.couponsApply, body: {
         Fields.couponCode: trimmed,
         ApiKeys.cartSubtotalCents: subtotalCents,
         Fields.sellerIds: sellerIds ?? [],
@@ -86,7 +86,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       List<CartItemDetailModel> items) async {
     try {
       final result = await _ob
-          .request('POST', '/api/checkout/verify-prices', body: {
+          .request('POST', ApiEndpoints.checkoutVerifyPrices, body: {
         Fields.items: items
             .map((item) => {
                   Fields.productId: item.productId,
