@@ -328,7 +328,7 @@ abstract class Order with _$Order {
 
     // Parse taxes
     final taxesData = data[Fields.taxes];
-    final taxes = taxesData is Map ? Taxes.fromMap(Map<String, dynamic>.from(taxesData)) : const Taxes();
+    final taxes = taxesData is Map ? Taxes.fromMap(_safeMap(taxesData)) : const Taxes();
 
     // Parse seller payouts — use safe parser
     final payoutsData = data[Fields.sellerPayouts] as List<dynamic>? ?? [];
