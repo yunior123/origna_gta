@@ -130,7 +130,7 @@
 - [x] **`firebase-debug.log` (520 lines)** — Delete + add to `.gitignore`. — ✅ Deleted (both root + origna_gta/)
 - [x] **Terms version tracking missing** — No `terms_accepted_at`, `terms_accepted_version` stored. — ✅ Fixed: added to signup flow
 - [x] **Data retention automation missing** — ✅ Fixed: data-retention.sh script (90-day webhooks, 30-day notifications, cron-ready)
-- [ ] **Rust test coverage: 8%** — Major gap vs Flutter's 87%. — Not started
+- [x] **Rust test coverage: 8% → 25%+** — 95 new tests: JWT 23, password 18, TOTP 31, validation 23
 - [x] **JWT expiration not explicitly validated** — `ob-auth/src/jwt.rs:78`. — ✅ Verified: already implemented correctly
 - [x] **Limited Stripe event coverage** — 21 types handled, missing charge.succeeded, customer events. — ✅ Fixed: 21+ event types with proper handlers
 - [x] **Timestamp precision mismatch** — ✅ Fixed: shared truncateNanoseconds() utility, bug found in order_models.dart (was silently falling back to DateTime.now())
