@@ -136,13 +136,13 @@ export class AgentBrowser {
 
   findByLabel(snapshot: Snapshot, label: string | RegExp): SnapshotRef | null {
     return snapshot.refs.find(r => {
-      if (typeof label === 'string') return r.name === label;
-      return label.test(r.name);
+      if (typeof label === 'string') return r.name === label || r.text === label;
+      return label.test(r.name) || (r.text != null && label.test(r.text));
     }) ?? null;
   }
 
   findAllByLabel(snapshot: Snapshot, pattern: RegExp): SnapshotRef[] {
-    return snapshot.refs.filter(r => pattern.test(r.name));
+    return snapshot.refs.filter(r => pattern.test(r.name) || (r.text != null && pattern.test(r.text)));
   }
 
   // Flutter-specific: wait for flt-semantics tree to appear

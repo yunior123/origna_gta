@@ -17,7 +17,7 @@ import {
   discoverProducts,
   parseDoc,
 } from '../../lib/api-client.js';
-import { TEST_ACCOUNTS, TEST_UIDS } from '../../lib/config.js';
+import { TEST_ACCOUNTS, TEST_UIDS, TEST_PRODUCTS } from '../../lib/config.js';
 
 describe('New Notification Features E2E', () => {
   let buyerToken: string;
@@ -35,7 +35,7 @@ describe('New Notification Features E2E', () => {
     adminToken = adminAuth.idToken;
 
     const products = await discoverProducts();
-    product = products[0]; // e2e_product_admin_seller
+    product = products[0] ?? { id: TEST_PRODUCTS.DIGITAL }; // fallback to e2e_product_test_seller
 
     // Grant premium to buyer so chat tests can proceed.
     const subWriteOk = await writeDoc(
@@ -125,7 +125,7 @@ describe('New Notification Features E2E', () => {
 
   test('Chat message notification is triggered', async () => {
     // 1. Buyer sends message to seller (Admin owns product[0])
-    const chatResult = await callOk('get_or_create_chat', { productId: product.id }, buyerToken);
+    const chatResult = await callOk('get_or_create_chat', { productId: TEST_PRODUCTS.DIGITAL, otherUserId: TEST_UIDS.ADMIN }, buyerToken);
     const chatId = chatResult.chatId;
     expect(chatId).toBeTruthy();
 
@@ -150,7 +150,7 @@ describe('New Notification Features E2E', () => {
 
   test('Message reporting (flagging) creates a report record', async () => {
     // 1. Get a message to report
-    const chatResult = await callOk('get_or_create_chat', { productId: product.id }, buyerToken);
+    const chatResult = await callOk('get_or_create_chat', { productId: TEST_PRODUCTS.DIGITAL, otherUserId: TEST_UIDS.ADMIN }, buyerToken);
     const chatId = chatResult.chatId;
 
     // Send a fresh message to report

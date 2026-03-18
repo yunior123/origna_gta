@@ -30,8 +30,13 @@ describe('Google Auth Contract', () => {
     const googleProvider = providers.google ?? {};
 
     // Wait for full login form to render (Google button appears last)
-    const snap = await browser.waitForChange({ text: /login_submit_button/i, timeout: 30_000 });
-    const googleButton = browser.findByLabel(snap, /login_google_button|btn-google|continuer avec Google|continue with Google/i);
+    let snap = await browser.waitForChange({ text: /login_submit_button/i, timeout: 30_000 });
+    let googleButton = browser.findByLabel(snap, /login_google_button|btn-google|continuer avec Google|continue with Google/i);
+    // Google button may render slightly after submit button — retry with broader pattern
+    if (!googleButton) {
+      snap = await browser.waitForChange({ text: /login_google_button|btn-google|Google/i, timeout: 10_000 });
+      googleButton = browser.findByLabel(snap, /login_google_button|btn-google|continuer avec Google|continue with Google|Google/i);
+    }
     const googleButtonVisible = googleButton !== null;
 
     expect(

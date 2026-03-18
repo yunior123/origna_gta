@@ -161,14 +161,14 @@ describe('Chat Screen — Premium Gate', () => {
       if (errStatus.includes('already') || errMsg.includes('already')) {
         // Thread already exists — fetch existing
         const threads = await callCallable('get_chat_threads', {}, adminAuth.idToken);
-        if (threads.result?.threads?.length > 0) {
-          threadId = threads.result.threads[0].threadId || threads.result.threads[0].id;
+        if ((threads.threads ?? threads.result?.threads)?.length > 0) {
+          threadId = (threads.threads ?? threads.result?.threads)?.[0]?.threadId || (threads.threads ?? threads.result?.threads)?.[0]?.id;
         }
       } else {
         expect(errMsg).not.toMatch(/premium|subscription/);
       }
     } else {
-      threadId = threadResult.result?.threadId || threadResult.result?.id;
+      threadId = threadResult.threadId || threadResult.id || threadResult.result?.threadId || threadResult.result?.id;
       expect(threadId).toBeTruthy();
     }
 
@@ -183,7 +183,7 @@ describe('Chat Screen — Premium Gate', () => {
         const errMsg = (msgResult.error.message || '').toLowerCase();
         expect(errMsg).not.toMatch(/premium|unauthorized/);
       } else {
-        expect(msgResult.result || msgResult).toBeTruthy();
+        expect(msgResult.result ?? msgResult).toBeTruthy();
       }
     }
   });
@@ -209,8 +209,9 @@ describe('Chat Screen — Premium Gate', () => {
     const threadsResult = await callCallable('get_chat_threads', {}, adminAuth.idToken);
     let threadId: string | null = null;
 
-    if (threadsResult.result?.threads?.length > 0) {
-      threadId = threadsResult.result.threads[0].threadId || threadsResult.result.threads[0].id;
+    const threadsList = threadsResult.threads ?? threadsResult.result?.threads ?? [];
+    if (threadsList.length > 0) {
+      threadId = threadsList[0].threadId || threadsList[0].id;
     }
 
     if (!threadId) {
@@ -220,7 +221,7 @@ describe('Chat Screen — Premium Gate', () => {
         initialMessage: `Limit boundary test ${Date.now()}`,
       }, adminAuth.idToken);
       if (!createResult.error) {
-        threadId = createResult.result?.threadId || createResult.result?.id;
+        threadId = createResult.threadId || createResult.id || createResult.result?.threadId || createResult.result?.id;
       }
     }
 
