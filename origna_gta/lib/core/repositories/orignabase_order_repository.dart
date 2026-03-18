@@ -22,8 +22,8 @@ class OrignaBaseOrderRepository implements OrderRepository {
   // ---------------------------------------------------------------------------
   models.Order _docToOrder(Document doc) {
     final data = <String, dynamic>{...doc.data, Fields.orderId: doc.id};
-    // Normalize timestamps from ISO strings if needed (OrignaBase stores strings)
-    return models.Order.fromJson(data);
+    // Use fromMap for null-safe parsing (fromJson has unsafe hard casts)
+    return models.Order.fromMap(data, doc.id);
   }
 
   /// Valid payment statuses for buyer/seller order streams.

@@ -145,6 +145,35 @@ export class AgentBrowser {
     return snapshot.refs.filter(r => pattern.test(r.name) || (r.text != null && pattern.test(r.text)));
   }
 
+  /** Atomic snapshot+click: takes fresh snapshot, finds element, clicks — retries on stale ref. */
+  async safeClick(pattern: RegExp, retries = 3): Promise<boolean> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const snap = await this.snapshot({ interactive: true, compact: true });
+        const el = this.findByLabel(snap, pattern);
+        if (!el) { await new Promise(r => setTimeout(r, 500)); continue; }
+        await this.click(el.ref);
+        return true;
+      } catch { await new Promise(r => setTimeout(r, 500)); }
+    }
+    return false;
+  }
+
+  /** Atomic snapshot+click+type: takes fresh snapshot, finds input, clicks it, types value — retries on stale ref. */
+  async safeFill(pattern: RegExp, value: string, retries = 3): Promise<boolean> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const snap = await this.snapshot({ interactive: true, compact: true });
+        const el = this.findByLabel(snap, pattern);
+        if (!el) { await new Promise(r => setTimeout(r, 500)); continue; }
+        await this.click(el.ref);
+        await this.type(value);
+        return true;
+      } catch { await new Promise(r => setTimeout(r, 500)); }
+    }
+    return false;
+  }
+
   // Flutter-specific: wait for flt-semantics tree to appear
   async waitForFlutter(timeout?: number): Promise<void> {
     const ms = timeout ?? (Number(process.env.E2E_FLUTTER_TIMEOUT) || 45_000);

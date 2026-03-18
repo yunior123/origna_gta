@@ -56,6 +56,18 @@ export const STRIPE_CARD = {
   postalCode: 'M5V 3A8',
 };
 
+export const STRIPE_PM_TOKENS = {
+  VISA_SUCCESS: 'pm_card_visa',
+  DECLINED: 'pm_card_chargeDeclined',
+  INSUFFICIENT_FUNDS: 'pm_card_chargeInsufficientFunds',
+  EXPIRED: 'pm_card_chargeDeclinedExpiredCard',
+  INCORRECT_CVC: 'pm_card_chargeDeclinedIncorrectCvc',
+  PROCESSING_ERROR: 'pm_card_chargeDeclinedProcessingError',
+  LOST: 'pm_card_chargeDeclinedLostCard',
+  STOLEN: 'pm_card_chargeDeclinedStolenCard',
+  THREE_DS_REQUIRED: 'pm_card_authenticationRequired',
+};
+
 export const TEST_ACCOUNTS = {
   ADMIN_EMAIL: 'e2e-admin@test.origna.ca',
   ADMIN_PASS: 'REDACTED_TEST_PASSWORD',

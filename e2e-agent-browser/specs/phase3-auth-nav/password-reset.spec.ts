@@ -57,18 +57,12 @@ describe('Password Reset Routing', () => {
     }
 
     // Fill and submit — OrignaBase will reject the invalid oobCode
-    await browser.fill(newPasswordInput.ref, 'NewPass123!');
+    await browser.safeFill(/reset_password_new_password_field/i, 'NewPass123!');
 
-    snap = await browser.waitForChange({ text: /reset_password_confirm_password_field/i, timeout: 5_000 });
-    const confirmInput = browser.findByLabel(snap, /reset_password_confirm_password_field/);
-    if (confirmInput) {
-      await browser.fill(confirmInput.ref, 'NewPass123!');
-    }
+    await new Promise(r => setTimeout(r, 300));
+    await browser.safeFill(/reset_password_confirm_password_field/i, 'NewPass123!');
 
-    snap = await browser.waitForChange({ text: /reset_password_submit_button/i, timeout: 5_000 });
-    const submitBtn = browser.findByLabel(snap, /reset_password_submit_button/);
-    if (submitBtn) {
-      await browser.click(submitBtn.ref);
+    if (await browser.safeClick(/reset_password_submit_button/)) {
 
       // After OrignaBase rejects the code, the "Go to Login" button should NOT appear
       await new Promise(r => setTimeout(r, 5000));

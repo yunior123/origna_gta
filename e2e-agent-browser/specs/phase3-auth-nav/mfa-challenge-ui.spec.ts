@@ -11,35 +11,27 @@ import { TEST_ACCOUNTS, DEFAULT_PASS, WEB_APP_URL } from '../../lib/config.js';
 
 const TARGET_URL = WEB_APP_URL;
 
-/** Helper: login via browser UI with waitForChange patterns. */
+/** Helper: login via browser UI — uses safeClick/safeFill for atomic snapshot+action. */
 async function loginViaBrowser(browser: AgentBrowser, email: string, password: string): Promise<void> {
-  await browser.open(TARGET_URL);
+  await browser.open(`${TARGET_URL}/login`);
   await browser.waitForFlutter();
 
-  let snap = await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
-  const settingsBtn = browser.findByLabel(snap, /btn-home-settings/);
-  if (!settingsBtn) throw new Error('Settings button not found');
-  await browser.click(settingsBtn.ref);
+  const snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field|btn-home-settings/i, timeout: 30_000 });
+  if (browser.findByLabel(snap, /btn-home-settings/)) return; // Already logged in
 
-  snap = await browser.waitForChange({ text: /se connecter|sign in|menu-my-orders|btn-sign-out/i, timeout: 10_000 });
-  const loginBtn = browser.findByLabel(snap, /se connecter|sign in/i);
-  if (loginBtn) {
-    await browser.click(loginBtn.ref);
+  if (!await browser.safeFill(/you@example|vous@exemple|login_email_field/i, email))
+    throw new Error('Email input not found');
 
-    snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 10_000 });
-    const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
-    if (!emailInput) throw new Error('Email input not found');
-    await browser.fill(emailInput.ref, email);
+  await new Promise(r => setTimeout(r, 300));
 
-    const passInput = browser.findByLabel(snap, /login_password_field|••••••••/i);
-    if (!passInput) throw new Error('Password input not found');
-    await browser.fill(passInput.ref, password);
+  if (!await browser.safeFill(/login_password_field|••••••••/i, password))
+    throw new Error('Password input not found');
 
-    const submitBtn = browser.findByLabel(snap, /login_submit_button/);
-    if (submitBtn) await browser.click(submitBtn.ref);
-
-    await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
-  }
+  await browser.press('Tab');
+  await new Promise(r => setTimeout(r, 500));
+  await browser.press('Enter');
+  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForFlutter();
 }
 
 describe('MFA Challenge UI', () => {
@@ -86,12 +78,15 @@ describe('MFA Challenge UI', () => {
       console.warn(`loginViaBrowser warning: ${err}`);
     }
 
-    // Navigate to settings/profile page
-    let snap = await browser.waitForChange({ text: /btn-home-settings|menu-my-orders|btn-sign-out/i, timeout: 15_000 });
-    const settingsAfterLogin = browser.findByLabel(snap, /btn-home-settings/);
-    if (settingsAfterLogin) {
-      await browser.click(settingsAfterLogin.ref);
+    // Navigate to home then settings — use safeClick for atomic snapshot+click
+    await browser.open(TARGET_URL);
+    await browser.waitForFlutter();
+    await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
+    let snap: any;
+    if (await browser.safeClick(/btn-home-settings/)) {
       snap = await browser.waitForChange({ text: /menu-my-orders|menu-security|menu-address|btn-sign-out|se connecter|sign in/i, timeout: 15_000 });
+    } else {
+      snap = await browser.snapshot({ interactive: true, compact: true });
     }
 
     const securityMenuItem = browser.findByLabel(snap, /menu-security/);
@@ -109,11 +104,12 @@ describe('MFA Challenge UI', () => {
   test('Security Settings screen renders MFA status card', { timeout: 60_000 }, async () => {
     await loginViaBrowser(browser, TEST_ACCOUNTS.BUYER_EMAIL, DEFAULT_PASS);
 
-    // Go to settings
-    let snap = await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
-    const settingsBtn = browser.findByLabel(snap, /btn-home-settings/);
-    if (settingsBtn) {
-      await browser.click(settingsBtn.ref);
+    // Go to home, then settings — use safeClick for atomic snapshot+click
+    await browser.open(TARGET_URL);
+    await browser.waitForFlutter();
+    await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
+    let snap: any;
+    if (await browser.safeClick(/btn-home-settings/)) {
       try {
         snap = await browser.waitForChange({ text: /menu-my-orders|menu-security|menu-address|btn-sign-out/i, timeout: 15_000 });
       } catch {

@@ -92,52 +92,51 @@ describe('Seller Registration — UI Tests', () => {
   });
 
   test('T06: UI — Seller registration page has terms checkbox and action button', { timeout: 60_000 }, async () => {
-    // Login as non-onboarded seller (buyer account)
-    await browser.open(WEB_APP_URL);
+    // Login as non-onboarded seller (buyer account) — go directly to /login
+    await browser.open(`${WEB_APP_URL}/login`);
     await browser.waitForFlutter();
 
-    let snap = await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
-    const settings = browser.findByLabel(snap, /btn-home-settings/);
-    expect(settings).toBeTruthy();
-    await browser.click(settings!.ref);
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field|btn-home-settings/i, timeout: 30_000 });
 
-    snap = await browser.waitForChange({ text: /se connecter|sign in|menu-my-orders|btn-sign-out/i, timeout: 10_000 });
-    const loginBtn = browser.findByLabel(snap, /se connecter|sign in/i);
-    if (loginBtn) {
-      await browser.click(loginBtn.ref);
-
-      snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 10_000 });
+    // If not already logged in, fill the login form
+    if (!browser.findByLabel(snap, /btn-home-settings/)) {
       const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
       expect(emailInput).toBeTruthy();
-      await browser.fill(emailInput!.ref, TEST_ACCOUNTS.BUYER_EMAIL);
+      await browser.click(emailInput!.ref);
+      await browser.type(TEST_ACCOUNTS.BUYER_EMAIL);
 
-      const passInput = browser.findByLabel(snap, /login_password_field|••••••••/i);
+      snap = await browser.waitForChange({ text: /login_password_field|••••••••/i, timeout: 10_000 });
+      const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
       expect(passInput).toBeTruthy();
-      await browser.fill(passInput!.ref, DEFAULT_PASS);
+      await browser.click(passInput!.ref);
+      await browser.type(DEFAULT_PASS);
 
-      const submitBtn = browser.findByLabel(snap, /login_submit_button/);
-      if (submitBtn) await browser.click(submitBtn.ref);
-
-      await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
+      await browser.press('Tab');
+      await new Promise(r => setTimeout(r, 500));
+      await browser.press('Enter');
+      await new Promise(r => setTimeout(r, 5000));
+      await browser.waitForFlutter();
     }
 
-    // Navigate to settings
+    // Navigate to home, then settings
+    await browser.open(WEB_APP_URL);
+    await browser.waitForFlutter();
     snap = await browser.waitForChange({ text: /btn-home-settings/i, timeout: 15_000 });
-    const settingsAfterLogin = browser.findByLabel(snap, /btn-home-settings/);
+
+    // Use safeClick for atomic snapshot+click to avoid stale refs
     let menuLoaded = false;
-    if (settingsAfterLogin) {
-      await browser.click(settingsAfterLogin.ref);
+    if (await browser.safeClick(/btn-home-settings/)) {
       try {
         snap = await browser.waitForChange({ text: /menu-my-orders|menu-become-seller|menu-address|btn-sign-out/i, timeout: 15_000 });
         menuLoaded = true;
       } catch {
-        // Profile still loading — accept as pass
         snap = await browser.waitForChange({ minRefs: 1, timeout: 5_000 });
       }
+    } else {
+      snap = await browser.snapshot({ interactive: true, compact: true });
     }
 
     if (!menuLoaded) {
-      // Profile still loading (API slow) — page navigated, accept as pass
       expect(snap.refs.length).toBeGreaterThan(0);
       return;
     }
@@ -149,8 +148,7 @@ describe('Seller Registration — UI Tests', () => {
       becomeSellerMenu = browser.findByLabel(snap, /menu-become-seller/);
     }
 
-    if (becomeSellerMenu) {
-      await browser.click(becomeSellerMenu.ref);
+    if (becomeSellerMenu && await browser.safeClick(/menu-become-seller/)) {
       snap = await browser.waitForChange({ text: /terms|conditions|agree|register|submit|become.*seller|devenir|chk-seller-terms|btn-register-seller/i, timeout: 15_000 });
 
       // Check for terms checkbox and action button on seller registration page
