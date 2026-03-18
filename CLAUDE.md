@@ -27,3 +27,4 @@ Flutter e-commerce app. Backend: OrignaBase (Rust VPS, **Firebase is COMPLETELY 
 
 Rules:
 -use many subagents in each session to keep main context window as clean as possible. more than 10+ agents
+-u can use concurrency or parralel tasks, u just need to be careful with ram. specially with tests e2e

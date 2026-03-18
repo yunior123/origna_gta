@@ -25,8 +25,9 @@ String _deviceLanguage() {
 class OrignaBaseAuthException implements Exception {
   final String code;
   final String? message;
+  final String? challengeToken;
 
-  OrignaBaseAuthException({required this.code, this.message});
+  OrignaBaseAuthException({required this.code, this.message, this.challengeToken});
 
   @override
   String toString() =>

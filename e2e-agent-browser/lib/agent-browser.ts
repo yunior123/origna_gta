@@ -160,4 +160,29 @@ export class AgentBrowser {
     }
     throw new Error(`Flutter semantics tree not found within ${ms}ms`);
   }
+
+  /**
+   * Wait for the snapshot to change (new elements appear) — replaces hardcoded sleeps.
+   * Polls every 200ms, returns as soon as condition is met.
+   */
+  async waitForChange(opts?: { minRefs?: number; text?: string | RegExp; timeout?: number }): Promise<Snapshot> {
+    const timeout = opts?.timeout ?? 10_000;
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      try {
+        const snap = await this.snapshot({ interactive: true, compact: true });
+        if (opts?.text) {
+          const pattern = typeof opts.text === 'string' ? new RegExp(opts.text, 'i') : opts.text;
+          if (snap.refs.some(r => pattern.test(r.name) || (r.text && pattern.test(r.text)))) return snap;
+        } else if (opts?.minRefs) {
+          if (snap.refs.length >= opts.minRefs) return snap;
+        } else {
+          if (snap.refs.length > 0) return snap;
+        }
+      } catch { /* page still loading */ }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    // Return last snapshot even on timeout (caller can check)
+    return this.snapshot({ interactive: true, compact: true });
+  }
 }

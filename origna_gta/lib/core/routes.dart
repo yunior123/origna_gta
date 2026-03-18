@@ -48,6 +48,9 @@ class AppRoutes {
   static const String chatInbox = '/chat/inbox';
   static const String notifications = '/notifications';
   static const String support = '/support';
+  static const String mfaSetup = '/mfa/setup';
+  static const String mfaChallenge = '/mfa/challenge';
+  static const String securitySettings = '/security-settings';
   AppRoutes._(); // Prevent instantiation
 }
 

@@ -40,7 +40,8 @@
       "mcp__claude_ai_Gmail__gmail_search_messages",
       "mcp__claude_ai_Gmail__gmail_read_message",
       "mcp__cloudflare__execute",
-      "mcp__cloudflare__search"
+      "mcp__cloudflare__search",
+      "mcp__plugin_firebase_firebase__firebase_list_projects"
     ]
   }
 }

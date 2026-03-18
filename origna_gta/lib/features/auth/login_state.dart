@@ -11,6 +11,8 @@ class LoginState {
   final String? errorMessage;
   final String? successMessage;
   final bool isSuccess;
+  final bool mfaRequired;
+  final String? challengeToken;
 
   LoginState({
     this.isLoading = false,
@@ -21,6 +23,8 @@ class LoginState {
     this.errorMessage,
     this.successMessage,
     this.isSuccess = false,
+    this.mfaRequired = false,
+    this.challengeToken,
   });
 
   LoginState copyWith({
@@ -32,6 +36,8 @@ class LoginState {
     Object? errorMessage = _omit,
     Object? successMessage = _omit,
     bool? isSuccess,
+    bool? mfaRequired,
+    Object? challengeToken = _omit,
   }) {
     return LoginState(
       isLoading: isLoading ?? this.isLoading,
@@ -42,6 +48,8 @@ class LoginState {
       errorMessage: identical(errorMessage, _omit) ? this.errorMessage : errorMessage as String?,
       successMessage: identical(successMessage, _omit) ? this.successMessage : successMessage as String?,
       isSuccess: isSuccess ?? this.isSuccess,
+      mfaRequired: mfaRequired ?? this.mfaRequired,
+      challengeToken: identical(challengeToken, _omit) ? this.challengeToken : challengeToken as String?,
     );
   }
 }
