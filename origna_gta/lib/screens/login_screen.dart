@@ -1093,7 +1093,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 );
                               }
                             } finally {
-                              if (mounted) setState(() => isSending = false);
+                              if (dialogContext.mounted) setState(() => isSending = false);
                             }
                           },
                   ),

@@ -1215,9 +1215,11 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
   }
 
   Future<void> _checkVerification() async {
+    if (!mounted) return;
     setState(() => _isChecking = true);
     try {
       final verified = await ref.read(authRepositoryProvider).isEmailVerified();
+      if (!mounted) return;
       if (verified) {
         await ref.read(authRepositoryProvider).ensureUserDocumentExists();
         if (mounted) {
@@ -1248,14 +1250,14 @@ class _EmailVerificationRequiredViewState extends ConsumerState<_EmailVerificati
   }
 
   Future<void> _resendEmail() async {
+    if (!mounted) return;
     setState(() => _isResending = true);
     try {
       await ref.read(authRepositoryProvider).sendEmailVerification();
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('profile.verification_sent'.tr()), backgroundColor: DesignTokens.primary, behavior: SnackBarBehavior.floating));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('profile.verification_sent'.tr()), backgroundColor: DesignTokens.primary, behavior: SnackBarBehavior.floating));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
