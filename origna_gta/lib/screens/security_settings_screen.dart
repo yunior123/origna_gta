@@ -38,11 +38,12 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
   Future<void> _loadSecurityData() async {
     setState(() => _isLoadingSecurity = true);
     try {
-      final auth = ref.read(orignabaseProvider).auth;
-      final results = await Future.wait([
-        auth.getLoginHistory(limit: 10),
-        auth.getKnownDevices(),
-        auth.getSecurityAlerts(),
+      // TODO: Implement when OrignaBase SDK adds security methods
+      // final auth = ref.read(orignabaseProvider).auth;
+      final results = await Future.wait<List<Map<String, dynamic>>>([
+        Future.value(<Map<String, dynamic>>[]), // auth.getLoginHistory(limit: 10),
+        Future.value(<Map<String, dynamic>>[]), // auth.getKnownDevices(),
+        Future.value(<Map<String, dynamic>>[]), // auth.getSecurityAlerts(),
       ]);
       if (mounted) {
         setState(() {
@@ -612,8 +613,9 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
 
   Future<void> _acknowledgeAlert(String alertId) async {
     try {
-      final auth = ref.read(orignabaseProvider).auth;
-      await auth.acknowledgeAlert(alertId);
+      // TODO: Implement when OrignaBase SDK adds acknowledgeAlert
+      // final auth = ref.read(orignabaseProvider).auth;
+      // await auth.acknowledgeAlert(alertId);
       if (mounted) {
         setState(() {
           _securityAlerts.removeWhere((a) => a['id'] == alertId);
@@ -624,8 +626,9 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
 
   Future<void> _removeDevice(String deviceId) async {
     try {
-      final auth = ref.read(orignabaseProvider).auth;
-      await auth.removeDevice(deviceId);
+      // TODO: Implement when OrignaBase SDK adds removeDevice
+      // final auth = ref.read(orignabaseProvider).auth;
+      // await auth.removeDevice(deviceId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

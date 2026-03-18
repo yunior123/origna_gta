@@ -223,7 +223,7 @@ class OrignaBaseOrderRepository implements OrderRepository {
           .where(Fields.paymentStatus, whereIn: _activePaymentStatuses)
           .limit(BusinessRules.ordersPageSize),
       accept: (order) {
-        final ids = order.sellerIds ?? <String>[];
+        final ids = order.sellerIds;
         return ids.any((id) => _normalizeId(id) == _normalizeId(userId)) &&
             _activePaymentStatuses.contains(order.paymentStatus);
       },
