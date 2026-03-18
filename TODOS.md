@@ -138,7 +138,7 @@
 ### FEATURE GAPS (launch blockers)
 
 - [x] **Product reviews** — ✅ Fixed: Write a Review button with eligibility check, RatingDialog wired, 10 unit tests
-- [ ] **Email notifications** — No Mailjet wiring. Buyers get zero order confirmation emails. — Not started
+- [x] **Email notifications** — ✅ Mailjet integrated: order confirmation (buyer+seller), shipping notification (bilingual), payout scheduled
 - [x] **Refund/return flow** — ✅ Created: return_request_screen.dart, order card "Request Return" button, 7 return statuses, EN/FR translations
 - [x] **Product recommendations** — ✅ Already implemented: SimilarProductsSection wired into productdetails_screen
 - [ ] **Guest checkout** — Forces login, kills conversion. — Not started
