@@ -551,7 +551,7 @@ class _AddToCartButtonState extends ConsumerState<AddToCartButton> {
 
   Future<void> _toggleNotification(
     BuildContext context,
-    dynamic currentUser,
+    AppAuthUser? currentUser,
   ) async {
     if (currentUser == null) {
       showLoginPrompt(context);

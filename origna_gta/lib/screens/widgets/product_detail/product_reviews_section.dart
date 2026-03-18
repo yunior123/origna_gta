@@ -156,7 +156,7 @@ class ReviewCard extends ConsumerStatefulWidget {
 class _ReviewCardState extends ConsumerState<ReviewCard> {
   bool _votingHelpful = false;
 
-  DateTime? _parseCreatedAt(dynamic value) {
+  DateTime? _parseCreatedAt(Object? value) {
     if (value is DateTime) return value;
     if (value is String) return DateTime.tryParse(value);
     if (value is int) {
@@ -167,13 +167,6 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
       final millis =
           value > 1000000000000 ? value.toInt() : (value * 1000).toInt();
       return DateTime.fromMillisecondsSinceEpoch(millis);
-    }
-
-    final dynamic dynamicValue = value;
-    final toDate = dynamicValue?.toDate;
-    if (toDate is Function) {
-      final result = toDate();
-      if (result is DateTime) return result;
     }
     return null;
   }

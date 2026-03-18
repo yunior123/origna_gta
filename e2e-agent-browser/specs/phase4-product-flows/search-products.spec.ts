@@ -2,7 +2,7 @@
  * OrignaGTA — Search & Discovery E2E Tests (agent-browser)
  * Migrated from e2e/playwright_ui/search-products.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   callOk,
@@ -192,6 +192,8 @@ describe('Search & Discovery — UI Tests', () => {
     browser = new AgentBrowser();
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -214,7 +216,7 @@ describe('Search & Discovery — UI Tests', () => {
     const searchInput = browser.findByLabel(snap, /input-home-search|search/i);
     if (searchInput) {
       await browser.fill(searchInput.ref, 'test');
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       expect(snap2.refs.length).toBeGreaterThan(0);
     } else {

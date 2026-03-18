@@ -369,12 +369,12 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
   final addressLine1 = [?houseNumber, ?streetName].join(' ');
 
   return AddressDetails(
-    street: props['formatted'] ?? addressLine1,
-    city: props['city'] ?? '',
-    state: props['state_code'] ?? 'ON',
-    postalCode: props['postcode'] ?? '',
-    latitude: (suggestion['geometry']?['coordinates']?[1] ?? 0).toDouble(),
-    longitude: (suggestion['geometry']?['coordinates']?[0] ?? 0).toDouble(),
+    street: (props['formatted'] as String?) ?? addressLine1,
+    city: (props['city'] as String?) ?? '',
+    state: (props['state_code'] as String?) ?? 'ON',
+    postalCode: (props['postcode'] as String?) ?? '',
+    latitude: ((suggestion['geometry']?['coordinates']?[1] as num?) ?? 0).toDouble(),
+    longitude: ((suggestion['geometry']?['coordinates']?[0] as num?) ?? 0).toDouble(),
   );
 }
 

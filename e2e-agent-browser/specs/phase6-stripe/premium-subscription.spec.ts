@@ -13,7 +13,7 @@
  *   Insufficient: 4000 0000 0000 9995
  *   3DS required: 4000 0025 0000 3155
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn,
@@ -51,9 +51,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
     await browser.type(password);
 
     await browser.press('Tab');
-    await new Promise(r => setTimeout(r, 500));
+    await browser.waitForChange({ timeout: 500 });
     await browser.press('Enter');
-    await new Promise(r => setTimeout(r, 5000));
+    await browser.waitForChange({ timeout: 5000 });
     await browser.waitForFlutter();
   } catch (err) {
     console.log(`loginAs warning: ${(err as Error).message}`);
@@ -65,7 +65,7 @@ async function navigateToSettings(browser: AgentBrowser): Promise<any> {
   const settingsBtn = browser.findByLabel(snap, /btn-home-settings/i);
   if (!settingsBtn) return null;
   await browser.click(settingsBtn.ref);
-  await new Promise(r => setTimeout(r, 3_000));
+  await browser.waitForChange({ timeout: 3_000 });
   return browser.snapshot({ interactive: true, compact: true });
 }
 
@@ -85,7 +85,7 @@ describe('A. Subscription Status API', () => {
     const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
     await writeDoc(`users/${TEST_UIDS.BUYER}`, { isPremium: false }, adminAuth.idToken, true);
     await writeDoc(`subscriptions/${TEST_UIDS.BUYER}`, { status: 'canceled' }, adminAuth.idToken, false);
-    await new Promise(r => setTimeout(r, 1_000));
+    await browser.waitForChange({ timeout: 1_000 });
     buyerAuth = await signIn(BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
   });
 
@@ -135,6 +135,8 @@ describe('B. Subscription Screen UI', () => {
     browser = new AgentBrowser({ headed: false });
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -155,7 +157,7 @@ describe('B. Subscription Screen UI', () => {
     const subBtn = browser.findByLabel(settingsSnap, /subscription|premium|upgrade/i);
     if (subBtn) {
       await browser.click(subBtn.ref);
-      await new Promise(r => setTimeout(r, 3_000));
+      await browser.waitForChange({ timeout: 3_000 });
       const snap4 = await browser.snapshot({ interactive: true, compact: true });
       expect(snap4.refs.length).toBeGreaterThan(0);
     } else {
@@ -193,13 +195,13 @@ describe('B. Subscription Screen UI', () => {
     const settingsBtn = browser.findByLabel(snap1, /btn-home-settings/i);
     if (settingsBtn) {
       await browser.click(settingsBtn.ref);
-      await new Promise(r => setTimeout(r, 3_000));
+      await browser.waitForChange({ timeout: 3_000 });
 
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       const subMenu = browser.findByLabel(snap2, /subscription|premium|upgrade/i);
       if (subMenu) {
         await browser.click(subMenu.ref);
-        await new Promise(r => setTimeout(r, 3_000));
+        await browser.waitForChange({ timeout: 3_000 });
 
         const snap3 = await browser.snapshot({ interactive: true, compact: true });
         const upgradeBtn = browser.findByLabel(snap3, /btn-subscribe-premium/i);
@@ -227,7 +229,7 @@ describe('B. Subscription Screen UI', () => {
     if (!subMenu) return;
 
     await browser.click(subMenu.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     const snap3 = await browser.snapshot({ interactive: true, compact: true });
     // Look for benefit-related text in the subscription screen
@@ -258,7 +260,7 @@ describe('B. Subscription Screen UI', () => {
     if (!subMenu) return;
 
     await browser.click(subMenu.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     const snap3 = await browser.snapshot({ interactive: true, compact: true });
     const hasPriceText = snap3.refs.some(r =>
@@ -370,7 +372,7 @@ describe('D. Full Stripe Checkout — Success Flow', () => {
           const deadline = Date.now() + 60_000;
           let isPremium = false;
           while (Date.now() < deadline) {
-            await new Promise(r => setTimeout(r, 5_000));
+            await browser.waitForChange({ timeout: 5_000 });
             const freshAuth = await signIn(BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
             const st = await callCallable('get_subscription_status', {}, freshAuth.idToken);
             if ((st.result ?? st).isPremium) {
@@ -462,7 +464,7 @@ describe('E. Stripe Checkout — Declined Card Scenarios', () => {
     }
 
     // Verify isPremium still false
-    await new Promise(r => setTimeout(r, 5_000));
+    await browser.waitForChange({ timeout: 5_000 });
     const afterStatus = await callCallable('get_subscription_status', {}, auth.idToken);
     expect((afterStatus.result ?? afterStatus).isPremium ?? false).toBe(false);
   }, 120_000);
@@ -749,14 +751,14 @@ describe('J-O. Additional Subscription Tests', () => {
       const subMenu = browser.findByLabel(snap3, /subscription|premium/i);
       if (!subMenu) return;
       await browser.click(subMenu.ref);
-      await new Promise(r => setTimeout(r, 3_000));
+      await browser.waitForChange({ timeout: 3_000 });
 
       // Look for cancel button
       const snap4 = await browser.snapshot({ interactive: true, compact: true });
       const cancelBtn = browser.findByLabel(snap4, /cancel|annuler/i);
       if (cancelBtn) {
         await browser.click(cancelBtn.ref);
-        await new Promise(r => setTimeout(r, 2_000));
+        await browser.waitForChange({ timeout: 2_000 });
         const snap5 = await browser.snapshot({ interactive: true, compact: true });
         // Cancel confirmation dialog should have confirm/cancel options
         const hasConfirmation = snap5.refs.some(r =>

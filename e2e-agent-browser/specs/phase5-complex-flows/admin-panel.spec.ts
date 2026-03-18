@@ -8,7 +8,7 @@
  *
  * All tests require Flutter UI interaction (login, profile nav, admin tabs).
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { signIn, callOk, callExpectError, callCallable } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, WEB_APP_URL, DEFAULT_PASS } from '../../lib/config.js';
@@ -33,7 +33,7 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.click(emailInput.ref);
   await browser.type(email);
 
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   snap = await browser.snapshot({ interactive: true, compact: true });
   const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
   if (!passInput) throw new Error('Password input not found');
@@ -41,7 +41,7 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.type(password);
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
 
   // Re-snapshot to get fresh ref for submit button
   snap = await browser.snapshot({ interactive: true, compact: true });
@@ -51,7 +51,7 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   } else {
     await browser.press('Enter');
   }
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   try {
     await browser.waitForFlutter();
   } catch {
@@ -67,7 +67,7 @@ async function navigateToAdmin(browser: AgentBrowser) {
     await browser.open(`${WEB_APP_URL}/admin`);
     await browser.waitForFlutter();
   }
-  await new Promise(r => setTimeout(r, 2000));
+  await browser.waitForChange({ timeout: 2000 });
 }
 
 describe('Admin Panel Flow', () => {
@@ -76,6 +76,8 @@ describe('Admin Panel Flow', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -102,7 +104,7 @@ describe('Admin Panel Flow', () => {
         expect(true).toBe(true);
         return;
       }
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       let snap: any;
       try {
@@ -148,12 +150,12 @@ describe('Admin Panel Flow', () => {
           const settings = browser.findByLabel(snap, /btn-home-settings/);
           if (settings) {
             await browser.click(settings.ref);
-            await new Promise(r => setTimeout(r, 2000));
+            await browser.waitForChange({ timeout: 2000 });
             snap = await browser.snapshot({ interactive: true, compact: true });
             const adminLink = browser.findByLabel(snap, /admin|panneau.*admin|panel/i);
             if (adminLink) {
               await browser.click(adminLink.ref);
-              await new Promise(r => setTimeout(r, 2000));
+              await browser.waitForChange({ timeout: 2000 });
             }
           }
           snap = await browser.snapshot({ interactive: true, compact: true });
@@ -181,7 +183,7 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(sellersTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       // Should show sellers list or empty state
@@ -206,7 +208,7 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(usersTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       // Look for search input or user list
@@ -218,7 +220,7 @@ describe('Admin Panel Flow', () => {
       if (searchInput) {
         try {
           await browser.fill(searchInput.ref, 'e2e');
-          await new Promise(r => setTimeout(r, 1500));
+          await browser.waitForChange({ timeout: 1500 });
           snap = await browser.snapshot({ interactive: true, compact: true });
           const results = browser.findByLabel(snap, /e2e|user|result|r[eé]sultat/i);
           expect(results ?? true).toBeTruthy();
@@ -245,7 +247,7 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(ordersTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       const orderContent = browser.findByLabel(snap, /order|commande|empty|aucun/i);
@@ -268,7 +270,7 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(productsTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       const productContent = browser.findByLabel(snap, /product|produit|review|empty|aucun/i);
@@ -293,7 +295,7 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(paymentsTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       const paymentContent = browser.findByLabel(snap, /payment|payout|paiement|versement|empty|aucun/i);
@@ -317,7 +319,7 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(securityTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       const securityContent = browser.findByLabel(snap, /security|alert|log|s[eé]curit[eé]|empty|aucun/i);
@@ -340,7 +342,7 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(sellersTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       // Re-snapshot after tab click (refs are stale)
       snap = await browser.snapshot({ interactive: true, compact: true });
@@ -353,7 +355,7 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(sellerItem.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       // Seller detail should show some info
@@ -378,12 +380,12 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(ordersTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       // Reload page
       await browser.open(`${WEB_APP_URL}/admin`);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       // Admin panel should still load (tab persistence or default tab)
@@ -515,7 +517,7 @@ describe('Admin Panel Flow', () => {
         return;
       }
       await browser.click(homeBtn.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       try { await browser.waitForFlutter(); } catch { /* settled */ }
 
       snap = await browser.snapshot({ interactive: true, compact: true });

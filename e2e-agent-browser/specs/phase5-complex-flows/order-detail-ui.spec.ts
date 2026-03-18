@@ -7,7 +7,7 @@
  * API tests (get_orders, get_order_detail) run pure HTTP.
  * UI tests (navigate to orders, click order card) require Flutter browser.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn,
@@ -36,9 +36,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
     await browser.type(password);
 
     await browser.press('Tab');
-    await new Promise(r => setTimeout(r, 500));
+    await browser.waitForChange({ timeout: 500 });
     await browser.press('Enter');
-    await new Promise(r => setTimeout(r, 5000));
+    await browser.waitForChange({ timeout: 5000 });
     await browser.waitForFlutter();
   } catch (err) {
     console.log(`loginAs warning: ${(err as Error).message}`);
@@ -51,7 +51,7 @@ async function navigateToSettings(browser: AgentBrowser) {
   const settings = browser.findByLabel(snap, /btn-home-settings/);
   if (!settings) return null;
   await browser.click(settings.ref);
-  await new Promise(r => setTimeout(r, 2000));
+  await browser.waitForChange({ timeout: 2000 });
   try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
   return browser.snapshot({ interactive: true, compact: true });
 }
@@ -63,7 +63,7 @@ async function navigateToOrders(browser: AgentBrowser) {
   const ordersLink = browser.findByLabel(settingsSnap, /menu-my-orders/);
   if (!ordersLink) return null;
   await browser.click(ordersLink.ref);
-  await new Promise(r => setTimeout(r, 2000));
+  await browser.waitForChange({ timeout: 2000 });
   try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
   return browser.snapshot({ interactive: true, compact: true });
 }
@@ -74,6 +74,8 @@ describe('Order Detail UI', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -190,7 +192,7 @@ describe('Order Detail UI', () => {
 
       // Click on the first order card
       await browser.click(orderCard.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
 
       const detailSnap = await browser.snapshot({ interactive: true, compact: true });

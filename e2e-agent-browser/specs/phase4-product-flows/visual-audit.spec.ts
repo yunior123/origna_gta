@@ -7,7 +7,7 @@
  *
  * Output: ~/Desktop/origna-visual-audit/{screen}-{viewport}.png
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   WEB_APP_URL,
@@ -49,6 +49,8 @@ describe('Visual Audit — All Screens', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
     if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
+
+  beforeEach(async () => { await browser.clearState(); });
   });
 
   afterAll(async () => {

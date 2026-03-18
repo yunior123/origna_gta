@@ -4,7 +4,7 @@
  * Verifies that the web Google Sign-In button and backend provider config
  * stay in sync (button visible IFF backend has Google enabled + configured).
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { getAuthProviders } from '../../lib/api-client.js';
 import { WEB_APP_URL, ORIGNABASE_URL } from '../../lib/config.js';
@@ -17,6 +17,8 @@ describe('Google Auth Contract', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();

@@ -146,6 +146,7 @@ class _CouponSection extends ConsumerStatefulWidget {
 
 class _CouponSectionState extends ConsumerState<_CouponSection> {
   final _controller = TextEditingController();
+  bool _isRemoving = false;
 
   @override
   void dispose() {
@@ -194,11 +195,20 @@ class _CouponSectionState extends ConsumerState<_CouponSection> {
             const SizedBox(width: 10),
             applied
                 ? TextButton(
-                    onPressed: () {
-                      _controller.clear();
-                      notifier.removeCoupon();
-                    },
-                    child: Text('common.remove'.tr(), style: TextStyle(color: DesignTokens.error)),
+                    onPressed: _isRemoving
+                        ? null
+                        : () {
+                            setState(() => _isRemoving = true);
+                            _controller.clear();
+                            notifier.removeCoupon();
+                            // Reset after frame to allow state to propagate
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) setState(() => _isRemoving = false);
+                            });
+                          },
+                    child: _isRemoving
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text('common.remove'.tr(), style: TextStyle(color: DesignTokens.error)),
                   )
                 : SizedBox(
                     width: 100,

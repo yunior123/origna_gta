@@ -66,18 +66,18 @@ class Address {
 
   factory Address.fromMap(Map<String, dynamic> map, {String? docId}) {
     return Address(
-      addressId: docId ?? map[Fields.addressId],
-      street: map[Fields.street] ?? '',
-      apartment: map[Fields.apartment] ?? '',
-      city: map[Fields.city] ?? '',
-      state: map[Fields.state] ?? '',
-      postalCode: map[Fields.postalCode] ?? '',
-      country: map[Fields.country] ?? '',
-      phoneNumber: map[Fields.phoneNumber],
-      isDefault: map[Fields.isDefault] ?? false,
-      label: map[Fields.label],
-      latitude: map[Fields.latitude]?.toDouble(),
-      longitude: map[Fields.longitude]?.toDouble(),
+      addressId: docId ?? map[Fields.addressId] as String?,
+      street: (map[Fields.street] as String?) ?? '',
+      apartment: (map[Fields.apartment] as String?) ?? '',
+      city: (map[Fields.city] as String?) ?? '',
+      state: (map[Fields.state] as String?) ?? '',
+      postalCode: (map[Fields.postalCode] as String?) ?? '',
+      country: (map[Fields.country] as String?) ?? '',
+      phoneNumber: map[Fields.phoneNumber] as String?,
+      isDefault: (map[Fields.isDefault] as bool?) ?? false,
+      label: map[Fields.label] as String?,
+      latitude: (map[Fields.latitude] as num?)?.toDouble(),
+      longitude: (map[Fields.longitude] as num?)?.toDouble(),
     );
   }
 
@@ -235,22 +235,22 @@ class CartItemDetailModel {
   // Convert a backend document map to CartItemDetailModel.
   factory CartItemDetailModel.fromMap(Map<String, dynamic> map) {
     return CartItemDetailModel(
-      productId: map[Fields.productId] ?? '',
-      name: map[Fields.name] ?? '',
-      description: map[Fields.description] ?? '',
-      price: (map[Fields.price] ?? 0).toDouble(),
+      productId: (map[Fields.productId] as String?) ?? '',
+      name: (map[Fields.name] as String?) ?? '',
+      description: (map[Fields.description] as String?) ?? '',
+      price: ((map[Fields.price] as num?) ?? 0).toDouble(),
       priceCents: map[Fields.priceCents] != null
           ? (map[Fields.priceCents] as num).toInt()
-          : ((map[Fields.price] ?? 0) as num).toDouble() * 100 ~/ 1,
-      imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
+          : ((map[Fields.price] as num?) ?? 0).toDouble() * 100 ~/ 1,
+      imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
       createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
       sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
-      sellerId: map[Fields.sellerId] ?? '',
-      sellerName: map[Fields.sellerName] ?? '',
-      status: map[Fields.status] ?? DeliveryStatus.pending.value,
-      trackingNumber: map[Fields.trackingNumber],
-      confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
+      sellerId: (map[Fields.sellerId] as String?) ?? '',
+      sellerName: (map[Fields.sellerName] as String?) ?? '',
+      status: (map[Fields.status] as String?) ?? DeliveryStatus.pending.value,
+      trackingNumber: map[Fields.trackingNumber] as String?,
+      confirmedByBuyer: (map[Fields.confirmedByBuyer] as bool?) ?? false,
       madeInCountry: map[Fields.madeInCountry] as String?,
       weightKg: map[Fields.weightKg] != null ? (map[Fields.weightKg] as num).toDouble() : null,
       weightUnit: map[Fields.weightUnit] as String?,
@@ -258,25 +258,25 @@ class CartItemDetailModel {
       widthCm: map[Fields.widthCm] != null ? (map[Fields.widthCm] as num).toDouble() : null,
       heightCm: map[Fields.heightCm] != null ? (map[Fields.heightCm] as num).toDouble() : null,
       dimensionUnit: map[Fields.dimensionUnit] as String?,
-      isLocalDeliveryOnly: map[Fields.isLocalDeliveryOnly] ?? false,
-      isPerishable: map[Fields.isPerishable] ?? false,
-      estimatedShipDays: map[Fields.estimatedShipDays] ?? 3,
+      isLocalDeliveryOnly: (map[Fields.isLocalDeliveryOnly] as bool?) ?? false,
+      isPerishable: (map[Fields.isPerishable] as bool?) ?? false,
+      estimatedShipDays: (map[Fields.estimatedShipDays] as num?)?.toInt() ?? 3,
       deliveryOptions: map[Fields.deliveryOptions] != null
-          ? (map[Fields.deliveryOptions] as List)
-                .whereType<Map>()
+          ? (map[Fields.deliveryOptions] as List<dynamic>)
+                .whereType<Map<dynamic, dynamic>>()
                 .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
                 .whereType<SellerDeliveryOption>()
                 .toList()
           : [],
       minimumOrderQuantity: (map[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
-      freeShipping: map[Fields.freeShipping] ?? false,
-      isDigital: map[Fields.isDigital] ?? false,
-      isAgeRestricted: map[Fields.isAgeRestricted] ?? false,
+      freeShipping: (map[Fields.freeShipping] as bool?) ?? false,
+      isDigital: (map[Fields.isDigital] as bool?) ?? false,
+      isAgeRestricted: (map[Fields.isAgeRestricted] as bool?) ?? false,
       buyerNote: map[Fields.buyerNote] as String?,
-      isSmallSupplier: map[Fields.isSmallSupplier] ?? false,
+      isSmallSupplier: (map[Fields.isSmallSupplier] as bool?) ?? false,
       variantId: map[Fields.variantId] as String?,
       variantTitle: map[Fields.variantTitle] as String?,
-      variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
+      variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map<dynamic, dynamic>) : null,
     );
   }
 
@@ -347,12 +347,12 @@ class CartItemModel {
     return CartItemModel(
       cartItemId: docId ?? (map[Fields.cartItemId] as String? ?? ''),
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
-      productId: map[Fields.productId] ?? '',
+      productId: (map[Fields.productId] as String?) ?? '',
       createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
       buyerNote: map[Fields.buyerNote] as String?,
       variantId: map[Fields.variantId] as String?,
       variantTitle: map[Fields.variantTitle] as String?,
-      variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
+      variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map<dynamic, dynamic>) : null,
     );
   }
 
@@ -393,12 +393,12 @@ class CartModel {
   factory CartModel.fromMap(Map<String, dynamic> map, {String? docId}) {
     return CartModel(
       cartItemId: docId ?? (map[Fields.cartItemId] as String? ?? ''),
-      productId: map[Fields.productId] ?? '',
+      productId: (map[Fields.productId] as String?) ?? '',
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 1,
       createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
       variantId: map[Fields.variantId] as String?,
       variantTitle: map[Fields.variantTitle] as String?,
-      variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map) : null,
+      variantOptions: map[Fields.variantOptions] != null ? Map<String, String>.from(map[Fields.variantOptions] as Map<dynamic, dynamic>) : null,
       variantSku: map[Fields.variantSku] as String?,
       priceSnapshot: (map[Fields.priceSnapshot] as num?)?.toInt(),
     );
@@ -424,7 +424,7 @@ class FavoriteItem {
 
   factory FavoriteItem.fromDocument(DocumentSnapshot doc) {
     final data = doc.data();
-    return FavoriteItem(productId: data[Fields.productId] ?? doc.id, dateFavorited: _parseDateTime(data[Fields.dateFavorited]) ?? DateTime.now());
+    return FavoriteItem(productId: (data[Fields.productId] as String?) ?? doc.id, dateFavorited: _parseDateTime(data[Fields.dateFavorited]) ?? DateTime.now());
   }
 
   Map<String, dynamic> toMap() {
@@ -510,21 +510,21 @@ class OrderModel {
     final items = itemsData.map<CartItemDetailModel>((item) {
       final map = item as Map<String, dynamic>;
       return CartItemDetailModel(
-        productId: map[Fields.productId] ?? '',
-        name: map[Fields.name] ?? '',
-        description: map[Fields.description] ?? '',
-        price: (map[Fields.price] ?? 0).toDouble(),
-        imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
+        productId: (map[Fields.productId] as String?) ?? '',
+        name: (map[Fields.name] as String?) ?? '',
+        description: (map[Fields.description] as String?) ?? '',
+        price: ((map[Fields.price] as num?) ?? 0).toDouble(),
+        imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
         quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
         createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
-        sellerId: map[Fields.sellerId] ?? '',
-        sellerName: map[Fields.sellerName] ?? '',
-        status: map[Fields.status] ?? DeliveryStatus.pending.value,
-        trackingNumber: map[Fields.trackingNumber],
-        confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
-        isDigital: map[Fields.isDigital] ?? false,
-        isAgeRestricted: map[Fields.isAgeRestricted] ?? false,
+        sellerId: (map[Fields.sellerId] as String?) ?? '',
+        sellerName: (map[Fields.sellerName] as String?) ?? '',
+        status: (map[Fields.status] as String?) ?? DeliveryStatus.pending.value,
+        trackingNumber: map[Fields.trackingNumber] as String?,
+        confirmedByBuyer: (map[Fields.confirmedByBuyer] as bool?) ?? false,
+        isDigital: (map[Fields.isDigital] as bool?) ?? false,
+        isAgeRestricted: (map[Fields.isAgeRestricted] as bool?) ?? false,
       );
     }).toList();
 
@@ -542,33 +542,33 @@ class OrderModel {
     final createdAt = _parseDateTimeRequired(data[Fields.createdAt]);
 
     return OrderModel(
-      orderId: data[Fields.orderId] ?? doc.id,
-      userId: data[Fields.userId] ?? '',
+      orderId: (data[Fields.orderId] as String?) ?? doc.id,
+      userId: (data[Fields.userId] as String?) ?? '',
       items: items,
       totalAmountCents: totalAmountCents,
       subtotalCents: subtotalCents,
       shippingCostCents: shippingCostCents,
       taxAmountCents: taxAmountCents,
-      orderStatus: data[Fields.orderStatus] ?? OrderStatus.pending.value,
-      paymentStatus: data[Fields.paymentStatus] ?? PaymentStatus.awaitingPayment.value,
-      shippingAddress: Map<String, dynamic>.from(data[Fields.shippingAddress] ?? {}),
+      orderStatus: (data[Fields.orderStatus] as String?) ?? OrderStatus.pending.value,
+      paymentStatus: (data[Fields.paymentStatus] as String?) ?? PaymentStatus.awaitingPayment.value,
+      shippingAddress: Map<String, dynamic>.from(data[Fields.shippingAddress] as Map? ?? {}),
       createdAt: createdAt,
-      customerId: data[Fields.customerId] ?? '',
-      customerEmail: data[Fields.customerEmail] ?? '',
-      taxes: Map<String, double>.from(data[Fields.taxes] ?? {}),
-      currency: data[Fields.currency] ?? BusinessRules.defaultCurrency,
-      sellerIds: List<String>.from(data[Fields.sellerIds] ?? []),
-      stripeSessionId: data[Fields.stripeSessionId] ?? '',
-      shippingApprovalStatus: data[Fields.shippingApprovalStatus] ?? ShippingApprovalStatus.notRequired.value,
-      shippingApprovalRequired: data[Fields.shippingApprovalRequired] ?? false,
+      customerId: (data[Fields.customerId] as String?) ?? '',
+      customerEmail: (data[Fields.customerEmail] as String?) ?? '',
+      taxes: Map<String, double>.from(data[Fields.taxes] as Map? ?? {}),
+      currency: (data[Fields.currency] as String?) ?? BusinessRules.defaultCurrency,
+      sellerIds: List<String>.from(data[Fields.sellerIds] as Iterable? ?? []),
+      stripeSessionId: (data[Fields.stripeSessionId] as String?) ?? '',
+      shippingApprovalStatus: (data[Fields.shippingApprovalStatus] as String?) ?? ShippingApprovalStatus.notRequired.value,
+      shippingApprovalRequired: (data[Fields.shippingApprovalRequired] as bool?) ?? false,
       actualShippingCents: (data[Fields.actualShippingCents] as num?)?.toInt() ?? 0,
       pendingTotalCents: (data[Fields.pendingTotalCents] as num?)?.toInt() ?? 0,
       sellerPayouts: sellerPayouts,
-      confirmedByClient: data[Fields.confirmedByClient] ?? false,
+      confirmedByClient: (data[Fields.confirmedByClient] as bool?) ?? false,
       confirmedAt: _parseDateTime(data[Fields.confirmedAt]),
       platformFeeTotalCents: platformFeeTotalCents,
-      payoutStatus: data[Fields.payoutStatus] ?? PayoutStatusValues.pending,
-      ratings: Map<String, dynamic>.from(data[Fields.ratings] ?? {}),
+      payoutStatus: (data[Fields.payoutStatus] as String?) ?? PayoutStatusValues.pending,
+      ratings: Map<String, dynamic>.from(data[Fields.ratings] as Map? ?? {}),
     );
   }
   factory OrderModel.fromMap(Map<String, dynamic> data) {
@@ -577,21 +577,21 @@ class OrderModel {
     final items = itemsData.map<CartItemDetailModel>((item) {
       final map = item as Map<String, dynamic>;
       return CartItemDetailModel(
-        productId: map[Fields.productId] ?? '',
-        name: map[Fields.name] ?? '',
-        description: map[Fields.description] ?? '',
-        price: (map[Fields.price] ?? 0).toDouble(),
-        imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
+        productId: (map[Fields.productId] as String?) ?? '',
+        name: (map[Fields.name] as String?) ?? '',
+        description: (map[Fields.description] as String?) ?? '',
+        price: ((map[Fields.price] as num?) ?? 0).toDouble(),
+        imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
         quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
         createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
-        sellerId: map[Fields.sellerId] ?? '',
-        sellerName: map[Fields.sellerName] ?? '',
-        status: map[Fields.status] ?? DeliveryStatus.pending.value,
-        trackingNumber: map[Fields.trackingNumber],
-        confirmedByBuyer: map[Fields.confirmedByBuyer] ?? false,
-        isDigital: map[Fields.isDigital] ?? false,
-        isAgeRestricted: map[Fields.isAgeRestricted] ?? false,
+        sellerId: (map[Fields.sellerId] as String?) ?? '',
+        sellerName: (map[Fields.sellerName] as String?) ?? '',
+        status: (map[Fields.status] as String?) ?? DeliveryStatus.pending.value,
+        trackingNumber: map[Fields.trackingNumber] as String?,
+        confirmedByBuyer: (map[Fields.confirmedByBuyer] as bool?) ?? false,
+        isDigital: (map[Fields.isDigital] as bool?) ?? false,
+        isAgeRestricted: (map[Fields.isAgeRestricted] as bool?) ?? false,
       );
     }).toList();
 
@@ -609,33 +609,33 @@ class OrderModel {
     final createdAt = _parseDateTimeRequired(data[Fields.createdAt]);
 
     return OrderModel(
-      orderId: data[Fields.orderId] ?? '',
-      userId: data[Fields.userId] ?? '',
+      orderId: (data[Fields.orderId] as String?) ?? '',
+      userId: (data[Fields.userId] as String?) ?? '',
       items: items,
       totalAmountCents: totalAmountCents,
       subtotalCents: subtotalCents,
       shippingCostCents: shippingCostCents,
       taxAmountCents: taxAmountCents,
-      orderStatus: data[Fields.orderStatus] ?? OrderStatusValues.pending,
-      paymentStatus: data[Fields.paymentStatus] ?? PaymentStatusValues.awaitingPayment,
-      shippingAddress: Map<String, dynamic>.from(data[Fields.shippingAddress] ?? {}),
+      orderStatus: (data[Fields.orderStatus] as String?) ?? OrderStatusValues.pending,
+      paymentStatus: (data[Fields.paymentStatus] as String?) ?? PaymentStatusValues.awaitingPayment,
+      shippingAddress: Map<String, dynamic>.from(data[Fields.shippingAddress] as Map? ?? {}),
       createdAt: createdAt,
-      customerId: data[Fields.customerId] ?? '',
-      customerEmail: data[Fields.customerEmail] ?? '',
-      taxes: Map<String, double>.from(data[Fields.taxes] ?? {}),
-      currency: data[Fields.currency] ?? BusinessRules.defaultCurrency,
-      sellerIds: List<String>.from(data[Fields.sellerIds] ?? []),
-      stripeSessionId: data[Fields.stripeSessionId] ?? '',
-      shippingApprovalStatus: data[Fields.shippingApprovalStatus] ?? ShippingApprovalStatus.notRequired.value,
-      shippingApprovalRequired: data[Fields.shippingApprovalRequired] ?? false,
+      customerId: (data[Fields.customerId] as String?) ?? '',
+      customerEmail: (data[Fields.customerEmail] as String?) ?? '',
+      taxes: Map<String, double>.from(data[Fields.taxes] as Map? ?? {}),
+      currency: (data[Fields.currency] as String?) ?? BusinessRules.defaultCurrency,
+      sellerIds: List<String>.from(data[Fields.sellerIds] as Iterable? ?? []),
+      stripeSessionId: (data[Fields.stripeSessionId] as String?) ?? '',
+      shippingApprovalStatus: (data[Fields.shippingApprovalStatus] as String?) ?? ShippingApprovalStatus.notRequired.value,
+      shippingApprovalRequired: (data[Fields.shippingApprovalRequired] as bool?) ?? false,
       actualShippingCents: (data[Fields.actualShippingCents] as num?)?.toInt() ?? 0,
       pendingTotalCents: (data[Fields.pendingTotalCents] as num?)?.toInt() ?? 0,
       sellerPayouts: sellerPayouts,
-      confirmedByClient: data[Fields.confirmedByClient] ?? false,
+      confirmedByClient: (data[Fields.confirmedByClient] as bool?) ?? false,
       confirmedAt: _parseDateTime(data[Fields.confirmedAt]),
       platformFeeTotalCents: platformFeeTotalCents,
-      payoutStatus: data[Fields.payoutStatus] ?? PayoutStatusValues.pending,
-      ratings: Map<String, dynamic>.from(data[Fields.ratings] ?? {}),
+      payoutStatus: (data[Fields.payoutStatus] as String?) ?? PayoutStatusValues.pending,
+      ratings: Map<String, dynamic>.from(data[Fields.ratings] as Map? ?? {}),
     );
   }
 
@@ -813,13 +813,13 @@ class ProductModel {
       lengthCm: map[Fields.lengthCm] != null ? _parseDouble(map[Fields.lengthCm]) : null,
       widthCm: map[Fields.widthCm] != null ? _parseDouble(map[Fields.widthCm]) : null,
       heightCm: map[Fields.heightCm] != null ? _parseDouble(map[Fields.heightCm]) : null,
-      isLocalDeliveryOnly: map[Fields.isLocalDeliveryOnly] ?? false,
+      isLocalDeliveryOnly: (map[Fields.isLocalDeliveryOnly] as bool?) ?? false,
       estimatedShipDays: _parseInt(map[Fields.estimatedShipDays]),
       taxCode: map[Fields.taxCode]?.toString(),
       deliveryOptions: parsedDeliveryOptions,
-      isPerishable: map[Fields.isPerishable] ?? false,
+      isPerishable: (map[Fields.isPerishable] as bool?) ?? false,
       minimumOrderQuantity: _parseIntOr(map[Fields.minimumOrderQuantity], defaultValue: 1),
-      freeShipping: map[Fields.freeShipping] ?? false,
+      freeShipping: (map[Fields.freeShipping] as bool?) ?? false,
       deletedAt: _parseDateTime(map[Fields.deletedAt]),
     );
   }
@@ -924,15 +924,15 @@ class SellerPayout {
 
   factory SellerPayout.fromMap(Map<String, dynamic> map) {
     return SellerPayout(
-      sellerId: map[Fields.sellerId] ?? '',
-      stripeAccountId: map[Fields.stripeAccountId],
+      sellerId: (map[Fields.sellerId] as String?) ?? '',
+      stripeAccountId: map[Fields.stripeAccountId] as String?,
       amountCents: (map[Fields.amountCents] as num?)?.toInt() ?? 0,
       platformFeeCents: (map[Fields.platformFeeCents] as num?)?.toInt() ?? 0,
       netAmountCents: (map[Fields.netAmountCents] as num?)?.toInt() ?? 0,
-      status: map[Fields.status] ?? PayoutStatusValues.pending,
-      stripeTransferId: map[Fields.stripeTransferId],
+      status: (map[Fields.status] as String?) ?? PayoutStatusValues.pending,
+      stripeTransferId: map[Fields.stripeTransferId] as String?,
       payoutDate: _parseDateTime(map[Fields.payoutDate]),
-      failureReason: map[Fields.failureReason],
+      failureReason: map[Fields.failureReason] as String?,
     );
   }
   // Dollar getters
@@ -1036,7 +1036,7 @@ class UserModel {
       uid: map[Fields.uid]?.toString() ?? '',
       email: map[Fields.email]?.toString() ?? '',
       name: map[Fields.name]?.toString() ?? '',
-      roles: List<String>.from(map[Fields.roles] ?? const []),
+      roles: List<String>.from(map[Fields.roles] as Iterable? ?? const []),
       address: map[Fields.address] != null ? Address.fromMap(map[Fields.address] as Map<String, dynamic>) : null,
       createdAt: _parseDateTime(map[Fields.createdAt]) ?? DateTime.now(),
       customerId: map[Fields.customerId] as String?,
@@ -1048,24 +1048,24 @@ class UserModel {
       payoutsEnabled: false,
       chargesEnabled: false,
       onboardingCompleted: false,
-      suspended: map[Fields.suspended] ?? false,
+      suspended: (map[Fields.suspended] as bool?) ?? false,
       suspendedAt: _parseDateTime(map[Fields.suspendedAt]),
-      paymentProvider: map[Fields.paymentProvider] ?? PaymentProviderValues.stripe,
+      paymentProvider: (map[Fields.paymentProvider] as String?) ?? PaymentProviderValues.stripe,
       // Seller-specific fields
-      verified: map[Fields.verified] ?? false,
+      verified: (map[Fields.verified] as bool?) ?? false,
       verificationStatus: map[Fields.verificationStatus] as String?,
       platform: map[Fields.platform] as String?,
       country: map[Fields.country] as String?,
       businessName: map[Fields.businessName] as String?,
-      payoutHoldDays: map[Fields.payoutHoldDays] ?? 7,
-      pendingRequirements: List<String>.from(map[Fields.pendingRequirements] ?? const []),
-      isPremium: map[Fields.isPremium] ?? false,
+      payoutHoldDays: (map[Fields.payoutHoldDays] as num?)?.toInt() ?? 7,
+      pendingRequirements: List<String>.from(map[Fields.pendingRequirements] as Iterable? ?? const []),
+      isPremium: (map[Fields.isPremium] as bool?) ?? false,
       premiumSince: _parseDateTime(map[Fields.premiumSince]),
       premiumExpiresAt: _parseDateTime(map[Fields.premiumExpiresAt]),
       stripeSubscriptionId: map[Fields.stripeSubscriptionId] as String?,
-      notifyNewProducts: map[Fields.notifyNewProducts] ?? false,
-      notifyTrending: map[Fields.notifyTrending] ?? false,
-      mfaEnabled: map[Fields.mfaEnabled] ?? false,
+      notifyNewProducts: (map[Fields.notifyNewProducts] as bool?) ?? false,
+      notifyTrending: (map[Fields.notifyTrending] as bool?) ?? false,
+      mfaEnabled: (map[Fields.mfaEnabled] as bool?) ?? false,
       termsVersion: map[Fields.termsVersion] as String?,
     );
   }

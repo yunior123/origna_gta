@@ -10,6 +10,7 @@ import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/utils/utils.dart';
 
 import 'add_product_state.dart';
+import 'add_product_validation.dart';
 import 'variant_models.dart';
 
 final addProductViewModelProvider = StateNotifierProvider.autoDispose<AddProductViewModel, AddProductState>((ref) {
@@ -86,166 +87,32 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     final config = _ref.read(envConfigProvider);
     final isDevOrTestRun = config.isDev || config.isEmulator;
 
-    if (name.trim().isEmpty) {
-      state = state.copyWith(errorMessage: 'product.please_enter_name'.tr());
-      return;
-    }
-    if (name.trim().length > 120) {
-      state = state.copyWith(errorMessage: 'product.name_too_long'.tr());
-      return;
-    }
-    if (description.trim().isEmpty) {
-      state = state.copyWith(errorMessage: 'product.please_enter_description'.tr());
-      return;
-    }
-    if (description.trim().length < 10) {
-      state = state.copyWith(errorMessage: 'product.description_too_short'.tr());
-      return;
-    }
-    if (description.trim().length > 4000) {
-      state = state.copyWith(errorMessage: 'product.description_too_long'.tr());
-      return;
-    }
-    if (price <= 0.99) {
-      state = state.copyWith(errorMessage: 'product.please_enter_price'.tr());
-      return;
-    }
-    if (price > 100000) {
-      state = state.copyWith(errorMessage: 'product.price_limit_exceeded'.tr());
-      return;
-    }
-    if (compareAtPrice != null && compareAtPrice - price < 0.50) {
-      state = state.copyWith(errorMessage: 'product.compare_at_price_must_be_higher'.tr());
-      return;
-    }
-    if (stock < 0) {
-      state = state.copyWith(errorMessage: 'product.stock_negative'.tr());
-      return;
-    }
     final minOrderQty = minimumOrderQuantity ?? state.minimumOrderQuantity;
-    if (minOrderQty < 1) {
-      state = state.copyWith(errorMessage: 'product.min_order_at_least_one'.tr());
-      return;
-    }
-    if (categoryId <= 0) {
-      state = state.copyWith(errorMessage: 'product.select_category'.tr());
-      return;
-    }
-    // PROD-C2: If seller has warehouses, they must select at least one — manual address bypass not allowed.
-    if (!state.isDigital && sellerHasWarehouses && state.selectedWarehouseIds.isEmpty) {
-      state = state.copyWith(errorMessage: 'product.warehouse_selection_required'.tr());
-      return;
-    }
-    // Bug #4: Skip address validation for digital products or when warehouses are selected
-    if (!state.isDigital && state.selectedWarehouseIds.isEmpty) {
-      if (street.trim().isEmpty || city.trim().isEmpty || postalCode.trim().isEmpty || state.selectedProvince.trim().isEmpty) {
-        state = state.copyWith(errorMessage: 'product.address_required'.tr());
-        return;
-      }
-      // FIX: Validate address field lengths to match server-side validation
-      if (street.trim().length < 3) {
-        state = state.copyWith(errorMessage: 'product.street_too_short'.tr());
-        return;
-      }
-      if (street.trim().length > 100) {
-        state = state.copyWith(errorMessage: 'product.street_too_long'.tr());
-        return;
-      }
-      if (city.trim().length < 2) {
-        state = state.copyWith(errorMessage: 'product.city_too_short'.tr());
-        return;
-      }
-      if (city.trim().length > 50) {
-        state = state.copyWith(errorMessage: 'product.city_too_long'.tr());
-        return;
-      }
-      // FIX: Validate postal code format in ViewModel (not just Form UI)
-      final normalizedPostal = postalCode.trim().toUpperCase().replaceAll(' ', '');
-      final postalRegex = RegExp(r'^[A-Z]\d[A-Z]\d[A-Z]\d$');
-      if (!postalRegex.hasMatch(normalizedPostal)) {
-        state = state.copyWith(errorMessage: 'product.invalid_postal'.tr());
-        return;
-      }
 
-      // SECURITY: Require address to be verified via Geoapify autocomplete
-      // In dev/test mode, allow bypass for integration tests
-      if (!state.addressVerified && !isDevOrTestRun) {
-        if (state.latitude == null || state.longitude == null) {
-          state = state.copyWith(errorMessage: 'product.address_not_verified'.tr());
-          return;
-        }
-      }
-    }
-
-    if (!isValidTaxCode(taxCode)) {
-      state = state.copyWith(errorMessage: 'product.invalid_tax_code_format'.tr());
+    // Validate all inputs — extracted to add_product_validation.dart
+    final validationError = validateAddProductInputs(
+      name: name,
+      description: description,
+      price: price,
+      compareAtPrice: compareAtPrice,
+      stock: stock,
+      categoryId: categoryId,
+      street: street,
+      city: city,
+      postalCode: postalCode,
+      weight: weight,
+      length: length,
+      width: width,
+      height: height,
+      taxCode: taxCode,
+      minimumOrderQuantity: minOrderQty,
+      state: state,
+      isDevOrTestRun: isDevOrTestRun,
+      sellerHasWarehouses: sellerHasWarehouses,
+    );
+    if (validationError != null) {
+      state = state.copyWith(errorMessage: validationError);
       return;
-    }
-    if ((weight ?? 0) < 0 || (length ?? 0) < 0 || (width ?? 0) < 0 || (height ?? 0) < 0) {
-      state = state.copyWith(errorMessage: 'product.dimensions_positive'.tr());
-      return;
-    }
-
-    if (state.imageModels.isEmpty && !isDevOrTestRun) {
-      state = state.copyWith(errorMessage: 'product.image_required'.tr());
-      return;
-    }
-
-    // Bug #4: Physical products need at least one delivery tier (unless local-only)
-    if (!state.isDigital && !state.isLocalDeliveryOnly) {
-      if (!state.standardEnabled && !state.expressEnabled && !state.sameDayEnabled) {
-        state = state.copyWith(errorMessage: 'product.delivery_tier_required'.tr());
-        return;
-      }
-    }
-
-    // Digital product validation
-    if (state.isDigital) {
-      if (state.digitalType == null) {
-        state = state.copyWith(errorMessage: 'product.digital_type_required'.tr());
-        return;
-      }
-      if (state.digitalType == DigitalTypeValues.software) {
-        final urls = [state.macosDownloadUrl, state.windowsDownloadUrl, state.linuxDownloadUrl];
-        if (urls.every((u) => u == null || u.trim().isEmpty)) {
-          state = state.copyWith(errorMessage: 'product.digital_platform_url_required'.tr());
-          return;
-        }
-        final nonEmptyUrls = urls.whereType<String>().where((u) => u.trim().isNotEmpty);
-        if (nonEmptyUrls.any((u) => !u.startsWith('https://'))) {
-          state = state.copyWith(errorMessage: 'product.digital_url_https_required'.tr());
-          return;
-        }
-      } else if (state.digitalType == DigitalTypeValues.book) {
-        final url = state.bookSourceUrl?.trim();
-        if (url == null || url.isEmpty) {
-          state = state.copyWith(errorMessage: 'product.book_url_required'.tr());
-          return;
-        }
-        if (url.length > 500) {
-          state = state.copyWith(errorMessage: 'product.url_too_long'.tr());
-          return;
-        }
-        if (!url.startsWith('https://')) {
-          state = state.copyWith(errorMessage: 'product.book_url_https_required'.tr());
-          return;
-        }
-      }
-    }
-
-    // Variant validation: all variants must have a price > 0
-    if (state.hasVariants) {
-      if (state.variantOptions.isEmpty) {
-        state = state.copyWith(errorMessage: 'product.variants_required'.tr());
-        return;
-      }
-      final invalidVariants = state.variants.where((v) {
-        return v.priceCents == null || v.priceCents! < 99;
-      });
-      if (invalidVariants.isNotEmpty) {
-        state = state.copyWith(errorMessage: 'product.variant_price_required'.tr());
-        return;
-      }
     }
 
     if (state.videoFile != null) {

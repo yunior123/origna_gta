@@ -6,7 +6,7 @@
  * Tests cart add/update/remove via OrignaBase REST API (subcollection users/{id}/cart),
  * plus a UI test that verifies cart items render on the /cart screen.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn,
@@ -41,9 +41,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.type(password);
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   await browser.press('Enter');
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   await browser.waitForFlutter();
 }
 
@@ -54,6 +54,8 @@ describe('Cart Manipulation', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -140,18 +142,18 @@ describe('Cart Manipulation', () => {
     if (cartBtn) {
       try {
         await browser.click(cartBtn.ref);
-        await new Promise(r => setTimeout(r, 2000));
+        await browser.waitForChange({ timeout: 2000 });
         await browser.waitForFlutter();
       } catch {
         // Stale ref — fall back to direct navigation
         await browser.open(`${WEB_APP_URL}/cart`);
         await browser.waitForFlutter();
-        await new Promise(r => setTimeout(r, 2000));
+        await browser.waitForChange({ timeout: 2000 });
       }
     } else {
       await browser.open(`${WEB_APP_URL}/cart`);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
     }
 
     snap = await browser.snapshot({ interactive: true, compact: true });

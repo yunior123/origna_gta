@@ -848,7 +848,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             return ListTile(
               dense: true,
               leading: Icon(Icons.location_on_rounded, size: 18, color: DesignTokens.primary),
-              title: Text(s['properties']?['formatted'] ?? '', style: const TextStyle(fontSize: 13)),
+              title: Text((s['properties']?['formatted'] as String?) ?? '', style: const TextStyle(fontSize: 13)),
               onTap: () {
                 viewModel.selectAddress(s);
                 final props = s['properties'] as Map<String, dynamic>?;
@@ -863,8 +863,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 final fullStreet = (houseNumber.isNotEmpty && street.isNotEmpty) ? '$houseNumber $street' : (street.isNotEmpty ? street : formatted);
 
                 _streetController.text = fullStreet;
-                _cityController.text = s['properties']?['city'] ?? '';
-                _postalCodeController.text = s['properties']?['postcode'] ?? '';
+                _cityController.text = (s['properties']?['city'] as String?) ?? '';
+                _postalCodeController.text = (s['properties']?['postcode'] as String?) ?? '';
               },
             );
           },

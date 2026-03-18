@@ -6,7 +6,7 @@
  *
  * Migrated from: e2e/playwright_ui/orignabase-integration.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn,
@@ -47,6 +47,8 @@ describe('OrignaBase — UI Integration Flows', () => {
   beforeAll(async () => {
     browser = new AgentBrowser({ headed: false });
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -99,7 +101,7 @@ describe('OrignaBase — UI Integration Flows', () => {
 
     const loginBtn = browser.findByLabel(snap1, /login_submit_button/i);
     if (loginBtn) await browser.click(loginBtn.ref);
-    await new Promise(r => setTimeout(r, 5_000));
+    await browser.waitForChange({ timeout: 5_000 });
 
     // Navigate to profile — look for Edit Profile button
     const snap2 = await browser.snapshot({ interactive: true, compact: true });
@@ -112,7 +114,7 @@ describe('OrignaBase — UI Integration Flows', () => {
     }
 
     await browser.click(editBtn.ref);
-    await new Promise(r => setTimeout(r, 2_000));
+    await browser.waitForChange({ timeout: 2_000 });
 
     // Change name
     const newName = `UI Tester ${Date.now()}`;
@@ -122,7 +124,7 @@ describe('OrignaBase — UI Integration Flows', () => {
 
     const saveBtn = browser.findByLabel(snap3, /save/i);
     if (saveBtn) await browser.click(saveBtn.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     // Verify in OrignaBase via API
     const freshAuth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
@@ -172,7 +174,7 @@ describe('OrignaBase — UI Integration Flows', () => {
     }
 
     await browser.click(addToCartBtn.ref);
-    await new Promise(r => setTimeout(r, 2_000));
+    await browser.waitForChange({ timeout: 2_000 });
 
     // Look for checkout button
     const snap2 = await browser.snapshot({ interactive: true, compact: true });
@@ -180,7 +182,7 @@ describe('OrignaBase — UI Integration Flows', () => {
     if (checkoutBtn) await browser.click(checkoutBtn.ref);
 
     // If redirected to Stripe, fill card
-    await new Promise(r => setTimeout(r, 5_000));
+    await browser.waitForChange({ timeout: 5_000 });
     const snap3 = await browser.snapshot({ interactive: true, compact: true });
     const hasCardField = browser.findByLabel(snap3, /card number/i);
     if (hasCardField) {

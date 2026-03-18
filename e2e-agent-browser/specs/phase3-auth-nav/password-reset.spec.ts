@@ -3,7 +3,7 @@
  * ====================================================================
  * Tests that password reset deep links route correctly based on oobCode format.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { WEB_APP_URL, ORIGNABASE_URL } from '../../lib/config.js';
 
@@ -20,6 +20,8 @@ describe('Password Reset Routing', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -59,13 +61,13 @@ describe('Password Reset Routing', () => {
     // Fill and submit — OrignaBase will reject the invalid oobCode
     await browser.safeFill(/reset_password_new_password_field/i, 'NewPass123!');
 
-    await new Promise(r => setTimeout(r, 300));
+    await browser.waitForChange({ timeout: 300 });
     await browser.safeFill(/reset_password_confirm_password_field/i, 'NewPass123!');
 
     if (await browser.safeClick(/reset_password_submit_button/)) {
 
       // After OrignaBase rejects the code, the "Go to Login" button should NOT appear
-      await new Promise(r => setTimeout(r, 5000));
+      await browser.waitForChange({ timeout: 5000 });
       snap = await browser.waitForChange({ minRefs: 1, timeout: 5_000 });
       const goToLoginBtn = browser.findByLabel(snap, /reset_password_go_to_login_button/);
       expect(goToLoginBtn).toBeNull();

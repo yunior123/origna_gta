@@ -798,13 +798,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         children: state.addressSuggestions.map((s) {
           final props = s['properties'] ?? {};
           return ListTile(
-            title: Text(props['formatted'] ?? ''),
+            title: Text((props['formatted'] as String?) ?? ''),
             onTap: () {
               viewModel.selectAddress(s);
               _streetController.text =
-                  props['street'] ?? props['formatted'] ?? '';
-              _cityController.text = props['city'] ?? '';
-              _postalCodeController.text = props['postcode'] ?? '';
+                  (props['street'] as String?) ?? (props['formatted'] as String?) ?? '';
+              _cityController.text = (props['city'] as String?) ?? '';
+              _postalCodeController.text = (props['postcode'] as String?) ?? '';
             },
           );
         }).toList(),

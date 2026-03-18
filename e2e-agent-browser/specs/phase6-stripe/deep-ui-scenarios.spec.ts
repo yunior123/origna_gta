@@ -6,7 +6,7 @@
  *
  * Migrated from: e2e/playwright_ui/deep-ui-scenarios.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn,
@@ -63,7 +63,7 @@ async function waitForOrder(orderId: string, token: string, maxMs = 30_000) {
   while (Date.now() - startedAt < maxMs) {
     const order = await getOrder(orderId, token);
     if (order) return order;
-    await new Promise(r => setTimeout(r, 2_000));
+    await browser.waitForChange({ timeout: 2_000 });
   }
   return getOrder(orderId, token);
 }
@@ -121,9 +121,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
     await browser.type(password);
 
     await browser.press('Tab');
-    await new Promise(r => setTimeout(r, 500));
+    await browser.waitForChange({ timeout: 500 });
     await browser.press('Enter');
-    await new Promise(r => setTimeout(r, 5000));
+    await browser.waitForChange({ timeout: 5000 });
     await browser.waitForFlutter();
   } catch (err) {
     console.log(`loginAs warning: ${(err as Error).message}`);
@@ -135,7 +135,7 @@ async function navigateToSettings(browser: AgentBrowser): Promise<any> {
   const settingsBtn = browser.findByLabel(snap, /btn-home-settings/i);
   if (!settingsBtn) return null;
   await browser.click(settingsBtn.ref);
-  await new Promise(r => setTimeout(r, 3_000));
+  await browser.waitForChange({ timeout: 3_000 });
   return browser.snapshot({ interactive: true, compact: true });
 }
 
@@ -149,6 +149,8 @@ describe('A. Full Buyer Journey', () => {
   beforeAll(async () => {
     browser = new AgentBrowser({ headed: false });
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -190,7 +192,7 @@ describe('A. Full Buyer Journey', () => {
 
     if (searchInput) {
       await browser.fill(searchInput.ref, 'sticker');
-      await new Promise(r => setTimeout(r, 3_000)); // debounce
+      await browser.waitForChange({ timeout: 3_000 }); // debounce
 
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       const results = browser.findAllByLabel(snap2, /product-card-/i);
@@ -309,7 +311,7 @@ describe('B. Seller Product Lifecycle', () => {
 
       const loginBtn = browser.findByLabel(snap1, /login_submit_button/i);
       if (loginBtn) await browser.click(loginBtn.ref);
-      await new Promise(r => setTimeout(r, 5_000));
+      await browser.waitForChange({ timeout: 5_000 });
 
       // Navigate to settings
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
@@ -322,14 +324,14 @@ describe('B. Seller Product Lifecycle', () => {
         return;
       }
       await browser.click(settingsBtn.ref);
-      await new Promise(r => setTimeout(r, 3_000));
+      await browser.waitForChange({ timeout: 3_000 });
 
       // Look for seller dashboard / my products
       const snap3 = await browser.snapshot({ interactive: true, compact: true });
       const dashBtn = browser.findByLabel(snap3, /menu-seller-dashboard|my products|mes produits/i);
       if (dashBtn) {
         await browser.click(dashBtn.ref);
-        await new Promise(r => setTimeout(r, 3_000));
+        await browser.waitForChange({ timeout: 3_000 });
 
         const snap4 = await browser.snapshot({ interactive: true, compact: true });
         // Should see product cards or a product list
@@ -369,7 +371,7 @@ describe('C. Admin Panel Operations', () => {
         return;
       }
       await browser.click(adminBtn.ref);
-      await new Promise(r => setTimeout(r, 3_000));
+      await browser.waitForChange({ timeout: 3_000 });
 
       // Verify admin panel loaded and look for tabs
       const snap4 = await browser.snapshot({ interactive: true, compact: true });

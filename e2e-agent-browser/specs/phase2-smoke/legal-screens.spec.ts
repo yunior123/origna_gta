@@ -11,7 +11,7 @@
  *   /terms-of-service  — Terms of Service (deferred-loaded)
  *   /privacy-policy    — Privacy Policy (deferred-loaded)
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { WEB_APP_URL } from '../../lib/config.js';
 
@@ -27,6 +27,8 @@ afterAll(async () => {
   await browser.close();
 });
 
+  beforeEach(async () => { await browser.clearState(); });
+
 /**
  * Extract all text content from a legal page via snapshot.
  * Flutter renders legal text in flt-semantics nodes. The agent-browser
@@ -37,7 +39,7 @@ async function getLegalPageText(route: string): Promise<string> {
   await browser.waitForFlutter();
 
   // Extra wait for deferred-loaded legal screen content
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
 
   const snap = await browser.snapshot({ interactive: false, compact: true });
 

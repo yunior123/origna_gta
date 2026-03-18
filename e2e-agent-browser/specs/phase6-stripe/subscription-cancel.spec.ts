@@ -28,7 +28,7 @@ describe('Subscription Cancel Screen', () => {
       expect(true).toBe(true);
       return;
     }
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     let snap: any;
     try {
@@ -59,7 +59,7 @@ describe('Subscription Cancel Screen', () => {
       expect(true).toBe(true);
       return;
     }
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     let snap: any;
     try {
@@ -74,7 +74,7 @@ describe('Subscription Cancel Screen', () => {
     if (resubBtn) {
       try {
         await browser.click(resubBtn.ref);
-        await new Promise(r => setTimeout(r, 3000));
+        await browser.waitForChange({ timeout: 3000 });
         try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
         const newSnap = await browser.snapshot({ interactive: true, compact: true });
         const newText = JSON.stringify(newSnap);
@@ -99,7 +99,7 @@ describe('Subscription Cancel Screen', () => {
       expect(true).toBe(true);
       return;
     }
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     let snap: any;
     try {
@@ -113,7 +113,7 @@ describe('Subscription Cancel Screen', () => {
     if (homeBtn) {
       try {
         await browser.click(homeBtn.ref);
-        await new Promise(r => setTimeout(r, 3000));
+        await browser.waitForChange({ timeout: 3000 });
         try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
         const newSnap = await browser.snapshot({ interactive: true, compact: true });
         const text = JSON.stringify(newSnap);
@@ -138,7 +138,7 @@ describe('Subscription Cancel Screen', () => {
       expect(true).toBe(true);
       return;
     }
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     let snap: any;
     try {

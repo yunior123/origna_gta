@@ -2,7 +2,7 @@
  * OrignaGTA — Add Product E2E Tests (agent-browser)
  * Migrated from e2e/playwright_ui/add-product-e2e.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   callOk,
@@ -292,6 +292,8 @@ describe('Add Product — UI Tests', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();

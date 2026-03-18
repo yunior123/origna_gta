@@ -14,6 +14,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/modern_textfield.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import '../features/auth/login_state.dart';
 import '../features/auth/login_viewmodel.dart';
 
 /// Documentation for LoginScreen
@@ -867,7 +868,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  ProviderSubscription<dynamic>? _loginSubscription;
+  ProviderSubscription<LoginState>? _loginSubscription;
 
   @override
   Widget build(BuildContext context) {
@@ -938,7 +939,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   void initState() {
     super.initState();
     _loginSubscription = ref.listenManual(loginViewModelProvider, (_, next) {
-      if (next == null || !mounted) return;
+      if (!mounted) return;
       if (next.isSuccess) {
         _onAuthSuccess();
       } else if (next.successMessage != null) {

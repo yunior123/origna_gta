@@ -20,19 +20,24 @@ import {
 } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, STRIPE_PM_TOKENS } from '../../lib/config.js';
 
-// ─── Poll Helper (non-throwing) ─────────────────────────────────────────────
-// In dev, Stripe webhooks don't fire reliably, so waitForOrderStatus throws on
-// timeout. This helper polls and returns whatever state the order is in.
+// ─── Poll Helper ────────────────────────────────────────────────────────────
+// Polls the order status until it reaches one of the target statuses.
+// When `mustReach` is true (default: false), throws an error if the target
+// status is never reached within `maxWaitMs` — this ensures webhook-dependent
+// tests actually fail instead of silently passing with stale state.
 async function pollOrderStatus(
   orderId: string,
   targetStatuses: string[],
   token: string,
   maxWaitMs = 30_000,
+  { mustReach = false }: { mustReach?: boolean } = {},
 ): Promise<{ order: any; reached: boolean }> {
   const start = Date.now();
+  let lastOrder: any = null;
   while (Date.now() - start < maxWaitMs) {
     const order = await getOrder(orderId, token);
     if (order) {
+      lastOrder = order;
       const status = (order.orderStatus ?? '').toLowerCase();
       if (targetStatuses.some(s => s.toLowerCase() === status)) {
         return { order, reached: true };
@@ -40,9 +45,20 @@ async function pollOrderStatus(
     }
     await new Promise(r => setTimeout(r, 3_000));
   }
-  // Return last known state even if target wasn't reached
+  // Final attempt after timeout
   const order = await getOrder(orderId, token);
-  return { order, reached: false };
+  if (order) lastOrder = order;
+
+  if (mustReach) {
+    const finalStatus = lastOrder ? (lastOrder.orderStatus ?? 'unknown') : 'no order found';
+    throw new Error(
+      `pollOrderStatus TIMEOUT: order ${orderId} never reached [${targetStatuses.join(', ')}] ` +
+      `within ${maxWaitMs}ms. Final status: ${finalStatus}. ` +
+      `This likely means the Stripe webhook did not fire.`
+    );
+  }
+
+  return { order: lastOrder, reached: false };
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────

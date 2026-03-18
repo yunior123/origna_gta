@@ -5,6 +5,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../core/compat/timestamp.dart' show truncateNanoseconds;
 import '../../core/schema/schema_constants.dart';
 import 'base_models.dart';
 import 'product_models.dart';
@@ -13,10 +14,14 @@ part 'order_models.freezed.dart';
 part 'order_models.g.dart';
 
 /// Safely parse a dynamic value (String, DateTime, int) to DateTime?
+///
+/// Handles SurrealDB nanosecond-precision ISO strings by truncating to
+/// microsecond precision before parsing. See [truncateNanoseconds] in
+/// `lib/core/compat/timestamp.dart` for the full explanation.
 DateTime? _parseDateTime(dynamic value) {
   if (value == null) return null;
   if (value is DateTime) return value;
-  if (value is String) return DateTime.tryParse(value);
+  if (value is String) return DateTime.tryParse(truncateNanoseconds(value));
   if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
   return null;
 }
@@ -592,18 +597,18 @@ abstract class Taxes with _$Taxes {
 
   factory Taxes.fromJson(Map<String, dynamic> json) {
     return Taxes(
-      gst: (json[Fields.GST] ?? 0.0).toDouble(),
-      pst: (json[Fields.PST] ?? 0.0).toDouble(),
-      hst: (json[Fields.HST] ?? 0.0).toDouble(),
-      qst: (json[Fields.QST] ?? 0.0).toDouble(),
+      gst: ((json[Fields.GST] as num?) ?? 0.0).toDouble(),
+      pst: ((json[Fields.PST] as num?) ?? 0.0).toDouble(),
+      hst: ((json[Fields.HST] as num?) ?? 0.0).toDouble(),
+      qst: ((json[Fields.QST] as num?) ?? 0.0).toDouble(),
     );
   }
 
   factory Taxes.fromMap(Map<String, dynamic> map) => Taxes(
-    gst: (map[Fields.GST] ?? 0.0).toDouble(),
-    pst: (map[Fields.PST] ?? 0.0).toDouble(),
-    hst: (map[Fields.HST] ?? 0.0).toDouble(),
-    qst: (map[Fields.QST] ?? 0.0).toDouble(),
+    gst: ((map[Fields.GST] as num?) ?? 0.0).toDouble(),
+    pst: ((map[Fields.PST] as num?) ?? 0.0).toDouble(),
+    hst: ((map[Fields.HST] as num?) ?? 0.0).toDouble(),
+    qst: ((map[Fields.QST] as num?) ?? 0.0).toDouble(),
   );
 
   const Taxes._();

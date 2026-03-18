@@ -2,7 +2,7 @@
  * OrignaGTA — Product Q&A E2E Tests (agent-browser)
  * Migrated from e2e/playwright_ui/qa-product.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   callCallable,
@@ -27,6 +27,8 @@ let browser: AgentBrowser;
 beforeAll(() => {
   browser = new AgentBrowser();
 });
+
+  beforeEach(async () => { await browser.clearState(); });
 
 afterAll(async () => {
   await browser.close();

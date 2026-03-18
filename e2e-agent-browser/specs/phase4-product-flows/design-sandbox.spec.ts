@@ -5,7 +5,7 @@
  * Visual design sandbox: captures every major screen/route.
  * Diagnostic only — screenshot errors are swallowed.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   WEB_APP_URL,
@@ -25,6 +25,8 @@ describe('Design Sandbox — Full Visual Capture', () => {
     browser = new AgentBrowser();
     if (!fs.existsSync(SANDBOX_DIR)) {
       fs.mkdirSync(SANDBOX_DIR, { recursive: true });
+
+  beforeEach(async () => { await browser.clearState(); });
     }
   });
 

@@ -2,7 +2,7 @@
  * OrignaGTA — Seller Product Management E2E Tests (agent-browser)
  * Migrated from e2e/playwright_ui/seller-product-management.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   callOk,
@@ -120,6 +120,8 @@ describe('Seller Product Management — UI Tests', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();

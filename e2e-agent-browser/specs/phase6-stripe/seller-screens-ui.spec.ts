@@ -9,7 +9,7 @@
  *
  * Migrated from: e2e/playwright_ui/seller-screens-ui.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   TEST_ACCOUNTS,
@@ -38,13 +38,13 @@ async function loginAsAdmin(browser: AgentBrowser): Promise<void> {
 
   const loginBtn = browser.findByLabel(snap, /login_submit_button/i);
   if (loginBtn) await browser.click(loginBtn.ref);
-  await new Promise(r => setTimeout(r, 5_000));
+  await browser.waitForChange({ timeout: 5_000 });
 }
 
 async function navigateToHomeAndGetSettingsSnap(browser: AgentBrowser): Promise<{ snap: any; settingsBtn: any }> {
   await browser.open(`${TARGET_URL}/`);
   await browser.waitForFlutter();
-  await new Promise(r => setTimeout(r, 3_000));
+  await browser.waitForChange({ timeout: 3_000 });
 
   const snap = await browser.snapshot({ interactive: true, compact: true });
   const settingsBtn = browser.findByLabel(snap, /btn-home-settings/i);
@@ -57,6 +57,8 @@ describe('Seller UI Screens', () => {
   beforeAll(async () => {
     browser = new AgentBrowser({ headed: false });
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -74,7 +76,7 @@ describe('Seller UI Screens', () => {
       return;
     }
     await browser.click(settingsBtn.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     // Wait for profile page semantic tree
     let snap = await browser.snapshot({ interactive: true, compact: true });
@@ -90,7 +92,7 @@ describe('Seller UI Screens', () => {
     }
 
     await browser.click(dashboardBtn.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     // Verify the screen has semantic content
     snap = await browser.snapshot({ interactive: true, compact: true });
@@ -105,7 +107,7 @@ describe('Seller UI Screens', () => {
       // Warehouses are a seller feature — if UI not available, just verify page loads
       await browser.open(`${TARGET_URL}/seller/warehouses`);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 3_000));
+      await browser.waitForChange({ timeout: 3_000 });
       const snap = await browser.snapshot({ interactive: true, compact: true });
       const text = JSON.stringify(snap);
       // Accept any seller/warehouse content OR a redirect back to login/home
@@ -116,7 +118,7 @@ describe('Seller UI Screens', () => {
       return;
     }
     await browser.click(settingsBtn.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     let snap = await browser.snapshot({ interactive: true, compact: true });
 
@@ -126,13 +128,13 @@ describe('Seller UI Screens', () => {
       // Direct navigation fallback
       await browser.open(`${TARGET_URL}/seller/warehouses`);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 3_000));
+      await browser.waitForChange({ timeout: 3_000 });
       snap = await browser.snapshot({ interactive: true, compact: true });
       expect(snap.refs.length).toBeGreaterThan(0);
       return;
     }
     await browser.click(dashboardBtn.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     // Look for warehouse navigation inside seller dashboard
     snap = await browser.snapshot({ interactive: true, compact: true });
@@ -148,7 +150,7 @@ describe('Seller UI Screens', () => {
     }
 
     await browser.click(warehouseLink.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     // Verify warehouse screen loaded
     snap = await browser.snapshot({ interactive: true, compact: true });
@@ -163,7 +165,7 @@ describe('Seller UI Screens', () => {
       // Direct navigation fallback
       await browser.open(`${TARGET_URL}/seller/integration`);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 3_000));
+      await browser.waitForChange({ timeout: 3_000 });
       const snap = await browser.snapshot({ interactive: true, compact: true });
       const text = JSON.stringify(snap);
       expect(
@@ -173,7 +175,7 @@ describe('Seller UI Screens', () => {
       return;
     }
     await browser.click(settingsBtn.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     let snap = await browser.snapshot({ interactive: true, compact: true });
 
@@ -183,7 +185,7 @@ describe('Seller UI Screens', () => {
       // Direct navigation fallback
       await browser.open(`${TARGET_URL}/seller/integration`);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 3_000));
+      await browser.waitForChange({ timeout: 3_000 });
       snap = await browser.snapshot({ interactive: true, compact: true });
       // Flutter canvas may not expose semantic nodes on seller routes
       const text = JSON.stringify(snap);
@@ -195,7 +197,7 @@ describe('Seller UI Screens', () => {
       return;
     }
     await browser.click(dashboardBtn.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     // Look for integration/connect link
     snap = await browser.snapshot({ interactive: true, compact: true });
@@ -211,7 +213,7 @@ describe('Seller UI Screens', () => {
     }
 
     await browser.click(integrationLink.ref);
-    await new Promise(r => setTimeout(r, 3_000));
+    await browser.waitForChange({ timeout: 3_000 });
 
     // Verify integration screen loaded
     snap = await browser.snapshot({ interactive: true, compact: true });

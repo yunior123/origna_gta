@@ -6,7 +6,7 @@
  * Tests the AI-powered support chat at /support.
  * Auth-gated: unauthenticated users redirect to /login.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { signIn } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
@@ -31,9 +31,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.type(password);
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   await browser.press('Enter');
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   await browser.waitForFlutter();
 }
 
@@ -57,6 +57,8 @@ describe('Customer Support Agent', () => {
     browser = new AgentBrowser();
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -71,7 +73,7 @@ describe('Customer Support Agent', () => {
     // Open support page without being logged in (fresh browser)
     await browser.open(`${WEB_APP_URL}/support`);
     await browser.waitForFlutter();
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const text = JSON.stringify(snap);
@@ -94,7 +96,7 @@ describe('Customer Support Agent', () => {
 
     await browser.open(`${WEB_APP_URL}/support`);
     await browser.waitForFlutter();
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const text = JSON.stringify(snap);
@@ -117,7 +119,7 @@ describe('Customer Support Agent', () => {
       await loginAs(browser, BUYER_EMAIL, BUYER_PASS);
       await browser.open(`${WEB_APP_URL}/support`);
       try { await browser.waitForFlutter(); } catch { /* settled */ }
-      await new Promise(r => setTimeout(r, 3000));
+      await browser.waitForChange({ timeout: 3000 });
 
       // Always take a fresh snapshot right before interacting
       let snap = await browser.snapshot({ interactive: true, compact: true });
@@ -152,7 +154,7 @@ describe('Customer Support Agent', () => {
         return;
       }
 
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       try { await browser.waitForFlutter(); } catch { /* settled */ }
 
       snap = await browser.snapshot({ interactive: true, compact: true });
@@ -172,7 +174,7 @@ describe('Customer Support Agent', () => {
     await loginAs(browser, BUYER_EMAIL, BUYER_PASS);
     await browser.open(`${WEB_APP_URL}/support`);
     await browser.waitForFlutter();
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     let snap = await browser.snapshot({ interactive: true, compact: true });
 
@@ -184,7 +186,7 @@ describe('Customer Support Agent', () => {
       } catch {
         await safeClick(browser, /category|cat[eé]gorie|order|commande|product|produit|other|autre/i);
       }
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       await browser.waitForFlutter();
     }
 
@@ -216,7 +218,7 @@ describe('Customer Support Agent', () => {
         return;
       }
     }
-    await new Promise(r => setTimeout(r, 1000));
+    await browser.waitForChange({ timeout: 1000 });
 
     // Re-snapshot for send button
     snap = await browser.snapshot({ interactive: true, compact: true });
@@ -227,7 +229,7 @@ describe('Customer Support Agent', () => {
       } catch {
         await safeClick(browser, /send|envoyer|submit|btn-send/i);
       }
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       const text = JSON.stringify(snap);
@@ -236,7 +238,7 @@ describe('Customer Support Agent', () => {
     } else {
       // Send button not found — try pressing Enter
       await browser.press('Enter');
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       snap = await browser.snapshot({ interactive: true, compact: true });
       const text = JSON.stringify(snap);
       const hasContent = /support|chat|message|help|origna/i.test(text);
@@ -271,7 +273,7 @@ describe('Customer Support Agent', () => {
     } catch {
       await safeClick(browser, /btn-home-settings/);
     }
-    await new Promise(r => setTimeout(r, 2000));
+    await browser.waitForChange({ timeout: 2000 });
     await browser.waitForFlutter();
 
     // Re-snapshot for fresh refs
@@ -291,7 +293,7 @@ describe('Customer Support Agent', () => {
     } catch {
       await safeClick(browser, /get.help|aide|support|help|assistance/i);
     }
-    await new Promise(r => setTimeout(r, 2000));
+    await browser.waitForChange({ timeout: 2000 });
     await browser.waitForFlutter();
 
     snap = await browser.snapshot({ interactive: true, compact: true });

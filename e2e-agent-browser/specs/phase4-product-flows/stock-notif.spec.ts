@@ -5,7 +5,7 @@
  * Covers Flow 12: Back-in-Stock Notification
  * API tests run fully; UI tests marked as todo (complex browser interaction).
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   callOk,
@@ -31,6 +31,8 @@ let browser: AgentBrowser;
 beforeAll(() => {
   browser = new AgentBrowser();
 });
+
+  beforeEach(async () => { await browser.clearState(); });
 
 afterAll(async () => {
   await browser.close();

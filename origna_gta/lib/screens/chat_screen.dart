@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/chat/chat_repository.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/premium_paywall_widget.dart';
@@ -187,7 +188,7 @@ class _MessagesList extends ConsumerStatefulWidget {
 }
 
 class _MessagesListState extends ConsumerState<_MessagesList> {
-  ProviderSubscription<dynamic>? _chatMessagesSubscription;
+  ProviderSubscription<AsyncValue<List<ChatMessage>>>? _chatMessagesSubscription;
 
   @override
   Widget build(BuildContext context) {

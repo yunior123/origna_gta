@@ -1,4 +1,4 @@
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { WEB_APP_URL } from '../../lib/config.js';
 
@@ -28,6 +28,8 @@ describe('Home Screen Audit Only', () => {
     console.log('Creating browser...');
     browser = new AgentBrowser(); 
   });
+
+  beforeEach(async () => { await browser.clearState(); });
   
   afterAll(async () => { 
     console.log('Closing browser...');

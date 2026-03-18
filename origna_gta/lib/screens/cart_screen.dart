@@ -1107,7 +1107,7 @@ extension CartItemDetailModelExtension on CartItemDetailModel {
     double? price,
     List<String>? imageUrls,
     int? quantity,
-    dynamic createdAt,
+    DateTime? createdAt,
     Address? sellerAddress,
     String? sellerId,
     String? sellerName,

@@ -3,7 +3,7 @@
  * Smoke test: verify public routes and a sample of authenticated routes load without crashes.
  * Note: Authenticated routes may timeout due to browser resource constraints; this is acceptable.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { WEB_APP_URL, TEST_PRODUCTS } from '../../lib/config.js';
 
@@ -24,6 +24,8 @@ describe('Design Audit — Route Loading', () => {
   let browser: AgentBrowser;
 
   beforeAll(() => { browser = new AgentBrowser(); });
+
+  beforeEach(async () => { await browser.clearState(); });
   afterAll(async () => { await browser.close(); });
 
   // ─── PUBLIC ROUTES (MUST LOAD) ─────────────────────────────

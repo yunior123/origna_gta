@@ -4,7 +4,7 @@
  * Tests the chat conversations screen at /chat/inbox.
  * Premium-only feature: non-premium users see paywall.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { signIn, callCallable } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
@@ -31,9 +31,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.type(password);
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   await browser.press('Enter');
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   await browser.waitForFlutter();
 }
 
@@ -44,6 +44,8 @@ describe('Chat Inbox', () => {
     browser = new AgentBrowser();
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -53,7 +55,7 @@ describe('Chat Inbox', () => {
       await loginAs(browser, BUYER_EMAIL, BUYER_PASS);
       await browser.open(`${WEB_APP_URL}/chat/inbox`);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 3000));
+      await browser.waitForChange({ timeout: 3000 });
 
       const snap = await browser.snapshot({ interactive: true, compact: true });
       const text = JSON.stringify(snap);
@@ -75,14 +77,14 @@ describe('Chat Inbox', () => {
     const settings = browser.findByLabel(snap, /btn-home-settings/);
     if (settings) {
       await browser.click(settings.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       await browser.waitForFlutter();
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       const messagesLink = browser.findByLabel(snap, /menu-my-messages|messages|messagerie/i);
       if (messagesLink) {
         await browser.click(messagesLink.ref);
-        await new Promise(r => setTimeout(r, 3000));
+        await browser.waitForChange({ timeout: 3000 });
         await browser.waitForFlutter();
       }
     }
@@ -108,7 +110,7 @@ describe('Chat Inbox', () => {
       await browser.open(`${WEB_APP_URL}/chat/inbox`);
       await browser.waitForFlutter();
     }
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const text = JSON.stringify(snap);
@@ -123,7 +125,7 @@ describe('Chat Inbox', () => {
     const thread = browser.findByLabel(snap, /chat-thread|conversation|thread/i);
     if (thread) {
       await browser.click(thread.ref);
-      await new Promise(r => setTimeout(r, 3000));
+      await browser.waitForChange({ timeout: 3000 });
       await browser.waitForFlutter();
       const chatSnap = await browser.snapshot({ interactive: true, compact: true });
       const text = JSON.stringify(chatSnap);

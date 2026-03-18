@@ -4,7 +4,7 @@
  * Tests seller onboarding screens: /seller/return, /seller/refresh.
  * These handle Stripe Connect account setup callbacks.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { signIn, callCallable } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
@@ -31,9 +31,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.type(password);
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   await browser.press('Enter');
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   await browser.waitForFlutter();
 }
 
@@ -43,6 +43,8 @@ describe('Seller Setup — Stripe Connect', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -66,7 +68,7 @@ describe('Seller Setup — Stripe Connect', () => {
       expect(true).toBe(true);
       return;
     }
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     let snap: any;
     try {
@@ -93,7 +95,7 @@ describe('Seller Setup — Stripe Connect', () => {
       expect(true).toBe(true);
       return;
     }
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     let snap: any;
     try {

@@ -6,7 +6,7 @@
  *
  * Measures wall-clock time for Flutter Web to render on home and login pages.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { WEB_APP_URL } from '../../lib/config.js';
 
@@ -21,6 +21,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await browser.close();
 });
+
+  beforeEach(async () => { await browser.clearState(); });
 
 describe('Page Load Performance', () => {
 

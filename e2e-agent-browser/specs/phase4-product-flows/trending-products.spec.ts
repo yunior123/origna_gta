@@ -2,7 +2,7 @@
  * OrignaGTA — Trending Products E2E Tests (agent-browser)
  * Migrated from e2e/playwright_ui/trending-products.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   writeDoc,
@@ -26,6 +26,8 @@ let browser: AgentBrowser;
 beforeAll(() => {
   browser = new AgentBrowser();
 });
+
+  beforeEach(async () => { await browser.clearState(); });
 
 afterAll(async () => {
   await browser.close();
@@ -69,7 +71,7 @@ describe('Trending Products flows', () => {
     const trendingToggle = browser.findByLabel(snap, /trending|notification.*trending|notify.*trending/i);
     if (trendingToggle) {
       await browser.click(trendingToggle.ref);
-      await new Promise(r => setTimeout(r, 1500));
+      await browser.waitForChange({ timeout: 1500 });
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       expect(snap2.refs.length).toBeGreaterThan(0);
     }

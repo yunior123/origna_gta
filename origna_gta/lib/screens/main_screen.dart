@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/screens/home_screen.dart';
 
 /// Documentation for MainScreen
@@ -15,7 +16,7 @@ class MainScreen extends ConsumerStatefulWidget {
 class _MainScreenState extends ConsumerState<MainScreen> {
   bool _timedOut = false;
   Timer? _timeoutTimer;
-  ProviderSubscription<dynamic>? _userProfileSubscription;
+  ProviderSubscription<AsyncValue<UserModel?>>? _userProfileSubscription;
 
   @override
   Widget build(BuildContext context) {

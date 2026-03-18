@@ -55,35 +55,35 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
 
   return CartItemDetailModel(
     productId: productId,
-    name: productData[Fields.name] ?? '',
-    description: productData[Fields.description] ?? '',
-    price: (productData[Fields.price] ?? 0).toDouble(),
+    name: (productData[Fields.name] as String?) ?? '',
+    description: (productData[Fields.description] as String?) ?? '',
+    price: ((productData[Fields.price] as num?) ?? 0).toDouble(),
     priceCents: productData[Fields.priceCents] != null
         ? (productData[Fields.priceCents] as num).toInt()
-        : ((productData[Fields.price] ?? 0) as num).toDouble() * 100 ~/ 1,
-    imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
+        : ((productData[Fields.price] as num?) ?? 0).toDouble() * 100 ~/ 1,
+    imageUrls: List<String>.from(productData[Fields.imageUrls] as Iterable? ?? []),
     quantity: cartItem?.quantity ?? 1,
     createdAt: createdAt,
-    sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
-    sellerId: productData[Fields.sellerId] ?? '',
-    sellerName: productData[Fields.sellerName] ?? '',
+    sellerAddress: Address.fromMap(productData[Fields.sellerAddress] as Map<String, dynamic>? ?? {}),
+    sellerId: (productData[Fields.sellerId] as String?) ?? '',
+    sellerName: (productData[Fields.sellerName] as String?) ?? '',
     weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
     lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
     widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
     heightCm: productData[Fields.heightCm] != null ? (productData[Fields.heightCm] as num).toDouble() : null,
-    isLocalDeliveryOnly: productData[Fields.isLocalDeliveryOnly] ?? false,
-    isPerishable: productData[Fields.isPerishable] ?? false,
-    estimatedShipDays: productData[Fields.estimatedShipDays] ?? 3,
+    isLocalDeliveryOnly: (productData[Fields.isLocalDeliveryOnly] as bool?) ?? false,
+    isPerishable: (productData[Fields.isPerishable] as bool?) ?? false,
+    estimatedShipDays: (productData[Fields.estimatedShipDays] as num?)?.toInt() ?? 3,
     deliveryOptions: productData[Fields.deliveryOptions] != null
-        ? (productData[Fields.deliveryOptions] as List)
-              .whereType<Map>()
+        ? (productData[Fields.deliveryOptions] as List<dynamic>)
+              .whereType<Map<dynamic, dynamic>>()
               .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
               .whereType<SellerDeliveryOption>()
               .toList()
         : [],
     minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
-    freeShipping: productData[Fields.freeShipping] ?? false,
-    isDigital: productData[Fields.isDigital] ?? false,
+    freeShipping: (productData[Fields.freeShipping] as bool?) ?? false,
+    isDigital: (productData[Fields.isDigital] as bool?) ?? false,
     variantId: cartItem?.variantId,
     variantTitle: cartItem?.variantTitle,
     variantOptions: cartItem?.variantOptions,

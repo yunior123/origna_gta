@@ -4,7 +4,7 @@
  * Tests email verification gate, terms-update gate, suspended-user gate,
  * and shareable product slug links.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   setOrignaBaseUserEmailVerified,
@@ -58,6 +58,8 @@ describe('Auth Gates', () => {
     browser = new AgentBrowser();
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -73,7 +75,7 @@ describe('Auth Gates', () => {
       console.warn(`Could not set email_verified=false for ${uiEmail}: ${err}`);
     }
     // Wait for OrignaBase to commit the patch before issuing a new JWT
-    if (setupSucceeded) await new Promise(r => setTimeout(r, 3000));
+    if (setupSucceeded) await browser.waitForChange({ timeout: 3000 });
 
     try {
       if (!setupSucceeded) {

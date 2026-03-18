@@ -4,7 +4,7 @@
  * API tests for Stripe Connect account management + UI test for seller
  * registration page elements.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn, callOk, callCallable, callExpectError, getDoc,
@@ -87,6 +87,8 @@ describe('Seller Registration — UI Tests', () => {
     browser = new AgentBrowser();
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -112,9 +114,9 @@ describe('Seller Registration — UI Tests', () => {
       await browser.type(DEFAULT_PASS);
 
       await browser.press('Tab');
-      await new Promise(r => setTimeout(r, 500));
+      await browser.waitForChange({ timeout: 500 });
       await browser.press('Enter');
-      await new Promise(r => setTimeout(r, 5000));
+      await browser.waitForChange({ timeout: 5000 });
       await browser.waitForFlutter();
     }
 

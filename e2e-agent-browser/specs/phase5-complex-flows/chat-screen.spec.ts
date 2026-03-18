@@ -9,7 +9,7 @@
  *
  * T01 requires UI (paywall check). T02-T04 are pure API.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn,
@@ -41,9 +41,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.type(password);
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   await browser.press('Enter');
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   await browser.waitForFlutter();
 }
 
@@ -53,6 +53,8 @@ describe('Chat Screen — Premium Gate', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -68,25 +70,25 @@ describe('Chat Screen — Premium Gate', () => {
     const settings = browser.findByLabel(snap, /btn-home-settings/);
     if (settings) {
       await browser.click(settings.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       await browser.waitForFlutter();
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       const messagesLink = browser.findByLabel(snap, /menu-my-messages|messages|messagerie/i);
       if (messagesLink) {
         await browser.click(messagesLink.ref);
-        await new Promise(r => setTimeout(r, 2000));
+        await browser.waitForChange({ timeout: 2000 });
         await browser.waitForFlutter();
       } else {
         // Try direct URL
         await browser.open(`${WEB_APP_URL}/chat`);
         await browser.waitForFlutter();
-        await new Promise(r => setTimeout(r, 2000));
+        await browser.waitForChange({ timeout: 2000 });
       }
     } else {
       await browser.open(`${WEB_APP_URL}/chat`);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
     }
 
     snap = await browser.snapshot({ interactive: true, compact: true });
@@ -259,7 +261,7 @@ describe('Chat Screen — Premium Gate', () => {
         }
       }
 
-      await new Promise(r => setTimeout(r, 500));
+      await browser.waitForChange({ timeout: 500 });
     }
 
     expect(successCount).toBeGreaterThanOrEqual(1);

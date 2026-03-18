@@ -31,12 +31,12 @@ class QAModel {
   factory QAModel.fromMap(String id, Map<String, dynamic> map) {
     return QAModel(
       id: id,
-      question: map[Fields.questionText] ?? map['question'] ?? '',
-      authorId: map[Fields.askerId] ?? map['authorId'] ?? '',
+      question: (map[Fields.questionText] as String?) ?? (map['question'] as String?) ?? '',
+      authorId: (map[Fields.askerId] as String?) ?? (map['authorId'] as String?) ?? '',
       createdAt: _parseDt(map[Fields.createdAt]) ?? DateTime.now(),
-      answer: map[Fields.answerText] ?? map['answer'],
+      answer: (map[Fields.answerText] as String?) ?? map['answer'] as String?,
       answeredAt: _parseDt(map[Fields.answeredAt]),
-      answeredBy: map[Fields.answeredBy],
+      answeredBy: map[Fields.answeredBy] as String?,
     );
   }
 

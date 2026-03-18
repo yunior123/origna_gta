@@ -219,7 +219,7 @@ describe('Accessibility — WCAG 2.1 AA (agent-browser)', () => {
       // No product cards found — scroll to find one
       for (let i = 0; i < 4; i++) {
         try { await browser.press('PageDown'); } catch { break; }
-        await new Promise(r => setTimeout(r, 500));
+        await browser.waitForChange({ timeout: 500 });
       }
       snap = await browser.snapshot({ interactive: true, compact: true });
       const card = browser.findByLabel(snap, /product-card-/);

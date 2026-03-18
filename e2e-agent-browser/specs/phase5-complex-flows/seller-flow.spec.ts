@@ -6,7 +6,7 @@
  * Complete seller journey: login, add product, profile seller tools,
  * seller dashboard, seller orders, cart access, sign-out.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { signIn } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
@@ -31,9 +31,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.type(password);
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   await browser.press('Enter');
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   await browser.waitForFlutter();
 }
 
@@ -56,6 +56,8 @@ describe('Seller Flow', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -86,11 +88,11 @@ describe('Seller Flow', () => {
         // Step 2: Navigate to profile/settings
         try {
           await browser.click(settings.ref);
-          await new Promise(r => setTimeout(r, 2000));
+          await browser.waitForChange({ timeout: 2000 });
           await browser.waitForFlutter();
         } catch {
           await safeClick(browser, /btn-home-settings/);
-          await new Promise(r => setTimeout(r, 2000));
+          await browser.waitForChange({ timeout: 2000 });
           try { await browser.waitForFlutter(); } catch { /* settled */ }
         }
 
@@ -106,7 +108,7 @@ describe('Seller Flow', () => {
             } catch {
               await safeClick(browser, /seller|vendeur|dashboard|tableau.*bord|my.*products|mes.*produits/i);
             }
-            await new Promise(r => setTimeout(r, 2000));
+            await browser.waitForChange({ timeout: 2000 });
             try { await browser.waitForFlutter(); } catch { /* settled */ }
 
             snap = await browser.snapshot({ interactive: true, compact: true });
@@ -116,10 +118,10 @@ describe('Seller Flow', () => {
 
             // Go back to settings
             await browser.open(WEB_APP_URL);
-            await new Promise(r => setTimeout(r, 2000));
+            await browser.waitForChange({ timeout: 2000 });
             try { await browser.waitForFlutter(); } catch { /* settled */ }
             await safeClick(browser, /btn-home-settings/);
-            await new Promise(r => setTimeout(r, 2000));
+            await browser.waitForChange({ timeout: 2000 });
             try { await browser.waitForFlutter(); } catch { /* settled */ }
           }
         } catch { /* seller tools section failed — continue */ }
@@ -134,7 +136,7 @@ describe('Seller Flow', () => {
             } catch {
               await safeClick(browser, /menu-my-orders/);
             }
-            await new Promise(r => setTimeout(r, 2000));
+            await browser.waitForChange({ timeout: 2000 });
             try { await browser.waitForFlutter(); } catch { /* settled */ }
 
             snap = await browser.snapshot({ interactive: true, compact: true });
@@ -144,10 +146,10 @@ describe('Seller Flow', () => {
 
             // Go back
             await browser.open(WEB_APP_URL);
-            await new Promise(r => setTimeout(r, 2000));
+            await browser.waitForChange({ timeout: 2000 });
             try { await browser.waitForFlutter(); } catch { /* settled */ }
             await safeClick(browser, /btn-home-settings/);
-            await new Promise(r => setTimeout(r, 2000));
+            await browser.waitForChange({ timeout: 2000 });
             try { await browser.waitForFlutter(); } catch { /* settled */ }
           }
         } catch { /* orders section failed — continue */ }
@@ -162,7 +164,7 @@ describe('Seller Flow', () => {
             } catch {
               await safeClick(browser, /btn-sign-out|sign.out|d[eé]connexion/i);
             }
-            await new Promise(r => setTimeout(r, 3000));
+            await browser.waitForChange({ timeout: 3000 });
             try { await browser.waitForFlutter(); } catch { /* settled */ }
 
             snap = await browser.snapshot({ interactive: true, compact: true });

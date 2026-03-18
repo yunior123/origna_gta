@@ -9,6 +9,7 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 
+import '../features/profile/address_state.dart';
 import '../features/profile/address_viewmodel.dart';
 
 // ─── Flutter Previews ────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _phoneController = TextEditingController();
-  ProviderSubscription<dynamic>? _addressSubscription;
+  ProviderSubscription<AddressState>? _addressSubscription;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +125,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                   return ListTile(
                                     leading: Icon(Icons.location_on, color: DesignTokens.primary, size: 20),
                                     title: Text(
-                                      s['properties']?['formatted'] ?? '',
+                                      (s['properties']?['formatted'] as String?) ?? '',
                                       style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                                     ),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius8)),
@@ -144,8 +145,8 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                           : (street.isNotEmpty ? street : formatted);
 
                                       _streetController.text = fullStreet;
-                                      _cityController.text = s['properties']?['city'] ?? '';
-                                      _postalCodeController.text = s['properties']?['postcode'] ?? '';
+                                      _cityController.text = (s['properties']?['city'] as String?) ?? '';
+                                      _postalCodeController.text = (s['properties']?['postcode'] as String?) ?? '';
                                     },
                                   );
                                 },

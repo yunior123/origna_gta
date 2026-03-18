@@ -2,7 +2,7 @@
  * OrignaGTA — Search Filters & Sort E2E Tests (agent-browser)
  * Migrated from e2e/playwright_ui/search-filters-sort.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   callOk,
@@ -86,6 +86,8 @@ describe('Search Filters & Sort — UI', () => {
     browser = new AgentBrowser();
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -128,7 +130,7 @@ describe('Search Filters & Sort — UI', () => {
     await browser.waitForFlutter();
     // Use safeClick for atomic snapshot+click to avoid stale ref / label-text mismatch
     if (await browser.safeClick(/btn-home-filter|btn-home-price-filter/i)) {
-      await new Promise(r => setTimeout(r, 1500));
+      await browser.waitForChange({ timeout: 1500 });
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       const applyBtn = browser.findByLabel(snap2, /btn-apply|apply|confirm/i);
       expect(applyBtn || snap2.refs.length > 0).toBeTruthy();
@@ -145,7 +147,7 @@ describe('Search Filters & Sort — UI', () => {
     const searchInput = browser.findByLabel(snap, /input-home-search|search/i);
     if (searchInput) {
       await browser.fill(searchInput.ref, 'phone');
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       // After search, products or search results should be visible
       expect(snap2.refs.length).toBeGreaterThan(0);

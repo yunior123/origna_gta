@@ -4,7 +4,7 @@
  * Tests the cart screen with item management.
  * Verifies seeded cart items, quantity controls, and total updates.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { signIn, callCallable } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
@@ -29,9 +29,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.type(password);
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   await browser.press('Enter');
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   await browser.waitForFlutter();
 }
 
@@ -41,6 +41,8 @@ describe('Cart Items', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -55,18 +57,18 @@ describe('Cart Items', () => {
     if (cartBtn) {
       try {
         await browser.click(cartBtn.ref);
-        await new Promise(r => setTimeout(r, 3000));
+        await browser.waitForChange({ timeout: 3000 });
         await browser.waitForFlutter();
       } catch {
         // Stale ref — fall back to direct navigation
         await browser.open(`${WEB_APP_URL}/cart`);
         await browser.waitForFlutter();
-        await new Promise(r => setTimeout(r, 3000));
+        await browser.waitForChange({ timeout: 3000 });
       }
     } else {
       await browser.open(`${WEB_APP_URL}/cart`);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 3000));
+      await browser.waitForChange({ timeout: 3000 });
     }
 
     snap = await browser.snapshot({ interactive: true, compact: true });
@@ -96,9 +98,9 @@ describe('Cart Items', () => {
     if (minusBtn) {
       // Click minus multiple times
       await browser.click(minusBtn.ref);
-      await new Promise(r => setTimeout(r, 1000));
+      await browser.waitForChange({ timeout: 1000 });
       await browser.click(minusBtn.ref);
-      await new Promise(r => setTimeout(r, 1000));
+      await browser.waitForChange({ timeout: 1000 });
 
       const updatedSnap = await browser.snapshot({ interactive: true, compact: true });
       const text = JSON.stringify(updatedSnap);
@@ -119,7 +121,7 @@ describe('Cart Items', () => {
   test('T05: Cart total displays correctly', { timeout: 60_000 }, async () => {
     await browser.open(`${WEB_APP_URL}/cart`);
     await browser.waitForFlutter();
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const text = JSON.stringify(snap);

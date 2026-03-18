@@ -2,7 +2,7 @@
  * OrignaGTA — Favorites E2E Tests (agent-browser)
  * Migrated from e2e/playwright_ui/favorites.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   callOk,
@@ -175,6 +175,8 @@ describe('Favorites — UI Tests', () => {
     browser = new AgentBrowser();
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -187,7 +189,7 @@ describe('Favorites — UI Tests', () => {
     const favBtn = browser.findByLabel(snap, /btn-favorite|favorite|heart|like/);
     if (favBtn) {
       await browser.click(favBtn.ref);
-      await new Promise(r => setTimeout(r, 1500));
+      await browser.waitForChange({ timeout: 1500 });
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       const favBtn2 = browser.findByLabel(snap2, /btn-favorite|favorite|heart|like/);
       expect(favBtn2).toBeTruthy();

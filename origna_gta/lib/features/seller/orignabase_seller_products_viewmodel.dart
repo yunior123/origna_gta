@@ -38,9 +38,9 @@ class OrignaBaseSellerProductsViewModel
         Fields.action: action,
       });
 
-      final data = Map<String, dynamic>.from(result as Map);
-      final updated = data['data']?['updated'] ?? data['updated'] ?? 0;
-      final skipped = data['data']?['skipped'] ?? data['skipped'] ?? 0;
+      final data = Map<String, dynamic>.from(result as Map<dynamic, dynamic>);
+      final int updated = (data['data']?['updated'] as int?) ?? (data['updated'] as int?) ?? 0;
+      final int skipped = (data['data']?['skipped'] as int?) ?? (data['skipped'] as int?) ?? 0;
 
       state = state.copyWith(
         isLoading: false,

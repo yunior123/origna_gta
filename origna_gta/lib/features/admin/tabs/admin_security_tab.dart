@@ -391,9 +391,9 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
     final result = await viewModel.enableAdminMfa();
     if (result != null && mounted) {
       setState(() {
-        _secret = result[ApiKeys.secret];
-        _qrCodeUri = result[ApiKeys.provisioningUri];
-        _backupCodes = List<String>.from(result[ApiKeys.backupCodes] ?? []);
+        _secret = result[ApiKeys.secret] as String?;
+        _qrCodeUri = result[ApiKeys.provisioningUri] as String?;
+        _backupCodes = List<String>.from(result[ApiKeys.backupCodes] as Iterable? ?? []);
       });
     }
   }

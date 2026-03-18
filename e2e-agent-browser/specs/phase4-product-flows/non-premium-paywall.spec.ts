@@ -5,7 +5,7 @@
  * Verifies that non-premium users see the paywall widget when accessing
  * premium-only features (chat).
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   callCallable,
@@ -29,6 +29,8 @@ let browser: AgentBrowser;
 beforeAll(() => {
   browser = new AgentBrowser();
 });
+
+  beforeEach(async () => { await browser.clearState(); });
 
 afterAll(async () => {
   await browser.close();

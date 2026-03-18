@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
+import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/screens/common_screens.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -192,7 +193,7 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
   static const _timeoutDuration = Duration(seconds: 90);
   Timer? _timeoutTimer;
   bool _timedOut = false;
-  ProviderSubscription<dynamic>? _paidOrderSubscription;
+  ProviderSubscription<AsyncValue<models.Order?>>? _paidOrderSubscription;
 
   @override
   Widget build(BuildContext context) {

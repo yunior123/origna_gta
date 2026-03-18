@@ -5,7 +5,7 @@
  * NOTE: Cannot test actual MFA flow — requires real TOTP codes from
  * an enrolled authenticator app. Tests focus on UI rendering only.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { TEST_ACCOUNTS, DEFAULT_PASS, WEB_APP_URL } from '../../lib/config.js';
 
@@ -22,15 +22,15 @@ async function loginViaBrowser(browser: AgentBrowser, email: string, password: s
   if (!await browser.safeFill(/you@example|vous@exemple|login_email_field/i, email))
     throw new Error('Email input not found');
 
-  await new Promise(r => setTimeout(r, 300));
+  await browser.waitForChange({ timeout: 300 });
 
   if (!await browser.safeFill(/login_password_field|••••••••/i, password))
     throw new Error('Password input not found');
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   await browser.press('Enter');
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   await browser.waitForFlutter();
 }
 
@@ -40,6 +40,8 @@ describe('MFA Challenge UI', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();

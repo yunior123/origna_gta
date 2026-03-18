@@ -4,7 +4,7 @@
  * Tests the seller API integration guide at /seller/integration.
  * Shows API endpoints and code snippets for seller tools.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
 
@@ -45,6 +45,8 @@ describe('Seller Integration Guide', () => {
     browser = new AgentBrowser();
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -53,7 +55,7 @@ describe('Seller Integration Guide', () => {
     await loginAs(browser, SELLER_EMAIL, SELLER_PASS);
     await browser.open(`${WEB_APP_URL}/#/seller/integration`);
     await browser.waitForFlutter();
-    await new Promise(r => setTimeout(r, 3000));
+    await browser.waitForChange({ timeout: 3000 });
 
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const text = JSON.stringify(snap);

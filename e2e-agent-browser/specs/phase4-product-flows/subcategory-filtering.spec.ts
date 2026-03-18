@@ -2,7 +2,7 @@
  * OrignaGTA — Subcategory Filtering E2E Tests (agent-browser)
  * Migrated from e2e/playwright_ui/subcategory-filtering.spec.ts
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import {
   signIn,
   callCallable,
@@ -187,6 +187,8 @@ describe('Subcategory Filtering — UI', () => {
     browser = new AgentBrowser();
   });
 
+  beforeEach(async () => { await browser.clearState(); });
+
   afterAll(async () => {
     await browser.close();
   });
@@ -198,7 +200,7 @@ describe('Subcategory Filtering — UI', () => {
     const categoryChip = browser.findByLabel(snap, /category-chip-1|category-chip/);
     if (categoryChip) {
       await browser.click(categoryChip.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       // After clicking category, subcategory chips or filters should appear
       expect(snap2.refs.length).toBeGreaterThan(0);
@@ -215,12 +217,12 @@ describe('Subcategory Filtering — UI', () => {
     const categoryChip = browser.findByLabel(snap, /category-chip-1|category-chip/);
     if (categoryChip) {
       await browser.click(categoryChip.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       const subcatChip = browser.findByLabel(snap2, /subcategory-chip|subcat/i);
       if (subcatChip) {
         await browser.click(subcatChip.ref);
-        await new Promise(r => setTimeout(r, 2000));
+        await browser.waitForChange({ timeout: 2000 });
         const snap3 = await browser.snapshot({ interactive: true, compact: true });
         expect(snap3.refs.length).toBeGreaterThan(0);
       }
@@ -235,7 +237,7 @@ describe('Subcategory Filtering — UI', () => {
     const allChip = browser.findByLabel(snap, /all|subcategory-chip-all/i);
     if (allChip) {
       await browser.click(allChip.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       const products = browser.findAllByLabel(snap2, /^product-card-/);
       expect(products.length).toBeGreaterThanOrEqual(0);
@@ -253,14 +255,14 @@ describe('Subcategory Filtering — UI', () => {
       // Extract the semantic label (e.g. "category-chip-all") from the name, ignoring appended text
       const label0 = chips[0].name.split(/\s/)[0];
       await browser.safeClick(new RegExp(label0, 'i'));
-      await new Promise(r => setTimeout(r, 1500));
+      await browser.waitForChange({ timeout: 1500 });
       // Click second category
       const snap2 = await browser.snapshot({ interactive: true, compact: true });
       const chips2 = browser.findAllByLabel(snap2, /category-chip/);
       if (chips2.length >= 2) {
         const label1 = chips2[1].name.split(/\s/)[0];
         await browser.safeClick(new RegExp(label1, 'i'));
-        await new Promise(r => setTimeout(r, 1500));
+        await browser.waitForChange({ timeout: 1500 });
         const snap3 = await browser.snapshot({ interactive: true, compact: true });
         expect(snap3.refs.length).toBeGreaterThan(0);
       }

@@ -564,65 +564,84 @@ class OrignaBaseAuthRepository implements AuthRepository {
     }
   }
 
-  /// Maps OrignaBase errors to [OrignaBaseAuthException] with codes
+  /// Maps OrignaBase SDK exceptions to [OrignaBaseAuthException] with codes
   /// compatible with the existing error handling in login_viewmodel.dart.
   ///
+  /// Uses typed SDK exceptions (NotFoundException, AuthException, etc.) instead
+  /// of brittle string matching that breaks when Rust error messages change.
   Never _rethrowAsAuthException(Object e) {
     if (e is OrignaBaseAuthException) throw e;
 
-    final errorStr = e.toString().toLowerCase();
-
-    if (errorStr.contains('not found') || errorStr.contains('not_found')) {
+    // Match on OrignaBase SDK typed exceptions first (statusCode-based)
+    if (e is NotFoundException) {
       throw OrignaBaseAuthException(
         code: 'user-not-found',
-        message: 'User not found',
+        message: e.message,
       );
     }
-    if (errorStr.contains('wrong password') ||
-        errorStr.contains('invalid_credentials')) {
+    if (e is AuthException) {
+      // 401 — covers wrong password, invalid credentials, expired tokens
+      final msg = e.message.toLowerCase();
+      if (msg.contains('disabled') || msg.contains('suspended')) {
+        throw OrignaBaseAuthException(
+          code: 'user-disabled',
+          message: e.message,
+        );
+      }
       throw OrignaBaseAuthException(
         code: 'wrong-password',
-        message: 'Wrong password',
+        message: e.message,
       );
     }
-    if (errorStr.contains('invalid email') ||
-        errorStr.contains('invalid_email')) {
+    if (e is ValidationException) {
+      // 422 — covers invalid email, weak password
+      final msg = e.message.toLowerCase();
+      if (msg.contains('email')) {
+        throw OrignaBaseAuthException(
+          code: 'invalid-email',
+          message: e.message,
+        );
+      }
+      if (msg.contains('password')) {
+        throw OrignaBaseAuthException(
+          code: 'weak-password',
+          message: e.message,
+        );
+      }
       throw OrignaBaseAuthException(
         code: 'invalid-email',
-        message: 'Invalid email',
+        message: e.message,
       );
     }
-    if (errorStr.contains('disabled') || errorStr.contains('suspended')) {
-      throw OrignaBaseAuthException(
-        code: 'user-disabled',
-        message: 'Account disabled',
-      );
-    }
-    if (errorStr.contains('too many') || errorStr.contains('rate_limit')) {
-      throw OrignaBaseAuthException(
-        code: 'too-many-requests',
-        message: 'Too many requests',
-      );
-    }
-    if (errorStr.contains('already') || errorStr.contains('duplicate')) {
+    if (e is ConflictException) {
+      // 409 — duplicate email
       throw OrignaBaseAuthException(
         code: 'email-already-in-use',
-        message: 'Email already in use',
+        message: e.message,
       );
     }
-    if (errorStr.contains('weak password') ||
-        errorStr.contains('weak_password')) {
+    if (e is RateLimitException) {
+      // 429
       throw OrignaBaseAuthException(
-        code: 'weak-password',
-        message: 'Password too weak',
+        code: 'too-many-requests',
+        message: e.message,
       );
     }
-    if (errorStr.contains('network') || errorStr.contains('connection')) {
+    if (e is NetworkException) {
       throw OrignaBaseAuthException(
         code: 'network-request-failed',
-        message: 'Network error',
+        message: e.message,
       );
     }
+    if (e is ForbiddenException) {
+      throw OrignaBaseAuthException(
+        code: 'user-disabled',
+        message: e.message,
+      );
+    }
+
+    // Fallback for non-SDK exceptions (e.g. platform errors, cancellations)
+    final errorStr = e.toString().toLowerCase();
     if (errorStr.contains('cancelled') || errorStr.contains('canceled')) {
       throw OrignaBaseAuthException(
         code: 'cancelled',

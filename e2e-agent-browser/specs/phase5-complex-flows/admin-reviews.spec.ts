@@ -8,7 +8,7 @@
  *   - Reviews list renders or shows empty state (UI)
  *   - Admin can flag a review via API
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn,
@@ -34,7 +34,7 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.click(emailInput.ref);
   await browser.type(email);
 
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
   snap = await browser.snapshot({ interactive: true, compact: true });
   const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
   if (!passInput) throw new Error('Password input not found');
@@ -42,7 +42,7 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.type(password);
 
   await browser.press('Tab');
-  await new Promise(r => setTimeout(r, 500));
+  await browser.waitForChange({ timeout: 500 });
 
   // Re-snapshot to get fresh ref for submit button
   snap = await browser.snapshot({ interactive: true, compact: true });
@@ -52,7 +52,7 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
   } else {
     await browser.press('Enter');
   }
-  await new Promise(r => setTimeout(r, 5000));
+  await browser.waitForChange({ timeout: 5000 });
   try {
     await browser.waitForFlutter();
   } catch {
@@ -66,6 +66,8 @@ describe('Admin Reviews Tab', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -82,7 +84,7 @@ describe('Admin Reviews Tab', () => {
         await browser.open(`${WEB_APP_URL}/admin`);
         await browser.waitForFlutter();
       }
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       let snap = await browser.snapshot({ interactive: true, compact: true });
       const reviewsTab = browser.findByLabel(snap, /admin-tab-reviews|reviews|avis/i);
@@ -93,7 +95,7 @@ describe('Admin Reviews Tab', () => {
         return;
       }
       await browser.click(reviewsTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       // Should be on reviews tab now
@@ -116,7 +118,7 @@ describe('Admin Reviews Tab', () => {
         await browser.open(`${WEB_APP_URL}/admin`);
         await browser.waitForFlutter();
       }
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       let snap = await browser.snapshot({ interactive: true, compact: true });
       const reviewsTab = browser.findByLabel(snap, /admin-tab-reviews|reviews|avis/i);
@@ -126,7 +128,7 @@ describe('Admin Reviews Tab', () => {
         return;
       }
       await browser.click(reviewsTab.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       // Should show reviews list or empty state

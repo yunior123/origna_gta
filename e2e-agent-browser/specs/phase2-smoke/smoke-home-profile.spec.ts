@@ -4,7 +4,7 @@
  * Migrated from e2e/playwright_ui/smoke-home-profile.spec.ts
  * Uses agent-browser + bun:test instead of Playwright.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
 
@@ -26,6 +26,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await browser.close();
 });
+
+  beforeEach(async () => { await browser.clearState(); });
 
 describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
 
@@ -96,7 +98,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
         }
       } catch { /* snapshot may timeout during scroll */ }
       try { await browser.press('PageDown'); } catch { /* ignore */ }
-      await new Promise(r => setTimeout(r, 1000));
+      await browser.waitForChange({ timeout: 1000 });
     }
 
     // Final check — products may not exist in dev DB, so accept home page rendered
@@ -119,9 +121,9 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
 
     // Scroll down and up
     await browser.press('PageDown');
-    await new Promise(r => setTimeout(r, 800));
+    await browser.waitForChange({ timeout: 800 });
     await browser.press('PageUp');
-    await new Promise(r => setTimeout(r, 800));
+    await browser.waitForChange({ timeout: 800 });
 
     // Verify semantic tree is intact
     const snap = await browser.snapshot({ interactive: true, compact: true });
@@ -140,7 +142,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
       await browser.click(settingsBtn.ref);
       await browser.waitForFlutter();
       // Extra wait for settings page to fully render
-      await new Promise(r => setTimeout(r, 3000));
+      await browser.waitForChange({ timeout: 3000 });
 
       const profileSnap = await browser.snapshot({ interactive: true, compact: true });
       // Verify we navigated away from home — profile/settings page has different content
@@ -253,7 +255,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
     // Scroll to load products
     for (let i = 0; i < 3; i++) {
       await browser.press('PageDown');
-      await new Promise(r => setTimeout(r, 1000));
+      await browser.waitForChange({ timeout: 1000 });
     }
     try {
       const snap = await browser.snapshot({ interactive: true, compact: true });
@@ -274,7 +276,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
       if (!settingsBtn) return;
       await browser.click(settingsBtn.ref);
       await browser.waitForFlutter();
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       snap = await browser.snapshot({ interactive: true, compact: true });
       const langOption = browser.findByLabel(snap, /language|langue|idioma|menu-/i);
       expect(langOption || snap.refs.length > 0).toBeTruthy();
@@ -295,7 +297,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
       await browser.waitForFlutter();
       for (let i = 0; i < 3; i++) {
         await browser.press('PageDown');
-        await new Promise(r => setTimeout(r, 300));
+        await browser.waitForChange({ timeout: 300 });
       }
       snap = await browser.snapshot({ interactive: true, compact: true });
       const termsOption = browser.findByLabel(snap, /terms|conditions|CGU|btn-home-terms/i);
@@ -316,7 +318,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
       await browser.waitForFlutter();
       for (let i = 0; i < 3; i++) {
         await browser.press('PageDown');
-        await new Promise(r => setTimeout(r, 300));
+        await browser.waitForChange({ timeout: 300 });
       }
       snap = await browser.snapshot({ interactive: true, compact: true });
       const privacyOption = browser.findByLabel(snap, /privacy|confidentialit[eé]|privacidad|btn-home-privacy/i);
@@ -337,7 +339,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
       await browser.waitForFlutter();
       for (let i = 0; i < 3; i++) {
         await browser.press('PageDown');
-        await new Promise(r => setTimeout(r, 300));
+        await browser.waitForChange({ timeout: 300 });
       }
       snap = await browser.snapshot({ interactive: true, compact: true });
       const helpOption = browser.findByLabel(snap, /help|aide|support|soporte|menu-get-help/i);
@@ -402,12 +404,12 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
     let snap = await browser.waitForChange({ text: /you@example|login_email_field|btn-home-settings/i, timeout: 30_000 });
     if (!browser.findByLabel(snap, BTN_SETTINGS_LABEL)) {
       await browser.safeFill(/you@example|vous@exemple|login_email_field/i, ADMIN_EMAIL);
-      await new Promise(r => setTimeout(r, 300));
+      await browser.waitForChange({ timeout: 300 });
       await browser.safeFill(/login_password_field|••••••••/i, ADMIN_PASSWORD);
       await browser.press('Tab');
-      await new Promise(r => setTimeout(r, 500));
+      await browser.waitForChange({ timeout: 500 });
       await browser.press('Enter');
-      await new Promise(r => setTimeout(r, 5000));
+      await browser.waitForChange({ timeout: 5000 });
       await browser.waitForFlutter();
     }
 

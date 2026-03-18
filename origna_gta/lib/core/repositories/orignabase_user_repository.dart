@@ -397,14 +397,14 @@ class OrignaBaseUserRepository implements UserRepository {
     Map<String, dynamic>? userData,
     Map<String, dynamic>? spData,
   ) {
-    final roles = List<String>.from(userData?[Fields.roles] ?? const []);
+    final roles = List<String>.from(userData?[Fields.roles] as Iterable? ?? const <String>[]);
     final isSeller =
         roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin);
     final chargesEnabled = spData?[Fields.chargesEnabled] == true;
     final payoutsEnabled = spData?[Fields.payoutsEnabled] == true;
     final onboardingCompleted = spData?[Fields.onboardingCompleted] == true;
     final pendingRequirements = List<String>.from(
-      spData?[Fields.pendingRequirements] ?? const [],
+      spData?[Fields.pendingRequirements] as Iterable? ?? const <String>[],
     );
     return SellerAccountStatus(
       isSeller: isSeller,

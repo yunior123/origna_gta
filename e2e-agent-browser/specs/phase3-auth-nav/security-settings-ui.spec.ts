@@ -5,7 +5,7 @@
  * known devices sections. Does NOT test actual MFA enable/disable
  * (requires real TOTP codes).
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { TEST_ACCOUNTS, DEFAULT_PASS, WEB_APP_URL } from '../../lib/config.js';
 
@@ -29,9 +29,9 @@ async function loginViaBrowser(browser: AgentBrowser, email: string, password: s
     await browser.type(password);
 
     await browser.press('Tab');
-    await new Promise(r => setTimeout(r, 500));
+    await browser.waitForChange({ timeout: 500 });
     await browser.press('Enter');
-    await new Promise(r => setTimeout(r, 5000));
+    await browser.waitForChange({ timeout: 5000 });
     await browser.waitForFlutter();
   } catch (err) {
     console.log(`loginViaBrowser warning: ${(err as Error).message}`);
@@ -76,6 +76,8 @@ describe('Security Settings UI', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();

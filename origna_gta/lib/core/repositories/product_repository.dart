@@ -2,6 +2,7 @@
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart' show FieldValue;
+import 'package:origna_gta/core/compat/timestamp.dart' show truncateNanoseconds;
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 
@@ -40,7 +41,8 @@ Map<String, dynamic> sanitizeProductData(Map<String, dynamic> rawData, {bool ens
     final createdAt = data[Fields.createdAt];
     if (createdAt is String) {
       try {
-        data[Fields.createdAt] = DateTime.parse(createdAt).toIso8601String();
+        // SurrealDB may return nanosecond-precision strings; truncate first.
+        data[Fields.createdAt] = DateTime.parse(truncateNanoseconds(createdAt)).toIso8601String();
       } catch (_) {
         data[Fields.createdAt] = FieldValue.serverTimestamp();
       }

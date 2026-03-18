@@ -7,7 +7,7 @@
  * UI-driven tests: orders screen, filter tabs, language setting, French switch,
  * free shipping bar, buy again button, recently viewed section.
  */
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
+import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn,
@@ -36,9 +36,9 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
     await browser.type(password);
 
     await browser.press('Tab');
-    await new Promise(r => setTimeout(r, 500));
+    await browser.waitForChange({ timeout: 500 });
     await browser.press('Enter');
-    await new Promise(r => setTimeout(r, 5000));
+    await browser.waitForChange({ timeout: 5000 });
     await browser.waitForFlutter();
   } catch (err) {
     // Login may partially succeed — continue with best-effort state
@@ -52,7 +52,7 @@ async function navigateToSettings(browser: AgentBrowser) {
   const settings = browser.findByLabel(snap, /btn-home-settings/);
   if (!settings) return null;
   await browser.click(settings.ref);
-  await new Promise(r => setTimeout(r, 2000));
+  await browser.waitForChange({ timeout: 2000 });
   try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
   return browser.snapshot({ interactive: true, compact: true });
 }
@@ -64,7 +64,7 @@ async function navigateToOrders(browser: AgentBrowser) {
   const ordersLink = browser.findByLabel(settingsSnap, /menu-my-orders/);
   if (!ordersLink) return null;
   await browser.click(ordersLink.ref);
-  await new Promise(r => setTimeout(r, 2000));
+  await browser.waitForChange({ timeout: 2000 });
   try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
   return browser.snapshot({ interactive: true, compact: true });
 }
@@ -116,6 +116,8 @@ describe('Reorder & Language — UI', () => {
   beforeAll(() => {
     browser = new AgentBrowser();
   });
+
+  beforeEach(async () => { await browser.clearState(); });
 
   afterAll(async () => {
     await browser.close();
@@ -211,7 +213,7 @@ describe('Reorder & Language — UI', () => {
         return;
       }
       await browser.click(langOption.ref);
-      await new Promise(r => setTimeout(r, 1500));
+      await browser.waitForChange({ timeout: 1500 });
 
       let snap = await browser.snapshot({ interactive: true, compact: true });
       // Select French
@@ -221,13 +223,13 @@ describe('Reorder & Language — UI', () => {
         return;
       }
       await browser.click(frenchOption.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
 
       // Navigate to home
       await browser.open(WEB_APP_URL);
       try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       // Look for French text on home page
@@ -240,17 +242,17 @@ describe('Reorder & Language — UI', () => {
         const settingsAgain = browser.findByLabel(snap, /btn-home-settings/);
         if (settingsAgain) {
           await browser.click(settingsAgain.ref);
-          await new Promise(r => setTimeout(r, 2000));
+          await browser.waitForChange({ timeout: 2000 });
           snap = await browser.snapshot({ interactive: true, compact: true });
           const langOptionAgain = browser.findByLabel(snap, /language|langue/i);
           if (langOptionAgain) {
             await browser.click(langOptionAgain.ref);
-            await new Promise(r => setTimeout(r, 1500));
+            await browser.waitForChange({ timeout: 1500 });
             snap = await browser.snapshot({ interactive: true, compact: true });
             const englishOption = browser.findByLabel(snap, /english|anglais|en/i);
             if (englishOption) {
               await browser.click(englishOption.ref);
-              await new Promise(r => setTimeout(r, 1500));
+              await browser.waitForChange({ timeout: 1500 });
             }
           }
         }
@@ -269,12 +271,12 @@ describe('Reorder & Language — UI', () => {
       const cartBtn = browser.findByLabel(snap, /panier|cart|shopping.cart|btn-cart/i);
       if (cartBtn) {
         await browser.click(cartBtn.ref);
-        await new Promise(r => setTimeout(r, 2000));
+        await browser.waitForChange({ timeout: 2000 });
         try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
       } else {
         await browser.open(`${WEB_APP_URL}/cart`);
         try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
-        await new Promise(r => setTimeout(r, 2000));
+        await browser.waitForChange({ timeout: 2000 });
       }
 
       snap = await browser.snapshot({ interactive: true, compact: true });
@@ -308,7 +310,7 @@ describe('Reorder & Language — UI', () => {
       }
 
       await browser.click(completedOrder.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
 
       const detailSnap = await browser.snapshot({ interactive: true, compact: true });
@@ -334,13 +336,13 @@ describe('Reorder & Language — UI', () => {
         return;
       }
       await browser.click(productCard.ref);
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
       try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
 
       // Go back to home
       await browser.open(WEB_APP_URL);
       try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
-      await new Promise(r => setTimeout(r, 2000));
+      await browser.waitForChange({ timeout: 2000 });
 
       snap = await browser.snapshot({ interactive: true, compact: true });
       const recentSection = browser.findByLabel(snap, /recently.viewed|r[eé]cemment.consult|vu.*r[eé]cemment/i);
