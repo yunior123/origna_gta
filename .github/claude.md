@@ -2,20 +2,18 @@
 
 > Source of truth: [`CLAUDE.md`](../CLAUDE.md). Read it before any changes.
 
-**OrignaGta** — E-commerce marketplace, Canadian buyers, worldwide sellers.
-Flutter/Riverpod + Python Cloud Functions + Firestore + Stripe Connect Express.
+**OrignaGTA** — E-commerce marketplace, Canadian buyers, worldwide sellers.
+Flutter/Riverpod + OrignaBase (Rust VPS) + SurrealDB + Stripe Connect.
 
 ## Rules
 - MVVM only — no business logic in screens
-- Cross-stack sync mandatory (Python ↔ Dart ↔ Schema)
+- Cross-stack sync mandatory (Rust ↔ Dart ↔ Schema)
 - No new markdown files unless explicitly asked
 - Fix all compiler warnings
 
 ## Commands
 ```bash
-./start-dev.sh                                    # Emulators + Stripe
-cd functions && source venv/bin/activate && pytest # Backend tests
-cd e2e && npm test                                 # E2E tests
-cd origna_gta && flutter run -d chrome             # Flutter web
+cd origna_gta && flutter analyze --no-fatal-infos  # Static analysis
+cd origna_gta && flutter test --exclude-tags golden # Unit + widget tests
+cd e2e-agent-browser && bun test specs/phase1-api/  # E2E API tests
 ```
-- `secret-scan.yml` — Scan for leaked secrets
