@@ -6,9 +6,10 @@ import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/services/orignabase_notification_service.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:origna_gta/utils/safe_url_launcher.dart';
 
 import 'auth_repository.dart';
 
@@ -78,13 +79,9 @@ class OrignaBaseAuthRepository implements AuthRepository {
         // Send verification email
         try {
           await _ob.auth.sendEmailVerification();
-          if (kDebugMode) {
-            debugPrint(
-              'Verification email sent to $trimmedEmail during registration',
-            );
-          }
+          AppLogger.d('Verification email sent to $trimmedEmail during registration', tag: 'auth');
         } catch (e) {
-          if (kDebugMode) debugPrint('Failed to send verification email: $e');
+          AppLogger.w('Failed to send verification email: $e', tag: 'auth');
         }
       }
     } catch (e) {
@@ -164,7 +161,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
         final startUrl = Uri.parse(
           '${_ob.url}/auth/google/start',
         ).replace(queryParameters: {'redirect_to': redirectTo.toString()});
-        final launched = await launchUrl(
+        final launched = await safeLaunchUrl(
           startUrl,
           webOnlyWindowName: '_self',
         );
@@ -245,9 +242,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
                   Fields.updatedAt: DateTime.now().toIso8601String(),
                 });
           } catch (e) {
-            if (kDebugMode) {
-              debugPrint('Failed to save Apple name to pending_profiles: $e');
-            }
+            AppLogger.d('Failed to save Apple name to pending_profiles: $e', tag: 'auth');
           }
         }
 
@@ -268,9 +263,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
     try {
       await OrignaBaseNotificationService.instance.clearTokenFromOrignaBase();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Failed to clear notification token on sign out: $e');
-      }
+      AppLogger.d('Failed to clear notification token on sign out: $e', tag: 'auth');
     }
 
     _ob.auth.signOut();
@@ -306,11 +299,9 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
     try {
       await _ob.auth.sendEmailVerification();
-      if (kDebugMode) {
-        debugPrint('Verification email sent');
-      }
+      AppLogger.d('Verification email sent', tag: 'auth');
     } catch (e) {
-      if (kDebugMode) debugPrint('Failed to send verification email: $e');
+      AppLogger.d('Failed to send verification email: $e', tag: 'auth');
       rethrow;
     }
   }
@@ -330,7 +321,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
       if (!authState.isAuthenticated) return false;
       return _ob.auth.isEmailVerified;
     } catch (e) {
-      if (kDebugMode) debugPrint('Error checking email verification: $e');
+      AppLogger.d('Error checking email verification: $e', tag: 'auth');
       return false;
     }
   }
@@ -355,7 +346,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
     } catch (e) {
       // SECURITY: Don't expose if email exists or not (anti-enumeration)
       if (kDebugMode) {
-        debugPrint('[SECURITY] Password reset error (suppressed): $e');
+        AppLogger.w('Password reset error (suppressed): $e', tag: 'auth');
       }
       // Swallow user-not-found to prevent email enumeration
       final errorStr = e.toString().toLowerCase();
@@ -407,11 +398,9 @@ class OrignaBaseAuthRepository implements AuthRepository {
         consentMethod: ConsentMethodValues.signupForm,
       );
 
-      if (kDebugMode) {
-        debugPrint('User document ensured for ${authState.email}');
-      }
+      AppLogger.d('User document ensured for ${authState.email}', tag: 'auth');
     } catch (e) {
-      if (kDebugMode) debugPrint('Could not ensure user document: $e');
+      AppLogger.d('Could not ensure user document: $e', tag: 'auth');
     }
   }
 
@@ -424,9 +413,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
       final authState = await _ob.auth.refreshToken();
 
       if (!authState.isAuthenticated || authState.userId == null) {
-        if (kDebugMode) {
-          debugPrint('User session invalid, signing out');
-        }
+        AppLogger.d('User session invalid, signing out', tag: 'auth');
         await signOut();
         return false;
       }
@@ -437,9 +424,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
           .doc(authState.userId!)
           .get();
       if (userDoc == null) {
-        if (kDebugMode) {
-          debugPrint('User profile not found, signing out stale session');
-        }
+        AppLogger.d('User profile not found, signing out stale session', tag: 'auth');
         await signOut();
         return false;
       }
@@ -451,14 +436,12 @@ class OrignaBaseAuthRepository implements AuthRepository {
           errorStr.contains('disabled') ||
           errorStr.contains('expired') ||
           errorStr.contains('unauthorized')) {
-        if (kDebugMode) {
-          debugPrint('User account no longer valid, signing out');
-        }
+        AppLogger.d('User account no longer valid, signing out', tag: 'auth');
         await signOut();
         return false;
       }
       // Network error — don't sign out, could be temporary
-      if (kDebugMode) debugPrint('Error validating user: $e');
+      AppLogger.d('Error validating user: $e', tag: 'auth');
       return true;
     }
   }
@@ -498,7 +481,7 @@ class OrignaBaseAuthRepository implements AuthRepository {
       }
       return UserModel.fromMap(profile);
     } catch (e) {
-      if (kDebugMode) debugPrint('Error watching profile: $e');
+      AppLogger.d('Error watching profile: $e', tag: 'auth');
       return null;
     }
   }
@@ -553,9 +536,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
               .delete();
         }
       } catch (e) {
-        if (kDebugMode) debugPrint('Could not check pending_profiles: $e');
+        AppLogger.d('Could not check pending_profiles: $e', tag: 'auth');
       }
 
+      final now = DateTime.now().toUtc().toIso8601String();
       await _ob.request(
         'POST',
         ApiEndpoints.usersCreateProfile,
@@ -567,10 +551,15 @@ class OrignaBaseAuthRepository implements AuthRepository {
           Fields.preferredLanguage: _deviceLanguage(),
           Fields.marketingOptIn: marketingOptIn,
           Fields.consentMethod: consentMethod,
+          Fields.consentTimestamp: now,
+          Fields.termsAcceptedAt: now,
+          Fields.termsVersion: PolicyVersionValues.defaultVersion,
+          Fields.privacyAcceptedAt: now,
+          Fields.privacyPolicyVersion: PolicyVersionValues.defaultVersion,
         },
       );
     } catch (e) {
-      if (kDebugMode) debugPrint('Error creating user document: $e');
+      AppLogger.d('Error creating user document: $e', tag: 'auth');
       // Don't rethrow — profile creation failure shouldn't block auth
     }
   }

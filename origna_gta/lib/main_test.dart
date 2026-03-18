@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/services/orignabase_conf_service.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/env_config.dart';
 
 /// Flag to track if app has been initialized
@@ -19,14 +20,14 @@ bool _appInitialized = false;
 /// Helper: run a future with a timeout, log success or failure.
 Future<void> _timedStep(String name, Future<void> Function() action,
     {Duration timeout = const Duration(seconds: 10)}) async {
-  debugPrint('▶ $name ...');
+  AppLogger.d('$name ...', tag: 'test');
   try {
     await action().timeout(timeout);
-    debugPrint('▶ $name ✓');
+    AppLogger.d('$name done', tag: 'test');
   } on TimeoutException {
-    debugPrint('▶ $name TIMED OUT after ${timeout.inSeconds}s — skipping');
+    AppLogger.w('$name TIMED OUT after ${timeout.inSeconds}s — skipping', tag: 'test');
   } catch (e) {
-    debugPrint('▶ $name ERROR: $e');
+    AppLogger.e('$name ERROR: $e', tag: 'test', error: e);
   }
 }
 
@@ -43,7 +44,7 @@ Future<void> initAppForTest() async {
 
 /// Main entry point for tests - skips URL strategy
 Future<void> mainTest() async {
-  debugPrint('▶ mainTest() called (initialized=$_appInitialized)');
+  AppLogger.d('mainTest() called (initialized=$_appInitialized)', tag: 'test');
 
   const isTest = bool.fromEnvironment('IS_TEST', defaultValue: false);
   const env = String.fromEnvironment('ENVIRONMENT', defaultValue: 'production');
@@ -55,7 +56,7 @@ Future<void> mainTest() async {
   }
 
   if (_appInitialized) {
-    debugPrint('▶ Re-running app (already initialized)');
+    AppLogger.d('Re-running app (already initialized)', tag: 'test');
     runApp(
       EasyLocalization(
         supportedLocales: const [Locale('en'), Locale('fr')],
@@ -67,13 +68,13 @@ Future<void> mainTest() async {
     return;
   }
 
-  debugPrint('▶ Step 1: WidgetsFlutterBinding');
+  AppLogger.d('Step 1: WidgetsFlutterBinding', tag: 'test');
   WidgetsFlutterBinding.ensureInitialized();
 
   await _timedStep('Step 2: EasyLocalization', () async {
     await EasyLocalization.ensureInitialized();
   });
-  debugPrint('▶ Step 3: using OrignaBase services');
+  AppLogger.d('Step 3: using OrignaBase services', tag: 'test');
 
   await _timedStep('Step 4: ConfigService', () async {
     // Web integration tests rely on Remote Config for keys like geoapify_api_key.
@@ -102,7 +103,7 @@ Future<void> mainTest() async {
 
   _appInitialized = true;
 
-  debugPrint('▶ Step 5: runApp()');
+  AppLogger.d('Step 5: runApp()', tag: 'test');
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('fr')],
@@ -111,7 +112,7 @@ Future<void> mainTest() async {
       child: const ProviderScope(child: OrignaApp()),
     ),
   );
-  debugPrint('▶ mainTest() complete');
+  AppLogger.d('mainTest() complete', tag: 'test');
 }
 
 /// Reset app state (for test isolation)

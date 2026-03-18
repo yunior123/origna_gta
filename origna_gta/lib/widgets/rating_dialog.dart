@@ -47,7 +47,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isPremium = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? false;
+    final isPremium = ref.watch(subscriptionStreamProvider.select((a) => a.valueOrNull?.isPremium)) ?? false;
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text('rating.title'.tr()),
@@ -105,8 +105,8 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           label: 'rating.submit_label'.tr(),
           child: ElevatedButton(
             onPressed: (_selectedRating == 0 || _isSubmitting) ? null : _submitRating,
-            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
-            child: _isSubmitting ? const ModernLoadingIndicator.small(color: Colors.white) : Text('common.submit'.tr()),
+            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: DesignTokens.white),
+            child: _isSubmitting ? const ModernLoadingIndicator.small(color: DesignTokens.white) : Text('common.submit'.tr()),
           ),
         ),
       ],
@@ -138,8 +138,8 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
             onTap: () => setState(() => _reviewImages.removeAt(index)),
             child: Container(
               padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-              child: const Icon(Icons.close, color: Colors.white, size: 12),
+              decoration: BoxDecoration(color: DesignTokens.black.withValues(alpha: 0.54), shape: BoxShape.circle),
+              child: const Icon(Icons.close, color: DesignTokens.white, size: 12),
             ),
           ),
         ),
@@ -166,7 +166,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
                 decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(4)),
                 child: Text(
                   'common.premium'.tr(),
-                  style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 10, color: DesignTokens.white, fontWeight: FontWeight.w700),
                 ),
               ),
           ],

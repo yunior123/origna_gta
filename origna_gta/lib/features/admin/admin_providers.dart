@@ -35,3 +35,9 @@ final adminSellersProvider = StreamProvider.autoDispose<List<UserModel>>((ref) {
 final adminUsersProvider = StreamProvider.autoDispose<List<UserModel>>((ref) {
   return ref.watch(adminRepositoryProvider).watchUsers();
 });
+
+/// Provider for payment providers data (admin tab).
+/// Replaces manual setState-based loading in AdminPaymentProvidersTab.
+final adminPaymentProvidersDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminRepositoryProvider).getPaymentProviders();
+});

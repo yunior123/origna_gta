@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:http/http.dart' as http;
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
@@ -234,9 +235,9 @@ class OrignaBaseProductRepository implements ProductRepository {
       try {
         return [_docToProduct(doc)];
       } catch (e) {
-        debugPrint(
+        AppLogger.d(
           'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
-        );
+          tag: 'product');
         return <Product>[];
       }
     }).toList();
@@ -267,9 +268,9 @@ class OrignaBaseProductRepository implements ProductRepository {
           try {
             results.add(_docToProduct(doc));
           } catch (e) {
-            debugPrint(
+            AppLogger.d(
               'OrignaBaseProductRepo: skipping malformed doc ${doc.id}: $e',
-            );
+              tag: 'product');
           }
         }
       }
@@ -288,16 +289,22 @@ class OrignaBaseProductRepository implements ProductRepository {
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(
     String query,
   ) async {
-    final String apiKey = _configService.geoapifyKey;
-    final encodedQuery = Uri.encodeQueryComponent(query);
-    final response = await _httpClient.get(
-      Uri.parse(
-        '${ExternalUrls.geoapifyBase}/geocode/autocomplete?text=$encodedQuery&filter=countrycode:ca&apiKey=$apiKey',
-      ),
-    );
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return List<Map<String, dynamic>>.from(data['features'] ?? []);
+    // Proxy geocoding through OrignaBase — API key stays server-side.
+    try {
+      final response = await _ob.request(
+        'POST',
+        ApiEndpoints.geocodeAutocomplete,
+        body: {
+          'query': query,
+          'country': 'ca',
+        },
+      );
+      final features = response['features'];
+      if (features is List) {
+        return List<Map<String, dynamic>>.from(features);
+      }
+    } catch (e) {
+      AppLogger.d('[getAutocompleteSuggestions] $e', tag: 'product');
     }
     return [];
   }

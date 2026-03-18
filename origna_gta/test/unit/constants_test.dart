@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
+import 'package:origna_gta/models/enum_extensions.dart';
 import 'package:origna_gta/utils/constants.dart';
 
 import '../test_utils.dart';
@@ -124,17 +126,17 @@ void main() {
 
   group('OrderStatus', () {
     test('fromValue returns correct enum', () {
-      expect(OrderStatus.fromValue('pending'), OrderStatus.pending);
-      expect(OrderStatus.fromValue('confirmed'), OrderStatus.confirmed);
-      expect(OrderStatus.fromValue('processing'), OrderStatus.processing);
-      expect(OrderStatus.fromValue('shipped'), OrderStatus.shipped);
-      expect(OrderStatus.fromValue('in_transit'), OrderStatus.inTransit);
-      expect(OrderStatus.fromValue('delivered'), OrderStatus.delivered);
-      expect(OrderStatus.fromValue('cancelled'), OrderStatus.cancelled);
-      expect(OrderStatus.fromValue('failed'), OrderStatus.failed);
-      expect(OrderStatus.fromValue('expired'), OrderStatus.expired);
-      expect(OrderStatus.fromValue('disputed'), OrderStatus.disputed);
-      expect(OrderStatus.fromValue('unknown'), OrderStatus.pending);
+      expect(OrderStatusExtension.fromValue('pending'), OrderStatus.pending);
+      expect(OrderStatusExtension.fromValue('confirmed'), OrderStatus.confirmed);
+      expect(OrderStatusExtension.fromValue('processing'), OrderStatus.processing);
+      expect(OrderStatusExtension.fromValue('shipped'), OrderStatus.shipped);
+      expect(OrderStatusExtension.fromValue('in_transit'), OrderStatus.inTransit);
+      expect(OrderStatusExtension.fromValue('delivered'), OrderStatus.delivered);
+      expect(OrderStatusExtension.fromValue('cancelled'), OrderStatus.cancelled);
+      expect(OrderStatusExtension.fromValue('failed'), OrderStatus.failed);
+      expect(OrderStatusExtension.fromValue('expired'), OrderStatus.expired);
+      expect(OrderStatusExtension.fromValue('disputed'), OrderStatus.disputed);
+      expect(OrderStatusExtension.fromValue('unknown'), OrderStatus.pending);
     });
 
     test('displayText returns non-empty string', () {

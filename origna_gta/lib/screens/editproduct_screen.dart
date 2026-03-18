@@ -49,7 +49,7 @@ class _EditDigitalTypeChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? DesignTokens.primary.withValues(alpha: 0.15)
-              : Colors.transparent,
+              : DesignTokens.transparent,
           border: Border.all(
             color: selected
                 ? DesignTokens.primary
@@ -596,14 +596,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                             : () => _handleSave(viewModel),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: DesignTokens.primary,
-                          foregroundColor: Colors.white,
+                          foregroundColor: DesignTokens.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: state.isLoading
                             ? const ModernLoadingIndicator(
-                                color: Colors.white,
+                                color: DesignTokens.white,
                                 centered: false,
                               )
                             : Text(
@@ -1025,7 +1025,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           Text(
             'product.download_links'.tr(),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary,
+              color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.white : DesignTokens.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -1066,7 +1066,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           const SizedBox(height: 16),
           Text(
             'product.reenter_download_url_update'.tr(),
-            style: const TextStyle(fontSize: 12, color: Colors.orange),
+            style: const TextStyle(fontSize: 12, color: DesignTokens.warning),
           ),
           const SizedBox(height: 6),
           _editUrlField(
@@ -1323,7 +1323,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   void _showInfoSheet(String title, String body) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: DesignTokens.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
         margin: const EdgeInsets.all(16),
@@ -1333,7 +1333,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: DesignTokens.black.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -1401,7 +1401,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: DesignTokens.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: DesignTokens.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

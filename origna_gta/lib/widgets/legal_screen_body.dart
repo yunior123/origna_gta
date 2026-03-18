@@ -144,8 +144,8 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
         tooltip: 'legal.back'.tr(),
         icon: Container(
           padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+          decoration: BoxDecoration(color: DesignTokens.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+          child: const Icon(Icons.arrow_back, color: DesignTokens.white, size: 20),
         ),
         onPressed: () => Navigator.pop(context),
       ),
@@ -168,7 +168,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                   child: Container(
                     width: 160,
                     height: 160,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.04)),
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: DesignTokens.white.withValues(alpha: 0.04)),
                   ),
                 ),
               ),
@@ -220,7 +220,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                       delay: const Duration(milliseconds: 100),
                       child: Text(
                         widget.heroTitle,
-                        style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800, height: 1.15, letterSpacing: -0.5),
+                        style: const TextStyle(color: DesignTokens.white, fontSize: 32, fontWeight: FontWeight.w800, height: 1.15, letterSpacing: -0.5),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -228,7 +228,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                       delay: const Duration(milliseconds: 200),
                       child: Text(
                         '${'legal.last_updated_february_2026'.tr()}  •  ${_sections.length}',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 13, fontWeight: FontWeight.w400),
+                        style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.55), fontSize: 13, fontWeight: FontWeight.w400),
                       ),
                     ),
                   ],
@@ -249,7 +249,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
           child: Text(
             'legal.jump_to_section'.tr(),
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: isDark ? Colors.white38 : DesignTokens.textDisabled),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: isDark ? DesignTokens.white.withValues(alpha: 0.38) : DesignTokens.textDisabled),
           ),
         ),
         SizedBox(
@@ -316,7 +316,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(trimmed.substring(2), style: TextStyle(fontSize: 13.5, height: 1.6, color: isDark ? Colors.white70 : DesignTokens.textSecondary)),
+                  child: Text(trimmed.substring(2), style: TextStyle(fontSize: 13.5, height: 1.6, color: isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.textSecondary)),
                 ),
               ],
             ),
@@ -326,7 +326,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(trimmed, style: TextStyle(fontSize: 13.5, height: 1.65, color: isDark ? Colors.white70 : DesignTokens.textSecondary)),
+            child: Text(trimmed, style: TextStyle(fontSize: 13.5, height: 1.65, color: isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.textSecondary)),
           ),
         );
       }
@@ -342,7 +342,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
       key: _sectionKeys[section.number],
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
-        color: Colors.transparent,
+        color: DesignTokens.transparent,
         child: InkWell(
           onTap: () {
             setState(() {
@@ -359,7 +359,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
+              color: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white,
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
               border: Border.all(
                 color: isExpanded ? DesignTokens.primary.withValues(alpha: 0.3) : (isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
@@ -385,7 +385,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                       child: Center(
                         child: Text(
                           '${section.number}',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isExpanded ? Colors.white : DesignTokens.primary),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isExpanded ? DesignTokens.white : DesignTokens.primary),
                         ),
                       ),
                     ),
@@ -396,12 +396,12 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : DesignTokens.textPrimary,
+                          color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                           letterSpacing: -0.2,
                         ),
                       ),
                     ),
-                    Icon(section.icon, size: 20, color: isDark ? Colors.white38 : DesignTokens.textDisabled),
+                    Icon(section.icon, size: 20, color: isDark ? DesignTokens.white.withValues(alpha: 0.38) : DesignTokens.textDisabled),
                     const SizedBox(width: 8),
                     AnimatedRotation(
                       turns: isExpanded ? 0.5 : 0,
@@ -409,7 +409,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                       child: Icon(
                         Icons.keyboard_arrow_down,
                         size: 22,
-                        color: isExpanded ? DesignTokens.primary : (isDark ? Colors.white30 : DesignTokens.textDisabled),
+                        color: isExpanded ? DesignTokens.primary : (isDark ? DesignTokens.white.withValues(alpha: 0.3) : DesignTokens.textDisabled),
                       ),
                     ),
                   ],
@@ -425,7 +425,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                           height: 1,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [DesignTokens.primary.withValues(alpha: 0.2), DesignTokens.secondary.withValues(alpha: 0.1), Colors.transparent],
+                              colors: [DesignTokens.primary.withValues(alpha: 0.2), DesignTokens.secondary.withValues(alpha: 0.1), DesignTokens.transparent],
                             ),
                           ),
                         ),

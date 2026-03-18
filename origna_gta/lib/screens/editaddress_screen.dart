@@ -41,7 +41,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: widget.address == null ? 'address.add_address'.tr() : 'address.edit_address'.tr()),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
@@ -73,9 +73,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             selected: isSelected,
                             onSelected: (selected) => viewModel.setLabel(label),
                             selectedColor: DesignTokens.primary,
-                            backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
+                            backgroundColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
                             labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : (isDark ? Colors.white : DesignTokens.textPrimary),
+                              color: isSelected ? DesignTokens.white : (isDark ? DesignTokens.white : DesignTokens.textPrimary),
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                             ),
                             shape: RoundedRectangleBorder(
@@ -111,7 +111,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                               key: const Key('address_suggestions'),
                               margin: const EdgeInsets.only(top: 8, bottom: 8),
                               decoration: BoxDecoration(
-                                color: isDark ? DesignTokens.darkSurface : Colors.white,
+                                color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
                                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
                                 boxShadow: DesignTokens.shadowMd,
                               ),
@@ -125,7 +125,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                     leading: Icon(Icons.location_on, color: DesignTokens.primary, size: 20),
                                     title: Text(
                                       s['properties']?['formatted'] ?? '',
-                                      style: TextStyle(fontSize: 13, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                                      style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                                     ),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius8)),
                                     onTap: () {
@@ -188,7 +188,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                 borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
                               ),
                               filled: true,
-                              fillColor: isDark ? DesignTokens.darkSurface : Colors.white,
+                              fillColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
                             ),
                             items: ProvinceCodeValues.all
                                 .map((code) => DropdownMenuItem(value: code, child: Text('${ProvinceCodeValues.names[code]} ($code)')))
@@ -220,8 +220,16 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             keyboardType: TextInputType.phone,
                             validator: (v) {
                               if (v == null || v.isEmpty) return 'common.required'.tr();
-                              final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
-                              if (digits.length < 10 || digits.length > 15) {
+                              // E.164 format: + followed by 1-15 digits, starting with non-zero
+                              final e164 = RegExp(r'^\+[1-9]\d{1,14}$');
+                              // Canadian specific: +1 followed by exactly 10 digits
+                              final canadian = RegExp(r'^\+1\d{10}$');
+                              final trimmed = v.trim();
+                              if (!e164.hasMatch(trimmed)) {
+                                return 'address.valid_phone'.tr();
+                              }
+                              // If starts with +1, must be exactly +1XXXXXXXXXX
+                              if (trimmed.startsWith('+1') && !canadian.hasMatch(trimmed)) {
                                 return 'address.valid_phone'.tr();
                               }
                               return null;
@@ -239,12 +247,12 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       onChanged: (v) => viewModel.setDefault(v),
                       title: Text(
                         'address.set_as_default'.tr(),
-                        style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
+                        style: TextStyle(color: isDark ? DesignTokens.white : DesignTokens.textPrimary, fontWeight: FontWeight.w600),
                       ),
                       activeThumbColor: DesignTokens.primary,
                       activeTrackColor: DesignTokens.primary.withValues(alpha: 0.5),
                       contentPadding: EdgeInsets.zero,
-                      tileColor: Colors.transparent,
+                      tileColor: DesignTokens.transparent,
                     ),
 
                     const SizedBox(height: DesignTokens.spacing24),
@@ -357,7 +365,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
           ),
         ),
       ],
@@ -382,7 +390,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       textCapitalization: textCapitalization,
       onChanged: onChanged,
       validator: validator,
-      style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary),
+      style: TextStyle(color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: icon != null ? Icon(icon, color: DesignTokens.primary.withValues(alpha: 0.7)) : null,
@@ -399,7 +407,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
           borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
         ),
         filled: true,
-        fillColor: isDark ? DesignTokens.darkSurface : Colors.white,
+        fillColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
       ),
     );
   }

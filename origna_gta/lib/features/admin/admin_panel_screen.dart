@@ -42,7 +42,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final userProfile = ref.watch(userProfileProvider);
-    final isWide = MediaQuery.of(context).size.width >= 900;
+    final isWide = MediaQuery.sizeOf(context).width >= 900;
 
     return userProfile.when(
       loading: () => Scaffold(
@@ -149,16 +149,16 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
             Text('admin.title'.tr(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
           ],
         ),
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+        backgroundColor: DesignTokens.transparent,
+        foregroundColor: DesignTokens.white,
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
+          indicatorColor: DesignTokens.white,
           indicatorWeight: 3,
           indicatorSize: TabBarIndicatorSize.label,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
+          labelColor: DesignTokens.white,
+          unselectedLabelColor: DesignTokens.white.withValues(alpha: 0.6),
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
@@ -219,18 +219,18 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
+                            color: DesignTokens.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(DesignTokens.radius12),
                           ),
-                          child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 24),
+                          child: const Icon(Icons.admin_panel_settings_rounded, color: DesignTokens.white, size: 24),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('admin.sellers_tab'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
-                              Text('admin.title'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                              Text('admin.sellers_tab'.tr(), style: const TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w700, fontSize: 18)),
+                              Text('admin.title'.tr(), style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.6), fontSize: 12)),
                             ],
                           ),
                         ),
@@ -247,7 +247,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                         button: true,
                         label: tab.semanticLabel,
                         child: Material(
-                          color: Colors.transparent,
+                          color: DesignTokens.transparent,
                           borderRadius: BorderRadius.circular(DesignTokens.radius12),
                           child: InkWell(
                             key: tab.key,
@@ -260,17 +260,17 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                               duration: DesignTokens.durationFast,
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               decoration: BoxDecoration(
-                                color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
+                                color: isSelected ? DesignTokens.white.withValues(alpha: 0.15) : DesignTokens.transparent,
                                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(tab.icon, color: isSelected ? Colors.white : Colors.white54, size: 20),
+                                  Icon(tab.icon, color: isSelected ? DesignTokens.white : DesignTokens.white.withValues(alpha: 0.54), size: 20),
                                   const SizedBox(width: 12),
                                   Text(
                                     tab.label,
                                     style: TextStyle(
-                                      color: isSelected ? Colors.white : Colors.white54,
+                                      color: isSelected ? DesignTokens.white : DesignTokens.white.withValues(alpha: 0.54),
                                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                                       fontSize: 14,
                                     ),
@@ -299,8 +299,8 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                    color: DesignTokens.white,
+                    boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                   ),
                   child: Row(
                     children: [
@@ -348,14 +348,14 @@ class _AdminQuickStats extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: DesignTokens.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: DesignTokens.white.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('admin.quick_stats'.tr(), style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+          Text('admin.quick_stats'.tr(), style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
           const SizedBox(height: 10),
           _statRow(Icons.store_rounded, 'admin.sellers_tab'.tr(), sellers.whenOrNull(data: (s) => s.length.toString()) ?? '...'),
           const SizedBox(height: 6),
@@ -368,11 +368,11 @@ class _AdminQuickStats extends ConsumerWidget {
   Widget _statRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, color: Colors.white54, size: 14),
+        Icon(icon, color: DesignTokens.white.withValues(alpha: 0.54), size: 14),
         const SizedBox(width: 8),
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        Text(label, style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 12)),
         const Spacer(),
-        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+        Text(value, style: const TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600, fontSize: 13)),
       ],
     );
   }

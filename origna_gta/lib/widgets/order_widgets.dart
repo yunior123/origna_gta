@@ -15,6 +15,7 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_card.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
+import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Maps per-item delivery status string → 3-step package timeline step.
@@ -262,13 +263,17 @@ class DigitalItemActions extends ConsumerWidget {
                 Expanded(
                   child: SelectableText(item.licenseKey!, style: const TextStyle(fontFamily: 'monospace', fontSize: 13, letterSpacing: 1.2)),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.copy, size: 18),
-                  tooltip: 'common.copy'.tr(),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: item.licenseKey!));
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.license_key_copied'.tr()), duration: const Duration(seconds: 2)));
-                  },
+                Semantics(
+                  button: true,
+                  label: 'btn-copy-license-key',
+                  child: IconButton(
+                    icon: const Icon(Icons.copy, size: 18),
+                    tooltip: 'common.copy'.tr(),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: item.licenseKey!));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.license_key_copied'.tr()), duration: const Duration(seconds: 2)));
+                    },
+                  ),
                 ),
               ],
             ),
@@ -308,7 +313,7 @@ class OrderStatusTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final inactiveColor = isDark ? Colors.white12 : Colors.black12;
+    final inactiveColor = isDark ? DesignTokens.white.withValues(alpha: 0.12) : DesignTokens.black.withValues(alpha: 0.12);
 
     return SizedBox(
       height: 70,
@@ -337,7 +342,7 @@ class OrderStatusTimeline extends StatelessWidget {
                   child: Icon(
                     isCompleted ? Icons.check_rounded : _steps[stepIndex],
                     size: isCurrent ? 18 : 14,
-                    color: isActive ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
+                    color: isActive ? DesignTokens.white : (isDark ? DesignTokens.white.withValues(alpha: 0.38) : DesignTokens.black.withValues(alpha: 0.38)),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -346,7 +351,7 @@ class OrderStatusTimeline extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    color: isActive ? color : (isDark ? Colors.white38 : Colors.black38),
+                    color: isActive ? color : (isDark ? DesignTokens.white.withValues(alpha: 0.38) : DesignTokens.black.withValues(alpha: 0.38)),
                   ),
                 ),
               ],
@@ -400,7 +405,7 @@ class PendingApprovalsBanner extends StatelessWidget {
           boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 4))],
         ),
         child: Material(
-          color: Colors.transparent,
+          color: DesignTokens.transparent,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
           child: InkWell(
             onTap: () => Navigator.pushNamed(context, AppRoutes.shippingApproval),
@@ -411,8 +416,8 @@ class PendingApprovalsBanner extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                    child: const Icon(Icons.pending_actions, color: Colors.white, size: 22),
+                    decoration: BoxDecoration(color: DesignTokens.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                    child: const Icon(Icons.pending_actions, color: DesignTokens.white, size: 22),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -421,20 +426,20 @@ class PendingApprovalsBanner extends StatelessWidget {
                       children: [
                         Text(
                           'orders.orders_need_approval'.tr(namedArgs: {'count': count.toString()}),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                          style: const TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w700, fontSize: 15),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           'orders.review_shipping_cost'.tr(),
-                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                          style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                    child: const Icon(Icons.chevron_right, color: Colors.white, size: 20),
+                    decoration: BoxDecoration(color: DesignTokens.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                    child: const Icon(Icons.chevron_right, color: DesignTokens.white, size: 20),
                   ),
                 ],
               ),
@@ -464,7 +469,7 @@ class SellerPackageTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final inactiveColor = isDark ? Colors.white12 : Colors.black12;
+    final inactiveColor = isDark ? DesignTokens.white.withValues(alpha: 0.12) : DesignTokens.black.withValues(alpha: 0.12);
 
     return SizedBox(
       height: 64,
@@ -492,7 +497,7 @@ class SellerPackageTimeline extends StatelessWidget {
                   child: Icon(
                     isCompleted ? Icons.check_rounded : _steps[stepIndex],
                     size: isCurrent ? 17 : 13,
-                    color: isActive ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
+                    color: isActive ? DesignTokens.white : (isDark ? DesignTokens.white.withValues(alpha: 0.38) : DesignTokens.black.withValues(alpha: 0.38)),
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -501,7 +506,7 @@ class SellerPackageTimeline extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    color: isActive ? color : (isDark ? Colors.white38 : Colors.black38),
+                    color: isActive ? color : (isDark ? DesignTokens.white.withValues(alpha: 0.38) : DesignTokens.black.withValues(alpha: 0.38)),
                   ),
                 ),
               ],
@@ -576,7 +581,7 @@ class _BookDownloadButtonState extends ConsumerState<BookDownloadButton> {
       });
       final downloadUrl = (result as Map<String, dynamic>?)?[ApiKeys.downloadUrl] as String?;
       if (downloadUrl == null) throw Exception('Download URL not available');
-      await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
+      await safeLaunchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.download_failed'.tr())));
@@ -607,9 +612,9 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     return Container(
       margin: widget.isDetailView ? EdgeInsets.zero : const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkCard : Colors.white,
+        color: isDark ? DesignTokens.darkCard : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius20),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.primary.withValues(alpha: 0.12), width: 1),
+        border: Border.all(color: isDark ? DesignTokens.white.withValues(alpha: 0.08) : DesignTokens.primary.withValues(alpha: 0.12), width: 1),
         boxShadow: widget.isDetailView
             ? []
             : [
@@ -671,7 +676,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           // ─── DIVIDER ────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(height: 1, color: (isDark ? Colors.white : DesignTokens.textSecondary).withValues(alpha: 0.1)),
+            child: Divider(height: 1, color: (isDark ? DesignTokens.white : DesignTokens.textSecondary).withValues(alpha: 0.1)),
           ),
 
           // ─── SELLER PACKAGES (Amazon-style per-seller grouping) ─────
@@ -711,7 +716,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
 
   Widget _actionButton({IconData? icon, required String label, required Color color, bool isLoading = false, VoidCallback? onTap}) {
     return Material(
-      color: Colors.transparent,
+      color: DesignTokens.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
@@ -755,7 +760,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
         const SizedBox(height: 4),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Text(address.street, style: TextStyle(fontSize: 13, color: isDark ? Colors.white : DesignTokens.textPrimary)),
+          child: Text(address.street, style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.white : DesignTokens.textPrimary)),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -779,7 +784,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
         const SizedBox(height: 4),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Text(instructions, style: TextStyle(fontSize: 13, color: isDark ? Colors.white : DesignTokens.textPrimary)),
+          child: Text(instructions, style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.white : DesignTokens.textPrimary)),
         ),
       ],
     );
@@ -815,7 +820,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [statusConfig.color.withValues(alpha: 0.06), Colors.transparent],
+          colors: [statusConfig.color.withValues(alpha: 0.06), DesignTokens.transparent],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -849,11 +854,11 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                 const SizedBox(height: 10),
                 ShaderMask(
                   shaderCallback: (bounds) => LinearGradient(
-                    colors: [isDark ? Colors.white : DesignTokens.textPrimary, isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary],
+                    colors: [isDark ? DesignTokens.white : DesignTokens.textPrimary, isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary],
                   ).createShader(bounds),
                   child: Text(
                     'orders.order_id_prefix'.tr() + (order.orderId.length > 8 ? order.orderId.substring(0, 8).toUpperCase() : order.orderId.toUpperCase()),
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: Colors.white),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: DesignTokens.white),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -875,7 +880,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
             ),
             child: Text(
               '\$${order.total.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: DesignTokens.white),
             ),
           ),
         ],
@@ -895,9 +900,9 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
+        color: isDark ? DesignTokens.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.textSecondary.withValues(alpha: 0.1)),
+        border: Border.all(color: isDark ? DesignTokens.white.withValues(alpha: 0.06) : DesignTokens.textSecondary.withValues(alpha: 0.1)),
       ),
       child: Column(
         children: [
@@ -914,7 +919,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                       item.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                     ),
                     const SizedBox(height: 6),
                     Wrap(
@@ -942,7 +947,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                                 ),
                                 child: Text(
                                   '${e.key}: ${e.value}',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : DesignTokens.textSecondary),
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.textSecondary),
                                 ),
                               ),
                             )
@@ -955,7 +960,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                               ),
                               child: Text(
                                 item.variantTitle!,
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : DesignTokens.textSecondary),
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.textSecondary),
                               ),
                             ),
                         ],
@@ -1063,7 +1068,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
             label,
             style: TextStyle(
               fontSize: 13,
-              color: bold ? (isDark ? Colors.white : DesignTokens.textPrimary) : DesignTokens.textSecondary,
+              color: bold ? (isDark ? DesignTokens.white : DesignTokens.textPrimary) : DesignTokens.textSecondary,
               fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
@@ -1071,7 +1076,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
             value,
             style: TextStyle(
               fontSize: 13,
-              color: color ?? (bold ? (isDark ? Colors.white : DesignTokens.textPrimary) : DesignTokens.textSecondary),
+              color: color ?? (bold ? (isDark ? DesignTokens.white : DesignTokens.textPrimary) : DesignTokens.textSecondary),
               fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
             ),
           ),
@@ -1132,7 +1137,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white,
+        color: isDark ? DesignTokens.white.withValues(alpha: 0.03) : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
         border: Border.all(
           color: isTerminalPackage
@@ -1156,7 +1161,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           Container(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [packageStatusConfig.color.withValues(alpha: 0.07), Colors.transparent]),
+              gradient: LinearGradient(colors: [packageStatusConfig.color.withValues(alpha: 0.07), DesignTokens.transparent]),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(DesignTokens.radius16)),
             ),
             child: Row(
@@ -1190,7 +1195,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                         sellerName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                       ),
                       const SizedBox(height: 3),
                       Row(
@@ -1297,7 +1302,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           // ── Divider ─────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Divider(height: 1, color: (isDark ? Colors.white : DesignTokens.textSecondary).withValues(alpha: 0.1)),
+            child: Divider(height: 1, color: (isDark ? DesignTokens.white : DesignTokens.textSecondary).withValues(alpha: 0.1)),
           ),
 
           // ── Items in this package ───────────────────────────────────────
@@ -1410,7 +1415,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                         trackingNum,
                         style: TextStyle(
                           fontSize: 11,
-                          color: isDark ? Colors.white70 : DesignTokens.textSecondary,
+                          color: isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.textSecondary,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'monospace',
                         ),
@@ -1436,7 +1441,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           GestureDetector(
             onTap: () async {
               final uri = Uri.parse(trackingUrl);
-              if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+              await safeLaunchUrl(uri, mode: LaunchMode.externalApplication);
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1451,11 +1456,11 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.open_in_new_rounded, size: 12, color: Colors.white),
+                  const Icon(Icons.open_in_new_rounded, size: 12, color: DesignTokens.white),
                   const SizedBox(width: 4),
                   Text(
                     'orders.track_package'.tr(),
-                    style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontSize: 11, color: DesignTokens.white, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1524,7 +1529,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.textSecondary.withValues(alpha: 0.08),
+        color: isDark ? DesignTokens.white.withValues(alpha: 0.08) : DesignTokens.textSecondary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -1552,6 +1557,8 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
         child: url != null
             ? CachedNetworkImage(
                 imageUrl: url,
+                width: 80,
+                height: 80,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => const Center(child: ModernLoadingIndicator(size: 20)),
                 errorWidget: (context, url, error) => Icon(Icons.camera_alt_outlined, color: DesignTokens.primary.withValues(alpha: 0.5), size: 28),
@@ -1577,7 +1584,7 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       SnackBar(
         content: Text('orders.items_added_to_cart'.tr(namedArgs: {'count': added.toString()})),
         backgroundColor: DesignTokens.success,
-        action: SnackBarAction(label: 'cart.view_cart'.tr(), textColor: Colors.white, onPressed: () => Navigator.pushNamed(context, AppRoutes.cart)),
+        action: SnackBarAction(label: 'cart.view_cart'.tr(), textColor: DesignTokens.white, onPressed: () => Navigator.pushNamed(context, AppRoutes.cart)),
       ),
     );
   }
@@ -1641,7 +1648,7 @@ class _SoftwareDownloadLinksState extends ConsumerState<SoftwareDownloadLinks> {
       });
       final downloadUrl = (result as Map<String, dynamic>?)?[ApiKeys.downloadUrl] as String?;
       if (downloadUrl == null) throw Exception('Download URL not available');
-      await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
+      await safeLaunchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.download_failed'.tr())));

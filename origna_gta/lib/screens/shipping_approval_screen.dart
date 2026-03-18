@@ -28,7 +28,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'seller.shipping_approvals'.tr()),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: approvalsAsync.when(
           loading: () => Center(
             child: Column(
@@ -39,7 +39,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
                   child: SizedBox(
                     width: 50,
                     height: 50,
-                    child: ModernLoadingIndicator(size: 50, strokeWidth: 3, color: Colors.white.withValues(alpha: 0.8), centered: false),
+                    child: ModernLoadingIndicator(size: 50, strokeWidth: 3, color: DesignTokens.white.withValues(alpha: 0.8), centered: false),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -85,7 +85,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
                     Text(
                       'seller.no_pending_approvals'.tr(),
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -142,7 +142,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.8),
+            isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : DesignTokens.white.withValues(alpha: 0.8),
             isDark ? DesignTokens.darkSurface.withValues(alpha: 0.4) : DesignTokens.surface.withValues(alpha: 0.6),
           ],
           begin: Alignment.topLeft,
@@ -171,7 +171,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                           'Order #${order.orderId.substring(0, 8).toUpperCase()}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: DesignTokens.white),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -379,7 +379,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   child: SizedBox(
                     width: 40,
                     height: 40,
-                    child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: Colors.white.withValues(alpha: 0.8), centered: false),
+                    child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: DesignTokens.white.withValues(alpha: 0.8), centered: false),
                   ),
                 ),
               )
@@ -397,7 +397,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         button: true,
                         label: 'btn-reject-cancel',
                         child: Material(
-                        color: Colors.transparent,
+                        color: DesignTokens.transparent,
                         child: InkWell(
                           onTap: () => _showRejectConfirmation(context),
                           borderRadius: BorderRadius.circular(DesignTokens.radius12),
@@ -457,14 +457,14 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
-        backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
+        backgroundColor: isDark ? DesignTokens.darkSurface : DesignTokens.white,
         title: Row(
           children: [
             Icon(Icons.warning_rounded, color: DesignTokens.warning, size: 28),
             const SizedBox(width: 12),
             Text(
               'seller.cancel_order_title'.tr(),
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
             ),
           ],
         ),
@@ -483,7 +483,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
             ),
             child: Material(
-              color: Colors.transparent,
+              color: DesignTokens.transparent,
               child: Semantics(
                 button: true,
                 label: 'btn-confirm-cancel-order',
@@ -497,7 +497,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   child: Text(
                     'seller.yes_cancel_order'.tr(),
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                    style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                 ),
               ),

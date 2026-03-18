@@ -1,6 +1,7 @@
 // coverage:ignore-file
 import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/env_config.dart';
 
 /// OrignaBase analytics service.
@@ -25,7 +26,7 @@ class OrignaBaseAnalyticsService {
         'properties': properties,
       });
     } catch (e) {
-      debugPrint('OrignaBaseAnalytics: failed to track "$eventName": $e');
+      AppLogger.w('Failed to track "$eventName": $e', tag: 'analytics');
     }
   }
 

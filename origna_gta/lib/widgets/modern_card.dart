@@ -57,7 +57,7 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
                 decoration: BoxDecoration(
                   color: widget.backgroundColor ?? (isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : DesignTokens.surface),
                   borderRadius: widget.borderRadius,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+                  border: Border.all(color: DesignTokens.white.withValues(alpha: 0.1), width: 1),
                   boxShadow: [
                     BoxShadow(
                       color: DesignTokens.primary.withValues(alpha: 0.1),

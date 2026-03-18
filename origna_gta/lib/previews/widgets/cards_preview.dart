@@ -25,25 +25,25 @@ Widget previewCardBasic() => previewWrapper(
                 gradient: DesignTokens.primaryGradient,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.store_outlined, color: Colors.white),
+              child: const Icon(Icons.store_outlined, color: DesignTokens.white),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Toronto Vintage', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
-                  Text('4.8 ★  ·  142 sales', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                  const Text('Toronto Vintage', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                  Text('4.8 ★  ·  142 sales', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 13)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.white54),
+            Icon(Icons.chevron_right, color: DesignTokens.white.withValues(alpha: 0.54)),
           ],
         ),
         const SizedBox(height: 12),
-        const Divider(color: Colors.white12),
+        Divider(color: DesignTokens.white.withValues(alpha: 0.12)),
         const SizedBox(height: 12),
-        const Text('Vintage clothing from the 80s and 90s. Authenticated and curated.', style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5)),
+        Text('Vintage clothing from the 80s and 90s. Authenticated and curated.', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.7), fontSize: 14, height: 1.5)),
       ],
     ),
   ),
@@ -54,17 +54,17 @@ Widget previewCardStats() => previewWrapper(
   child: ModernCard(
     child: Column(
       children: [
-        const Text('Order Summary', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
+        const Text('Order Summary', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w700, fontSize: 18)),
         const SizedBox(height: 16),
         _statRow('Subtotal', '\$89.99'),
         _statRow('Platform Fee (2.5%)', '\$2.25'),
         _statRow('Estimated Tax', '\$11.70'),
         _statRow('Shipping', '\$12.00'),
-        const Divider(color: Colors.white12, height: 24),
+        Divider(color: DesignTokens.white.withValues(alpha: 0.12), height: 24),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: const [
-            Text('Total', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
+            Text('Total', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w700, fontSize: 18)),
             Text('\$115.94', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w700, fontSize: 20)),
           ],
         ),
@@ -78,8 +78,8 @@ Widget _statRow(String label, String value) => Padding(
   child: Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(label, style: const TextStyle(color: Colors.white54, fontSize: 14)),
-      Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+      Text(label, style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 14)),
+      Text(value, style: const TextStyle(color: DesignTokens.white, fontSize: 14, fontWeight: FontWeight.w500)),
     ],
   ),
 );
@@ -100,12 +100,12 @@ Widget previewCardWarning() => previewWrapper(
           child: const Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 22),
         ),
         const SizedBox(width: 12),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Stock running low', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              Text('Only 2 items left in stock.', style: TextStyle(color: Colors.white54, fontSize: 13)),
+              const Text('Stock running low', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600)),
+              Text('Only 2 items left in stock.', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 13)),
             ],
           ),
         ),
@@ -130,12 +130,12 @@ Widget previewCardSuccess() => previewWrapper(
           child: const Icon(Icons.check_circle_outline, color: DesignTokens.success, size: 28),
         ),
         const SizedBox(width: 16),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Order Placed!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
-              Text('Your order #ORD-2025-8472 is confirmed.', style: TextStyle(color: Colors.white60, fontSize: 13)),
+              const Text('Order Placed!', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w700, fontSize: 18)),
+              Text('Your order #ORD-2025-8472 is confirmed.', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.6), fontSize: 13)),
             ],
           ),
         ),
@@ -156,12 +156,12 @@ Widget previewCardEmpty() => previewWrapper(
             gradient: DesignTokens.primaryGradient,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 40),
+          child: const Icon(Icons.shopping_bag_outlined, color: DesignTokens.white, size: 40),
         ),
         const SizedBox(height: 16),
-        const Text('No orders yet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18)),
+        const Text('No orders yet', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600, fontSize: 18)),
         const SizedBox(height: 8),
-        const Text('Browse the marketplace and\nplace your first order.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 14, height: 1.5)),
+        Text('Browse the marketplace and\nplace your first order.', textAlign: TextAlign.center, style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 14, height: 1.5)),
       ],
     ),
   ),
@@ -172,7 +172,7 @@ Widget previewCardLight() => previewWrapper(
   theme: previewLightTheme,
   background: DesignTokens.surface,
   child: ModernCard(
-    backgroundColor: Colors.white,
+    backgroundColor: DesignTokens.white,
     onTap: () {},
     child: const Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -63,6 +63,7 @@ import 'package:origna_gta/services/orignabase_notification_service.dart';
 import 'package:origna_gta/services/session_timeout_service.dart';
 import 'package:origna_gta/services/web_auth_redirect_stub.dart'
     if (dart.library.js_interop) 'package:origna_gta/services/web_auth_redirect_web.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/animations.dart';
 import 'package:origna_gta/utils/deferred_widget.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -74,17 +75,15 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Handle initial route from URL (critical for web redirects from Stripe)
 List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
-  if (kDebugMode) {
-    debugPrint('🔗 Initial route: $initialRoute');
-  }
+  AppLogger.d('Initial route: $initialRoute', tag: 'router');
 
   // On Web, Uri.base contains the full URL with query parameters which Flutter
   // sometimes omits from the initialRoute string depending on the lifecycle.
   final uri = kIsWeb ? Uri.base : Uri.tryParse(initialRoute);
 
-  if (kDebugMode && uri != null) {
-    debugPrint(
-      '🔗 Parsed URI path: ${uri.path}, query: ${uri.queryParameters}',
+  if (uri != null) {
+    AppLogger.d(
+      'Parsed URI path: ${uri.path}, query: ${uri.queryParameters}', tag: 'router',
     );
   }
 
@@ -688,9 +687,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   }
 
   // Default fallback: redirect unknown routes to home
-  if (kDebugMode) {
-    debugPrint('⚠️ Unknown route: ${uri.path} — redirecting to home');
-  }
+  AppLogger.w('Unknown route: ${uri.path} — redirecting to home', tag: 'router');
   return SlidePageRoute(
     settings: const RouteSettings(name: '/'),
     page: const AuthWrapper(),
@@ -963,13 +960,11 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             }
           })
           .catchError((e) {
-            debugPrint('⚠️ getInitialLink failed: $e');
+            AppLogger.w('getInitialLink failed: $e', tag: 'deeplink');
           });
 
       _deepLinkSubscription = appLinks.uriLinkStream.listen((Uri uri) {
-        if (kDebugMode) {
-          debugPrint('🔗 Incoming deep link: $uri');
-        }
+        AppLogger.d('Incoming deep link: $uri', tag: 'deeplink');
         _handleDeepLink(uri);
       });
     }
@@ -991,7 +986,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
               await ref.read(authRepositoryProvider).ensureUserDocumentExists();
               if (!mounted) return;
             } catch (e) {
-              debugPrint('Could not ensure user document: $e');
+              AppLogger.w('Could not ensure user document: $e', tag: 'auth');
             }
           } else {
             _sessionTimeout.stopMonitoring();

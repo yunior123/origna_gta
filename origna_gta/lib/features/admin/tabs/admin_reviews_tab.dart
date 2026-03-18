@@ -32,7 +32,7 @@ class _AdminReviewsTabState extends ConsumerState<AdminReviewsTab> {
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: DesignTokens.white,
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
             boxShadow: DesignTokens.shadowSm,
           ),

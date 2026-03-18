@@ -42,7 +42,7 @@ class SellerIntegrationScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'seller_integration.title'.tr()),
-      backgroundColor: Colors.transparent,
+      backgroundColor: DesignTokens.transparent,
       body: Container(
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: CustomScrollView(
@@ -148,7 +148,7 @@ class _CodeBlock extends StatelessWidget {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(14, 12, 44, 12),
-          decoration: BoxDecoration(color: isDark ? DesignTokens.darkSurface : const Color(0xFFF4F4F8), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: isDark ? DesignTokens.darkSurface : DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(8)),
           child: SelectableText(code, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, height: 1.6)),
         ),
         Positioned(
@@ -193,7 +193,7 @@ class _EndpointRow extends StatelessWidget {
             decoration: BoxDecoration(color: DesignTokens.primary, borderRadius: BorderRadius.circular(4)),
             child: Text(
               method,
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+              style: const TextStyle(color: DesignTokens.white, fontSize: 11, fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(width: 8),
@@ -341,7 +341,7 @@ class _GuideCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.surface.withValues(alpha: 0.7) : Colors.white,
+        color: isDark ? DesignTokens.surface.withValues(alpha: 0.7) : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.3)),
       ),

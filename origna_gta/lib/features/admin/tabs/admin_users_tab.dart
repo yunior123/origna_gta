@@ -50,7 +50,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isDark ? DesignTokens.darkCard : Colors.white,
+            color: isDark ? DesignTokens.darkCard : DesignTokens.white,
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
             boxShadow: DesignTokens.shadowSm,
           ),
@@ -232,7 +232,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
             child: Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : DesignTokens.textSecondary,
+                color: isSelected ? DesignTokens.white : DesignTokens.textSecondary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 fontSize: 12,
               ),
@@ -287,7 +287,7 @@ class _UserCard extends ConsumerWidget {
                 child: Text(
                   name.isNotEmpty ? name[0].toUpperCase() : 'U',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: DesignTokens.white,
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
                   ),

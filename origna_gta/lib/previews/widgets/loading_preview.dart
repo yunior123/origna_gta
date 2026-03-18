@@ -37,7 +37,7 @@ Widget previewLoadingInline() => previewWrapper(
       child: SizedBox(
         height: 24,
         width: 24,
-        child: ModernLoadingIndicator(color: Colors.white),
+        child: ModernLoadingIndicator(color: DesignTokens.white),
       ),
     ),
   ),

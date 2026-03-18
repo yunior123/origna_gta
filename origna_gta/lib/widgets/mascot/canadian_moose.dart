@@ -4,8 +4,10 @@ import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Documentation for CanadianMoose
@@ -173,18 +175,18 @@ class MoosePainter extends CustomPainter {
     } else {
       // Large kawaii eyes
       final eyeRadius = size.width * 0.06;
-      canvas.drawCircle(eyePosL, eyeRadius, Paint()..color = Colors.white);
-      canvas.drawCircle(eyePosR, eyeRadius, Paint()..color = Colors.white);
-      canvas.drawCircle(eyePosL, eyeRadius * 0.7, Paint()..color = Colors.black);
-      canvas.drawCircle(eyePosR, eyeRadius * 0.7, Paint()..color = Colors.black);
+      canvas.drawCircle(eyePosL, eyeRadius, Paint()..color = DesignTokens.white);
+      canvas.drawCircle(eyePosR, eyeRadius, Paint()..color = DesignTokens.white);
+      canvas.drawCircle(eyePosL, eyeRadius * 0.7, Paint()..color = DesignTokens.black);
+      canvas.drawCircle(eyePosR, eyeRadius * 0.7, Paint()..color = DesignTokens.black);
       // Highlights
-      canvas.drawCircle(eyePosL - Offset(eyeRadius * 0.3, eyeRadius * 0.3), eyeRadius * 0.25, Paint()..color = Colors.white);
-      canvas.drawCircle(eyePosR - Offset(eyeRadius * 0.3, eyeRadius * 0.3), eyeRadius * 0.25, Paint()..color = Colors.white);
+      canvas.drawCircle(eyePosL - Offset(eyeRadius * 0.3, eyeRadius * 0.3), eyeRadius * 0.25, Paint()..color = DesignTokens.white);
+      canvas.drawCircle(eyePosR - Offset(eyeRadius * 0.3, eyeRadius * 0.3), eyeRadius * 0.25, Paint()..color = DesignTokens.white);
     }
 
     // Blush
     final blushPaint = Paint()
-      ..color = Colors.red.withValues(alpha: 0.15)
+      ..color = DesignTokens.error.withValues(alpha: 0.15)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
     canvas.drawCircle(Offset(-size.width * 0.18, size.height * 0.05), size.width * 0.05, blushPaint);
     canvas.drawCircle(Offset(size.width * 0.18, size.height * 0.05), size.width * 0.05, blushPaint);
@@ -257,7 +259,7 @@ class MoosePainter extends CustomPainter {
 
   void _drawShadow(Canvas canvas, Size size, double jumpHeight) {
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.1 * (1 - jumpHeight))
+      ..color = DesignTokens.black.withValues(alpha: 0.1 * (1 - jumpHeight))
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
     final jumpOffset = -math.sin(jumpHeight * math.pi) * (size.height * 0.2);
@@ -427,14 +429,14 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
           constraints: const BoxConstraints(maxWidth: 160),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: DesignTokens.white,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
               bottomLeft: Radius.circular(16),
               bottomRight: Radius.circular(4),
             ),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
+            boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,7 +480,7 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
           padding: const EdgeInsets.only(right: 12),
           child: CustomPaint(
             size: const Size(16, 12),
-            painter: const _ModernBubbleTail(color: Colors.white),
+            painter: const _ModernBubbleTail(color: DesignTokens.white),
           ),
         ),
       ],
@@ -499,12 +501,12 @@ class _CanadianMooseState extends State<CanadianMoose> with TickerProviderStateM
     );
     try {
       if (await canLaunchUrl(emailUri)) {
-        await launchUrl(emailUri);
+        await safeLaunchUrl(emailUri);
       } else {
-        await launchUrl(Uri.parse('mailto:${EmailConfig.supportEmail}'));
+        await safeLaunchUrl(Uri.parse('mailto:${EmailConfig.supportEmail}'));
       }
     } catch (e) {
-      debugPrint('Could not launch email: $e');
+      AppLogger.w('Could not launch email: $e', tag: 'mascot');
     }
   }
 

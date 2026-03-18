@@ -56,7 +56,7 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         appBar: AppBarFactory.simple(
           title: 'seller.warehouses_title'.tr(),
           subtitle: 'seller.warehouses_subtitle'.tr(),
@@ -82,7 +82,7 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
         ),
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: DesignTokens.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: DesignTokens.white,
           icon: const Icon(Icons.add_location_alt_outlined),
           label: Text('seller.add_location'.tr()),
           onPressed: vmState.isLoading ? null : () => _showWarehouseForm(context),
@@ -96,7 +96,7 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: isDark ? DesignTokens.darkCard : Colors.white,
+      backgroundColor: isDark ? DesignTokens.darkCard : DesignTokens.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -262,7 +262,7 @@ class _WarehouseCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: isDark ? DesignTokens.darkCard : Colors.white,
+      color: isDark ? DesignTokens.darkCard : DesignTokens.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: warehouse.isDefault
@@ -343,7 +343,7 @@ class _WarehouseCard extends StatelessWidget {
             // Actions
             PopupMenuButton<String>(
               tooltip: 'seller.warehouse_options'.tr(),
-              color: isDark ? DesignTokens.darkCard : Colors.white,
+              color: isDark ? DesignTokens.darkCard : DesignTokens.white,
               iconColor: DesignTokens.textSecondary,
               itemBuilder: (_) => [
                 if (!warehouse.isDefault)
@@ -514,7 +514,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
               Text(
                 isEdit ? 'seller.edit_location'.tr() : 'seller.add_shipping_location'.tr(),
                 style: TextStyle(
-                  color: isDark ? Colors.white : DesignTokens.textPrimary,
+                  color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -645,7 +645,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                   Expanded(
                     child: Text(
                       'seller.set_default_shipping'.tr(),
-                      style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary, fontSize: 14),
+                      style: TextStyle(color: isDark ? DesignTokens.white : DesignTokens.textPrimary, fontSize: 14),
                     ),
                   ),
                 ],
@@ -659,7 +659,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                   onPressed: _saving ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: DesignTokens.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: DesignTokens.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -706,7 +706,7 @@ class _TypeChip extends StatelessWidget {
             decoration: BoxDecoration(
               color: selected
                   ? DesignTokens.primary.withValues(alpha: 0.15)
-                  : isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
+                  : isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: selected ? DesignTokens.primary : DesignTokens.outline,
@@ -758,14 +758,14 @@ class _Field extends StatelessWidget {
       controller: controller,
       validator: validator,
       maxLength: maxLength,
-      style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary, fontSize: 14),
+      style: TextStyle(color: isDark ? DesignTokens.white : DesignTokens.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: TextStyle(color: DesignTokens.textSecondary),
         hintStyle: TextStyle(color: DesignTokens.textTertiary),
         filled: true,
-        fillColor: isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
+        fillColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white,
         counterText: '',
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

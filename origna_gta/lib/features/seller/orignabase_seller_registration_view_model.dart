@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'seller_registration_state.dart';
@@ -85,7 +86,7 @@ class OrignaBaseSellerRegistrationViewModel
       final data = Map<String, dynamic>.from(result as Map);
       final url = data[ApiKeys.url] as String?;
       if (url != null && await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        await safeLaunchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       } else {
         state = state.copyWith(error: 'Could not open Stripe Dashboard');
       }
@@ -194,12 +195,11 @@ class OrignaBaseSellerRegistrationViewModel
       if (url != null) {
         final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
-          await launchUrl(
+          await safeLaunchUrl(
             uri,
             mode: kIsWeb
                 ? LaunchMode.platformDefault
                 : LaunchMode.externalApplication,
-            webOnlyWindowName: '_self',
           );
           state = state.copyWith(isLoading: false);
         } else {

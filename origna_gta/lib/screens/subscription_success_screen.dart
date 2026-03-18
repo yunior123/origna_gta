@@ -74,7 +74,7 @@ class _BenefitRow extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: isDark ? Colors.white : DesignTokens.textPrimary,
+                        color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -133,7 +133,7 @@ class _SubscriptionSuccessScreenState
                 end: Alignment.bottomRight,
                 colors: isDark
                     ? [DesignTokens.darkBackground, DesignTokens.darkSurface]
-                    : [DesignTokens.surfaceSubtle, Colors.white],
+                    : [DesignTokens.surfaceSubtle, DesignTokens.white],
               ),
             ),
             child: Center(
@@ -167,7 +167,7 @@ class _SubscriptionSuccessScreenState
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                             color: isDark
-                                ? Colors.white
+                                ? DesignTokens.white
                                 : DesignTokens.textPrimary,
                           ),
                         ),
@@ -222,7 +222,7 @@ class _SubscriptionSuccessScreenState
               end: Alignment.bottomRight,
               colors: isDark
                   ? [DesignTokens.darkBackground, DesignTokens.darkSurface]
-                  : [DesignTokens.surfaceSubtle, Colors.white],
+                  : [DesignTokens.surfaceSubtle, DesignTokens.white],
             ),
           ),
           child: SafeArea(
@@ -276,7 +276,7 @@ class _SubscriptionSuccessScreenState
                                     ),
                                     child: const Icon(
                                       Icons.workspace_premium,
-                                      color: Colors.white,
+                                      color: DesignTokens.white,
                                       size: 50,
                                     ),
                                   ),
@@ -293,7 +293,7 @@ class _SubscriptionSuccessScreenState
                                 fontSize: 28,
                                 fontWeight: FontWeight.w800,
                                 color: isDark
-                                    ? Colors.white
+                                    ? DesignTokens.white
                                     : DesignTokens.textPrimary,
                                 letterSpacing: -0.5,
                               ),

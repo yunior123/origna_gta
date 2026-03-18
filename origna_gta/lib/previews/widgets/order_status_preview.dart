@@ -115,7 +115,7 @@ Widget previewOrderTimeline() => previewWrapper(
       children: [
         const Text(
           'Order Timeline',
-          style: TextStyle(color: Colors.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+          style: TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: DesignTokens.spacing20),
         const TimelineStep(
@@ -173,7 +173,7 @@ Widget previewOrderTimelineComplete() => previewWrapper(
           children: [
             const Text(
               'Order Delivered',
-              style: TextStyle(color: Colors.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+              style: TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
             ),
             const SizedBox(width: DesignTokens.spacing8),
             const StatusBadge(status: OrderStatus.delivered, large: true),
@@ -226,7 +226,7 @@ Widget previewStatusColorReference() => previewWrapper(
     children: [
       const Text(
         'Order Status — Color Reference',
-        style: TextStyle(color: Colors.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+        style: TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
       ),
       const SizedBox(height: DesignTokens.spacing16),
       ...(OrderStatus.values.map(
@@ -244,7 +244,7 @@ Widget previewStatusColorReference() => previewWrapper(
                 width: 110,
                 child: Text(
                   s.label,
-                  style: const TextStyle(color: Colors.white, fontSize: DesignTokens.fontSizeSm, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeSm, fontWeight: FontWeight.w600),
                 ),
               ),
               Text(

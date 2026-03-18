@@ -21,9 +21,9 @@ final ThemeData previewDarkTheme = ThemeData.dark().copyWith(
   scaffoldBackgroundColor: DesignTokens.darkBackground,
   cardColor: DesignTokens.darkCard,
   dividerColor: DesignTokens.darkOutline,
-  textTheme: const TextTheme(
-    bodyLarge: TextStyle(color: Colors.white),
-    bodyMedium: TextStyle(color: Colors.white70),
+  textTheme: TextTheme(
+    bodyLarge: const TextStyle(color: DesignTokens.white),
+    bodyMedium: TextStyle(color: DesignTokens.white.withValues(alpha: 0.7)),
   ),
 );
 
@@ -156,11 +156,11 @@ class _PhoneChromePainter extends CustomPainter {
       ..strokeWidth = 2;
     final notchPaint = Paint()..color = isDark ? const Color(0xFF0A0A1A) : const Color(0xFFDDDDE8);
     final homeBarPaint = Paint()
-      ..color = isDark ? Colors.white.withAlpha(100) : Colors.black.withAlpha(40)
+      ..color = isDark ? DesignTokens.white.withAlpha(100) : DesignTokens.black.withAlpha(40)
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round;
     final shadowPaint = Paint()
-      ..color = isDark ? Colors.black.withAlpha(60) : Colors.black.withAlpha(18)
+      ..color = isDark ? DesignTokens.black.withAlpha(60) : DesignTokens.black.withAlpha(18)
       ..style = PaintingStyle.fill;
 
     // Rounded corner clip border
@@ -316,11 +316,11 @@ class _BrowserChromeBar extends StatelessWidget {
             child: Container(
               height: 22,
               decoration: BoxDecoration(
-                color: isDark ? Colors.black26 : Colors.black.withAlpha(15),
+                color: isDark ? DesignTokens.black.withValues(alpha: 0.26) : DesignTokens.black.withAlpha(15),
                 borderRadius: BorderRadius.circular(4),
               ),
               alignment: Alignment.center,
-              child: Text('orignagta.ca', style: TextStyle(color: isDark ? Colors.white54 : Colors.black45, fontSize: 10)),
+              child: Text('orignagta.ca', style: TextStyle(color: isDark ? DesignTokens.white.withValues(alpha: 0.54) : DesignTokens.black.withValues(alpha: 0.45), fontSize: 10)),
             ),
           ),
         ],
@@ -502,8 +502,8 @@ Widget previewWrapper({
         width: breakpoint.width,
         height: breakpoint.height,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-          boxShadow: const [BoxShadow(blurRadius: 20, color: Colors.black26)],
+          border: Border.all(color: DesignTokens.textSecondary.withValues(alpha: 0.3)),
+          boxShadow: [BoxShadow(blurRadius: 20, color: DesignTokens.black.withValues(alpha: 0.26))],
         ),
         child: ClipRect(
           child: MediaQuery(
@@ -576,7 +576,7 @@ Widget previewAllBreakpoints({
 
 Widget _label(String text) => Padding(
   padding: const EdgeInsets.only(bottom: 8),
-  child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white54)),
+  child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DesignTokens.white.withValues(alpha: 0.54))),
 );
 
 Widget _localizationShell({

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/core/errors/error_codes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:video_player/video_player.dart';
@@ -153,7 +154,7 @@ class _ProductAddVideoState extends State<ProductAddVideo> {
       // Mute the video for thumbnail preview
       await _controller!.setVolume(0);
     } catch (e) {
-      debugPrint('Error initializing video: $e');
+      AppLogger.w('Error initializing video: $e', tag: 'video');
       _initError = 'product.video_load_error'.tr();
       _controller = null;
     } finally {
@@ -221,7 +222,7 @@ class _VideoTile extends StatelessWidget {
           width: 110,
           height: 110,
           decoration: BoxDecoration(
-            color: Colors.black87,
+            color: DesignTokens.black.withValues(alpha: 0.87),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: DesignTokens.primary, width: 2),
             boxShadow: DesignTokens.shadowSm,
@@ -234,7 +235,7 @@ class _VideoTile extends StatelessWidget {
           left: 6,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: DesignTokens.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(8)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -262,7 +263,7 @@ class _VideoTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: DesignTokens.error.withValues(alpha: 0.9),
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4)],
+                  boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.2), blurRadius: 4)],
                 ),
                 child: const Icon(Icons.close_rounded, color: DesignTokens.textOnPrimary, size: 14),
               ),
@@ -278,7 +279,7 @@ class _VideoTile extends StatelessWidget {
       return const Center(child: ModernLoadingIndicator());
     }
     if (errorMessage != null || controller == null) {
-      return Center(child: Icon(Icons.broken_image_rounded, color: Colors.white.withValues(alpha: 0.5), size: 30));
+      return Center(child: Icon(Icons.broken_image_rounded, color: DesignTokens.white.withValues(alpha: 0.5), size: 30));
     }
     return FittedBox(
       fit: BoxFit.cover,

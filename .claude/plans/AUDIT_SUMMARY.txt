@@ -1,0 +1,130 @@
+================================================================================
+ORIGNA_GTA LEGACY CODE AUDIT — EXECUTIVE SUMMARY (2026-03-18)
+================================================================================
+
+AUDIT SCOPE: Full Flutter/Dart codebase analysis for Firebase remnants, 
+deprecated patterns, unused code, architectural violations, and tech debt.
+
+================================================================================
+CRITICAL FINDINGS — ACTION REQUIRED BEFORE LAUNCH
+================================================================================
+
+1. PATROL_TEST/ DIRECTORY (Firebase Dead Code)
+   Location: /origna_gta/patrol_test/
+   Size: 3,807 lines across 10 files
+   Issue: Contains 37 Firebase SDK references (imports, emulator setup, Firestore ops)
+   
+   Breakdown:
+   - common.dart (287 lines, 22 Firebase refs) — Firebase init code
+   - critical_workflows_test.dart (862 lines, 13 Firebase refs) — Firestore operations
+   - checkout_test.dart (244 lines, 2 Firebase refs) — Emulator comments
+   - 7 orphaned files (3,414 lines) — no Firebase but likely migration artifacts
+   
+   Impact: BLOCKING ISSUE — these tests are dead (replaced by e2e-agent-browser/)
+   Recommendation: DELETE entire directory
+   
+   Broken import detected:
+   - patrol_test/common.dart:28 imports 'firebase_options.dart' (FILE NOT FOUND)
+     This would fail if tests were ever run.
+
+2. FIREBASE-DEBUG.LOG (Stale Artifact)
+   Location: /firebase-debug.log
+   Size: 520 lines
+   Issue: Firebase CLI debug output from 2026-03-17 (yesterday)
+   Impact: Should never be in repo; adds noise to git history
+   Recommendation: Delete + add to .gitignore
+
+3. STATEFULWIDGET + RIVERPOD MIXING (7 Files)
+   Violation: MVVM architecture requires Riverpod-only state management
+   
+   Affected files:
+   ✗ lib/screens/chat_screen.dart
+   ✗ lib/screens/login_screen.dart
+   ✗ lib/screens/payment_screens.dart
+   ✗ lib/screens/productdetails_screen.dart
+   ✗ lib/screens/seller/seller_warehouses_screen.dart
+   ✗ lib/screens/subscription_screen.dart
+   ✗ lib/screens/terms_screen.dart
+   
+   Issue: Mix StatefulWidget with WidgetRef imports
+   Recommendation: Migrate to ConsumerWidget + Riverpod providers
+
+4. SETSTATE() IN ADMIN_PRODUCTS_TAB.DART
+   File: lib/features/admin/tabs/admin_products_tab.dart
+   Lines: 184, 208, 287
+   Issue: Direct setState() calls violate Riverpod + MVVM pattern
+   Code example: setState(() => _stockFilter = 'pending_review');
+   Recommendation: Migrate _stockFilter to a Riverpod provider
+
+================================================================================
+HIGH-SEVERITY FINDINGS (Sprint Next)
+================================================================================
+
+5. FUTUREBUILDER/DEPRECATED RIVERPOD PATTERNS (2 instances)
+   Files:
+   - lib/core/providers.dart:142 (FutureProvider for mutable state)
+   - lib/features/seller/orignabase_seller_registration_view_model.dart:12
+   
+   Note: 8 other FutureProvider instances are read-only (acceptable)
+   Recommendation: Consider converting to AsyncNotifier for consistency
+
+================================================================================
+MEDIUM-SEVERITY FINDINGS (Polish Phase)
+================================================================================
+
+6. HISTORICAL FIREBASE COMMENTS (4 locations, safe to update)
+   - lib/core/schema/schema_constants.dart:2050, 2053 (Auth field names)
+   - lib/utils/env_config.dart:18 (VPS deployment comment)
+   - lib/previews/_preview_theme.dart:37 (Migration note)
+   Recommendation: Update to reference OrignaBase instead
+
+================================================================================
+LOW-SEVERITY FINDINGS (Nice-to-Have)
+================================================================================
+
+7. LOGGING ISSUES
+   - 1x print() in lib/main_test.dart:96 (acceptable but use AppLogger)
+   - 13+ debugPrint() calls (acceptable, wrapped in kDebugMode)
+
+8. CODEBASE QUALITY (Clean)
+   ✓ No unused imports detected
+   ✓ No significant commented-out code blocks
+   ✓ No hardcoded magic strings (colors use DesignTokens)
+   ✓ All dependencies current (flutter_riverpod 2.6.1, freezed 3.2.5, etc.)
+   ✓ 384 private methods (reasonable for codebase size)
+
+================================================================================
+RISK ASSESSMENT
+================================================================================
+
+If patrol_test/ is not deleted:
+- Zero technical risk (tests are not executed)
+- Perception risk: Code review sees Firebase references → confusion about architecture
+- Maintenance burden: Dead code increases onboarding complexity
+
+If StatefulWidget + Riverpod mixing is not fixed:
+- Medium risk: Inconsistent state management can cause bugs
+- setState() + Riverpod can cause race conditions
+- Will cause problems when refactoring state logic
+
+================================================================================
+DELETION COMMANDS (Ready to Execute)
+================================================================================
+
+rm -rf origna_gta/patrol_test/
+rm firebase-debug.log
+echo "patrol_test/" >> .gitignore
+echo "firebase-debug.log" >> .gitignore
+
+Then commit:
+git add -A
+git commit -m "refactor: delete patrol_test Firebase-era dead code (replaced by e2e-agent-browser)"
+
+================================================================================
+FULL DETAILED REPORT
+================================================================================
+
+Location: .claude/plans/legacy_code_audit_2026-03-18.md
+Contains: File-by-file breakdown, line numbers, code samples, and prioritized recommendations
+
+================================================================================

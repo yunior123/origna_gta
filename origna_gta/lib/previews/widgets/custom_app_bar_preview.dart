@@ -1,5 +1,6 @@
 // coverage:ignore-file
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
@@ -32,7 +33,7 @@ Widget previewAppBarVariants() => previewScope(
       AppBarFactory.simple(title: 'Settings', subtitle: 'Manage your account'),
       AppBarFactory.custom(
         title: 'Search Results',
-        leading: const Icon(Icons.search, color: Colors.white),
+        leading: const Icon(Icons.search, color: DesignTokens.white),
         actions: [IconButton(icon: const Icon(Icons.filter_list), onPressed: () {}, tooltip: 'Filter')],
       ),
     ],
@@ -67,7 +68,7 @@ Widget previewAppBarVariantsLight() => previewScope(
       AppBarFactory.simple(title: 'Settings', subtitle: 'Manage your account'),
       AppBarFactory.custom(
         title: 'Search Results',
-        leading: const Icon(Icons.search, color: Colors.white),
+        leading: const Icon(Icons.search, color: DesignTokens.white),
         actions: [IconButton(icon: const Icon(Icons.filter_list), onPressed: () {}, tooltip: 'Filter')],
       ),
     ],

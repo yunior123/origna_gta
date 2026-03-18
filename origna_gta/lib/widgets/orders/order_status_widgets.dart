@@ -1,5 +1,7 @@
 // coverage:ignore-file
 import 'package:flutter/material.dart';
+import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
+export 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
 import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Documentation for EmptyOrdersCard
@@ -28,7 +30,7 @@ class EmptyOrdersCard extends StatelessWidget {
           const SizedBox(height: DesignTokens.spacing16),
           Text(
             filterLabel != null ? 'No $filterLabel orders' : 'No orders yet',
-            style: const TextStyle(color: Colors.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+            style: const TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: DesignTokens.spacing8),
           Text(
@@ -68,7 +70,7 @@ class InfoChip extends StatelessWidget {
   }
 }
 
-enum OrderStatus { confirmed, processing, shipped, delivered, cancelled, refunded, pending }
+// OrderStatus is imported from base_models.dart — single source of truth.
 
 /// Documentation for OrderSummaryCard
 class OrderSummaryCard extends StatelessWidget {
@@ -110,7 +112,7 @@ class OrderSummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     'Order #$orderId',
-                    style: const TextStyle(color: Colors.white, fontSize: DesignTokens.fontSizeMd, fontWeight: FontWeight.w700),
+                    style: const TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeMd, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -142,7 +144,7 @@ class OrderSummaryCard extends StatelessWidget {
               ),
               Text(
                 total,
-                style: const TextStyle(color: Colors.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
+                style: const TextStyle(color: DesignTokens.white, fontSize: DesignTokens.fontSizeLg, fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -249,7 +251,7 @@ class TimelineStep extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: isActive || isCompleted ? Colors.white : DesignTokens.textSecondary,
+                    color: isActive || isCompleted ? DesignTokens.white : DesignTokens.textSecondary,
                     fontSize: DesignTokens.fontSizeSm,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -269,34 +271,51 @@ class TimelineStep extends StatelessWidget {
   }
 }
 
+/// UI presentation extension for the canonical [OrderStatus] enum
+/// from base_models.dart — covers all backend statuses.
 extension OrderStatusX on OrderStatus {
   Color get color => switch (this) {
+    OrderStatus.pending => DesignTokens.textSecondary,
     OrderStatus.confirmed => DesignTokens.info,
     OrderStatus.processing => DesignTokens.primary,
     OrderStatus.shipped => DesignTokens.statusShipped,
+    OrderStatus.inTransit => DesignTokens.info,
     OrderStatus.delivered => DesignTokens.success,
     OrderStatus.cancelled => DesignTokens.error,
+    OrderStatus.failed => DesignTokens.error,
+    OrderStatus.expired => DesignTokens.textSecondary,
+    OrderStatus.disputed => DesignTokens.error,
     OrderStatus.refunded => DesignTokens.warning,
-    OrderStatus.pending => DesignTokens.textSecondary,
+    OrderStatus.partiallyRefunded => DesignTokens.warning,
   };
 
   IconData get icon => switch (this) {
+    OrderStatus.pending => Icons.hourglass_empty_rounded,
     OrderStatus.confirmed => Icons.check_circle_outline,
     OrderStatus.processing => Icons.autorenew_rounded,
     OrderStatus.shipped => Icons.local_shipping_outlined,
+    OrderStatus.inTransit => Icons.flight_takeoff_rounded,
     OrderStatus.delivered => Icons.inventory_2_outlined,
     OrderStatus.cancelled => Icons.cancel_outlined,
+    OrderStatus.failed => Icons.error_outline_rounded,
+    OrderStatus.expired => Icons.timer_off_rounded,
+    OrderStatus.disputed => Icons.gavel_rounded,
     OrderStatus.refunded => Icons.replay_rounded,
-    OrderStatus.pending => Icons.hourglass_empty_rounded,
+    OrderStatus.partiallyRefunded => Icons.replay_rounded,
   };
 
   String get label => switch (this) {
+    OrderStatus.pending => 'Pending',
     OrderStatus.confirmed => 'Confirmed',
     OrderStatus.processing => 'Processing',
     OrderStatus.shipped => 'Shipped',
+    OrderStatus.inTransit => 'In Transit',
     OrderStatus.delivered => 'Delivered',
     OrderStatus.cancelled => 'Cancelled',
+    OrderStatus.failed => 'Failed',
+    OrderStatus.expired => 'Expired',
+    OrderStatus.disputed => 'Disputed',
     OrderStatus.refunded => 'Refunded',
-    OrderStatus.pending => 'Pending',
+    OrderStatus.partiallyRefunded => 'Partially Refunded',
   };
 }

@@ -2,7 +2,7 @@
 // Migrated: delegates to OrignaBase for seller account status.
 // Screens continue using sellerAccountStatusProvider, refreshSellerStatusProvider.
 
-import 'package:flutter/foundation.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart' show userRepositoryProvider;
@@ -38,9 +38,7 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
         ? (data[ApiKeys.requirementsCurrentlyDue] as List<dynamic>).map((e) => e.toString()).toList()
         : <String>[];
 
-    if (kDebugMode) {
-      debugPrint('Stripe Status - charges: $chargesEnabled, payouts: $payoutsEnabled');
-    }
+    AppLogger.d('Stripe Status - charges: $chargesEnabled, payouts: $payoutsEnabled', tag: 'seller');
 
     return SellerAccountStatus(
       isSeller: true,
@@ -50,9 +48,7 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
       pendingRequirements: requirementsDue,
     );
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('Error syncing status from backend: $e');
-    }
+    AppLogger.d('Error syncing status from backend: $e', tag: 'seller');
     rethrow;
   }
 });

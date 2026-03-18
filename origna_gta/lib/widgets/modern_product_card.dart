@@ -100,7 +100,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                   namedArgs: {
                     'name': widget.productName,
                     'price': '\$${widget.price.toStringAsFixed(2)}',
-                    'originalPrice': '\$${widget.compareAtPrice!.toStringAsFixed(2)}',
+                    'originalPrice': '\$${(widget.compareAtPrice ?? 0).toStringAsFixed(2)}',
                     'rating': widget.rating.toStringAsFixed(1),
                   },
                 )
@@ -113,7 +113,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
               decoration: BoxDecoration(
                 color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : DesignTokens.surface,
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+                border: Border.all(color: DesignTokens.white.withValues(alpha: 0.1), width: 1),
                 boxShadow: DesignTokens.shadowMd,
               ),
               child: ClipRRect(
@@ -138,15 +138,15 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                             child: widget.imageUrl.isNotEmpty
                                 ? ColorFiltered(
                                     colorFilter: widget.isOutOfStock
-                                        ? const ColorFilter.mode(Colors.grey, BlendMode.saturation)
-                                        : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+                                        ? const ColorFilter.mode(DesignTokens.textSecondary, BlendMode.saturation)
+                                        : const ColorFilter.mode(DesignTokens.transparent, BlendMode.multiply),
                                     child: CachedNetworkImage(
                                       imageUrl: widget.imageUrl,
                                       fit: BoxFit.cover,
                                       placeholder: (context, url) => Shimmer.fromColors(
                                         baseColor: DesignTokens.outlineVariant,
                                         highlightColor: DesignTokens.surface,
-                                        child: Container(color: Colors.white),
+                                        child: Container(color: DesignTokens.white),
                                       ),
                                       errorWidget: (context, url, error) => Center(
                                         child: Container(
@@ -179,18 +179,18 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                           if (widget.isOutOfStock)
                             Positioned.fill(
                               child: Container(
-                                color: Colors.black.withValues(alpha: 0.3),
+                                color: DesignTokens.black.withValues(alpha: 0.3),
                                 child: Center(
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.7),
+                                      color: DesignTokens.black.withValues(alpha: 0.7),
                                       borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                      border: Border.all(color: DesignTokens.white.withValues(alpha: 0.2)),
                                     ),
                                     child: Text(
                                       'product.out_of_stock_label'.tr(),
-                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+                                      style: const TextStyle(color: DesignTokens.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2),
                                     ),
                                   ),
                                 ),
@@ -271,9 +271,9 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.primary),
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      if (widget.compareAtPrice != null)
+                                      if (widget.compareAtPrice case final compareAt?)
                                         Text(
-                                          '\$${widget.compareAtPrice!.toStringAsFixed(2)}',
+                                          '\$${compareAt.toStringAsFixed(2)}',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w500,
@@ -299,7 +299,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                           gradient: DesignTokens.primaryGradient,
                                           borderRadius: BorderRadius.circular(DesignTokens.radius8),
                                         ),
-                                        child: const Icon(Icons.add, size: 20, color: Colors.white),
+                                        child: const Icon(Icons.add, size: 20, color: DesignTokens.white),
                                       ),
                                     ),
                                   ),
@@ -345,8 +345,8 @@ class _TrendingBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final isHot = score >= 50;
     final label = isHot ? 'product.trending_hot'.tr() : 'product.trending_rising'.tr();
-    final colors = isHot ? [const Color(0xFFFF6B35), const Color(0xFFFF3D00)] : [const Color(0xFF00BFA5), const Color(0xFF1DE9B6)];
-    final glowColor = isHot ? const Color(0xFFFF6B35) : const Color(0xFF00BFA5);
+    final colors = isHot ? [DesignTokens.hotStart, DesignTokens.hotEnd] : [DesignTokens.trendingStart, DesignTokens.trendingEnd];
+    final glowColor = isHot ? DesignTokens.hotStart : DesignTokens.trendingStart;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 5 : 7, vertical: isCompact ? 2 : 3),
@@ -357,7 +357,7 @@ class _TrendingBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: isCompact ? 9 : 10, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.3),
+        style: TextStyle(fontSize: isCompact ? 9 : 10, fontWeight: FontWeight.w800, color: DesignTokens.white, letterSpacing: 0.3),
       ),
     );
   }

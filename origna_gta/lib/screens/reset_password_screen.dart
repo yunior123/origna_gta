@@ -39,7 +39,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       return Container(
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: DesignTokens.transparent,
           appBar: AppBarFactory.simple(title: 'auth.reset_password_title'.tr()),
           body: Center(
             child: Padding(
@@ -51,7 +51,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   const SizedBox(height: DesignTokens.spacing24),
                   Text(
                     'auth.reset_success_title'.tr(),
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: isDark ? Colors.white : DesignTokens.textPrimary),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: DesignTokens.spacing16),
@@ -77,7 +77,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         appBar: AppBarFactory.simple(title: 'auth.reset_password_title'.tr()),
         body: Center(
           child: SingleChildScrollView(
@@ -92,7 +92,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     'auth.create_new_password'.tr(),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : DesignTokens.textPrimary,
+                      color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                     ),
                     textAlign: TextAlign.center,
                   ),

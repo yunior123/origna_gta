@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/models/enum_extensions.dart';
+import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 

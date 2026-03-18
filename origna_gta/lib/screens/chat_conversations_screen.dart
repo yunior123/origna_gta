@@ -29,7 +29,7 @@ class ChatConversationsScreen extends ConsumerWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         appBar: AppBarFactory.simple(
           title: 'chat.inbox_title'.tr(),
           subtitle: 'chat.inbox_subtitle'.tr(),
@@ -224,7 +224,7 @@ class _ChatThreadTile extends StatelessWidget {
                             child: Text(
                               unreadCount > 99 ? '99+' : '$unreadCount',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: DesignTokens.white,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -287,6 +287,8 @@ class _ProductAvatar extends StatelessWidget {
         child: imageUrl != null && imageUrl!.isNotEmpty
             ? CachedNetworkImage(
                 imageUrl: imageUrl!,
+                width: 48,
+                height: 48,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => _fallbackIcon(),
                 errorWidget: (context, url, error) => _fallbackIcon(),
@@ -299,7 +301,7 @@ class _ProductAvatar extends StatelessWidget {
   Widget _fallbackIcon() {
     return ShaderMask(
       shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-      child: const Icon(Icons.inventory_2_outlined, size: 22, color: Colors.white),
+      child: const Icon(Icons.inventory_2_outlined, size: 22, color: DesignTokens.white),
     );
   }
 }

@@ -310,7 +310,7 @@ class _AdminOrderCard extends StatelessWidget {
                           width: 16,
                           height: 16,
                           child: ModernLoadingIndicator.small(
-                            color: Colors.white,
+                            color: DesignTokens.white,
                           ),
                         )
                       : Text('orders.issue_refund'.tr()),
@@ -500,7 +500,7 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
             duration: DesignTokens.durationFast,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? DesignTokens.primary : Colors.white,
+              color: isSelected ? DesignTokens.primary : DesignTokens.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isSelected
@@ -520,7 +520,7 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
             child: Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : DesignTokens.textSecondary,
+                color: isSelected ? DesignTokens.white : DesignTokens.textSecondary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 fontSize: 13,
               ),

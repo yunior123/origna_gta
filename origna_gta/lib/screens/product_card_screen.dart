@@ -93,12 +93,12 @@ class _ProductCardState extends ConsumerState<ProductCard>
         },
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? DesignTokens.darkCard : Colors.white,
+            color: isDark ? DesignTokens.darkCard : DesignTokens.white,
             borderRadius: BorderRadius.circular(isCompact ? 12 : 16),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : Colors.transparent,
+                  ? DesignTokens.white.withValues(alpha: 0.06)
+                  : DesignTokens.transparent,
             ),
             boxShadow: [
               BoxShadow(
@@ -109,7 +109,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                 offset: const Offset(0, 4),
               ),
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                color: DesignTokens.black.withValues(alpha: isDark ? 0.2 : 0.04),
                 blurRadius: 4,
                 offset: const Offset(0, 1),
               ),
@@ -148,11 +148,11 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                           child: ColorFiltered(
                                             colorFilter: isOutOfStock
                                                 ? const ColorFilter.mode(
-                                                    Colors.grey,
+                                                    DesignTokens.textSecondary,
                                                     BlendMode.saturation,
                                                   )
                                                 : const ColorFilter.mode(
-                                                    Colors.transparent,
+                                                    DesignTokens.transparent,
                                                     BlendMode.multiply,
                                                   ),
                                             child: CachedNetworkImage(
@@ -170,7 +170,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                                     highlightColor:
                                                         DesignTokens.surface,
                                                     child: Container(
-                                                      color: Colors.white,
+                                                      color: DesignTokens.white,
                                                     ),
                                                   ),
                                               errorWidget:
@@ -198,7 +198,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                                       child: Icon(
                                                         Icons.camera_alt_outlined,
                                                         size: isCompact ? 24 : 36,
-                                                        color: Colors.white
+                                                        color: DesignTokens.white
                                                             .withValues(
                                                               alpha: 0.8,
                                                             ),
@@ -213,7 +213,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                     if (isOutOfStock)
                                       Positioned.fill(
                                         child: Container(
-                                          color: Colors.black.withValues(
+                                          color: DesignTokens.black.withValues(
                                             alpha: 0.3,
                                           ),
                                           child: Center(
@@ -224,13 +224,13 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                                     vertical: 6,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withValues(
+                                                color: DesignTokens.black.withValues(
                                                   alpha: 0.7,
                                                 ),
                                                 borderRadius:
                                                     BorderRadius.circular(20),
                                                 border: Border.all(
-                                                  color: Colors.white
+                                                  color: DesignTokens.white
                                                       .withValues(alpha: 0.2),
                                                 ),
                                               ),
@@ -238,7 +238,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                                 'product.out_of_stock_label'
                                                     .tr(),
                                                 style: const TextStyle(
-                                                  color: Colors.white,
+                                                  color: DesignTokens.white,
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w900,
                                                   letterSpacing: 1.2,
@@ -258,7 +258,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                             vertical: isCompact ? 2 : 4,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withValues(
+                                            color: DesignTokens.black.withValues(
                                               alpha: 0.5,
                                             ),
                                             borderRadius: BorderRadius.circular(
@@ -268,7 +268,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                           child: Text(
                                             '${_currentImageIndex + 1}/${imageUrls.length}',
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: DesignTokens.white,
                                               fontSize: isCompact ? 10 : 12,
                                               fontWeight: FontWeight.w500,
                                             ),
@@ -292,7 +292,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                     child: Icon(
                                       Icons.camera_alt_outlined,
                                       size: isCompact ? 24 : 36,
-                                      color: Colors.white.withValues(
+                                      color: DesignTokens.white.withValues(
                                         alpha: 0.8,
                                       ),
                                     ),
@@ -331,7 +331,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                           end: 1.3,
                         ).animate(_controller),
                         child: Material(
-                          color: Colors.white,
+                          color: DesignTokens.white,
                           shape: const CircleBorder(),
                           elevation: 4,
                           child: Semantics(
@@ -382,7 +382,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                             fontSize: titleFontSize,
                             height: 1.25,
                             color: isDark
-                                ? Colors.white
+                                ? DesignTokens.white
                                 : DesignTokens.textPrimary,
                           ),
                           strutStyle: StrutStyle(
@@ -496,10 +496,10 @@ class _ProductCardState extends ConsumerState<ProductCard>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (widget.product.compareAtPrice != null &&
-                                    widget.product.compareAtPrice! > price)
+                                if (widget.product.compareAtPrice case final compareAt?
+                                    when compareAt > price)
                                   Text(
-                                    '\$${widget.product.compareAtPrice!.toStringAsFixed(2)}',
+                                    '\$${compareAt.toStringAsFixed(2)}',
                                     style: TextStyle(
                                       fontSize: priceFontSize - 2,
                                       color: DesignTokens.textSecondary,
@@ -513,9 +513,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                     fontWeight: FontWeight.bold,
                                     fontSize: priceFontSize,
                                     color:
-                                        widget.product.compareAtPrice != null &&
-                                            widget.product.compareAtPrice! >
-                                                price
+                                        (widget.product.compareAtPrice ?? 0) > price
                                         ? DesignTokens.error
                                         : DesignTokens.primary,
                                   ),
@@ -580,7 +578,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                                     ),
                                     child: Icon(
                                       Icons.add_shopping_cart,
-                                      color: Colors.white,
+                                      color: DesignTokens.white,
                                       size: iconSize,
                                     ),
                                   ),
@@ -599,7 +597,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
                     border: Border(
                       top: BorderSide(
                         color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
+                            ? DesignTokens.white.withValues(alpha: 0.08)
                             : DesignTokens.outlineVariant,
                       ),
                     ),
@@ -607,19 +605,23 @@ class _ProductCardState extends ConsumerState<ProductCard>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      IconButton(
-                        key: Key('product_edit_button_${widget.product.name}'),
-                        icon: Icon(
-                          Icons.edit,
-                          color: DesignTokens.primary,
-                          size: iconSize,
-                        ),
-                        onPressed: () => _editProduct(context),
-                        tooltip: 'product.edit_product'.tr(),
-                        padding: EdgeInsets.all(isCompact ? 4 : 8),
-                        constraints: BoxConstraints(
-                          minWidth: isCompact ? 32 : 48,
-                          minHeight: isCompact ? 32 : 48,
+                      Semantics(
+                        button: true,
+                        label: 'btn-edit-product-${widget.product.name}',
+                        child: IconButton(
+                          key: Key('product_edit_button_${widget.product.name}'),
+                          icon: Icon(
+                            Icons.edit,
+                            color: DesignTokens.primary,
+                            size: iconSize,
+                          ),
+                          onPressed: () => _editProduct(context),
+                          tooltip: 'product.edit_product'.tr(),
+                          padding: EdgeInsets.all(isCompact ? 4 : 8),
+                          constraints: BoxConstraints(
+                            minWidth: isCompact ? 32 : 48,
+                            minHeight: isCompact ? 32 : 48,
+                          ),
                         ),
                       ),
                       // Q&A badge: show unanswered count for seller/admin
@@ -629,18 +631,22 @@ class _ProductCardState extends ConsumerState<ProductCard>
                         iconSize: iconSize,
                         isCompact: isCompact,
                       ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete,
-                          color: DesignTokens.error,
-                          size: iconSize,
-                        ),
-                        onPressed: () => _showDeleteConfirmation(context),
-                        tooltip: 'product.delete_product'.tr(),
-                        padding: EdgeInsets.all(isCompact ? 4 : 8),
-                        constraints: BoxConstraints(
-                          minWidth: isCompact ? 32 : 48,
-                          minHeight: isCompact ? 32 : 48,
+                      Semantics(
+                        button: true,
+                        label: 'btn-delete-product-${widget.product.name}',
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.delete,
+                            color: DesignTokens.error,
+                            size: iconSize,
+                          ),
+                          onPressed: () => _showDeleteConfirmation(context),
+                          tooltip: 'product.delete_product'.tr(),
+                          padding: EdgeInsets.all(isCompact ? 4 : 8),
+                          constraints: BoxConstraints(
+                            minWidth: isCompact ? 32 : 48,
+                            minHeight: isCompact ? 32 : 48,
+                          ),
                         ),
                       ),
                     ],
@@ -723,7 +729,7 @@ class _ProductCardState extends ConsumerState<ProductCard>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: DesignTokens.error,
-              foregroundColor: Colors.white,
+              foregroundColor: DesignTokens.white,
             ),
             child: Text('common.delete'.tr()),
           ),
@@ -787,17 +793,20 @@ class _QaBadgeButton extends ConsumerWidget {
         alignment: Alignment.topRight,
         clipBehavior: Clip.none,
         children: [
-          IconButton(
-            icon: Icon(
-              Icons.help_outline,
-              color: count > 0
-                  ? DesignTokens.warning
-                  : DesignTokens.textSecondary,
-              size: iconSize,
-            ),
-            tooltip: count > 0
-                ? 'qa.pending_questions'.tr(namedArgs: {'count': '$count'})
-                : 'qa.no_pending_questions'.tr(),
+          Semantics(
+            button: true,
+            label: 'btn-qa-badge',
+            child: IconButton(
+              icon: Icon(
+                Icons.help_outline,
+                color: count > 0
+                    ? DesignTokens.warning
+                    : DesignTokens.textSecondary,
+                size: iconSize,
+              ),
+              tooltip: count > 0
+                  ? 'qa.pending_questions'.tr(namedArgs: {'count': '$count'})
+                  : 'qa.no_pending_questions'.tr(),
             onPressed: () => Navigator.pushNamed(
               context,
               AppRoutes.productDetails,
@@ -806,10 +815,11 @@ class _QaBadgeButton extends ConsumerWidget {
                 product: product.toJson(),
               ),
             ),
-            padding: EdgeInsets.all(isCompact ? 4 : 8),
-            constraints: BoxConstraints(
-              minWidth: isCompact ? 32 : 48,
-              minHeight: isCompact ? 32 : 48,
+              padding: EdgeInsets.all(isCompact ? 4 : 8),
+              constraints: BoxConstraints(
+                minWidth: isCompact ? 32 : 48,
+                minHeight: isCompact ? 32 : 48,
+              ),
             ),
           ),
           if (count > 0)
@@ -826,7 +836,7 @@ class _QaBadgeButton extends ConsumerWidget {
                 child: Text(
                   count > 9 ? '9+' : '$count',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: DesignTokens.white,
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
                   ),
@@ -929,9 +939,9 @@ class _RankBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (colors, medal) = switch (rank) {
-      1 => ([const Color(0xFFFFD700), const Color(0xFFFFA000)], '🥇'),
-      2 => ([const Color(0xFFB0BEC5), const Color(0xFF78909C)], '🥈'),
-      _ => ([const Color(0xFFCD7F32), const Color(0xFF8B4513)], '🥉'),
+      1 => ([DesignTokens.goldPrimary, DesignTokens.goldDark], '🥇'),
+      2 => ([DesignTokens.silverPrimary, DesignTokens.silverDark], '🥈'),
+      _ => ([DesignTokens.bronzePrimary, DesignTokens.bronzeDark], '🥉'),
     };
     return Container(
       padding: EdgeInsets.symmetric(
@@ -954,7 +964,7 @@ class _RankBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: isCompact ? 9 : 10,
           fontWeight: FontWeight.w800,
-          color: Colors.white,
+          color: DesignTokens.white,
           letterSpacing: 0.3,
         ),
       ),
@@ -976,7 +986,7 @@ class _TrendingBadge extends StatelessWidget {
         ? 'product.trending_hot'.tr()
         : 'product.trending_rising'.tr();
     final colors = isHot
-        ? [DesignTokens.tertiary, const Color(0xFFFF3D00)]
+        ? [DesignTokens.tertiary, DesignTokens.hotEnd]
         : [DesignTokens.statusInTransit, DesignTokens.accent];
     final glowColor = isHot
         ? DesignTokens.tertiary
@@ -1003,7 +1013,7 @@ class _TrendingBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: isCompact ? 9 : 10,
           fontWeight: FontWeight.w800,
-          color: Colors.white,
+          color: DesignTokens.white,
           letterSpacing: 0.3,
         ),
       ),

@@ -73,7 +73,7 @@ Widget previewRatingAllVariants() => previewGrid(
         Text(
           'Perfect (120 reviews)',
           style: TextStyle(
-            color: Colors.white70,
+            color: DesignTokens.white.withValues(alpha: 0.7),
             fontSize: 11,
             fontWeight: FontWeight.w600,
           ),
@@ -88,7 +88,7 @@ Widget previewRatingAllVariants() => previewGrid(
         Text(
           'Mixed (138 reviews)',
           style: TextStyle(
-            color: Colors.white70,
+            color: DesignTokens.white.withValues(alpha: 0.7),
             fontSize: 11,
             fontWeight: FontWeight.w600,
           ),
@@ -103,7 +103,7 @@ Widget previewRatingAllVariants() => previewGrid(
         Text(
           'Low (100 reviews)',
           style: TextStyle(
-            color: Colors.white70,
+            color: DesignTokens.white.withValues(alpha: 0.7),
             fontSize: 11,
             fontWeight: FontWeight.w600,
           ),
@@ -118,7 +118,7 @@ Widget previewRatingAllVariants() => previewGrid(
         Text(
           'No reviews yet',
           style: TextStyle(
-            color: Colors.white70,
+            color: DesignTokens.white.withValues(alpha: 0.7),
             fontSize: 11,
             fontWeight: FontWeight.w600,
           ),

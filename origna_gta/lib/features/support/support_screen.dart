@@ -177,7 +177,7 @@ class _CategoryPicker extends StatelessWidget {
                   gradient: DesignTokens.primaryGradient,
                   borderRadius: BorderRadius.circular(26),
                 ),
-                child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 28),
+                child: const Icon(Icons.support_agent_rounded, color: DesignTokens.white, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -251,14 +251,14 @@ class _CategoryTile extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
+            color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.white,
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
             border: Border.all(
               color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                color: DesignTokens.black.withValues(alpha: isDark ? 0.25 : 0.04),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -348,7 +348,7 @@ class _ChatBubble extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
+          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
         ),
         child: Column(
           crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -367,7 +367,7 @@ class _ChatBubble extends StatelessWidget {
                         gradient: DesignTokens.primaryGradient,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 14),
+                      child: const Icon(Icons.support_agent_rounded, color: DesignTokens.white, size: 14),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -400,7 +400,7 @@ class _ChatBubble extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: DesignTokens.black.withValues(alpha: 0.06),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -461,7 +461,7 @@ class _MessageInput extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurface : Colors.white,
+        color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
         border: Border(
           top: BorderSide(
             color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
@@ -500,7 +500,7 @@ class _MessageInput extends StatelessWidget {
                   ),
                   child: isLoading
                       ? const ModernLoadingIndicator.small()
-                      : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                      : const Icon(Icons.send_rounded, color: DesignTokens.white, size: 20),
                 ),
               ),
             ),

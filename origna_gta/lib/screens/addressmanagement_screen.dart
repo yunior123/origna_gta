@@ -33,7 +33,7 @@ class AddressManagementScreen extends ConsumerWidget {
           SnackBar(
             content: Text(
               state.error.toString(),
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: DesignTokens.white),
             ),
             backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
@@ -55,18 +55,22 @@ class AddressManagementScreen extends ConsumerWidget {
           title: 'profile.addresses'.tr(),
           subtitle: 'address.count_subtitle'.tr(namedArgs: {'count': addressCount.toString(), 'max': '10'}),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.add, color: Colors.white),
-              tooltip: atAddressLimit
-                  ? 'address.limit_reached'.tr()
-                  : 'address.add_address'.tr(),
-              onPressed: atAddressLimit
-                  ? null
-                  : () => Navigator.pushNamed(context, AppRoutes.addEditAddress),
+            Semantics(
+              button: true,
+              label: 'btn-add-address',
+              child: IconButton(
+                icon: const Icon(Icons.add, color: DesignTokens.white),
+                tooltip: atAddressLimit
+                    ? 'address.limit_reached'.tr()
+                    : 'address.add_address'.tr(),
+                onPressed: atAddressLimit
+                    ? null
+                    : () => Navigator.pushNamed(context, AppRoutes.addEditAddress),
+              ),
             ),
           ],
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: Stack(
           children: [
             addressesAsync.when(
@@ -79,7 +83,7 @@ class AddressManagementScreen extends ConsumerWidget {
                           DesignTokens.primaryGradient.createShader(bounds),
                       child: const ModernLoadingIndicator(
                         strokeWidth: 3,
-                        color: Colors.white,
+                        color: DesignTokens.white,
                         centered: false,
                       ),
                     ),
@@ -153,7 +157,7 @@ class AddressManagementScreen extends ConsumerWidget {
             ),
             if (viewModelState.isLoading)
               Container(
-                color: Colors.black.withValues(alpha: 0.3),
+                color: DesignTokens.black.withValues(alpha: 0.3),
                 child: const Center(
                   child: ModernLoadingIndicator(
                     strokeWidth: 4,
@@ -178,13 +182,13 @@ class AddressManagementScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: isDark
             ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5)
-            : Colors.white,
+            : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius20),
         border: Border.all(
           color: address.isDefault
               ? DesignTokens.primary
               : isDark
-              ? Colors.white.withValues(alpha: 0.08)
+              ? DesignTokens.white.withValues(alpha: 0.08)
               : DesignTokens.primary.withValues(alpha: 0.15),
           width: address.isDefault ? 2.0 : 1.5,
         ),
@@ -195,7 +199,7 @@ class AddressManagementScreen extends ConsumerWidget {
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+            color: DesignTokens.black.withValues(alpha: isDark ? 0.3 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -282,7 +286,7 @@ class AddressManagementScreen extends ConsumerWidget {
               PopupMenuButton<String>(
                 icon: Icon(
                   Icons.more_vert,
-                  color: isDark ? Colors.white70 : Colors.black54,
+                  color: isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.black.withValues(alpha: 0.54),
                 ),
                 onSelected: (value) async {
                   HapticFeedback.lightImpact();
@@ -393,7 +397,7 @@ class AddressManagementScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(DesignTokens.spacing16),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
+                  ? DesignTokens.white.withValues(alpha: 0.04)
                   : DesignTokens.surfaceVariant,
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
             ),
@@ -427,7 +431,7 @@ class AddressManagementScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(DesignTokens.spacing12),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.04)
+                    ? DesignTokens.white.withValues(alpha: 0.04)
                     : DesignTokens.surfaceVariant,
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
               ),

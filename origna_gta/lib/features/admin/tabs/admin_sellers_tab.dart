@@ -222,7 +222,7 @@ class _SellerCard extends ConsumerWidget {
                           ? name[0].toUpperCase()
                           : 'admin.users.unknown_user'.tr()[0],
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: DesignTokens.white,
                         fontWeight: FontWeight.w700,
                         fontSize: 18,
                       ),
@@ -571,8 +571,8 @@ class _SellerProductsScreen extends ConsumerWidget {
             namedArgs: {'name': sellerName},
           ),
         ),
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+        backgroundColor: DesignTokens.transparent,
+        foregroundColor: DesignTokens.white,
       ),
       body: ref
           .watch(adminProductsProvider(sellerId))

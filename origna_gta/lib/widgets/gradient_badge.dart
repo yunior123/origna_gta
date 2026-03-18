@@ -12,7 +12,7 @@ class GradientBadge extends StatelessWidget {
     super.key,
     required this.label,
     this.gradient,
-    this.textColor = Colors.white,
+    this.textColor = DesignTokens.white,
     this.fontSize = 11.0,
     this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
   });

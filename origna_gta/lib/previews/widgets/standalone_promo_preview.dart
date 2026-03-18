@@ -1,5 +1,6 @@
 // coverage:ignore-file
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/widgets/promotions/standalone_promo_widget.dart';
 
@@ -8,7 +9,7 @@ Widget previewPromoBannerDark() => MaterialApp(
   debugShowCheckedModeBanner: false,
   theme: ThemeData.dark(),
   home: const Scaffold(
-    backgroundColor: Colors.black,
+    backgroundColor: DesignTokens.black,
     body: Center(
       child: Padding(
         padding: EdgeInsets.all(16.0),

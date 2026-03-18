@@ -53,7 +53,7 @@ class CartScreen extends ConsumerWidget {
     return Scaffold(
       key: const Key('cart_screen_title'),
       appBar: AppBarFactory.simple(title: 'cart.your_cart'.tr()),
-      backgroundColor: Colors.transparent,
+      backgroundColor: DesignTokens.transparent,
       body: Container(
         decoration: BoxDecoration(
           gradient: DesignTokens.backgroundGradient(isDark: isDark),
@@ -92,7 +92,7 @@ class CartScreen extends ConsumerWidget {
                             child: ModernLoadingIndicator(
                               size: 32,
                               strokeWidth: 3,
-                              color: Colors.white,
+                              color: DesignTokens.white,
                               centered: false,
                             ),
                           ),
@@ -263,7 +263,7 @@ class _CartItemWidget extends ConsumerWidget {
           padding: const EdgeInsets.all(DesignTokens.spacing12),
           height: 104,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: DesignTokens.white,
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
           ),
           child: Row(
@@ -272,7 +272,7 @@ class _CartItemWidget extends ConsumerWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: DesignTokens.white,
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
                 ),
               ),
@@ -286,7 +286,7 @@ class _CartItemWidget extends ConsumerWidget {
                       width: 120,
                       height: 14,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: DesignTokens.white,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -295,7 +295,7 @@ class _CartItemWidget extends ConsumerWidget {
                       width: 60,
                       height: 14,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: DesignTokens.white,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -385,7 +385,7 @@ class _CartSummary extends ConsumerWidget {
     );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.06)
+        ? DesignTokens.white.withValues(alpha: 0.06)
         : DesignTokens.outline.withValues(alpha: 0.3);
 
     return isEmpty.when(
@@ -400,7 +400,7 @@ class _CartSummary extends ConsumerWidget {
             vertical: DesignTokens.spacing20,
           ),
           decoration: BoxDecoration(
-            color: isDark ? DesignTokens.darkCard : Colors.white,
+            color: isDark ? DesignTokens.darkCard : DesignTokens.white,
             border: isSidebar
                 ? Border.all(color: borderColor)
                 : Border(top: BorderSide(color: borderColor)),
@@ -478,7 +478,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : DesignTokens.textPrimary,
+                        color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                       ),
                     );
                   },
@@ -519,7 +519,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.w900,
-                              color: Colors.white,
+                              color: DesignTokens.white,
                             ),
                           ),
                         ),
@@ -690,7 +690,7 @@ class _CartTotalDisplay extends ConsumerWidget {
           // Estimated Total row (subtotal + service fee [waived for premium] + estimated tax)
           Consumer(
             builder: (context, ref, _) {
-              final profileProvince = ref.watch(userProfileProvider).valueOrNull?.address?.state;
+              final profileProvince = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.address?.state));
               final province = (profileProvince == null || profileProvince.trim().isEmpty)
                   ? ProvinceCodeValues.ontario
                   : profileProvince.trim();
@@ -724,7 +724,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: isDark ? Colors.white : DesignTokens.textPrimary,
+                                color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                               ),
                             ),
                           ),
@@ -763,13 +763,13 @@ class _CartTotalDisplay extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
+                    ? DesignTokens.white.withValues(alpha: 0.05)
                     : DesignTokens.surface,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: deliveryInstructions.isNotEmpty
                       ? DesignTokens.primary.withValues(alpha: 0.3)
-                      : Colors.transparent,
+                      : DesignTokens.transparent,
                 ),
               ),
               child: Row(
@@ -791,7 +791,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white : DesignTokens.textPrimary,
+                            color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                           ),
                         ),
                         if (deliveryInstructions.isNotEmpty)
@@ -840,10 +840,10 @@ class _CartTotalDisplay extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: DesignTokens.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: isDark ? DesignTokens.darkCard : Colors.white,
+          color: isDark ? DesignTokens.darkCard : DesignTokens.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
@@ -876,7 +876,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : DesignTokens.textPrimary,
+                      color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                     ),
                   ),
                 ),
@@ -913,7 +913,7 @@ class _CartTotalDisplay extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? DesignTokens.darkCard : Colors.white,
+        backgroundColor: isDark ? DesignTokens.darkCard : DesignTokens.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -1060,7 +1060,7 @@ class _FreeShippingBar extends ConsumerWidget {
                   fontWeight: FontWeight.w600,
                   color: qualified
                       ? DesignTokens.success
-                      : (isDark ? Colors.white : DesignTokens.textPrimary),
+                      : (isDark ? DesignTokens.white : DesignTokens.textPrimary),
                 ),
               ),
               const SizedBox(height: 8),
@@ -1071,7 +1071,7 @@ class _FreeShippingBar extends ConsumerWidget {
                   value: progress,
                   minHeight: 6,
                   backgroundColor: isDark
-                      ? Colors.white.withValues(alpha: 0.10)
+                      ? DesignTokens.white.withValues(alpha: 0.10)
                       : DesignTokens.outline.withValues(alpha: 0.4),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     qualified ? DesignTokens.success : DesignTokens.primary,

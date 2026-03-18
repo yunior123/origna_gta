@@ -11,7 +11,7 @@ import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
-import 'package:origna_gta/utils/constants.dart' hide PaymentStatus, ShippingApprovalStatus, OrderStatus;
+import 'package:origna_gta/utils/constants.dart' hide PaymentStatus, ShippingApprovalStatus;
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -27,7 +27,7 @@ class SellerOrdersScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final isSuspended = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.suspended)) ?? false;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (user == null) {
@@ -35,18 +35,18 @@ class SellerOrdersScreen extends ConsumerWidget {
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: Scaffold(
           appBar: AppBarFactory.simple(title: 'seller.manage_orders'.tr()),
-          backgroundColor: Colors.transparent,
+          backgroundColor: DesignTokens.transparent,
           body: AnimatedEmptyState(icon: Icons.login_rounded, title: 'seller.login_required'.tr(), subtitle: 'seller.login_to_view'.tr()),
         ),
       );
     }
 
-    if (userProfile?.suspended == true) {
+    if (isSuspended) {
       return Container(
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: Scaffold(
           appBar: AppBarFactory.simple(title: 'seller.manage_orders'.tr()),
-          backgroundColor: Colors.transparent,
+          backgroundColor: DesignTokens.transparent,
           body: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
@@ -82,8 +82,9 @@ class SellerOrdersScreen extends ConsumerWidget {
           title: 'seller.manage_orders'.tr(),
           actions: [
             _UnansweredQaBadge(sellerId: user.uid),
-            Tooltip(
-              message: 'seller_integration.title'.tr(),
+            Semantics(
+              button: true,
+              label: 'btn-seller-integration',
               child: IconButton(
                 icon: const Icon(Icons.integration_instructions_outlined),
                 tooltip: 'seller_integration.title'.tr(),
@@ -92,19 +93,19 @@ class SellerOrdersScreen extends ConsumerWidget {
             ),
           ],
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: ordersAsync.when(
           loading: () => Center(
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                color: isDark ? DesignTokens.white.withValues(alpha: 0.05) : DesignTokens.white,
                 shape: BoxShape.circle,
                 boxShadow: DesignTokens.shadowMd,
               ),
               child: ShaderMask(
                 shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
+                child: const ModernLoadingIndicator(strokeWidth: 3, color: DesignTokens.white, centered: false),
               ),
             ),
           ),
@@ -208,14 +209,14 @@ class _EarningsSummaryCard extends StatelessWidget {
               children: [
                 Text(
                   'seller.total_earnings'.tr(),
-                  style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '\$${totalRevenue.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                  style: const TextStyle(color: DesignTokens.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5),
                 ),
-                Text('seller.after_platform_fee'.tr(), style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                Text('seller.after_platform_fee'.tr(), style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 10)),
               ],
             ),
           ),
@@ -253,12 +254,12 @@ class _SellerOrderCard extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: DesignTokens.spacing16),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
+        color: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outlineVariant),
+        border: Border.all(color: isDark ? DesignTokens.white.withValues(alpha: 0.06) : DesignTokens.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+            color: DesignTokens.black.withValues(alpha: isDark ? 0.2 : 0.05),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -300,7 +301,7 @@ class _SellerOrderCard extends ConsumerWidget {
                     message: 'Gross: \$${sellerTotal.toStringAsFixed(2)} − \$${platformFee.toStringAsFixed(2)} fee',
                     child: Text(
                       '\$${sellerNet.toStringAsFixed(2)}',
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14),
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.white, fontSize: 14),
                     ),
                   ),
                 ),
@@ -310,7 +311,7 @@ class _SellerOrderCard extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
+                color: isDark ? DesignTokens.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
                 borderRadius: BorderRadius.circular(DesignTokens.radius8),
               ),
               child: Row(
@@ -326,13 +327,13 @@ class _SellerOrderCard extends ConsumerWidget {
                 ],
               ),
             ),
-            Divider(height: 28, color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.outlineVariant),
+            Divider(height: 28, color: isDark ? DesignTokens.white.withValues(alpha: 0.08) : DesignTokens.outlineVariant),
             if (order.paymentStatus == PaymentStatus.awaitingPayment) _buildAuthorizationBanner(context, ref, isDark),
             // Delivery instructions from buyer
             if (order.deliveryInstructions != null && order.deliveryInstructions!.isNotEmpty) _buildDeliveryInstructionsBanner(isDark),
             Text(
               'seller.your_items'.tr(),
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
             ),
             const SizedBox(height: 8),
             ...sellerItems.map((item) => _buildSellerItem(context, ref, item, isDark)),
@@ -561,13 +562,17 @@ class _SellerOrderCard extends ConsumerWidget {
             ? (statusStr == DeliveryStatusValues.pending && !isRefunded
                   ? Container(
                       decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(DesignTokens.radius8)),
-                      child: IconButton(
-                        icon: Icon(Icons.local_shipping_rounded, color: DesignTokens.primary, size: 22),
-                        tooltip: 'seller.mark_shipped'.tr(),
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          _showMarkAsShippedDialog(context, ref, item);
-                        },
+                      child: Semantics(
+                        button: true,
+                        label: 'btn-mark-shipped',
+                        child: IconButton(
+                          icon: Icon(Icons.local_shipping_rounded, color: DesignTokens.primary, size: 22),
+                          tooltip: 'seller.mark_shipped'.tr(),
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            _showMarkAsShippedDialog(context, ref, item);
+                          },
+                        ),
                       ),
                     )
                   : (statusStr == DeliveryStatusValues.shipped
@@ -576,20 +581,24 @@ class _SellerOrderCard extends ConsumerWidget {
                               color: DesignTokens.info.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(DesignTokens.radius8),
                             ),
-                            child: IconButton(
-                              icon: Icon(Icons.edit_rounded, color: DesignTokens.info, size: 20),
-                              tooltip: 'seller.edit_tracking'.tr(),
-                              onPressed: () {
-                                HapticFeedback.lightImpact();
-                                _showMarkAsShippedDialog(
-                                  context,
-                                  ref,
-                                  item,
-                                  prefillTracking: item.trackingNumber,
-                                  prefillCarrier: item.carrier,
-                                  prefillCarrierNote: item.carrierNote,
-                                );
-                              },
+                            child: Semantics(
+                              button: true,
+                              label: 'btn-edit-tracking',
+                              child: IconButton(
+                                icon: Icon(Icons.edit_rounded, color: DesignTokens.info, size: 20),
+                                tooltip: 'seller.edit_tracking'.tr(),
+                                onPressed: () {
+                                  HapticFeedback.lightImpact();
+                                  _showMarkAsShippedDialog(
+                                    context,
+                                    ref,
+                                    item,
+                                    prefillTracking: item.trackingNumber,
+                                    prefillCarrier: item.carrier,
+                                    prefillCarrierNote: item.carrierNote,
+                                  );
+                                },
+                              ),
                             ),
                           )
                         : null))
@@ -913,7 +922,7 @@ class _StatPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: DesignTokens.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -921,10 +930,10 @@ class _StatPill extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+            style: const TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w800, fontSize: 13),
           ),
           const SizedBox(width: 4),
-          Text(sublabel, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+          Text(sublabel, style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.7), fontSize: 10)),
         ],
       ),
     );
@@ -946,10 +955,14 @@ class _UnansweredQaBadge extends ConsumerWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          IconButton(
-            icon: const Icon(Icons.forum_outlined),
-            tooltip: count > 0 ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()]) : 'seller.no_pending_questions'.tr(),
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerProducts),
+          Semantics(
+            button: true,
+            label: 'btn-unanswered-questions',
+            child: IconButton(
+              icon: const Icon(Icons.forum_outlined),
+              tooltip: count > 0 ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()]) : 'seller.no_pending_questions'.tr(),
+              onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerProducts),
+            ),
           ),
           if (count > 0)
             Positioned(
@@ -961,12 +974,12 @@ class _UnansweredQaBadge extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: DesignTokens.error,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
+                  border: Border.all(color: DesignTokens.white, width: 1.5),
                 ),
                 child: Center(
                   child: Text(
                     count > 99 ? '99+' : '$count',
-                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                    style: const TextStyle(color: DesignTokens.white, fontSize: 9, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),

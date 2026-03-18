@@ -22,7 +22,7 @@ Widget previewAppBarStandard() => previewWrapper(
     child: CustomAppBar(
       title: 'Product Details',
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: const Icon(Icons.arrow_back, color: DesignTokens.white),
         onPressed: () {},
         tooltip: 'Back',
       ),
@@ -42,7 +42,7 @@ Widget previewAppBarWithSubtitle() => previewWrapper(
       title: 'Order #ORD-4821',
       subtitle: 'Placed on March 3, 2026',
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: const Icon(Icons.arrow_back, color: DesignTokens.white),
         onPressed: () {},
         tooltip: 'Back',
       ),
@@ -110,7 +110,7 @@ Widget previewAppBarLight() => previewWrapper(
       title: 'Settings',
       subtitle: 'Account preferences',
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: const Icon(Icons.arrow_back, color: DesignTokens.white),
         onPressed: () {},
         tooltip: 'Back',
       ),
@@ -129,7 +129,7 @@ Widget previewAppBarAllVariants() => previewGrid(
       child: CustomAppBar(
         title: 'Product Details',
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: DesignTokens.white),
           onPressed: () {},
           tooltip: 'Back',
         ),
@@ -142,7 +142,7 @@ Widget previewAppBarAllVariants() => previewGrid(
         title: 'Order #ORD-4821',
         subtitle: 'Placed on March 3, 2026',
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: DesignTokens.white),
           onPressed: () {},
           tooltip: 'Back',
         ),

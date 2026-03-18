@@ -33,7 +33,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: DesignTokens.white,
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
             boxShadow: DesignTokens.shadowSm,
           ),
@@ -213,7 +213,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: isSelected ? DesignTokens.warning : Colors.white,
+                    color: isSelected ? DesignTokens.warning : DesignTokens.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isSelected
@@ -239,7 +239,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                         '⏳ Pending Review',
                         style: TextStyle(
                           color: isSelected
-                              ? Colors.white
+                              ? DesignTokens.white
                               : DesignTokens.textSecondary,
                           fontWeight: isSelected
                               ? FontWeight.w600
@@ -256,14 +256,14 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                           ),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? Colors.white.withValues(alpha: 0.3)
+                                ? DesignTokens.white.withValues(alpha: 0.3)
                                 : DesignTokens.warning,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
                             '$pendingCount',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: DesignTokens.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 11,
                             ),
@@ -289,7 +289,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           duration: DesignTokens.durationFast,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
-            color: isSelected ? DesignTokens.primary : Colors.white,
+            color: isSelected ? DesignTokens.primary : DesignTokens.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: isSelected
@@ -309,7 +309,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : DesignTokens.textSecondary,
+              color: isSelected ? DesignTokens.white : DesignTokens.textSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               fontSize: 12,
             ),
@@ -332,17 +332,17 @@ class _ApprovalBadge extends StatelessWidget {
     switch (lifecycleStatus) {
       case ProductLifecycleStatusValues.active:
       case ProductLifecycleStatusValues.approved:
-        color = const Color(0xFF22C55E);
+        color = DesignTokens.success;
         label = 'Approved';
         icon = Icons.check_circle_rounded;
         break;
       case ProductLifecycleStatusValues.rejected:
-        color = const Color(0xFFEF4444);
+        color = DesignTokens.error;
         label = 'Rejected';
         icon = Icons.cancel_rounded;
         break;
       default:
-        color = const Color(0xFFF59E0B);
+        color = DesignTokens.warning;
         label = 'Under Review';
         icon = Icons.hourglass_top_rounded;
     }
@@ -615,7 +615,7 @@ class _ProductCard extends ConsumerWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text('admin.products.approve_success'.tr()),
-          backgroundColor: const Color(0xFF22C55E),
+          backgroundColor: DesignTokens.success,
         ),
       );
     } else {
@@ -809,7 +809,7 @@ class _ProductCard extends ConsumerWidget {
               if (builds.isEmpty)
                 Text(
                   'admin.products.no_download_urls'.tr(),
-                  style: const TextStyle(color: Color(0xFF6B7280)),
+                  style: const TextStyle(color: DesignTokens.textSecondary),
                 )
               else
                 ...builds.entries.map(
@@ -830,7 +830,7 @@ class _ProductCard extends ConsumerWidget {
                           e.value,
                           style: const TextStyle(
                             fontSize: 11,
-                            color: Color(0xFF6B7280),
+                            color: DesignTokens.textSecondary,
                           ),
                         ),
                       ],

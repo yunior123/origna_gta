@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/foundation.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/constants/validation_constants.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -40,9 +40,7 @@ String _friendlyAuthError(OrignaBaseAuthException e) {
     case 'account-exists-with-different-credential':
       return 'auth.errors.account_exists_different_credential'.tr();
     default:
-      if (kDebugMode) {
-        debugPrint('⚠️ Unhandled auth exception code: ${e.code}, message: ${e.message}');
-      }
+      AppLogger.d('⚠️ Unhandled auth exception code: ${e.code}, message: ${e.message}', tag: 'auth');
       return 'auth.errors.authentication_failed'.tr();
   }
 }
@@ -123,14 +121,10 @@ class LoginViewModel extends StateNotifier<LoginState> {
       }
       state = state.copyWith(isLoading: false, isSuccess: true);
     } on OrignaBaseAuthException catch (e) {
-      if (kDebugMode) {
-        debugPrint('🔐 Auth exception — code: ${e.code}, message: ${e.message}');
-      }
+      AppLogger.d('🔐 Auth exception — code: ${e.code}, message: ${e.message}', tag: 'auth');
       state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('🔐 Unexpected auth error: $e');
-      }
+      AppLogger.d('🔐 Unexpected auth error: $e', tag: 'auth');
       String errorMessage = 'auth.errors.generic_error';
       final errorStr = e.toString().toLowerCase();
 

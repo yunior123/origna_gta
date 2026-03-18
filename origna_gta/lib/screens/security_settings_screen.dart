@@ -7,8 +7,28 @@ import 'package:intl/intl.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/mfa_state.dart';
 import 'package:origna_gta/features/auth/mfa_viewmodel.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+
+/// Security data loaded via Riverpod provider instead of manual setState.
+final _securityDataProvider = FutureProvider.autoDispose<({
+  List<Map<String, dynamic>> loginHistory,
+  List<Map<String, dynamic>> knownDevices,
+  List<Map<String, dynamic>> securityAlerts,
+})>((ref) async {
+  final auth = ref.watch(orignabaseProvider).auth;
+  final results = await Future.wait<List<Map<String, dynamic>>>([
+    auth.getLoginHistory(limit: 10),
+    auth.getKnownDevices(),
+    auth.getSecurityAlerts(),
+  ]);
+  return (
+    loginHistory: results[0],
+    knownDevices: results[1],
+    securityAlerts: results[2],
+  );
+});
 
 /// Security settings screen — lets users enable/disable MFA,
 /// view login history, manage known devices, and review security alerts.
@@ -20,46 +40,24 @@ class SecuritySettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen> {
-  List<Map<String, dynamic>> _loginHistory = [];
-  List<Map<String, dynamic>> _knownDevices = [];
-  List<Map<String, dynamic>> _securityAlerts = [];
-  bool _isLoadingSecurity = false;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(mfaViewModelProvider.notifier).checkStatus();
-      _loadSecurityData();
     });
-  }
-
-  Future<void> _loadSecurityData() async {
-    setState(() => _isLoadingSecurity = true);
-    try {
-      final auth = ref.read(orignabaseProvider).auth;
-      final results = await Future.wait<List<Map<String, dynamic>>>([
-        auth.getLoginHistory(limit: 10),
-        auth.getKnownDevices(),
-        auth.getSecurityAlerts(),
-      ]);
-      if (mounted) {
-        setState(() {
-          _loginHistory = results[0];
-          _knownDevices = results[1];
-          _securityAlerts = results[2];
-          _isLoadingSecurity = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoadingSecurity = false);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final mfaState = ref.watch(mfaViewModelProvider);
+    final securityDataAsync = ref.watch(_securityDataProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final loginHistory = securityDataAsync.valueOrNull?.loginHistory ?? [];
+    final knownDevices = securityDataAsync.valueOrNull?.knownDevices ?? [];
+    final securityAlerts = securityDataAsync.valueOrNull?.securityAlerts ?? [];
+    final isLoadingSecurity = securityDataAsync.isLoading;
 
     return SensitiveContent(
       sensitivity: ContentSensitivity.sensitive,
@@ -84,15 +82,15 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                   ),
                 if (mfaState.errorMessage != null)
                   _buildErrorBanner(mfaState.errorMessage!),
-                if (_securityAlerts.isNotEmpty) ...[
+                if (securityAlerts.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  _buildSecurityAlerts(isDark),
+                  _buildSecurityAlerts(securityAlerts, isDark),
                 ],
                 const SizedBox(height: 16),
-                _buildLoginHistoryCard(isDark),
+                _buildLoginHistoryCard(loginHistory, isLoadingSecurity, isDark),
                 const SizedBox(height: 16),
-                _buildKnownDevicesCard(isDark),
-                if (_isLoadingSecurity)
+                _buildKnownDevicesCard(knownDevices, isLoadingSecurity, isDark),
+                if (isLoadingSecurity)
                   const Padding(
                     padding: EdgeInsets.only(top: 16),
                     child: ModernLoadingIndicator(),
@@ -125,7 +123,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                     gradient: DesignTokens.primaryGradient,
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
                   ),
-                  child: const Icon(Icons.shield_rounded, color: Colors.white, size: 22),
+                  child: const Icon(Icons.shield_rounded, color: DesignTokens.white, size: 22),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -226,7 +224,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildSecurityAlerts(bool isDark) {
+  Widget _buildSecurityAlerts(List<Map<String, dynamic>> securityAlerts, bool isDark) {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -250,8 +248,8 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
               ],
             ),
             const SizedBox(height: 12),
-            ...List.generate(_securityAlerts.length, (index) {
-              final alert = _securityAlerts[index];
+            ...List.generate(securityAlerts.length, (index) {
+              final alert = securityAlerts[index];
               final alertType = alert['type'] as String? ?? '';
               final alertDetails = alert['details'] as String? ?? '';
               final alertId = alert['id'] as String? ?? '';
@@ -346,7 +344,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildLoginHistoryCard(bool isDark) {
+  Widget _buildLoginHistoryCard(List<Map<String, dynamic>> loginHistory, bool isLoadingSecurity, bool isDark) {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -368,7 +366,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
               ],
             ),
             const SizedBox(height: 12),
-            if (_loginHistory.isEmpty && !_isLoadingSecurity)
+            if (loginHistory.isEmpty && !isLoadingSecurity)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Center(
@@ -384,13 +382,13 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                 child: ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _loginHistory.length,
+                  itemCount: loginHistory.length,
                   separatorBuilder: (_, __) => Divider(
                     color: DesignTokens.outlineVariant.withValues(alpha: 0.3),
                     height: 1,
                   ),
                   itemBuilder: (context, index) {
-                    final entry = _loginHistory[index];
+                    final entry = loginHistory[index];
                     final ip = entry['ip'] as String? ?? '';
                     final device = entry['device'] as String? ?? '';
                     final status = entry['status'] as String? ?? '';
@@ -472,7 +470,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildKnownDevicesCard(bool isDark) {
+  Widget _buildKnownDevicesCard(List<Map<String, dynamic>> knownDevices, bool isLoadingSecurity, bool isDark) {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -494,7 +492,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
               ],
             ),
             const SizedBox(height: 12),
-            if (_knownDevices.isEmpty && !_isLoadingSecurity)
+            if (knownDevices.isEmpty && !isLoadingSecurity)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Center(
@@ -510,13 +508,13 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                 child: ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _knownDevices.length,
+                  itemCount: knownDevices.length,
                   separatorBuilder: (_, __) => Divider(
                     color: DesignTokens.outlineVariant.withValues(alpha: 0.3),
                     height: 1,
                   ),
                   itemBuilder: (context, index) {
-                    final device = _knownDevices[index];
+                    final device = knownDevices[index];
                     final deviceName = device['device_name'] as String? ?? '';
                     final lastUsed = device['last_used'] as String? ?? '';
                     final deviceId = device['id'] as String? ?? '';
@@ -613,19 +611,15 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     try {
       final auth = ref.read(orignabaseProvider).auth;
       await auth.acknowledgeAlert(alertId);
-      if (mounted) {
-        setState(() {
-          _securityAlerts.removeWhere((a) => a['id'] == alertId);
-        });
-      }
+      // Invalidate provider to reload security data
+      ref.invalidate(_securityDataProvider);
     } catch (_) {}
   }
 
   Future<void> _removeDevice(String deviceId) async {
     try {
-      // TODO: Implement when OrignaBase SDK adds removeDevice
-      // final auth = ref.read(orignabaseProvider).auth;
-      // await auth.removeDevice(deviceId);
+      final auth = ref.read(orignabaseProvider).auth;
+      await auth.removeDevice(deviceId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -633,7 +627,8 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
             backgroundColor: DesignTokens.success,
           ),
         );
-        await _loadSecurityData();
+        // Invalidate provider to reload security data
+        ref.invalidate(_securityDataProvider);
       }
     } catch (_) {}
   }

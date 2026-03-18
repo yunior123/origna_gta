@@ -94,7 +94,7 @@ class NotificationsScreenLayout extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         appBar: AppBarFactory.simple(title: 'notifications.title'.tr(), onBackPressed: onBack),
         body: notificationsAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
@@ -140,36 +140,52 @@ class NotificationsScreenLayout extends StatelessWidget {
                   child: RefreshIndicator(
                     color: DesignTokens.primary,
                     onRefresh: onRefresh,
-                    child: ListView(
+                    child: ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(DesignTokens.spacing16),
-                      children: [
-                        if (today.isNotEmpty) ...[
-                          _SectionHeader(label: 'notifications.today'.tr()),
-                          ...today.map(
-                            (n) => FadeSlideIn(
-                              child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)),
-                            ),
-                          ),
-                        ],
-                        if (thisWeek.isNotEmpty) ...[
-                          _SectionHeader(label: 'notifications.this_week'.tr()),
-                          ...thisWeek.map(
-                            (n) => FadeSlideIn(
-                              child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)),
-                            ),
-                          ),
-                        ],
-                        if (earlier.isNotEmpty) ...[
-                          _SectionHeader(label: 'notifications.earlier'.tr()),
-                          ...earlier.map(
-                            (n) => FadeSlideIn(
-                              child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: DesignTokens.spacing32),
-                      ],
+                      itemCount: () {
+                        int count = 0;
+                        if (today.isNotEmpty) count += 1 + today.length; // header + items
+                        if (thisWeek.isNotEmpty) count += 1 + thisWeek.length;
+                        if (earlier.isNotEmpty) count += 1 + earlier.length;
+                        count += 1; // bottom spacing
+                        return count;
+                      }(),
+                      itemBuilder: (context, index) {
+                        int offset = 0;
+                        // Today section
+                        if (today.isNotEmpty) {
+                          if (index == offset) return _SectionHeader(label: 'notifications.today'.tr());
+                          offset++;
+                          if (index < offset + today.length) {
+                            final n = today[index - offset];
+                            return FadeSlideIn(child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)));
+                          }
+                          offset += today.length;
+                        }
+                        // This week section
+                        if (thisWeek.isNotEmpty) {
+                          if (index == offset) return _SectionHeader(label: 'notifications.this_week'.tr());
+                          offset++;
+                          if (index < offset + thisWeek.length) {
+                            final n = thisWeek[index - offset];
+                            return FadeSlideIn(child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)));
+                          }
+                          offset += thisWeek.length;
+                        }
+                        // Earlier section
+                        if (earlier.isNotEmpty) {
+                          if (index == offset) return _SectionHeader(label: 'notifications.earlier'.tr());
+                          offset++;
+                          if (index < offset + earlier.length) {
+                            final n = earlier[index - offset];
+                            return FadeSlideIn(child: _NotificationTile(notification: n, onMarkRead: () => onMarkRead(n)));
+                          }
+                          offset += earlier.length;
+                        }
+                        // Bottom spacing
+                        return const SizedBox(height: DesignTokens.spacing32);
+                      },
                     ),
                   ),
                 ),
@@ -264,18 +280,18 @@ class _NotificationTile extends StatelessWidget {
           padding: const EdgeInsets.all(DesignTokens.spacing16),
           decoration: BoxDecoration(
             color: notification.isRead
-                ? (isDark ? DesignTokens.darkSurfaceVariant : Colors.white.withValues(alpha: 0.9))
+                ? (isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white.withValues(alpha: 0.9))
                 : (isDark ? DesignTokens.primary.withValues(alpha: 0.1) : DesignTokens.primary.withValues(alpha: 0.05)),
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
             border: Border.all(
               color: notification.isRead
-                  ? (isDark ? Colors.white.withValues(alpha: 0.05) : DesignTokens.outline.withValues(alpha: 0.3))
+                  ? (isDark ? DesignTokens.white.withValues(alpha: 0.05) : DesignTokens.outline.withValues(alpha: 0.3))
                   : DesignTokens.primary.withValues(alpha: 0.25),
               width: notification.isRead ? 1 : 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+                color: DesignTokens.black.withValues(alpha: isDark ? 0.15 : 0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -311,7 +327,7 @@ class _NotificationTile extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.w700,
-                              color: isDark ? Colors.white : DesignTokens.textPrimary,
+                              color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,

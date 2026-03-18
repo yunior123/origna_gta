@@ -47,15 +47,15 @@ class CartItemScreen extends StatelessWidget {
         ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
-        child: const Icon(Icons.delete_rounded, color: Colors.white, size: 28),
+        child: const Icon(Icons.delete_rounded, color: DesignTokens.white, size: 28),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
         padding: const EdgeInsets.all(DesignTokens.spacing12),
         decoration: BoxDecoration(
-          color: isDark ? DesignTokens.darkCard : Colors.white,
+          color: isDark ? DesignTokens.darkCard : DesignTokens.white,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.5)),
+          border: Border.all(color: isDark ? DesignTokens.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
               color: DesignTokens.primary.withValues(alpha: isDark ? 0.08 : 0.04),
@@ -63,7 +63,7 @@ class CartItemScreen extends StatelessWidget {
               offset: const Offset(0, 4),
             ),
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+              color: DesignTokens.black.withValues(alpha: isDark ? 0.2 : 0.03),
               blurRadius: 4,
               offset: const Offset(0, 1),
             ),
@@ -86,7 +86,7 @@ class CartItemScreen extends StatelessWidget {
                     children: [
                       Text(
                         name,
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -114,7 +114,7 @@ class CartItemScreen extends StatelessWidget {
                             shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
                             child: Text(
                               '\$${(totalCents / 100).toStringAsFixed(2)}',
-                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white),
+                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: DesignTokens.white),
                             ),
                           );
                         },
@@ -150,9 +150,9 @@ class CartItemScreen extends StatelessWidget {
 
                         return Container(
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.surfaceVariant,
+                            color: isDark ? DesignTokens.white.withValues(alpha: 0.06) : DesignTokens.surfaceVariant,
                             borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : DesignTokens.outline.withValues(alpha: 0.6)),
+                            border: Border.all(color: isDark ? DesignTokens.white.withValues(alpha: 0.1) : DesignTokens.outline.withValues(alpha: 0.6)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -172,7 +172,7 @@ class CartItemScreen extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(horizontal: 10),
                                   child: Text(
                                     '$quantity',
-                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                                   ),
                                 ),
                               ),
@@ -201,24 +201,32 @@ class CartItemScreen extends StatelessWidget {
                       },
                     ),
                     const SizedBox(height: DesignTokens.spacing8),
-                    IconButton(
-                      tooltip: 'cart.remove_from_cart'.tr(),
-                      icon: Icon(Icons.delete_outline_rounded, color: DesignTokens.error.withValues(alpha: 0.7), size: 20),
-                      onPressed: onRemove,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      splashRadius: 18,
+                    Semantics(
+                      button: true,
+                      label: 'btn-remove-cart-item',
+                      child: IconButton(
+                        tooltip: 'cart.remove_from_cart'.tr(),
+                        icon: Icon(Icons.delete_outline_rounded, color: DesignTokens.error.withValues(alpha: 0.7), size: 20),
+                        onPressed: onRemove,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        splashRadius: 18,
+                      ),
                     ),
                     const SizedBox(height: DesignTokens.spacing4),
                     Consumer(
                       builder: (context, ref, _) {
-                        return IconButton(
-                          tooltip: 'cart.save_for_later'.tr(),
-                          icon: Icon(Icons.bookmark_outline_rounded, color: DesignTokens.primary.withValues(alpha: 0.8), size: 20),
-                          onPressed: () => _saveForLater(context, ref, productId, cartItemId),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          splashRadius: 18,
+                        return Semantics(
+                          button: true,
+                          label: 'btn-save-for-later',
+                          child: IconButton(
+                            tooltip: 'cart.save_for_later'.tr(),
+                            icon: Icon(Icons.bookmark_outline_rounded, color: DesignTokens.primary.withValues(alpha: 0.8), size: 20),
+                            onPressed: () => _saveForLater(context, ref, productId, cartItemId),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            splashRadius: 18,
+                          ),
                         );
                       },
                     ),
@@ -252,10 +260,10 @@ class CartItemScreen extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+              color: DesignTokens.white.withValues(alpha: 0.12),
+              border: Border.all(color: DesignTokens.white.withValues(alpha: 0.25), width: 1.5),
             ),
-            child: const Icon(Icons.camera_alt_outlined, size: 26, color: Colors.white),
+            child: const Icon(Icons.camera_alt_outlined, size: 26, color: DesignTokens.white),
           ),
         ),
       );
@@ -268,7 +276,7 @@ class CartItemScreen extends StatelessWidget {
         placeholder: (context, url) => Shimmer.fromColors(
           baseColor: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
           highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
-          child: Container(color: isDark ? DesignTokens.darkSurface : Colors.white),
+          child: Container(color: isDark ? DesignTokens.darkSurface : DesignTokens.white),
         ),
         errorWidget: (context, url, error) => Container(
           decoration: BoxDecoration(
@@ -284,10 +292,10 @@ class CartItemScreen extends StatelessWidget {
               height: 52,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+                color: DesignTokens.white.withValues(alpha: 0.12),
+                border: Border.all(color: DesignTokens.white.withValues(alpha: 0.25), width: 1.5),
               ),
-              child: const Icon(Icons.camera_alt_outlined, size: 24, color: Colors.white),
+              child: const Icon(Icons.camera_alt_outlined, size: 24, color: DesignTokens.white),
             ),
           ),
         ),
@@ -306,10 +314,10 @@ class CartItemScreen extends StatelessWidget {
               placeholder: (context, url) => Shimmer.fromColors(
                 baseColor: isDark ? DesignTokens.darkSurface : DesignTokens.outlineVariant,
                 highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.surface,
-                child: Container(color: isDark ? DesignTokens.darkSurface : Colors.white),
+                child: Container(color: isDark ? DesignTokens.darkSurface : DesignTokens.white),
               ),
               errorWidget: (context, url, error) => Container(
-                color: isDark ? const Color(0xFF2A2A3E) : DesignTokens.surface,
+                color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
                 child: Icon(Icons.image_not_supported_outlined, size: 24, color: DesignTokens.textDisabled),
               ),
             );
@@ -320,15 +328,15 @@ class CartItemScreen extends StatelessWidget {
           right: 4,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: DesignTokens.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.collections, color: Colors.white, size: 10),
+                const Icon(Icons.collections, color: DesignTokens.white, size: 10),
                 const SizedBox(width: 2),
                 Text(
                   '${imageUrlsList.length}',
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: DesignTokens.white, fontSize: 10, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -415,7 +423,7 @@ class CartItemScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: DesignTokens.transparent,
       builder: (context) => Container(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 20, top: 24, left: 20, right: 20),
         decoration: BoxDecoration(
@@ -457,7 +465,7 @@ class CartItemScreen extends StatelessWidget {
                 return ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: DesignTokens.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: DesignTokens.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -494,7 +502,7 @@ class _QuantityButton extends StatelessWidget {
       button: true,
       enabled: !isDisabled,
       child: Material(
-        color: Colors.transparent,
+        color: DesignTokens.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(DesignTokens.radius8),
           onTap: isDisabled
@@ -505,7 +513,7 @@ class _QuantityButton extends StatelessWidget {
                 },
           child: Padding(
             padding: const EdgeInsets.all(6),
-            child: Icon(icon, size: 18, color: isDisabled ? DesignTokens.textDisabled : (isDark ? Colors.white70 : DesignTokens.primary)),
+            child: Icon(icon, size: 18, color: isDisabled ? DesignTokens.textDisabled : (isDark ? DesignTokens.white.withValues(alpha: 0.7) : DesignTokens.primary)),
           ),
         ),
       ),

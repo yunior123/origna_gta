@@ -1,18 +1,16 @@
-import 'dart:convert';
-
 import 'package:origna_gta/core/compat/timestamp.dart';
-import 'package:orignabase/orignabase.dart' show OrignaBaseException;
+import 'package:orignabase/orignabase.dart' show OrignaBase, OrignaBaseException;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/errors/error_codes.dart';
 import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/models/models.dart';
-import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
@@ -116,13 +114,13 @@ Future<Map<String, double>> calculateShippingCost(
   List<CartItemDetailModel> items,
   Address? buyerAddress, {
   DeliverySpeed chosenSpeed = DeliverySpeed.standard,
+  OrignaBase? ob,
 }) async {
   if (buyerAddress == null || buyerAddress.latitude == null || buyerAddress.longitude == null) {
     return {};
   }
 
   final Map<String, double> sellerCosts = {};
-  final String apiKey = ConfigService().geoapifyKey;
 
   final Map<String, List<CartItemDetailModel>> itemsBySeller = {};
   for (var item in items) {
@@ -156,32 +154,27 @@ Future<Map<String, double>> calculateShippingCost(
       continue;
     }
 
-    if (seller.latitude != null && seller.longitude != null && apiKey.isNotEmpty) {
+    if (seller.latitude != null && seller.longitude != null && ob != null) {
       try {
-        final url = Uri.parse("${ExternalUrls.geoapifyBase}/routematrix?apiKey=$apiKey");
-        final response = await http
-            .post(
-              url,
-              headers: {"Content-Type": "application/json"},
-              body: jsonEncode({
-                "mode": "drive",
-                "sources": [
-                  {
-                    "location": [seller.longitude, seller.latitude],
-                  },
-                ],
-                "targets": [
-                  {
-                    "location": [buyerAddress.longitude, buyerAddress.latitude],
-                  },
-                ],
-              }),
-            )
-            .timeout(const Duration(seconds: 10));
+        // Proxy route matrix through OrignaBase — API key stays server-side.
+        final response = await ob.request(
+          'POST',
+          ApiEndpoints.geocodeRouteMatrix,
+          body: {
+            'sources': [
+              {'location': [seller.longitude, seller.latitude]},
+            ],
+            'targets': [
+              {'location': [buyerAddress.longitude, buyerAddress.latitude]},
+            ],
+          },
+        );
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body) as Map<String, dynamic>;
-          final distanceMeters = (data['sources_to_targets'] as List).first.first['distance'] as num? ?? 0;
+        final sourcesToTargets = response['sources_to_targets'];
+        if (sourcesToTargets is List && sourcesToTargets.isNotEmpty) {
+          final firstRow = sourcesToTargets.first;
+          final firstCell = firstRow is List && firstRow.isNotEmpty ? firstRow.first : firstRow;
+          final distanceMeters = (firstCell is Map ? firstCell['distance'] as num? : null) ?? 0;
           final distanceKm = distanceMeters / 1000.0;
 
           if (hasLocalRestriction && distanceKm > 100) {
@@ -220,7 +213,7 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, WidgetRef ref) asy
   // Restricted to kDebugMode to ensure it cannot fire in release builds.
   // Logs a warning so behavior divergence is visible during development.
   if (EnvConfig().isEmulator && kDebugMode) {
-    debugPrint('⚠️ BOOT-H1: email verification bypassed in emulator mode');
+    AppLogger.w('BOOT-H1: email verification bypassed in emulator mode', tag: 'auth');
     return true;
   }
 
@@ -228,7 +221,7 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context, WidgetRef ref) asy
     final verified = await ref.read(authRepositoryProvider).isEmailVerified();
     if (verified) return true;
   } catch (e) {
-    debugPrint('checkEmailVerifiedOrPrompt: verification check failed: $e');
+    AppLogger.w('checkEmailVerifiedOrPrompt: verification check failed: $e', tag: 'auth');
     if (EnvConfig().isEmulator) return true;
   }
 
@@ -316,12 +309,12 @@ int getCrossAxisCount(BuildContext context) {
   if (TargetPlatform.android == defaultTargetPlatform || TargetPlatform.iOS == defaultTargetPlatform) {
     return 2;
   }
-  final width = MediaQuery.of(context).size.width;
+  final width = MediaQuery.sizeOf(context).width;
 
   if (kIsWeb) {
-    if (width < 600) {
+    if (width < ResponsiveBreakpoints.tablet) {
       return 2;
-    } else if (width < 1024) {
+    } else if (width < ResponsiveBreakpoints.desktop) {
       return 3;
     } else {
       return 4;
@@ -395,8 +388,8 @@ void showEmailVerificationDialog(BuildContext context, {String? email, VoidCallb
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       icon: Container(
         padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(color: Color(0xFFFFF3E0), shape: BoxShape.circle),
-        child: const Icon(Icons.mark_email_unread_outlined, color: Color(0xFFF57C00), size: 36),
+        decoration: const BoxDecoration(color: DesignTokens.warningSubtle, shape: BoxShape.circle),
+        child: const Icon(Icons.mark_email_unread_outlined, color: DesignTokens.warningIcon, size: 36),
       ),
       title: Text('email_verification.title'.tr(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
       content: Column(
@@ -458,7 +451,7 @@ void showEmailVerificationDialog(BuildContext context, {String? email, VoidCallb
           onPressed: () => Navigator.pop(ctx),
           style: ElevatedButton.styleFrom(
             backgroundColor: DesignTokens.primary,
-            foregroundColor: Colors.white,
+            foregroundColor: DesignTokens.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
           ),
@@ -492,7 +485,7 @@ void showLoginPrompt(BuildContext context, {String text = 'auth.sign_in_cart_req
             Navigator.pop(dialogContext);
             navigator.pushNamed(AppRoutes.login);
           },
-          style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
+          style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: DesignTokens.white),
           child: Text('auth.sign_in'.tr()),
         ),
       ],
@@ -692,10 +685,7 @@ class AppError {
   /// - Sends to Sentry in production
   static void log(dynamic error, {StackTrace? stackTrace, String? context, Map<String, dynamic>? extras}) {
     final contextPrefix = context != null ? '[$context] ' : '';
-    debugPrint('$contextPrefix$error');
-    if (stackTrace != null) {
-      debugPrint('$stackTrace');
-    }
+    AppLogger.e('$contextPrefix$error', error: error, stackTrace: stackTrace);
 
     // Send to Sentry (non-blocking)
     Sentry.captureException(
@@ -751,14 +741,14 @@ class AppError {
                   const SizedBox(height: 2),
                   Text(
                     '$displayCode · support@orignagta.ca',
-                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.white70),
+                    style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: DesignTokens.white.withValues(alpha: 0.7)),
                   ),
                 ],
               )
             : Text(userMessage),
         action: SnackBarAction(
           label: 'common.dismiss'.tr(),
-          textColor: Colors.white,
+          textColor: DesignTokens.white,
           onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
         ),
       ),

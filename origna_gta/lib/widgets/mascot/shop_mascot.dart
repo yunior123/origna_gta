@@ -4,8 +4,10 @@ import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Documentation for MascotController
@@ -141,7 +143,7 @@ class MascotPainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Colors.white.withValues(alpha: 0.4), Colors.white.withValues(alpha: 0)],
+        colors: [DesignTokens.white.withValues(alpha: 0.4), DesignTokens.white.withValues(alpha: 0)],
       ).createShader(Rect.fromLTWH(-size.width * 0.25, -size.height * 0.2, size.width * 0.4, size.height * 0.2));
 
     canvas.drawRRect(
@@ -169,7 +171,7 @@ class MascotPainter extends CustomPainter {
       );
       canvas.drawCircle(center, radius, Paint()..color = DesignTokens.accent);
       // Pupil highlight
-      canvas.drawCircle(center - Offset(radius * 0.3, radius * 0.3), radius * 0.2, Paint()..color = Colors.white);
+      canvas.drawCircle(center - Offset(radius * 0.3, radius * 0.3), radius * 0.2, Paint()..color = DesignTokens.white);
     }
   }
 
@@ -241,7 +243,7 @@ class MascotPainter extends CustomPainter {
 
   void _drawShadow(Canvas canvas, Size size, double jumpHeight) {
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.1 * (1 - jumpHeight))
+      ..color = DesignTokens.black.withValues(alpha: 0.1 * (1 - jumpHeight))
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
     final jumpOffset = -math.sin(jumpHeight * math.pi) * (size.height * 0.25);
@@ -431,7 +433,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
           constraints: const BoxConstraints(maxWidth: 160),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: DesignTokens.white,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
@@ -439,7 +441,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
               bottomRight: Radius.circular(4),
             ),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
+              BoxShadow(color: DesignTokens.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
               BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: -2),
             ],
           ),
@@ -498,7 +500,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
           padding: const EdgeInsets.only(right: 12),
           child: CustomPaint(
             size: const Size(16, 12),
-            painter: const _ModernBubbleTail(color: Colors.white),
+            painter: const _ModernBubbleTail(color: DesignTokens.white),
           ),
         ),
       ],
@@ -514,10 +516,10 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
   Future<void> _launchUrl(Uri uri) async {
     try {
       if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        await safeLaunchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
-      debugPrint('Could not launch url: $e');
+      AppLogger.w('Could not launch url: $e', tag: 'mascot');
     }
   }
 
@@ -537,7 +539,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Theme.of(ctx).brightness == Brightness.dark ? DesignTokens.darkSurface : Colors.white,
+        backgroundColor: Theme.of(ctx).brightness == Brightness.dark ? DesignTokens.darkSurface : DesignTokens.white,
         title: Text(
           'profile.contact_us'.tr(),
           style: TextStyle(
@@ -556,7 +558,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
               link: true,
               label: 'link-email-support',
               child: Material(
-                color: Colors.transparent,
+                color: DesignTokens.transparent,
                 child: InkWell(
                   onTap: () => _launchUrl(
                     Uri(
@@ -587,7 +589,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
               link: true,
               label: 'link-website',
               child: Material(
-                color: Colors.transparent,
+                color: DesignTokens.transparent,
                 child: InkWell(
                   onTap: () => _launchUrl(Uri.parse(EmailConfig.prodUrl)),
                   borderRadius: BorderRadius.circular(12),

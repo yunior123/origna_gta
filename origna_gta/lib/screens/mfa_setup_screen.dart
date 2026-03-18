@@ -128,7 +128,7 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: DesignTokens.white,
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
             ),
             child: mfaState.qrCodeBase64 != null && mfaState.qrCodeBase64!.isNotEmpty
@@ -174,6 +174,8 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
                 onPressed: () async {
                   final messenger = ScaffoldMessenger.of(context);
                   await Clipboard.setData(ClipboardData(text: mfaState.manualKey ?? ''));
+                  // Auto-clear clipboard after 30 seconds for security
+                  Future.delayed(const Duration(seconds: 30), () => Clipboard.setData(const ClipboardData(text: '')));
                   if (mounted) {
                     messenger.showSnackBar(
                       SnackBar(content: Text('mfa.manual_key_copied'.tr())),
@@ -392,6 +394,8 @@ class _MfaSetupScreenState extends ConsumerState<MfaSetupScreen> {
                       await Clipboard.setData(
                         ClipboardData(text: mfaState.recoveryCodes.join('\n')),
                       );
+                      // Auto-clear clipboard after 30 seconds for security
+                      Future.delayed(const Duration(seconds: 30), () => Clipboard.setData(const ClipboardData(text: '')));
                       if (mounted) {
                         messenger.showSnackBar(
                           SnackBar(content: Text('mfa.codes_copied'.tr())),

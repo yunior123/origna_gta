@@ -2,12 +2,12 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
     show ApiEndpoints, Collections, Fields, PolicyVersionValues;
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:uuid/uuid.dart';
 
@@ -178,7 +178,7 @@ class OrignaBaseUserRepository implements UserRepository {
       }
     } catch (e) {
       // Best effort to clear other defaults
-      debugPrint('Warning: failed to clear other default addresses: $e');
+      AppLogger.w('Warning: failed to clear other default addresses: $e', tag: 'user');
     }
   }
 

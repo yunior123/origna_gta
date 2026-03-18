@@ -32,7 +32,7 @@ class SellerSetupRefreshScreen extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -117,7 +117,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
       return Container(
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: DesignTokens.transparent,
           body: Center(
             child: SingleChildScrollView(
               child: FadeSlideIn(
@@ -127,13 +127,13 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                        color: isDark ? DesignTokens.white.withValues(alpha: 0.05) : DesignTokens.white,
                         shape: BoxShape.circle,
                         boxShadow: DesignTokens.shadowMd,
                       ),
                       child: ShaderMask(
                         shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                        child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
+                        child: const ModernLoadingIndicator(strokeWidth: 3, color: DesignTokens.white, centered: false),
                       ),
                     ),
                     const SizedBox(height: DesignTokens.spacing20),
@@ -153,7 +153,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -169,13 +169,13 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                              color: isDark ? DesignTokens.white.withValues(alpha: 0.05) : DesignTokens.white,
                               shape: BoxShape.circle,
                               boxShadow: DesignTokens.shadowMd,
                             ),
                             child: ShaderMask(
                               shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                              child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
+                              child: const ModernLoadingIndicator(strokeWidth: 3, color: DesignTokens.white, centered: false),
                             ),
                           ),
                           const SizedBox(height: DesignTokens.spacing20),
@@ -421,7 +421,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
             shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
             child: Text(
               'seller.account_ready'.tr(),
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: DesignTokens.white, letterSpacing: -0.3),
               textAlign: TextAlign.center,
             ),
           ),

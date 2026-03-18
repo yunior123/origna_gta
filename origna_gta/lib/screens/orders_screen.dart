@@ -124,7 +124,7 @@ class _OrdersLoadingSkeleton extends StatelessWidget {
         itemBuilder: (context, i) => Container(
           margin: const EdgeInsets.only(bottom: 12),
           height: 90,
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+          decoration: BoxDecoration(color: DesignTokens.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
         ),
       ),
     );
@@ -169,7 +169,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       child: Scaffold(
         key: const Key('orders_screen_app_bar'),
         appBar: AppBarFactory.simple(title: 'orders.my_orders'.tr()),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: ordersAsync.when(
           loading: () => _OrdersLoadingSkeleton(),
           error: (error, stack) => _buildErrorState(context, error),
@@ -247,14 +247,13 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   }
 
   Widget _buildEmptyFilter() {
-    return ListView(
+    return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 64),
-          child: AnimatedEmptyState(icon: Icons.inbox_outlined, title: 'orders.no_orders_found'.tr(), subtitle: 'orders.no_orders_match'.tr()),
-        ),
-      ],
+      itemCount: 1,
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.only(top: 64),
+        child: AnimatedEmptyState(icon: Icons.inbox_outlined, title: 'orders.no_orders_found'.tr(), subtitle: 'orders.no_orders_match'.tr()),
+      ),
     );
   }
 

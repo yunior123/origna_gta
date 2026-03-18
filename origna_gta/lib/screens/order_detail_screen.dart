@@ -47,7 +47,7 @@ class OrderDetailScreenLayout extends StatelessWidget {
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'orders.order_details'.tr()),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: orderAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
           error: (error, stack) => _buildErrorState(error),

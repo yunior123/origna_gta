@@ -59,14 +59,18 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           actions: [
             // FE-M3: Q&A badge — same as seller_orders_screen
             _UnansweredQaBadge(sellerId: user.uid),
-            IconButton(
-              icon: const Icon(Icons.add_box_outlined),
-              tooltip: tr('seller.add_product'),
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.addProduct),
+            Semantics(
+              button: true,
+              label: 'btn-add-product',
+              child: IconButton(
+                icon: const Icon(Icons.add_box_outlined),
+                tooltip: tr('seller.add_product'),
+                onPressed: () => Navigator.pushNamed(context, AppRoutes.addProduct),
+              ),
             ),
           ],
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: productsAsync.when(
           loading: () => _SellerProductsSkeleton(isDark: isDark),
           error: (e, _) => AnimatedEmptyState(
@@ -417,12 +421,12 @@ class _SellerProductCard extends StatelessWidget {
               ? DesignTokens.primary.withValues(alpha: 0.08)
               : isDark
               ? DesignTokens.darkSurfaceVariant
-              : Colors.white,
+              : DesignTokens.white,
           borderRadius: BorderRadius.circular(DesignTokens.radius12),
           border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outline.withValues(alpha: 0.15), width: isSelected ? 1.5 : 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+              color: DesignTokens.black.withValues(alpha: isDark ? 0.15 : 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -549,7 +553,7 @@ class _SellerProductsSkeleton extends StatelessWidget {
         itemBuilder: (_, index) => Container(
           margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
           height: 100,
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+          decoration: BoxDecoration(color: DesignTokens.white, borderRadius: BorderRadius.circular(DesignTokens.radius16)),
         ),
       ),
     );
@@ -597,10 +601,14 @@ class _UnansweredQaBadge extends ConsumerWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          IconButton(
-            icon: const Icon(Icons.forum_outlined),
-            tooltip: count > 0 ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()]) : 'seller.no_pending_questions'.tr(),
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerOrders),
+          Semantics(
+            button: true,
+            label: 'btn-seller-qa-badge',
+            child: IconButton(
+              icon: const Icon(Icons.forum_outlined),
+              tooltip: count > 0 ? 'seller.unanswered_questions_plural'.tr(args: [count.toString()]) : 'seller.no_pending_questions'.tr(),
+              onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerOrders),
+            ),
           ),
           if (count > 0)
             Positioned(
@@ -612,12 +620,12 @@ class _UnansweredQaBadge extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: DesignTokens.error,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
+                  border: Border.all(color: DesignTokens.white, width: 1.5),
                 ),
                 child: Center(
                   child: Text(
                     count > 99 ? '99+' : '$count',
-                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                    style: const TextStyle(color: DesignTokens.white, fontSize: 9, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),

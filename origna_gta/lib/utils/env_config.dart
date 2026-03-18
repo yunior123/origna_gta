@@ -26,6 +26,7 @@
 library;
 
 import 'package:flutter/foundation.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 /// Environment enumeration
 enum AppEnvironment {
@@ -173,24 +174,9 @@ class EnvConfig {
 
   /// Print environment info (for debugging)
   void printInfo() {
-    debugPrint(
-      '╔════════════════════════════════════════════════════════════╗',
-    );
-    debugPrint(
-      '║ 🔧 ENVIRONMENT CONFIGURATION                               ║',
-    );
-    debugPrint(
-      '╠════════════════════════════════════════════════════════════╣',
-    );
-    debugPrint('║ Environment: ${displayName.padRight(43)}║');
-    debugPrint(
-      '║ Use Emulators: ${shouldUseEmulators.toString().padRight(41)}║',
-    );
-    debugPrint('║ R2 Products: ${r2ProductsFolder.padRight(43)}║');
-    debugPrint('║ OrignaBase URL: ${orignabaseUrl.padRight(40)}║');
-    debugPrint('║ Is Debug Mode: ${(!kReleaseMode).toString().padRight(41)}║');
-    debugPrint(
-      '╚════════════════════════════════════════════════════════════╝',
+    AppLogger.i(
+      'ENV CONFIG: $displayName | emulators=$shouldUseEmulators | r2=$r2ProductsFolder | url=$orignabaseUrl | debug=${!kReleaseMode}',
+      tag: 'env',
     );
   }
 }

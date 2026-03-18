@@ -107,7 +107,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
                   : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                borderSide: BorderSide(color: Colors.transparent),
+                borderSide: BorderSide(color: DesignTokens.transparent),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),

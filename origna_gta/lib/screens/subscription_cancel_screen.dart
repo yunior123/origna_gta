@@ -29,7 +29,7 @@ class SubscriptionCancelScreen extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: isDark
                 ? [DesignTokens.darkBackground, DesignTokens.darkSurface]
-                : [DesignTokens.surface, Colors.white],
+                : [DesignTokens.surface, DesignTokens.white],
           ),
         ),
         child: SafeArea(
@@ -80,7 +80,7 @@ class SubscriptionCancelScreen extends StatelessWidget {
                               fontSize: 24,
                               fontWeight: FontWeight.w700,
                               color: isDark
-                                  ? Colors.white
+                                  ? DesignTokens.white
                                   : DesignTokens.textPrimary,
                             ),
                           ),
@@ -118,7 +118,7 @@ class SubscriptionCancelScreen extends StatelessWidget {
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: DesignTokens.primary,
-                                  foregroundColor: Colors.white,
+                                  foregroundColor: DesignTokens.white,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 14,
                                   ),

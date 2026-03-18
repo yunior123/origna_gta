@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -50,7 +51,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
         state = state.copyWith(recentSearches: searches);
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('⚠️  Failed to load recent searches: $e');
+      AppLogger.d('⚠️  Failed to load recent searches: $e', tag: 'home');
     }
   }
 
@@ -59,7 +60,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(LocalStorageKeys.recentSearches, jsonEncode(searches));
     } catch (e) {
-      if (kDebugMode) debugPrint('⚠️  Failed to persist recent searches: $e');
+      AppLogger.d('⚠️  Failed to persist recent searches: $e', tag: 'home');
     }
   }
 
@@ -203,11 +204,11 @@ class HomeViewModel extends StateNotifier<HomeState> {
       final repository = _ref.read(productRepositoryProvider);
 
       if (kDebugMode) {
-        debugPrint('🔍 Using repository: ${repository.runtimeType}');
-        if (state.searchQuery.isNotEmpty) debugPrint('   Search query: "${state.searchQuery}"');
-        if (state.selectedCategoryId != null) debugPrint('   Category filter: ${state.selectedCategoryId}');
-        if (state.selectedSort != SortOption.relevance) debugPrint('   Sort: ${state.selectedSort}');
-        if (state.hasPriceFilter) debugPrint('   Price: ${state.minPriceCents}–${state.maxPriceCents} cents');
+        AppLogger.d('🔍 Using repository: ${repository.runtimeType}', tag: 'home');
+        if (state.searchQuery.isNotEmpty) AppLogger.d('   Search query: "${state.searchQuery}"', tag: 'home');
+        if (state.selectedCategoryId != null) AppLogger.d('   Category filter: ${state.selectedCategoryId}', tag: 'home');
+        if (state.selectedSort != SortOption.relevance) AppLogger.d('   Sort: ${state.selectedSort}', tag: 'home');
+        if (state.hasPriceFilter) AppLogger.d('   Price: ${state.minPriceCents}–${state.maxPriceCents} cents', tag: 'home');
       }
 
       final result = await repository.fetchProducts(
@@ -220,7 +221,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
         maxPriceCents: state.maxPriceCents,
       );
 
-      if (kDebugMode) debugPrint('✅ Loaded ${result.products.length} products');
+      AppLogger.d('✅ Loaded ${result.products.length} products', tag: 'home');
       if (!mounted) return;
 
       final effectiveHasMore = (isInitialLoad && result.products.isEmpty) ? false : result.hasMore;
@@ -235,7 +236,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
         isLoadingMore: false,
       );
     } catch (e) {
-      if (kDebugMode) debugPrint('❌ Error loading products: $e');
+      AppLogger.d('❌ Error loading products: $e', tag: 'home');
       if (!mounted) return;
       state = state.copyWith(
         isLoading: false,

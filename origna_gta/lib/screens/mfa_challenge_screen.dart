@@ -3,8 +3,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/features/auth/mfa_viewmodel.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 
 /// MFA challenge screen shown when a user with MFA enabled logs in.
@@ -45,27 +45,23 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
 
     setState(() => _isLoading = true);
 
-    try {
-      final auth = ref.read(orignabaseProvider).auth;
-      final result = _isRecoveryMode
-          ? await auth.useMfaRecoveryCode(widget.challengeToken, code)
-          : await auth.verifyMfaChallenge(widget.challengeToken, code);
+    final viewModel = ref.read(mfaViewModelProvider.notifier);
+    final success = _isRecoveryMode
+        ? await viewModel.useRecoveryCode(widget.challengeToken, code)
+        : await viewModel.verifyChallenge(widget.challengeToken, code);
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      if (result.isAuthenticated) {
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.home,
-          (_) => false,
-        );
-        return;
-      }
-
-      _onFailedAttempt('mfa.invalid_code'.tr());
-    } catch (e) {
-      if (!mounted) return;
-      _onFailedAttempt(e.toString());
+    if (success) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.home,
+        (_) => false,
+      );
+      return;
     }
+
+    final mfaState = ref.read(mfaViewModelProvider);
+    _onFailedAttempt(mfaState.errorMessage ?? 'mfa.invalid_code'.tr());
   }
 
   void _onFailedAttempt(String message) {

@@ -593,7 +593,7 @@ abstract final class ExternalUrls {
 abstract final class Fields {
   // === COMMON TIMESTAMPS (used across multiple collections) ===
   static const createdAt = 'createdAt';
-  static const dateCreated = 'dateCreated'; // products + cart timestamp field
+  static const dateCreated = 'dateCreated'; // legacy alias — products + cart now use createdAt
   static const updatedAt = 'updatedAt';
   static const version = 'version'; // Optimistic concurrency version, starts at 1
   static const schemaVersion = 'schemaVersion'; // Schema layout version for migration tracking
@@ -2038,6 +2038,18 @@ abstract final class ApiEndpoints {
   static const ordersBase = '/api/orders';
   /// Human escalation endpoint — POST body: customer_email, customer_id, summary, conversation
   static const supportEscalate = '/api/support/escalate';
+
+  /// AI support chat endpoint — POST body: messages, customer_email, customer_id
+  /// Backend handles Claude API calls server-side (no API keys in client).
+  static const supportChat = '/api/support/chat';
+
+  // --- Geocoding (proxied through OrignaBase — API keys stay server-side) ---
+
+  /// Address autocomplete — POST body: { query, country }
+  static const geocodeAutocomplete = '/api/geocode/autocomplete';
+
+  /// Route matrix (distance calculation) — POST body: { sources, targets }
+  static const geocodeRouteMatrix = '/api/geocode/route-matrix';
 }
 
 // =============================================================================
@@ -2047,10 +2059,10 @@ abstract final class ApiEndpoints {
 /// Query parameter key names used when parsing deep links (password reset,
 /// Stripe redirect, product share links, etc.).
 abstract final class DeepLinkParams {
-  /// Firebase Auth action mode (e.g. 'resetPassword')
+  /// Auth action mode (e.g. 'resetPassword')
   static const mode = 'mode';
 
-  /// Firebase Auth out-of-band code for password reset
+  /// Out-of-band code for password reset
   static const oobCode = 'oobCode';
 
   /// Stripe Checkout session ID returned on success redirect

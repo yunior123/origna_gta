@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
+import 'package:origna_gta/models/enum_extensions.dart';
 
 // Mocking if required for any future complex classes
 class MockDeliveryItemCheck extends Mock implements DeliveryItemCheck {}
@@ -129,8 +131,8 @@ void main() {
 
   group('OrderStatus Tests', () {
     test('fromValue mapping', () {
-      expect(OrderStatus.fromValue(OrderStatus.delivered.value), OrderStatus.delivered);
-      expect(OrderStatus.fromValue('invalid'), OrderStatus.pending);
+      expect(OrderStatusExtension.fromValue(OrderStatus.delivered.value), OrderStatus.delivered);
+      expect(OrderStatusExtension.fromValue('invalid'), OrderStatus.pending);
     });
 
     test('displayText switch cases', () {

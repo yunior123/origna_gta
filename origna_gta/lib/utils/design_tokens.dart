@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 /// Documentation for DesignTokens
 class DesignTokens {
   // Primary Palette (Matched to Ecommerce Splash)
-  static const Color primary = Color(0xFF667EEA); // Soft Cornflower Blue
+  static const Color primary = Color(0xFF7B93FF); // Soft Cornflower Blue (WCAG AA: ≥4.5:1 on #0F0F1E)
   static const Color secondary = Color(0xFF764BA2); // Deep Violet
   static const Color tertiary = Color(0xFFFF6B6B); // Coral
   static const Color accent = Color(0xFF5CE1E6); // Cyan (Matches web splash)
@@ -36,13 +36,18 @@ class DesignTokens {
   static const Color darkCard = Color(0xFF1E1E32);
   static const Color darkBackground = Color(0xFF0F0F1E);
 
+  // Core Colors
+  static const Color white = Colors.white;
+  static const Color black = Colors.black;
+  static const Color transparent = Color(0x00000000);
+
   // Text Colors (WCAG 2.1 AA: ≥4.5:1 for normal text, ≥3:1 for large text)
   static const Color textPrimary = Color(0xFF1A1A2E);
   static const Color textSecondary = Color(0xFF6B7280);
   static const Color textTertiary = Color(0xFF6B7280); // Was #9CA3AF (~2.8:1) → #6B7280 (~5.3:1 on white)
   static const Color textDisabled = Color(0xFF9CA3AF); // Was #BDBDBD (~1.7:1) → #9CA3AF (~3.7:1 - decorative only)
-  static const Color textOnPrimary = Colors.white;
-  static const Color textOnDark = Colors.white;
+  static const Color textOnPrimary = white;
+  static const Color textOnDark = white;
   static const Color textOnDarkSecondary = Color(0xFFBDBDBD);
 
   // Semantic
@@ -67,6 +72,38 @@ class DesignTokens {
   static const Color timelineInactiveDark = Color(0xFF3A3A50);
   static const Color timelineInactiveLight = Color(0xFFE0E4EE);
 
+  // Derived Semantic (additional shades)
+  static const Color successDark = Color(0xFF059669); // Darker emerald
+  static const Color warningIcon = Color(0xFFF57C00); // Orange warning icon
+  static const Color warningSubtle = Color(0xFFFFF3E0); // Light warning background
+
+  // Medal/Rank Colors
+  static const Color goldPrimary = Color(0xFFFFD700);
+  static const Color goldDark = Color(0xFFFFA000);
+  static const Color silverPrimary = Color(0xFFB0BEC5);
+  static const Color silverDark = Color(0xFF78909C);
+  static const Color bronzePrimary = Color(0xFFCD7F32);
+  static const Color bronzeDark = Color(0xFF8B4513);
+
+  // Hot/Trending Badge Colors
+  static const Color hotStart = Color(0xFFFF6B35);
+  static const Color hotEnd = Color(0xFFFF3D00);
+  static const Color trendingStart = Color(0xFF00BFA5);
+  static const Color trendingEnd = Color(0xFF1DE9B6);
+
+  // Canada Badge
+  static const Color canadaNavy = Color(0xFF003087); // Canada-post navy
+
+  // Promo Widget Colors
+  static const Color promoSurfaceDark = Color(0xFF1E1E1E);
+  static const Color promoSurfaceDarkAlt = Color(0xFF2C2C2C);
+  static const Color promoSurfaceLight = Color(0xFFE3F2FD);
+  static const Color promoSurfaceLightAlt = Color(0xFFBBDEFB);
+  static const Color promoBadgeDark = Color(0xFFFF5252);
+  static const Color promoBadgeLight = Color(0xFFD32F2F);
+  static const Color promoTextLight = Color(0xFF455A64);
+  static const Color promoAccentLight = Color(0xFF1976D2);
+
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [primary, secondary]);
 
@@ -75,7 +112,7 @@ class DesignTokens {
   static const LinearGradient premiumGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFFF6B6B), Color(0xFF667EEA)],
+    colors: [Color(0xFFFF6B6B), Color(0xFF7B93FF)],
   );
 
   // Spacing
@@ -141,7 +178,7 @@ class DesignTokens {
       end: Alignment.bottomCenter,
       colors: isDark
           ? [darkBackground, darkSurface]
-          : [const Color(0xFFF0F2FF), Colors.white],
+          : [const Color(0xFFF0F2FF), white],
     );
   }
 
@@ -152,7 +189,7 @@ class DesignTokens {
       end: Alignment.bottomRight,
       colors: isDark
           ? [darkSurface, darkSurfaceVariant]
-          : [surface, Colors.white],
+          : [surface, white],
     );
   }
 }
@@ -183,7 +220,7 @@ class GlassContainer extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final resolvedColor = color ?? (isDark ? DesignTokens.darkCard : DesignTokens.surfaceVariant);
     final resolvedOpacity = opacity ?? (isDark ? 0.7 : 0.92);
-    final resolvedShadows = shadows ?? (isDark ? [const BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))] : DesignTokens.shadowMd);
+    final resolvedShadows = shadows ?? (isDark ? [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.26), blurRadius: 8, offset: const Offset(0, 4))] : DesignTokens.shadowMd);
 
     return ClipRRect(
       borderRadius: borderRadius,
@@ -195,7 +232,7 @@ class GlassContainer extends StatelessWidget {
             color: resolvedColor.withValues(alpha: resolvedOpacity),
             borderRadius: borderRadius,
             border: Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.4), 
+              color: isDark ? DesignTokens.white.withValues(alpha: 0.1) : DesignTokens.white.withValues(alpha: 0.4),
               width: 1.5
             ),
             boxShadow: resolvedShadows,

@@ -158,3 +158,4 @@ class ProductQuery {
       identical(this, other) ||
       other is ProductQuery && runtimeType == other.runtimeType && categoryId == other.categoryId && searchQuery == other.searchQuery && limit == other.limit;
 }
+

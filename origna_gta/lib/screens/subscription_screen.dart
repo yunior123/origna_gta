@@ -8,6 +8,7 @@ import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/utils/safe_url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../features/subscription/subscription_provider.dart';
@@ -33,7 +34,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         appBar: AppBarFactory.simple(title: 'subscription.premium_membership'.tr()),
         body: subAsync.when(
           loading: () => const Center(child: ModernLoadingIndicator()),
@@ -67,7 +68,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       subscriptionViewModelProvider.select((s) => s.checkoutUrl),
       (_, next) async {
         if (next != null && next.isNotEmpty) {
-          await launchUrl(
+          await safeLaunchUrl(
             Uri.parse(next),
             mode: LaunchMode.externalApplication,
           );
@@ -91,10 +92,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: isDark ? DesignTokens.darkCard : Colors.white,
+          color: isDark ? DesignTokens.darkCard : DesignTokens.white,
           borderRadius: BorderRadius.circular(16),
-          border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.08)) : null,
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05), blurRadius: 12, offset: const Offset(0, 4))],
+          border: isDark ? Border.all(color: DesignTokens.white.withValues(alpha: 0.08)) : null,
+          boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: isDark ? 0.2 : 0.05), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -174,7 +175,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     width: 160, height: 160,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: RadialGradient(colors: [DesignTokens.accent.withValues(alpha: 0.18), Colors.transparent]),
+                      gradient: RadialGradient(colors: [DesignTokens.accent.withValues(alpha: 0.18), DesignTokens.transparent]),
                     ),
                   ),
                 ),
@@ -184,7 +185,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     width: 140, height: 140,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: RadialGradient(colors: [DesignTokens.tertiary.withValues(alpha: 0.15), Colors.transparent]),
+                      gradient: RadialGradient(colors: [DesignTokens.tertiary.withValues(alpha: 0.15), DesignTokens.transparent]),
                     ),
                   ),
                 ),
@@ -217,7 +218,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                             BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.2), blurRadius: 60, spreadRadius: 10),
                           ],
                         ),
-                        child: const Icon(Icons.workspace_premium, color: Colors.white, size: 50),
+                        child: const Icon(Icons.workspace_premium, color: DesignTokens.white, size: 50),
                       ),
                         ], // Row children
                       ), // Row
@@ -226,9 +227,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: DesignTokens.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                          border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -237,7 +238,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                             const SizedBox(width: 6),
                             Text(
                               isPremium ? 'subscription.badge_premium_member'.tr() : 'subscription.badge_unlock_premium'.tr(),
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+                              style: const TextStyle(color: DesignTokens.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.2),
                             ),
                           ],
                         ),
@@ -250,7 +251,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         child: Text(
                           isPremium ? 'subscription.youre_premium_member'.tr() : 'subscription.upgrade_to_premium'.tr(),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
+                          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: DesignTokens.white, height: 1.2),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -261,7 +262,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         child: Text(
                           isPremium ? 'subscription.enjoy_benefits'.tr() : 'subscription.price_monthly'.tr(),
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 15, color: Colors.white.withValues(alpha: 0.8)),
+                          style: TextStyle(fontSize: 15, color: DesignTokens.white.withValues(alpha: 0.8)),
                         ),
                       ),
                     ],
@@ -392,9 +393,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8))],
                       ),
                       child: vmState.isLoading
-                          ? const Center(child: ModernLoadingIndicator(size: 24, color: Colors.white))
+                          ? const Center(child: ModernLoadingIndicator(size: 24, color: DesignTokens.white))
                           : Material(
-                              color: Colors.transparent,
+                              color: DesignTokens.transparent,
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
                                 onTap: vmState.isLoading ? null : vm.createSubscription,
@@ -402,11 +403,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.workspace_premium, color: Colors.white, size: 22),
+                                      const Icon(Icons.workspace_premium, color: DesignTokens.white, size: 22),
                                       const SizedBox(width: 10),
                                       Text(
                                         'subscription.subscribe_button'.tr(),
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 0.3),
+                                        style: const TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 0.3),
                                       ),
                                     ],
                                   ),
@@ -431,7 +432,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurface : Colors.white,
+        color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outline),
       ),

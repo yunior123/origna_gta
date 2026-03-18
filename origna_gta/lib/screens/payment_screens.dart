@@ -41,7 +41,7 @@ class PaymentCanceledScreen extends StatelessWidget {
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'payment.canceled'.tr()),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: Center(
           child: SingleChildScrollView(
             child: ConstrainedBox(
@@ -67,7 +67,7 @@ class PaymentCanceledScreen extends StatelessWidget {
                       delay: const Duration(milliseconds: 100),
                       child: Text(
                         'payment.canceled'.tr(),
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -128,7 +128,7 @@ class _ConfirmingPaymentViewState extends State<_ConfirmingPaymentView> {
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: widget.isDark)),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: Center(
           child: SingleChildScrollView(
             child: ConstrainedBox(
@@ -153,7 +153,7 @@ class _ConfirmingPaymentViewState extends State<_ConfirmingPaymentView> {
                         child: const SizedBox(
                           width: 28,
                           height: 28,
-                          child: ModernLoadingIndicator(size: 28, strokeWidth: 2.5, color: Colors.white, centered: false),
+                          child: ModernLoadingIndicator(size: 28, strokeWidth: 2.5, color: DesignTokens.white, centered: false),
                         ),
                       ),
                     ),
@@ -161,7 +161,7 @@ class _ConfirmingPaymentViewState extends State<_ConfirmingPaymentView> {
                   const SizedBox(height: 20),
                   Text(
                     widget.message,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: widget.isDark ? Colors.white : DesignTokens.textPrimary),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: widget.isDark ? DesignTokens.white : DesignTokens.textPrimary),
                   ),
                   const SizedBox(height: 8),
                   Text('payment.may_take_moments'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
@@ -246,7 +246,7 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: Center(
           child: SingleChildScrollView(
             child: ConstrainedBox(
@@ -270,7 +270,7 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
                     const SizedBox(height: 20),
                     Text(
                       'payment.verification_delayed'.tr(),
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),

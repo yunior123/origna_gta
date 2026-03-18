@@ -95,7 +95,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       const SizedBox(height: 16),
                       Text(
                         'chat.own_product_title'.tr(),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(color: isDark ? Colors.white : DesignTokens.textPrimary),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
@@ -436,7 +436,7 @@ class _MessageBubble extends StatelessWidget {
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+            constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
             decoration: BoxDecoration(
               color: isMe
                   ? DesignTokens.primary
@@ -455,7 +455,7 @@ class _MessageBubble extends StatelessWidget {
                 Text(
                   message.text,
                   style: TextStyle(
-                    color: isMe ? Colors.white : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+                    color: isMe ? DesignTokens.white : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
                     fontSize: 15,
                   ),
                 ),
@@ -464,7 +464,7 @@ class _MessageBubble extends StatelessWidget {
                   DateFormat.jm().format(message.createdAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: isMe ? Colors.white.withValues(alpha: 0.65) : DesignTokens.textSecondary,
+                    color: isMe ? DesignTokens.white.withValues(alpha: 0.65) : DesignTokens.textSecondary,
                   ),
                 ),
               ],
@@ -509,7 +509,7 @@ class _MessageInput extends StatelessWidget {
         bottom: MediaQuery.of(context).padding.bottom + 8,
       ),
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurface : Colors.white,
+        color: isDark ? DesignTokens.darkSurface : DesignTokens.white,
         border: Border(top: BorderSide(color: isDark ? DesignTokens.darkOutline : DesignTokens.outline)),
       ),
       child: Row(
@@ -550,7 +550,7 @@ class _MessageInput extends StatelessWidget {
               tooltip: 'Send',
               style: IconButton.styleFrom(
                 backgroundColor: DesignTokens.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: DesignTokens.white,
               ),
             ),
           ),

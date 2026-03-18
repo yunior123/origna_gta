@@ -73,6 +73,46 @@ class MfaViewModel extends StateNotifier<MfaState> {
     state = state.copyWith(codesSaved: true, currentStep: 4);
   }
 
+  /// Verifies a TOTP code during MFA challenge (login flow).
+  /// Returns `true` if authentication succeeded.
+  Future<bool> verifyChallenge(String challengeToken, String code) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final result = await _ref
+          .read(orignabaseProvider)
+          .auth
+          .verifyMfaChallenge(challengeToken, code);
+      state = state.copyWith(isLoading: false);
+      return result.isAuthenticated;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AppError.getMessage(e, 'MFA verification failed'),
+      );
+      return false;
+    }
+  }
+
+  /// Uses a recovery code during MFA challenge (login flow).
+  /// Returns `true` if authentication succeeded.
+  Future<bool> useRecoveryCode(String challengeToken, String code) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final result = await _ref
+          .read(orignabaseProvider)
+          .auth
+          .useMfaRecoveryCode(challengeToken, code);
+      state = state.copyWith(isLoading: false);
+      return result.isAuthenticated;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AppError.getMessage(e, 'Recovery code verification failed'),
+      );
+      return false;
+    }
+  }
+
   /// Disables MFA after verifying the provided TOTP code.
   Future<void> disable(String code) async {
     state = state.copyWith(isLoading: true, errorMessage: null);

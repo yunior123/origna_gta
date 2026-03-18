@@ -9,12 +9,51 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/services/orignabase_conf_service.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// Keep the semantics handle alive so it doesn't get GC'd in release mode.
 /// Without this, ensureSemantics() has no lasting effect.
 SemanticsHandle? _semanticsHandle;
+
+/// PII patterns to redact from Sentry event data.
+final _emailPattern = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}');
+final _phonePattern = RegExp(r'\+?1?\d{10,15}');
+final _postalCodePattern = RegExp(r'[A-Z]\d[A-Z]\s?\d[A-Z]\d', caseSensitive: false);
+
+/// Redact PII (emails, phone numbers, postal codes) from a string.
+String _redactPii(String input) {
+  return input
+      .replaceAll(_emailPattern, '[REDACTED_EMAIL]')
+      .replaceAll(_phonePattern, '[REDACTED_PHONE]')
+      .replaceAll(_postalCodePattern, '[REDACTED_POSTAL]');
+}
+
+/// Scrub PII from Sentry event exceptions and breadcrumbs before sending.
+SentryEvent _redactPiiFromEvent(SentryEvent event) {
+  // Redact exception values
+  if (event.exceptions != null) {
+    final scrubbed = event.exceptions!.map((ex) {
+      if (ex.value != null) {
+        ex.value = _redactPii(ex.value!);
+      }
+      return ex;
+    }).toList();
+    event.exceptions = scrubbed;
+  }
+
+  // Redact breadcrumb messages
+  if (event.breadcrumbs != null) {
+    for (final b in event.breadcrumbs!) {
+      if (b.message != null) {
+        b.message = _redactPii(b.message!);
+      }
+    }
+  }
+
+  return event;
+}
 
 void main() {
   // Use path URL strategy (no # in URLs) for cleaner web URLs
@@ -31,7 +70,7 @@ void main() {
       try {
         await EasyLocalization.ensureInitialized();
       } catch (e, st) {
-        debugPrint('⚠️ EasyLocalization init failed (non-fatal): $e');
+        AppLogger.w('EasyLocalization init failed (non-fatal): $e', tag: 'init');
         if (!kDebugMode) await Sentry.captureException(e, stackTrace: st);
       }
 
@@ -43,7 +82,7 @@ void main() {
       if (kIsWeb && (kDebugMode || const bool.fromEnvironment('FORCE_SEMANTICS'))) {
         _semanticsHandle = SemanticsBinding.instance.ensureSemantics();
         if (kDebugMode) {
-          debugPrint('♿ Semantics enabled: ${_semanticsHandle != null}');
+          AppLogger.i('Semantics enabled: ${_semanticsHandle != null}', tag: 'init');
         }
       }
 
@@ -82,7 +121,7 @@ void main() {
             .timeout(
               const Duration(seconds: 10),
               onTimeout: () =>
-                  debugPrint('⚠️ Config init timed out — proceeding with defaults'),
+                  AppLogger.w('Config init timed out — proceeding with defaults', tag: 'init'),
             )
             .catchError((_) {}),
       );
@@ -103,16 +142,20 @@ void main() {
                           : 'emulator';
               options.tracesSampleRate = 0.1;
               options.beforeSend = (event, hint) {
+                // Strip PII from user data
                 if (event.user != null) {
                   final user = event.user!;
                   event.user = SentryUser(
                     id: user.id,
-                    username: user.username,
+                    // Strip email/username — may contain PII
+                    username: null,
                     ipAddress: null,
-                    data: user.data,
+                    email: null,
+                    data: null, // user.data may contain PII (address, phone)
                   );
                 }
-                return event;
+                // Redact PII patterns from exception messages
+                return _redactPiiFromEvent(event);
               };
               if (kIsWeb) {
                 options.enableAutoPerformanceTracing = false;
@@ -123,7 +166,7 @@ void main() {
               }
             }).timeout(const Duration(seconds: 10));
           } catch (_) {
-            debugPrint('⚠️ Sentry init failed — continuing without error tracking');
+            AppLogger.w('Sentry init failed — continuing without error tracking', tag: 'init');
           }
         }),
       );

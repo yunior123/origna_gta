@@ -102,7 +102,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'seller.become_seller'.tr()),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: userProfileAsync.when(
           loading: () => Center(
             child: Column(
@@ -113,7 +113,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                   child: SizedBox(
                     width: 50,
                     height: 50,
-                    child: ModernLoadingIndicator(size: 50, strokeWidth: 3, color: Colors.white.withValues(alpha: 0.8), centered: false),
+                    child: ModernLoadingIndicator(size: 50, strokeWidth: 3, color: DesignTokens.white.withValues(alpha: 0.8), centered: false),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -332,7 +332,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            isDark ? DesignTokens.textPrimary.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.8),
+            isDark ? DesignTokens.textPrimary.withValues(alpha: 0.6) : DesignTokens.white.withValues(alpha: 0.8),
             isDark ? DesignTokens.textPrimary.withValues(alpha: 0.4) : DesignTokens.surface.withValues(alpha: 0.6),
           ],
           begin: Alignment.topLeft,
@@ -349,7 +349,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
             child: Text(
               'seller.why_sell_with_us'.tr(),
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: DesignTokens.white),
             ),
           ),
           const SizedBox(height: 20),
@@ -382,20 +382,20 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
           Container(
             width: 100,
             height: 100,
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-            child: Icon(Icons.store, size: 50, color: Colors.white),
+            decoration: BoxDecoration(color: DesignTokens.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+            child: Icon(Icons.store, size: 50, color: DesignTokens.white),
           ),
           const SizedBox(height: 20),
           Text(
             'seller.sell_on_origna'.tr(),
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: DesignTokens.white),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(
             'seller.reach_customers'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, height: 1.5),
+            style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.9), fontSize: 14, height: 1.5),
           ),
         ],
       ),
@@ -506,7 +506,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                     label: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(config.icon, size: 16, color: isSelected ? Colors.white : (isDisabled ? DesignTokens.textSecondary : config.primaryColor)),
+                        Icon(config.icon, size: 16, color: isSelected ? DesignTokens.white : (isDisabled ? DesignTokens.textSecondary : config.primaryColor)),
                         const SizedBox(width: 6),
                         Text(config.name),
                         if (isDisabled) ...[
@@ -530,7 +530,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                           },
                     selectedColor: config.primaryColor,
                     backgroundColor: isDisabled ? DesignTokens.outlineVariant : null,
-                    labelStyle: TextStyle(color: isSelected && !isDisabled ? Colors.white : (isDisabled ? DesignTokens.textSecondary : null)),
+                    labelStyle: TextStyle(color: isSelected && !isDisabled ? DesignTokens.white : (isDisabled ? DesignTokens.textSecondary : null)),
                   ),
                 ],
               );

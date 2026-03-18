@@ -30,7 +30,7 @@ class ModernSnackbar {
       ..showSnackBar(
         SnackBar(
           duration: duration,
-          backgroundColor: Colors.transparent,
+          backgroundColor: DesignTokens.transparent,
           elevation: 0,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(DesignTokens.spacing16),

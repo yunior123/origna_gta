@@ -38,7 +38,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
           actions: actions,
           backgroundColor: backgroundColor.withValues(alpha: 0.7),
           elevation: elevation,
-          surfaceTintColor: Colors.transparent,
+          surfaceTintColor: DesignTokens.transparent,
           scrolledUnderElevation: 0,
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(bottom: Radius.circular(12))),
         ),
@@ -66,13 +66,13 @@ class GlassBadge extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: padding * 1.5, vertical: padding),
           decoration: BoxDecoration(
-            color: (backgroundColor ?? Colors.blue).withValues(alpha: 0.7),
+            color: (backgroundColor ?? DesignTokens.info).withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.5),
+            border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3), width: 0.5),
           ),
           child: Text(
             label,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor ?? Colors.white),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor ?? DesignTokens.white),
           ),
         ),
       ),
@@ -151,8 +151,8 @@ class GlassCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: backgroundColor.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                border: Border.all(color: DesignTokens.white.withValues(alpha: 0.2), width: 1.0),
+                boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
               ),
               padding: padding,
               child: child,
@@ -199,7 +199,7 @@ class GlassModal extends StatelessWidget {
     required this.child,
     this.onDismiss,
     this.blurIntensity = GlassBlurIntensity.medium,
-    this.backgroundColor = const Color(0xFF000000),
+    this.backgroundColor = DesignTokens.black,
   });
 
   @override
@@ -239,10 +239,10 @@ class _GlassButtonState extends State<GlassButton> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             decoration: BoxDecoration(
-              color: (widget.backgroundColor ?? Colors.white).withValues(alpha: _isPressed ? 0.5 : 0.7),
+              color: (widget.backgroundColor ?? DesignTokens.white).withValues(alpha: _isPressed ? 0.5 : 0.7),
               borderRadius: BorderRadius.circular(widget.borderRadius),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.0),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: _isPressed ? 0.12 : 0.08), blurRadius: 8, offset: const Offset(0, 4))],
+              border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3), width: 1.0),
+              boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: _isPressed ? 0.12 : 0.08), blurRadius: 8, offset: const Offset(0, 4))],
             ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Row(
@@ -285,8 +285,8 @@ class _GlassFloatingActionButtonState extends State<GlassFloatingActionButton> w
                   decoration: BoxDecoration(
                     color: widget.backgroundColor.withValues(alpha: 0.8),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.0),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))],
+                    border: Border.all(color: DesignTokens.white.withValues(alpha: 0.3), width: 1.0),
+                    boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))],
                   ),
                   child: Icon(widget.icon),
                 ),

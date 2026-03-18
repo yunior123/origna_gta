@@ -82,10 +82,14 @@ class AppBarIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      icon: Icon(icon, color: Colors.white),
-      onPressed: onPressed,
-      tooltip: tooltip,
+    return Semantics(
+      button: true,
+      label: 'btn-${tooltip.toLowerCase().replaceAll(' ', '-')}',
+      child: IconButton(
+        icon: Icon(icon, color: DesignTokens.white),
+        onPressed: onPressed,
+        tooltip: tooltip,
+      ),
     );
   }
 }
@@ -166,7 +170,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                               title,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: DesignTokens.white,
                                 fontSize: 17,
                                 letterSpacing: 0.5,
                               ),
@@ -176,7 +180,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                               subtitle!,
                               style: TextStyle(
                                 fontWeight: FontWeight.w400,
-                                color: Colors.white.withValues(alpha: 0.7),
+                                color: DesignTokens.white.withValues(alpha: 0.7),
                                 fontSize: 12,
                                 letterSpacing: 0.2,
                               ),
@@ -188,7 +192,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                           title,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: DesignTokens.white,
                             fontSize: 18,
                             letterSpacing: 0.5,
                           ),
@@ -214,10 +218,14 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     required VoidCallback onPressed,
     String? tooltip,
   }) {
-    return IconButton(
-      icon: Icon(icon, color: Colors.white),
-      onPressed: onPressed,
-      tooltip: tooltip,
+    return Semantics(
+      button: true,
+      label: 'btn-${tooltip?.toLowerCase().replaceAll(' ', '-') ?? 'action'}',
+      child: IconButton(
+        icon: Icon(icon, color: DesignTokens.white),
+        onPressed: onPressed,
+        tooltip: tooltip,
+      ),
     );
   }
 }
@@ -252,7 +260,7 @@ class _CartBadge extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: DesignTokens.white,
                 shape: BoxShape.circle,
               ),
               constraints: const BoxConstraints(minWidth: 18, minHeight: 18),

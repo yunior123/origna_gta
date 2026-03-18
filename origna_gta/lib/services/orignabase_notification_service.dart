@@ -11,6 +11,7 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/notifications/notification_provider.dart';
 import 'package:origna_gta/services/push_transport.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 /// OrignaBase notification service — replaces legacy token storage.
@@ -86,7 +87,7 @@ class OrignaBaseNotificationService {
       final fcmToken = await _messaging.getToken();
       if (fcmToken != null) {
         await _ob.push.unregisterToken(fcmToken);
-        debugPrint('Removed FCM token from OrignaBase for user: $userId');
+        AppLogger.d('Removed FCM token from OrignaBase for user: $userId', tag: 'push');
       }
     } catch (e, st) {
       AppError.log(e,
@@ -137,7 +138,7 @@ class OrignaBaseNotificationService {
       ref?.read(notificationPermissionProvider.notifier).setGranted(granted);
 
       if (granted) {
-        debugPrint('User granted permission: ${settings.authorizationStatus}');
+        AppLogger.i('User granted permission: ${settings.authorizationStatus}', tag: 'push');
 
         await _saveTokenToOrignaBase();
 
@@ -154,8 +155,8 @@ class OrignaBaseNotificationService {
           });
         }
       } else {
-        debugPrint(
-            'User declined or has not accepted notification permissions');
+        AppLogger.i(
+            'User declined or has not accepted notification permissions', tag: 'push');
 
         Future<void> saveOptOut() async {
           if (_container == null) return;
@@ -167,7 +168,7 @@ class OrignaBaseNotificationService {
                   .doc(userId)
                   .update({Fields.pushEnabled: false});
             } catch (e) {
-              debugPrint('Failed to save pushEnabled setting: $e');
+              AppLogger.w('Failed to save pushEnabled setting: $e', tag: 'push');
             }
           }
         }
@@ -209,7 +210,7 @@ class OrignaBaseNotificationService {
 
   /// Foreground message handler.
   void handleForegroundMessage(AppRemoteMessage message) {
-    debugPrint('Foreground FCM: ${message.messageId}');
+    AppLogger.d('Foreground FCM: ${message.messageId}', tag: 'push');
     final notification = message.notification;
     if (notification != null) {
       scaffoldMessengerKey.currentState?.showSnackBar(
@@ -245,8 +246,8 @@ class OrignaBaseNotificationService {
           token: fcmToken,
           platform: platform,
         );
-        debugPrint(
-            'FCM Token registered with OrignaBase for user: $userId ($platform)');
+        AppLogger.d(
+            'FCM Token registered with OrignaBase for user: $userId ($platform)', tag: 'push');
       }
     } catch (e, st) {
       AppError.log(e,
@@ -286,8 +287,8 @@ class OrignaBaseNotificationService {
         }
 
       default:
-        debugPrint(
-            'OrignaBaseNotificationService: unhandled notification type "$type" — ignoring tap');
+        AppLogger.d(
+            'Unhandled notification type "$type" — ignoring tap', tag: 'push');
     }
   }
 }

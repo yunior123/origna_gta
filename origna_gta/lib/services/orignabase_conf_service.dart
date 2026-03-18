@@ -1,7 +1,7 @@
 // coverage:ignore-file
-import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 /// OrignaBase config service.
 /// Fetches config key-value pairs from OrignaBase's /config endpoint.
@@ -51,11 +51,11 @@ class OrignaBaseConfigService {
       for (final entry in all.entries) {
         _cache[entry.key] = entry.value?.toString() ?? '';
       }
-      debugPrint(
-          'OrignaBaseConfig loaded: geoapify_api_key present=${geoapifyKey.trim().isNotEmpty}');
+      AppLogger.i(
+          'OrignaBaseConfig loaded: geoapify_api_key present=${geoapifyKey.trim().isNotEmpty}', tag: 'config');
     } catch (_) {
-      debugPrint(
-          'OrignaBaseConfig fetch failed (geoapify_api_key may be empty)');
+      AppLogger.w(
+          'OrignaBaseConfig fetch failed (geoapify_api_key may be empty)', tag: 'config');
     }
   }
 

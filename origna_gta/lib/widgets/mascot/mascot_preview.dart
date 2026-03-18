@@ -49,7 +49,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
           // Controls
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.white,
+            color: DesignTokens.white,
             child: Column(
               children: [
                 Row(
@@ -106,7 +106,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
             child: Container(
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: DesignTokens.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: DesignTokens.outlineVariant),
               ),
@@ -159,12 +159,12 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black87,
+                        color: DesignTokens.black.withValues(alpha: 0.87),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         'Size: ${_size.round()}px | ${_showSparky ? "Sparky" : "Moose"}',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        style: const TextStyle(color: DesignTokens.white, fontSize: 12),
                       ),
                     ),
                   ),

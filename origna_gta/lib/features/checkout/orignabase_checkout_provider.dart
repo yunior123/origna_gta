@@ -148,14 +148,18 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       final subtotal = _ref.read(cartSubtotalProvider) / 100.0;
       final sellerCosts = await _shippingCircuitBreaker.execute(
           () => calculateShippingCost(items, state.address,
-              chosenSpeed: state.deliverySpeed));
+              chosenSpeed: state.deliverySpeed, ob: _ob));
 
       final double rawCost =
           sellerCosts.values.fold(0.0, (sum, cost) => sum + cost);
       // Use priceCents (integer cents) — no floating-point rounding errors.
       final int subtotalCents =
           items.fold(0, (sum, item) => sum + item.priceCents * item.quantity);
-      final isFree = subtotalCents >= BusinessRules.freeShippingThresholdCents;
+      // Apply coupon discount before checking free shipping threshold.
+      final int postCouponSubtotalCents =
+          subtotalCents - state.couponDiscountCents;
+      final isFree =
+          postCouponSubtotalCents >= BusinessRules.freeShippingThresholdCents;
       final cost = isFree ? 0.0 : rawCost;
       final adjustedSellerCosts =
           isFree ? sellerCosts.map((k, v) => MapEntry(k, 0.0)) : sellerCosts;

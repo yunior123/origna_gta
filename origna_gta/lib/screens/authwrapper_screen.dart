@@ -138,16 +138,20 @@ class _TermsUpdateGateState extends ConsumerState<_TermsUpdateGate> {
               // Scrollable terms body
               Expanded(
                 child: termsAsync.when(
-                  data: (content) => ListView(
+                  data: (content) => ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    children: [
-                      Text(
-                        content,
-                        style: const TextStyle(color: DesignTokens.textSecondary, fontSize: 13, height: 1.55),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                    itemCount: 1,
+                    itemBuilder: (context, index) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          content,
+                          style: const TextStyle(color: DesignTokens.textSecondary, fontSize: 13, height: 1.55),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                   loading: () => const Center(child: ModernLoadingIndicator()),
                   error: (e, _) => Padding(

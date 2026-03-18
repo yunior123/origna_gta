@@ -1,7 +1,7 @@
 // Circuit Breaker Pattern Implementation
 // Prevents cascade failures when external services (Stripe, Meilisearch) are down
 
-import 'package:flutter/foundation.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 /// Circuit breaker states
 enum CircuitState {
@@ -113,7 +113,7 @@ class CircuitBreaker {
       if (lastFailure != null &&
           DateTime.now().difference(lastFailure) > config.resetTimeout) {
         _transitionTo(CircuitState.halfOpen);
-        if (kDebugMode) debugPrint('CircuitBreaker[$name]: OPEN → HALF_OPEN');
+        AppLogger.d('OPEN → HALF_OPEN', tag: 'CircuitBreaker[$name]');
       } else {
         throw CircuitBreakerOpenException(
           serviceName: name,
@@ -142,7 +142,7 @@ class CircuitBreaker {
       _successCount++;
       if (_successCount >= config.successThreshold) {
         _transitionTo(CircuitState.closed);
-        if (kDebugMode) debugPrint('CircuitBreaker[$name]: HALF_OPEN → CLOSED');
+        AppLogger.d('HALF_OPEN → CLOSED', tag: 'CircuitBreaker[$name]');
       }
     } else {
       // In closed state, reset failure count on success
@@ -159,10 +159,10 @@ class CircuitBreaker {
     if (_state == CircuitState.halfOpen) {
       // Any failure in half-open goes back to open
       _transitionTo(CircuitState.open);
-        if (kDebugMode) debugPrint('CircuitBreaker[$name]: HALF_OPEN → OPEN');
+        AppLogger.d('HALF_OPEN → OPEN', tag: 'CircuitBreaker[$name]');
     } else if (_failureCount >= config.failureThreshold) {
       _transitionTo(CircuitState.open);
-        if (kDebugMode) debugPrint('CircuitBreaker[$name]: CLOSED → OPEN ($_failureCount failures)');
+        AppLogger.d('CLOSED → OPEN ($_failureCount failures)', tag: 'CircuitBreaker[$name]');
     }
   }
 

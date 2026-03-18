@@ -169,7 +169,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
     return Container(
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: SafeArea(
           child: Stack(
             children: [
@@ -209,7 +209,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                             shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
                             child: Text(
                               'orders.order_placed'.tr(),
-                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white),
+                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: DesignTokens.white),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -220,7 +220,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.surfaceVariant,
+                              color: isDark ? DesignTokens.white.withValues(alpha: 0.06) : DesignTokens.surfaceVariant,
                               borderRadius: BorderRadius.circular(DesignTokens.radius12),
                             ),
                             child: Text(
@@ -279,7 +279,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
                                       shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
                                       child: Text(
                                         '\$${widget.valueCad.toStringAsFixed(2)} CAD',
-                                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+                                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: DesignTokens.white),
                                       ),
                                     ),
                                 ],

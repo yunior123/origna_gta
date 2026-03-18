@@ -38,12 +38,12 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: backgroundColor ?? Colors.transparent,
+        color: backgroundColor ?? DesignTokens.transparent,
         border: Border(bottom: BorderSide(color: DesignTokens.outlineVariant.withValues(alpha: 0.3), width: 0.5)),
       ),
       child: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         centerTitle: centerTitle,
         leading: showBackButton
             ? IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded), tooltip: 'Back', onPressed: onBackPressed ?? () => Navigator.pop(context))
@@ -69,7 +69,7 @@ class ModernBottomNavBar extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkSurface.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
+        color: isDark ? DesignTokens.darkSurface.withValues(alpha: 0.95) : DesignTokens.white.withValues(alpha: 0.95),
         border: Border(top: BorderSide(color: DesignTokens.outlineVariant.withValues(alpha: 0.3), width: 0.5)),
         boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, -4))],
       ),
@@ -124,12 +124,12 @@ class _NavBarItem extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(item.icon, color: isActive ? Colors.white : DesignTokens.textSecondary, size: 20),
+              Icon(item.icon, color: isActive ? DesignTokens.white : DesignTokens.textSecondary, size: 20),
               if (isActive) ...[
                 const SizedBox(width: DesignTokens.spacing8),
                 Text(
                   item.label,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 0.3),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.white, letterSpacing: 0.3),
                 ),
               ],
             ],

@@ -100,10 +100,10 @@ class TermsScreen extends ConsumerWidget {
           children: [
             ShaderMask(
               shaderCallback: (bounds) => const LinearGradient(
-                colors: [Colors.white, DesignTokens.accent],
+                colors: [DesignTokens.white, DesignTokens.accent],
               ).createShader(bounds),
               child: const ModernLoadingIndicator(
-                color: Colors.white,
+                color: DesignTokens.white,
                 strokeWidth: 2.5,
                 centered: false,
               ),
@@ -112,7 +112,7 @@ class TermsScreen extends ConsumerWidget {
             Text(
               'legal.loading_terms'.tr(),
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
+                color: DesignTokens.white.withValues(alpha: 0.7),
                 fontSize: 14,
                 letterSpacing: 1,
               ),
@@ -147,18 +147,18 @@ class TermsScreen extends ConsumerWidget {
             const SizedBox(height: 20),
             Text(
               'legal.unable_to_load'.tr(),
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+              style: const TextStyle(color: DesignTokens.white, fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
               'legal.check_connection'.tr(),
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+              style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.6), fontSize: 14),
             ),
             const SizedBox(height: 28),
             TextButton.icon(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
-              label: Text('seller.go_back'.tr(), style: const TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.arrow_back, color: DesignTokens.white, size: 18),
+              label: Text('seller.go_back'.tr(), style: const TextStyle(color: DesignTokens.white)),
             ),
           ],
         ),
@@ -257,10 +257,10 @@ class _TermsBodyState extends State<_TermsBody> {
         icon: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
+            color: DesignTokens.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+          child: const Icon(Icons.arrow_back, color: DesignTokens.white, size: 20),
         ),
         onPressed: () => Navigator.pop(context),
       ),
@@ -289,7 +289,7 @@ class _TermsBodyState extends State<_TermsBody> {
                   height: 160,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.04),
+                    color: DesignTokens.white.withValues(alpha: 0.04),
                   ),
                 ),
               ),
@@ -350,7 +350,7 @@ class _TermsBodyState extends State<_TermsBody> {
                       child: Text(
                         'legal.terms_conditions_title'.tr(),
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: DesignTokens.white,
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
                           height: 1.15,
@@ -364,7 +364,7 @@ class _TermsBodyState extends State<_TermsBody> {
                       child: Text(
                         '${'legal.last_updated_february_2026'.tr()}  •  ${_sections.length}',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.55),
+                          color: DesignTokens.white.withValues(alpha: 0.55),
                           fontSize: 13,
                           fontWeight: FontWeight.w400,
                         ),
@@ -450,7 +450,7 @@ class _TermsBodyState extends State<_TermsBody> {
       key: _sectionKeys[section.number],
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
-        color: Colors.transparent,
+        color: DesignTokens.transparent,
         child: InkWell(
           onTap: () {
             setState(() {
@@ -467,7 +467,7 @@ class _TermsBodyState extends State<_TermsBody> {
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
+              color: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.white,
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
               border: Border.all(
                 color: isExpanded
@@ -512,7 +512,7 @@ class _TermsBodyState extends State<_TermsBody> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: isExpanded ? Colors.white : DesignTokens.primary,
+                            color: isExpanded ? DesignTokens.white : DesignTokens.primary,
                           ),
                         ),
                       ),
@@ -525,7 +525,7 @@ class _TermsBodyState extends State<_TermsBody> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : DesignTokens.textPrimary,
+                          color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
                           letterSpacing: -0.2,
                         ),
                       ),
@@ -566,7 +566,7 @@ class _TermsBodyState extends State<_TermsBody> {
                               colors: [
                                 DesignTokens.primary.withValues(alpha: 0.2),
                                 DesignTokens.secondary.withValues(alpha: 0.1),
-                                Colors.transparent,
+                                DesignTokens.transparent,
                               ],
                             ),
                           ),
@@ -623,7 +623,7 @@ class _TermsBodyState extends State<_TermsBody> {
                     style: TextStyle(
                       fontSize: 13.5,
                       height: 1.6,
-                      color: isDark ? DesignTokens.textSecondary : const Color(0xFF4A4A5A),
+                      color: isDark ? DesignTokens.textSecondary : DesignTokens.textPrimary,
                     ),
                   ),
                 ),
@@ -656,7 +656,7 @@ class _TermsBodyState extends State<_TermsBody> {
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.55,
-                      color: isDark ? DesignTokens.textSecondary : const Color(0xFF6A6A7A),
+                      color: isDark ? DesignTokens.textSecondary : DesignTokens.textSecondary,
                     ),
                   ),
                 ),
@@ -673,7 +673,7 @@ class _TermsBodyState extends State<_TermsBody> {
               style: TextStyle(
                 fontSize: 13.5,
                 height: 1.65,
-                color: isDark ? DesignTokens.textSecondary : const Color(0xFF4A4A5A),
+                color: isDark ? DesignTokens.textSecondary : DesignTokens.textPrimary,
               ),
             ),
           ),

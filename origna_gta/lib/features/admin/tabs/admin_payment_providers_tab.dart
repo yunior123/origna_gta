@@ -8,7 +8,8 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-/// Admin tab for managing payment providers
+/// Admin tab for managing payment providers.
+/// Uses [adminPaymentProvidersDataProvider] for data loading instead of manual setState.
 class AdminPaymentProvidersTab extends ConsumerStatefulWidget {
   const AdminPaymentProvidersTab({super.key});
 
@@ -17,154 +18,156 @@ class AdminPaymentProvidersTab extends ConsumerStatefulWidget {
 }
 
 class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProvidersTab> {
-  Map<String, dynamic>? _providersData;
-  bool _isLoading = true;
-  String? _error;
   final TextEditingController _reasonController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final providersAsync = ref.watch(adminPaymentProvidersDataProvider);
+
     return RefreshIndicator(
-      onRefresh: _loadProviders,
-      child: _isLoading
-          ? const ModernLoadingIndicator.fullScreen()
-          : _error != null
-              ? Center(
+      onRefresh: () async => ref.invalidate(adminPaymentProvidersDataProvider),
+      child: providersAsync.when(
+        loading: () => const ModernLoadingIndicator.fullScreen(),
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: DesignTokens.error.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: Icon(Icons.error_outline_rounded, size: 36, color: DesignTokens.error),
+              ),
+              const SizedBox(height: 16),
+              Text('admin.payments.error_loading'.tr(), style: TextStyle(color: DesignTokens.error)),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => ref.invalidate(adminPaymentProvidersDataProvider),
+                icon: const Icon(Icons.refresh),
+                label: Text('common.retry'.tr()),
+              ),
+            ],
+          ),
+        ),
+        data: (providersData) => ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: 1,
+          itemBuilder: (context, index) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header card
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              gradient: DesignTokens.primaryGradient,
+                              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                            ),
+                            child: const Icon(Icons.payment_rounded, color: DesignTokens.white, size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('admin.payments.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 2),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'admin.payments.description'.tr(),
+                        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: DesignTokens.error.withValues(alpha: 0.1), shape: BoxShape.circle),
-                        child: Icon(Icons.error_outline_rounded, size: 36, color: DesignTokens.error),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(_error!, style: TextStyle(color: DesignTokens.error)),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _loadProviders,
-                        icon: const Icon(Icons.refresh),
-                        label: Text('common.retry'.tr()),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.warning.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                          border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'admin.payments.warning_at_least_one'.tr(),
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                )
-              : ListView(
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Provider cards
+              _buildProviderCard(
+                providersData: providersData,
+                provider: PaymentProviderValues.stripe,
+                name: 'admin.payments.stripe_name'.tr(),
+                icon: Icons.credit_card,
+                description: 'admin.payments.stripe_desc'.tr(),
+                features: [
+                  'admin.payments.stripe_feature_1'.tr(),
+                  'admin.payments.stripe_feature_2'.tr(),
+                  'admin.payments.stripe_feature_3'.tr(),
+                  'admin.payments.stripe_feature_4'.tr(),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Enabled providers summary
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                color: DesignTokens.success.withValues(alpha: 0.06),
+                child: Padding(
                   padding: const EdgeInsets.all(16),
-                  children: [
-                    // Header card
-                    Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.success.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.check_circle_rounded, color: DesignTokens.success, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    gradient: DesignTokens.primaryGradient,
-                                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                                  ),
-                                  child: const Icon(Icons.payment_rounded, color: Colors.white, size: 22),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('admin.payments.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                                      const SizedBox(height: 2),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              'admin.payments.description'.tr(),
-                              style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: DesignTokens.warning.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.2)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 20),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      'admin.payments.warning_at_least_one'.tr(),
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            Text('admin.payments.enabled_providers'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.success)),
+                            const SizedBox(height: 4),
+                            Text(_getEnabledProvidersList(providersData), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.success)),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Provider cards
-                    if (_providersData != null) ...[
-                      _buildProviderCard(
-                        provider: PaymentProviderValues.stripe,
-                        name: 'admin.payments.stripe_name'.tr(),
-                        icon: Icons.credit_card,
-                        description: 'admin.payments.stripe_desc'.tr(),
-                        features: [
-                          'admin.payments.stripe_feature_1'.tr(),
-                          'admin.payments.stripe_feature_2'.tr(),
-                          'admin.payments.stripe_feature_3'.tr(),
-                          'admin.payments.stripe_feature_4'.tr(),
-                        ],
                       ),
                     ],
-
-                    const SizedBox(height: 24),
-
-                    // Enabled providers summary
-                    Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
-                      color: DesignTokens.success.withValues(alpha: 0.06),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: DesignTokens.success.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(Icons.check_circle_rounded, color: DesignTokens.success, size: 24),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('admin.payments.enabled_providers'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.success)),
-                                  const SizedBox(height: 4),
-                                  Text(_getEnabledProvidersList(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.success)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -174,20 +177,15 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadProviders();
-  }
-
   Widget _buildProviderCard({
+    required Map<String, dynamic> providersData,
     required String provider,
     required String name,
     required IconData icon,
     required String description,
     required List<String> features,
   }) {
-    final providers = _providersData?[ApiKeys.providers] as Map<String, dynamic>? ?? {};
+    final providers = providersData[ApiKeys.providers] as Map<String, dynamic>? ?? {};
     final providerData = providers[provider] as Map<String, dynamic>? ?? {};
     final isEnabled = providerData[ApiKeys.enabled] as bool? ?? false;
     final isConfigured = providerData[ApiKeys.configured] as bool? ?? false;
@@ -263,7 +261,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 ),
               ],
             ),
-            
+
             // Warning if not configured
             if (!isConfigured) ...[
               const SizedBox(height: 12),
@@ -280,8 +278,8 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        missingKeys.isNotEmpty 
-                            ? 'admin.payments.missing_keys'.tr(namedArgs: {'keys': missingKeys.join(", ")}) 
+                        missingKeys.isNotEmpty
+                            ? 'admin.payments.missing_keys'.tr(namedArgs: {'keys': missingKeys.join(", ")})
                             : 'admin.payments.not_configured_desc'.tr(namedArgs: {'name': name}),
                         style: TextStyle(fontSize: 12, color: DesignTokens.warning),
                       ),
@@ -290,7 +288,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 ),
               ),
             ],
-            
+
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 12),
@@ -336,38 +334,12 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     );
   }
 
-  String _getEnabledProvidersList() {
-    final enabledProviders = _providersData?[ApiKeys.enabledProviders] as List<dynamic>? ?? [];
+  String _getEnabledProvidersList(Map<String, dynamic> providersData) {
+    final enabledProviders = providersData[ApiKeys.enabledProviders] as List<dynamic>? ?? [];
     if (enabledProviders.isEmpty) {
       return 'common.none'.tr();
     }
     return enabledProviders.map((p) => p.toString().toUpperCase()).join(', ');
-  }
-
-  Future<void> _loadProviders() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final adminRepo = ref.read(adminRepositoryProvider);
-      final data = await adminRepo.getPaymentProviders();
-      
-      if (mounted) {
-        setState(() {
-          _providersData = data;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'admin.payments.error_loading'.tr();
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   Future<void> _toggleProvider(String provider, String name, bool enable, bool isConfigured) async {
@@ -412,7 +384,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: DesignTokens.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: DesignTokens.white,
               ),
               child: Text('common.got_it'.tr()),
             ),
@@ -465,7 +437,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: enable ? DesignTokens.primary : DesignTokens.error,
-              foregroundColor: Colors.white,
+              foregroundColor: DesignTokens.white,
             ),
             child: Text(enable ? 'admin.payments.enable_action'.tr() : 'admin.payments.disable_action'.tr()),
           ),
@@ -478,7 +450,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
 
     // Show loading
     if (!mounted) return;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -488,12 +460,12 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     try {
       final adminRepo = ref.read(adminRepositoryProvider);
       await adminRepo.updatePaymentProvider(provider, enable, reason: reason);
-      
+
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      
-      // Reload data
-      await _loadProviders();
+
+      // Invalidate provider to reload data via Riverpod
+      ref.invalidate(adminPaymentProvidersDataProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -505,7 +477,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      
+
       // Extract meaningful error message
       String errorMessage = AppError.getMessage(e, 'admin.payments.error_failed_update'.tr(namedArgs: {'name': name}));
       if (errorMessage.contains('not configured')) {
@@ -515,7 +487,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
       } else if (errorMessage.contains('Cannot disable all')) {
         errorMessage = 'admin.payments.error_cannot_disable_all'.tr();
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),

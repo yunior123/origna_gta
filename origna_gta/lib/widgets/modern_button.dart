@@ -80,19 +80,19 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
               gradient: widget.isPrimary && !widget.isOutlined && !isDisabled ? DesignTokens.primaryGradient : null,
               color:
                   widget.backgroundColor ??
-                  (widget.isOutlined ? Colors.transparent : (!widget.isPrimary ? DesignTokens.surface : (isDisabled ? DesignTokens.textDisabled : null))),
+                  (widget.isOutlined ? DesignTokens.transparent : (!widget.isPrimary ? DesignTokens.surface : (isDisabled ? DesignTokens.textDisabled : null))),
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
               border: widget.isOutlined ? Border.all(color: DesignTokens.primary, width: 1.5) : null,
               boxShadow: !widget.isOutlined && widget.isPrimary && !isDisabled ? DesignTokens.shadowMd : null,
             ),
             child: Material(
-              color: Colors.transparent,
+              color: DesignTokens.transparent,
               child: InkWell(
                 onTap: isDisabled ? null : widget.onPressed,
                 borderRadius: BorderRadius.circular(DesignTokens.radius16),
                 child: Center(
                   child: widget.isLoading
-                      ? ModernLoadingIndicator(size: 20, color: widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary)
+                      ? ModernLoadingIndicator(size: 20, color: widget.isPrimary && !widget.isOutlined ? DesignTokens.white : DesignTokens.primary)
                       : Padding(
                           padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing12),
                           child: FittedBox(
@@ -105,7 +105,7 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
                                   Image.asset(widget.imageIcon!, width: 20, height: 20),
                                   const SizedBox(width: DesignTokens.spacing8),
                                 ] else if (widget.icon != null) ...[
-                                  Icon(widget.icon, color: widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary, size: 18),
+                                  Icon(widget.icon, color: widget.isPrimary && !widget.isOutlined ? DesignTokens.white : DesignTokens.primary, size: 18),
                                   const SizedBox(width: DesignTokens.spacing8),
                                 ],
                                 Text(
@@ -116,7 +116,7 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.5,
-                                    color: widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary,
+                                    color: widget.isPrimary && !widget.isOutlined ? DesignTokens.white : DesignTokens.primary,
                                   ),
                                 ),
                               ],

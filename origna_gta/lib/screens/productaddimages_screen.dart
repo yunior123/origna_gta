@@ -58,7 +58,7 @@ class _ImageTile extends StatelessWidget {
               decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(8)),
               child: Text(
                 'product.cover'.tr(),
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                style: const TextStyle(color: DesignTokens.white, fontSize: 10, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -76,9 +76,9 @@ class _ImageTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: DesignTokens.error.withValues(alpha: 0.9),
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4)],
+                  boxShadow: [BoxShadow(color: DesignTokens.black.withValues(alpha: 0.2), blurRadius: 4)],
                 ),
-                child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+                child: const Icon(Icons.close_rounded, color: DesignTokens.white, size: 14),
               ),
             ),
           ),
@@ -134,7 +134,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                       widget.onImagesChanged?.call(List.unmodifiable(_imageModels));
                     },
                     proxyDecorator: (child, index, animation) {
-                      return Material(color: Colors.transparent, child: child);
+                      return Material(color: DesignTokens.transparent, child: child);
                     },
                     itemBuilder: (context, index) {
                       final m = _imageModels[index];
@@ -181,7 +181,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(12)),
-                              child: const Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 22),
+                              child: const Icon(Icons.add_photo_alternate_rounded, color: DesignTokens.white, size: 22),
                             ),
                             const SizedBox(height: 6),
                             Text(
@@ -226,7 +226,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
+              const Icon(Icons.warning_amber_rounded, color: DesignTokens.white, size: 18),
               const SizedBox(width: 8),
               Text('product.max_images'.tr()),
             ],

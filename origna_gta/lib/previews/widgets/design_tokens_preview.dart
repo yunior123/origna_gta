@@ -43,7 +43,7 @@ Widget previewColorPalette() => previewWrapper(
 
 Widget _sectionLabel(String label) => Padding(
   padding: const EdgeInsets.only(bottom: 8),
-  child: Text(label.toUpperCase(), style: const TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
+  child: Text(label.toUpperCase(), style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.38), fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
 );
 
 Widget _colorRow(String name, Color color) => Padding(
@@ -56,12 +56,12 @@ Widget _colorRow(String name, Color color) => Padding(
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white12),
+          border: Border.all(color: DesignTokens.white.withValues(alpha: 0.12)),
         ),
       ),
       const SizedBox(width: 12),
-      Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500))),
-      Text('#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}', style: const TextStyle(color: Colors.white38, fontSize: 12, fontFamily: 'monospace')),
+      Expanded(child: Text(name, style: const TextStyle(color: DesignTokens.white, fontSize: 14, fontWeight: FontWeight.w500))),
+      Text('#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.38), fontSize: 12, fontFamily: 'monospace')),
     ],
   ),
 );
@@ -77,7 +77,7 @@ Widget previewGradient() => previewWrapper(
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Center(
-          child: Text('primaryGradient', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+          child: Text('primaryGradient', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600, fontSize: 16)),
         ),
       ),
       const SizedBox(height: 16),
@@ -92,7 +92,7 @@ Widget previewGradient() => previewWrapper(
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Center(
-          child: Text('App gradient (splash)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+          child: Text('App gradient (splash)', style: TextStyle(color: DesignTokens.white, fontWeight: FontWeight.w600, fontSize: 16)),
         ),
       ),
     ],
@@ -103,20 +103,20 @@ Widget previewGradient() => previewWrapper(
 Widget previewTypography() => previewWrapper(
   child: Column(
     crossAxisAlignment: CrossAxisAlignment.start,
-    children: const [
-      Text('Display — 32px', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700)),
-      SizedBox(height: 8),
-      Text('Heading — 24px', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),
-      SizedBox(height: 8),
-      Text('Title — 18px', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
-      SizedBox(height: 8),
-      Text('Body — 16px Regular', style: TextStyle(color: Colors.white, fontSize: 16)),
-      SizedBox(height: 8),
-      Text('Body Secondary — 14px', style: TextStyle(color: Colors.white70, fontSize: 14)),
-      SizedBox(height: 8),
-      Text('Caption — 12px', style: TextStyle(color: Colors.white54, fontSize: 12)),
-      SizedBox(height: 8),
-      Text('OVERLINE — 11px', style: TextStyle(color: Colors.white38, fontSize: 11, letterSpacing: 1.4, fontWeight: FontWeight.w600)),
+    children: [
+      const Text('Display — 32px', style: TextStyle(color: DesignTokens.white, fontSize: 32, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      const Text('Heading — 24px', style: TextStyle(color: DesignTokens.white, fontSize: 24, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      const Text('Title — 18px', style: TextStyle(color: DesignTokens.white, fontSize: 18, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      const Text('Body — 16px Regular', style: TextStyle(color: DesignTokens.white, fontSize: 16)),
+      const SizedBox(height: 8),
+      Text('Body Secondary — 14px', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.7), fontSize: 14)),
+      const SizedBox(height: 8),
+      Text('Caption — 12px', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 12)),
+      const SizedBox(height: 8),
+      Text('OVERLINE — 11px', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.38), fontSize: 11, letterSpacing: 1.4, fontWeight: FontWeight.w600)),
     ],
   ),
 );
@@ -169,7 +169,7 @@ Widget _radiusChip(String label, double radius) => Column(
       ),
     ),
     const SizedBox(height: 4),
-    Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+    Text(label, style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 11)),
   ],
 );
 
@@ -181,6 +181,6 @@ Widget _spacingChip(String label, double size) => Column(
       color: DesignTokens.secondary.withValues(alpha: 0.6),
     ),
     const SizedBox(height: 4),
-    Text('${label}px', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+    Text('${label}px', style: TextStyle(color: DesignTokens.white.withValues(alpha: 0.54), fontSize: 11)),
   ],
 );

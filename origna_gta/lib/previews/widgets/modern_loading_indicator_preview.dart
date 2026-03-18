@@ -19,7 +19,7 @@ Widget previewLoadingInline() => previewGrid(
         children: [
           ModernLoadingIndicator.small(),
           SizedBox(width: 12),
-          Text('Processing...', style: TextStyle(color: Colors.white)),
+          Text('Processing...', style: TextStyle(color: DesignTokens.white)),
         ],
       ),
     ),
@@ -51,7 +51,7 @@ Widget previewLoadingInlineLight() => previewGrid(
         children: [
           ModernLoadingIndicator.small(),
           SizedBox(width: 12),
-          Text('Processing...', style: TextStyle(color: Colors.white)),
+          Text('Processing...', style: TextStyle(color: DesignTokens.white)),
         ],
       ),
     ),

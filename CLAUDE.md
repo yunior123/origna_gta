@@ -28,3 +28,10 @@ Flutter e-commerce app. Backend: OrignaBase (Rust VPS, **Firebase is COMPLETELY 
 Rules:
 -use many subagents in each session to keep main context window as clean as possible. more than 10+ agents
 -u can use concurrency or parralel tasks, u just need to be careful with ram. specially with tests e2e
+-no migration or backward compatibility please,  u can always wipe out entire dev db and seed again if needed
+-autolearn:before running the test suite u run some smoke test first
+-autolearn:always monitor test suite, avoid wasting time, fix as needed
+-always kill orphan or zombie or stale chromes when testing e2e
+-when testing both the orignabase backend and the flutter frontend can be modified to fix the issues
+-if u find a problem u fix it, u cannot silence that problem
+-before fixing search the web for best practices if needed

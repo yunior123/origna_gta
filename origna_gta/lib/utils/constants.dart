@@ -164,56 +164,12 @@ enum DeliveryStatus {
 }
 
 // ============================================================================
-// DELIVERY STATUS (Per-Item)
+// ORDER STATUS — canonical enum is in base_models.dart
 // ============================================================================
 
-/// Order status enum with string value conversion
-enum OrderStatus {
-  pending(OrderStatusValues.pending),
-  confirmed(OrderStatusValues.confirmed),
-  processing(OrderStatusValues.processing),
-  shipped(OrderStatusValues.shipped),
-  inTransit(OrderStatusValues.inTransit),
-  delivered(OrderStatusValues.delivered),
-  cancelled(OrderStatusValues.cancelled),
-  failed(OrderStatusValues.failed),
-  expired(OrderStatusValues.expired),
-  disputed(OrderStatusValues.disputed);
-
-  final String value;
-  const OrderStatus(this.value);
-
-  /// Get display text for UI
-  String get displayText {
-    switch (this) {
-      case OrderStatus.pending:
-        return 'orders.status.pending'.tr();
-      case OrderStatus.confirmed:
-        return 'orders.status.confirmed'.tr();
-      case OrderStatus.processing:
-        return 'orders.status.processing'.tr();
-      case OrderStatus.shipped:
-        return 'orders.status.shipped'.tr();
-      case OrderStatus.inTransit:
-        return 'orders.status.in_transit'.tr();
-      case OrderStatus.delivered:
-        return 'orders.status.delivered'.tr();
-      case OrderStatus.cancelled:
-        return 'orders.status.cancelled'.tr();
-      case OrderStatus.failed:
-        return 'orders.status.failed'.tr();
-      case OrderStatus.expired:
-        return 'orders.status.expired'.tr();
-      case OrderStatus.disputed:
-        return 'orders.status.disputed'.tr();
-    }
-  }
-
-  /// Parse from string value
-  static OrderStatus fromValue(String value) {
-    return OrderStatus.values.firstWhere((e) => e.value == value, orElse: () => OrderStatus.pending);
-  }
-}
+// OrderStatus lives in lib/models/generated/base_models.dart (single source of truth).
+// Extensions (displayText, value, fromValue) are in lib/models/enum_extensions.dart.
+// Do NOT define OrderStatus here — use the canonical enum from base_models.dart.
 
 // ============================================================================
 // APP CONFIGURATION

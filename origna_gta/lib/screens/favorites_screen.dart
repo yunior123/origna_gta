@@ -29,11 +29,11 @@ class FavoritesScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBarFactory.simple(
           title: 'favorites.my_favorites'.tr(),
-          subtitle: favoritesAsync.valueOrNull != null && favoritesAsync.valueOrNull!.isNotEmpty
-              ? 'favorites.items_count'.tr(namedArgs: {'count': '${favoritesAsync.valueOrNull!.length}'})
+          subtitle: (favoritesAsync.valueOrNull?.isNotEmpty ?? false)
+              ? 'favorites.items_count'.tr(namedArgs: {'count': '${favoritesAsync.valueOrNull?.length ?? 0}'})
               : null,
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: favoritesAsync.when(
           loading: () => Center(
             child: Column(
@@ -52,7 +52,7 @@ class FavoritesScreen extends ConsumerWidget {
                       child: const SizedBox(
                         width: 32,
                         height: 32,
-                        child: ModernLoadingIndicator(size: 32, strokeWidth: 3, color: Colors.white, centered: false),
+                        child: ModernLoadingIndicator(size: 32, strokeWidth: 3, color: DesignTokens.white, centered: false),
                       ),
                     ),
                   ),
@@ -164,7 +164,7 @@ class FavoritesScreen extends ConsumerWidget {
   }
 
   double _getCardAspectRatio(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final width = MediaQuery.sizeOf(context).width;
     // Lower ratio = taller cards (prevents vertical overflow).
     // Synced with ResponsiveBreakpoints.cardAspect* — sized for worst case
     // (trending row + delivery chip visible simultaneously).

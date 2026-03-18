@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -20,37 +19,19 @@ class AdminSecurityTab extends ConsumerStatefulWidget {
 }
 
 class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
-  bool _mfaEnabled = false;
+  // Transient MFA setup wizard state (only exists during enable flow)
   String? _secret;
   String? _qrCodeUri;
   List<String> _backupCodes = [];
   final TextEditingController _mfaCodeController = TextEditingController();
-  // Backup codes visibility state - reserved for future use
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // F-62: Read MFA status via the Riverpod userProfileProvider instead of a
-      // direct database call. Falls back gracefully if the profile is not yet loaded.
-      final uid = ref.read(currentUserProvider)?.uid;
-      if (uid == null || !mounted) return;
-      // Use the providers.dart userRepository to avoid magic string collection names
-      final userData = ref.read(userProfileProvider).valueOrNull;
-      if (!mounted) return;
-      setState(() {
-        _mfaEnabled = userData?.mfaEnabled ?? false;
-      });
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final adminActionsState = ref.watch(adminActionsViewModelProvider);
+    // Read MFA status reactively from user profile provider
+    final mfaEnabled = ref.watch(userProfileProvider).valueOrNull?.mfaEnabled ?? false;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
+    final securityChildren = <Widget>[
         // MFA Status Card
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
@@ -67,7 +48,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                         gradient: DesignTokens.primaryGradient,
                         borderRadius: BorderRadius.circular(DesignTokens.radius12),
                       ),
-                      child: const Icon(Icons.shield_rounded, color: Colors.white, size: 22),
+                      child: const Icon(Icons.shield_rounded, color: DesignTokens.white, size: 22),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -84,22 +65,22 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: _mfaEnabled ? DesignTokens.success.withValues(alpha: 0.12) : DesignTokens.outlineVariant.withValues(alpha: 0.3),
+                          color: mfaEnabled ? DesignTokens.success.withValues(alpha: 0.12) : DesignTokens.outlineVariant.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              _mfaEnabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                              mfaEnabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
                               size: 14,
-                              color: _mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary,
+                              color: mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary,
                             ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                _mfaEnabled ? 'admin.security.mfa_enabled'.tr() : 'admin.security.mfa_disabled'.tr(),
-                                style: TextStyle(color: _mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary, fontWeight: FontWeight.w700, fontSize: 11),
+                                mfaEnabled ? 'admin.security.mfa_enabled'.tr() : 'admin.security.mfa_disabled'.tr(),
+                                style: TextStyle(color: mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary, fontWeight: FontWeight.w700, fontSize: 11),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -116,7 +97,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
                 ),
                 const SizedBox(height: 20),
-                if (!_mfaEnabled)
+                if (!mfaEnabled)
                   FilledButton.icon(
                     onPressed: adminActionsState.isLoading ? null : _enableMfa,
                     icon: const Icon(Icons.security_rounded),
@@ -145,7 +126,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
         const SizedBox(height: 16),
 
         // MFA Setup Instructions (if enabling)
-        if (_secret != null && !_mfaEnabled)
+        if (_secret != null && !mfaEnabled)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
             color: DesignTokens.info.withValues(alpha: 0.04),
@@ -164,7 +145,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   Center(
                     child: Container(
                       padding: const EdgeInsets.all(16),
-                      color: Colors.white,
+                      color: DesignTokens.white,
                       child: _qrCodeUri != null
                           ? QrImageView(
                               data: _qrCodeUri!,
@@ -186,7 +167,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: DesignTokens.white,
                       border: Border.all(color: DesignTokens.outlineVariant),
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -202,6 +183,8 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                           onPressed: () async {
                             final messenger = ScaffoldMessenger.of(context);
                             await Clipboard.setData(ClipboardData(text: _secret!));
+                            // Auto-clear clipboard after 30 seconds for security
+                            Future.delayed(const Duration(seconds: 30), () => Clipboard.setData(const ClipboardData(text: '')));
                             if (mounted) {
                               messenger.showSnackBar(
                                 SnackBar(content: Text('admin.security.secret_copied'.tr())),
@@ -287,6 +270,8 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                                 await Clipboard.setData(
                                   ClipboardData(text: _backupCodes.join('\n')),
                                 );
+                                // Auto-clear clipboard after 30 seconds for security
+                                Future.delayed(const Duration(seconds: 30), () => Clipboard.setData(const ClipboardData(text: '')));
                                 if (mounted) {
                                   messenger.showSnackBar(
                                     SnackBar(content: Text('admin.security.backup_codes_copied'.tr())),
@@ -332,7 +317,11 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
             alignment: Alignment.center,
             child: const ModernLoadingIndicator(),
           ),
-      ],
+    ];
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: securityChildren.length,
+      itemBuilder: (context, index) => securityChildren[index],
     );
   }
 
@@ -380,8 +369,9 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
               final viewModel = ref.read(adminActionsViewModelProvider.notifier);
               final success = await viewModel.disableAdminMfa(code);
               if (success && mounted) {
+                // Refresh user profile to pick up MFA status change
+                ref.invalidate(userProfileProvider);
                 setState(() {
-                  _mfaEnabled = false;
                   _secret = null;
                   _qrCodeUri = null;
                   _backupCodes = [];
@@ -418,10 +408,9 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
     final viewModel = ref.read(adminActionsViewModelProvider.notifier);
     final success = await viewModel.verifyAdminMfa(code);
     if (success && mounted) {
-      setState(() {
-        _mfaEnabled = true;
-        _mfaCodeController.clear();
-      });
+      // Refresh user profile to pick up MFA status change
+      ref.invalidate(userProfileProvider);
+      _mfaCodeController.clear();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('admin.security.mfa_enabled_success'.tr()), backgroundColor: DesignTokens.success));

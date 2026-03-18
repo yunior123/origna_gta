@@ -22,26 +22,26 @@ class AdminRequiredGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final profileRoles = ref.watch(userProfileProvider.select((a) => a.valueOrNull?.roles));
 
     // Still loading profile — show spinner
-    if (userProfile == null) {
+    if (profileRoles == null) {
       return Container(
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: const Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: DesignTokens.transparent,
           body: Center(child: ModernLoadingIndicator()),
         ),
       );
     }
 
     // Not admin — redirect home
-    if (!userProfile.roles.contains(UserRoles.admin)) {
+    if (!profileRoles.contains(UserRoles.admin)) {
       return Container(
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: Scaffold(
           appBar: AppBarFactory.simple(title: 'admin.access_denied'.tr()),
-          backgroundColor: Colors.transparent,
+          backgroundColor: DesignTokens.transparent,
           body: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
@@ -96,11 +96,11 @@ class AuthRequiredGate extends ConsumerWidget {
       loading: () => Container(
         decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
         child: Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: DesignTokens.transparent,
           body: Center(
             child: ShaderMask(
               shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-              child: const ModernLoadingIndicator(color: Colors.white, strokeWidth: 3, centered: false),
+              child: const ModernLoadingIndicator(color: DesignTokens.white, strokeWidth: 3, centered: false),
             ),
           ),
         ),
@@ -112,7 +112,7 @@ class AuthRequiredGate extends ConsumerWidget {
             decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
             child: Scaffold(
               appBar: AppBarFactory.simple(title: 'auth.sign_in_required'.tr()),
-              backgroundColor: Colors.transparent,
+              backgroundColor: DesignTokens.transparent,
               body: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 400),
@@ -136,7 +136,7 @@ class AuthRequiredGate extends ConsumerWidget {
                           delay: const Duration(milliseconds: 50),
                           child: Text(
                             'auth.please_sign_in'.tr(),
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -206,7 +206,7 @@ class AuthRequiredGate extends ConsumerWidget {
             decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
             child: Scaffold(
               appBar: AppBarFactory.simple(title: 'auth.account_suspended'.tr()),
-              backgroundColor: Colors.transparent,
+              backgroundColor: DesignTokens.transparent,
               body: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 400),
@@ -271,7 +271,7 @@ class ErrorScreen extends StatelessWidget {
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'errors.error_title'.tr()),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
@@ -295,7 +295,7 @@ class ErrorScreen extends StatelessWidget {
                     delay: const Duration(milliseconds: 50),
                     child: Text(
                       'errors.generic_error'.tr(),
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -339,7 +339,7 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
       decoration: BoxDecoration(gradient: DesignTokens.backgroundGradient(isDark: isDark)),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'email_verification.title'.tr()),
-        backgroundColor: Colors.transparent,
+        backgroundColor: DesignTokens.transparent,
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 450),
@@ -363,7 +363,7 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                     delay: const Duration(milliseconds: 50),
                     child: Text(
                       'email_verification.title'.tr(),
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? DesignTokens.white : DesignTokens.textPrimary),
                     ),
                   ),
                   if (user?.email != null) ...[
@@ -374,7 +374,7 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                         decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(20)),
                         child: Text(
-                          user!.email!,
+                          user?.email ?? '',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DesignTokens.primary),
                         ),
                       ),
@@ -463,7 +463,7 @@ class _EmailVerificationRequiredScreenState extends ConsumerState<EmailVerificat
             child: Center(
               child: Text(
                 number,
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                style: const TextStyle(color: DesignTokens.white, fontSize: 12, fontWeight: FontWeight.w700),
               ),
             ),
           ),

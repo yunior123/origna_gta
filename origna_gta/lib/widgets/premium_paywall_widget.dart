@@ -37,7 +37,7 @@ class PremiumPaywallWidget extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary], begin: Alignment.topLeft, end: Alignment.bottomRight),
             ),
-            child: const Icon(Icons.workspace_premium, color: Colors.white, size: 30),
+            child: const Icon(Icons.workspace_premium, color: DesignTokens.white, size: 30),
           ),
           const SizedBox(height: 16),
           Text(
