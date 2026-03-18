@@ -29,8 +29,9 @@ describe('Google Auth Contract', () => {
     const providers = await getAuthProviders();
     const googleProvider = providers.google ?? {};
 
-    const snap = await browser.snapshot({ interactive: true });
-    const googleButton = browser.findByLabel(snap, 'login_google_button');
+    // Wait for full login form to render (Google button appears last)
+    const snap = await browser.waitForChange({ text: /login_submit_button/i, timeout: 30_000 });
+    const googleButton = browser.findByLabel(snap, /login_google_button|btn-google|continuer avec Google|continue with Google/i);
     const googleButtonVisible = googleButton !== null;
 
     expect(
