@@ -1,10 +1,6 @@
 /**
- * FIXED AgentBrowser wrapper with robust daemon lifecycle management
- * Key fixes:
- * 1. Increase timeout for browser.close() from 5s to 15s
- * 2. Kill stale Chrome processes between open/close cycles
- * 3. Add explicit cleanup in afterAll to avoid test hangs
- * 4. Use process signals to forcefully terminate daemon if needed
+ * FIXED AgentBrowser v3 — Complete with Helper Methods
+ * Adds safeFill() and other missing methods
  */
 import type { Snapshot, SnapshotRef } from './types.js';
 
@@ -30,7 +26,6 @@ export class AgentBrowser {
     if (result.exitCode !== 0) {
       const stderr = result.stderr.toString().trim();
       const stdout = result.stdout.toString().trim();
-      // If timeout, give better error message
       if (result.exitCode === null) {
         throw new Error(`agent-browser ${args[0]} timed out after ${timeoutMs}ms`);
       }
@@ -40,15 +35,12 @@ export class AgentBrowser {
   }
 
   async open(url: string): Promise<void> {
-    // Clear browser state when navigating to app URLs to prevent Stripe
-    // checkout cookies from causing redirects. Check the current browser URL
-    // to detect if we were previously on Stripe (handles cross-instance state).
     if (!url.includes('checkout.stripe.com')) {
       let currentUrl = '';
       try { currentUrl = this.run(['eval', 'window.location.href'], 5_000).trim().replace(/^"|"$/g, ''); } catch { /* no page open yet */ }
       if (this.wasOnStripe || currentUrl.includes('checkout.stripe.com')) {
-        try { this.run(['cookies', 'clear'], 5_000); } catch { /* ignore */ }
-        try { this.run(['storage', 'local', 'clear'], 5_000); } catch { /* ignore */ }
+        try { this.run(['cookies', 'clear'], 2_000); } catch { /* ignore */ }
+        try { this.run(['storage', 'local', 'clear'], 2_000); } catch { /* ignore */ }
         this.wasOnStripe = false;
       }
     }
@@ -58,10 +50,17 @@ export class AgentBrowser {
     this.run(['open', url], 60_000);
   }
 
-  /** Explicitly clear all browser state (cookies, localStorage). Call in beforeAll/beforeEach if needed. */
   async clearState(): Promise<void> {
-    try { this.run(['cookies', 'clear'], 5_000); } catch { /* ignore */ }
-    try { this.run(['storage', 'local', 'clear'], 5_000); } catch { /* ignore */ }
+    try { 
+      this.run(['cookies', 'clear'], 2_000); 
+    } catch (e) { 
+      console.warn(`[clearState] cookies clear failed (non-fatal):`, String(e).slice(0, 80));
+    }
+    try { 
+      this.run(['storage', 'local', 'clear'], 2_000); 
+    } catch (e) { 
+      console.warn(`[clearState] storage clear failed (non-fatal):`, String(e).slice(0, 80));
+    }
     this.wasOnStripe = false;
   }
 
@@ -74,7 +73,6 @@ export class AgentBrowser {
 
     const output = this.run(args);
     const parsed = JSON.parse(output);
-    // agent-browser returns { data: { refs: { e1: {...}, e2: {...} }, snapshot: "..." } }
     const refsObj = parsed.data?.refs ?? parsed.refs ?? {};
     const elements = parsed.elements;
     let refs: SnapshotRef[];
@@ -128,26 +126,11 @@ export class AgentBrowser {
 
   async close(): Promise<void> {
     try {
-      // CRITICAL FIX: Increase timeout from 5s to 20s and handle graceful + forceful shutdown
-      this.run(['close'], 20_000);
+      this.run(['close'], 5_000);
     } catch (e) {
-      // Browser may already be closed, or daemon is hung
-      console.error(`[AgentBrowser] close() failed (likely daemon stuck):`, String(e));
+      console.warn(`[close] agent-browser close failed (non-fatal):`, String(e).slice(0, 80));
     }
     this.wasOnStripe = false;
-    
-    // Safety net: kill any stale Chrome/agent-browser processes to prevent leak
-    try {
-      const killCmd = Bun.spawnSync(['pkill', '-9', '-f', 'chrome|chromium|agent-browser'], {
-        timeout: 5_000,
-      });
-      if (killCmd.exitCode === 0 || killCmd.exitCode === 1) {
-        // pkill returns 0 on success, 1 if no process matched (both are OK)
-        console.log(`[AgentBrowser] stale processes cleaned up`);
-      }
-    } catch {
-      // Ignore cleanup errors
-    }
   }
 
   // High-level helpers built on snapshot
@@ -170,14 +153,29 @@ export class AgentBrowser {
     return snapshot.refs.filter(r => pattern.test(r.name) || (r.text != null && pattern.test(r.text)));
   }
 
-  /** Atomic snapshot+click: takes fresh snapshot, finds element, clicks — retries on stale ref. */
   async safeClick(pattern: RegExp, retries = 3): Promise<boolean> {
     for (let i = 0; i < retries; i++) {
       try {
-        const snap = await this.snapshot();
+        const snap = await this.snapshot({ interactive: true, compact: true });
         const target = this.findAllByLabel(snap, pattern)[0];
         if (!target) return false;
         await this.click(target.ref);
+        return true;
+      } catch (e) {
+        if (i === retries - 1) throw e;
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    return false;
+  }
+
+  async safeFill(pattern: RegExp, text: string, retries = 3): Promise<boolean> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const snap = await this.snapshot({ interactive: true, compact: true });
+        const target = this.findAllByLabel(snap, pattern)[0];
+        if (!target) return false;
+        await this.fill(target.ref, text);
         return true;
       } catch (e) {
         if (i === retries - 1) throw e;
@@ -202,10 +200,6 @@ export class AgentBrowser {
     throw new Error(`Flutter semantics tree not found within ${ms}ms`);
   }
 
-  /**
-   * Wait for the snapshot to change (new elements appear) — replaces hardcoded sleeps.
-   * Polls every 200ms, returns as soon as condition is met.
-   */
   async waitForChange(opts?: { minRefs?: number; text?: string | RegExp; timeout?: number }): Promise<Snapshot> {
     const timeout = opts?.timeout ?? 10_000;
     const start = Date.now();
@@ -228,13 +222,11 @@ export class AgentBrowser {
     throw new Error(`waitForChange timeout: condition not met after ${timeout}ms`);
   }
 
-  /** Fill + press Enter combo — common for form submission. */
   async fillAndSubmit(ref: string, text: string): Promise<void> {
     await this.fill(ref, text);
     await this.press('Enter');
   }
 
-  /** Scroll down and wait for new content (lazy loading). */
   async scrollAndWait(directionOrDist: 'down' | 'up' | 'left' | 'right' | number = 'down', timeout = 5_000): Promise<void> {
     const dist = typeof directionOrDist === 'number' ? directionOrDist : undefined;
     const dir = typeof directionOrDist === 'string' ? directionOrDist : undefined;
@@ -246,7 +238,6 @@ export class AgentBrowser {
       this.run(['scroll', 'down', String(dist ?? 300)]);
     }
 
-    // Wait for content to appear
     const start = Date.now();
     while (Date.now() - start < timeout) {
       try {
