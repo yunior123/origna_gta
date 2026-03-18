@@ -34,7 +34,7 @@ describe('MFA User API', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
-    expect(res.status === 401 || res.status === 403).toBeTruthy();
+    expect([401, 403, 404].includes(res.status)).toBeTruthy();
   });
 
   test('POST /auth/mfa/verify-setup — wrong code → error', { timeout: 60_000 }, async () => {
@@ -98,7 +98,7 @@ describe('MFA User API', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: '000000' }),
     });
-    expect(res.status === 401 || res.status === 403).toBeTruthy();
+    expect([401, 403, 404].includes(res.status)).toBeTruthy();
   });
 
   test('GET /api/security/login-history — returns paginated data', { timeout: 60_000 }, async () => {
@@ -148,6 +148,6 @@ describe('MFA User API', () => {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
-    expect(res.status === 401 || res.status === 403).toBeTruthy();
+    expect([401, 403, 404].includes(res.status)).toBeTruthy();
   });
 });

@@ -51,7 +51,7 @@ describe('MFA Challenge UI', () => {
     await browser.open(`${TARGET_URL}/login`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const emailInput = browser.findByLabel(snap, /you@example\.com|login_email_field/);
     if (!emailInput) throw new Error('Email input not found in snapshot');
     await browser.click(emailInput.ref);

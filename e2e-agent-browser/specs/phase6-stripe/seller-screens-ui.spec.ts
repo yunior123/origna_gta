@@ -70,7 +70,7 @@ describe('Seller UI Screens', () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, /btn-home-settings/i);
     if (!settingsBtn) {
       console.log('T01: Settings button not found — may not be logged in');
@@ -104,7 +104,7 @@ describe('Seller UI Screens', () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, /btn-home-settings/i);
     if (!settingsBtn) {
       console.log('T02: Settings button not found');
@@ -150,7 +150,7 @@ describe('Seller UI Screens', () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, /btn-home-settings/i);
     if (!settingsBtn) {
       console.log('T03: Settings button not found');

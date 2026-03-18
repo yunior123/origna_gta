@@ -16,13 +16,13 @@ async function loginViaBrowser(browser: AgentBrowser, email: string, password: s
   await browser.open(`${TARGET_URL}/login`);
   await browser.waitForFlutter();
 
-  let snap = await browser.snapshot({ interactive: true });
+  let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
   const emailInput = browser.findByLabel(snap, /you@example\.com|login_email_field/);
   if (!emailInput) throw new Error('Email input not found in snapshot');
   await browser.click(emailInput.ref);
   await browser.type(email);
 
-  snap = await browser.snapshot({ interactive: true });
+  snap = await browser.waitForChange({ text: /login_password_field|••••••••/i, timeout: 10_000 });
   const passInput = browser.findByLabel(snap, /login_password_field/);
   if (!passInput) throw new Error('Password input not found in snapshot');
   await browser.click(passInput.ref);

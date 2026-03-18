@@ -144,7 +144,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, BTN_SETTINGS_LABEL);
     if (!settingsBtn) return; // skip if settings not found
 
@@ -169,7 +169,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, BTN_SETTINGS_LABEL);
     if (!settingsBtn) return;
 
@@ -210,7 +210,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, BTN_SETTINGS_LABEL);
     if (!settingsBtn) return;
 
@@ -282,7 +282,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
   test('U04: Settings menu has language option', async () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, BTN_SETTINGS_LABEL);
     if (!settingsBtn) return;
     await browser.click(settingsBtn.ref);
@@ -296,7 +296,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
   test('U05: Settings menu has terms option', async () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, BTN_SETTINGS_LABEL);
     if (!settingsBtn) return;
     await browser.click(settingsBtn.ref);
@@ -314,7 +314,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
   test('U06: Settings menu has privacy option', async () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, BTN_SETTINGS_LABEL);
     if (!settingsBtn) return;
     await browser.click(settingsBtn.ref);
@@ -331,7 +331,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
   test('U07: Settings menu has help or support option', async () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, BTN_SETTINGS_LABEL);
     if (!settingsBtn) return;
     await browser.click(settingsBtn.ref);
@@ -385,7 +385,7 @@ describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
     await browser.open(`${TARGET_URL}/`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settingsBtn = browser.findByLabel(snap, BTN_SETTINGS_LABEL);
     if (!settingsBtn) return;
 

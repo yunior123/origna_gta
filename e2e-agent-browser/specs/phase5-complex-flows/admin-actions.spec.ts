@@ -20,14 +20,14 @@ const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? TEST_ACCOUNTS.ADMIN_PAS
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.open(`${WEB_APP_URL}/login`);
   await browser.waitForFlutter();
-  let snap = await browser.snapshot({ interactive: true, compact: true });
+  let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
 
   const emailInput = browser.findByLabel(snap, /you@example|vous@exemple|login_email_field/i);
   if (!emailInput) throw new Error('Email input not found');
   await browser.click(emailInput.ref);
   await browser.type(email);
 
-  snap = await browser.snapshot({ interactive: true, compact: true });
+  snap = await browser.waitForChange({ text: /login_password_field|••••••••/i, timeout: 10_000 });
   const passInput = browser.findByLabel(snap, /login_password_field|••••••••/);
   if (!passInput) throw new Error('Password input not found');
   await browser.click(passInput.ref);

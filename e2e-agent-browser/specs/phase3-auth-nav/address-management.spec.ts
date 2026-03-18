@@ -145,7 +145,7 @@ describe('Address Management — UI', () => {
     await browser.open('https://dev.orignagta.ca');
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settings = browser.findByLabel(snap, /btn-home-settings/);
     expect(settings).toBeTruthy();
     await browser.click(settings!.ref);
@@ -200,7 +200,7 @@ describe('Address Management — UI', () => {
     await browser.open('https://dev.orignagta.ca');
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settings = browser.findByLabel(snap, /btn-home-settings/);
     expect(settings).toBeTruthy();
     await browser.click(settings!.ref);
@@ -255,7 +255,7 @@ describe('Address Management — UI', () => {
     await browser.open('https://dev.orignagta.ca');
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const settings = browser.findByLabel(snap, /btn-home-settings/);
     expect(settings).toBeTruthy();
     await browser.click(settings!.ref);

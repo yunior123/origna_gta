@@ -48,7 +48,7 @@ describe('Accessibility — WCAG 2.1 AA (agent-browser)', () => {
     await browser.open(`${TARGET_URL}/login`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const emailInput = browser.findByLabel(snap, /email/i);
     if (emailInput) {
       await browser.fill(emailInput.ref, BUYER_EMAIL);
@@ -143,7 +143,7 @@ describe('Accessibility — WCAG 2.1 AA (agent-browser)', () => {
     await browser.open(`${TARGET_URL}/login`);
     await browser.waitForFlutter();
 
-    let snap = await browser.snapshot({ interactive: true, compact: true });
+    let snap = await browser.waitForChange({ text: /you@example|vous@exemple|login_email_field/i, timeout: 30_000 });
     const emailInput = browser.findByLabel(snap, /email/i);
     if (emailInput) {
       await browser.fill(emailInput.ref, BUYER_EMAIL);
