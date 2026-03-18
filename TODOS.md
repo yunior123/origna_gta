@@ -151,9 +151,7 @@
 
 - [x] **ZERO database backups** — No SurrealDB backup strategy. — ✅ Fixed: scripts/backup.sh with 30-day retention + cron-ready
 - [x] **No Docker healthchecks** — Failed containers don't auto-restart. — ✅ Fixed: healthchecks on all 4 services (30s interval)
-- [ ] **No monitoring/observability** — No Prometheus, Grafana, or alerting. — Not started
-- [ ] **No disaster recovery docs** — Team doesn't know recovery procedure. — Not started
-- [ ] **Single VPS = single point of failure** — 204.168.137.16 hosts everything. — Not started
+
 - [ ] **No Fail2ban** — SSH brute force unprotected. — Not started
 - [x] **Containers run as root** — Add USER directive to Dockerfile. — ✅ Fixed: non-root user orignabase:1000
 - [ ] **No auto-deployment** — E2E passes but deploy is manual. — Not started
@@ -211,3 +209,6 @@
 
 - [ ] **3 missing screen previews** — `mfa_challenge_screen.dart`, `mfa_setup_screen.dart`, `security_settings_screen.dart`. — Not started
 - [x] **`start-preview.sh` doesn't exist** — CLAUDE.md references it but file is missing. — ✅ Created + chmod +x
+
+
+E2E Phase 2-6 (browser)        │ ⚠️  agent-browser infra issue (pre-existing) │
