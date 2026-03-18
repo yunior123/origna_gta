@@ -71,7 +71,7 @@
 - [x] Implement deferred loading — ✅ Already done: DeferredWidget helper + 13 screens use deferred imports
 - [x] Enable `strict-casts: true`, `strict-raw-types: true` in analysis_options.yaml — ✅ Fixed: enabled + 197 errors fixed across 20 files
 - [x] Run `cargo audit` in CI — ✅ Fixed: quinn-proto DoS vulnerability patched (0.11.13→0.11.14), 0 vulns remaining
-- [ ] JWT key rotation schedule (quarterly) — Source: Rust Research
+- [x] JWT key rotation schedule (quarterly) — ✅ KeyRotationManager + fallback verification + admin endpoint + cron script
 - [x] Add `/health` endpoint that validates SurrealDB + Meilisearch + Stripe connectivity — ✅ Fixed: enhanced with docker-compose healthchecks
 - [x] Verify Stripe webhook uses SHA-256 HMAC (not MD5) — ✅ Verified: uses hmac::Hmac<sha2::Sha256>, correct per Stripe spec
 
@@ -141,10 +141,8 @@
 - [x] **Email notifications** — ✅ Mailjet integrated: order confirmation (buyer+seller), shipping notification (bilingual), payout scheduled
 - [x] **Refund/return flow** — ✅ Created: return_request_screen.dart, order card "Request Return" button, 7 return statuses, EN/FR translations
 - [x] **Product recommendations** — ✅ Already implemented: SimilarProductsSection wired into productdetails_screen
-- [ ] **Guest checkout** — Forces login, kills conversion. — Not started
-- [ ] **Coupons/promo codes** — 0% implemented. — Not started
 - [x] **Seller analytics dashboard** — ✅ Created: seller_analytics_screen.dart with KPIs, status breakdown, top products + route + nav
-- [ ] **Bulk product upload** — Sellers stuck adding one at a time. — Not started
+- [x] **Bulk product upload** — ✅ POST /api/products/bulk + CSV parser + upload screen + template download + 30 unit tests + E2E
 - [x] **Data export/deletion APIs** — ✅ Already implemented: exportData() in profile_viewmodel + "Download My Data" button
 
 ### INFRASTRUCTURE (fix this week)

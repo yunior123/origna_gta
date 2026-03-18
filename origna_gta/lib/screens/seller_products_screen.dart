@@ -61,6 +61,15 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
             _UnansweredQaBadge(sellerId: user.uid),
             Semantics(
               button: true,
+              label: 'btn-bulk-upload',
+              child: IconButton(
+                icon: const Icon(Icons.cloud_upload_outlined),
+                tooltip: tr('bulk_upload_title'),
+                onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerBulkUpload),
+              ),
+            ),
+            Semantics(
+              button: true,
               label: 'btn-add-product',
               child: IconButton(
                 icon: const Icon(Icons.add_box_outlined),

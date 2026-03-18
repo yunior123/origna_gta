@@ -29,6 +29,7 @@ class AppRoutes {
   // BOOT-L2: sellerSetup route removed — screen not implemented
   static const String sellerOrders = '/seller/orders';
   static const String sellerProducts = '/seller/products';
+  static const String sellerBulkUpload = '/seller/bulk-upload';
   static const String sellerWarehouses = '/seller/warehouses';
   static const String sellerIntegration = '/seller/integration';
   static const String sellerAnalytics = '/seller/analytics';
