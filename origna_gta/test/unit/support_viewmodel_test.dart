@@ -12,6 +12,20 @@ import 'package:origna_gta/features/support/support_state.dart';
 
 class _FakeOb implements OrignaBase {
   @override
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
+    // Return a fake support chat response
+    return {
+      'reply': 'I can help you with that!',
+      'escalated': false,
+    };
+  }
+
+  @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
