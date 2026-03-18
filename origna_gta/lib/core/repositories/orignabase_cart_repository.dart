@@ -52,7 +52,7 @@ class OrignaBaseCartRepository implements CartRepository {
         existing.exists &&
         existing.data['parent_id'] == parentId;
     final currentQty = hasValidExisting
-        ? (existing!.get<num>(Fields.quantity))?.toInt() ?? 0
+        ? (existing.get<num>(Fields.quantity))?.toInt() ?? 0
         : 0;
     final newQty = (currentQty + quantity).clamp(minCartItemQuantity, maxCartItemQuantity);
 
@@ -63,7 +63,7 @@ class OrignaBaseCartRepository implements CartRepository {
         productId: productId,
         quantity: newQty,
         createdAt: hasValidExisting
-            ? (CartItemModel.fromMap(existing!.data, docId: docId).createdAt)
+            ? (CartItemModel.fromMap(existing.data, docId: docId).createdAt)
             : DateTime.now(),
         variantId: variantId,
         variantTitle: variantTitle,

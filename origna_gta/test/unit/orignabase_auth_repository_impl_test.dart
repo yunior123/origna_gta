@@ -225,9 +225,9 @@ class _FakeDocumentRef extends Fake implements DocumentRef {
 
   _FakeDocumentRef({
     this.id = 'doc_id',
-    this.collection = 'test_collection',
     Document? doc,
-  }) : documentValue = doc;
+  })  : collection = 'test_collection',
+        documentValue = doc;
 
   void throwOnGet(Exception e) => getThrowException = e;
 
@@ -686,7 +686,7 @@ void main() {
         {'uid': 'user_123', 'email': 'test@example.com'},
       );
       final userRef = _FakeDocumentRef(doc: userDoc);
-      (fakeOb._usersCollection as _FakeCollectionRef).setDoc('user_123', userRef);
+      fakeOb._usersCollection.setDoc('user_123', userRef);
 
       final result = await repository.validateCurrentUser();
 
@@ -699,7 +699,7 @@ void main() {
       auth.userIdValue = 'user_123';
 
       final userRef = _FakeDocumentRef(doc: null);
-      (fakeOb._usersCollection as _FakeCollectionRef).setDoc('user_123', userRef);
+      fakeOb._usersCollection.setDoc('user_123', userRef);
 
       final result = await repository.validateCurrentUser();
 
@@ -714,7 +714,7 @@ void main() {
 
       final userRef = _FakeDocumentRef();
       userRef.throwOnGet(Exception('not found'));
-      (fakeOb._usersCollection as _FakeCollectionRef).setDoc('user_123', userRef);
+      fakeOb._usersCollection.setDoc('user_123', userRef);
 
       final result = await repository.validateCurrentUser();
 
@@ -729,7 +729,7 @@ void main() {
 
       final userRef = _FakeDocumentRef();
       userRef.throwOnGet(Exception('User account disabled'));
-      (fakeOb._usersCollection as _FakeCollectionRef).setDoc('user_123', userRef);
+      fakeOb._usersCollection.setDoc('user_123', userRef);
 
       final result = await repository.validateCurrentUser();
 
@@ -744,7 +744,7 @@ void main() {
 
       final userRef = _FakeDocumentRef();
       userRef.throwOnGet(Exception('Token expired'));
-      (fakeOb._usersCollection as _FakeCollectionRef).setDoc('user_123', userRef);
+      fakeOb._usersCollection.setDoc('user_123', userRef);
 
       final result = await repository.validateCurrentUser();
 
@@ -759,7 +759,7 @@ void main() {
 
       final userRef = _FakeDocumentRef();
       userRef.throwOnGet(Exception('Network timeout'));
-      (fakeOb._usersCollection as _FakeCollectionRef).setDoc('user_123', userRef);
+      fakeOb._usersCollection.setDoc('user_123', userRef);
 
       final result = await repository.validateCurrentUser();
 
@@ -785,7 +785,7 @@ void main() {
       auth.emailValue = 'user@example.com';
 
       final userRef = _FakeDocumentRef(doc: null);
-      (fakeOb._usersCollection as _FakeCollectionRef).setDoc('user_123', userRef);
+      fakeOb._usersCollection.setDoc('user_123', userRef);
 
       await repository.ensureUserDocumentExists();
 
@@ -803,7 +803,7 @@ void main() {
         exists: true,
       );
       final userRef = _FakeDocumentRef(doc: existingDoc);
-      (fakeOb._usersCollection as _FakeCollectionRef).setDoc('user_123', userRef);
+      fakeOb._usersCollection.setDoc('user_123', userRef);
 
       await repository.ensureUserDocumentExists();
 

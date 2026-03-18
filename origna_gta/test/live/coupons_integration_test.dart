@@ -175,7 +175,7 @@ void main() {
             'POST',
             '/api/coupons/get_by_code',
             body: {ApiKeys.code: createdCouponCode},
-          ) as Map<String, dynamic>;
+          );
 
           final couponId = lookupResult['id'] as String?;
           expect(couponId, isNotNull, reason: 'Should find coupon by code');

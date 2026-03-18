@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
-import 'package:origna_gta/models/generated/models.dart';
 
 void main() {
   const runLive = bool.fromEnvironment(

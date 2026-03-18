@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/mfa_state.dart';
 import 'package:origna_gta/features/auth/mfa_viewmodel.dart';
@@ -38,12 +37,11 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
   Future<void> _loadSecurityData() async {
     setState(() => _isLoadingSecurity = true);
     try {
-      // TODO: Implement when OrignaBase SDK adds security methods
-      // final auth = ref.read(orignabaseProvider).auth;
+      final auth = ref.read(orignabaseProvider).auth;
       final results = await Future.wait<List<Map<String, dynamic>>>([
-        Future.value(<Map<String, dynamic>>[]), // auth.getLoginHistory(limit: 10),
-        Future.value(<Map<String, dynamic>>[]), // auth.getKnownDevices(),
-        Future.value(<Map<String, dynamic>>[]), // auth.getSecurityAlerts(),
+        auth.getLoginHistory(limit: 10),
+        auth.getKnownDevices(),
+        auth.getSecurityAlerts(),
       ]);
       if (mounted) {
         setState(() {
@@ -613,9 +611,8 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
 
   Future<void> _acknowledgeAlert(String alertId) async {
     try {
-      // TODO: Implement when OrignaBase SDK adds acknowledgeAlert
-      // final auth = ref.read(orignabaseProvider).auth;
-      // await auth.acknowledgeAlert(alertId);
+      final auth = ref.read(orignabaseProvider).auth;
+      await auth.acknowledgeAlert(alertId);
       if (mounted) {
         setState(() {
           _securityAlerts.removeWhere((a) => a['id'] == alertId);
