@@ -9,6 +9,8 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/orders/buyer_orders_viewmodel.dart';
+import 'package:origna_gta/features/orders/orders_provider.dart';
+import 'package:origna_gta/models/enum_extensions.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
@@ -699,6 +701,31 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
                 ),
               ),
             ),
+
+          // ─── REQUEST RETURN (delivered orders within return window) ──
+          if (_isReturnEligible(order))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: SizedBox(
+                width: double.infinity,
+                child: Semantics(
+                  button: true,
+                  label: 'btn-request-return',
+                  child: _actionButton(
+                    icon: Icons.assignment_return_outlined,
+                    label: 'returns.request_return'.tr(),
+                    color: DesignTokens.warning,
+                    onTap: () => Navigator.of(context).pushNamed(
+                      AppRoutes.returnRequest,
+                      arguments: ReturnRequestArgs(orderId: order.orderId),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ─── RETURN STATUS TRACKING ──────────────────────────
+          if (widget.isDetailView) _ReturnStatusSection(orderId: order.orderId),
 
           // ─── DELIVERY ADDRESS ───────────────────────────────
           if (order.shippingAddress != null)
@@ -1600,6 +1627,114 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
           style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
         ),
       ],
+    );
+  }
+
+  /// Whether the order has any delivered items still within the return window.
+  bool _isReturnEligible(Order order) {
+    if (order.orderStatus != OrderStatus.delivered) return false;
+    final now = DateTime.now();
+    for (final item in order.items) {
+      if (item.status == DeliveryStatusValues.delivered && item.deliveredAt != null) {
+        final deadline = item.deliveredAt!.add(const Duration(days: BusinessRules.returnWindowDays));
+        if (now.isBefore(deadline)) return true;
+      }
+    }
+    return false;
+  }
+}
+
+/// Shows return request statuses for a given order.
+class _ReturnStatusSection extends ConsumerWidget {
+  final String orderId;
+  const _ReturnStatusSection({required this.orderId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final returnsAsync = ref.watch(returnRequestsProvider(orderId));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return returnsAsync.when(
+      data: (returns) {
+        if (returns.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.assignment_return, size: 16, color: DesignTokens.warning),
+                  const SizedBox(width: 6),
+                  Text(
+                    'returns.active_returns'.tr(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...returns.map((r) => _buildReturnTile(r, isDark)),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildReturnTile(ReturnRequest r, bool isDark) {
+    final config = ReturnStatusConfig.fromValue(r.returnStatus);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: config.color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(DesignTokens.radius8),
+          border: Border.all(color: config.color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Icon(config.icon, size: 18, color: config.color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    r.productName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    '${config.label}  ·  ${r.returnReason}',
+                    style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            if (r.returnRefundAmountCents != null)
+              Text(
+                '\$${(r.returnRefundAmountCents! / 100).toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: config.color,
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

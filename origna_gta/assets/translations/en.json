@@ -501,6 +501,8 @@
         "manage_sales": "Manage your sales",
         "seller_dashboard": "Seller Dashboard",
         "manage_products_account": "Manage products & account",
+        "seller_analytics": "Seller Analytics",
+        "view_sales_insights": "View sales insights & metrics",
         "become_seller": "Become a Seller",
         "start_selling": "Start selling on OrignaGta",
         "admin_panel": "Admin Panel",
@@ -602,6 +604,9 @@
         "customers_also_bought": "Customers also bought",
         "reviews_title": "Reviews",
         "no_reviews_yet": "No reviews yet. Be the first to rate this product.",
+        "write_a_review": "Write a Review",
+        "review_eligibility_loading": "Checking eligibility…",
+        "already_reviewed": "You have already reviewed this product.",
         "seller_response": "Seller Response",
         "in_stock": "In Stock",
         "price": "Price",
@@ -1418,7 +1423,20 @@
         "waiting_buyer_approval": "Waiting for buyer approval",
         "approved": "Approved",
         "warehouses_subtitle": "Manage your shipping locations",
-        "products_count": "{count} product(s)"
+        "products_count": "{count} product(s)",
+        "analytics_title": "Seller Analytics",
+        "analytics_total_orders": "Total Orders",
+        "analytics_total_revenue": "Total Revenue",
+        "analytics_orders_this_month": "Orders This Month",
+        "analytics_month_revenue": "Month Revenue",
+        "analytics_order_breakdown": "Order Status Breakdown",
+        "analytics_delivered": "Delivered",
+        "analytics_pending": "Pending",
+        "analytics_confirmed": "Confirmed",
+        "analytics_shipped": "Shipped",
+        "analytics_cancelled": "Cancelled",
+        "analytics_top_products": "Top Products",
+        "analytics_qty_sold": "Sold"
     },
     "address": {
         "street": "Street Address",
@@ -1970,5 +1988,26 @@
             "country": "Various",
             "description": "Other supplier not listed"
         }
+    },
+    "returns": {
+        "request_return": "Request Return",
+        "select_items": "Select items to return",
+        "select_reason": "Reason for return",
+        "reason_hint": "Select a reason...",
+        "reason_defective": "Defective / Not working",
+        "reason_wrong_item": "Wrong item received",
+        "reason_changed_mind": "Changed my mind",
+        "reason_not_as_described": "Not as described",
+        "reason_damaged": "Damaged in shipping",
+        "reason_other": "Other",
+        "description_label": "Additional details (optional)",
+        "description_hint": "Describe the issue...",
+        "submit": "Submit Return Request",
+        "submitted_title": "Return Request Submitted",
+        "submitted_message": "We will review your request and get back to you within 2 business days. You will receive a notification when your return is processed.",
+        "back_to_order": "Back to Order",
+        "window_notice": "{days} days left in your return window",
+        "no_eligible_items": "No items in this order are eligible for return.",
+        "active_returns": "Return Requests"
     }
 }

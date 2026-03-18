@@ -44,4 +44,15 @@ abstract class OrderRepository {
   /// Results are sorted client-side by createdAt descending because the database
   /// does not support arrayContains + whereIn + orderBy on a different field.
   Stream<List<models.Order>> watchSellerOrders(String userId);
+
+  /// Creates a return request for specific items in an order.
+  Future<Map<String, dynamic>> createReturnRequest({
+    required String orderId,
+    required List<String> cartItemIds,
+    required String reason,
+    String? description,
+  });
+
+  /// Fetches return requests for a specific order.
+  Future<List<models.ReturnRequest>> fetchReturnRequests(String orderId);
 }

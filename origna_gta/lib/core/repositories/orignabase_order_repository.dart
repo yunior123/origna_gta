@@ -190,4 +190,40 @@ class OrignaBaseOrderRepository
       },
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Return requests
+  // ---------------------------------------------------------------------------
+
+  @override
+  Future<Map<String, dynamic>> createReturnRequest({
+    required String orderId,
+    required List<String> cartItemIds,
+    required String reason,
+    String? description,
+  }) async {
+    final response = await _ob.request(
+      'POST',
+      ApiEndpoints.ordersCreateReturn,
+      body: {
+        Fields.orderId: orderId,
+        ApiKeys.itemIds: cartItemIds,
+        Fields.returnReason: reason,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+      },
+    );
+    return Map<String, dynamic>.from(response as Map);
+  }
+
+  @override
+  Future<List<models.ReturnRequest>> fetchReturnRequests(String orderId) async {
+    final snapshot = await _ob
+        .collection(Collections.returnRequests)
+        .where(Fields.orderId, isEqualTo: orderId)
+        .get();
+    return snapshot.docs
+        .map((doc) => models.ReturnRequest.fromMap(doc.data, doc.id))
+        .toList();
+  }
 }

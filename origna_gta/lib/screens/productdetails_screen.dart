@@ -131,7 +131,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
           final ratingsAsync = ref.watch(productRatingsProvider(productId));
           Widget buildBottomSections() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            ReviewsSection(productId: productId, ratingCount: product.ratingCount, averageRating: product.rating, ratingsAsync: ratingsAsync, onRetry: () => ref.invalidate(productRatingsProvider(productId))),
+            ReviewsSection(productId: productId, productName: product.name, ratingCount: product.ratingCount, averageRating: product.rating, ratingsAsync: ratingsAsync, onRetry: () => ref.invalidate(productRatingsProvider(productId))),
             const SizedBox(height: 32),
             QASection(productId: productId, sellerId: product.sellerId),
             const SizedBox(height: 32),

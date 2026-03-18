@@ -50,3 +50,14 @@ ssh "${VPS_HOST}" "
 
 echo "Successfully deployed to VPS for ${ENV}. Release: ${TIMESTAMP}"
 echo "Current link: ${CURRENT_LINK}"
+
+# ── WebP on Cloudflare R2 ──────────────────────────────────────────────────
+# Product images are stored in Cloudflare R2. To enable WebP format:
+# 1. Cloudflare R2 serves images as-is — upload WebP variants alongside
+#    originals (e.g., product_abc.webp next to product_abc.jpg).
+# 2. Use Cloudflare Image Transformations (paid add-on) for automatic WebP
+#    conversion via ?format=webp query param or Accept header negotiation.
+# 3. Alternatively, convert images to WebP at upload time in OrignaBase
+#    using the `image` crate (Rust) before pushing to R2.
+# 4. In Flutter, CachedNetworkImage handles any image format transparently.
+# ────────────────────────────────────────────────────────────────────────────

@@ -52,6 +52,15 @@ final sellerOrdersProvider = StreamProvider.autoDispose<List<models.Order>>((ref
   return ref.watch(orderRepositoryProvider).watchSellerOrders(userId);
 });
 
+// ============================================================================
+// RETURN REQUEST PROVIDERS
+// ============================================================================
+
+/// Fetches return requests for a specific order.
+final returnRequestsProvider = FutureProvider.autoDispose.family<List<models.ReturnRequest>, String>((ref, orderId) async {
+  return ref.watch(orderRepositoryProvider).fetchReturnRequests(orderId);
+});
+
 /// Documentation for OrderError
 class OrderError extends OrderResult {
   final String message;

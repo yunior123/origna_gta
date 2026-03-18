@@ -501,6 +501,8 @@
         "manage_sales": "Gérer vos ventes",
         "seller_dashboard": "Tableau de bord vendeur",
         "manage_products_account": "Gérer produits et compte",
+        "seller_analytics": "Analytique vendeur",
+        "view_sales_insights": "Voir les statistiques de ventes",
         "become_seller": "Devenir vendeur",
         "start_selling": "Commencez à vendre sur OrignaGta",
         "admin_panel": "Panneau d'administration",
@@ -602,6 +604,9 @@
         "customers_also_bought": "Les clients ont aussi acheté",
         "reviews_title": "Avis",
         "no_reviews_yet": "Aucun avis pour l'instant. Soyez le premier à évaluer ce produit.",
+        "write_a_review": "Rédiger un avis",
+        "review_eligibility_loading": "Vérification de l'admissibilité…",
+        "already_reviewed": "Vous avez déjà évalué ce produit.",
         "seller_response": "Réponse du vendeur",
         "in_stock": "En stock",
         "price": "Prix",
@@ -1418,7 +1423,20 @@
         "waiting_buyer_approval": "En attente d'approbation de l'acheteur",
         "approved": "Approuvé",
         "warehouses_subtitle": "Gérez vos emplacements d'expédition",
-        "products_count": "{count} produit(s)"
+        "products_count": "{count} produit(s)",
+        "analytics_title": "Analytique vendeur",
+        "analytics_total_orders": "Total des commandes",
+        "analytics_total_revenue": "Revenu total",
+        "analytics_orders_this_month": "Commandes ce mois",
+        "analytics_month_revenue": "Revenu du mois",
+        "analytics_order_breakdown": "Répartition des statuts",
+        "analytics_delivered": "Livrées",
+        "analytics_pending": "En attente",
+        "analytics_confirmed": "Confirmées",
+        "analytics_shipped": "Expédiées",
+        "analytics_cancelled": "Annulées",
+        "analytics_top_products": "Meilleurs produits",
+        "analytics_qty_sold": "Vendu"
     },
     "address": {
         "street": "Adresse",
@@ -1970,5 +1988,26 @@
             "country": "Divers",
             "description": "Autre fournisseur non répertorié"
         }
+    },
+    "returns": {
+        "request_return": "Demander un retour",
+        "select_items": "Selectionnez les articles a retourner",
+        "select_reason": "Raison du retour",
+        "reason_hint": "Selectionnez une raison...",
+        "reason_defective": "Defectueux / Ne fonctionne pas",
+        "reason_wrong_item": "Mauvais article recu",
+        "reason_changed_mind": "J'ai change d'avis",
+        "reason_not_as_described": "Ne correspond pas a la description",
+        "reason_damaged": "Endommage lors de l'expedition",
+        "reason_other": "Autre",
+        "description_label": "Details supplementaires (optionnel)",
+        "description_hint": "Decrivez le probleme...",
+        "submit": "Soumettre la demande de retour",
+        "submitted_title": "Demande de retour soumise",
+        "submitted_message": "Nous examinerons votre demande et vous repondrons dans les 2 jours ouvrables. Vous recevrez une notification lorsque votre retour sera traite.",
+        "back_to_order": "Retour a la commande",
+        "window_notice": "{days} jours restants dans votre fenetre de retour",
+        "no_eligible_items": "Aucun article de cette commande n'est eligible au retour.",
+        "active_returns": "Demandes de retour"
     }
 }

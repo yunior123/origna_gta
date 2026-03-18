@@ -7,17 +7,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
+import 'package:origna_gta/features/products/review_eligibility_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/widgets/rating_dialog.dart';
 import 'package:origna_gta/widgets/rating_histogram.dart';
 import 'package:shimmer/shimmer.dart';
 
-/// Reviews section with histogram, review cards, and helpfulness voting.
+/// Reviews section with histogram, review cards, write-a-review button,
+/// and helpfulness voting.
 class ReviewsSection extends ConsumerWidget {
   final String productId;
+  final String productName;
   final int ratingCount;
   final double averageRating;
   final AsyncValue<List<Map<String, dynamic>>> ratingsAsync;
@@ -26,6 +30,7 @@ class ReviewsSection extends ConsumerWidget {
   const ReviewsSection({
     super.key,
     required this.productId,
+    required this.productName,
     required this.ratingCount,
     required this.averageRating,
     required this.ratingsAsync,
@@ -36,16 +41,29 @@ class ReviewsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final eligibilityAsync = ref.watch(reviewEligibilityProvider(productId));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'product.reviews_title'.tr(),
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'product.reviews_title'.tr(),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? DesignTokens.white : DesignTokens.textPrimary,
+                ),
+              ),
+            ),
+            _WriteReviewButton(
+              productId: productId,
+              productName: productName,
+              eligibilityAsync: eligibilityAsync,
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         ratingsAsync.when(
@@ -567,5 +585,78 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
     } finally {
       if (mounted) setState(() => _votingHelpful = false);
     }
+  }
+}
+
+/// "Write a Review" button — visible only for buyers who purchased the product
+/// and haven't already reviewed it.
+class _WriteReviewButton extends ConsumerWidget {
+  final String productId;
+  final String productName;
+  final AsyncValue<ReviewEligibility> eligibilityAsync;
+
+  const _WriteReviewButton({
+    required this.productId,
+    required this.productName,
+    required this.eligibilityAsync,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return eligibilityAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (eligibility) {
+        if (eligibility.alreadyReviewed) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.check_circle_rounded,
+                size: 16,
+                color: DesignTokens.success,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'product.already_reviewed'.tr(),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: DesignTokens.success,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          );
+        }
+
+        if (!eligibility.canReview) return const SizedBox.shrink();
+
+        return Semantics(
+          button: true,
+          label: 'btn-write-review',
+          child: TextButton.icon(
+            onPressed: () => showRatingDialog(
+              context: context,
+              orderId: eligibility.eligibleOrderId!,
+              productId: productId,
+              productName: productName,
+              onRatingSubmitted: () {
+                ref.invalidate(reviewEligibilityProvider(productId));
+              },
+            ),
+            icon: const Icon(Icons.rate_review_outlined, size: 18),
+            label: Text('product.write_a_review'.tr()),
+            style: TextButton.styleFrom(
+              foregroundColor: DesignTokens.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

@@ -31,6 +31,7 @@ class AppRoutes {
   static const String sellerProducts = '/seller/products';
   static const String sellerWarehouses = '/seller/warehouses';
   static const String sellerIntegration = '/seller/integration';
+  static const String sellerAnalytics = '/seller/analytics';
   static const String favorites = '/favorites';
   static const String adminPanel = '/admin';
   static const String privacyPolicy = '/privacy-policy';
@@ -51,6 +52,7 @@ class AppRoutes {
   static const String mfaSetup = '/mfa/setup';
   static const String mfaChallenge = '/mfa/challenge';
   static const String securitySettings = '/security-settings';
+  static const String returnRequest = '/orders/return-request';
   AppRoutes._(); // Prevent instantiation
 }
 
@@ -83,6 +85,12 @@ class EditProductArgs {
 class OrderDetailArgs {
   final String orderId;
   const OrderDetailArgs({required this.orderId});
+}
+
+/// Arguments for [AppRoutes.returnRequest].
+class ReturnRequestArgs {
+  final String orderId;
+  const ReturnRequestArgs({required this.orderId});
 }
 
 /// Arguments for [AppRoutes.productDetails].

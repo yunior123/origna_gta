@@ -149,6 +149,15 @@ class ProfileScreenLayout extends StatelessWidget {
                                 subtitle: 'profile.manage_products_account'.tr(),
                                 onTap: () => Navigator.pushNamed(context, AppRoutes.sellerProducts),
                               ),
+                              _buildMenuItem(
+                                context,
+                                key: const Key('profile_seller_analytics_button'),
+                                icon: Icons.analytics_outlined,
+                                semanticLabel: 'menu-seller-analytics',
+                                title: 'profile.seller_analytics'.tr(),
+                                subtitle: 'profile.view_sales_insights'.tr(),
+                                onTap: () => Navigator.pushNamed(context, AppRoutes.sellerAnalytics),
+                              ),
                             ] else
                               _buildMenuItem(
                                 context,

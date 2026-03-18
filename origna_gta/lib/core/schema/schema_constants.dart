@@ -1976,6 +1976,8 @@ abstract final class ApiEndpoints {
   static const ordersUpdateItemStatus = '/api/orders/update-item-status';
   static const ordersUpdateShipping = '/api/orders/update-shipping';
   static const ordersRefundsItem = '/api/orders/refunds/item';
+  static const ordersCreateReturn = '/api/orders/returns/create';
+  static const ordersListReturns = '/api/orders/returns/list';
 
   // --- Checkout ---
   static const checkoutSession = '/api/checkout/session';

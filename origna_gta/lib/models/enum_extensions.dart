@@ -1,6 +1,8 @@
 // Extensions for Freezed enums — provides displayText, value, fromValue
+import 'package:flutter/material.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 // ============================================================================
 // DELIVERY STATUS EXTENSIONS
@@ -302,6 +304,77 @@ extension ShippingApprovalStatusExtension on ShippingApprovalStatus {
         return ShippingApprovalStatus.rejected;
       default:
         return ShippingApprovalStatus.notRequired;
+    }
+  }
+}
+
+// ============================================================================
+// RETURN STATUS HELPERS
+// ============================================================================
+
+/// Helper to get display text and color for a return request status string.
+class ReturnStatusConfig {
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  const ReturnStatusConfig({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  /// Resolve a return status string to its display config.
+  static ReturnStatusConfig fromValue(String status) {
+    switch (status) {
+      case ReturnStatusValues.requested:
+        return const ReturnStatusConfig(
+          label: 'Requested',
+          color: DesignTokens.secondary,
+          icon: Icons.hourglass_empty,
+        );
+      case ReturnStatusValues.approved:
+        return const ReturnStatusConfig(
+          label: 'Approved',
+          color: DesignTokens.success,
+          icon: Icons.check_circle_outline,
+        );
+      case ReturnStatusValues.labelIssued:
+        return const ReturnStatusConfig(
+          label: 'Label Issued',
+          color: DesignTokens.info,
+          icon: Icons.local_shipping_outlined,
+        );
+      case ReturnStatusValues.received:
+        return const ReturnStatusConfig(
+          label: 'Received',
+          color: DesignTokens.primary,
+          icon: Icons.inventory_2_outlined,
+        );
+      case ReturnStatusValues.refunded:
+        return const ReturnStatusConfig(
+          label: 'Refunded',
+          color: DesignTokens.success,
+          icon: Icons.paid_outlined,
+        );
+      case ReturnStatusValues.rejected:
+        return const ReturnStatusConfig(
+          label: 'Rejected',
+          color: DesignTokens.error,
+          icon: Icons.cancel_outlined,
+        );
+      case ReturnStatusValues.escalated:
+        return const ReturnStatusConfig(
+          label: 'Escalated',
+          color: DesignTokens.warning,
+          icon: Icons.priority_high,
+        );
+      default:
+        return const ReturnStatusConfig(
+          label: 'Unknown',
+          color: DesignTokens.textSecondary,
+          icon: Icons.help_outline,
+        );
     }
   }
 }

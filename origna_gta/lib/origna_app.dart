@@ -35,12 +35,15 @@ import 'package:origna_gta/features/support/support_screen.dart'
 import 'package:origna_gta/screens/order_detail_screen.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
+import 'package:origna_gta/screens/return_request_screen.dart';
 import 'package:origna_gta/screens/payment_screens.dart';
 import 'package:origna_gta/screens/privacy_policy_screen.dart'
     deferred as privacy;
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
 import 'package:origna_gta/screens/reset_password_screen.dart';
+import 'package:origna_gta/screens/seller/seller_analytics_screen.dart'
+    deferred as seller_analytics;
 import 'package:origna_gta/screens/seller/seller_warehouses_screen.dart'
     deferred as seller_warehouses;
 import 'package:origna_gta/screens/seller_integration_screen.dart'
@@ -401,6 +404,22 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     );
   }
 
+  // Return Request screen
+  if (uri.path == AppRoutes.returnRequest) {
+    final args = settings.arguments as ReturnRequestArgs?;
+    final orderId = args?.orderId ?? uri.queryParameters[DeepLinkParams.orderId];
+    if (orderId == null || orderId.isEmpty) {
+      return SlidePageRoute(
+        settings: settings,
+        page: const AuthRequiredGate(child: OrdersScreen()),
+      );
+    }
+    return SlidePageRoute(
+      settings: settings,
+      page: AuthRequiredGate(child: ReturnRequestScreen(orderId: orderId)),
+    );
+  }
+
   // Add Product screen
   if (uri.path == AppRoutes.addProduct) {
     return SlidePageRoute(
@@ -578,6 +597,19 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
         child: DeferredWidget(
           loader: seller_integration.loadLibrary,
           builder: () => seller_integration.SellerIntegrationScreen(),
+        ),
+      ),
+    );
+  }
+
+  // Seller Analytics dashboard
+  if (uri.path == AppRoutes.sellerAnalytics) {
+    return SlidePageRoute(
+      settings: settings,
+      page: AuthRequiredGate(
+        child: DeferredWidget(
+          loader: seller_analytics.loadLibrary,
+          builder: () => seller_analytics.SellerAnalyticsScreen(),
         ),
       ),
     );
