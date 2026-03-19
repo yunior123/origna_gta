@@ -4,14 +4,14 @@ export default {
     link: 'https://github.com/yuniorrodriguezosorio/origna_gta',
   },
   docsRepositoryBase: 'https://github.com/yuniorrodriguezosorio/origna_gta/tree/main/docs-site',
-  head: {
-    title: 'OrignaGTA Documentation',
-    description: 'API docs, guides, and resources for OrignaGTA',
-    og: {
-      title: 'OrignaGTA Documentation',
-      description: 'Complete documentation for OrignaGTA e-commerce platform',
-    },
-  },
+  head: (
+    <>
+      <meta name="description" content="API docs, guides, and resources for OrignaGTA" />
+      <meta property="og:title" content="OrignaGTA Documentation" />
+      <meta property="og:description" content="Complete documentation for OrignaGTA e-commerce platform" />
+      <meta property="og:type" content="website" />
+    </>
+  ),
   footer: {
     text: (
       <span>
@@ -22,10 +22,6 @@ export default {
       </span>
     ),
   },
-  i18n: [
-    { locale: 'en', text: 'English' },
-    { locale: 'fr', text: 'Français' },
-  ],
   darkMode: true,
   primaryHue: 260,
 }

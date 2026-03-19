@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-OrignaGTA MCP is functional but materially behind 2025-2026 best practices in auth, transport, domain separation, and agent safety. The strongest commerce MCPs (Stripe, Shopify) use:
+OrignaGTA MCP is functional for demos but materially behind 2025-2026 best practices in auth, transport, domain separation, and agent safety. The strongest commerce MCPs (Stripe, Shopify) use:
 - **Remote HTTP MCP** with OAuth/short-lived tokens (not stdio + env JWT)
 - **Domain-bounded surfaces** (catalog vs checkout vs orders, not monolithic)
 - **Idempotency + business-outcome semantics** (not just HTTP error mapping)
@@ -18,12 +18,31 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 
 ---
 
+## Current Status (March 2026)
+
+**What exists**:
+- MCP server is functional for demos and internal testing
+- Auth system reads env JWT but does NOT verify signatures
+- All mutations (add-to-cart, checkout, return) exist in tool definitions
+- OrignaBase SDK handles retry logic on the backend
+
+**What is NOT done**:
+- OAuth code exists in `src/auth.ts` but is **uncommitted and untested** — cannot be relied upon
+- Idempotency keys are **backend-only in OrignaBase SDK**, not in MCP layer — duplicate retries at MCP level create duplicates
+- **No agent safeguards** have been implemented (no confirmation flows, no spend limits, no scope enforcement)
+- **Error sanitization is partial** — some internal details still leak in error responses
+- **The MCP works for demos but is NOT production-grade for third-party agents**
+
+**Clear statement**: This is an internal tool for OrignaGTA's own agents, not a public-facing API. Deploying it for third-party agents without the P0 fixes would be a security risk.
+
+---
+
 ## Industry Comparison Table
 
 | Feature | OrignaGTA | Stripe MCP | Shopify Catalog | Shopify Checkout |
 |---------|-----------|-----------|-----------------|------------------|
 | **Transport** | stdio (local) | HTTP remote | HTTP remote | HTTP remote |
-| **Auth** | Env JWT (no verification) | OAuth 2.0 / restricted API keys | Client credentials → JWT (60m TTL) | Client credentials → JWT (60m TTL) |
+| **Auth** | Env JWT (unverified) | OAuth 2.0 / restricted API keys | Client credentials → JWT (60m TTL) | Client credentials → JWT (60m TTL) |
 | **Token lifetime** | Long (hours+) | Depends (OAuth) / restricted key scoping | 60 minutes | 60 minutes |
 | **Tool domains** | Monolithic (10 tools) | Ops-focused (customers, invoices, refunds) | Discovery only | Transaction only |
 | **Pagination** | Offset (limit/offset) | Offset | Limit + cursor | Limit + cursor |
@@ -52,7 +71,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Implement JWT signature verification (RS256)
 - Document token lifetime (recommend ≤ 1 hour)
 
-**Effort**: 8-12 hours (OAuth flow, token parsing, PKCE, scope handling)
+**Effort**: 20-30 hours (OAuth flow, token parsing, PKCE, scope handling, integration testing)
 
 #### 2. **Monolithic tool surface (all in one server)**
 **Current**: `/index.ts:30` defines 10 tools across search, cart, checkout, orders, reviews, analytics in one server.  
@@ -62,7 +81,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Split into `@orignagta/catalog-mcp` (search, product detail, reviews) and `@orignagta/checkout-mcp` (cart, checkout, orders, analytics)
 - Or: add tool-level scope system (e.g., `scope: "catalog"` vs `scope: "checkout"`)
 
-**Effort**: 12-16 hours (split repo structure, auth per-server, docs)
+**Effort**: 24-32 hours (split repo structure, auth per-server, docs, CI/CD updates)
 
 #### 3. **No idempotency keys on mutations**
 **Current**: Checkout and order operations rely on OrignaBase SDK retry logic, but MCP server itself has no idempotency tracking.  
@@ -73,7 +92,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Track seen keys + results in cache or backend
 - Return cached result on replay
 
-**Effort**: 6-8 hours (key validation, cache/DB storage, tool schema updates)
+**Effort**: 12-16 hours (key validation, cache/DB storage, tool schema updates, testing)
 
 ---
 
@@ -88,7 +107,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Keep stdio as dev mode
 - Document deployment patterns (Docker, Vercel, etc.)
 
-**Effort**: 10-14 hours (HTTP transport, CORS, session management, deployment)
+**Effort**: 16-24 hours (HTTP transport, CORS, session management, deployment, load testing)
 
 #### 5. **Pagination is offset-based, not cursor**
 **Current**: `/index.ts:59` defines `offset` + `limit` for search; `/validation.ts:118` clamps limit to 100.  
@@ -99,7 +118,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Document limit bounds clearly (no mismatch)
 - Deprecate offset pagination gracefully
 
-**Effort**: 8-10 hours (schema changes, OrignaBase API calls, backwards compat)
+**Effort**: 12-18 hours (schema changes, OrignaBase API calls, backwards compat, testing)
 
 #### 6. **No business-outcome semantics (treats everything as exceptions)**
 **Current**: `/api-client.ts:196` maps all non-2xx to errors.  
@@ -109,7 +128,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Return structured outcomes in success responses: `{ status: "success" | "check_required", outcome: { ... } }`
 - Document outcome types: `out_of_stock`, `price_changed`, `coupon_invalid`, `shipping_unavailable`, `payment_required`
 
-**Effort**: 12-16 hours (schema design, backend integration, comprehensive testing)
+**Effort**: 20-28 hours (schema design, backend integration, comprehensive testing)
 
 #### 7. **No caching (leaves performance on the table)**
 **Current**: `/ARCHITECTURE.md:212` states "No caching (stateless server)".  
@@ -120,7 +139,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Never cache `get_cart`, `list_orders`, `create_checkout`
 - Document cache behavior
 
-**Effort**: 6-8 hours (cache layer, TTL tuning, cache invalidation logic)
+**Effort**: 10-14 hours (cache layer, TTL tuning, cache invalidation logic, testing)
 
 #### 8. **Rate limiting is thin (no agent budgets)**
 **Current**: `/api-client.ts:35` detects 429 but no proactive rate limiting.  
@@ -131,7 +150,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Add per-tool request budget (e.g., search 1000/min)
 - Return `429 Too Many Requests` with `Retry-After` header
 
-**Effort**: 6-8 hours (rate limit middleware, budget tracking, agent identification)
+**Effort**: 10-14 hours (rate limit middleware, budget tracking, agent identification, testing)
 
 ---
 
@@ -145,7 +164,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Return a confirmation-required response; agent must re-call with confirmation token
 - Document safe defaults (e.g., max $500 per checkout without confirmation)
 
-**Effort**: 10-12 hours (confirmation token system, tool metadata, UI integration)
+**Effort**: 14-18 hours (confirmation token system, tool metadata, UI integration, testing)
 
 #### 10. **Error messages leak internal details**
 **Current**: `/api-client.ts` can expose SurrealDB error details, OrignaBase stack traces.  
@@ -155,7 +174,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Log full errors server-side only
 - Return clean user-facing messages
 
-**Effort**: 3-4 hours (centralize error sanitization)
+**Effort**: 6-8 hours (centralize error sanitization, audit all error paths)
 
 #### 11. **No observability/logging for agent actions**
 **Current**: Basic logging in `/utils/logger.ts` but no audit trail of agent purchases.  
@@ -164,7 +183,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Log all mutations with agent ID, timestamp, result, outcome
 - Structure logs for audit queries
 
-**Effort**: 4-6 hours (structured logging, audit schema)
+**Effort**: 8-12 hours (structured logging, audit schema, testing)
 
 #### 12. **Tool schemas are verbose, could be tighter**
 **Current**: Input schemas are JSON Schema but not documented with examples.  
@@ -174,44 +193,44 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - Add return type schema to all tools
 - Document error cases (when agent should expect 4xx vs outcome)
 
-**Effort**: 4-6 hours (schema enrichment, documentation)
+**Effort**: 6-10 hours (schema enrichment, documentation, review)
 
 ---
 
 ## Recommended Roadmap
 
-### Phase 1 (Weeks 1-2): P0 - Security & Core Trust
+### Phase 1 (Weeks 1-3): P0 - Security & Core Trust
 - [ ] Add OAuth 2.0 + PKCE discovery endpoint
 - [ ] Implement idempotency key tracking for mutations
 - [ ] Add JWT signature verification (RS256)
 - [ ] Document auth flows and deploy patterns
 
-### Phase 2 (Weeks 3-4): P0 - Domain Separation
+### Phase 2 (Weeks 4-6): P0 - Domain Separation
 - [ ] Split into catalog and checkout MCPs (or add scopes)
 - [ ] Update tool metadata with domain/scope info
 - [ ] Re-design permission model (per-server or per-tool)
 
-### Phase 3 (Weeks 5-6): P1 - HTTP Transport & Scale
+### Phase 3 (Weeks 7-9): P1 - HTTP Transport & Scale
 - [ ] Add HTTP MCP adapter (remote server)
 - [ ] Deploy to cloud (Vercel, Railway, etc.)
 - [ ] Implement load balancing
 
-### Phase 4 (Weeks 7-8): P1 - Data & Business Logic
+### Phase 4 (Weeks 10-12): P1 - Data & Business Logic
 - [ ] Add cursor pagination
 - [ ] Implement business-outcome semantics (stock, pricing, shipping)
 - [ ] Add caching layer (Redis)
 
-### Phase 5 (Weeks 9-10): P1 - Safety & Observability
+### Phase 5 (Weeks 13-15): P1 - Safety & Observability
 - [ ] Rate limiting + spend budgets
 - [ ] Audit logging for all mutations
 - [ ] Agent safeguard metadata
 
-### Phase 6 (Weeks 11-12): P2 - Polish
+### Phase 6 (Weeks 16-18): P2 - Polish
 - [ ] Confirmation flows
 - [ ] Error sanitization
 - [ ] Schema enrichment (examples, return types)
 
-**Total estimated effort**: 4-6 weeks of focused development.
+**Total estimated effort**: 8-12 weeks part-time (assuming 10-15h/week; 3-4 months full-time).
 
 ---
 
@@ -221,6 +240,7 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - ❌ Don't add "prompts" or "resources" yet (MCP feature scope creep) — focus on fixing tools first
 - ❌ Don't introduce database migrations for caching/audit until design is locked
 - ❌ Don't break backwards compatibility on tool schemas without a migration period
+- ❌ Don't claim P0 items are "done" or "shipped" — they are in-progress at best and need production-grade testing
 
 ---
 
@@ -232,4 +252,3 @@ OrignaGTA needs a phased evolution, not a rewrite. The core domains are right; t
 - **Shopify Storefront MCP**: https://shopify.dev/docs/agents/catalog/storefront-mcp
 - **MCP Auth Patterns**: https://apps.extensions.modelcontextprotocol.io/api/documents/authorization.html
 - **MCP Example Remote Server**: https://github.com/modelcontextprotocol/example-remote-server
-

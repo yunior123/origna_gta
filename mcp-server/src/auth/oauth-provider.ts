@@ -110,7 +110,7 @@ export class OAuthProvider {
 
       return this.token.access_token;
     } catch (error) {
-      Logger.error("Auth failed", ctx, { error: String(error) });
+      Logger.error("Auth failed", ctx, error instanceof Error ? error : new Error(String(error)));
       throw new AuthenticationError("Failed to authenticate with OrignaBase");
     }
   }
@@ -150,7 +150,7 @@ export class OAuthProvider {
 
       return this.token.access_token;
     } catch (error) {
-      Logger.error("API key auth failed", ctx, { error: String(error) });
+      Logger.error("API key auth failed", ctx, error instanceof Error ? error : new Error(String(error)));
       throw new AuthenticationError("Failed to authenticate with API key");
     }
   }
@@ -175,7 +175,7 @@ export class OAuthProvider {
 
       return this.authenticate(_ctx);
     } catch (error) {
-      Logger.error("Token refresh failed", _ctx, { error: String(error) });
+      Logger.error("Token refresh failed", _ctx, error instanceof Error ? error : new Error(String(error)));
       throw new AuthenticationError("Failed to refresh token");
     }
   }
@@ -203,7 +203,7 @@ export class OAuthProvider {
 
     this.refreshTimer = setTimeout(() => {
       this.refreshToken(ctx).catch((err) => {
-        Logger.error("Auto-refresh failed", ctx, { error: err });
+        Logger.error("Auto-refresh failed", ctx, err instanceof Error ? err : new Error(String(err)));
       });
     }, refreshIn);
   }
