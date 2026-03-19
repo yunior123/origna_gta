@@ -1,44 +1,27 @@
 /**
- * Analytics Tool: get_analytics (admin only)
+ * Analytics Tools: get_analytics (admin only)
  */
 
 import { GetAnalyticsParams } from "../types.js";
 import { apiClient } from "../api-client.js";
 import { AuthService } from "../auth.js";
-import { Validation } from "../utils/validation.js";
 import { Logger, LogContext } from "../utils/logger.js";
 
 export async function getAnalytics(params: GetAnalyticsParams, ctx: LogContext) {
-  Logger.info("get_analytics called", ctx, { period: params.period });
+  Logger.info("get_analytics called", ctx, { metric: params.metric });
 
-  const user = AuthService.getCurrentUser(ctx);
+  const user = await AuthService.getCurrentUser(ctx);
   AuthService.requireAdmin(user, ctx);
 
-  const period = Validation.analyticsPeriod(params.period);
+  const result = await apiClient.getAnalytics(params.metric, params.period || "month", ctx);
 
-  const analytics = await apiClient.getAnalytics(period, ctx);
-
-  Logger.info("get_analytics succeeded", ctx, {
-    period,
-    totalOrders: analytics.totalOrders,
-  });
+  Logger.info("get_analytics succeeded", ctx);
 
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            period,
-            totalRevenueCents: analytics.totalRevenueCents,
-            totalOrders: analytics.totalOrders,
-            averageOrderValueCents: analytics.averageOrderValueCents,
-            topProducts: analytics.topProducts || [],
-            ordersByStatus: analytics.ordersByStatus || [],
-          },
-          null,
-          2
-        ),
+        text: JSON.stringify(result, null, 2),
       },
     ],
   };

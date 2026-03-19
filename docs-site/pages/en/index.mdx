@@ -1,0 +1,63 @@
+# Welcome to OrignaGTA Docs
+
+OrignaGTA is a modern e-commerce platform built with **Flutter** (mobile/web), **Rust** backend (OrignaBase), and **Stripe** payments.
+
+## What is OrignaGTA?
+
+OrignaGTA connects buyers and sellers in Canada with:
+- Multi-seller marketplace architecture
+- Integrated Stripe payment processing
+- Advanced search with Meilisearch
+- International shipping support
+- Seller payouts via Stripe Connect
+- Real-time order management
+
+## Quick Links
+
+- **[Getting Started](/en/getting-started/quickstart)** — Set up your development environment
+- **[API Reference](/en/api-reference/authentication)** — Complete REST API documentation
+- **[Flutter SDK](/en/sdk/flutter-sdk)** — Integrate OrignaGTA in your Flutter app
+- **[Seller Guide](/en/guides/seller-onboarding)** — Onboard as a seller
+
+## Platform Environments
+
+| Environment | URL | Purpose |
+|---|---|---|
+| **Production** | https://orignagta.ca | Live marketplace |
+| **Staging** | https://staging.orignagta.ca | Pre-release testing |
+| **Development** | https://dev.orignagta.ca | Development & feature testing |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Flutter Web/Mobile                       │
+├─────────────────────────────────────────────────────────────┤
+│                    OrignaBase SDK                           │
+├─────────────────────────────────────────────────────────────┤
+│        OrignaBase REST API (Rust) — api.orignagta.ca       │
+│  ┌──────────────────┬──────────────────┬──────────────────┐ │
+│  │   SurrealDB v2   │   Meilisearch    │  Stripe API      │ │
+│  │   (Data Store)   │   (Search)       │  (Payments)      │ │
+│  └──────────────────┴──────────────────┴──────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Key Features
+
+- **Multi-seller marketplace**: Each seller has their own product catalog and fulfillment
+- **Stripe integration**: PCI-compliant checkout with Stripe Connect payouts
+- **Real-time search**: Meilisearch powers instant product discovery
+- **Order management**: Complete lifecycle from pending → confirmed → shipped → delivered
+- **Returns & refunds**: 30-day return window with automatic refunds
+- **Seller analytics**: Coming soon
+
+## Support
+
+- **Developers**: See [API Reference](/en/api-reference/authentication)
+- **Sellers**: See [Seller Onboarding](/en/guides/seller-onboarding)
+- **Buyers**: Visit https://orignagta.ca/help
+
+---
+
+**Last Updated**: March 2026

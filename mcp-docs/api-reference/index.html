@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference — OrignaGTA MCP Server</title>
+    <style>
+        :root {
+            --primary: #667EEA;
+            --secondary: #764BA2;
+            --dark-bg: #0F0F1E;
+            --dark-card: #1E1E32;
+            --text-primary: #E5E7EB;
+            --text-secondary: #A1A5B4;
+            --border: #2D2E42;
+            --success: #10B981;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #1a1a2e 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+        
+        h2 {
+            font-size: 2em;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+        }
+        
+        h3 {
+            font-size: 1.3em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+        }
+        
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+        
+        .code-block code {
+            color: #4ECB71;
+        }
+        
+        .tool-section {
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        
+        .tool-header {
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .tool-name {
+            font-family: monospace;
+            color: var(--primary);
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .tool-category {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        thead {
+            background: rgba(102, 126, 234, 0.1);
+            border-bottom: 2px solid var(--border);
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        th {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .parameter {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 3px solid var(--primary);
+        }
+        
+        .parameter-name {
+            font-family: monospace;
+            color: var(--primary);
+            font-weight: bold;
+        }
+        
+        .parameter-type {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+        
+        .response-example {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid var(--success);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .back-link {
+            color: var(--primary);
+            text-decoration: none;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 30px 0;
+            text-align: center;
+            color: var(--text-secondary);
+            margin-top: 60px;
+        }
+        
+        .highlight {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Home</a>
+        
+        <header>
+            <h1>OrignaGTA MCP Server — API Reference</h1>
+            <p class="subtitle">Complete documentation for all 14 production-ready tools</p>
+        </header>
+
+        <div class="highlight">
+            <strong>Quick Navigation:</strong> Jump to tool categories:
+            <ul style="margin-top: 10px; margin-left: 20px;">
+                <li><a href="#search" style="color: var(--primary);">Search & Browse (3 tools)</a></li>
+                <li><a href="#cart" style="color: var(--primary);">Shopping Cart (3 tools)</a></li>
+                <li><a href="#discounts" style="color: var(--primary);">Discounts (1 tool)</a></li>
+                <li><a href="#checkout" style="color: var(--primary);">Checkout (1 tool)</a></li>
+                <li><a href="#orders" style="color: var(--primary);">Orders (3 tools)</a></li>
+                <li><a href="#reviews" style="color: var(--primary);">Reviews (1 tool)</a></li>
+                <li><a href="#analytics" style="color: var(--primary);">Analytics (1 tool)</a></li>
+            </ul>
+        </div>
+
+        <section id="search">
+            <h2>Search & Browse Tools</h2>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">search_products(query, filters...)</div>
+                    <p>Search the product catalog with optional filters for category, price, and sorting.</p>
+                    <span class="tool-category">Read-Only</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">query</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Search keywords. Searches across product title, description, and keywords.</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">category</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Filter by category ID (e.g., "electronics", "clothing").</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">min_price</div>
+                    <div class="parameter-type">number (optional)</div>
+                    <p>Minimum price in cents (e.g., 1000 = $10.00).</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">max_price</div>
+                    <div class="parameter-type">number (optional)</div>
+                    <p>Maximum price in cents (e.g., 200000 = $2000.00).</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">sort</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Sort order: "price_asc", "price_desc", "newest", "popular". Default: "popular".</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">limit</div>
+                    <div class="parameter-type">number (optional, 1-100)</div>
+                    <p>Results per page. Default: 20. Max: 100.</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">offset</div>
+                    <div class="parameter-type">number (optional)</div>
+                    <p>Pagination offset. Default: 0.</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "items": [
+    {
+      "id": "products:abc123",
+      "title": "Laptop Pro",
+      "priceCents": 129900,
+      "imageUrls": [
+        "https://cdn.example.com/product1.jpg"
+      ],
+      "stockQuantity": 25,
+      "categoryId": "electronics",
+      "rating": 4.8,
+      "reviewCount": 156
+    }
+  ],
+  "total": 45,
+  "limit": 20,
+  "offset": 0
+}</code></div>
+            </div>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">get_product(id)</div>
+                    <p>Retrieve detailed product information including reviews and seller info.</p>
+                    <span class="tool-category">Read-Only</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">id</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Product ID in format "products:abc123xyz".</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "id": "products:abc123",
+  "title": "Laptop Pro",
+  "description": "High-performance laptop with...",
+  "priceCents": 129900,
+  "imageUrls": ["https://...", "https://..."],
+  "stockQuantity": 25,
+  "categoryId": "electronics",
+  "sellerId": "users:seller456",
+  "seller": {
+    "name": "TechStore Inc",
+    "rating": 4.9,
+    "reviewCount": 523
+  },
+  "rating": 4.8,
+  "reviewCount": 156,
+  "reviews": [
+    {
+      "rating": 5,
+      "comment": "Excellent quality!",
+      "author": "Anonymous",
+      "dateCreated": 1710763200
+    }
+  ],
+  "dateCreated": 1710763200
+}</code></div>
+            </div>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">check_inventory(product_id, quantity)</div>
+                    <p>Real-time inventory check for a product.</p>
+                    <span class="tool-category">Read-Only</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">product_id</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Product ID (e.g., "products:abc123").</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">quantity</div>
+                    <div class="parameter-type">number (optional)</div>
+                    <p>Quantity to check. Default: 1.</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "product_id": "products:abc123",
+  "available": true,
+  "stock_quantity": 25,
+  "requested_quantity": 1,
+  "message": "In stock"
+}</code></div>
+            </div>
+        </section>
+
+        <section id="cart">
+            <h2>Shopping Cart Tools</h2>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">add_to_cart(product_id, quantity, variant?)</div>
+                    <p>Add items to the shopping cart with quantity validation.</p>
+                    <span class="tool-category">Write</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">product_id</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Product ID (e.g., "products:abc123").</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">quantity</div>
+                    <div class="parameter-type">number (required)</div>
+                    <p>Quantity to add (≥ 1).</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">variant</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Product variant or SKU if applicable.</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "product_id": "products:abc123",
+  "quantity": 1,
+  "added": true,
+  "cart": {
+    "items": [
+      {
+        "product_id": "products:abc123",
+        "quantity": 1,
+        "unitPriceCents": 129900
+      }
+    ],
+    "itemCount": 1,
+    "subtotalCents": 129900,
+    "taxAmountCents": 16887,
+    "shippingCostCents": 0,
+    "totalAmountCents": 146787
+  }
+}</code></div>
+            </div>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">remove_from_cart(product_id, quantity?)</div>
+                    <p>Remove items from the cart.</p>
+                    <span class="tool-category">Write</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">product_id</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Product ID to remove.</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">quantity</div>
+                    <div class="parameter-type">number (optional)</div>
+                    <p>Quantity to remove. If omitted, removes all items.</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "removed": true,
+  "quantity_removed": 1,
+  "cart": {
+    "items": [],
+    "itemCount": 0,
+    "subtotalCents": 0,
+    "taxAmountCents": 0,
+    "totalAmountCents": 0
+  }
+}</code></div>
+            </div>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">get_cart()</div>
+                    <p>Retrieve the current shopping cart.</p>
+                    <span class="tool-category">Read-Only</span>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "items": [
+    {
+      "product_id": "products:abc123",
+      "title": "Laptop Pro",
+      "quantity": 1,
+      "unit_price_cents": 129900,
+      "line_total_cents": 129900,
+      "image_url": "https://..."
+    }
+  ],
+  "itemCount": 1,
+  "subtotalCents": 129900,
+  "taxAmountCents": 16887,
+  "shippingCostCents": 0,
+  "coupon_applied": null,
+  "discount_cents": 0,
+  "totalAmountCents": 146787,
+  "lastUpdated": 1710763200
+}</code></div>
+            </div>
+        </section>
+
+        <section id="discounts">
+            <h2>Discounts & Coupons</h2>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">apply_coupon(code)</div>
+                    <p>Apply a discount code to the current cart.</p>
+                    <span class="tool-category">Write</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">code</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Coupon code (e.g., "SAVE15", "WELCOME20").</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "applied": true,
+  "code": "SAVE15",
+  "discount_cents": 19485,
+  "discount_percent": 15,
+  "new_total_cents": 127302,
+  "expiration_date": "2026-12-31",
+  "terms": "15% off orders over $50"
+}</code></div>
+            </div>
+        </section>
+
+        <section id="checkout">
+            <h2>Checkout & Payments</h2>
+            
+            <div class="tool-section" style="border-left: 4px solid var(--success);">
+                <div class="tool-header">
+                    <div class="tool-name">create_checkout(shipping_address, coupon?)</div>
+                    <p><strong>THE KEY CAPABILITY</strong> — Create a Stripe Checkout Session with embedded checkout, automatic tax, shipping rates, and multiple payment methods.</p>
+                    <span class="tool-category">Write</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">shipping_address</div>
+                    <div class="parameter-type">object (required)</div>
+                    <p>Shipping address with the following fields:</p>
+                    <div style="margin-left: 20px; margin-top: 10px;">
+                        <p><strong>street</strong> (string, required) — Street address</p>
+                        <p><strong>city</strong> (string, required) — City name</p>
+                        <p><strong>province</strong> (string, required) — 2-letter code (ON, BC, AB, etc.)</p>
+                        <p><strong>postalCode</strong> (string, required) — Format: "A1A 1A1"</p>
+                        <p><strong>country</strong> (string, required) — Must be "CA" (Canada only)</p>
+                        <p><strong>phone</strong> (string, required) — E.164 format "+1XXXXXXXXXX"</p>
+                    </div>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">coupon</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Discount code (must be applied to cart first).</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "sessionId": "cs_test_...",
+  "sessionUrl": "https://checkout.stripe.com/pay/cs_test_...",
+  "clientSecret": "...",
+  "publishableKey": "pk_test_...",
+  "subtotalCents": 129900,
+  "taxAmountCents": 16887,
+  "shippingCostCents": 0,
+  "discountCents": 0,
+  "totalCents": 146787,
+  "status": "ready_for_payment",
+  "paymentMethods": [
+    "card",
+    "link",
+    "cash_app",
+    "afterpay_clearpay"
+  ],
+  "expiresAt": 1710776400
+}</code></div>
+                
+                <h3>Features</h3>
+                <ul style="margin-left: 20px;">
+                    <li><strong>Embedded Checkout</strong> — ui_mode: 'embedded' for seamless in-context payments</li>
+                    <li><strong>Automatic Tax</strong> — Real-time HST/GST/PST calculation for Canada</li>
+                    <li><strong>Shipping Rates</strong> — Real-time calculation based on address and destination</li>
+                    <li><strong>Multiple Payment Methods</strong> — Card, Stripe Link, Cash App, Afterpay/Clearpay</li>
+                    <li><strong>Idempotent Requests</strong> — Safe to retry without duplicate charges</li>
+                    <li><strong>Webhook Security</strong> — Stripe webhook confirms payment before order creation</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="orders">
+            <h2>Order Management</h2>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">list_orders(status?, limit, offset, sort?)</div>
+                    <p>View order history with optional filtering by status.</p>
+                    <span class="tool-category">Read-Only</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">status</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Filter by status: "pending", "confirmed", "shipped", "delivered", "cancelled".</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">limit</div>
+                    <div class="parameter-type">number (optional)</div>
+                    <p>Results per page. Default: 20. Max: 100.</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">offset</div>
+                    <div class="parameter-type">number (optional)</div>
+                    <p>Pagination offset. Default: 0.</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">sort</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Sort order: "newest" (default) or "oldest".</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "orders": [
+    {
+      "id": "orders:order123",
+      "buyerId": "users:buyer456",
+      "status": "confirmed",
+      "totalAmountCents": 146787,
+      "itemCount": 1,
+      "createdAt": 1710763200,
+      "estimatedDelivery": "2026-03-25"
+    }
+  ],
+  "total": 5,
+  "limit": 20,
+  "offset": 0
+}</code></div>
+            </div>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">get_order(id)</div>
+                    <p>Retrieve detailed order information including items, totals, and tracking.</p>
+                    <span class="tool-category">Read-Only</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">id</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Order ID (e.g., "orders:abc123").</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "id": "orders:order123",
+  "buyerId": "users:buyer456",
+  "sellerId": "users:seller789",
+  "status": "confirmed",
+  "items": [
+    {
+      "productId": "products:xyz",
+      "name": "Laptop Pro",
+      "quantity": 1,
+      "unitPriceCents": 129900,
+      "imageUrl": "https://..."
+    }
+  ],
+  "subtotalCents": 129900,
+  "taxAmountCents": 16887,
+  "shippingCostCents": 0,
+  "totalAmountCents": 146787,
+  "shippingAddress": {
+    "street": "123 Main St",
+    "city": "Toronto",
+    "province": "ON",
+    "postalCode": "M5V 3A8",
+    "country": "CA"
+  },
+  "trackingNumber": null,
+  "createdAt": 1710763200,
+  "confirmedAt": 1710763200,
+  "shippedAt": null,
+  "deliveredAt": null,
+  "paymentIntentId": "pi_test_...",
+  "refundRequested": false
+}</code></div>
+            </div>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">request_return(order_id, reason, description?)</div>
+                    <p>Initiate a return/refund request for an order or specific items.</p>
+                    <span class="tool-category">Write</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">order_id</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Order ID (e.g., "orders:abc123").</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">reason</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Return reason: "damaged", "wrong_item", "not_as_described", "other".</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">description</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Additional details about the return.</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "return_id": "returns:ret123",
+  "order_id": "orders:order123",
+  "status": "pending",
+  "reason": "damaged",
+  "created_at": 1710763200,
+  "window_closes_at": 1713441600,
+  "estimated_refund_amount_cents": 146787,
+  "message": "Return request received. Seller will review within 2 business days."
+}</code></div>
+            </div>
+        </section>
+
+        <section id="reviews">
+            <h2>Reviews</h2>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">submit_review(product_id, rating, title?, comment?, order_id?)</div>
+                    <p>Submit a product review with 1-5 star rating.</p>
+                    <span class="tool-category">Write</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">product_id</div>
+                    <div class="parameter-type">string (required)</div>
+                    <p>Product ID (e.g., "products:abc123").</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">rating</div>
+                    <div class="parameter-type">number (required)</div>
+                    <p>Star rating (1-5).</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">title</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Review title.</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">comment</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Review text.</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">order_id</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Link to order (for verified purchase badge).</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "review_id": "reviews:rev123",
+  "product_id": "products:abc123",
+  "rating": 5,
+  "title": "Excellent quality!",
+  "comment": "Great laptop, highly recommend",
+  "verified_purchase": true,
+  "published": true,
+  "created_at": 1710763200
+}</code></div>
+            </div>
+        </section>
+
+        <section id="analytics">
+            <h2>Analytics (Admin Only)</h2>
+            
+            <div class="tool-section">
+                <div class="tool-header">
+                    <div class="tool-name">get_analytics(period?, start_date?, end_date?)</div>
+                    <p>Sales and performance analytics. <strong>Requires admin role.</strong></p>
+                    <span class="tool-category">Read-Only • Admin</span>
+                </div>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <div class="parameter-name">period</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>Time period: "day", "week", "month", "year".</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">start_date</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>ISO date format "2026-03-01".</p>
+                </div>
+                <div class="parameter">
+                    <div class="parameter-name">end_date</div>
+                    <div class="parameter-type">string (optional)</div>
+                    <p>ISO date format "2026-03-31".</p>
+                </div>
+                
+                <h3>Response Example</h3>
+                <div class="code-block"><code>{
+  "period": "month",
+  "total_revenue_cents": 1500000,
+  "total_orders": 42,
+  "average_order_value_cents": 35714,
+  "total_items_sold": 98,
+  "top_products": [
+    {
+      "product_id": "products:abc123",
+      "title": "Laptop Pro",
+      "units_sold": 15,
+      "revenue_cents": 1948500
+    }
+  ],
+  "top_sellers": [
+    {
+      "seller_id": "users:seller789",
+      "name": "TechStore Inc",
+      "revenue_cents": 750000,
+      "orders": 21
+    }
+  ],
+  "conversion_rate": 3.2,
+  "returning_customers": 18,
+  "new_customers": 24
+}</code></div>
+            </div>
+        </section>
+
+        <section id="errors">
+            <h2>Error Handling</h2>
+            
+            <h3>Standard Error Response</h3>
+            <div class="code-block"><code>{
+  "error": "Human-readable error message",
+  "code": "ERROR_CODE",
+  "statusCode": 400
+}</code></div>
+            
+            <h3>Common Error Codes</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>HTTP</th>
+                        <th>Meaning</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>VALIDATION_ERROR</td>
+                        <td>400</td>
+                        <td>Invalid input (bad postal code, price range, etc.)</td>
+                    </tr>
+                    <tr>
+                        <td>AUTH_ERROR</td>
+                        <td>401</td>
+                        <td>Missing or invalid JWT token</td>
+                    </tr>
+                    <tr>
+                        <td>AUTHZ_ERROR</td>
+                        <td>403</td>
+                        <td>Insufficient permissions (e.g., non-admin accessing admin tool)</td>
+                    </tr>
+                    <tr>
+                        <td>NOT_FOUND</td>
+                        <td>404</td>
+                        <td>Product/order/user doesn't exist</td>
+                    </tr>
+                    <tr>
+                        <td>CONFLICT</td>
+                        <td>409</td>
+                        <td>Business logic violation (e.g., out of stock, return window closed)</td>
+                    </tr>
+                    <tr>
+                        <td>RATE_LIMIT</td>
+                        <td>429</td>
+                        <td>Too many requests — wait before retrying</td>
+                    </tr>
+                    <tr>
+                        <td>STRIPE_ERROR</td>
+                        <td>400</td>
+                        <td>Stripe API error (payment declined, invalid address, etc.)</td>
+                    </tr>
+                    <tr>
+                        <td>INTERNAL_ERROR</td>
+                        <td>500</td>
+                        <td>Server error — report to support</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <footer>
+            <p>OrignaGTA MCP Server — Complete API Reference</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">Last updated: March 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

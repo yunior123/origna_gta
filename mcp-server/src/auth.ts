@@ -1,10 +1,11 @@
 /**
  * OrignaGTA MCP Server — Authentication
- * JWT token parsing and validation
+ * JWT token parsing, validation, and role-based access control
  */
 
 import { AuthenticationError, AuthorizationError } from "./utils/errors.js";
 import { Logger, LogContext } from "./utils/logger.js";
+import { OAuthProvider } from "./auth/oauth-provider.js";
 
 export interface JWTPayload {
   sub: string; // Full path: "users:abc123"
@@ -17,12 +18,19 @@ export interface JWTPayload {
 }
 
 export class AuthService {
-  static getJWTToken(): string {
-    const token = process.env.ORIGNABASE_JWT_TOKEN;
-    if (!token) {
-      throw new AuthenticationError("ORIGNABASE_JWT_TOKEN not set");
+  private static oauthProvider = OAuthProvider.getInstance();
+
+  /**
+   * Get JWT token — uses OAuth provider with env fallback
+   */
+  static async getJWTToken(ctx?: LogContext): Promise<string> {
+    const _ctx = ctx || Logger.createContext("auth");
+    try {
+      return await this.oauthProvider.authenticate(_ctx);
+    } catch (error) {
+      Logger.error("Failed to get JWT token", _ctx, { error });
+      throw new AuthenticationError("Authentication failed");
     }
-    return token;
   }
 
   /**
@@ -46,17 +54,18 @@ export class AuthService {
   /**
    * Get current user info from JWT
    */
-  static getCurrentUser(ctx: LogContext): JWTPayload {
+  static async getCurrentUser(ctx?: LogContext): Promise<JWTPayload> {
+    const _ctx = ctx || Logger.createContext("auth");
     try {
-      const token = AuthService.getJWTToken();
-      const payload = AuthService.parseJWT(token);
+      const token = await this.getJWTToken(_ctx);
+      const payload = this.parseJWT(token);
 
       // Check token expiration
       if (payload.exp && payload.exp < Date.now() / 1000) {
         throw new AuthenticationError("JWT token expired");
       }
 
-      Logger.setUserId(ctx, payload.sub);
+      Logger.setUserId(_ctx, payload.sub);
       return payload;
     } catch (error) {
       if (error instanceof AuthenticationError) throw error;
@@ -67,9 +76,10 @@ export class AuthService {
   /**
    * Require admin role
    */
-  static requireAdmin(payload: JWTPayload, ctx: LogContext) {
+  static requireAdmin(payload: JWTPayload, ctx?: LogContext): void {
+    const _ctx = ctx || Logger.createContext("auth");
     if (payload.role !== "admin") {
-      Logger.warn("Unauthorized admin access attempt", ctx, {
+      Logger.warn("Unauthorized admin access attempt", _ctx, {
         actualRole: payload.role,
       });
       throw new AuthorizationError("Admin access required");
@@ -79,7 +89,7 @@ export class AuthService {
   /**
    * Require seller role
    */
-  static requireSeller(payload: JWTPayload, ctx: LogContext) {
+  static requireSeller(payload: JWTPayload, ctx?: LogContext): void {
     if (payload.role !== "seller" && payload.role !== "admin") {
       throw new AuthorizationError("Seller access required");
     }
@@ -88,9 +98,18 @@ export class AuthService {
   /**
    * Require buyer role
    */
-  static requireBuyer(payload: JWTPayload, ctx: LogContext) {
+  static requireBuyer(payload: JWTPayload, ctx?: LogContext): void {
     if (payload.role !== "buyer" && payload.role !== "admin") {
       throw new AuthorizationError("Buyer access required");
     }
+  }
+
+  /**
+   * Clear cached authentication
+   */
+  static logout(ctx?: LogContext): void {
+    const _ctx = ctx || Logger.createContext("auth");
+    this.oauthProvider.clearToken(_ctx);
+    Logger.info("User logged out", _ctx);
   }
 }

@@ -1,0 +1,91 @@
+# Quickstart
+
+Get up and running with OrignaGTA in 5 minutes.
+
+## Prerequisites
+
+- **Node.js** 18+ or **Dart/Flutter** 3.0+
+- **Git** for cloning the repository
+- **Stripe Test Account** (free at https://stripe.com)
+
+## For Web Developers (Flutter Web)
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/yuniorrodriguezosorio/origna_gta.git
+cd origna_gta/origna_gta
+```
+
+### 2. Install Dependencies
+
+```bash
+flutter pub get
+```
+
+### 3. Configure Environment
+
+Create `lib/utils/env_config.dart` with development settings:
+
+```dart
+class EnvConfig {
+  static const String environment = 'dev';
+  static const String orignaBaseUrl = 'https://api.dev.orignagta.ca';
+  static const String turnstileSiteKey = 'your-site-key-here';
+}
+```
+
+### 4. Run the Development Server
+
+```bash
+flutter run -d chrome --dart-define=ENVIRONMENT=dev
+```
+
+The app will be available at `http://localhost:54321`
+
+### 5. Test with Dev Accounts
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | e2e-admin@test.origna.ca | REDACTED_TEST_PASSWORD |
+| Seller | e2e-seller@test.origna.ca | REDACTED_TEST_PASSWORD |
+| Buyer | e2e-buyer@test.origna.ca | REDACTED_TEST_PASSWORD |
+
+## For Backend Developers (Rust)
+
+### 1. Access VPS
+
+```bash
+ssh -i ~/.ssh/id_ed25519 root@204.168.137.16
+cd /opt/orignabase
+```
+
+### 2. Check OrignaBase Status
+
+```bash
+docker-compose ps
+# Should show: orignabase-dev, surrealdb, meilisearch, caddy
+```
+
+### 3. View Dev API Logs
+
+```bash
+docker-compose logs -f orignabase-dev
+```
+
+### 4. Test API Endpoint
+
+```bash
+curl https://api.dev.orignagta.ca/health
+# Expected: 200 OK with health status
+```
+
+## Next Steps
+
+- **[API Reference](/en/api-reference/authentication)** — Learn the REST API
+- **[Seller Guide](/en/guides/seller-onboarding)** — Set up as a seller
+- **[Deployment](/en/guides/deployment)** — Deploy to production
+
+---
+
+**Stuck?** Check the troubleshooting section or open an issue on GitHub.

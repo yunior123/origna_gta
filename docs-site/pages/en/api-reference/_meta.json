@@ -1,0 +1,9 @@
+{
+  "authentication": "Authentication",
+  "products": "Products",
+  "orders": "Orders",
+  "cart": "Cart",
+  "payments": "Payments",
+  "webhooks": "Webhooks",
+  "errors": "Error Codes"
+}

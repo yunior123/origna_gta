@@ -11,7 +11,7 @@ import { Logger, LogContext } from "../utils/logger.js";
 export async function getCart(ctx: LogContext) {
   Logger.info("get_cart called", ctx);
 
-  AuthService.getCurrentUser(ctx); // Ensure authenticated
+  await AuthService.getCurrentUser(ctx); // Ensure authenticated
 
   const cart = await apiClient.getCart(ctx);
 
@@ -37,12 +37,12 @@ export async function addToCart(params: AddToCartParams, ctx: LogContext) {
     idempotencyKey: params.idempotency_key,
   });
 
-  AuthService.getCurrentUser(ctx); // Ensure authenticated
+  await AuthService.getCurrentUser(ctx); // Ensure authenticated
 
   const productId = Validation.surrealId(params.product_id, "product_id");
   const quantity = Validation.quantity(params.quantity);
 
-  const cart = await apiClient.addToCart(productId, quantity, ctx);
+  const cart = await apiClient.addToCart(productId, quantity, params.idempotency_key, ctx);
 
   Logger.info("add_to_cart succeeded", ctx, {
     itemCount: cart.items?.length || 0,
@@ -64,7 +64,7 @@ export async function removeFromCart(params: RemoveFromCartParams, ctx: LogConte
     productId: params.product_id,
   });
 
-  AuthService.getCurrentUser(ctx); // Ensure authenticated
+  await AuthService.getCurrentUser(ctx); // Ensure authenticated
 
   const productId = Validation.surrealId(params.product_id, "product_id");
 

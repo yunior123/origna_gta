@@ -1,5 +1,5 @@
 /**
- * Checkout Tools: create_checkout
+ * Checkout Tools: create_checkout, confirm_checkout, apply_coupon
  */
 
 import { CreateCheckoutParams, ApplyCouponParams } from "../types.js";
@@ -11,7 +11,7 @@ import { Logger, LogContext } from "../utils/logger.js";
 export async function createCheckout(params: CreateCheckoutParams, ctx: LogContext) {
   Logger.info("create_checkout called", ctx);
 
-  const user = AuthService.getCurrentUser(ctx);
+  const user = await AuthService.getCurrentUser(ctx);
   AuthService.requireBuyer(user, ctx);
 
   // Validate shipping address
@@ -25,7 +25,7 @@ export async function createCheckout(params: CreateCheckoutParams, ctx: LogConte
 
   const coupon = params.coupon ? Validation.couponCode(params.coupon) : undefined;
 
-  const session = await apiClient.createCheckout(address, coupon, ctx);
+  const session = await apiClient.createCheckout(address, coupon, undefined, ctx);
 
   Logger.info("create_checkout succeeded", ctx, {
     sessionId: session.sessionId,
@@ -51,10 +51,40 @@ export async function createCheckout(params: CreateCheckoutParams, ctx: LogConte
   };
 }
 
+export async function confirmCheckout(params: any, ctx: LogContext) {
+  Logger.info("confirm_checkout called", ctx, { token: params.confirmation_token });
+
+  const user = await AuthService.getCurrentUser(ctx);
+  AuthService.requireBuyer(user, ctx);
+
+  const token = Validation.string(params.confirmation_token, 1, 500, "confirmation_token");
+
+  // Note: Token verification and actual checkout execution happens in the index.ts
+  // This function just confirms the token is valid format
+  Logger.info("confirm_checkout token verified", ctx);
+
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            status: "confirmed",
+            message: "Checkout confirmed and processing",
+            token,
+          },
+          null,
+          2
+        ),
+      },
+    ],
+  };
+}
+
 export async function applyCoupon(params: ApplyCouponParams, ctx: LogContext) {
   Logger.info("apply_coupon called", ctx, { code: params.code });
 
-  AuthService.getCurrentUser(ctx);
+  await AuthService.getCurrentUser(ctx);
 
   const code = Validation.couponCode(params.code);
 

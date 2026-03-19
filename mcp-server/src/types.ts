@@ -252,3 +252,6 @@ export interface ToolResult {
   }[];
   isError?: boolean;
 }
+
+// Alias for Tool in domain modules
+export type Tool = ToolDefinition;

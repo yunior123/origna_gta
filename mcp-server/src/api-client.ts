@@ -1,6 +1,6 @@
 /**
  * OrignaGTA MCP Server — OrignaBase API Client
- * HTTP wrapper with auth, retry, rate limit handling
+ * HTTP wrapper with OAuth auth, retry, rate limit handling
  */
 
 import axios, { AxiosInstance, AxiosError } from "axios";
@@ -15,13 +15,23 @@ import { AuthService } from "./auth.js";
 import { Logger, LogContext } from "./utils/logger.js";
 
 export class OrignaBaseClient {
-  private http: AxiosInstance;
+  private http: AxiosInstance | null = null;
   private baseURL: string;
 
   constructor(baseURL?: string) {
     this.baseURL = baseURL || process.env.ORIGNABASE_URL || "https://api.dev.orignagta.ca";
+  }
 
-    const token = AuthService.getJWTToken();
+  /**
+   * Initialize HTTP client with fresh token
+   * Called before each request to ensure token is current
+   */
+  private async initializeClient(ctx?: LogContext): Promise<AxiosInstance> {
+    if (this.http) {
+      return this.http;
+    }
+
+    const token = await AuthService.getJWTToken(ctx);
 
     this.http = axios.create({
       baseURL: this.baseURL,
@@ -43,6 +53,8 @@ export class OrignaBaseClient {
         throw error;
       }
     );
+
+    return this.http;
   }
 
   async searchProducts(
@@ -51,6 +63,7 @@ export class OrignaBaseClient {
     ctx?: LogContext
   ): Promise<any> {
     try {
+      const http = await this.initializeClient(ctx);
       const params: any = {
         limit: filters?.limit || 10,
         offset: filters?.offset || 0,
@@ -62,7 +75,7 @@ export class OrignaBaseClient {
       if (filters?.maxPrice !== undefined) params.max_price = filters.maxPrice;
       if (filters?.sort) params.sort = filters.sort;
 
-      const response = await this.http.get("/products", { params });
+      const response = await http.get("/products", { params });
       return response.data;
     } catch (error) {
       this.handleError(error, "searchProducts", ctx);
@@ -71,7 +84,8 @@ export class OrignaBaseClient {
 
   async getProduct(productId: string, ctx?: LogContext): Promise<any> {
     try {
-      const response = await this.http.get(`/products/${productId}`);
+      const http = await this.initializeClient(ctx);
+      const response = await http.get(`/products/${productId}`);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -96,18 +110,26 @@ export class OrignaBaseClient {
 
   async getCart(ctx?: LogContext): Promise<any> {
     try {
-      const response = await this.http.get("/cart");
+      const http = await this.initializeClient(ctx);
+      const response = await http.get("/cart");
       return response.data;
     } catch (error) {
       this.handleError(error, "getCart", ctx);
     }
   }
 
-  async addToCart(productId: string, quantity: number, ctx?: LogContext): Promise<any> {
+  async addToCart(
+    productId: string,
+    quantity: number,
+    idempotencyKey?: string,
+    ctx?: LogContext
+  ): Promise<any> {
     try {
-      const response = await this.http.post("/cart/add", {
+      const http = await this.initializeClient(ctx);
+      const response = await http.post("/cart/add", {
         productId,
         quantity,
+        idempotency_key: idempotencyKey,
       });
       return response.data;
     } catch (error) {
@@ -117,7 +139,8 @@ export class OrignaBaseClient {
 
   async removeFromCart(productId: string, ctx?: LogContext): Promise<any> {
     try {
-      const response = await this.http.delete(`/cart/remove/${productId}`);
+      const http = await this.initializeClient(ctx);
+      const response = await http.delete(`/cart/remove/${productId}`);
       return response.data;
     } catch (error) {
       this.handleError(error, "removeFromCart", ctx);
@@ -126,7 +149,8 @@ export class OrignaBaseClient {
 
   async applyCoupon(code: string, ctx?: LogContext): Promise<any> {
     try {
-      const response = await this.http.post("/cart/coupon", { code });
+      const http = await this.initializeClient(ctx);
+      const response = await http.post("/cart/coupon", { code });
       return response.data;
     } catch (error) {
       this.handleError(error, "applyCoupon", ctx);
@@ -136,12 +160,15 @@ export class OrignaBaseClient {
   async createCheckout(
     shippingAddress: Record<string, any>,
     coupon?: string,
+    idempotencyKey?: string,
     ctx?: LogContext
   ): Promise<any> {
     try {
-      const response = await this.http.post("/checkout/session", {
+      const http = await this.initializeClient(ctx);
+      const response = await http.post("/checkout/session", {
         shipping_address: shippingAddress,
         coupon,
+        idempotency_key: idempotencyKey,
       });
       return response.data;
     } catch (error) {
@@ -152,17 +179,12 @@ export class OrignaBaseClient {
     }
   }
 
-  async listOrders(
-    status?: string,
-    limit?: number,
-    offset?: number,
-    ctx?: LogContext
-  ): Promise<any> {
+  async listOrders(limit?: number, offset?: number, ctx?: LogContext): Promise<any> {
     try {
-      const params: any = { limit: limit || 20, offset: offset || 0 };
-      if (status) params.status = status;
-
-      const response = await this.http.get("/orders", { params });
+      const http = await this.initializeClient(ctx);
+      const response = await http.get("/orders", {
+        params: { limit: limit || 20, offset: offset || 0 },
+      });
       return response.data;
     } catch (error) {
       this.handleError(error, "listOrders", ctx);
@@ -171,7 +193,8 @@ export class OrignaBaseClient {
 
   async getOrder(orderId: string, ctx?: LogContext): Promise<any> {
     try {
-      const response = await this.http.get(`/orders/${orderId}`);
+      const http = await this.initializeClient(ctx);
+      const response = await http.get(`/orders/${orderId}`);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -183,14 +206,15 @@ export class OrignaBaseClient {
 
   async requestReturn(
     orderId: string,
-    items: Array<{ productId: string; quantity: number }>,
     reason: string,
+    idempotencyKey?: string,
     ctx?: LogContext
   ): Promise<any> {
     try {
-      const response = await this.http.post(`/orders/${orderId}/returns`, {
-        items,
+      const http = await this.initializeClient(ctx);
+      const response = await http.post(`/orders/${orderId}/return`, {
         reason,
+        idempotency_key: idempotencyKey,
       });
       return response.data;
     } catch (error) {
@@ -201,73 +225,80 @@ export class OrignaBaseClient {
   async submitReview(
     productId: string,
     rating: number,
-    text: string,
+    title: string,
+    comment?: string,
     ctx?: LogContext
   ): Promise<any> {
     try {
-      const response = await this.http.post(`/products/${productId}/reviews`, {
+      const http = await this.initializeClient(ctx);
+      const response = await http.post(`/products/${productId}/review`, {
         rating,
-        text,
+        title,
+        comment,
       });
       return response.data;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        throw new NotFoundError("Product", productId);
-      }
       this.handleError(error, "submitReview", ctx);
     }
   }
 
-  async getAnalytics(period: string, ctx?: LogContext): Promise<any> {
+  async getAnalytics(
+    metric: string,
+    period: string = "month",
+    ctx?: LogContext
+  ): Promise<any> {
     try {
-      const response = await this.http.get("/analytics", { params: { period } });
+      const http = await this.initializeClient(ctx);
+      const response = await http.get("/admin/analytics", {
+        params: { metric, period },
+      });
       return response.data;
     } catch (error) {
       this.handleError(error, "getAnalytics", ctx);
     }
   }
 
-  private handleError(error: any, method: string, ctx?: LogContext): never {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status || 500;
-      const data = error.response?.data;
+  private handleError(error: any, operation: string, ctx?: LogContext): never {
+    Logger.error(`API call failed: ${operation}`, ctx, { error });
 
-      Logger.error(`API request failed: ${method}`, ctx || Logger.createContext(method), error);
-
-      switch (status) {
-        case 400:
-          throw new AppError(
-            data?.message || "Invalid request",
-            data?.code || "INVALID_REQUEST",
-            400
-          );
-        case 401:
-          throw new AppError("Unauthorized", "AUTH_ERROR", 401);
-        case 403:
-          throw new AppError("Forbidden", "FORBIDDEN", 403);
-        case 404:
-          throw new NotFoundError("Resource", data?.id || "unknown");
-        case 422:
-          throw new AppError(
-            data?.message || "Validation error",
-            data?.code || "VALIDATION_ERROR",
-            422
-          );
-        case 429:
-          throw new RateLimitError();
-        case 500:
-          throw new InternalServerError(data?.message || "Server error");
-        case 502:
-        case 503:
-          throw new InternalServerError(`Service unavailable (${status})`);
-        default:
-          throw new AppError(`HTTP ${status}: ${data?.message || error.message}`, "API_ERROR", status);
-      }
+    if (error instanceof AppError) {
+      throw error;
     }
 
-    throw new InternalServerError(String(error));
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const message = error.response?.data?.message || error.message;
+
+      if (status === 400) {
+        throw new AppError(message, "INVALID_REQUEST", 400);
+      }
+      if (status === 401) {
+        throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
+      }
+      if (status === 403) {
+        throw new AppError("Forbidden", "FORBIDDEN", 403);
+      }
+      if (status === 404) {
+        throw new NotFoundError("Resource", "unknown");
+      }
+      if (status === 429) {
+        throw new RateLimitError();
+      }
+      if (status === 500) {
+        throw new InternalServerError(message);
+      }
+      if (status === 402) {
+        throw new StripeError(message);
+      }
+
+      throw new AppError(message || "API request failed", "NETWORK_ERROR", status);
+    }
+
+    throw new InternalServerError("Unknown error");
   }
 }
 
-// Singleton instance
+/**
+ * Singleton API client instance
+ */
 export const apiClient = new OrignaBaseClient();

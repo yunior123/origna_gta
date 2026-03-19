@@ -1,0 +1,131 @@
+# Authentication
+
+OrignaGTA uses **JWT (JSON Web Tokens)** issued by OrignaBase for all authenticated requests.
+
+## Overview
+
+1. **Client** sends credentials to `/auth/login` or `/auth/register`
+2. **OrignaBase** validates and issues a JWT token
+4. **OrignaBase** validates token signature (RS256) on each request
+5. **JWT auto-refresh** handled by OrignaBase SDK
+
+## Authentication Endpoints
+
+### Register New User
+
+```http
+POST /auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "name": "John Doe"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "user": {
+    "id": "users:abc123",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "buyer"
+  },
+  "token": "REDACTED_SECRET"
+}
+```
+
+### Login
+
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "user": {
+    "id": "users:abc123",
+    "email": "user@example.com",
+    "role": "buyer"
+  },
+  "token": "REDACTED_SECRET"
+}
+```
+
+### Google Sign-In
+
+OrignaBase handles Google OAuth server-side. Flutter initiates:
+
+```http
+GET /auth/google/start?redirectUri=https://dev.orignagta.ca/callback
+```
+
+Redirects to Google login. After user consents, Google redirects back with authorization code that OrignaBase exchanges for a token.
+
+## JWT Structure
+
+All tokens are RS256-signed JWTs with payload:
+
+```json
+{
+  "sub": "users:abc123",
+  "email": "user@example.com",
+  "role": "buyer",
+  "iat": 1710771234,
+  "exp": 1710774834,
+  "iss": "orignagta"
+}
+```
+
+- **sub**: Full SurrealDB ID (`users:xxx`)
+- **email**: User email
+- **role**: `buyer`, `seller`, or `admin`
+- **exp**: Expiration (typically 1 hour)
+
+## Using Tokens
+
+Include in every authenticated request:
+
+```bash
+  https://api.orignagta.ca/me
+```
+
+## Token Refresh
+
+The OrignaBase SDK automatically refreshes expired tokens. Manual refresh (if needed):
+
+```http
+POST /auth/refresh
+```
+
+Returns a new token with extended expiration.
+
+## Common Errors
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| `401 Unauthorized` | Missing or invalid token | Log in again |
+| `403 Forbidden` | Token valid but no permission | Check user role |
+| `429 Too Many Requests` | Rate limit exceeded | Wait 60s, then retry |
+
+## Security Notes
+
+- Never expose tokens in client-side code (use httpOnly cookies if possible)
+- Tokens are short-lived (1 hour) by design
+- Each request validates signature — forged tokens are rejected
+- Password reset requires email verification
+
+---
+
+**Next**: [Products API](/en/api-reference/products)

@@ -1,0 +1,27 @@
+# Add this block to /etc/caddy/Caddyfile on VPS 204.168.137.16
+# Location: After main orignagta.ca block, before any other domains
+
+docs.orignagta.ca {
+    root * /var/www/orignagta/docs/current
+    file_server
+    encode gzip
+    try_files {path} {path}.html /index.html
+
+    # Cache control for static assets
+    @static {
+        path *.js *.css *.woff2 *.png *.jpg *.gif *.svg
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # HTML files: no cache (always check for updates)
+    @html {
+        path *.html /
+    }
+    header @html Cache-Control "public, max-age=0, must-revalidate"
+
+    # Security headers
+    header X-Content-Type-Options "nosniff"
+    header X-Frame-Options "DENY"
+    header Referrer-Policy "strict-origin-when-cross-origin"
+    header Permissions-Policy "geolocation=(), microphone=(), camera=()"
+}

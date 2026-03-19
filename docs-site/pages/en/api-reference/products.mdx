@@ -1,0 +1,159 @@
+# Products API
+
+Manage product listings, inventory, and search across the marketplace.
+
+## List Products
+
+Retrieve all products with pagination and filtering.
+
+```http
+GET /products?limit=20&offset=0&status=active
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Results per page (default: 20, max: 100) |
+| `offset` | integer | Pagination offset (default: 0) |
+| `status` | string | Filter by `draft`, `active`, `inactive`, `deleted` |
+| `sellerId` | string | Filter by seller ID |
+| `categoryId` | string | Filter by category |
+| `search` | string | Full-text search (uses Meilisearch) |
+| `minPrice` | integer | Min price in cents (e.g., `1000` = $10 CAD) |
+| `maxPrice` | integer | Max price in cents |
+
+**Response:**
+```json
+{
+  "products": [
+    {
+      "id": "products:abc123",
+      "title": "Vintage Coffee Maker",
+      "description": "Retro 1970s coffee maker in mint condition",
+      "priceCents": 4999,
+      "imageUrl": "https://cdn.example.com/coffee-maker.jpg",
+      "stockQuantity": 5,
+      "sellerId": "users:seller123",
+      "status": "active",
+      "dateCreated": 1710691200,
+      "isPerishable": false,
+      "isDigital": false
+    }
+  ],
+  "total": 150,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+## Get Product Details
+
+```http
+GET /products/:productId
+```
+
+**Response:**
+```json
+{
+  "id": "products:abc123",
+  "title": "Vintage Coffee Maker",
+  "description": "Retro 1970s coffee maker in mint condition",
+  "priceCents": 4999,
+  "imageUrl": "https://cdn.example.com/coffee-maker.jpg",
+  "stockQuantity": 5,
+  "sellerId": "users:seller123",
+  "sellerName": "Vintage Collectibles",
+  "status": "active",
+  "dateCreated": 1710691200,
+  "isPerishable": false,
+  "isDigital": false,
+  "weight": 2.5,
+  "dimensions": {
+    "width": 20,
+    "height": 15,
+    "depth": 10
+  }
+}
+```
+
+## Create Product (Sellers)
+
+```http
+POST /products
+Content-Type: application/json
+
+{
+  "title": "Vintage Coffee Maker",
+  "description": "Retro 1970s coffee maker",
+  "priceCents": 4999,
+  "stockQuantity": 10,
+  "imageUrl": "https://cdn.example.com/coffee-maker.jpg",
+  "categoryId": "categories:home",
+  "isPerishable": false,
+  "isDigital": false,
+  "weight": 2.5
+}
+```
+
+**Rules:**
+- Seller can only create products for their own catalog
+- Price must be positive integer (in cents)
+- Stock must be ≥ 0
+- Digital products (`isDigital: true`) require no weight/shipping info
+- Perishable items (`isPerishable: true`) cannot ship across provinces
+
+## Update Product
+
+```http
+PATCH /products/:productId
+Content-Type: application/json
+
+{
+  "title": "Updated Title",
+  "priceCents": 5999
+}
+```
+
+Only the seller can update their own products.
+
+## Delete Product
+
+```http
+DELETE /products/:productId
+```
+
+Sets product status to `deleted` (soft delete, not removed from DB).
+
+## Product Search
+
+The search endpoint uses Meilisearch for fast, faceted search:
+
+```http
+GET /search/products?q=vintage&filters=categoryId:home
+```
+
+**Response:**
+```json
+{
+  "results": [
+    {
+      "id": "products:abc123",
+      "title": "Vintage Coffee Maker",
+      "priceCents": 4999,
+      "sellerId": "users:seller123"
+    }
+  ],
+  "facets": {
+    "categoryId": {
+      "home": 45,
+      "garden": 12
+    }
+  },
+  "total": 57
+}
+```
+
+---
+
+**Next**: [Orders API](/en/api-reference/orders)
