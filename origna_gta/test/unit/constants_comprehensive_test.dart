@@ -239,7 +239,7 @@ void main() {
       final option = SellerDeliveryOption.fromMap(map);
       expect(option, isNotNull);
       expect(option!.type, 'same_day');
-      expect(option.costCents, 16); // price 15.99 rounds to 16 (missing *100 in fromMap)
+      expect(option.costCents, 1599); // price 15.99 * 100 = 1599 cents
       expect(option.estimatedDays, 0);
     });
 

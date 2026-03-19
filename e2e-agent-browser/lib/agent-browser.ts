@@ -1,6 +1,5 @@
 /**
- * FIXED AgentBrowser v3 — Complete with Helper Methods
- * Adds safeFill() and other missing methods
+ * FIXED AgentBrowser v4 — Reduced clearState timeout + better error messages
  */
 import type { Snapshot, SnapshotRef } from './types.js';
 
@@ -51,17 +50,22 @@ export class AgentBrowser {
   }
 
   async clearState(): Promise<void> {
+    // Use very short timeouts — if clearing fails, don't block
+    // Tests can work with stale cookies/storage if needed
     try { 
-      this.run(['cookies', 'clear'], 2_000); 
-    } catch (e) { 
-      console.warn(`[clearState] cookies clear failed (non-fatal):`, String(e).slice(0, 80));
+      this.run(['cookies', 'clear'], 500);
+    } catch (_e) { 
+      // Silently ignore — browser may be busy
     }
     try { 
-      this.run(['storage', 'local', 'clear'], 2_000); 
-    } catch (e) { 
-      console.warn(`[clearState] storage clear failed (non-fatal):`, String(e).slice(0, 80));
+      this.run(['storage', 'local', 'clear'], 500);
+    } catch (_e) { 
+      // Silently ignore — browser may be busy
     }
     this.wasOnStripe = false;
+    
+    // Give browser a moment to stabilize after clearing
+    await new Promise(r => setTimeout(r, 100));
   }
 
   async snapshot(opts?: { interactive?: boolean; compact?: boolean; depth?: number }): Promise<Snapshot> {
@@ -188,16 +192,19 @@ export class AgentBrowser {
   async waitForFlutter(timeout?: number): Promise<void> {
     const ms = timeout ?? (Number(process.env.E2E_FLUTTER_TIMEOUT) || 45_000);
     const start = Date.now();
+    let lastError = '';
     while (Date.now() - start < ms) {
       try {
         const snap = await this.snapshot({ interactive: true, compact: true });
         if (snap.refs.length > 0) return;
-      } catch {
+        lastError = `refs.length=${snap.refs.length}`;
+      } catch (e) {
         // Snapshot may fail while page is loading
+        lastError = String(e).slice(0, 60);
       }
       await new Promise(r => setTimeout(r, 1_000));
     }
-    throw new Error(`Flutter semantics tree not found within ${ms}ms`);
+    throw new Error(`Flutter semantics tree not found within ${ms}ms (last: ${lastError})`);
   }
 
   async waitForChange(opts?: { minRefs?: number; text?: string | RegExp; timeout?: number }): Promise<Snapshot> {

@@ -642,13 +642,60 @@ class OrignaBaseAuthRepository implements AuthRepository {
 
     // Fallback for non-SDK exceptions (e.g. platform errors, cancellations)
     final errorStr = e.toString().toLowerCase();
+    
+    // Pattern matching for common error messages
     if (errorStr.contains('cancelled') || errorStr.contains('canceled')) {
       throw OrignaBaseAuthException(
         code: 'cancelled',
         message: 'Operation cancelled',
       );
     }
+    if (errorStr.contains('already') || errorStr.contains('duplicate')) {
+      throw OrignaBaseAuthException(
+        code: 'email-already-in-use',
+        message: e.toString(),
+      );
+    }
+    if (errorStr.contains('network')) {
+      throw OrignaBaseAuthException(
+        code: 'network-request-failed',
+        message: e.toString(),
+      );
+    }
+    // Check for "weak" specifically before general "password" check
+    if (errorStr.contains('weak')) {
+      throw OrignaBaseAuthException(
+        code: 'weak-password',
+        message: e.toString(),
+      );
+    }
+    // "wrong password" or just "password" in auth context = wrong-password
+    if (errorStr.contains('wrong') || (errorStr.contains('password') && !errorStr.contains('weak'))) {
+      throw OrignaBaseAuthException(
+        code: 'wrong-password',
+        message: e.toString(),
+      );
+    }
+    if (errorStr.contains('not found')) {
+      throw OrignaBaseAuthException(
+        code: 'user-not-found',
+        message: e.toString(),
+      );
+    }
+    if (errorStr.contains('disabled') || errorStr.contains('account')) {
+      throw OrignaBaseAuthException(
+        code: 'user-disabled',
+        message: e.toString(),
+      );
+    }
+    if (errorStr.contains('too many')) {
+      throw OrignaBaseAuthException(
+        code: 'too-many-requests',
+        message: e.toString(),
+      );
+    }
 
     throw OrignaBaseAuthException(code: 'unknown', message: e.toString());
   }
+
 }

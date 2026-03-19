@@ -17,8 +17,8 @@ typedef CsvRow = Map<String, dynamic>;
 List<CsvRow> parseCsv(String csvContent) {
   final lines = csvContent.split('\n').map((s) => s.trimRight()).toList();
   
-  if (lines.isEmpty) {
-    return [];
+  if (lines.isEmpty || csvContent.trim().isEmpty) {
+    throw FormatException('CSV cannot be empty');
   }
 
   // Parse header
