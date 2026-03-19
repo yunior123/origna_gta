@@ -8,10 +8,9 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
-  TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { Logger, LogContext } from "./utils/logger.js";
+import { Logger } from "./utils/logger.js";
 import { AppError, sanitizeError } from "./utils/errors.js";
 
 // Import tool handlers
@@ -25,9 +24,9 @@ import * as analyticsTools from "./tools/analytics.js";
 const server = new Server({
   name: "orignagta-mcp",
   version: "1.0.0",
+  description: "MCP server for AI agents to purchase products end-to-end",
 });
 
-// Tool Definitions
 const TOOLS = [
   // Products (READ)
   {
@@ -38,32 +37,32 @@ const TOOLS = [
       properties: {
         query: {
           type: "string",
-          description: "Search query",
+          description: "Search query (title, description, keywords)",
         },
         category: {
           type: "string",
-          description: "Optional category filter",
+          description: "Filter by category ID",
         },
         min_price: {
           type: "number",
-          description: "Minimum price in cents (optional)",
+          description: "Minimum price in cents (e.g., 5000 for $50)",
         },
         max_price: {
           type: "number",
-          description: "Maximum price in cents (optional)",
+          description: "Maximum price in cents",
         },
         sort: {
           type: "string",
           enum: ["price_asc", "price_desc", "newest", "popular"],
-          description: "Sort order (optional)",
+          description: "Sort order",
         },
         limit: {
           type: "number",
-          description: "Results per page, default 20, max 100",
+          description: "Number of results (default: 10, max: 50)",
         },
         offset: {
           type: "number",
-          description: "Page offset for pagination",
+          description: "Pagination offset",
         },
       },
       required: ["query"],
@@ -71,7 +70,7 @@ const TOOLS = [
   },
   {
     name: "get_product",
-    description: "Get detailed product information including images, reviews, stock",
+    description: "Get full product details by ID",
     inputSchema: {
       type: "object",
       properties: {
@@ -83,99 +82,55 @@ const TOOLS = [
       required: ["id"],
     },
   },
-  {
-    name: "check_inventory",
-    description: "Check real-time stock levels for a product",
-    inputSchema: {
-      type: "object",
-      properties: {
-        product_id: {
-          type: "string",
-          description: "Product ID",
-        },
-      },
-      required: ["product_id"],
-    },
-  },
 
-  // Cart (READ/WRITE)
-  {
-    name: "get_cart",
-    description: "Get current shopping cart with items, totals, and estimates",
-    inputSchema: {
-      type: "object",
-      properties: {},
-    },
-  },
+  // Cart (READ + WRITE)
   {
     name: "add_to_cart",
-    description: "Add a product to shopping cart",
+    description: "Add product to cart",
     inputSchema: {
       type: "object",
       properties: {
-        product_id: {
-          type: "string",
-          description: "Product ID",
-        },
-        quantity: {
-          type: "number",
-          description: "Quantity to add",
-        },
+        product_id: { type: "string", description: "Product ID" },
+        quantity: { type: "number", description: "Quantity (default: 1)" },
       },
       required: ["product_id", "quantity"],
     },
   },
   {
+    name: "get_cart",
+    description: "Get current cart contents and totals",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "remove_from_cart",
-    description: "Remove a product from shopping cart",
+    description: "Remove product from cart",
     inputSchema: {
       type: "object",
       properties: {
-        product_id: {
-          type: "string",
-          description: "Product ID to remove",
-        },
+        product_id: { type: "string", description: "Product ID to remove" },
       },
       required: ["product_id"],
     },
   },
 
-  // Coupons
-  {
-    name: "apply_coupon",
-    description: "Apply a coupon code to cart for discount",
-    inputSchema: {
-      type: "object",
-      properties: {
-        code: {
-          type: "string",
-          description: "Coupon code",
-        },
-      },
-      required: ["code"],
-    },
-  },
-
-  // Checkout (WRITE - Agent can PURCHASE)
+  // Checkout (WRITE)
   {
     name: "create_checkout",
-    description:
-      "Create Stripe Checkout Session with latest features (embedded, automatic tax, multiple payment methods)",
+    description: "Create Stripe Checkout Session for cart items",
     inputSchema: {
       type: "object",
       properties: {
         shipping_address: {
           type: "object",
-          description: "Shipping address details",
+          description: "Shipping address",
           properties: {
             street: { type: "string" },
             city: { type: "string" },
             province: { type: "string" },
             postalCode: { type: "string" },
             country: { type: "string" },
-            phone: { type: "string" },
           },
-          required: ["street", "city", "province", "postalCode", "phone"],
+          required: ["street", "city", "province", "postalCode", "country"],
         },
         coupon: {
           type: "string",
@@ -189,109 +144,66 @@ const TOOLS = [
   // Orders (READ)
   {
     name: "list_orders",
-    description: "List user orders with optional filtering by status",
+    description: "List buyer's orders with status and totals",
     inputSchema: {
       type: "object",
       properties: {
         status: {
           type: "string",
           enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
-          description: "Filter by order status",
+          description: "Filter by status",
         },
-        seller_id: {
-          type: "string",
-          description: "Filter by seller (admin only)",
-        },
-        limit: {
-          type: "number",
-          description: "Results per page",
-        },
-        offset: {
-          type: "number",
-          description: "Page offset",
-        },
+        limit: { type: "number", description: "Max results (default: 20)" },
+        offset: { type: "number", description: "Pagination offset" },
       },
     },
   },
   {
     name: "get_order",
-    description: "Get detailed order information",
+    description: "Get full order details by ID",
     inputSchema: {
       type: "object",
       properties: {
-        id: {
-          type: "string",
-          description: "Order ID",
-        },
+        id: { type: "string", description: "Order ID" },
       },
       required: ["id"],
-    },
-  },
-  {
-    name: "request_return",
-    description: "Request a return for order items",
-    inputSchema: {
-      type: "object",
-      properties: {
-        order_id: {
-          type: "string",
-          description: "Order ID",
-        },
-        items: {
-          type: "array",
-          description: "Items to return",
-          items: {
-            type: "object",
-            properties: {
-              product_id: { type: "string" },
-              quantity: { type: "number" },
-            },
-          },
-        },
-        reason: {
-          type: "string",
-          description: "Reason for return",
-        },
-      },
-      required: ["order_id", "items", "reason"],
     },
   },
 
   // Reviews (WRITE)
   {
     name: "submit_review",
-    description: "Submit a product review with rating and text",
+    description: "Submit product review/rating (for delivered orders)",
     inputSchema: {
       type: "object",
       properties: {
-        product_id: {
-          type: "string",
-          description: "Product ID",
-        },
+        product_id: { type: "string", description: "Product ID" },
         rating: {
           type: "number",
           description: "Rating 1-5",
+          minimum: 1,
+          maximum: 5,
         },
         text: {
           type: "string",
-          description: "Review text",
+          description: "Review text (optional, max 500 chars)",
         },
       },
       required: ["product_id", "rating", "text"],
     },
   },
 
-  // Analytics (ADMIN ONLY)
+  // Analytics (READ)
   {
     name: "get_analytics",
-    description: "Get sales analytics (admin access required)",
+    description: "Get purchase summary (total spent, orders, etc)",
     inputSchema: {
       type: "object",
       properties: {
         period: {
           type: "string",
           enum: ["day", "week", "month", "year"],
-          description: "Analytics period",
+          description: "Time period for analytics",
         },
       },
       required: ["period"],
@@ -299,115 +211,94 @@ const TOOLS = [
   },
 ];
 
-// List tools handler
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools: TOOLS };
+// Register tool capability before setting handlers
+server.registerCapabilities({
+  tools: {},
 });
 
-// Call tool handler
+// Setup request handlers
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: TOOLS,
+}));
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const ctx = Logger.createContext(request.params.name);
+  const { name, arguments: args } = request.params;
+  const ctx = Logger.createContext(name);
 
   try {
-    Logger.info("Tool call received", ctx, {
-      tool: request.params.name,
-      paramCount: Object.keys(request.params.arguments || {}).length,
-    });
+    Logger.info(`Calling tool: ${name}`, ctx);
 
-    const result = await handleToolCall(
-      request.params.name,
-      request.params.arguments || {},
-      ctx
-    );
+    let result: any;
 
-    Logger.info("Tool call succeeded", ctx);
+    // Route to correct tool handler, cast args as needed
+    switch (name) {
+      case "search_products":
+        result = await productsTools.searchProducts(args as any, ctx);
+        break;
+      case "get_product":
+        result = await productsTools.getProduct(args as any, ctx);
+        break;
+
+      case "add_to_cart":
+        result = await cartTools.addToCart(args as any, ctx);
+        break;
+      case "get_cart":
+        result = await cartTools.getCart(ctx);
+        break;
+      case "remove_from_cart":
+        result = await cartTools.removeFromCart(args as any, ctx);
+        break;
+
+      case "create_checkout":
+        result = await checkoutTools.createCheckout(args as any, ctx);
+        break;
+
+      case "list_orders":
+        result = await ordersTools.listOrders(args as any, ctx);
+        break;
+      case "get_order":
+        result = await ordersTools.getOrder(args as any, ctx);
+        break;
+
+      case "submit_review":
+        result = await reviewsTools.submitReview(args as any, ctx);
+        break;
+
+      case "get_analytics":
+        result = await analyticsTools.getAnalytics(args as any, ctx);
+        break;
+
+      default:
+        throw new AppError(`Unknown tool: ${name}`, "INVALID_TOOL", 400);
+    }
+
+    Logger.info(`Tool succeeded: ${name}`, ctx);
     return result;
   } catch (error) {
-    Logger.error("Tool call failed", ctx, error instanceof Error ? (error as Error) : undefined);
-
-    const { message, code } = sanitizeError(error);
-    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const appError = error instanceof AppError ? error : new AppError(String(error), "TOOL_ERROR", 500);
+    Logger.error(`Tool failed: ${name}`, ctx, error instanceof Error ? error : new Error(String(error)));
 
     return {
       content: [
         {
-          type: "text" as const,
-          text: JSON.stringify({
-            error: message,
-            code,
-            statusCode,
-          }),
+          type: "text",
+          text: JSON.stringify(sanitizeError(appError), null, 2),
+          isError: true,
         },
       ],
-      isError: true,
     };
   }
 });
 
-/**
- * Route tool calls to handlers
- */
-async function handleToolCall(
-  tool: string,
-  params: Record<string, any>,
-  ctx: LogContext
-): Promise<any> {
-  switch (tool) {
-    // Products
-    case "search_products":
-      return await productsTools.searchProducts(params as any, ctx);
-    case "get_product":
-      return await productsTools.getProduct(params as any, ctx);
-    case "check_inventory":
-      return await productsTools.checkInventory(params as any, ctx);
-
-    // Cart
-    case "get_cart":
-      return await cartTools.getCart(ctx);
-    case "add_to_cart":
-      return await cartTools.addToCart(params as any, ctx);
-    case "remove_from_cart":
-      return await cartTools.removeFromCart(params as any, ctx);
-
-    // Coupons
-    case "apply_coupon":
-      return await checkoutTools.applyCoupon(params as any, ctx);
-
-    // Checkout
-    case "create_checkout":
-      return await checkoutTools.createCheckout(params as any, ctx);
-
-    // Orders
-    case "list_orders":
-      return await ordersTools.listOrders(params as any, ctx);
-    case "get_order":
-      return await ordersTools.getOrder(params as any, ctx);
-    case "request_return":
-      return await ordersTools.requestReturn(params as any, ctx);
-
-    // Reviews
-    case "submit_review":
-      return await reviewsTools.submitReview(params as any, ctx);
-
-    // Analytics
-    case "get_analytics":
-      return await analyticsTools.getAnalytics(params as any, ctx);
-
-    default:
-      throw new Error(`Unknown tool: ${tool}`);
-  }
-}
-
-/**
- * Start the MCP server
- */
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  Logger.info("OrignaGTA MCP Server started", Logger.createContext());
+  const ctx = Logger.createContext("server", "startup");
+  Logger.info("OrignaGTA MCP server started", ctx, { version: "1.0.0" });
 }
 
 main().catch((error) => {
-  console.error("Failed to start MCP server:", error);
+  const ctx = Logger.createContext("server", "startup");
+  Logger.error("Server startup failed", ctx, error instanceof Error ? error : new Error(String(error)));
   process.exit(1);
 });
