@@ -58,7 +58,7 @@ const TOOLS = [
         },
         limit: {
           type: "number",
-          description: "Number of results (default: 10, max: 50)",
+          description: "Number of results (default: 20, max: 100)",
         },
         offset: {
           type: "number",
@@ -92,6 +92,7 @@ const TOOLS = [
       properties: {
         product_id: { type: "string", description: "Product ID" },
         quantity: { type: "number", description: "Quantity (default: 1)" },
+        idempotency_key: { type: "string", description: "Optional idempotency key to prevent duplicate cart entries" },
       },
       required: ["product_id", "quantity"],
     },
@@ -108,6 +109,7 @@ const TOOLS = [
       type: "object",
       properties: {
         product_id: { type: "string", description: "Product ID to remove" },
+        idempotency_key: { type: "string", description: "Optional idempotency key" },
       },
       required: ["product_id"],
     },

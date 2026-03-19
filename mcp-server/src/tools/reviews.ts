@@ -21,15 +21,7 @@ export async function submitReview(params: SubmitReviewParams, ctx: LogContext) 
   const rating = Validation.rating(params.rating);
   const text = Validation.reviewText(params.text);
 
-  const review = await apiClient.submitReview(
-    {
-      productId,
-      userId: user.sub,
-      rating,
-      text,
-    },
-    ctx
-  );
+  const review = await apiClient.submitReview(productId, rating, text, ctx);
 
   Logger.info("submit_review succeeded", ctx, {
     reviewId: review.id,

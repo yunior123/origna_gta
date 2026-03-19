@@ -164,10 +164,12 @@ export interface CheckInventoryParams {
 export interface AddToCartParams {
   product_id: string;
   quantity: number;
+  idempotency_key?: string;
 }
 
 export interface RemoveFromCartParams {
   product_id: string;
+  idempotency_key?: string;
 }
 
 export interface ApplyCouponParams {
@@ -198,6 +200,7 @@ export interface RequestReturnParams {
     quantity: number;
   }[];
   reason: string;
+  idempotency_key?: string;
 }
 
 export interface SubmitReviewParams {

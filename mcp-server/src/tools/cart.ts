@@ -34,6 +34,7 @@ export async function addToCart(params: AddToCartParams, ctx: LogContext) {
   Logger.info("add_to_cart called", ctx, {
     productId: params.product_id,
     quantity: params.quantity,
+    idempotencyKey: params.idempotency_key,
   });
 
   AuthService.getCurrentUser(ctx); // Ensure authenticated
@@ -45,6 +46,7 @@ export async function addToCart(params: AddToCartParams, ctx: LogContext) {
 
   Logger.info("add_to_cart succeeded", ctx, {
     itemCount: cart.items?.length || 0,
+    idempotencyKey: params.idempotency_key,
   });
 
   return {
