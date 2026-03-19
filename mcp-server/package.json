@@ -1,15 +1,26 @@
 {
   "name": "@orignagta/mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for OrignaGTA e-commerce platform",
+  "description": "MCP server for OrignaGTA e-commerce platform - enables AI agents to purchase products with Stripe",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "e-commerce",
+    "orignagta",
+    "stripe",
+    "agent-commerce"
+  ],
+  "author": "OrignaGTA",
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "axios": "^1.7.0"

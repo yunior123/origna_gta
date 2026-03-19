@@ -306,15 +306,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 // Call tool handler
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const ctx = Logger.createContext(request.name);
+  const ctx = Logger.createContext(request.params.name);
 
   try {
     Logger.info("Tool call received", ctx, {
-      tool: request.name,
-      paramCount: Object.keys(request.params).length,
+      tool: request.params.name,
+      paramCount: Object.keys(request.params.arguments || {}).length,
     });
 
-    const result = await handleToolCall(request.name, request.params, ctx);
+    const result = await handleToolCall(
+      request.params.name,
+      request.params.arguments || {},
+      ctx
+    );
 
     Logger.info("Tool call succeeded", ctx);
     return result;
@@ -351,43 +355,43 @@ async function handleToolCall(
   switch (tool) {
     // Products
     case "search_products":
-      return await productsTools.searchProducts(params, ctx);
+      return await productsTools.searchProducts(params as any, ctx);
     case "get_product":
-      return await productsTools.getProduct(params, ctx);
+      return await productsTools.getProduct(params as any, ctx);
     case "check_inventory":
-      return await productsTools.checkInventory(params, ctx);
+      return await productsTools.checkInventory(params as any, ctx);
 
     // Cart
     case "get_cart":
       return await cartTools.getCart(ctx);
     case "add_to_cart":
-      return await cartTools.addToCart(params, ctx);
+      return await cartTools.addToCart(params as any, ctx);
     case "remove_from_cart":
-      return await cartTools.removeFromCart(params, ctx);
+      return await cartTools.removeFromCart(params as any, ctx);
 
     // Coupons
     case "apply_coupon":
-      return await checkoutTools.applyCoupon(params, ctx);
+      return await checkoutTools.applyCoupon(params as any, ctx);
 
     // Checkout
     case "create_checkout":
-      return await checkoutTools.createCheckout(params, ctx);
+      return await checkoutTools.createCheckout(params as any, ctx);
 
     // Orders
     case "list_orders":
-      return await ordersTools.listOrders(params, ctx);
+      return await ordersTools.listOrders(params as any, ctx);
     case "get_order":
-      return await ordersTools.getOrder(params, ctx);
+      return await ordersTools.getOrder(params as any, ctx);
     case "request_return":
-      return await ordersTools.requestReturn(params, ctx);
+      return await ordersTools.requestReturn(params as any, ctx);
 
     // Reviews
     case "submit_review":
-      return await reviewsTools.submitReview(params, ctx);
+      return await reviewsTools.submitReview(params as any, ctx);
 
     // Analytics
     case "get_analytics":
-      return await analyticsTools.getAnalytics(params, ctx);
+      return await analyticsTools.getAnalytics(params as any, ctx);
 
     default:
       throw new Error(`Unknown tool: ${tool}`);
