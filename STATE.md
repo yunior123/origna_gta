@@ -9,3 +9,5 @@ can u record a video of the app covering:web,mobile,tablet/desktop,dark theme,li
   
   - [ ] **No monitoring/observability** — No Prometheus, Grafana, or alerting. — Not started
 - [ ] **No disaster recovery docs** — Team doesn't know recovery procedure. — Not started
+
+-use Prometheus for monitoring
