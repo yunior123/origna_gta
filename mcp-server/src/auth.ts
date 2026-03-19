@@ -28,7 +28,7 @@ export class AuthService {
     try {
       return await this.oauthProvider.authenticate(_ctx);
     } catch (error) {
-      Logger.error("Failed to get JWT token", _ctx, { error });
+      Logger.error("Failed to get JWT token", _ctx, { error: String(error) });
       throw new AuthenticationError("Authentication failed");
     }
   }

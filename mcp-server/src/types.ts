@@ -206,11 +206,14 @@ export interface RequestReturnParams {
 export interface SubmitReviewParams {
   product_id: string;
   rating: number; // 1-5
-  text: string;
+  title: string;
+  text?: string;
+  comment?: string;
 }
 
 export interface GetAnalyticsParams {
-  period: "day" | "week" | "month" | "year";
+  metric: "revenue" | "orders" | "users" | "products";
+  period?: "day" | "week" | "month" | "year";
 }
 
 export interface CreatePaymentLinkParams {

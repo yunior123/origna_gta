@@ -259,7 +259,8 @@ export class OrignaBaseClient {
   }
 
   private handleError(error: any, operation: string, ctx?: LogContext): never {
-    Logger.error(`API call failed: ${operation}`, ctx, { error });
+    const _ctx = ctx || Logger.createContext("api");
+    Logger.error(`API call failed: ${operation}`, _ctx, error instanceof Error ? error : new Error(String(error)));
 
     if (error instanceof AppError) {
       throw error;
