@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:html' as html;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/features/products/bulk_upload_state.dart';
 import 'package:origna_gta/features/products/bulk_upload_viewmodel.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 
@@ -51,7 +53,7 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                 Text(
                   'bulk_upload_instructions'.tr(),
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: DesignTokens.lightText,
+                        color: DesignTokens.textOnDark,
                       ),
                 ),
                 const SizedBox(height: 24),
@@ -139,7 +141,7 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                       ],
                     ),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: DesignTokens.lightText,
+                          color: DesignTokens.textOnDark,
                         ),
                   ),
                   const SizedBox(height: 12),
@@ -163,7 +165,7 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
                             'uploading'.tr(),
                             style:
                                 Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: DesignTokens.lightText,
+                                      color: DesignTokens.textOnDark,
                                     ),
                           ),
                         ],
@@ -225,7 +227,7 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
     final bytes = utf8.encode(content);
     final blob = html.Blob([bytes], 'text/csv');
     final url = html.Url.createObjectUrlFromBlob(blob);
-    final link = html.AnchorElement(href: url)
+    html.AnchorElement(href: url)
       ..setAttribute('download', filename)
       ..click();
     html.Url.revokeObjectUrl(url);
@@ -243,10 +245,10 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
           DataColumn(label: Text('Row')),
           DataColumn(label: Text('Error')),
         ],
-        rows: errors.take(10).map((e) {
+        rows: errors.take(10).map((error) {
           return DataRow(cells: [
-            DataCell(Text('${e.index + 1}')),
-            DataCell(Text(e.message)),
+            DataCell(Text('${error.index + 1}')),
+            DataCell(Text(error.message)),
           ]);
         }).toList(),
       ),
@@ -354,8 +356,4 @@ class _BulkUploadScreenState extends ConsumerState<BulkUploadScreen> {
       ],
     );
   }
-}
-
-extension on List {
-  List<E> take<E>(int count) => cast<E>().take(count).toList();
 }

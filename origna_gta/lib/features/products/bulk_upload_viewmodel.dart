@@ -2,7 +2,7 @@
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/utils/csv_parser.dart';
 
 import 'bulk_upload_state.dart';
@@ -141,7 +141,7 @@ class BulkUploadViewModel extends StateNotifier<BulkUploadState> {
       final createdList = productIds.asMap().entries.map((e) {
         return CreatedProduct(
           index: e.key,
-          productId: e.value.toString(),
+          productId: (e.value as int).toString(),
           title: products[e.key]['title'].toString(),
         );
       }).toList();

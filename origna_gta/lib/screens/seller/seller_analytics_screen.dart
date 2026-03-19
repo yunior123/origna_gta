@@ -5,8 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
+import 'package:origna_gta/models/generated/base_models.dart' show OrderStatus;
 import 'package:origna_gta/models/generated/models.dart';
-import 'package:origna_gta/utils/constants.dart' hide PaymentStatus, OrderStatus;
+import 'package:origna_gta/utils/constants.dart' hide PaymentStatus;
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/widgets/animations.dart';
@@ -102,7 +103,7 @@ class _AnalyticsDashboard extends StatelessWidget {
         productCounts[key] = _ProductStat(
           name: item.name,
           quantity: productCounts[key]!.quantity + item.quantity,
-          revenueCents: productCounts[key]!.revenueCents + (item.unitPriceCents * item.quantity),
+          revenueCents: productCounts[key]!.revenueCents + ((item.price * 100).toInt() * item.quantity),
         );
       }
     }
