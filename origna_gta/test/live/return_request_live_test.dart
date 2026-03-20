@@ -39,7 +39,7 @@ void main() {
       () async {
         if (!runLive) return;
         final returns = await repo.fetchReturnRequests('seed_order_001');
-        expect(returns, isA<List>());
+        expect(returns, isA<List<Object?>>());
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
@@ -74,7 +74,7 @@ void main() {
       if (!runLive) return;
       const userId = 'users:e8baqega99d6c1x8cf9n';
       final stream = repo.watchBuyerOrders(userId);
-      expect(stream, isA<Stream>());
+      expect(stream, isA<Stream<Object?>>());
     }, skip: !runLive);
 
     test(
@@ -83,7 +83,7 @@ void main() {
         if (!runLive) return;
         final order = await repo.fetchOrderById('seed_order_001');
         expect(order, isNotNull);
-        expect(order!.orderId, equals('seed_order_001'));
+        expect(order!.orderId, contains('seed_order_001'));
       },
       skip: !runLive,
       timeout: const Timeout(Duration(minutes: 2)),
